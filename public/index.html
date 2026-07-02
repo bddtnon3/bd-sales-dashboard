@@ -198,7 +198,7 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
     <input id="p" type="password" autocomplete="current-password" placeholder="••••••••">
     <button onclick="doLogin()">เข้าสู่ระบบ</button>
     <div class="login-err" id="loginErr"></div>
-    <div class="login-hint">ผู้จัดการ: <b>manager / bd@admin</b><br>เซลล์: ใช้รหัสสายของคุณ (เช่น CT11 / ct11@bd)</div>
+    <div class="login-hint">เข้าสู่ระบบด้วยชื่อผู้ใช้ (รหัสสายของคุณ) และรหัสผ่านที่ได้รับจากแอดมิน<br>หากลืมรหัสผ่าน กรุณาติดต่อแอดมิน</div>
   </div>
 </div>
 
@@ -402,7 +402,6 @@ async function syncToServer(){
   }catch(ex){ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
 }
 document.getElementById("p").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
-/* auto-resume session */
 window.addEventListener("DOMContentLoaded",()=>{
   const t=localStorage.getItem("bd_token"),u=localStorage.getItem("bd_user");
   if(t&&u){try{TOKEN=t;S.user=JSON.parse(u);afterLogin();}catch(e){logout();}}
@@ -552,7 +551,7 @@ function renderChart(agg,focusMe,mine){
   const sub=document.getElementById("chartSub");
   let rows=agg.rows.filter(r=>r.value!=0||r.focus);
   ttl.textContent=focusMe?"ยอดขายของฉันเทียบทีม":"ยอดขายรายสาย";
-  sub.textContent=agg.label+(agg.hasTarget?" · เทียบเป้า (NIV)":" · ยอดสุทธิรายวัน");
+  sub.textContent=agg.label+(agg.hasTarget?" · แท่งเทา = เป้า, แท่งสี = ยอดจริง (เขียว ≥ เป้า / ส้ม-แดง = ต่ำกว่า) · ตัวเลขบนแท่ง = ส่วนต่าง":" · ยอดสุทธิรายวัน");
   const labels=rows.map(r=>r.display);
   const vals=rows.map(r=>Math.round(r.value));
   const bg=rows.map((r,i)=>focusMe&&r.code!==mine?"#CBD8EE":PALETTE[i%PALETTE.length]);
@@ -562,14 +561,32 @@ function renderChart(agg,focusMe,mine){
     chartObj=new Chart(ctx,{type:"doughnut",data:{labels,datasets:[{data:vals,backgroundColor:rows.map((r,i)=>PALETTE[i%PALETTE.length]),borderWidth:2,borderColor:"#fff"}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{font:{size:11},boxWidth:12}},
         tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((a,b)=>a+b,0);return " "+c.label+": "+THB(c.raw)+" ("+(c.raw/t*100).toFixed(1)+"%)";}}}}}});
+  }else if(agg.hasTarget){
+    // Bullet-style overlay: wide grey = target (behind), narrow colored = actual (front)
+    const targets=rows.map(r=>Math.round(r.target));
+    const achColor=r=>(focusMe&&r.code!==mine)?"#CBD8EE":(r.ach==null?"#3B82F6":r.ach>=100?"#1E9E5A":r.ach>=85?"#E0A400":"#D64545");
+    const datasets=[
+      {label:"เป้าหมาย",data:targets,backgroundColor:"#DCE4F0",borderRadius:4,grouped:false,barPercentage:0.94,categoryPercentage:0.72,order:2},
+      {label:"ยอดขายจริง",data:vals,backgroundColor:rows.map(achColor),borderRadius:4,grouped:false,barPercentage:0.5,categoryPercentage:0.72,order:1}
+    ];
+    const gapLabels={id:"gapLabels",afterDatasetsDraw(chart){
+      const ctx=chart.ctx,mA=chart.getDatasetMeta(1),mT=chart.getDatasetMeta(0);
+      ctx.save();ctx.font="700 10px 'Segoe UI','Sarabun',sans-serif";ctx.textAlign="center";
+      rows.forEach((r,i)=>{const bA=mA.data[i],bT=mT.data[i];if(!bA)return;
+        const gap=r.value-r.target;let top=Math.min(bA.y,bT?bT.y:bA.y)-5;if(top<10)top=10;
+        ctx.fillStyle=gap>=0?"#1E9E5A":"#D64545";
+        ctx.fillText((gap>=0?"+":"-")+THBk(Math.abs(gap)).replace("฿",""),bA.x,top);});
+      ctx.restore();}};
+    chartObj=new Chart(ctx,{type:"bar",data:{labels,datasets},plugins:[gapLabels],
+      options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:20}},
+        plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:12}}},
+          tooltip:{callbacks:{label:c=>{const r=rows[c.dataIndex];if(c.datasetIndex===1){const g=r.value-r.target;return " ยอดจริง: "+THB(r.value)+"  ("+(r.ach!=null?r.ach.toFixed(1)+"%":"–")+" · "+(g>=0?"เกินเป้า ":"ยังขาด ")+THB(Math.abs(g))+")";}return " เป้าหมาย: "+THB(r.target);}}}},
+        scales:{y:{beginAtZero:true,ticks:{callback:v=>THBk(v)},grid:{color:"#EEF2F8"}},x:{grid:{display:false}}}}});
   }else{
-    const ds=[{label:"ยอดขาย (NIV)",data:vals,backgroundColor:bg,borderRadius:6,order:2}];
-    if(agg.hasTarget)ds.push({label:"เป้าหมาย",type:"line",data:rows.map(r=>Math.round(r.target)),borderColor:"#D64545",backgroundColor:"#D64545",
-      borderWidth:2,pointRadius:3,pointBackgroundColor:"#D64545",fill:false,order:1});
-    chartObj=new Chart(ctx,{type:"bar",data:{labels,datasets:ds},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:agg.hasTarget,labels:{boxWidth:12,font:{size:12}}},
-        tooltip:{callbacks:{label:c=>" "+c.dataset.label+": "+THB(c.raw)}}},
-        scales:{y:{ticks:{callback:v=>THBk(v)},grid:{color:"#EEF2F8"}},x:{grid:{display:false}}}}});
+    chartObj=new Chart(ctx,{type:"bar",data:{labels,datasets:[{label:"ยอดสุทธิ",data:vals,backgroundColor:bg,borderRadius:6}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>" "+THB(c.raw)}}},
+        scales:{y:{beginAtZero:true,ticks:{callback:v=>THBk(v)},grid:{color:"#EEF2F8"}},x:{grid:{display:false}}}}});
   }
 }
 
@@ -622,7 +639,7 @@ function renderTable(agg,mine){
   document.getElementById("tableTitle").textContent="ตารางรายละเอียด";
   document.getElementById("tableSub").innerHTML=agg.label+" · เรียงตามยอดขาย · <b style='color:var(--blue)'>คลิกที่สายเพื่อเจาะดูรายร้าน 🔍</b>";
   document.getElementById("noteWrap").innerHTML=agg.hasTarget?"":`<div class="note">⚠️ ช่วงนี้ยังไม่มีข้อมูลเป้าหมาย (เดือน ก.ค. รอข้อมูลจาก Unilever) — แสดงเฉพาะยอดจริง</div>`;
-  const cols=agg.hasTarget?["สาย","พนักงาน","ยอดขาย (NIV)","เป้าหมาย","% บรรลุ","สถานะ"]:["อันดับ","สาย","พนักงาน","ยอดสุทธิ","สัดส่วน"];
+  const cols=agg.hasTarget?["สาย","พนักงาน","ยอดขาย (NIV)","เป้าหมาย","% บรรลุ","ส่วนต่าง (เกิน/ขาด)"]:["อันดับ","สาย","พนักงาน","ยอดสุทธิ","สัดส่วน"];
   head.innerHTML="<tr>"+cols.map(c=>`<th>${c}</th>`).join("")+"</tr>";
   const tot=agg.rows.reduce((s,r)=>s+r.value,0);
   const focusRows=agg.rows.filter(r=>r.focus);
@@ -636,9 +653,9 @@ function renderTable(agg,mine){
     const tag=`<span class="tag ${r.type.toLowerCase()}">${r.display}</span>`;
     if(agg.hasTarget){
       const p=r.ach==null?"":r.ach>=100?"g":r.ach>=85?"w":"b";
-      const st=r.ach==null?"–":r.ach>=100?"ถึงเป้า":r.ach>=85?"ใกล้เป้า":"ต่ำกว่าเป้า";
+      const gap=r.value-r.target;const gc=gap>=0?"up":"down";
       return `<tr${attr}><td>${tag}</td><td>${r.name}${dot}</td><td><b>${THB(r.value)}</b></td><td>${THB(r.target)}</td>
-        <td><span class="pill ${p}">${r.ach!=null?r.ach.toFixed(1)+"%":"–"}</span></td><td>${st}</td></tr>`;
+        <td><span class="pill ${p}">${r.ach!=null?r.ach.toFixed(1)+"%":"–"}</span></td><td class="${gc}"><b>${(gap>=0?"+":"-")+THB(Math.abs(gap))}</b></td></tr>`;
     }else{
       return `<tr${attr}><td><span class="rk ${rank<=3?'top':''}">${rank}</span></td><td>${tag}</td><td>${r.name}${dot}</td>
         <td><b>${THB(r.value)}</b></td><td>${tot>0?(r.value/tot*100).toFixed(1)+"%":"–"}</td></tr>`;
@@ -653,7 +670,8 @@ function renderTable(agg,mine){
   const totT=agg.rows.reduce((s,r)=>s+r.target,0);
   if(agg.hasTarget){
     const a=totT>0?tot/totT*100:0;
-    html+=`<tr style="font-weight:800;background:var(--blue-soft)"><td colspan="2">รวมสายโฟกัส${S.inclExtra?"+เสริม":""}</td><td>${THB(tot)}</td><td>${THB(totT)}</td><td><span class="pill ${a>=100?'g':a>=85?'w':'b'}">${a.toFixed(1)}%</span></td><td></td></tr>`;
+    const gtot=tot-totT;
+    html+=`<tr style="font-weight:800;background:var(--blue-soft)"><td colspan="2">รวมสายโฟกัส${S.inclExtra?"+เสริม":""}</td><td>${THB(tot)}</td><td>${THB(totT)}</td><td><span class="pill ${a>=100?'g':a>=85?'w':'b'}">${a.toFixed(1)}%</span></td><td class="${gtot>=0?'up':'down'}"><b>${(gtot>=0?"+":"-")+THB(Math.abs(gtot))}</b></td></tr>`;
   }else{
     html+=`<tr style="font-weight:800;background:var(--blue-soft)"><td></td><td colspan="2">รวมทั้งหมด</td><td>${THB(tot)}</td><td>100%</td></tr>`;
   }
@@ -817,7 +835,7 @@ function parseStore(name,buf){
   ulog("✅ "+name+" (รายร้าน) → "+recs.length+" ร้าน · "+months.map(fmtMonth).join(", "));render();
 }
 
-/* credentials are managed on the server (lib/accounts.js) */
+/* credentials managed on server */
 </script>
 </body>
 </html>
