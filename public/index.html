@@ -195,6 +195,8 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .plan-tbl th,.plan-tbl td{white-space:nowrap}
 .plan-tbl td:first-child{text-align:left}
 .kpi-card .v{font-size:24px}
+.kpi-monthbar{background:var(--blue-soft);border-left:4px solid var(--blue);border-radius:0 8px 8px 0;padding:9px 14px;margin-bottom:14px;font-size:14px;color:var(--blue-dark)}
+.kpi-monthbar b{font-size:15px}
 
 /* KPI reward / incentive */
 .reward-banner{display:flex;justify-content:space-between;align-items:center;gap:14px;border-radius:14px;padding:15px 20px;margin-bottom:12px;border:1.5px solid var(--line);background:#F7F9FD;box-shadow:var(--shadow)}
@@ -386,6 +388,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
           <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
         </div>
       </div>
+      <div class="kpi-monthbar" id="kpiMonthBar"></div>
       <div class="cards" id="kpiCards"></div>
       <div id="kpiReward"></div>
       <div id="kpiCharts"></div>
@@ -468,7 +471,7 @@ function completeMonthIdx(){return STORE.months.map((m,i)=>i).filter(i=>STORE.mo
 const FOCUS_MAP={"209611":"CT11","209612":"CT12","209613":"CT13","209614":"CT14","209615":"CT15",
 "209616":"CT16","209617":"CT17","209622":"CT22","2096_97":"KA97","209698":"KA98"};
 
-/* Accounts on server (lib/accounts.js). */
+/* Accounts on server. */
 
 /* ====================== STATE ====================== */
 let S={user:null,period:"monthly",key:null,scope:"team",chart:"bar",inclExtra:false};
@@ -510,8 +513,10 @@ async function loadData(){
 }
 function logout(){S.user=null;TOKEN=null;localStorage.removeItem("bd_token");localStorage.removeItem("bd_user");
   document.getElementById("app").classList.add("hidden");document.getElementById("login").classList.remove("hidden");document.getElementById("p").value="";}
-async function syncToServer(){
-  if(!TOKEN)return;ulog("☁️ กำลังบันทึกขึ้นเซิร์ฟเวอร์กลาง...");
+let _syncTimer=null;
+function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบันทึกขึ้นเซิร์ฟเวอร์กลาง...");clearTimeout(_syncTimer);_syncTimer=setTimeout(_doSync,700);}
+async function _doSync(){
+  if(!TOKEN)return;
   try{const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE,KPI})});
     if(r.ok)ulog("✅ บันทึกสำเร็จ — ทุกคนจะเห็นข้อมูลนี้เมื่อเปิด/รีเฟรชหน้าเว็บ");
     else{const e=await r.json().catch(()=>({}));ulog("⚠️ บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status)));}
@@ -920,6 +925,8 @@ function renderKPI(){
     document.getElementById("kpiCharts").innerHTML='<div class="panel"><div class="insight">ยังไม่มีข้อมูล KPI — แอดมินอัพไฟล์ Salesman Incentive ก่อน (ปุ่มอัพโหลด → 🎯 KPI ออนไลน์)</div></div>';
     document.getElementById("kpiPlan").innerHTML="";return;
   }
+  const mb=document.getElementById("kpiMonthBar");
+  if(mb)mb.innerHTML=`📊 KPI ออนไลน์ · ศูนย์ BD · กำลังแสดงเดือน <b>${fmtMonth(KPIS.month)}</b>`;
   const mine=(S.user&&S.user.role==="sales")?S.user.code:null;
   const focusMe=(mine&&KPIS.scope==="me");
   const team=kpiRows();
@@ -1025,10 +1032,18 @@ function parseKPI(name,buf){
   if(!sh)throw new Error("ไม่พบชีต ByRoute ในไฟล์ (ไม่ใช่ไฟล์ Incentive?)");
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1});
   const MON={jan:"01",feb:"02",mar:"03",apr:"04",may:"05",jun:"06",jul:"07",aug:"08",sep:"09",oct:"10",nov:"11",dec:"12"};
-  const mm=name.toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/);
-  if(!mm)throw new Error("ระบุเดือนจากชื่อไฟล์ไม่ได้ (ต้องมีชื่อเดือน เช่น MAY ในชื่อไฟล์)");
-  let y="2026";const y2=name.match(/'(\d{2})/),y4=name.match(/(20\d{2})/);if(y2)y="20"+y2[1];else if(y4)y=y4[1];
-  const mk=y+"-"+MON[mm[1]];
+  const MO="jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
+  let mk=null;
+  // 1) AUTHORITATIVE: "as of ... <Mon>'YY" printed inside the report header (immune to wrong filenames)
+  let hay="";for(let i=0;i<Math.min(6,rows.length);i++){if(rows[i])hay+=" "+rows[i].join(" ");}
+  let a=hay.toLowerCase().match(new RegExp("as of[^a-z]*("+MO+")['’]?\\s*(\\d{2})"));
+  if(a)mk="20"+a[2]+"-"+MON[a[1]];
+  // 2) fallback: filename "END <Mon>'YY" (the reporting period part of the name)
+  if(!mk){const b=name.toLowerCase().match(new RegExp("end\\s+("+MO+")['’]?\\s*(\\d{2})"));if(b)mk="20"+b[2]+"-"+MON[b[1]];}
+  // 3) last resort: first month word in filename + any year
+  if(!mk){const c=name.toLowerCase().match(new RegExp("("+MO+")"));const y=name.match(/'(\d{2})/)||name.match(/(20\d{2})/);
+    if(c&&y){const yy=(y[1]||y[0]).slice(-2);mk="20"+yy+"-"+MON[c[1]];}}
+  if(!mk)throw new Error("ระบุเดือนไม่ได้ (ไม่พบ 'as of ... <เดือน>' ในไฟล์ และชื่อไฟล์ไม่มีชื่อเดือน)");
   const md={};let n=0;
   for(let i=2;i<rows.length;i++){const r=rows[i];if(!r)continue;
     if(String(r[0])!=="2096"||String(r[5]).toUpperCase()!=="CT")continue;
@@ -1040,7 +1055,8 @@ function parseKPI(name,buf){
   if(!KPI.data)KPI.data={};KPI.data[mk]=md;
   if(!KPI.months)KPI.months=[];if(!KPI.months.includes(mk))KPI.months.push(mk);KPI.months.sort();
   if(!KPI.workdays)KPI.workdays=26;
-  ulog("✅ "+name+" (KPI) → "+fmtMonth(mk)+" · "+n+" สาย CT");
+  const T=Object.values(md).reduce((a,v)=>({st:a.st+v.stores,ac:a.ac+v.active,or:a.or+v.orders,se:a.se+v.self,gh:a.gh+v.ghost}),{st:0,ac:0,or:0,se:0,gh:0});
+  ulog("✅ "+name+" (KPI) → "+fmtMonth(mk)+" · "+n+" สาย · ศูนย์: Active "+T.ac+"/"+T.st+", Self "+T.se+"/"+T.or+", Ghost "+T.gh+"/"+T.or+" (เทียบ BySup ได้เลย)");
   initKPI();if(!document.getElementById("kpiView").classList.contains("hidden"))renderKPI();
   syncToServer();
 }
