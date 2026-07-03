@@ -23,10 +23,12 @@ export default async function handler(req, res) {
       contentType: "application/json",
       addRandomSuffix: true,
     });
-    // keep only the newest snapshot
+    // keep only the newest snapshot — only delete blobs strictly OLDER than the one
+    // we just wrote, so a concurrent save can never delete a newer blob (data loss).
     try {
       const { blobs } = await list({ prefix: "bd-data-" });
-      const olds = blobs.filter((b) => b.url !== blob.url);
+      const mine = new Date(blob.uploadedAt || Date.now()).getTime();
+      const olds = blobs.filter((b) => b.url !== blob.url && new Date(b.uploadedAt).getTime() < mine);
       for (const b of olds) await del(b.url);
     } catch { /* cleanup best-effort */ }
 
