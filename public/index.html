@@ -181,6 +181,55 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 #stTbl td,#stTbl th{padding:8px 10px;font-size:12.5px}
 @media(max-width:820px){.an-grid{grid-template-columns:repeat(2,1fr)}.mini span{max-width:none}}
 
+/* KPI upload dropzone */
+.up-kpi{background:#EFEAFB;border-color:#7C6FD6;color:#4a3f97}
+
+/* tabs */
+.tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:2px solid var(--line)}
+.tab{background:none;border:none;padding:11px 18px;font-size:15px;font-weight:700;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px}
+.tab.on{color:var(--blue);border-bottom-color:var(--blue)}
+.seg.multi button.on{background:var(--blue);color:#fff}
+
+/* KPI */
+#kpiCharts .panel{margin-bottom:20px}
+.plan-tbl th,.plan-tbl td{white-space:nowrap}
+.plan-tbl td:first-child{text-align:left}
+
+/* store table: sticky first column + smooth mobile scroll */
+.store-tblwrap{-webkit-overflow-scrolling:touch}
+#stTbl td:first-child,#stTbl th:first-child{position:sticky;left:0;background:#fff;z-index:3;box-shadow:1px 0 0 var(--line)}
+#stTbl thead th:first-child{z-index:4}
+tbody tr:hover #stTbl td:first-child{background:var(--bg)}
+
+/* ---------- MOBILE ---------- */
+@media(max-width:640px){
+  header{padding:0 12px;height:54px}
+  header .brand{font-size:16px}
+  .usr .who{display:none}
+  main{padding:12px 10px}
+  .controls{padding:12px;gap:12px}
+  .ctl select,.seg{width:100%}
+  .seg{overflow-x:auto}
+  .tab{padding:10px 14px;font-size:14px}
+  .cards{gap:10px}
+  .card .v{font-size:22px}
+  .grid2{gap:14px}
+  .chart-wrap{height:300px}
+  /* store drill-down full screen + easy scroll */
+  #storeModal{padding:0}
+  .store-card{max-width:100%;max-height:100vh;height:100vh;border-radius:0}
+  .store-head{padding:12px 14px}
+  .store-head h3{font-size:15px}
+  .store-tools{padding:10px 14px}
+  .store-analysis{padding:12px 14px}
+  .an-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .store-tblwrap{padding:0 10px 16px}
+  #stTbl td,#stTbl th{padding:7px 8px;font-size:12px}
+  #stTbl td:first-child{max-width:120px;overflow:hidden;text-overflow:ellipsis}
+  /* let main tables scroll horizontally with momentum */
+  #tbl,.plan-tbl{min-width:520px}
+}
+
 @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
 @media(max-width:560px){.cards{grid-template-columns:1fr}main{padding:14px}}
 </style>
@@ -213,6 +262,11 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
     </div>
   </header>
   <main>
+    <div class="tabs">
+      <button class="tab on" data-tab="sales" onclick="switchTab('sales')">📊 ยอดขาย</button>
+      <button class="tab" data-tab="kpi" onclick="switchTab('kpi')">🎯 KPI ออนไลน์</button>
+    </div>
+    <div id="salesView">
     <div class="controls">
       <div class="ctl">
         <label>ช่วงเวลา</label>
@@ -247,9 +301,9 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
         <label class="chk"><input type="checkbox" id="inclExtra"> รวมสายเสริม</label>
       </div>
       <div class="spacer"></div>
-      <div class="ctl" id="uploadCtl">
+      <div class="ctl admin-upload" id="uploadCtl" style="display:none">
         <label>&nbsp;</label>
-        <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์ยอดขาย</button>
+        <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
       </div>
     </div>
 
@@ -274,8 +328,35 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
       <div id="noteWrap"></div>
       <div style="overflow-x:auto"><table id="tbl"><thead></thead><tbody></tbody></table></div>
     </div>
+    </div><!-- /salesView -->
+
+    <div id="kpiView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>เลือกเดือน</label><select id="kpiMonth" onchange="onKpiMonth()"></select></div>
+        <div class="ctl"><label>เลือกรายงาน (กดเปิด/ปิดได้)</label>
+          <div class="seg multi" id="kpiToggle">
+            <button data-k="active" class="on">Active on PJP</button>
+            <button data-k="self" class="on">Self-ordering</button>
+            <button data-k="ghost" class="on">Ghost order</button>
+          </div>
+        </div>
+        <div class="ctl" id="kpiScopeCtl"><label>มุมมอง</label>
+          <div class="seg" id="kpiScope">
+            <button data-s="team" class="on">ภาพรวมทีม</button>
+            <button data-s="me">สายของฉัน</button>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+        </div>
+      </div>
+      <div class="cards" id="kpiCards"></div>
+      <div id="kpiCharts"></div>
+      <div class="panel" id="kpiPlan"></div>
+    </div>
   </main>
-  <footer>BD Sales Dashboard · เซิร์ฟเวอร์กลาง · ข้อมูลจาก Unilever (อัพโหลดผ่านเว็บ) · BD Distribution</footer>
+  <footer>BD Sales Dashboard · เซิร์ฟเวอร์กลาง · BD Distribution</footer>
 </div>
 
 <!-- UPLOAD MODAL -->
@@ -289,6 +370,8 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
     <input id="fileMonth" type="file" accept=".xlsx,.xls" multiple class="hidden">
     <label class="drop up-store" for="fileStore">🏪 <b>ยอดรายร้าน (by store)</b><small>อัพเดือนละครั้ง (หรือรายสัปดาห์) · ไฟล์ Sales ... by store.xls</small></label>
     <input id="fileStore" type="file" accept=".xls,.xlsx" multiple class="hidden">
+    <label class="drop up-kpi" for="fileKPI">🎯 <b>KPI ออนไลน์ (Incentive)</b><small>อัพรายสัปดาห์ · ไฟล์ Salesman Incentive_DTT_...xlsx</small></label>
+    <input id="fileKPI" type="file" accept=".xlsx,.xls" multiple class="hidden">
     <div class="log" id="uplog"></div>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeUpload()">ปิด</button>
@@ -323,6 +406,9 @@ let DATA = {lines:{},monthly:{},daily:{},focus_order:["209611","209612","209613"
 /* Store-level data: {months:["2026-01",...], stores:[[line,storeCode,storeName,[[cs,pc,niv]xN]],...]} */
 let STORE = {months:[],stores:[]};
 let TOKEN=null;
+
+/* KPI (online-order adoption): {months, lines:{code:disp}, data:{month:{code:{stores,active,orders,self,ghost}}}, targets, workdays} */
+let KPI = {months:[],lines:{},data:{},workdays:26};
 let STORE_IDX={};   // line code -> array of {code,name,m:[[cs,pc,niv]...]}
 function buildStoreIdx(){
   STORE_IDX={};
@@ -338,7 +424,7 @@ function completeMonthIdx(){return STORE.months.map((m,i)=>i).filter(i=>STORE.mo
 const FOCUS_MAP={"209611":"CT11","209612":"CT12","209613":"CT13","209614":"CT14","209615":"CT15",
 "209616":"CT16","209617":"CT17","209622":"CT22","2096_97":"KA97","209698":"KA98"};
 
-/* Accounts live on the server now (see lib/accounts.js). Login is validated via /api/login. */
+/* Accounts on server (lib/accounts.js). Login via /api/login. */
 
 /* ====================== STATE ====================== */
 let S={user:null,period:"monthly",key:null,scope:"team",chart:"bar",inclExtra:false};
@@ -347,7 +433,7 @@ const THB=n=>"฿"+Math.round(n).toLocaleString("en-US");
 const THBk=n=>{if(Math.abs(n)>=1e6)return "฿"+(n/1e6).toFixed(2)+"M";if(Math.abs(n)>=1e3)return "฿"+(n/1e3).toFixed(0)+"K";return "฿"+Math.round(n);};
 const PALETTE=["#1652B8","#3B82F6","#60A5FA","#0F3E93","#2563EB","#1D4ED8","#38BDF8","#0EA5E9","#1E9E5A","#22C55E","#93C5FD","#7DD3FC","#A5B4FC"];
 
-/* ====================== LOGIN ====================== */
+/* ====================== LOGIN (server API) ====================== */
 async function doLogin(){
   const u=document.getElementById("u").value.trim().toLowerCase();
   const p=document.getElementById("p").value;
@@ -355,13 +441,9 @@ async function doLogin(){
   try{
     const r=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user:u,pass:p})});
     if(!r.ok){const e=await r.json().catch(()=>({}));err.textContent=e.error||"เข้าสู่ระบบไม่สำเร็จ";return;}
-    const d=await r.json();
-    TOKEN=d.token;
-    S.user={id:u,role:d.role,code:d.code,name:d.name};
-    localStorage.setItem("bd_token",TOKEN);
-    localStorage.setItem("bd_user",JSON.stringify(S.user));
-    err.textContent="";
-    await afterLogin();
+    const d=await r.json();TOKEN=d.token;S.user={id:u,role:d.role,code:d.code,name:d.name};
+    localStorage.setItem("bd_token",TOKEN);localStorage.setItem("bd_user",JSON.stringify(S.user));
+    err.textContent="";await afterLogin();
   }catch(ex){err.textContent="เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message;}
 }
 async function afterLogin(){
@@ -372,7 +454,7 @@ async function afterLogin(){
   document.getElementById("uRole").textContent=acc.role==="manager"?"เห็นข้อมูลทุกสาย":"เซลล์";
   document.getElementById("uAv").textContent=(acc.role==="manager"?"M":(acc.name||"").substring(0,2)).toUpperCase();
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
-  document.getElementById("uploadCtl").style.display=acc.role==="manager"?"":"none";
+  document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
   await loadData();
 }
 async function loadData(){
@@ -380,32 +462,26 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};}
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209622","2096_97","209698"];
-    buildStoreIdx();initKeys();render();
+    buildStoreIdx();initKeys();render();initKPI();
   }catch(ex){alert("โหลดข้อมูลจากเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
 }
 function logout(){
-  S.user=null;TOKEN=null;
-  localStorage.removeItem("bd_token");localStorage.removeItem("bd_user");
-  document.getElementById("app").classList.add("hidden");
-  document.getElementById("login").classList.remove("hidden");
+  S.user=null;TOKEN=null;localStorage.removeItem("bd_token");localStorage.removeItem("bd_user");
+  document.getElementById("app").classList.add("hidden");document.getElementById("login").classList.remove("hidden");
   document.getElementById("p").value="";
 }
 async function syncToServer(){
-  if(!TOKEN)return;
-  ulog("☁️ กำลังบันทึกขึ้นเซิร์ฟเวอร์กลาง...");
+  if(!TOKEN)return;ulog("☁️ กำลังบันทึกขึ้นเซิร์ฟเวอร์กลาง...");
   try{
-    const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE})});
+    const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE,KPI})});
     if(r.ok)ulog("✅ บันทึกสำเร็จ — ทุกคนจะเห็นข้อมูลนี้เมื่อเปิด/รีเฟรชหน้าเว็บ");
     else{const e=await r.json().catch(()=>({}));ulog("⚠️ บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status)));}
   }catch(ex){ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
 }
 document.getElementById("p").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
-window.addEventListener("DOMContentLoaded",()=>{
-  const t=localStorage.getItem("bd_token"),u=localStorage.getItem("bd_user");
-  if(t&&u){try{TOKEN=t;S.user=JSON.parse(u);afterLogin();}catch(e){logout();}}
-});
+window.addEventListener("DOMContentLoaded",()=>{const t=localStorage.getItem("bd_token"),u=localStorage.getItem("bd_user");if(t&&u){try{TOKEN=t;S.user=JSON.parse(u);afterLogin();}catch(e){logout();}}});
 
 /* ====================== KEY OPTIONS ====================== */
 function monthsAvail(){return Object.keys(DATA.monthly).sort();}
@@ -750,6 +826,149 @@ function renderStoreTable(){
   document.querySelector("#stTbl tbody").innerHTML=html;
 }
 
+/* ====================== TABS + KPI ====================== */
+/* syncToServer defined in login/API section */
+function switchTab(t){
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
+  document.getElementById("salesView").classList.toggle("hidden",t!=="sales");
+  document.getElementById("kpiView").classList.toggle("hidden",t!=="kpi");
+  if(t==="kpi")renderKPI();
+}
+let KPIS={month:null,show:{active:true,self:true,ghost:true},scope:"team"};
+let kpiCharts=[];
+const KPICFG={
+  active:{name:"Active on PJP",unit:"ร้าน",get:r=>r.activePct,val:r=>r.active,base:r=>r.stores,tiers:[40,50,60],pass:v=>v>=40,dir:"up",desc:"ร้านที่สั่งออนไลน์แล้ว ÷ ร้านในพื้นที่ทั้งหมด"},
+  self:{name:"Self-ordering",unit:"ออเดอร์",get:r=>r.selfPct,val:r=>r.self,base:r=>r.orders,tiers:[40],pass:v=>v>=40,dir:"up",desc:"ออเดอร์ที่ลูกค้ากดสั่งเอง ÷ ออเดอร์ทั้งหมด"},
+  ghost:{name:"Ghost order",unit:"ออเดอร์",get:r=>r.ghostPct,val:r=>r.ghost,base:r=>r.orders,tiers:[15],pass:v=>v<=15,dir:"down",desc:"ออเดอร์ ghost ÷ ออเดอร์ทั้งหมด (ยิ่งน้อยยิ่งดี ไม่เกิน 15%)"},
+};
+function initKPI(){
+  const sel=document.getElementById("kpiMonth");if(!sel)return;
+  const ms=(KPI&&KPI.months)?KPI.months.slice():[];
+  sel.innerHTML="";ms.slice().reverse().forEach(m=>{const o=document.createElement("option");o.value=m;o.textContent=fmtMonth(m);sel.appendChild(o);});
+  KPIS.month=ms.length?ms[ms.length-1]:null;sel.value=KPIS.month||"";
+  if(S.user&&S.user.role==="sales"){KPIS.scope="me";setSeg("kpiScope","s","me");}
+  const sc=document.getElementById("kpiScopeCtl");if(sc)sc.style.display=(S.user&&S.user.role==="manager")?"none":"";
+}
+function onKpiMonth(){KPIS.month=document.getElementById("kpiMonth").value;renderKPI();}
+document.getElementById("kpiToggle").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const k=b.dataset.k;
+  const on=Object.values(KPIS.show).filter(Boolean).length;if(KPIS.show[k]&&on<=1)return;
+  KPIS.show[k]=!KPIS.show[k];b.classList.toggle("on",KPIS.show[k]);renderKPI();});
+document.getElementById("kpiScope").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;KPIS.scope=b.dataset.s;setSeg("kpiScope","s",KPIS.scope);renderKPI();});
+function kpiRows(){
+  const md=(KPI.data||{})[KPIS.month]||{};
+  let codes=Object.keys(KPI.lines||{}).filter(c=>md[c]);
+  codes.sort((a,b)=>(KPI.lines[a]||a).localeCompare(KPI.lines[b]||b));
+  return codes.map(c=>{const v=md[c];const o=v.orders||0;
+    return {code:c,disp:KPI.lines[c]||c,stores:v.stores,active:v.active,orders:v.orders,self:v.self,ghost:v.ghost,
+      activePct:v.stores?v.active/v.stores*100:0,selfPct:o?v.self/o*100:0,ghostPct:o?v.ghost/o*100:0};});
+}
+function remainWorkdays(mk){
+  const now=new Date();const cur=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+  if(!mk)return 0;if(mk<cur)return 0;if(mk>cur)return KPI.workdays||26;
+  const y=now.getFullYear(),mo=now.getMonth(),end=new Date(y,mo+1,0).getDate();let c=0;
+  for(let d=now.getDate();d<=end;d++){if(new Date(y,mo,d).getDay()!==0)c++;}return c;
+}
+function renderKPI(){
+  if(!KPI||!KPI.months||!KPI.months.length){
+    document.getElementById("kpiCards").innerHTML="";
+    document.getElementById("kpiCharts").innerHTML='<div class="panel"><div class="insight">ยังไม่มีข้อมูล KPI — แอดมินอัพไฟล์ Salesman Incentive ก่อน (ปุ่มอัพโหลด → 🎯 KPI ออนไลน์)</div></div>';
+    document.getElementById("kpiPlan").innerHTML="";return;
+  }
+  const mine=(S.user&&S.user.role==="sales")?S.user.code:null;
+  const focusMe=(mine&&KPIS.scope==="me");
+  const team=kpiRows();
+  const rows=focusMe?team.filter(r=>r.code===mine):team;
+  renderKpiCards(team,rows,focusMe);
+  if(focusMe&&!rows.length){
+    document.getElementById("kpiCharts").innerHTML='<div class="panel"><div class="insight">สายของคุณไม่อยู่ใน KPI ออนไลน์นี้ (KPI ครอบคลุมเฉพาะสาย CT)</div></div>';
+    document.getElementById("kpiPlan").innerHTML="";return;
+  }
+  renderKpiCharts(rows,focusMe,mine);
+  renderKpiPlan(rows,focusMe);
+}
+function renderKpiCards(team,rows,focusMe){
+  const scope=focusMe?rows:team;const sum=(f)=>scope.reduce((s,r)=>s+f(r),0);
+  const stores=sum(r=>r.stores),active=sum(r=>r.active),orders=sum(r=>r.orders),self=sum(r=>r.self),ghost=sum(r=>r.ghost);
+  const aP=stores?active/stores*100:0,sP=orders?self/orders*100:0,gP=orders?ghost/orders*100:0;
+  const cl=ok=>ok?"up":"down";
+  document.getElementById("kpiCards").innerHTML=`
+    <div class="card"><div class="k">Active on PJP</div><div class="v ${cl(aP>=40)}">${aP.toFixed(1)}%</div><div class="s">${active} / ${stores} ร้าน · เป้า 40% ${aP>=40?"✔":"✘"}</div></div>
+    <div class="card"><div class="k">Self-ordering</div><div class="v ${cl(sP>=40)}">${sP.toFixed(1)}%</div><div class="s">${self} / ${orders} ออเดอร์ · เป้า 40% ${sP>=40?"✔":"✘"}</div></div>
+    <div class="card"><div class="k">Ghost order</div><div class="v ${cl(gP<=15)}">${gP.toFixed(1)}%</div><div class="s">${ghost} / ${orders} ออเดอร์ · เพดาน 15% ${gP<=15?"✔":"✘"}</div></div>
+    <div class="card"><div class="k">${focusMe?"สายของฉัน":"เดือน / ขอบเขต"}</div><div class="v" style="font-size:18px">${focusMe?(rows[0]?rows[0].disp:"–"):fmtMonth(KPIS.month)}</div><div class="s">${focusMe?"เทียบเป้าทั้ง 3 ตัว":scope.length+" สาย CT"}</div></div>`;
+}
+function renderKpiCharts(rows,focusMe,mine){
+  const wrap=document.getElementById("kpiCharts");
+  kpiCharts.forEach(c=>{try{c.destroy();}catch(e){}});kpiCharts=[];wrap.innerHTML="";
+  ["active","self","ghost"].filter(k=>KPIS.show[k]).forEach(k=>{
+    const cfg=KPICFG[k];
+    const panel=document.createElement("div");panel.className="panel";
+    panel.innerHTML=`<h3>${cfg.name} <span style="font-size:12px;color:var(--muted);font-weight:400">(${cfg.dir==="up"?"เป้า ≥ "+cfg.tiers[0]+"%":"เพดาน ≤ "+cfg.tiers[0]+"%"})</span></h3>
+      <div class="psub">${cfg.desc} · ${fmtMonth(KPIS.month)}</div>
+      <div class="chart-wrap" style="height:${Math.max(230,rows.length*34+64)}px"><canvas></canvas></div>`;
+    wrap.appendChild(panel);
+    const vals=rows.map(r=>+cfg.get(r).toFixed(1));
+    const colors=rows.map(r=>(focusMe&&mine&&r.code!==mine)?"#CBD8EE":(cfg.pass(cfg.get(r))?"#1E9E5A":"#D64545"));
+    const tPlugin={id:"tl",afterDraw(ch){const {ctx,chartArea,scales}=ch;cfg.tiers.forEach((t,i)=>{const y=scales.y.getPixelForValue(t);if(!isFinite(y))return;ctx.save();ctx.strokeStyle=i===0?"#0F3E93":"#9BB4DA";ctx.setLineDash([5,4]);ctx.lineWidth=i===0?1.5:1;ctx.beginPath();ctx.moveTo(chartArea.left,y);ctx.lineTo(chartArea.right,y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=i===0?"#0F3E93":"#7C93BC";ctx.font="700 10px sans-serif";ctx.textAlign="left";ctx.fillText((i===0?(cfg.dir==="up"?"เป้า ":"เพดาน "):"")+t+"%",chartArea.left+2,y-3);ctx.restore();});}};
+    const vPlugin={id:"vl",afterDatasetsDraw(ch){const ctx=ch.ctx,m=ch.getDatasetMeta(0);ctx.save();ctx.font="700 10px sans-serif";ctx.textAlign="center";ctx.fillStyle="#1B2536";rows.forEach((r,i)=>{const b=m.data[i];if(!b)return;ctx.fillText(cfg.get(r).toFixed(0)+"%",b.x,b.y-4);});ctx.restore();}};
+    kpiCharts.push(new Chart(panel.querySelector("canvas"),{type:"bar",plugins:[tPlugin,vPlugin],
+      data:{labels:rows.map(r=>r.disp),datasets:[{data:vals,backgroundColor:colors,borderRadius:5,maxBarThickness:48}]},
+      options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:16}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const r=rows[c.dataIndex];return " "+cfg.get(r).toFixed(1)+"% ("+cfg.val(r)+"/"+cfg.base(r)+" "+cfg.unit+")";}}}},
+        scales:{y:{beginAtZero:true,ticks:{callback:v=>v+"%"},grid:{color:"#EEF2F8"}},x:{grid:{display:false}}}}}));
+  });
+}
+function renderKpiPlan(rows,focusMe){
+  const el=document.getElementById("kpiPlan");
+  const rd=remainWorkdays(KPIS.month),closed=rd===0;
+  const perDay=need=>closed?"—":(need<=0?"0":Math.ceil(need/rd).toLocaleString());
+  const plan=rows.map(r=>({...r,
+    activeNeed:Math.max(0,Math.ceil(0.40*r.stores)-r.active),
+    selfNeed:Math.max(0,Math.ceil(0.40*r.orders)-r.self),
+    ghostCut:Math.max(0,r.ghost-Math.floor(0.15*r.orders))}));
+  const nA=plan.filter(p=>p.activeNeed>0).length,nS=plan.filter(p=>p.selfNeed>0).length,nG=plan.filter(p=>p.ghostCut>0).length;
+  const head=closed
+    ? `<div class="note">เดือน ${fmtMonth(KPIS.month)} ปิดแล้ว — แสดงส่วนที่ยังขาดไว้วางแผนเดือนถัดไป (บริษัททำงาน ${KPI.workdays||26} วัน/เดือน จ.–ส.)</div>`
+    : `<div class="an-summary">📅 เดือน ${fmtMonth(KPIS.month)} · เหลือ <b>${rd} วันทำงาน</b> (จ.–ส.) — คอลัมน์ "เพิ่ม/วัน" คือต้องเร่งต่อวันให้ทันสิ้นเดือน</div>`;
+  const rowsH=plan.map(p=>{const aOk=p.activeNeed<=0,sOk=p.selfNeed<=0,gOk=p.ghostCut<=0;
+    return `<tr><td><span class="tag ct">${p.disp}</span></td>
+      <td class="${aOk?'up':'down'}">${aOk?"✔ ผ่าน":"ขาด "+p.activeNeed+" ร้าน"}</td>
+      <td>${aOk?"—":"<b>"+perDay(p.activeNeed)+"</b>/วัน"}</td>
+      <td class="${sOk?'up':'down'}">${sOk?"✔ ผ่าน":"ขาด "+p.selfNeed+" ออเดอร์"}</td>
+      <td>${sOk?"—":"<b>"+perDay(p.selfNeed)+"</b>/วัน"}</td>
+      <td class="${gOk?'up':'down'}">${gOk?"✔ ผ่าน":"เกิน ต้องลด "+p.ghostCut}</td></tr>`;}).join("");
+  el.innerHTML=`<h3>📋 แผนปิด KPI ${focusMe?"(สายของฉัน)":""}</h3>
+    <div class="psub">ใครยังห่างเป้าทั้ง 3 ตัว และต้องเพิ่มอีกเท่าไหร่</div>
+    ${head}
+    <div style="margin:10px 0;font-size:13px">ยังไม่ผ่าน: Active <b>${nA}</b> สาย · Self <b>${nS}</b> สาย · Ghost เกิน <b>${nG}</b> สาย</div>
+    <div style="overflow-x:auto"><table class="plan-tbl"><thead><tr><th>สาย</th><th>Active on PJP</th><th>เพิ่ม/วัน</th><th>Self-ordering</th><th>เพิ่ม/วัน</th><th>Ghost</th></tr></thead><tbody>${rowsH}</tbody></table></div>`;
+}
+function parseKPI(name,buf){
+  const wb=XLSX.read(buf,{type:"array"});
+  const sh=wb.SheetNames.find(s=>/route/i.test(s));
+  if(!sh)throw new Error("ไม่พบชีต ByRoute ในไฟล์ (ไม่ใช่ไฟล์ Incentive?)");
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1});
+  const MON={jan:"01",feb:"02",mar:"03",apr:"04",may:"05",jun:"06",jul:"07",aug:"08",sep:"09",oct:"10",nov:"11",dec:"12"};
+  const mm=name.toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/);
+  if(!mm)throw new Error("ระบุเดือนจากชื่อไฟล์ไม่ได้ (ต้องมีชื่อเดือน เช่น MAY ในชื่อไฟล์)");
+  let y="2026";const y2=name.match(/'(\d{2})/),y4=name.match(/(20\d{2})/);if(y2)y="20"+y2[1];else if(y4)y=y4[1];
+  const mk=y+"-"+MON[mm[1]];
+  const md={};let n=0;
+  for(let i=2;i<rows.length;i++){const r=rows[i];if(!r)continue;
+    if(String(r[0])!=="2096"||String(r[5]).toUpperCase()!=="CT")continue;
+    const code=String(r[2]).trim();
+    md[code]={stores:+r[4]||0,active:+r[9]||0,orders:+r[11]||0,self:+r[12]||0,ghost:+r[16]||0};
+    if(!KPI.lines)KPI.lines={};if(!KPI.lines[code])KPI.lines[code]=FOCUS_MAP[code]||code;
+    n++;}
+  if(!n)throw new Error("ไม่พบสาย CT ของศูนย์ BD (2096) ในไฟล์");
+  if(!KPI.data)KPI.data={};KPI.data[mk]=md;
+  if(!KPI.months)KPI.months=[];if(!KPI.months.includes(mk))KPI.months.push(mk);KPI.months.sort();
+  if(!KPI.workdays)KPI.workdays=26;
+  ulog("✅ "+name+" (KPI) → "+fmtMonth(mk)+" · "+n+" สาย CT");
+  initKPI();if(!document.getElementById("kpiView").classList.contains("hidden"))renderKPI();
+  syncToServer();
+}
+
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){document.getElementById("modal").classList.remove("hidden");}
 function closeUpload(){document.getElementById("modal").classList.add("hidden");}
@@ -764,6 +983,7 @@ function handleTyped(e,kind){
   files.forEach(f=>{const rd=new FileReader();rd.onload=ev=>{try{
     if(kind==="daily")parseDaily(f.name,ev.target.result);
     else if(kind==="month")parseMonthly(f.name,ev.target.result);
+    else if(kind==="kpi")parseKPI(f.name,ev.target.result);
     else parseStore(f.name,ev.target.result);
   }catch(err){ulog("❌ "+f.name+": "+err.message);console.error(err);}};rd.readAsArrayBuffer(f);});
   e.target.value="";
@@ -771,6 +991,7 @@ function handleTyped(e,kind){
 document.getElementById("fileDaily").addEventListener("change",e=>handleTyped(e,"daily"));
 document.getElementById("fileMonth").addEventListener("change",e=>handleTyped(e,"month"));
 document.getElementById("fileStore").addEventListener("change",e=>handleTyped(e,"store"));
+document.getElementById("fileKPI").addEventListener("change",e=>handleTyped(e,"kpi"));
 
 /* timezone-safe date -> YYYY-MM-DD (avoids UTC rollback of Excel dates) */
 function serialToYMD(serial){const d=new Date(Date.UTC(1899,11,30)+Math.round(serial)*86400000);
@@ -835,7 +1056,7 @@ function parseStore(name,buf){
   ulog("✅ "+name+" (รายร้าน) → "+recs.length+" ร้าน · "+months.map(fmtMonth).join(", "));render();
 }
 
-/* credentials managed on server */
+/* credentials on server */
 </script>
 </body>
 </html>
