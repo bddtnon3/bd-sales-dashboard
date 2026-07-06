@@ -134,7 +134,12 @@ tbody tr:hover{background:var(--bg)}
 
 /* modal */
 #modal{position:fixed;inset:0;background:rgba(16,42,93,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
-.modal-card{background:#fff;border-radius:16px;max-width:480px;width:100%;padding:26px 28px}
+.modal-card{background:#fff;border-radius:16px;max-width:480px;width:100%;padding:0;display:flex;flex-direction:column;max-height:90vh;overflow:hidden}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 22px 12px;border-bottom:1px solid var(--line)}
+.modal-x{border:none;background:var(--bg);width:32px;height:32px;border-radius:50%;font-size:15px;font-weight:800;color:var(--muted);cursor:pointer;flex-shrink:0}
+.modal-x:hover{background:var(--bad);color:#fff}
+.up-body{padding:16px 22px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+.modal-card .modal-actions{padding:12px 22px;border-top:1px solid var(--line);margin:0}
 .modal-card h3{font-size:18px;margin-bottom:8px}
 .modal-card p{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:16px}
 .drop{border:2px dashed var(--blue);border-radius:12px;padding:26px;text-align:center;color:var(--blue);background:var(--blue-soft);font-weight:600;font-size:14px}
@@ -455,23 +460,41 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 <!-- UPLOAD MODAL -->
 <div id="modal" class="hidden">
   <div class="modal-card">
-    <h3>อัพเดตข้อมูล (สำหรับแอดมิน)</h3>
-    <p>เลือกประเภทไฟล์ให้ตรง แล้วเลือกไฟล์ .xlsx/.xls จาก Unilever — ระบบอัปเดตหน้าเว็บทันที (เลือกได้หลายไฟล์พร้อมกัน)</p>
-    <label class="drop up-daily" for="fileDaily">📅 <b>ยอดขายรายวัน</b><small>อัพทุกวัน · ไฟล์รายการบิล เช่น Sales 02072026.xlsx</small></label>
-    <input id="fileDaily" type="file" accept=".xlsx,.xls" multiple class="hidden">
-    <label class="drop up-month" for="fileMonth">🎯 <b>ยอดรายเดือน + เป้าหมาย</b><small>อัพเดือนละครั้ง · ไฟล์สรุปเป้า/ยอด เช่น Sales 072026.xlsx</small></label>
-    <input id="fileMonth" type="file" accept=".xlsx,.xls" multiple class="hidden">
-    <label class="drop up-store" for="fileStore">🏪 <b>ยอดรายร้าน (by store)</b><small>อัพเดือนละครั้ง (หรือรายสัปดาห์) · ไฟล์ Sales ... by store.xls</small></label>
-    <input id="fileStore" type="file" accept=".xls,.xlsx" multiple class="hidden">
-    <label class="drop up-kpi" for="fileKPI">🎯 <b>KPI ออนไลน์ (Incentive)</b><small>อัพรายสัปดาห์ · ไฟล์ Salesman Incentive_DTT_...xlsx</small></label>
-    <input id="fileKPI" type="file" accept=".xlsx,.xls" multiple class="hidden">
-    <label class="drop up-order" for="fileOrder">🛒 <b>ใบสั่งของ</b><small>อัพทุกวัน · ไฟล์ใบสั่ง เช่น BD_030726.xlsx หรือ BD_030726(add1).xlsx</small></label>
-    <input id="fileOrder" type="file" accept=".xlsx,.xlsm,.xls" multiple class="hidden">
-    <label class="drop up-drop" for="fileDrop">❌ <b>ใบ Drop</b><small>อัพเมื่อได้ผลตอนเย็น · ไฟล์ชื่อ Drop 03072026.xlsx (วันที่จากชื่อไฟล์)</small></label>
-    <input id="fileDrop" type="file" accept=".xlsx,.xlsm,.xls" multiple class="hidden">
-    <label class="drop up-stock" for="fileStock2">📦 <b>สต็อกสินค้า</b><small>อัพทุกวัน · ไฟล์ Stock ...xlsx (อัปเดตชื่อสินค้า+จำนวนคงเหลือ)</small></label>
-    <input id="fileStock2" type="file" accept=".xlsx,.xls" multiple class="hidden">
-    <div class="log" id="uplog"></div>
+    <div class="modal-head">
+      <div><h3 id="upTitle">อัพเดตข้อมูล</h3><div class="psub" id="upSub">เลือกไฟล์ .xlsx/.xls จาก Unilever — อัปเดตทันที</div></div>
+      <button class="modal-x" onclick="closeUpload()">✕</button>
+    </div>
+    <div class="up-body">
+      <div class="up-row" data-group="sales">
+        <label class="drop up-daily" for="fileDaily">📅 <b>ยอดขายรายวัน</b><small>อัพทุกวัน · ไฟล์รายการบิล เช่น Sales 02072026.xlsx</small></label>
+        <input id="fileDaily" type="file" accept=".xlsx,.xls" multiple class="hidden">
+      </div>
+      <div class="up-row" data-group="sales">
+        <label class="drop up-month" for="fileMonth">🎯 <b>ยอดรายเดือน + เป้าหมาย</b><small>อัพเดือนละครั้ง · ไฟล์สรุปเป้า/ยอด เช่น Sales 072026.xlsx</small></label>
+        <input id="fileMonth" type="file" accept=".xlsx,.xls" multiple class="hidden">
+      </div>
+      <div class="up-row" data-group="sales">
+        <label class="drop up-store" for="fileStore">🏪 <b>ยอดรายร้าน (by store)</b><small>อัพเดือนละครั้ง (หรือรายสัปดาห์) · ไฟล์ Sales ... by store.xls</small></label>
+        <input id="fileStore" type="file" accept=".xls,.xlsx" multiple class="hidden">
+      </div>
+      <div class="up-row" data-group="kpi">
+        <label class="drop up-kpi" for="fileKPI">🎯 <b>KPI ออนไลน์ (Incentive)</b><small>อัพรายสัปดาห์ · ไฟล์ Salesman Incentive_DTT_...xlsx</small></label>
+        <input id="fileKPI" type="file" accept=".xlsx,.xls" multiple class="hidden">
+      </div>
+      <div class="up-row" data-group="order">
+        <label class="drop up-order" for="fileOrder">🛒 <b>ใบสั่งของ</b><small>อัพทุกวัน · ไฟล์ใบสั่ง เช่น BD_030726.xlsx หรือ BD_030726(add1).xlsx</small></label>
+        <input id="fileOrder" type="file" accept=".xlsx,.xlsm,.xls" multiple class="hidden">
+      </div>
+      <div class="up-row" data-group="order">
+        <label class="drop up-drop" for="fileDrop">❌ <b>ใบ Drop</b><small>อัพเมื่อได้ผลตอนเย็น · ไฟล์ชื่อ Drop 03072026.xlsx (วันที่จากชื่อไฟล์)</small></label>
+        <input id="fileDrop" type="file" accept=".xlsx,.xlsm,.xls" multiple class="hidden">
+      </div>
+      <div class="up-row" data-group="stock">
+        <label class="drop up-stock" for="fileStock2">📦 <b>สต็อกสินค้า</b><small>อัพทุกวัน · ไฟล์ Stock ...xlsx (อัปเดตชื่อสินค้า+จำนวนคงเหลือ)</small></label>
+        <input id="fileStock2" type="file" accept=".xlsx,.xls" multiple class="hidden">
+      </div>
+      <div class="log" id="uplog"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeUpload()">ปิด</button>
     </div>
@@ -945,7 +968,9 @@ function renderStoreTable(){
 
 /* ====================== TABS + KPI ====================== */
 /* syncToServer in API section */
+let CURTAB="sales";
 function switchTab(t){
+  CURTAB=t;
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   document.getElementById("salesView").classList.toggle("hidden",t!=="sales");
   document.getElementById("kpiView").classList.toggle("hidden",t!=="kpi");
@@ -1313,7 +1338,13 @@ function parseStock(name,buf){
 }
 
 /* ====================== UPLOAD (admin) ====================== */
-function openUpload(){document.getElementById("modal").classList.remove("hidden");}
+function openUpload(){
+  const g={sales:"sales",kpi:"kpi",order:"order",stock:"stock"}[CURTAB]||"sales";
+  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ KPI ออนไลน์",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก"}[g];
+  document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
+  document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=el.dataset.group===g?"":"none";});
+  document.getElementById("modal").classList.remove("hidden");
+}
 function closeUpload(){document.getElementById("modal").classList.add("hidden");}
 function ulog(msg){const l=document.getElementById("uplog");l.innerHTML+="<div>"+msg+"</div>";l.scrollTop=l.scrollHeight;}
 function addLine(code,rawName,emp){
