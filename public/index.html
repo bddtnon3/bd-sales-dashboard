@@ -183,6 +183,13 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 
 /* KPI upload dropzone */
 .up-kpi{background:#EFEAFB;border-color:#7C6FD6;color:#4a3f97}
+.up-order{background:#EAF1FD;border-color:#1652B8;color:#0F3E93}
+/* ordering status chips */
+.ochip{font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:20px;white-space:nowrap}
+.ochip.done{background:#E7F6EE;color:#1E9E5A}
+.ochip.wait{background:#FDF3DB;color:#9a7100}
+.oarrow{color:#9BB0CC;font-weight:700}
+#orderDrop table td:first-child,#orderRecv table td:first-child{font-variant-numeric:tabular-nums;color:var(--muted)}
 
 /* tabs */
 .tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:2px solid var(--line)}
@@ -302,6 +309,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
     <div class="tabs">
       <button class="tab on" data-tab="sales" onclick="switchTab('sales')">📊 ยอดขาย</button>
       <button class="tab" data-tab="kpi" onclick="switchTab('kpi')">🎯 KPI ออนไลน์</button>
+      <button class="tab" data-tab="order" onclick="switchTab('order')">🛒 การสั่งของ</button>
     </div>
     <div id="salesView">
     <div class="controls">
@@ -394,6 +402,22 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <div id="kpiCharts"></div>
       <div class="panel" id="kpiPlan"></div>
     </div>
+
+    <div id="orderView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>เลือกวันสั่ง</label><select id="orderDate" onchange="onOrderDate()"></select></div>
+        <div class="ctl"><label>ค้นหา (ในตาราง)</label><input id="orderSearch" placeholder="🔍 รหัส / ชื่อสินค้า" oninput="renderOrder()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:170px"></div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+        </div>
+      </div>
+      <div class="kpi-monthbar" id="orderBar"></div>
+      <div id="orderStatus"></div>
+      <div class="cards" id="orderCards"></div>
+      <div class="panel" id="orderDrop"></div>
+      <div class="panel" id="orderRecv"></div>
+    </div>
   </main>
   <footer>BD Sales Dashboard · เซิร์ฟเวอร์กลาง · BD Distribution</footer>
 </div>
@@ -411,6 +435,8 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
     <input id="fileStore" type="file" accept=".xls,.xlsx" multiple class="hidden">
     <label class="drop up-kpi" for="fileKPI">🎯 <b>KPI ออนไลน์ (Incentive)</b><small>อัพรายสัปดาห์ · ไฟล์ Salesman Incentive_DTT_...xlsx</small></label>
     <input id="fileKPI" type="file" accept=".xlsx,.xls" multiple class="hidden">
+    <label class="drop up-order" for="fileOrder">🛒 <b>ใบสั่งของ / ผล Confirm</b><small>อัพทุกวัน · ไฟล์ใบสั่ง (BD_...) หรือไฟล์ Confirm/drop — ระบบจับให้เอง</small></label>
+    <input id="fileOrder" type="file" accept=".xlsx,.xlsm,.xls" multiple class="hidden">
     <div class="log" id="uplog"></div>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeUpload()">ปิด</button>
@@ -456,6 +482,9 @@ let TOKEN=null;
 
 /* KPI (online-order adoption): {months, lines:{code:disp}, data:{month:{code:{stores,active,orders,self,ghost}}}, targets, workdays} */
 let KPI = {months:[],lines:{},data:{},workdays:26};
+
+/* ORDERS (daily ordering to Unilever): {dates, data:{date:{ordered:{code:{n,q}}, dropped:{code:{n,q}}, hasResult}}} */
+let ORDERS = {dates:[],data:{},names:{}};
 let STORE_IDX={};   // line code -> array of {code,name,m:[[cs,pc,niv]...]}
 function buildStoreIdx(){
   STORE_IDX={};
@@ -506,9 +535,9 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};}
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209622","2096_97","209698"];
-    buildStoreIdx();initKeys();render();initKPI();
+    buildStoreIdx();initKeys();render();initKPI();initOrder();
   }catch(ex){alert("โหลดข้อมูลจากเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
 }
 function logout(){S.user=null;TOKEN=null;localStorage.removeItem("bd_token");localStorage.removeItem("bd_user");
@@ -517,7 +546,7 @@ let _syncTimer=null;
 function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบันทึกขึ้นเซิร์ฟเวอร์กลาง...");clearTimeout(_syncTimer);_syncTimer=setTimeout(_doSync,700);}
 async function _doSync(){
   if(!TOKEN)return;
-  try{const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE,KPI})});
+  try{const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE,KPI,ORDERS})});
     if(r.ok)ulog("✅ บันทึกขึ้นเซิร์ฟเวอร์กลางแล้ว — ทุกคนจะเห็นเมื่อรีเฟรช");
     else{const e=await r.json().catch(()=>({}));ulog("⚠️ บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status)));}
   }catch(ex){ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
@@ -878,12 +907,14 @@ function renderStoreTable(){
 }
 
 /* ====================== TABS + KPI ====================== */
-/* syncToServer defined in API section */
+/* syncToServer in API section */
 function switchTab(t){
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   document.getElementById("salesView").classList.toggle("hidden",t!=="sales");
   document.getElementById("kpiView").classList.toggle("hidden",t!=="kpi");
+  document.getElementById("orderView").classList.toggle("hidden",t!=="order");
   if(t==="kpi")renderKPI();
+  if(t==="order")renderOrder();
 }
 let KPIS={month:null,show:{active:true,self:true,ghost:true},scope:"team"};
 let kpiCharts=[];
@@ -1061,6 +1092,91 @@ function parseKPI(name,buf){
   syncToServer();
 }
 
+/* ====================== ORDERING (สั่งของ) ====================== */
+let ORD={date:null};
+function oname(c){return (ORDERS.names&&ORDERS.names[c])||"";}
+function initOrder(){
+  const sel=document.getElementById("orderDate");if(!sel)return;
+  const ds=(ORDERS&&ORDERS.dates)?ORDERS.dates.slice().sort():[];
+  sel.innerHTML="";ds.slice().reverse().forEach(d=>{const o=document.createElement("option");o.value=d;o.textContent=fmtDate(d);sel.appendChild(o);});
+  ORD.date=ds.length?ds[ds.length-1]:null;sel.value=ORD.date||"";
+}
+function onOrderDate(){ORD.date=document.getElementById("orderDate").value;renderOrder();}
+function renderOrder(){
+  const bar=document.getElementById("orderBar");if(!bar)return;
+  if(!ORDERS||!ORDERS.dates||!ORDERS.dates.length){
+    bar.innerHTML="🛒 การสั่งของ · ศูนย์ BD";
+    document.getElementById("orderStatus").innerHTML="";document.getElementById("orderCards").innerHTML="";
+    document.getElementById("orderDrop").innerHTML='<div class="insight">ยังไม่มีข้อมูลการสั่งของ — แอดมินอัพไฟล์ใบสั่ง / ไฟล์ Confirm ก่อน (ปุ่มอัพโหลด → 🛒)</div>';
+    document.getElementById("orderRecv").innerHTML="";return;
+  }
+  const d=(ORDERS.data||{})[ORD.date]||{ordered:{},dropped:{},hasResult:false};
+  const ordered=d.ordered||{},dropped=d.dropped||{};
+  const oCodes=Object.keys(ordered),dCodes=Object.keys(dropped);
+  const recvCodes=oCodes.filter(c=>!(c in dropped));
+  const totOrd=oCodes.reduce((s,c)=>s+(ordered[c]||0),0);
+  const totDrop=dCodes.reduce((s,c)=>s+(dropped[c]||ordered[c]||0),0);
+  const totRecv=recvCodes.reduce((s,c)=>s+(ordered[c]||0),0);
+  const st=d.hasResult;
+  bar.innerHTML=`🛒 การสั่งของ · ศูนย์ BD · วันสั่ง <b>${fmtDate(ORD.date)}</b>`;
+  const chip=(t,ok)=>`<span class="ochip ${ok?'done':'wait'}">${t} ${ok?'✓':'…'}</span>`;
+  document.getElementById("orderStatus").innerHTML=`<div class="panel" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+    ${chip("📝 สั่งแล้ว",true)}<span class="oarrow">→</span>${chip("📧 ส่ง Unilever",true)}<span class="oarrow">→</span>${chip(st?"🌙 ได้ผลแล้ว":"⏳ รอผล Unilever (ตอบช่วงเย็น)",st)}</div>`;
+  document.getElementById("orderCards").innerHTML=`
+    <div class="card"><div class="k">สั่งทั้งหมด</div><div class="v">${oCodes.length}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${totOrd.toLocaleString()} ลัง</div></div>
+    <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">ได้ของ (confirm)</div><div class="v up">${st?recvCodes.length:"–"}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${st?totRecv.toLocaleString()+" ลัง":"รอผล"}</div></div>
+    <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">Drop (สั่งไม่ได้)</div><div class="v down">${st?dCodes.length:"–"}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${st?totDrop.toLocaleString()+" ลัง":"รอผล"}</div></div>
+    <div class="card"><div class="k">สถานะ</div><div class="v" style="font-size:16px">${st?"ได้ผลแล้ว":"รอ Unilever"}</div><div class="s">${st?"อัปเดตล่าสุด":"ตอบกลับช่วงเย็น–ดึก"}</div></div>`;
+  const q=(document.getElementById("orderSearch").value||"").trim().toLowerCase();
+  const match=c=>!q||c.includes(q)||oname(c).toLowerCase().includes(q);
+  const dropEl=document.getElementById("orderDrop");
+  if(!st){dropEl.innerHTML='<div class="note">⏳ ยังไม่ได้อัพไฟล์ผล Confirm ของวันนี้ — รายการ drop จะขึ้นเมื่ออัพไฟล์ที่ชื่อมี "Confirm"</div>';}
+  else{
+    const dl=dCodes.filter(match).sort((a,b)=>(dropped[b]||ordered[b]||0)-(dropped[a]||ordered[a]||0));
+    dropEl.innerHTML=`<h3 style="color:var(--bad)">❌ รายการที่ถูก Drop — สั่งไม่ได้ (${dCodes.length})</h3>
+      <div class="psub">เซลล์ควรทราบ เพื่อไม่รับปากลูกค้ากับของเหล่านี้</div>
+      <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>สั่งไป (ลัง)</th></tr></thead><tbody>${
+        dl.length?dl.map(c=>`<tr><td>${c}</td><td style="text-align:left">${oname(c)||"<span style='color:var(--muted)'>(รหัสใหม่ ยังไม่มีชื่อในสต็อก)</span>"}</td><td><b>${dropped[c]||ordered[c]||0}</b></td></tr>`).join(""):`<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">ไม่พบรายการที่ค้นหา</td></tr>`
+      }</tbody></table></div>`;
+  }
+  const recvEl=document.getElementById("orderRecv");
+  const showCodes=(st?recvCodes:oCodes).filter(match).sort((a,b)=>(ordered[b]||0)-(ordered[a]||0));
+  recvEl.innerHTML=`<h3 style="color:var(--good)">✅ ${st?"ได้ของครบ":"รายการที่สั่ง (รอผล)"} (${st?recvCodes.length:oCodes.length})</h3>
+    <div class="psub">${st?"รายการที่ Unilever ยืนยัน — พร้อมขาย":"ยังไม่ทราบผล จนกว่าจะอัพไฟล์ Confirm"}</div>
+    <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>จำนวน (ลัง)</th></tr></thead><tbody>${
+      showCodes.map(c=>`<tr><td>${c}</td><td style="text-align:left">${oname(c)||"<span style='color:var(--muted)'>(รหัสใหม่)</span>"}</td><td><b>${ordered[c]||0}</b></td></tr>`).join("")||`<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">ไม่พบรายการ</td></tr>`
+    }</tbody></table></div>`;
+}
+function parseOrderForm(name,buf){
+  const wb=XLSX.read(buf,{type:"array"});
+  const isDrop=/confirm/i.test(name);
+  let odate=null;const items={};
+  wb.SheetNames.forEach(sn=>{
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
+    let hdr=-1;
+    for(let i=0;i<rows.length;i++){const r=rows[i]||[];
+      for(let j=0;j<r.length;j++){if(!odate&&String(r[j]||"").indexOf("วันที่สั่งสินค้า")>=0){for(let k=j+1;k<Math.min(j+4,r.length);k++){const m=String(r[k]||"").match(/(\d{2})\/(\d{2})\/(\d{4})/);if(m){odate=m[3]+"-"+m[2]+"-"+m[1];break;}}}}
+      if(hdr<0&&r.some(c=>String(c||"").trim()==="รหัส"))hdr=i;
+    }
+    if(hdr<0)return;
+    const ccs=[];(rows[hdr]||[]).forEach((c,j)=>{if(String(c||"").trim()==="รหัส")ccs.push(j);});
+    for(let i=hdr+2;i<rows.length;i++){const r=rows[i]||[];
+      ccs.forEach(cc=>{const code=String(r[cc]==null?"":r[cc]).trim();if(!/^\d+$/.test(code))return;
+        const q=(parseFloat(r[cc+6])||0)||(parseFloat(r[cc+7])||0);
+        if(q)items[code]=Math.max(items[code]||0,Math.round(q));});
+    }
+  });
+  if(!odate)throw new Error("อ่านวันที่สั่งจากไฟล์ไม่ได้ (ไม่พบ 'วันที่สั่งสินค้า')");
+  if(!Object.keys(items).length)throw new Error("ไม่พบรายการสินค้าในไฟล์ (ตรวจว่าเป็นไฟล์ใบสั่ง/Confirm)");
+  if(!ORDERS.data)ORDERS.data={};if(!ORDERS.dates)ORDERS.dates=[];if(!ORDERS.names)ORDERS.names={};
+  const day=ORDERS.data[odate]||(ORDERS.data[odate]={ordered:{},dropped:{},hasResult:false});
+  if(isDrop){day.dropped=items;day.hasResult=true;}else{day.ordered=items;}
+  if(!ORDERS.dates.includes(odate))ORDERS.dates.push(odate);ORDERS.dates.sort();
+  ulog("✅ "+name+(isDrop?" (ผล Confirm/drop) → drop ":" (ใบสั่ง) → สั่ง ")+Object.keys(items).length+" รายการ · วัน "+fmtDate(odate));
+  initOrder();if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
+  syncToServer();
+}
+
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){document.getElementById("modal").classList.remove("hidden");}
 function closeUpload(){document.getElementById("modal").classList.add("hidden");}
@@ -1076,6 +1192,7 @@ function handleTyped(e,kind){
     if(kind==="daily")parseDaily(f.name,ev.target.result);
     else if(kind==="month")parseMonthly(f.name,ev.target.result);
     else if(kind==="kpi")parseKPI(f.name,ev.target.result);
+    else if(kind==="order")parseOrderForm(f.name,ev.target.result);
     else parseStore(f.name,ev.target.result);
   }catch(err){ulog("❌ "+f.name+": "+err.message);console.error(err);}};rd.readAsArrayBuffer(f);});
   e.target.value="";
@@ -1084,6 +1201,7 @@ document.getElementById("fileDaily").addEventListener("change",e=>handleTyped(e,
 document.getElementById("fileMonth").addEventListener("change",e=>handleTyped(e,"month"));
 document.getElementById("fileStore").addEventListener("change",e=>handleTyped(e,"store"));
 document.getElementById("fileKPI").addEventListener("change",e=>handleTyped(e,"kpi"));
+document.getElementById("fileOrder").addEventListener("change",e=>handleTyped(e,"order"));
 
 /* timezone-safe date -> YYYY-MM-DD (avoids UTC rollback of Excel dates) */
 function serialToYMD(serial){const d=new Date(Date.UTC(1899,11,30)+Math.round(serial)*86400000);
