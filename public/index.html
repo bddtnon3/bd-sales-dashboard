@@ -1280,29 +1280,30 @@ let STK={wh:"sale"};
 document.getElementById("stockWh").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;STK.wh=b.dataset.w;setSeg("stockWh","w",STK.wh);renderStock();});
 function cspcTotal(s){const m=String(s||"").split("/");const cs=parseInt(m[0])||0,pc=parseInt(m[1])||0;return cs*1000+pc;} /* rough magnitude for sort */
 function stkSearchMatch(row,tokens){const hay=((row.n||"")+" "+row.c).toLowerCase();return tokens.every(t=>hay.indexOf(t)>=0);}
+function stkLow(iStr){const s=String(iStr==null?"":iStr).trim();if(!s)return false;const neg=s.indexOf("-")>=0;const m=s.match(/-?\d+/g)||[];const cs=parseInt(m[0])||0,pc=parseInt(m[1])||0;return neg||(cs===0&&pc===0)||cs<0||pc<0;}
 function renderStock(){
   const bar=document.getElementById("stockBar");if(!bar)return;
   const rows=(STOCKD&&STOCKD.rows)||[];
   if(!rows.length){bar.innerHTML="📦 สต็อกสินค้า · ศูนย์ BD";document.getElementById("stockCards").innerHTML="";
     document.getElementById("stockTable").innerHTML='<div class="insight">ยังไม่มีข้อมูลสต็อก — แอดมินอัพไฟล์สต็อกก่อน (ปุ่มอัพโหลด → 📦)</div>';return;}
   bar.innerHTML=`📦 สต็อกสินค้า · ศูนย์ BD · ข้อมูล ณ <b>${STOCKD.date?fmtDate(STOCKD.date):"-"}</b> · ${STK.wh==="sale"?"🛒 คลังขาย":"🎁 คลังแถม"}`;
-  const whRows=rows.filter(r=>r.wh===STK.wh);
+  const whRows=rows.filter(r=>r.wh===STK.wh);   /* file order preserved */
   const q=(document.getElementById("stockSearch").value||"").trim().toLowerCase();
   const tokens=q.split(/\s+/).filter(Boolean);
-  const zeroOnly=document.getElementById("stockZero").checked;
-  let list=whRows.filter(r=>(!tokens.length||stkSearchMatch(r,tokens))&&(!zeroOnly||(r.it||0)<=0));
-  const zeroCnt=whRows.filter(r=>(r.it||0)<=0).length;
+  const lowOnly=document.getElementById("stockZero").checked;
+  const isLow=r=>("lo" in r)?r.lo:stkLow(r.i);
+  const list=whRows.filter(r=>(!tokens.length||stkSearchMatch(r,tokens))&&(!lowOnly||isLow(r)));
+  const lowCnt=whRows.filter(isLow).length;
   document.getElementById("stockCards").innerHTML=`
     <div class="card"><div class="k">สินค้าใน${STK.wh==="sale"?"คลังขาย":"คลังแถม"}</div><div class="v">${whRows.length.toLocaleString()}</div><div class="s">รายการ</div></div>
-    <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">คงเหลือ ≤ 0</div><div class="v down">${zeroCnt.toLocaleString()}</div><div class="s">หมด/ติดลบ ควรตรวจ</div></div>
+    <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">หมด / ติดลบ</div><div class="v down">${lowCnt.toLocaleString()}</div><div class="s">คงเหลือ 0 หรือติดลบ</div></div>
     <div class="card"><div class="k">ผลค้นหา</div><div class="v">${list.length.toLocaleString()}</div><div class="s">รายการที่แสดง</div></div>
     <div class="card"><div class="k">คำค้น</div><div class="v" style="font-size:16px">${tokens.length?tokens.join(" + "):"(ทั้งหมด)"}</div><div class="s">จับถึงตัวอักษร/เลข</div></div>`;
-  list.sort((a,b)=>(b.it||0)-(a.it||0));
-  const rowsH=list.slice(0,500).map(r=>{const low=(r.it||0)<=0;
-    return `<tr${low?' style="background:#FDF3F3"':''}><td>${r.c}</td><td style="text-align:left">${r.n||"-"}</td><td>${r.e||"-"}</td><td>${r.h||"-"}</td><td class="${low?'down':''}"><b>${r.i||"-"}</b></td></tr>`;}).join("");
+  const rowsH=list.slice(0,800).map(r=>{const low=isLow(r);
+    return `<tr${low?' style="background:#FDF3F3"':''}><td>${r.c}</td><td style="text-align:left">${r.n||"-"}</td><td style="text-align:right">${r.e||"-"}</td><td style="text-align:right">${r.h||"-"}</td><td style="text-align:right" class="${low?'down':''}"><b>${r.i||"-"}</b></td></tr>`;}).join("");
   document.getElementById("stockTable").innerHTML=`<h3>รายการสต็อก — ${STK.wh==="sale"?"คลังขาย":"คลังแถม"}</h3>
-    <div class="psub">คอลัมน์: สต็อกจริง (E) · คีย์แล้วรอตัดบิล (H) · คงเหลือ (I) — รูปแบบ ลัง/ชิ้น · เรียงตามคงเหลือ · สูงสุด 500 แถว</div>
-    <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>สต็อกจริง</th><th>รอตัดบิล</th><th>คงเหลือ</th></tr></thead><tbody>${rowsH||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">ไม่พบสินค้าที่ค้นหา</td></tr>'}</tbody></table></div>`;
+    <div class="psub">คอลัมน์: สต็อกจริง (E) · คีย์แล้วรอตัดบิล (H) · คงเหลือ (I) — รูปแบบ ลัง/ชิ้น · เรียงตามไฟล์ · สูงสุด 800 แถว</div>
+    <div style="overflow-x:auto"><table class="stk-tbl"><thead><tr><th style="text-align:left">รหัส</th><th style="text-align:left">สินค้า</th><th style="text-align:right">สต็อกจริง</th><th style="text-align:right">รอตัดบิล</th><th style="text-align:right">คงเหลือ</th></tr></thead><tbody>${rowsH||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">ไม่พบสินค้าที่ค้นหา</td></tr>'}</tbody></table></div>`;
 }
 function parseStock(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
@@ -1311,29 +1312,51 @@ function parseStock(name,buf){
   if(hdr<0)throw new Error("ไม่พบหัวตาราง 'รหัสสินค้า' (ไม่ใช่ไฟล์สต็อก?)");
   const H=(rows[hdr]||[]).map(x=>String(x||""));
   const find=k=>H.findIndex(v=>v.indexOf(k)>=0);
-  const cCode=find("รหัสสินค้า"),cName=find("คำอธิบาย"),cPack=find("จำนวนสต็อก"),
+  const cCode=find("รหัสสินค้า"),cName=find("คำอธิบาย"),
     cE=H.findIndex(v=>v.indexOf("CS/PC")>=0||v.indexOf("(CS")>=0),cVal=find("มูลค่า"),
     cH=find("เปิดใบสั่งขาย"),cI=find("ยอดคงเหลือ"),cSt=H.findIndex(v=>/status/i.test(v)||v.indexOf("สถานะ")>=0);
-  const cspc=s=>{s=String(s==null?"":s).trim();if(!s)return[0,0];if(s.indexOf("/")<0){const n=parseInt(s);return[isNaN(n)?0:n,0];}const p=s.split("/");return[parseInt(p[0])||0,parseInt(p[1])||0];};
-  const agg={},names={};
+  const out=[],names={};
   for(let i=hdr+1;i<rows.length;i++){const r=rows[i];if(!r)continue;const code=String(r[cCode]==null?"":r[cCode]).trim();if(!/^\d+$/.test(code))continue;
-    const nm=cName>=0&&r[cName]?String(r[cName]):"";const pack=Math.round(parseFloat(r[cPack])||0);
-    const val=parseFloat(r[cVal])||0;const wh=val>0?"sale":"gift";
-    const e=cspc(r[cE]),h=cspc(cH>=0?r[cH]:""),ii=cspc(cI>=0?r[cI]:"");
-    const k=code+"|"+wh;let a=agg[k];
-    if(!a)a=agg[k]={c:code,n:nm,pack:pack,wh:wh,st:cSt>=0&&r[cSt]?String(r[cSt]):"",ecs:0,epc:0,hcs:0,hpc:0,ics:0,ipc:0};
-    a.ecs+=e[0];a.epc+=e[1];a.hcs+=h[0];a.hpc+=h[1];a.ics+=ii[0];a.ipc+=ii[1];if(pack&&!a.pack)a.pack=pack;
+    const nm=cName>=0&&r[cName]?String(r[cName]):"";const val=parseFloat(r[cVal])||0;const wh=val>0?"sale":"gift";
+    const e=cE>=0&&r[cE]!=null?String(r[cE]):"",h=cH>=0&&r[cH]!=null?String(r[cH]):"",ii=cI>=0&&r[cI]!=null?String(r[cI]):"";
+    out.push({c:code,n:nm,wh:wh,e:e,h:h,i:ii,lo:stkLow(ii),st:cSt>=0&&r[cSt]?String(r[cSt]):""});
     if(nm&&!names[code])names[code]=nm;
   }
-  const norm=(cs,pc,pack)=>{if(pack>0&&cs*pack+pc>=0){const t=cs*pack+pc,c=Math.floor(t/pack);return c+"/"+(t-c*pack);}return cs+"/"+pc;};
-  const outrows=Object.values(agg).map(a=>({c:a.c,n:a.n,wh:a.wh,st:a.st,
-    e:norm(a.ecs,a.epc,a.pack),h:norm(a.hcs,a.hpc,a.pack),i:norm(a.ics,a.ipc,a.pack),it:a.ics*(a.pack||1)+a.ipc}));
-  if(!outrows.length)throw new Error("ไม่พบรายการสินค้าในไฟล์สต็อก");
+  if(!out.length)throw new Error("ไม่พบรายการสินค้าในไฟล์สต็อก");
   const d=fnameDate(name)||new Date().toISOString().slice(0,10);
-  STOCKD={date:d,rows:outrows,names:names};
+  STOCKD={date:d,rows:out,names:names};
   if(!ORDERS.names)ORDERS.names={};Object.keys(names).forEach(c=>{ORDERS.names[c]=names[c];});
-  ulog("✅ "+name+" (สต็อก) → "+outrows.length+" รายการ (ขาย "+outrows.filter(x=>x.wh==="sale").length+" / แถม "+outrows.filter(x=>x.wh==="gift").length+") · ณ "+fmtDate(d));
+  ulog("✅ "+name+" (สต็อก) → "+out.length+" รายการ (ขาย "+out.filter(x=>x.wh==="sale").length+" / แถม "+out.filter(x=>x.wh==="gift").length+") · ณ "+fmtDate(d));
   renderStock();if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
+  syncToServer();
+}
+/* Daily Drop Report parser (clean table: Material / Material Description) */
+function parseDrop(name,buf){
+  const wb=XLSX.read(buf,{type:"array"});let rdate=null;const items={},dropNames={};
+  wb.SheetNames.forEach(sn=>{
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
+    let hdr=-1;
+    for(let i=0;i<rows.length;i++){const r=rows[i]||[];
+      if(!rdate){for(let j=0;j<r.length;j++){const m=String(r[j]||"").match(/(\d{4})-(\d{2})-(\d{2})/);if(m){rdate=m[1]+"-"+m[2]+"-"+m[3];break;}}}
+      if(hdr<0&&r.some(v=>String(v||"").trim()==="Material"))hdr=i;
+    }
+    if(hdr<0)return;
+    const HH=(rows[hdr]||[]).map(x=>String(x==null?"":x).trim());
+    const cMat=HH.indexOf("Material"),cDesc=HH.indexOf("Material Description");
+    for(let i=hdr+1;i<rows.length;i++){const r=rows[i]||[];const code=String(r[cMat]==null?"":r[cMat]).trim();
+      if(!/^\d+$/.test(code))continue;items[code]=0;if(cDesc>=0&&r[cDesc])dropNames[code]=String(r[cDesc]);}
+  });
+  const date=fnameDate(name)||rdate;
+  if(!date)throw new Error("ระบุวันที่ไม่ได้ (ตั้งชื่อไฟล์เช่น Drop 03072026.xlsx)");
+  if(!Object.keys(items).length)throw new Error("ไม่พบรายการ Drop ในไฟล์ (ต้องเป็น Daily Drop Report ที่มีคอลัมน์ Material)");
+  if(!ORDERS.data)ORDERS.data={};if(!ORDERS.dates)ORDERS.dates=[];if(!ORDERS.names)ORDERS.names={};
+  const day=ORDERS.data[date]||(ORDERS.data[date]={rounds:{},dropped:null,hasResult:false});if(!day.rounds)day.rounds={};
+  day.dropped=items;day.hasResult=true;
+  Object.keys(dropNames).forEach(c=>{if(!ORDERS.names[c])ORDERS.names[c]=dropNames[c];});
+  if(!ORDERS.dates.includes(date))ORDERS.dates.push(date);ORDERS.dates.sort();
+  ulog("✅ "+name+" (ใบ Drop) → drop "+Object.keys(items).length+" รายการ · วัน "+fmtDate(date));
+  initOrder();ORD.date=date;{const sel=document.getElementById("orderDate");if(sel)sel.value=date;}
+  if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
   syncToServer();
 }
 
@@ -1359,7 +1382,7 @@ function handleTyped(e,kind){
     else if(kind==="month")parseMonthly(f.name,ev.target.result);
     else if(kind==="kpi")parseKPI(f.name,ev.target.result);
     else if(kind==="order")parseOrderForm(f.name,ev.target.result,"order");
-    else if(kind==="drop")parseOrderForm(f.name,ev.target.result,"drop");
+    else if(kind==="drop")parseDrop(f.name,ev.target.result);
     else if(kind==="stockd")parseStock(f.name,ev.target.result);
     else parseStore(f.name,ev.target.result);
   }catch(err){ulog("❌ "+f.name+": "+err.message);console.error(err);}};rd.readAsArrayBuffer(f);});
