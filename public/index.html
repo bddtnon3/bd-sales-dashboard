@@ -1241,9 +1241,12 @@ function cleanupOrderDate(date){
   const day=ORDERS.data[date];if(!day)return;
   if((!day.rounds||!Object.keys(day.rounds).length)&&!day.dropped){delete ORDERS.data[date];ORDERS.dates=(ORDERS.dates||[]).filter(d=>d!==date);initOrder();}
 }
+const ORD_PROMO=/(On-inv|Rebate|FTR|Twin ?Pack|W%|F\/O|F\/P|\(6\+1\)|\d+F1|Franchise|WashXpress|\(25)/;
+function ordClean(s){if(s==null)return "";s=String(s);const m=s.match(ORD_PROMO);if(m)s=s.slice(0,m.index);return s.replace(/^[\s.\-]+|[\s.\-]+$/g,"");}
+function ordThai(s){s=String(s==null?"":s).trim();return s&&s.charCodeAt(0)>=0x0E00&&s.charCodeAt(0)<=0x0E7F;}
 function parseOrderForm(name,buf,kind){
   const wb=XLSX.read(buf,{type:"array"});
-  let inside=null;const items={};
+  let inside=null;const items={},onames={};
   wb.SheetNames.forEach(sn=>{
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
     let hdr=-1;
@@ -1253,16 +1256,24 @@ function parseOrderForm(name,buf,kind){
     }
     if(hdr<0)return;
     const ccs=[];(rows[hdr]||[]).forEach((c,j)=>{if(String(c||"").trim()==="รหัส")ccs.push(j);});
+    const fam={};ccs.forEach(cc=>fam[cc]="");
     for(let i=hdr+2;i<rows.length;i++){const r=rows[i]||[];
-      ccs.forEach(cc=>{const code=String(r[cc]==null?"":r[cc]).trim();if(!/^\d+$/.test(code))return;
+      ccs.forEach(cc=>{
+        const c0=ordClean(cc>=3?r[cc-3]:"");if(ordThai(c0))fam[cc]=c0;
+        const code=String(r[cc]==null?"":r[cc]).trim();if(!/^\d+$/.test(code))return;
         const q=(parseFloat(r[cc+6])||0)||(parseFloat(r[cc+7])||0);
-        if(q)items[code]=Math.max(items[code]||0,Math.round(q));});
+        if(q)items[code]=Math.max(items[code]||0,Math.round(q));
+        if(!onames[code]){const size=(cc>=1&&r[cc-1]!=null)?String(r[cc-1]):"";const variant=(cc>=2&&ordThai(r[cc-2]))?String(r[cc-2]):"";
+          const nm=ordThai(c0)?c0:fam[cc];const full=[nm,variant,size].filter(Boolean).join(" ").trim();if(full)onames[code]=full;}
+      });
     }
   });
   const date=fnameDate(name)||inside;
   if(!date)throw new Error("ระบุวันที่ไม่ได้ — ใส่วันที่ในชื่อไฟล์ (เช่น Drop 03072026 หรือ BD_030726)");
   if(!Object.keys(items).length)throw new Error("ไม่พบรายการสินค้าในไฟล์ (ตรวจว่าเป็นไฟล์ใบสั่ง/Drop)");
   if(!ORDERS.data)ORDERS.data={};if(!ORDERS.dates)ORDERS.dates=[];if(!ORDERS.names)ORDERS.names={};
+  /* fill names for codes not already known (stock takes priority via oname) */
+  Object.keys(onames).forEach(c=>{const inStock=STOCKD&&STOCKD.names&&STOCKD.names[c];if(!inStock&&!ORDERS.names[c])ORDERS.names[c]=onames[c];});
   const day=ORDERS.data[date]||(ORDERS.data[date]={rounds:{},dropped:null,hasResult:false});
   if(!day.rounds)day.rounds={};
   if(kind==="drop"){day.dropped=items;day.hasResult=true;
