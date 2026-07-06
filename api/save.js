@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   if (!body || !body.DATA) return res.status(400).json({ error: "ไม่มีข้อมูลที่จะบันทึก" });
 
   try {
-    const json = JSON.stringify({ DATA: body.DATA, STORE: body.STORE || { months: [], stores: [] }, KPI: body.KPI || { months: [], lines: {}, data: {}, workdays: 26 }, savedAt: Date.now() });
+    const json = JSON.stringify({ DATA: body.DATA, STORE: body.STORE || { months: [], stores: [] }, KPI: body.KPI || { months: [], lines: {}, data: {}, workdays: 26 }, ORDERS: body.ORDERS || { dates: [], data: {}, names: {} }, savedAt: Date.now() });
     const blob = await put("bd-data-" + Date.now() + ".json", json, {
       access: "public",
       contentType: "application/json",
