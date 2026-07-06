@@ -190,6 +190,24 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .up-kpi{background:#EFEAFB;border-color:#7C6FD6;color:#4a3f97}
 .up-order{background:#EAF1FD;border-color:#1652B8;color:#0F3E93}
 .up-drop{background:#FBE9E9;border-color:#D64545;color:#a3312f}
+/* date button + calendar picker */
+.datebtn{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:9px 14px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;min-width:150px;justify-content:space-between}
+.datebtn:hover{border-color:var(--blue)}
+#calModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:130;display:flex;align-items:center;justify-content:center;padding:20px}
+.cal-card{background:#fff;border-radius:16px;padding:16px 18px;width:330px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.cal-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.cal-head #calTitle{flex:1;text-align:center;font-weight:800;font-size:15px}
+.cal-head button{border:none;background:var(--bg);width:34px;height:34px;border-radius:8px;font-size:17px;font-weight:800;color:var(--muted);cursor:pointer}
+.cal-head button:hover{background:var(--blue-soft);color:var(--blue)}
+.cal-head .modal-x:hover{background:var(--bad);color:#fff}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-wd{text-align:center;font-size:11px;color:var(--muted);font-weight:700;padding:4px 0}
+.cal-day{text-align:center;padding:9px 0;border-radius:8px;font-size:13.5px;color:#cdd6e5}
+.cal-day.has{background:var(--blue-soft);color:var(--blue);font-weight:800;cursor:pointer}
+.cal-day.has:hover{background:var(--blue);color:#fff}
+.cal-day.sel{background:var(--blue);color:#fff;font-weight:800}
+.cal-legend{margin-top:12px;font-size:12px;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cal-dot{width:12px;height:12px;border-radius:4px;background:var(--blue-soft);border:1px solid var(--blue);display:inline-block}
 .up-stock{background:#F1EFE8;border-color:#888780;color:#444441}
 /* uploaded-file management chips */
 .filechips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
@@ -340,6 +358,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <div class="ctl">
         <label id="keyLabel">เลือกเดือน</label>
         <select id="keySel" onchange="render()"></select>
+        <button class="datebtn hidden" id="calBtn" onclick="openCal(dailyDates(),S.key,pickDailyDate)"><span>-</span><span>📅</span></button>
       </div>
       <div class="ctl" id="scopeCtl">
         <label>มุมมอง</label>
@@ -419,7 +438,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 
     <div id="orderView" class="hidden">
       <div class="controls">
-        <div class="ctl"><label>เลือกวันสั่ง</label><select id="orderDate" onchange="onOrderDate()"></select></div>
+        <div class="ctl"><label>เลือกวันสั่ง</label><button class="datebtn" onclick="openCal(ORDERS.dates,ORD.date,pickOrderDate)"><span id="orderDateTxt">-</span><span>📅</span></button></div>
         <div class="ctl"><label>ค้นหา (ในตาราง)</label><input id="orderSearch" placeholder="🔍 รหัส / ชื่อสินค้า" oninput="renderOrder()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:170px"></div>
         <div class="spacer"></div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
@@ -529,6 +548,20 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
   </div>
 </div>
 
+<!-- CALENDAR PICKER -->
+<div id="calModal" class="hidden">
+  <div class="cal-card">
+    <div class="cal-head">
+      <button onclick="calNav(-1)">‹</button>
+      <div id="calTitle"></div>
+      <button onclick="calNav(1)">›</button>
+      <button class="modal-x" onclick="closeCal()">✕</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-legend"><span class="cal-dot"></span> วันที่มีข้อมูล (กดได้) · <span style="color:var(--muted)">วันจางๆ = ยังไม่มีข้อมูล</span></div>
+  </div>
+</div>
+
 <script>
 /* ====================== DATA ====================== */
 let DATA = {lines:{},monthly:{},daily:{},focus_order:["209611","209612","209613","209614","209615","209616","209617","209622","2096_97","209698"]};
@@ -632,6 +665,31 @@ function weekId(dstr){ // ISO-ish: monday-based
 const MONTH_TH=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
 function fmtMonth(m){const[y,mo]=m.split("-");return MONTH_TH[+mo-1]+" "+(+y+543);}
 function fmtDate(d){const dt=new Date(d+"T00:00:00");return dt.getDate()+" "+MONTH_TH[dt.getMonth()]+" "+(dt.getFullYear()+543);}
+function fmtDateTime(ms){if(!ms)return "";const d=new Date(ms);const ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");return fmtDate(ds)+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+" น.";}
+/* ---- calendar picker (highlights days that have data) ---- */
+let CAL={dates:null,month:null,pick:null,sel:null};
+function openCal(dates,current,onPick){
+  CAL.dates=new Set(dates||[]);CAL.pick=onPick;CAL.sel=current||null;
+  const base=current||([...CAL.dates].sort().pop())||new Date().toISOString().slice(0,10);
+  CAL.month=new Date(base+"T00:00:00");CAL.month.setDate(1);
+  renderCal();document.getElementById("calModal").classList.remove("hidden");
+}
+function closeCal(){document.getElementById("calModal").classList.add("hidden");}
+function calNav(n){CAL.month.setMonth(CAL.month.getMonth()+n);renderCal();}
+function renderCal(){
+  const y=CAL.month.getFullYear(),mo=CAL.month.getMonth();
+  document.getElementById("calTitle").textContent=MONTH_TH[mo]+" "+(y+543);
+  const first=new Date(y,mo,1).getDay(),days=new Date(y,mo+1,0).getDate();
+  let h=["อา","จ","อ","พ","พฤ","ศ","ส"].map(d=>`<div class="cal-wd">${d}</div>`).join("");
+  for(let i=0;i<first;i++)h+="<div></div>";
+  for(let d=1;d<=days;d++){const ds=y+"-"+String(mo+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+    const has=CAL.dates.has(ds),sel=ds===CAL.sel;
+    h+=`<div class="cal-day ${sel?'sel':has?'has':'no'}" ${has?`onclick="calPick('${ds}')"`:""}>${d}</div>`;}
+  document.getElementById("calGrid").innerHTML=h;
+}
+function calPick(ds){closeCal();if(CAL.pick)CAL.pick(ds);}
+function pickDailyDate(d){S.key=d;const b=document.getElementById("calBtn");if(b)b.querySelector("span").textContent=fmtDate(d);render();}
+function pickOrderDate(d){ORD.date=d;const t=document.getElementById("orderDateTxt");if(t)t.textContent=fmtDate(d);renderOrder();}
 function fmtWeek(id){const[a,b]=id.split("__");return fmtDate(a)+" – "+fmtDate(b);}
 
 function initKeys(){
@@ -647,6 +705,11 @@ function initKeys(){
   else{lbl.textContent="ปี";opts=[["2026","ปี 2569 (2026)"]];}
   opts.forEach(([v,t])=>{const o=document.createElement("option");o.value=v;o.textContent=t;sel.appendChild(o);});
   S.key=opts.length?opts[0][0]:null;sel.value=S.key;
+  /* daily period uses the calendar button; other periods use the dropdown */
+  const isDaily=S.period==="daily";
+  sel.classList.toggle("hidden",isDaily);
+  const cb=document.getElementById("calBtn");
+  if(cb){cb.classList.toggle("hidden",!isDaily);if(isDaily)cb.querySelector("span").textContent=S.key?fmtDate(S.key):"-";}
 }
 function quarters(){
   const ms=monthsAvail();const qs={};
@@ -1166,12 +1229,10 @@ function fnameDate(name){
 }
 function orderedMerged(day){const m={};const R=(day&&day.rounds)||{};Object.keys(R).forEach(rk=>{const it=R[rk];Object.keys(it).forEach(c=>{m[c]=(m[c]||0)+it[c];});});return m;}
 function initOrder(){
-  const sel=document.getElementById("orderDate");if(!sel)return;
   const ds=(ORDERS&&ORDERS.dates)?ORDERS.dates.slice().sort():[];
-  sel.innerHTML="";ds.slice().reverse().forEach(d=>{const o=document.createElement("option");o.value=d;o.textContent=fmtDate(d);sel.appendChild(o);});
-  ORD.date=ds.length?ds[ds.length-1]:null;sel.value=ORD.date||"";
+  ORD.date=ds.length?ds[ds.length-1]:null;
+  const t=document.getElementById("orderDateTxt");if(t)t.textContent=ORD.date?fmtDate(ORD.date):"-";
 }
-function onOrderDate(){ORD.date=document.getElementById("orderDate").value;renderOrder();}
 function renderOrder(){
   const bar=document.getElementById("orderBar");if(!bar)return;
   if(!ORDERS||!ORDERS.dates||!ORDERS.dates.length){
@@ -1281,7 +1342,7 @@ function parseOrderForm(name,buf,kind){
   else{const rm=name.match(/\(add(\d+)\)/i);const round=rm?("add"+rm[1]):"main";day.rounds[round]=items;
     ulog("✅ "+name+" (ใบสั่ง รอบ "+round+") → "+Object.keys(items).length+" รายการ · วัน "+fmtDate(date));}
   if(!ORDERS.dates.includes(date))ORDERS.dates.push(date);ORDERS.dates.sort();
-  initOrder();ORD.date=date;{const sel=document.getElementById("orderDate");if(sel)sel.value=date;}
+  initOrder();ORD.date=date;{const t=document.getElementById("orderDateTxt");if(t)t.textContent=fmtDate(date);}
   if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
   syncToServer();
 }
@@ -1297,7 +1358,7 @@ function renderStock(){
   const rows=(STOCKD&&STOCKD.rows)||[];
   if(!rows.length){bar.innerHTML="📦 สต็อกสินค้า · ศูนย์ BD";document.getElementById("stockCards").innerHTML="";
     document.getElementById("stockTable").innerHTML='<div class="insight">ยังไม่มีข้อมูลสต็อก — แอดมินอัพไฟล์สต็อกก่อน (ปุ่มอัพโหลด → 📦)</div>';return;}
-  bar.innerHTML=`📦 สต็อกสินค้า · ศูนย์ BD · ข้อมูล ณ <b>${STOCKD.date?fmtDate(STOCKD.date):"-"}</b> · ${STK.wh==="sale"?"🛒 คลังขาย":"🎁 คลังแถม"}`;
+  bar.innerHTML=`📦 สต็อกสินค้า · ศูนย์ BD · ข้อมูล ณ <b>${STOCKD.date?fmtDate(STOCKD.date):"-"}</b>${STOCKD.up?` · 🕒 อัปเดตล่าสุด <b>${fmtDateTime(STOCKD.up)}</b>`:""} · ${STK.wh==="sale"?"🛒 คลังขาย":"🎁 คลังแถม"}`;
   const whRows=rows.filter(r=>r.wh===STK.wh);   /* file order preserved */
   const q=(document.getElementById("stockSearch").value||"").trim().toLowerCase();
   const tokens=q.split(/\s+/).filter(Boolean);
@@ -1335,7 +1396,7 @@ function parseStock(name,buf){
   }
   if(!out.length)throw new Error("ไม่พบรายการสินค้าในไฟล์สต็อก");
   const d=fnameDate(name)||new Date().toISOString().slice(0,10);
-  STOCKD={date:d,rows:out,names:names};
+  STOCKD={date:d,rows:out,names:names,up:Date.now()};
   if(!ORDERS.names)ORDERS.names={};Object.keys(names).forEach(c=>{ORDERS.names[c]=names[c];});
   ulog("✅ "+name+" (สต็อก) → "+out.length+" รายการ (ขาย "+out.filter(x=>x.wh==="sale").length+" / แถม "+out.filter(x=>x.wh==="gift").length+") · ณ "+fmtDate(d));
   renderStock();if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
@@ -1366,7 +1427,7 @@ function parseDrop(name,buf){
   Object.keys(dropNames).forEach(c=>{if(!ORDERS.names[c])ORDERS.names[c]=dropNames[c];});
   if(!ORDERS.dates.includes(date))ORDERS.dates.push(date);ORDERS.dates.sort();
   ulog("✅ "+name+" (ใบ Drop) → drop "+Object.keys(items).length+" รายการ · วัน "+fmtDate(date));
-  initOrder();ORD.date=date;{const sel=document.getElementById("orderDate");if(sel)sel.value=date;}
+  initOrder();ORD.date=date;{const t=document.getElementById("orderDateTxt");if(t)t.textContent=fmtDate(date);}
   if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
   syncToServer();
 }
