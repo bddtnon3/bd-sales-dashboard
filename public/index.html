@@ -204,6 +204,21 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cal-day.sel{background:var(--blue);color:#fff;font-weight:800}
 .cal-legend{margin-top:12px;font-size:12px;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .cal-dot{width:12px;height:12px;border-radius:4px;background:var(--blue-soft);border:1px solid var(--blue);display:inline-block}
+/* sales request modal */
+.req-results{max-height:44vh;overflow-y:auto}
+.req-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line)}
+.req-info{display:flex;flex-direction:column;min-width:0}
+.req-info b{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.req-info span{font-size:11.5px;color:var(--muted)}
+.req-inp{display:flex;gap:6px;flex-shrink:0}
+.req-inp input{width:60px;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;text-align:center}
+.req-cart{background:var(--blue-soft);border-radius:10px;padding:4px 12px 10px;margin-top:10px}
+.req-cartrow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px dotted var(--line)}
+.req-cartrow button{border:none;background:#fff;color:var(--bad);width:20px;height:20px;border-radius:50%;font-weight:800;cursor:pointer}
+.req-sales{margin-top:12px} .req-sales h4{font-size:13.5px;margin-bottom:6px}
+.req-combined{background:#EAF7EE;border:1px solid #BEE6CD;border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.req-combined h4{font-size:14px;margin-bottom:6px;color:#146c3f}
+.req-perwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
 .up-stock{background:#F1EFE8;border-color:#888780;color:#444441}
 /* uploaded-file management chips */
 .filechips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
@@ -434,7 +449,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 
     <div id="orderView" class="hidden">
       <div class="controls">
-        <div class="ctl"><label>เลือกวันสั่ง</label><button class="datebtn" onclick="openCal(ORDERS.dates,ORD.date,pickOrderDate)"><span id="orderDateTxt">-</span><span>📅</span></button></div>
+        <div class="ctl"><label>เลือกวันสั่ง</label><button class="datebtn" onclick="openCal(allOrderDates(),ORD.date,pickOrderDate)"><span id="orderDateTxt">-</span><span>📅</span></button></div>
         <div class="ctl"><label>ค้นหา (ในตาราง)</label><input id="orderSearch" placeholder="🔍 รหัส / ชื่อสินค้า" oninput="renderOrder()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:170px"></div>
         <div class="spacer"></div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
@@ -442,6 +457,8 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
         </div>
       </div>
       <div class="kpi-monthbar" id="orderBar"></div>
+      <div id="myRequest" style="display:none"></div>
+      <div class="panel" id="salesRequests" style="display:none"></div>
       <div id="orderStatus"></div>
       <div class="cards" id="orderCards"></div>
       <div class="panel admin-only" id="orderManage" style="display:none"></div>
@@ -459,6 +476,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
           </div>
         </div>
         <div class="ctl"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="stockZero" onchange="renderStock()"> เฉพาะคงเหลือ ≤ 0 (หมด/ติดลบ)</label></div>
+        <div class="ctl" id="stockValWrap" style="display:none"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="stockVal" onchange="renderStock()"> 💰 แสดงมูลค่ารวม (F)</label></div>
         <div class="spacer"></div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
           <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
@@ -558,6 +576,25 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
   </div>
 </div>
 
+<!-- SALES REQUEST MODAL -->
+<div id="reqModal" class="hidden">
+  <div class="modal-card" style="max-width:560px">
+    <div class="modal-head">
+      <div><h3>🛒 ขอสินค้า</h3><div class="psub">วันที่ <b id="reqDateTxt"></b> · ค้นหาจากสต็อกจริง แล้วใส่จำนวน ลัง/ชิ้น</div></div>
+      <button class="modal-x" onclick="closeReqModal()">✕</button>
+    </div>
+    <div class="up-body">
+      <input id="reqSearch" placeholder="🔍 ค้นหาสินค้า (เช่น บรีส / โอโม)" oninput="renderReqResults()" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;margin-bottom:10px">
+      <div id="reqResults" class="req-results"></div>
+      <div id="reqCart" class="req-cart"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeReqModal()">ยกเลิก</button>
+      <button class="upload-btn" onclick="submitRequest()">ส่งคำขอ</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ====================== DATA ====================== */
 let DATA = {lines:{},monthly:{},daily:{},focus_order:["209611","209612","209613","209614","209615","209616","209617","209622","2096_97","209698"]};
@@ -572,8 +609,11 @@ let KPI = {months:[],lines:{},data:{},workdays:26};
 /* ORDERS (daily ordering to Unilever): {dates, data:{date:{rounds:{round:{code:qty}}, dropped:{code:qty}, hasResult}}, names} */
 let ORDERS = {dates:[],data:{},names:{}};
 
-/* STOCKD (daily stock snapshot): {date, items:{code:{n,q,bal,st}}} */
+/* STOCKD (daily stock snapshot): {date, rows:[...], names} */
 let STOCKD = {date:null,rows:[],names:{}};
+
+/* REQUESTS (per-salesperson product requests): {data:{date:{salesCode:{items:{code:{cs,pc}}, at, by}}}} */
+let REQUESTS = {data:{}};
 let STORE_IDX={};   // line code -> array of {code,name,m:[[cs,pc,niv]...]}
 function buildStoreIdx(){
   STORE_IDX={};
@@ -624,7 +664,7 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};}
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209622","2096_97","209698"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();
   }catch(ex){alert("โหลดข้อมูลจากเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
@@ -635,7 +675,7 @@ let _syncTimer=null;
 function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบันทึกขึ้นเซิร์ฟเวอร์กลาง...");clearTimeout(_syncTimer);_syncTimer=setTimeout(_doSync,700);}
 async function _doSync(){
   if(!TOKEN)return;
-  try{const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD})});
+  try{const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS})});
     if(r.ok)ulog("✅ บันทึกขึ้นเซิร์ฟเวอร์กลางแล้ว — ทุกคนจะเห็นเมื่อรีเฟรช");
     else{const e=await r.json().catch(()=>({}));ulog("⚠️ บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status)));}
   }catch(ex){ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
@@ -1224,13 +1264,23 @@ function fnameDate(name){
   return null;
 }
 function orderedMerged(day){const m={};const R=(day&&day.rounds)||{};Object.keys(R).forEach(rk=>{const it=R[rk];Object.keys(it).forEach(c=>{m[c]=(m[c]||0)+it[c];});});return m;}
+function allOrderDates(){
+  const s=new Set((ORDERS&&ORDERS.dates)||[]);
+  Object.keys((REQUESTS&&REQUESTS.data)||{}).forEach(d=>s.add(d));
+  return [...s].sort();
+}
 function initOrder(){
-  const ds=(ORDERS&&ORDERS.dates)?ORDERS.dates.slice().sort():[];
+  const ds=allOrderDates();
   ORD.date=ds.length?ds[ds.length-1]:null;
   const t=document.getElementById("orderDateTxt");if(t)t.textContent=ORD.date?fmtDate(ORD.date):"-";
 }
 function renderOrder(){
   const bar=document.getElementById("orderBar");if(!bar)return;
+  /* sales request sections (role-based) */
+  const isSales=S.user&&S.user.role==="sales";
+  document.getElementById("myRequest").style.display=isSales?"":"none";
+  document.getElementById("salesRequests").style.display=isSales?"none":"";
+  if(isSales)renderMyRequest();else renderSalesRequests();
   if(!ORDERS||!ORDERS.dates||!ORDERS.dates.length){
     bar.innerHTML="🛒 การสั่งของ · ศูนย์ BD";
     document.getElementById("orderStatus").innerHTML="";document.getElementById("orderCards").innerHTML="";
@@ -1343,6 +1393,76 @@ function parseOrderForm(name,buf,kind){
   syncToServer();
 }
 
+/* ====================== SALES REQUESTS (คำขอสินค้าเซลล์) ====================== */
+let REQ={date:null,cart:{}};
+function todayISO(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function reqDatesFor(code){return Object.keys((REQUESTS&&REQUESTS.data)||{}).filter(d=>REQUESTS.data[d]&&REQUESTS.data[d][code]).sort();}
+function reqStatusFn(date){const day=(ORDERS.data||{})[date];if(!day||!day.hasResult)return null;const dropped=day.dropped||{};return c=>(c in dropped)?"drop":"got";}
+function openReqModal(){
+  REQ.date=todayISO();const mine=S.user&&S.user.code;
+  const ex=REQUESTS.data&&REQUESTS.data[REQ.date]&&REQUESTS.data[REQ.date][mine];
+  REQ.cart=ex&&ex.items?JSON.parse(JSON.stringify(ex.items)):{};
+  document.getElementById("reqDateTxt").textContent=fmtDate(REQ.date);
+  document.getElementById("reqSearch").value="";renderReqResults();renderReqCart();
+  document.getElementById("reqModal").classList.remove("hidden");
+}
+function closeReqModal(){document.getElementById("reqModal").classList.add("hidden");}
+function renderReqResults(){
+  const q=(document.getElementById("reqSearch").value||"").trim().toLowerCase();
+  const toks=q.split(/\s+/).filter(Boolean);
+  const rows=(STOCKD.rows||[]).filter(r=>r.wh==="sale");
+  let list=toks.length?rows.filter(r=>{const h=((r.n||"")+" "+r.c).toLowerCase();return toks.every(t=>h.indexOf(t)>=0);}).slice(0,40):[];
+  document.getElementById("reqResults").innerHTML=list.length?list.map(r=>{const cur=REQ.cart[r.c]||{cs:0,pc:0};
+    return `<div class="req-row"><div class="req-info"><b>${r.n||r.c}</b><span>${r.c} · คงเหลือ ${r.i||"-"}</span></div>
+      <div class="req-inp"><input type="number" min="0" placeholder="ลัง" value="${cur.cs||""}" oninput="reqSet('${r.c}','cs',this.value)"><input type="number" min="0" placeholder="ชิ้น" value="${cur.pc||""}" oninput="reqSet('${r.c}','pc',this.value)"></div></div>`;}).join("")
+    :`<div class="psub" style="padding:14px 4px">${toks.length?"ไม่พบสินค้าที่ค้นหา":"พิมพ์ค้นหาสินค้าที่ต้องการขอ (เช่น บรีส, โอโม)"}</div>`;
+}
+function reqSet(code,k,v){v=Math.max(0,parseInt(v)||0);if(!REQ.cart[code])REQ.cart[code]={cs:0,pc:0};REQ.cart[code][k]=v;if(!REQ.cart[code].cs&&!REQ.cart[code].pc)delete REQ.cart[code];renderReqCart();}
+function renderReqCart(){
+  const codes=Object.keys(REQ.cart);
+  document.getElementById("reqCart").innerHTML=codes.length?`<div class="psub" style="margin-top:10px">🛒 รายการที่จะขอ (${codes.length})</div>`+codes.map(c=>{const it=REQ.cart[c];
+    return `<div class="req-cartrow"><span>${oname(c)||c}</span><span><b>${it.cs||0}</b> ลัง / <b>${it.pc||0}</b> ชิ้น <button onclick="delete REQ.cart['${c}'];renderReqResults();renderReqCart()">✕</button></span></div>`;}).join(""):`<div class="psub" style="margin-top:10px">ยังไม่ได้เลือกสินค้า</div>`;
+}
+async function submitRequest(){
+  const codes=Object.keys(REQ.cart);if(!codes.length){alert("ยังไม่ได้เลือกสินค้า");return;}
+  const items={};codes.forEach(c=>items[c]={cs:REQ.cart[c].cs||0,pc:REQ.cart[c].pc||0});
+  if(!REQUESTS.data)REQUESTS.data={};if(!REQUESTS.data[REQ.date])REQUESTS.data[REQ.date]={};
+  REQUESTS.data[REQ.date][S.user.code]={items:items,at:Date.now(),by:S.user.name};
+  if(typeof TOKEN!=="undefined"&&TOKEN){
+    try{const r=await fetch("/api/request",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({date:REQ.date,items:items})});
+      if(!r.ok){const e=await r.json().catch(()=>({}));alert("ส่งคำขอไม่สำเร็จ: "+(e.error||("HTTP "+r.status)));return;}}catch(ex){alert("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);return;}
+  }
+  closeReqModal();renderOrder();alert("ส่งคำขอเรียบร้อย ✓");
+}
+function renderMyRequest(){
+  const el=document.getElementById("myRequest");const mine=S.user.code;
+  const dates=reqDatesFor(mine);
+  if(!dates.length){el.innerHTML=`<div class="panel"><h3>🛒 คำขอสินค้าของฉัน</h3><div class="psub">ยังไม่มีคำขอ — กดปุ่มเพื่อขอสินค้าที่ต้องการ</div><button class="upload-btn" style="margin-top:8px" onclick="openReqModal()">＋ ขอสินค้า</button></div>`;return;}
+  const d=dates[dates.length-1],req=REQUESTS.data[d][mine],items=req.items||{},st=reqStatusFn(d);
+  const rows=Object.keys(items).map(c=>{const it=items[c],s=st?st(c):null;
+    const badge=s==="drop"?'<span class="pill b">❌ ไม่ได้ของ</span>':s==="got"?'<span class="pill g">✅ ได้ของ</span>':'<span class="pill w">⏳ รอผล</span>';
+    return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0} ลัง / ${it.pc||0} ชิ้น</td><td>${badge}</td></tr>`;}).join("");
+  el.innerHTML=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h3>🛒 คำขอสินค้าของฉัน · ${fmtDate(d)}</h3><button class="upload-btn" onclick="openReqModal()">＋ ขอ/แก้ไข</button></div>
+    <div class="psub">สถานะ ได้ของ/ไม่ได้ของ จะอัปเดตเมื่อ manager อัพผล Drop ของวันนั้น</div>
+    <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ขอ</th><th>สถานะ</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+function renderSalesRequests(){
+  const el=document.getElementById("salesRequests");const d=ORD.date;
+  const dayReq=((REQUESTS&&REQUESTS.data)||{})[d]||{};const codes=Object.keys(dayReq);
+  if(!codes.length){el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${d?fmtDate(d):"-"}</h3><div class="psub">ยังไม่มีคำขอของเซลล์ในวันนี้ (เซลล์ส่งคำขอผ่านแอปแล้วจะเด้งมาที่นี่)</div>`;return;}
+  const combined={};
+  const perSales=codes.map(sc=>{const req=dayReq[sc],items=req.items||{};
+    const rows=Object.keys(items).map(c=>{const it=items[c];combined[c]=combined[c]||{cs:0,pc:0};combined[c].cs+=it.cs||0;combined[c].pc+=it.pc||0;
+      return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0} / ${it.pc||0}</td></tr>`;}).join("");
+    return `<div class="req-sales"><h4><span class="tag ct">${(DATA.lines[sc]&&DATA.lines[sc].display)||sc}</span> ${req.by||""} <small>· ${Object.keys(items).length} รายการ</small></h4>
+      <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ลัง/ชิ้น</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;}).join("");
+  const combRows=Object.keys(combined).map(c=>`<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td><b>${combined[c].cs} / ${combined[c].pc}</b></td></tr>`).join("");
+  el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${fmtDate(d)} <span style="font-size:13px;color:var(--muted);font-weight:400">(${codes.length} สาย)</span></h3>
+    <div class="psub">รวมทุกสายเพื่อเปิดใบสั่ง + แยกรายเซลล์ให้ตรวจ</div>
+    <div class="req-combined"><h4>📋 รวมทั้งหมด (สำหรับเปิดใบสั่ง)</h4><div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>รวม ลัง/ชิ้น</th></tr></thead><tbody>${combRows}</tbody></table></div></div>
+    <div class="req-perwrap">${perSales}</div>`;
+}
+
 /* ====================== STOCK (สต็อก) ====================== */
 let STK={wh:"sale"};
 document.getElementById("stockWh").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;STK.wh=b.dataset.w;setSeg("stockWh","w",STK.wh);renderStock();});
@@ -1367,11 +1487,15 @@ function renderStock(){
     <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">หมด / ติดลบ</div><div class="v down">${lowCnt.toLocaleString()}</div><div class="s">คงเหลือ 0 หรือติดลบ</div></div>
     <div class="card"><div class="k">ผลค้นหา</div><div class="v">${list.length.toLocaleString()}</div><div class="s">รายการที่แสดง</div></div>
     <div class="card"><div class="k">คำค้น</div><div class="v" style="font-size:16px">${tokens.length?tokens.join(" + "):"(ทั้งหมด)"}</div><div class="s">จับถึงตัวอักษร/เลข</div></div>`;
+  const isMgr=S.user&&S.user.role==="manager";
+  document.getElementById("stockValWrap").style.display=isMgr?"":"none";
+  const showVal=isMgr&&document.getElementById("stockVal").checked;
   const rowsH=list.slice(0,800).map(r=>{const low=isLow(r);
-    return `<tr${low?' style="background:#FDF3F3"':''}><td>${r.c}</td><td style="text-align:left">${r.n||"-"}</td><td style="text-align:right">${r.e||"-"}</td><td style="text-align:right">${r.h||"-"}</td><td style="text-align:right" class="${low?'down':''}"><b>${r.i||"-"}</b></td></tr>`;}).join("");
+    return `<tr${low?' style="background:#FDF3F3"':''}><td>${r.c}</td><td style="text-align:left">${r.n||"-"}</td><td style="text-align:right">${r.e||"-"}</td><td style="text-align:right">${r.po||"-"}</td><td style="text-align:right">${r.h||"-"}</td><td style="text-align:right" class="${low?'down':''}"><b>${r.i||"-"}</b></td>${showVal?`<td style="text-align:right">${(r.v||0)>0?THB(r.v):"-"}</td>`:""}</tr>`;}).join("");
+  const cols=5+(showVal?1:0);
   document.getElementById("stockTable").innerHTML=`<h3>รายการสต็อก — ${STK.wh==="sale"?"คลังขาย":"คลังแถม"}</h3>
-    <div class="psub">คอลัมน์: สต็อกจริง (E) · คีย์แล้วรอตัดบิล (H) · คงเหลือ (I) — รูปแบบ ลัง/ชิ้น · เรียงตามไฟล์ · สูงสุด 800 แถว</div>
-    <div style="overflow-x:auto"><table class="stk-tbl"><thead><tr><th style="text-align:left">รหัส</th><th style="text-align:left">สินค้า</th><th style="text-align:right">สต็อกจริง</th><th style="text-align:right">รอตัดบิล</th><th style="text-align:right">คงเหลือ</th></tr></thead><tbody>${rowsH||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">ไม่พบสินค้าที่ค้นหา</td></tr>'}</tbody></table></div>`;
+    <div class="psub">คอลัมน์: สต็อกจริง (E) · ใบสั่งซื้อ (G) · รอตัดบิล/ใบสั่งขาย (H) · คงเหลือ (I) — รูปแบบ ลัง/ชิ้น · เรียงตามไฟล์ · สูงสุด 800 แถว</div>
+    <div style="overflow-x:auto"><table class="stk-tbl"><thead><tr><th style="text-align:left">รหัส</th><th style="text-align:left">สินค้า</th><th style="text-align:right">สต็อกจริง</th><th style="text-align:right">ใบสั่งซื้อ</th><th style="text-align:right">รอตัดบิล</th><th style="text-align:right">คงเหลือ</th>${showVal?'<th style="text-align:right">มูลค่ารวม</th>':""}</tr></thead><tbody>${rowsH||`<tr><td colspan="${cols}" style="text-align:center;color:var(--muted);padding:16px">ไม่พบสินค้าที่ค้นหา</td></tr>`}</tbody></table></div>`;
 }
 function parseStock(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
@@ -1382,12 +1506,12 @@ function parseStock(name,buf){
   const find=k=>H.findIndex(v=>v.indexOf(k)>=0);
   const cCode=find("รหัสสินค้า"),cName=find("คำอธิบาย"),
     cE=H.findIndex(v=>v.indexOf("CS/PC")>=0||v.indexOf("(CS")>=0),cVal=find("มูลค่า"),
-    cH=find("เปิดใบสั่งขาย"),cI=find("ยอดคงเหลือ"),cSt=H.findIndex(v=>/status/i.test(v)||v.indexOf("สถานะ")>=0);
+    cPO=find("เปิดใบสั่งซื้อ"),cH=find("เปิดใบสั่งขาย"),cI=find("ยอดคงเหลือ"),cSt=H.findIndex(v=>/status/i.test(v)||v.indexOf("สถานะ")>=0);
   const out=[],names={};
   for(let i=hdr+1;i<rows.length;i++){const r=rows[i];if(!r)continue;const code=String(r[cCode]==null?"":r[cCode]).trim();if(!/^\d+$/.test(code))continue;
     const nm=cName>=0&&r[cName]?String(r[cName]):"";const val=parseFloat(r[cVal])||0;const wh=val>0?"sale":"gift";
-    const e=cE>=0&&r[cE]!=null?String(r[cE]):"",h=cH>=0&&r[cH]!=null?String(r[cH]):"",ii=cI>=0&&r[cI]!=null?String(r[cI]):"";
-    out.push({c:code,n:nm,wh:wh,e:e,h:h,i:ii,lo:stkLow(ii),st:cSt>=0&&r[cSt]?String(r[cSt]):""});
+    const e=cE>=0&&r[cE]!=null?String(r[cE]):"",h=cH>=0&&r[cH]!=null?String(r[cH]):"",ii=cI>=0&&r[cI]!=null?String(r[cI]):"",po=cPO>=0&&r[cPO]!=null?String(r[cPO]):"";
+    out.push({c:code,n:nm,wh:wh,e:e,h:h,i:ii,lo:stkLow(ii),st:cSt>=0&&r[cSt]?String(r[cSt]):"",v:Math.round(val*100)/100,po:po});
     if(nm&&!names[code])names[code]=nm;
   }
   if(!out.length)throw new Error("ไม่พบรายการสินค้าในไฟล์สต็อก");
@@ -1515,13 +1639,24 @@ function parseStore(name,buf){
   }else htmlStr=new TextDecoder("utf-8").decode(bytes);
   const docp=new DOMParser().parseFromString(htmlStr,"text/html");
   const rc=[...docp.querySelectorAll("tr")].map(tr=>[...tr.querySelectorAll("td,th")].map(td=>td.textContent.replace(/\u00a0/g," ").trim()));
-  const mrow=rc.find(c=>c.some(x=>/Cal\.?\s*year/i.test(x)));
-  let months=[];if(mrow)mrow.forEach(x=>{const mm=x.match(/^(\d{2})\.(\d{4})$/);if(mm){const k=mm[2]+"-"+mm[1];if(!months.includes(k))months.push(k);}});
-  if(!months.length)throw new Error("อ่านคอลัมน์เดือนไม่ได้ (ไฟล์นี้ไม่ใช่รายงาน by-store?)");
-  const ng=months.length,recs=[];
+  /* read headers dynamically: metric row (CS/PC/NIV) + month row (MM.YYYY) — handles both layouts */
+  const metRow=rc.find(c=>c.some(x=>x==="NIV"));
+  const monRow=rc.find(c=>c.some(x=>/Cal\.?\s*year/i.test(x)));
+  if(!metRow||!monRow)throw new Error("ไม่พบหัวตาราง metric/เดือน (ไฟล์นี้ไม่ใช่รายงาน by-store?)");
+  const metrics=metRow.filter(x=>x==="Sale Quantity in CS"||x==="Sale Quantity in PC"||x==="NIV");
+  const monCols=monRow.filter(x=>/^\d{2}\.\d{4}$/.test(x));
+  const n=Math.min(metrics.length,monCols.length);
+  const idx={cs:{},pc:{},niv:{}},months=[];
+  for(let k=0;k<n;k++){const mm=monCols[k].match(/^(\d{2})\.(\d{4})$/);const mk=mm[2]+"-"+mm[1];
+    if(!months.includes(mk))months.push(mk);
+    const met=metrics[k]==="Sale Quantity in CS"?"cs":metrics[k]==="Sale Quantity in PC"?"pc":"niv";idx[met][mk]=k;}
+  months.sort();
+  if(!months.length)throw new Error("อ่านคอลัมน์เดือนไม่ได้");
+  const DS=8,recs=[];
   const nn=x=>{const f=parseFloat(String(x||"").replace(/,/g,""));return isNaN(f)?0:Math.round(f*100)/100;};
-  rc.forEach(c=>{if(c.length<8+ng*3)return;const line=c[4];if(!/^2096/.test(line)||line==="2096")return;
-    const m=[];for(let g=0;g<ng;g++){const b=8+g*3;m.push([nn(c[b]),nn(c[b+1]),nn(c[b+2])]);}
+  rc.forEach(c=>{if(c.length<DS+1)return;const line=c[4];if(!/^2096/.test(line)||line==="2096")return;
+    const m=months.map(mk=>{const gc=idx.cs[mk],gp=idx.pc[mk],gn=idx.niv[mk];
+      return [gc!=null&&DS+gc<c.length?nn(c[DS+gc]):0,gp!=null&&DS+gp<c.length?nn(c[DS+gp]):0,gn!=null&&DS+gn<c.length?nn(c[DS+gn]):0];});
     recs.push([line,c[6],c[7],m]);});
   if(!recs.length)throw new Error("ไม่พบข้อมูลร้านในไฟล์");
   STORE={months,stores:recs};buildStoreIdx();
