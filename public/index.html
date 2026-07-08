@@ -205,16 +205,25 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cal-legend{margin-top:12px;font-size:12px;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .cal-dot{width:12px;height:12px;border-radius:4px;background:var(--blue-soft);border:1px solid var(--blue);display:inline-block}
 /* sales request modal */
-.req-results{max-height:44vh;overflow-y:auto}
-.req-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line)}
-.req-info{display:flex;flex-direction:column;min-width:0}
-.req-info b{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.req-info span{font-size:11.5px;color:var(--muted)}
-.req-inp{display:flex;gap:6px;flex-shrink:0}
-.req-inp input{width:60px;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;text-align:center}
-.req-cart{background:var(--blue-soft);border-radius:10px;padding:4px 12px 10px;margin-top:10px}
-.req-cartrow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px dotted var(--line)}
-.req-cartrow button{border:none;background:#fff;color:var(--bad);width:20px;height:20px;border-radius:50%;font-weight:800;cursor:pointer}
+#reqModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px}
+.req-results{max-height:38vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-bottom:4px}
+.req-results:empty{display:none}
+.req-opt{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.req-opt:last-child{border-bottom:none}
+.req-opt:active,.req-opt:hover{background:var(--blue-soft)}
+.req-opt .oi{min-width:0}
+.req-opt .oi b{font-size:14px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.req-opt .oi span{font-size:11.5px;color:var(--muted)}
+.req-opt .oadd{flex-shrink:0;background:var(--blue);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700}
+.req-cart{margin-top:8px}
+.req-cart-item{display:flex;align-items:center;gap:8px;background:var(--blue-soft);border-radius:10px;padding:9px 10px;margin-bottom:8px}
+.req-cart-item .ci{flex:1;min-width:0}
+.req-cart-item .ci b{font-size:13.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.req-cart-item .ci span{font-size:11px;color:var(--muted)}
+.req-cart-item .qty{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.req-cart-item .qty input{width:52px;padding:7px 6px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;text-align:center}
+.req-cart-item .qty label{font-size:10px;color:var(--muted)}
+.req-cart-item .rm{border:none;background:#fff;color:var(--bad);width:26px;height:26px;border-radius:50%;font-weight:800;cursor:pointer;flex-shrink:0}
 .req-sales{margin-top:12px} .req-sales h4{font-size:13.5px;margin-bottom:6px}
 .req-combined{background:#EAF7EE;border:1px solid #BEE6CD;border-radius:10px;padding:12px 14px;margin-bottom:12px}
 .req-combined h4{font-size:14px;margin-bottom:6px;color:#146c3f}
@@ -1300,11 +1309,16 @@ function renderOrder(){
   const chip=(t,ok)=>`<span class="ochip ${ok?'done':'wait'}">${t} ${ok?'✓':'…'}</span>`;
   document.getElementById("orderStatus").innerHTML=`<div class="panel" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
     ${chip("📝 สั่งแล้ว",true)}<span class="oarrow">→</span>${chip("📧 ส่ง Unilever",true)}<span class="oarrow">→</span>${chip(st?"🌙 ได้ผลแล้ว":"⏳ รอผล Unilever (ตอบช่วงเย็น)",st)}</div>`;
+  const isMgrO=S.user&&S.user.role==="manager";
+  const dv=Object.values(d.vals||{}).reduce((a,x)=>({ov:a.ov+(x.ov||0),cv:a.cv+(x.cv||0)}),{ov:0,cv:0});
+  const card4=isMgrO
+    ? `<div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">CON Confirm (มูลค่า)</div><div class="v" style="font-size:20px">${dv.cv?THBk(dv.cv):"–"}</div><div class="s">${dv.cv?"฿"+dv.cv.toLocaleString():"—"}${dv.ov?" · ประมาณ ฿"+Math.round(dv.ov).toLocaleString():""}</div></div>`
+    : `<div class="card"><div class="k">สถานะ</div><div class="v" style="font-size:16px">${st?"ได้ผลแล้ว":"รอ Unilever"}</div><div class="s">${st?"อัปเดตล่าสุด":"ตอบกลับช่วงเย็น–ดึก"}</div></div>`;
   document.getElementById("orderCards").innerHTML=`
     <div class="card"><div class="k">สั่งทั้งหมด</div><div class="v">${oCodes.length}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${totOrd.toLocaleString()} ลัง</div></div>
     <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">ได้ของ (confirm)</div><div class="v up">${st?recvCodes.length:"–"}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${st?totRecv.toLocaleString()+" ลัง":"รอผล"}</div></div>
     <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">Drop (สั่งไม่ได้)</div><div class="v down">${st?dCodes.length:"–"}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${st?totDrop.toLocaleString()+" ลัง":"รอผล"}</div></div>
-    <div class="card"><div class="k">สถานะ</div><div class="v" style="font-size:16px">${st?"ได้ผลแล้ว":"รอ Unilever"}</div><div class="s">${st?"อัปเดตล่าสุด":"ตอบกลับช่วงเย็น–ดึก"}</div></div>`;
+    ${card4}`;
   const q=(document.getElementById("orderSearch").value||"").trim().toLowerCase();
   const match=c=>!q||c.includes(q)||oname(c).toLowerCase().includes(q);
   const dropEl=document.getElementById("orderDrop");
@@ -1353,12 +1367,16 @@ function ordClean(s){if(s==null)return "";s=String(s);const m=s.match(ORD_PROMO)
 function ordThai(s){s=String(s==null?"":s).trim();return s&&s.charCodeAt(0)>=0x0E00&&s.charCodeAt(0)<=0x0E7F;}
 function parseOrderForm(name,buf,kind){
   const wb=XLSX.read(buf,{type:"array"});
-  let inside=null;const items={},onames={};
+  let inside=null;const items={},onames={};let ov=0,cv=0;
+  const firstNum=(row,a,b)=>{row=row||[];for(let k=a;k<Math.min(b,row.length);k++){const v=parseFloat(String(row[k]||"").replace(/,/g,""));if(!isNaN(v)&&v!==0)return v;}return 0;};
   wb.SheetNames.forEach(sn=>{
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
     let hdr=-1;
     for(let i=0;i<rows.length;i++){const r=rows[i]||[];
-      for(let j=0;j<r.length;j++){if(!inside&&String(r[j]||"").indexOf("วันที่สั่งสินค้า")>=0){for(let k=j+1;k<Math.min(j+4,r.length);k++){const m=String(r[k]||"").match(/(\d{2})\/(\d{2})\/(\d{4})/);if(m){inside=m[3]+"-"+m[2]+"-"+m[1];break;}}}}
+      for(let j=0;j<r.length;j++){const cell=String(r[j]||"");
+        if(!inside&&cell.indexOf("วันที่สั่งสินค้า")>=0){for(let k=j+1;k<Math.min(j+4,r.length);k++){const m=String(r[k]||"").match(/(\d{2})\/(\d{2})\/(\d{4})/);if(m){inside=m[3]+"-"+m[2]+"-"+m[1];break;}}}
+        if(cell.indexOf("มูลค่าใบสั่งซื้อ")>=0){ov+=firstNum(rows[i],j+1,j+9);cv+=firstNum(rows[i+1],j+1,j+9);}
+      }
       if(hdr<0&&r.some(c=>String(c||"").trim()==="รหัส"))hdr=i;
     }
     if(hdr<0)return;
@@ -1386,7 +1404,8 @@ function parseOrderForm(name,buf,kind){
   if(kind==="drop"){day.dropped=items;day.hasResult=true;
     ulog("✅ "+name+" (ใบ Drop) → drop "+Object.keys(items).length+" รายการ · วัน "+fmtDate(date));}
   else{const rm=name.match(/\(add(\d+)\)/i);const round=rm?("add"+rm[1]):"main";day.rounds[round]=items;
-    ulog("✅ "+name+" (ใบสั่ง รอบ "+round+") → "+Object.keys(items).length+" รายการ · วัน "+fmtDate(date));}
+    if(!day.vals)day.vals={};day.vals[round]={ov:Math.round(ov*100)/100,cv:Math.round(cv*100)/100};
+    ulog("✅ "+name+" (ใบสั่ง รอบ "+round+") → "+Object.keys(items).length+" รายการ · CON Confirm ฿"+Math.round(cv).toLocaleString()+" · วัน "+fmtDate(date));}
   if(!ORDERS.dates.includes(date))ORDERS.dates.push(date);ORDERS.dates.sort();
   initOrder();ORD.date=date;{const t=document.getElementById("orderDateTxt");if(t)t.textContent=fmtDate(date);}
   if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
@@ -1409,19 +1428,22 @@ function openReqModal(){
 function closeReqModal(){document.getElementById("reqModal").classList.add("hidden");}
 function renderReqResults(){
   const q=(document.getElementById("reqSearch").value||"").trim().toLowerCase();
-  const toks=q.split(/\s+/).filter(Boolean);
-  const rows=(STOCKD.rows||[]).filter(r=>r.wh==="sale");
-  let list=toks.length?rows.filter(r=>{const h=((r.n||"")+" "+r.c).toLowerCase();return toks.every(t=>h.indexOf(t)>=0);}).slice(0,40):[];
-  document.getElementById("reqResults").innerHTML=list.length?list.map(r=>{const cur=REQ.cart[r.c]||{cs:0,pc:0};
-    return `<div class="req-row"><div class="req-info"><b>${r.n||r.c}</b><span>${r.c} · คงเหลือ ${r.i||"-"}</span></div>
-      <div class="req-inp"><input type="number" min="0" placeholder="ลัง" value="${cur.cs||""}" oninput="reqSet('${r.c}','cs',this.value)"><input type="number" min="0" placeholder="ชิ้น" value="${cur.pc||""}" oninput="reqSet('${r.c}','pc',this.value)"></div></div>`;}).join("")
-    :`<div class="psub" style="padding:14px 4px">${toks.length?"ไม่พบสินค้าที่ค้นหา":"พิมพ์ค้นหาสินค้าที่ต้องการขอ (เช่น บรีส, โอโม)"}</div>`;
+  const toks=q.split(/\s+/).filter(Boolean);const el=document.getElementById("reqResults");
+  if(!toks.length){el.innerHTML="";return;}
+  const rows=(STOCKD.rows||[]).filter(r=>r.wh==="sale"&&!(r.c in REQ.cart));
+  const list=rows.filter(r=>{const h=((r.n||"")+" "+r.c).toLowerCase();return toks.every(t=>h.indexOf(t)>=0);}).slice(0,20);
+  el.innerHTML=list.length?list.map(r=>`<div class="req-opt" onclick="reqAdd('${r.c}')"><div class="oi"><b>${r.n||r.c}</b><span>${r.c} · คงเหลือ ${r.i||"-"}</span></div><span class="oadd">＋ เพิ่ม</span></div>`).join(""):`<div class="psub" style="padding:12px">ไม่พบสินค้าที่ค้นหา</div>`;
 }
-function reqSet(code,k,v){v=Math.max(0,parseInt(v)||0);if(!REQ.cart[code])REQ.cart[code]={cs:0,pc:0};REQ.cart[code][k]=v;if(!REQ.cart[code].cs&&!REQ.cart[code].pc)delete REQ.cart[code];renderReqCart();}
+function reqAdd(code){if(!REQ.cart[code])REQ.cart[code]={cs:0,pc:0};document.getElementById("reqSearch").value="";document.getElementById("reqResults").innerHTML="";renderReqCart();}
+function reqSet(code,k,v){v=Math.max(0,parseInt(v)||0);if(!REQ.cart[code])REQ.cart[code]={cs:0,pc:0};REQ.cart[code][k]=v;}
 function renderReqCart(){
-  const codes=Object.keys(REQ.cart);
-  document.getElementById("reqCart").innerHTML=codes.length?`<div class="psub" style="margin-top:10px">🛒 รายการที่จะขอ (${codes.length})</div>`+codes.map(c=>{const it=REQ.cart[c];
-    return `<div class="req-cartrow"><span>${oname(c)||c}</span><span><b>${it.cs||0}</b> ลัง / <b>${it.pc||0}</b> ชิ้น <button onclick="delete REQ.cart['${c}'];renderReqResults();renderReqCart()">✕</button></span></div>`;}).join(""):`<div class="psub" style="margin-top:10px">ยังไม่ได้เลือกสินค้า</div>`;
+  const codes=Object.keys(REQ.cart);const el=document.getElementById("reqCart");
+  if(!codes.length){el.innerHTML='<div class="psub" style="margin-top:6px">ยังไม่ได้เลือกสินค้า — พิมพ์ค้นหาด้านบน แล้วกด ＋ เพิ่ม</div>';return;}
+  el.innerHTML=`<div class="psub" style="margin:8px 0 6px">🛒 รายการที่จะขอ (${codes.length}) — ใส่จำนวน ลัง/ชิ้น</div>`+codes.map(c=>{const it=REQ.cart[c];
+    return `<div class="req-cart-item"><div class="ci"><b>${oname(c)||c}</b><span>${c}</span></div>
+      <div class="qty"><div style="text-align:center"><input type="number" min="0" value="${it.cs||""}" placeholder="0" oninput="reqSet('${c}','cs',this.value)"><label>ลัง</label></div>
+      <div style="text-align:center"><input type="number" min="0" value="${it.pc||""}" placeholder="0" oninput="reqSet('${c}','pc',this.value)"><label>ชิ้น</label></div></div>
+      <button class="rm" onclick="delete REQ.cart['${c}'];renderReqCart()">✕</button></div>`;}).join("");
 }
 async function submitRequest(){
   const codes=Object.keys(REQ.cart);if(!codes.length){alert("ยังไม่ได้เลือกสินค้า");return;}
