@@ -291,6 +291,24 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 
 @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
 @media(max-width:560px){.cards{grid-template-columns:1fr}main{padding:14px}}
+.ana-crumb{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px;font-size:14px}
+.ana-crumb a{color:var(--blue);cursor:pointer;font-weight:600;text-decoration:none}
+.ana-crumb a:hover{text-decoration:underline}
+.ana-crumb .sep{color:var(--muted)}
+.ana-crumb .cur{font-weight:700;color:var(--ink)}
+.ana-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.ana-tbl th{text-align:left;padding:9px 10px;color:var(--muted);font-size:12px;border-bottom:2px solid var(--line);white-space:nowrap}
+.ana-tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.ana-tbl tr.clk{cursor:pointer}
+.ana-tbl tr.clk:hover{background:var(--blue-soft)}
+.ana-tbl .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ana-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:7px;vertical-align:-1px}
+.ana-idx{display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap}
+.ana-idx.up{background:#EAF6E2;color:#2E7D32}
+.ana-idx.dn{background:#FDECEA;color:#C62828}
+.ana-idx.eq{background:#EEF1F6;color:#607089}
+.ana-mini{height:7px;border-radius:4px;background:var(--line);overflow:hidden;min-width:60px}
+.ana-mini>span{display:block;height:100%}
 </style>
 </head>
 <body>
@@ -326,6 +344,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <button class="tab" data-tab="kpi" onclick="switchTab('kpi')">🎯 KPI ออนไลน์</button>
       <button class="tab" data-tab="order" onclick="switchTab('order')">🛒 การสั่งของ</button>
       <button class="tab" data-tab="stock" onclick="switchTab('stock')">📦 สต็อก</button>
+      <button class="tab" data-tab="ana" onclick="switchTab('ana')">🧪 วิเคราะห์สินค้า</button>
     </div>
     <div id="salesView">
     <div class="controls">
@@ -459,6 +478,32 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <div class="cards" id="stockCards"></div>
       <div class="panel" id="stockTable"></div>
     </div>
+
+    <div id="anaView" class="hidden">
+      <div class="controls">
+        <div class="ctl" id="anaLineCtl"><label>เลือกสาย</label>
+          <select id="anaLine" onchange="onAnaLine()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:160px"></select>
+        </div>
+        <div class="ctl"><label>ค่าที่วัด</label>
+          <div class="seg" id="anaMetric">
+            <button data-m="niv" class="on">฿ มูลค่า (NIV)</button>
+            <button data-m="pc">📦 จำนวน (PC)</button>
+          </div>
+        </div>
+        <div class="ctl"><label>ช่วงเวลา</label>
+          <select id="anaPeriod" onchange="onAnaPeriod()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px"></select>
+        </div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+        </div>
+      </div>
+      <div id="anaCrumb" class="ana-crumb"></div>
+      <div class="cards" id="anaCards"></div>
+      <div class="panel"><div id="anaChartWrap" style="position:relative;height:420px"><canvas id="anaChart"></canvas></div></div>
+      <div class="panel" id="anaInsight"></div>
+      <div class="panel" id="anaTable"></div>
+    </div>
   </main>
   <footer>BD Sales Dashboard · v1 · ข้อมูลจาก Unilever (อัพโหลดผ่านเว็บ) · สร้างสำหรับ BD Distribution</footer>
 </div>
@@ -502,6 +547,10 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <div class="up-row" data-group="stock">
         <label class="drop up-master" for="fileMaster">📚 <b>Master Data (สินค้าทั้งหมด)</b><small>อัพเดือนละครั้ง · ไฟล์ data ...xlsx (แคตตาล็อกเต็ม ใช้ค้นหาสินค้าที่หมดสต็อก)</small></label>
         <input id="fileMaster" type="file" accept=".xlsx,.xls" multiple class="hidden">
+      </div>
+      <div class="up-row" data-group="ana">
+        <label class="drop up-ana" for="fileAna">🧪 <b>ยอดขายรายกลุ่ม/แบรนด์/สินค้า</b><small>อัพเดือนละครั้ง · ไฟล์ Sales 1-2 2026.xls ฯลฯ · <b>อัพทีละไฟล์</b> (ไฟล์ใหญ่ ~60MB ใช้เวลา 20-40 วิ) ระบบรวมเดือนให้เอง</small></label>
+        <input id="fileAna" type="file" accept=".xls,.xlsx" multiple class="hidden">
       </div>
       <div class="log" id="uplog"></div>
     </div>
@@ -594,6 +643,9 @@ let REQUESTS = {data:{}};
 
 /* MASTER (full Unilever product catalog, monthly): {date, items:{code:name}} */
 let MASTER = {items:{}};
+
+/* ANALYTICS (product-mix by line): {months, lines:{disp:{disp,type}}, data:{disp:{group:{brands:{brand:{products:{code:{n,niv:{mo:v},pc:{mo:v}}}}}}}}} */
+let ANALYTICS = {months:[],lines:{},data:{}};
 let STORE_IDX={};   // line code -> array of {code,name,m:[[cs,pc,niv]...]}
 function buildStoreIdx(){
   STORE_IDX={};
@@ -644,9 +696,9 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};}
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209622","2096_97","209698"];
-    buildStoreIdx();initKeys();render();initKPI();initOrder();
+    buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();
   }catch(ex){alert("โหลดข้อมูลจากเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
 }
 function logout(){S.user=null;TOKEN=null;localStorage.removeItem("bd_token");localStorage.removeItem("bd_user");
@@ -655,7 +707,7 @@ let _syncTimer=null;
 function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบันทึกขึ้นเซิร์ฟเวอร์กลาง...");clearTimeout(_syncTimer);_syncTimer=setTimeout(_doSync,700);}
 async function _doSync(){
   if(!TOKEN)return;
-  try{const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER})});
+  try{const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS})});
     if(r.ok)ulog("✅ บันทึกขึ้นเซิร์ฟเวอร์กลางแล้ว — ทุกคนจะเห็นเมื่อรีเฟรช");
     else{const e=await r.json().catch(()=>({}));ulog("⚠️ บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status)));}
   }catch(ex){ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
@@ -1055,9 +1107,11 @@ function switchTab(t){
   document.getElementById("kpiView").classList.toggle("hidden",t!=="kpi");
   document.getElementById("orderView").classList.toggle("hidden",t!=="order");
   document.getElementById("stockView").classList.toggle("hidden",t!=="stock");
+  document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
   if(t==="kpi")renderKPI();
   if(t==="order")renderOrder();
   if(t==="stock")renderStock();
+  if(t==="ana")renderAnalytics();
 }
 let KPIS={month:null,show:{active:true,self:true,ghost:true},scope:"team"};
 let kpiCharts=[];
@@ -1589,8 +1643,8 @@ function parseDrop(name,buf){
 
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){
-  const g={sales:"sales",kpi:"kpi",order:"order",stock:"stock"}[CURTAB]||"sales";
-  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ KPI ออนไลน์",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก"}[g];
+  const g={sales:"sales",kpi:"kpi",order:"order",stock:"stock",ana:"ana"}[CURTAB]||"sales";
+  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ KPI ออนไลน์",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์"}[g];
   document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
   document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=el.dataset.group===g?"":"none";});
   document.getElementById("modal").classList.remove("hidden");
@@ -1612,6 +1666,7 @@ function handleTyped(e,kind){
     else if(kind==="drop")parseDrop(f.name,ev.target.result);
     else if(kind==="stockd")parseStock(f.name,ev.target.result);
     else if(kind==="master")parseMaster(f.name,ev.target.result);
+    else if(kind==="ana")parseAnalytics(f.name,ev.target.result);
     else parseStore(f.name,ev.target.result);
   }catch(err){ulog("❌ "+f.name+": "+err.message);console.error(err);}};rd.readAsArrayBuffer(f);});
   e.target.value="";
@@ -1624,6 +1679,7 @@ document.getElementById("fileOrder").addEventListener("change",e=>handleTyped(e,
 document.getElementById("fileDrop").addEventListener("change",e=>handleTyped(e,"drop"));
 document.getElementById("fileStock2").addEventListener("change",e=>handleTyped(e,"stockd"));
 document.getElementById("fileMaster").addEventListener("change",e=>handleTyped(e,"master"));
+document.getElementById("fileAna").addEventListener("change",e=>handleTyped(e,"ana"));
 
 /* timezone-safe date -> YYYY-MM-DD (avoids UTC rollback of Excel dates) */
 function serialToYMD(serial){const d=new Date(Date.UTC(1899,11,30)+Math.round(serial)*86400000);
@@ -1698,6 +1754,187 @@ function parseStore(name,buf){
   if(!recs.length)throw new Error("ไม่พบข้อมูลร้านในไฟล์");
   STORE={months,stores:recs};buildStoreIdx();
   ulog("✅ "+name+" (รายร้าน) → "+recs.length+" ร้าน · "+months.map(fmtMonth).join(", "));render();syncToServer();
+}
+
+/* ====================== PRODUCT ANALYTICS (วิเคราะห์สินค้ารายสาย) ====================== */
+let ANA={line:null,metric:"niv",period:"all",group:null,brand:null};
+let anaChartObj=null;
+const ANA_BRAND_COLORS={KNORR:"#0B7A3B",OMO:"#E4002B",BREEZE:"#0057B8",COMFORT:"#2D6CDF",SUNLIGHT:"#F5A623",VIM:"#16A34A",DOMEX:"#0088CC",SUNSILK:"#F2A900",DOVE:"#B8862F","BABY DOVE":"#7FB3D5",PONDS:"#E75480","POND'S":"#E75480",VASELINE:"#0056A6",CLEAR:"#0A3D62",LUX:"#8E24AA",CITRA:"#7CB342",REXONA:"#C2185B",CLOSEUP:"#D81B60",LIFEBUOY:"#D32F2F",WHEEL:"#E53935",HAZELINE:"#EC407A",TRESEMME:"#111111","TRESEMME ":"#111111",SUNSILK_:"#F2A900",AXE:"#111827"};
+function anaBrandColor(name){const k=String(name||"").toUpperCase().trim();if(ANA_BRAND_COLORS[k])return ANA_BRAND_COLORS[k];let h=0;for(let i=0;i<k.length;i++)h=(h*31+k.charCodeAt(i))>>>0;return "hsl("+(h%360)+",56%,46%)";}
+function anaEsc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function jsq(s){return "'"+String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"\\&quot;")+"'";}
+function anaData(){return (ANALYTICS&&ANALYTICS.data)||{};}
+function anaLineType(l){return (ANALYTICS.lines&&ANALYTICS.lines[l]&&ANALYTICS.lines[l].type)||(String(l).charAt(0)==="K"?"KA":"CT");}
+function anaLinesAll(){return Object.keys(ANALYTICS.lines||{}).sort((a,b)=>{const ta=anaLineType(a),tb=anaLineType(b);if(ta!==tb)return ta==="CT"?-1:1;return a.localeCompare(b,undefined,{numeric:true});});}
+function anaTeamLines(type){return anaLinesAll().filter(l=>anaLineType(l)===type);}
+function anaMonthsSel(){const ms=(ANALYTICS.months||[]);return ANA.period==="all"?ms:ms.filter(m=>m===ANA.period);}
+function anaSumMo(obj){if(!obj)return 0;const sel=anaMonthsSel();let s=0;for(let i=0;i<sel.length;i++)s+=obj[sel[i]]||0;return s;}
+function anaProdVal(p){return p?anaSumMo(p[ANA.metric]):0;}
+function anaBrandObj(line,g,b){const G=(anaData()[line]||{})[g];return G&&G.brands?G.brands[b]:null;}
+function anaGroupVal(line,g){const G=(anaData()[line]||{})[g];if(!G)return 0;let s=0;for(const b in G.brands){const pr=G.brands[b].products;for(const c in pr)s+=anaProdVal(pr[c]);}return s;}
+function anaBrandVal(line,g,b){const B=anaBrandObj(line,g,b);if(!B)return 0;let s=0;for(const c in B.products)s+=anaProdVal(B.products[c]);return s;}
+function anaProdValLine(line,g,b,c){const B=anaBrandObj(line,g,b);return B&&B.products[c]?anaProdVal(B.products[c]):0;}
+function anaGroupsForType(type){const set={};anaTeamLines(type).forEach(l=>{for(const g in (anaData()[l]||{}))set[g]=1;});return Object.keys(set);}
+function anaBrandsForType(type,g){const set={};anaTeamLines(type).forEach(l=>{const G=(anaData()[l]||{})[g];if(G)for(const b in G.brands)set[b]=1;});return Object.keys(set);}
+function anaProdsForType(type,g,b){const set={};anaTeamLines(type).forEach(l=>{const B=anaBrandObj(l,g,b);if(B)for(const c in B.products){if(!set[c])set[c]=B.products[c].n;}});return set;}
+function anaTeamAvgGroup(type,g){const tl=anaTeamLines(type);if(!tl.length)return 0;let s=0;tl.forEach(l=>s+=anaGroupVal(l,g));return s/tl.length;}
+function anaTeamAvgBrand(type,g,b){const tl=anaTeamLines(type);if(!tl.length)return 0;let s=0;tl.forEach(l=>s+=anaBrandVal(l,g,b));return s/tl.length;}
+function anaTeamAvgProd(type,g,b,c){const tl=anaTeamLines(type);if(!tl.length)return 0;let s=0;tl.forEach(l=>s+=anaProdValLine(l,g,b,c));return s/tl.length;}
+function anaFmt(v){if(ANA.metric==="niv")return THB(v);return Math.round(v).toLocaleString("en-US")+" ชิ้น";}
+function anaFmtK(v){if(ANA.metric==="niv")return THBk(v);return Math.round(v).toLocaleString("en-US");}
+function anaIdxBadge(my,team){if(team<=0)return my>0?'<span class="ana-idx up">ทีมไม่ขาย</span>':'<span class="ana-idx eq">—</span>';const pct=Math.round((my/team-1)*100);const cls=pct>=8?"up":pct<=-8?"dn":"eq";return '<span class="ana-idx '+cls+'">'+(pct>0?"+":"")+pct+'%</span>';}
+function anaCard(label,val){return '<div class="card"><div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">'+anaEsc(label)+'</div><div style="font-size:19px;font-weight:800;color:var(--ink)">'+val+'</div></div>';}
+function initAnalytics(){
+  const sel=document.getElementById("anaLine");if(!sel)return;
+  const lines=anaLinesAll();
+  sel.innerHTML="";lines.forEach(l=>{const o=document.createElement("option");o.value=l;o.textContent=l+" ("+anaLineType(l)+")";sel.appendChild(o);});
+  const isSales=S.user&&S.user.role==="sales";
+  let myline=isSales?(FOCUS_MAP[S.user.code]||null):null;
+  ANA.line=(myline&&lines.indexOf(myline)>=0)?myline:(lines[0]||null);
+  sel.value=ANA.line||"";
+  const lc=document.getElementById("anaLineCtl");if(lc)lc.style.display=isSales?"none":"";
+  const ps=document.getElementById("anaPeriod");ps.innerHTML="";
+  const oa=document.createElement("option");oa.value="all";oa.textContent="รวมทุกเดือน ("+(ANALYTICS.months||[]).length+" เดือน)";ps.appendChild(oa);
+  (ANALYTICS.months||[]).slice().reverse().forEach(m=>{const o=document.createElement("option");o.value=m;o.textContent=fmtMonth(m);ps.appendChild(o);});
+  ANA.period="all";ps.value="all";ANA.metric="niv";ANA.group=null;ANA.brand=null;
+  document.querySelectorAll("#anaMetric button").forEach(b=>b.classList.toggle("on",b.dataset.m==="niv"));
+}
+function onAnaLine(){ANA.line=document.getElementById("anaLine").value;ANA.group=null;ANA.brand=null;renderAnalytics();}
+function onAnaPeriod(){ANA.period=document.getElementById("anaPeriod").value;renderAnalytics();}
+function anaSetMetric(m){ANA.metric=m;document.querySelectorAll("#anaMetric button").forEach(b=>b.classList.toggle("on",b.dataset.m===m));renderAnalytics();}
+function anaGoto(l){if(l==="groups"){ANA.group=null;ANA.brand=null;}else if(l==="brands"){ANA.brand=null;}renderAnalytics();}
+function anaOpenGroup(g){ANA.group=g;ANA.brand=null;renderAnalytics();}
+function anaOpenBrand(b){ANA.brand=b;renderAnalytics();}
+document.getElementById("anaMetric").addEventListener("click",e=>{const b=e.target.closest("button");if(b)anaSetMetric(b.dataset.m);});
+function anaChartBase(labels,datasets,horizontal){
+  const ctx=document.getElementById("anaChart").getContext("2d");
+  if(anaChartObj)anaChartObj.destroy();
+  anaChartObj=new Chart(ctx,{type:"bar",data:{labels,datasets:datasets.map(d=>Object.assign({borderRadius:4,maxBarThickness:44},d))},
+    options:{indexAxis:horizontal?"y":"x",responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:"top"},tooltip:{callbacks:{label:c=>c.dataset.label+": "+anaFmt(c.parsed[horizontal?"x":"y"])}}},
+      scales:{[horizontal?"x":"y"]:{ticks:{callback:v=>anaFmtK(v)}},[horizontal?"y":"x"]:{ticks:{autoSkip:false,font:{size:11}}}}}});
+}
+function anaBar(labels,ds){anaChartBase(labels,ds,false);}
+function anaBarH(labels,ds){anaChartBase(labels,ds,true);}
+function renderAnalytics(){
+  const wrap=document.getElementById("anaView");if(!wrap)return;
+  const crumbEl=document.getElementById("anaCrumb"),cardsEl=document.getElementById("anaCards"),insEl=document.getElementById("anaInsight"),tblEl=document.getElementById("anaTable");
+  if(anaChartObj){anaChartObj.destroy();anaChartObj=null;}
+  const empty=!ANALYTICS||!ANALYTICS.data||!Object.keys(ANALYTICS.data).length;
+  if(empty||!ANA.line){crumbEl.innerHTML="";cardsEl.innerHTML="";insEl.innerHTML='<div class="insight">ยังไม่มีข้อมูลวิเคราะห์สินค้า — แอดมินอัพไฟล์ยอดขายรายกลุ่ม/แบรนด์ (ปุ่มอัพโหลด → 🧪) ทีละไฟล์</div>';tblEl.innerHTML="";return;}
+  const line=ANA.line,type=anaLineType(line);
+  let cr='<a onclick="anaGoto(\'groups\')">สาย '+anaEsc(line)+' · ทีม '+type+'</a>';
+  if(ANA.group)cr+=' <span class="sep">›</span> '+(ANA.brand?'<a onclick="anaGoto(\'brands\')">'+anaEsc(ANA.group)+'</a>':'<span class="cur">'+anaEsc(ANA.group)+'</span>');
+  if(ANA.brand)cr+=' <span class="sep">›</span> <span class="cur">'+anaEsc(ANA.brand)+'</span>';
+  crumbEl.innerHTML=cr;
+  if(!ANA.group)renderAnaGroups(line,type);
+  else if(!ANA.brand)renderAnaBrands(line,type);
+  else renderAnaProducts(line,type);
+}
+function renderAnaGroups(line,type){
+  const rows=anaGroupsForType(type).map(g=>({g,my:anaGroupVal(line,g),team:anaTeamAvgGroup(type,g)})).filter(o=>o.my>0||o.team>0);
+  rows.sort((a,b)=>b.my-a.my);
+  const myTot=rows.reduce((s,o)=>s+o.my,0),teamTot=rows.reduce((s,o)=>s+o.team,0);
+  document.getElementById("anaCards").innerHTML=anaCard("ยอดรวม สาย "+line,anaFmt(myTot))+anaCard("ค่าเฉลี่ยทีม "+type,anaFmt(teamTot))+anaCard("เทียบทีม",anaIdxBadge(myTot,teamTot))+anaCard("จำนวนกลุ่มสินค้า",rows.length+" กลุ่ม");
+  const top=rows.slice(0,12);
+  anaBar(top.map(o=>o.g),[{label:"สาย "+line,data:top.map(o=>o.my),backgroundColor:"#1652B8"},{label:"ค่าเฉลี่ยทีม "+type,data:top.map(o=>o.team),backgroundColor:"#9DB4D6"}]);
+  const maxv=Math.max(1,...rows.map(o=>Math.max(o.my,o.team)));
+  let h='<table class="ana-tbl"><thead><tr><th>กลุ่มสินค้า (คลิกเพื่อเจาะดูแบรนด์)</th><th class="num">สาย '+line+'</th><th class="num">ค่าเฉลี่ยทีม</th><th>เทียบทีม</th><th style="width:90px"></th></tr></thead><tbody>';
+  rows.forEach(o=>{h+='<tr class="clk" onclick="anaOpenGroup('+jsq(o.g)+')"><td>'+anaEsc(o.g)+'</td><td class="num">'+anaFmt(o.my)+'</td><td class="num">'+anaFmt(o.team)+'</td><td>'+anaIdxBadge(o.my,o.team)+'</td><td><div class="ana-mini"><span style="width:'+(o.my/maxv*100).toFixed(1)+'%;background:#1652B8"></span></div></td></tr>';});
+  h+='</tbody></table>';document.getElementById("anaTable").innerHTML=h;
+  document.getElementById("anaInsight").innerHTML=anaInsight(line,type,"สาย "+line,rows.map(o=>({nm:o.g,my:o.my,team:o.team})));
+}
+function renderAnaBrands(line,type){
+  const g=ANA.group;
+  const rows=anaBrandsForType(type,g).map(b=>({b,my:anaBrandVal(line,g,b),team:anaTeamAvgBrand(type,g,b)})).filter(o=>o.my>0||o.team>0);
+  rows.sort((a,b)=>b.my-a.my);
+  const myTot=rows.reduce((s,o)=>s+o.my,0),teamTot=rows.reduce((s,o)=>s+o.team,0);
+  document.getElementById("anaCards").innerHTML=anaCard("กลุ่ม "+g+" — สาย "+line,anaFmt(myTot))+anaCard("ค่าเฉลี่ยทีม "+type,anaFmt(teamTot))+anaCard("เทียบทีม",anaIdxBadge(myTot,teamTot))+anaCard("จำนวนแบรนด์",rows.length+" แบรนด์");
+  const top=rows.slice(0,14);
+  anaBar(top.map(o=>o.b),[{label:"สาย "+line,data:top.map(o=>o.my),backgroundColor:top.map(o=>anaBrandColor(o.b))},{label:"ค่าเฉลี่ยทีม "+type,data:top.map(o=>o.team),backgroundColor:"#C9D4E6"}]);
+  let h='<table class="ana-tbl"><thead><tr><th>แบรนด์ (คลิกเพื่อดูสินค้า)</th><th class="num">สาย '+line+'</th><th class="num">ค่าเฉลี่ยทีม</th><th>เทียบทีม</th></tr></thead><tbody>';
+  rows.forEach(o=>{h+='<tr class="clk" onclick="anaOpenBrand('+jsq(o.b)+')"><td><span class="ana-dot" style="background:'+anaBrandColor(o.b)+'"></span>'+anaEsc(o.b)+'</td><td class="num">'+anaFmt(o.my)+'</td><td class="num">'+anaFmt(o.team)+'</td><td>'+anaIdxBadge(o.my,o.team)+'</td></tr>';});
+  h+='</tbody></table>';document.getElementById("anaTable").innerHTML=h;
+  document.getElementById("anaInsight").innerHTML=anaInsight(line,type,"กลุ่ม "+g,rows.map(o=>({nm:o.b,my:o.my,team:o.team})));
+}
+function renderAnaProducts(line,type){
+  const g=ANA.group,b=ANA.brand,col=anaBrandColor(b);
+  const codes=anaProdsForType(type,g,b);
+  const rows=Object.keys(codes).map(c=>({c,n:codes[c],my:anaProdValLine(line,g,b,c),team:anaTeamAvgProd(type,g,b,c)})).filter(o=>o.my>0||o.team>0);
+  rows.sort((a,b2)=>b2.my-a.my);
+  const myTot=rows.reduce((s,o)=>s+o.my,0),teamTot=rows.reduce((s,o)=>s+o.team,0);
+  document.getElementById("anaCards").innerHTML=anaCard("แบรนด์ "+b+" — สาย "+line,anaFmt(myTot))+anaCard("ค่าเฉลี่ยทีม "+type,anaFmt(teamTot))+anaCard("เทียบทีม",anaIdxBadge(myTot,teamTot))+anaCard("จำนวน SKU",rows.length+" รายการ");
+  const top=rows.slice(0,15);
+  anaBarH(top.map(o=>o.n),[{label:"สาย "+line,data:top.map(o=>o.my),backgroundColor:col},{label:"ค่าเฉลี่ยทีม "+type,data:top.map(o=>o.team),backgroundColor:"#C9D4E6"}]);
+  let h='<table class="ana-tbl"><thead><tr><th>สินค้า</th><th>รหัส</th><th class="num">สาย '+line+'</th><th class="num">ค่าเฉลี่ยทีม</th><th>เทียบทีม</th></tr></thead><tbody>';
+  rows.forEach(o=>{h+='<tr><td>'+anaEsc(o.n)+'</td><td style="color:var(--muted)">'+anaEsc(o.c)+'</td><td class="num">'+anaFmt(o.my)+'</td><td class="num">'+anaFmt(o.team)+'</td><td>'+anaIdxBadge(o.my,o.team)+'</td></tr>';});
+  h+='</tbody></table>';document.getElementById("anaTable").innerHTML=h;
+  document.getElementById("anaInsight").innerHTML=anaInsight(line,type,"แบรนด์ "+b,rows.map(o=>({nm:o.n,my:o.my,team:o.team})));
+}
+function anaInsight(line,type,label,rows){
+  const withTeam=rows.filter(o=>o.team>0);
+  const pctu=o=>Math.round((o.my/o.team-1)*100);
+  const over=withTeam.filter(o=>o.my>o.team).sort((a,b)=>(b.my/b.team)-(a.my/a.team)).slice(0,3);
+  const under=withTeam.filter(o=>o.my>0&&o.my<o.team).sort((a,b)=>(a.my/a.team)-(b.my/b.team)).slice(0,3);
+  const miss=rows.filter(o=>o.my<=0&&o.team>0).sort((a,b)=>b.team-a.team).slice(0,3);
+  let s='<div class="insight"><b>บทวิเคราะห์ '+anaEsc(label)+' (เทียบค่าเฉลี่ยทีม '+type+')</b><br>';
+  if(over.length)s+='🟢 เด่นกว่าทีม: '+over.map(o=>anaEsc(o.nm)+' ('+(pctu(o)>0?"+":"")+pctu(o)+'%)').join(", ")+'<br>';
+  if(under.length)s+='🟠 ต่ำกว่าทีม ควรผลักดัน: '+under.map(o=>anaEsc(o.nm)+' ('+pctu(o)+'%)').join(", ")+'<br>';
+  if(miss.length)s+='🔴 ทีมขายแต่สายนี้ยังไม่ขาย: '+miss.map(o=>anaEsc(o.nm)+' (ทีมเฉลี่ย '+anaFmtK(o.team)+')').join(", ");
+  if(!over.length&&!under.length&&!miss.length)s+='ยอดใกล้เคียงค่าเฉลี่ยทีมในทุกรายการ';
+  s+='</div>';return s;
+}
+/* ANALYTICS upload parser — efficient quoted-printable decode (handles ~60MB MHTML) + merge by month */
+function anaPurgeMonths(mos){for(const l in ANALYTICS.data){const L=ANALYTICS.data[l];for(const g in L){const G=L[g];for(const b in G.brands){const pr=G.brands[b].products;for(const c in pr){mos.forEach(mo=>{delete pr[c].niv[mo];delete pr[c].pc[mo];});}}}}}
+function parseAnalytics(name,buf){
+  const bytes=new Uint8Array(buf);
+  let htmlStr;
+  const head=new TextDecoder("ascii").decode(bytes.subarray(0,3000));
+  if(/quoted-printable/i.test(head)||/^MIME-Version/i.test(head)){
+    const out=new Uint8Array(bytes.length);let o=0;
+    const hex=c=>{if(c>=48&&c<=57)return c-48;if(c>=65&&c<=70)return c-55;if(c>=97&&c<=102)return c-87;return -1;};
+    for(let i=0;i<bytes.length;i++){const ch=bytes[i];
+      if(ch===61){const a=bytes[i+1],b=bytes[i+2];
+        if(a===13&&b===10){i+=2;continue;}
+        if(a===10){i+=1;continue;}
+        const h1=hex(a),h2=hex(b);
+        if(h1>=0&&h2>=0){out[o++]=h1*16+h2;i+=2;continue;}
+        out[o++]=ch;
+      }else out[o++]=ch;}
+    htmlStr=new TextDecoder("utf-8").decode(out.subarray(0,o));
+  }else htmlStr=new TextDecoder("utf-8").decode(bytes);
+  const monKey=x=>{const m=x.match(/^(\d{2})\.(\d{4})$/);return m?m[2]+"-"+m[1]:null;};
+  const rowRe=/<tr[^>]*>([\s\S]*?)<\/tr>/gi,cellRe=/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+  const dcell=x=>x.replace(/<[^>]+>/g,"").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/&lt;/gi,"<").replace(/&gt;/gi,">").replace(/&quot;/gi,'"').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(+n)).replace(/ /g," ").trim();
+  const FA={"209611":"CT11","209612":"CT12","209613":"CT13","209614":"CT14","209615":"CT15","209616":"CT16","209617":"CT17","209622":"CT22","2096_97":"KA97","209697":"KA97","209698":"KA98"};
+  if(!ANALYTICS||typeof ANALYTICS!=="object")ANALYTICS={months:[],lines:{},data:{}};
+  if(!ANALYTICS.data)ANALYTICS.data={};if(!ANALYTICS.lines)ANALYTICS.lines={};if(!ANALYTICS.months)ANALYTICS.months=[];
+  let m,months=null,matched=0;
+  while((m=rowRe.exec(htmlStr))){
+    const cells=[];let cm;cellRe.lastIndex=0;const rh=m[1];
+    while((cm=cellRe.exec(rh)))cells.push(dcell(cm[1]));
+    if(!months){const mm=[];cells.forEach(x=>{const k=monKey(x);if(k&&mm.indexOf(k)<0)mm.push(k);});if(mm.length){months=mm;anaPurgeMonths(months);}continue;}
+    if(cells.length<14)continue;
+    const disp=FA[cells[4]];if(!disp)continue;
+    const type=disp.charAt(0)==="K"?"KA":"CT";
+    const grp=cells[9]||cells[8]||"(ไม่ระบุ)",brand=cells[11]||cells[10]||"(ไม่ระบุ)",code=cells[12],pname=cells[13];
+    const nm=months.length,tail=cells.slice(14,14+2*nm);let any=false;const pcv=[],niv=[];
+    for(let k=0;k<nm;k++){const pv=parseFloat(String(tail[k]||"").replace(/,/g,""))||0,nv=parseFloat(String(tail[nm+k]||"").replace(/,/g,""))||0;pcv.push(pv);niv.push(nv);if(pv||nv)any=true;}
+    if(!any)continue;matched++;
+    ANALYTICS.lines[disp]={disp,type};
+    const L=ANALYTICS.data[disp]||(ANALYTICS.data[disp]={});
+    const G=L[grp]||(L[grp]={brands:{}});
+    const B=G.brands[brand]||(G.brands[brand]={products:{}});
+    const P=B.products[code]||(B.products[code]={n:pname,niv:{},pc:{}});
+    for(let k=0;k<nm;k++){const mo=months[k];if(niv[k])P.niv[mo]=Math.round(((P.niv[mo]||0)+niv[k])*10)/10;if(pcv[k])P.pc[mo]=Math.round((P.pc[mo]||0)+pcv[k]);}
+  }
+  if(!months)throw new Error("ไม่พบคอลัมน์เดือน (MM.YYYY) — ไฟล์นี้อาจไม่ใช่รายงาน Daily Sales Summary");
+  if(!matched)throw new Error("ไม่พบข้อมูลสายที่ต้องการในไฟล์");
+  const ms={};for(const l in ANALYTICS.data){const L=ANALYTICS.data[l];for(const g in L)for(const b in L[g].brands){const pr=L[g].brands[b].products;for(const c in pr){for(const x in pr[c].niv)ms[x]=1;for(const x in pr[c].pc)ms[x]=1;}}}
+  ANALYTICS.months=Object.keys(ms).sort();ANALYTICS.up=Date.now();
+  ulog("✅ "+name+" (วิเคราะห์สินค้า) → "+matched.toLocaleString()+" แถว · เดือน "+months.map(fmtMonth).join(", ")+" · รวม "+Object.keys(ANALYTICS.data).length+" สาย");
+  initAnalytics();if(!document.getElementById("anaView").classList.contains("hidden"))renderAnalytics();
+  syncToServer();
 }
 
 /* focus login credential list for reference (manager can view via console) */
