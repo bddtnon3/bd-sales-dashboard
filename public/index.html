@@ -468,7 +468,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
           </div>
         </div>
         <div class="ctl"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="stockZero" onchange="renderStock()"> เฉพาะคงเหลือ ≤ 0 (หมด/ติดลบ)</label></div>
-        <div class="ctl" id="stockValWrap" style="display:none"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="stockVal" checked onchange="renderStock()"> 💰 แสดงมูลค่ารวม (F)</label></div>
+        <div class="ctl" id="stockValWrap" style="display:none"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="stockVal" checked onchange="renderStock()"> 💰 แสดงต้นทุน (ขนาดบรรจุ/ต้นทุนต่อหีบ/ต้นทุนรวม)</label></div>
         <div class="spacer"></div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
           <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
@@ -1584,11 +1584,11 @@ function renderStock(){
   document.getElementById("stockValWrap").style.display=isMgr?"":"none";
   const showVal=isMgr&&document.getElementById("stockVal").checked;
   const rowsH=list.slice(0,800).map(r=>{const low=isLow(r);
-    return `<tr${low?' style="background:#FDF3F3"':''}><td>${r.c}</td><td style="text-align:left">${r.n||"-"}</td><td style="text-align:right">${r.e||"-"}</td><td style="text-align:right">${r.po||"-"}</td><td style="text-align:right">${r.h||"-"}</td><td style="text-align:right" class="${low?'down':''}"><b>${r.i||"-"}</b></td>${showVal?`<td style="text-align:right">${(r.v||0)>0?THB(r.v):"-"}</td>`:""}</tr>`;}).join("");
-  const cols=5+(showVal?1:0);
+    return `<tr${low?' style="background:#FDF3F3"':''}><td>${r.c}</td><td style="text-align:left">${r.n||"-"}</td>${showVal?`<td style="text-align:right">${r.d||"-"}</td>`:""}<td style="text-align:right">${r.e||"-"}</td>${showVal?`<td style="text-align:right">${(r.j||0)>0?THB(r.j):"-"}</td>`:""}${showVal?`<td style="text-align:right">${(r.v||0)>0?THB(r.v):"-"}</td>`:""}<td style="text-align:right">${r.h||"-"}</td><td style="text-align:right" class="${low?'down':''}"><b>${r.i||"-"}</b></td></tr>`;}).join("");
+  const cols=4+(showVal?3:0);
   document.getElementById("stockTable").innerHTML=`<h3>รายการสต็อก — ${STK.wh==="sale"?"คลังขาย":"คลังแถม"}</h3>
-    <div class="psub">คอลัมน์: สต็อกจริง (E) · ใบสั่งซื้อ (G) · รอตัดบิล/ใบสั่งขาย (H) · คงเหลือ (I) — รูปแบบ ลัง/ชิ้น · เรียงตามไฟล์ · สูงสุด 800 แถว</div>
-    <div style="overflow-x:auto"><table class="stk-tbl"><thead><tr><th style="text-align:left">รหัส</th><th style="text-align:left">สินค้า</th><th style="text-align:right">สต็อกจริง</th><th style="text-align:right">ใบสั่งซื้อ</th><th style="text-align:right">รอตัดบิล</th><th style="text-align:right">คงเหลือ</th>${showVal?'<th style="text-align:right">มูลค่ารวม</th>':""}</tr></thead><tbody>${rowsH||`<tr><td colspan="${cols}" style="text-align:center;color:var(--muted);padding:16px">ไม่พบสินค้าที่ค้นหา</td></tr>`}</tbody></table></div>`;
+    <div class="psub">คอลัมน์: สต็อกจริง (E) · รอตัดบิล/ใบสั่งขาย (H) · คงเหลือ (I) — รูปแบบ ลัง/ชิ้น${isMgr?" · ผู้จัดการเห็นเพิ่ม: ขนาดบรรจุ (D) · ต้นทุนต่อหีบ (J) · ต้นทุนรวม (F)":""} · เรียงตามไฟล์ · สูงสุด 800 แถว</div>
+    <div style="overflow-x:auto"><table class="stk-tbl"><thead><tr><th style="text-align:left">รหัส</th><th style="text-align:left">สินค้า</th>${showVal?'<th style="text-align:right">ขนาดบรรจุ</th>':""}<th style="text-align:right">สต็อกจริง</th>${showVal?'<th style="text-align:right">ต้นทุนต่อหีบ</th>':""}${showVal?'<th style="text-align:right">ต้นทุนรวม</th>':""}<th style="text-align:right">รอตัดบิล</th><th style="text-align:right">คงเหลือ</th></tr></thead><tbody>${rowsH||`<tr><td colspan="${cols}" style="text-align:center;color:var(--muted);padding:16px">ไม่พบสินค้าที่ค้นหา</td></tr>`}</tbody></table></div>`;
 }
 function parseStock(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
@@ -1598,13 +1598,14 @@ function parseStock(name,buf){
   const H=(rows[hdr]||[]).map(x=>String(x||""));
   const find=k=>H.findIndex(v=>v.indexOf(k)>=0);
   const cCode=find("รหัสสินค้า"),cName=find("คำอธิบาย"),
-    cE=H.findIndex(v=>v.indexOf("CS/PC")>=0||v.indexOf("(CS")>=0),cVal=find("มูลค่า"),
+    cD=H.findIndex(v=>v.trim()==="จำนวนสต็อก"),cE=H.findIndex(v=>v.indexOf("CS/PC")>=0||v.indexOf("(CS")>=0),cVal=find("มูลค่า"),cCost=find("ราคาถัวเฉลี่ย"),
     cPO=find("เปิดใบสั่งซื้อ"),cH=find("เปิดใบสั่งขาย"),cI=find("ยอดคงเหลือ"),cSt=H.findIndex(v=>/status/i.test(v)||v.indexOf("สถานะ")>=0);
   const out=[],names={};
   for(let i=hdr+1;i<rows.length;i++){const r=rows[i];if(!r)continue;const code=String(r[cCode]==null?"":r[cCode]).trim();if(!/^\d+$/.test(code))continue;
     const nm=cName>=0&&r[cName]?String(r[cName]):"";const val=parseFloat(r[cVal])||0;const wh=val>0?"sale":"gift";
     const e=cE>=0&&r[cE]!=null?String(r[cE]):"",h=cH>=0&&r[cH]!=null?String(r[cH]):"",ii=cI>=0&&r[cI]!=null?String(r[cI]):"",po=cPO>=0&&r[cPO]!=null?String(r[cPO]):"";
-    out.push({c:code,n:nm,wh:wh,e:e,h:h,i:ii,lo:stkLow(ii),st:cSt>=0&&r[cSt]?String(r[cSt]):"",v:Math.round(val*100)/100,po:po});
+    const d=cD>=0&&r[cD]!=null?String(r[cD]):"",cost=cCost>=0?(parseFloat(r[cCost])||0):0;
+    out.push({c:code,n:nm,wh:wh,d:d,e:e,h:h,i:ii,lo:stkLow(ii),st:cSt>=0&&r[cSt]?String(r[cSt]):"",v:Math.round(val*100)/100,j:Math.round(cost*100)/100,po:po});
     if(nm&&!names[code])names[code]=nm;
   }
   if(!out.length)throw new Error("ไม่พบรายการสินค้าในไฟล์สต็อก");
