@@ -309,6 +309,8 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 .ana-idx.eq{background:#EEF1F6;color:#607089}
 .ana-mini{height:7px;border-radius:4px;background:var(--line);overflow:hidden;min-width:60px}
 .ana-mini>span{display:block;height:100%}
+.backbtn{background:#fff;border:1.5px solid var(--blue);color:var(--blue);font-weight:700;padding:7px 14px;border-radius:9px;cursor:pointer;font-size:13.5px;margin-right:6px}
+.backbtn:hover{background:var(--blue-soft)}
 </style>
 </head>
 <body>
@@ -333,6 +335,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
   <header>
     <div class="brand"><span class="b" style="color:var(--blue)">BD</span> Sales Dashboard</div>
     <div class="usr">
+      <button class="backbtn" id="backBtn" onclick="navBack()" style="display:none">← ย้อนกลับ</button>
       <div class="who"><b id="uName"></b><span id="uRole"></span></div>
       <div class="av" id="uAv"></div>
       <button class="logout" onclick="logout()">ออก</button>
@@ -518,6 +521,13 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <div class="cards" id="anaCards"></div>
       <div class="panel" id="anaChartPanel"><div id="anaChartWrap" style="position:relative;height:420px"><canvas id="anaChart"></canvas></div></div>
       <div class="panel hidden" id="anaChart2Panel"><div style="position:relative;height:280px"><canvas id="anaChart2"></canvas></div></div>
+      <div class="panel hidden" id="anaPiePanel">
+        <h3 style="margin:0 0 10px;font-size:15px">📊 สัดส่วนยอดขายของร้าน</h3>
+        <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div><div style="text-align:center;font-weight:700;font-size:13px;color:var(--muted);margin-bottom:4px">แบ่งตามแบรนด์</div><div style="position:relative;height:300px"><canvas id="anaPieBrand"></canvas></div></div>
+          <div><div style="text-align:center;font-weight:700;font-size:13px;color:var(--muted);margin-bottom:4px">แบ่งตามประเภทสินค้า</div><div style="position:relative;height:300px"><canvas id="anaPieGroup"></canvas></div></div>
+        </div>
+      </div>
       <div class="panel" id="anaInsight"></div>
       <div class="panel" id="anaTable"></div>
     </div>
@@ -718,7 +728,7 @@ async function loadData(){
     const d=await r.json();
     if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};}
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209622","2096_97","209698"];
-    buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();
+    buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();navReset();
   }catch(ex){alert("โหลดข้อมูลจากเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
 }
 function logout(){S.user=null;TOKEN=null;localStorage.removeItem("bd_token");localStorage.removeItem("bd_user");
@@ -842,6 +852,33 @@ function aggregate(){
   rows.sort((a,b)=>b.value-a.value);
   return{rows,hasTarget,label};
 }
+/* period-over-period comparison helpers */
+function periodTotalFor(period,key,codes){
+  const per={};codes.forEach(c=>per[c]=0);
+  if(period==="daily"){const day=DATA.daily[key]||{};codes.forEach(c=>per[c]=day[c]||0);}
+  else if(period==="weekly"){(weeksAvail()[key]||[]).forEach(d=>{const day=DATA.daily[d]||{};codes.forEach(c=>per[c]+=(day[c]||0));});}
+  else if(period==="monthly"){const mm=DATA.monthly[key]||{};codes.forEach(c=>{if(mm[c])per[c]=mm[c].niv;});}
+  else if(period==="quarter"){const q=quarters().find(x=>x.id===key);if(q)q.months.forEach(m=>{const mm=DATA.monthly[m]||{};codes.forEach(c=>{if(mm[c])per[c]+=mm[c].niv;});});}
+  else {monthsAvail().forEach(m=>{const mm=DATA.monthly[m]||{};codes.forEach(c=>{if(mm[c])per[c]+=mm[c].niv;});});}
+  let t=0;codes.forEach(c=>t+=per[c]);return {total:t,per};
+}
+function prevPeriodKey(period,key){
+  let list=[];
+  if(period==="daily")list=dailyDates();
+  else if(period==="weekly")list=Object.keys(weeksAvail()).sort();
+  else if(period==="monthly")list=monthsAvail();
+  else if(period==="quarter")list=quarters().map(q=>q.id);
+  else return null;
+  const i=list.indexOf(key);return i>0?list[i-1]:null;
+}
+function periodLabelFor(period,key){
+  if(period==="daily")return fmtDate(key);
+  if(period==="weekly")return fmtWeek(key);
+  if(period==="monthly")return fmtMonth(key);
+  if(period==="quarter"){const q=quarters().find(x=>x.id===key);return q?q.label:key;}
+  return "ปี 2569";
+}
+function periodWord(period){return {daily:"วันก่อนหน้า",weekly:"สัปดาห์ก่อน",monthly:"เดือนก่อน",quarter:"ไตรมาสก่อน",yearly:"ปีก่อน"}[period]||"ช่วงก่อน";}
 
 /* ====================== RENDER ====================== */
 function render(){
@@ -953,6 +990,20 @@ function renderInsight(agg,focusMe,mine){
   const rows=agg.rows;
   const totV=rows.reduce((s,r)=>s+r.value,0);
   let html="";
+  /* period-over-period comparison (ตาม timeline ที่เลือก) */
+  const cmpCodes=focusMe?[mine]:rows.map(r=>r.code);
+  const pk=prevPeriodKey(S.period,S.key);
+  let cmpHtml="";
+  if(pk!=null){
+    const cur=periodTotalFor(S.period,S.key,cmpCodes).total;
+    const prev=periodTotalFor(S.period,pk,cmpCodes).total;
+    if(prev>0||cur>0){
+      const diff=cur-prev;const pct=prev>0?(cur/prev-1)*100:null;
+      const arrow=diff>=0?"▲":"▼";const col=diff>=0?"var(--good)":"var(--bad)";
+      cmpHtml=`<div style="margin-bottom:10px;padding:8px 12px;background:#fff;border:1px solid var(--line);border-radius:8px">📈 <b>เทียบ${periodWord(S.period)}</b> (${periodLabelFor(S.period,pk)} → ${agg.label}): ${THBk(prev)} → <b>${THBk(cur)}</b> <span style="color:${col};font-weight:700">${arrow} ${diff>=0?"+":"-"}${THBk(Math.abs(diff))}${pct!=null?` (${diff>=0?"+":""}${pct.toFixed(1)}%)`:""}</span></div>`;
+    }
+  }
+  html+=cmpHtml;
   // chart recommendation
   const rec=agg.hasTarget
     ? "แนะนำใช้ <b>กราฟแท่ง</b> เพราะมีเส้นเป้าให้เทียบยอดจริงกับเป้าแต่ละสายได้ชัด"
@@ -1120,7 +1171,15 @@ function renderStoreTable(){
 /* ====================== TABS + KPI ====================== */
 /* syncToServer in API section */
 let CURTAB="sales";
-function switchTab(t){
+/* ---------- navigation history (ปุ่มย้อนกลับ) ---------- */
+let NAV=[];
+function navSnap(){return {tab:CURTAB,ana:(typeof ANA!=="undefined")?{mode:ANA.mode,line:ANA.line,group:ANA.group,brand:ANA.brand,store:ANA.store,period:ANA.period,metric:ANA.metric,storeSort:ANA.storeSort,storeFlat:ANA.storeFlat}:null};}
+function navPush(){NAV.push(navSnap());navUpd();}
+function navUpd(){const b=document.getElementById("backBtn");if(b)b.style.display=NAV.length?"":"none";}
+function navReset(){NAV=[];navUpd();}
+function navBack(){if(!NAV.length)return;const s=NAV.pop();if(s.ana&&typeof ANA!=="undefined")Object.assign(ANA,s.ana);_switchTab(s.tab);if(s.tab==="ana"&&typeof syncAnaControls==="function")syncAnaControls();navUpd();}
+function switchTab(t){if(t!==CURTAB)navPush();_switchTab(t);}
+function _switchTab(t){
   CURTAB=t;
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   document.getElementById("salesView").classList.toggle("hidden",t!=="sales");
@@ -1778,9 +1837,10 @@ function parseStore(name,buf){
 }
 
 /* ====================== PRODUCT ANALYTICS (วิเคราะห์สินค้ารายสาย) ====================== */
-let ANA={line:null,metric:"niv",period:"all",group:null,brand:null,mode:"group",store:null,storeSort:"niv",storeFilter:""};
+let ANA={line:null,metric:"niv",period:"all",group:null,brand:null,mode:"group",store:null,storeSort:"niv",storeFilter:"",storeFlat:false};
 let anaChartObj=null;
 let anaChart2Obj=null;
+let anaPieB=null,anaPieG=null;
 const ANA_BRAND_COLORS={KNORR:"#0B7A3B",OMO:"#E4002B",BREEZE:"#0057B8",COMFORT:"#2D6CDF",SUNLIGHT:"#F5A623",VIM:"#16A34A",DOMEX:"#0088CC",SUNSILK:"#F2A900",DOVE:"#B8862F","BABY DOVE":"#7FB3D5",PONDS:"#E75480","POND'S":"#E75480",VASELINE:"#0056A6",CLEAR:"#0A3D62",LUX:"#8E24AA",CITRA:"#7CB342",REXONA:"#C2185B",CLOSEUP:"#D81B60",LIFEBUOY:"#D32F2F",WHEEL:"#E53935",HAZELINE:"#EC407A",TRESEMME:"#111111","TRESEMME ":"#111111",SUNSILK_:"#F2A900",AXE:"#111827"};
 function anaBrandColor(name){const k=String(name||"").toUpperCase().trim();if(ANA_BRAND_COLORS[k])return ANA_BRAND_COLORS[k];let h=0;for(let i=0;i<k.length;i++)h=(h*31+k.charCodeAt(i))>>>0;return "hsl("+(h%360)+",56%,46%)";}
 function anaEsc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
@@ -1802,6 +1862,20 @@ function anaProdsForType(type,g,b){const set={};anaTeamLines(type).forEach(l=>{c
 function anaTeamAvgGroup(type,g){const tl=anaTeamLines(type);if(!tl.length)return 0;let s=0;tl.forEach(l=>s+=anaGroupVal(l,g));return s/tl.length;}
 function anaTeamAvgBrand(type,g,b){const tl=anaTeamLines(type);if(!tl.length)return 0;let s=0;tl.forEach(l=>s+=anaBrandVal(l,g,b));return s/tl.length;}
 function anaTeamAvgProd(type,g,b,c){const tl=anaTeamLines(type);if(!tl.length)return 0;let s=0;tl.forEach(l=>s+=anaProdValLine(l,g,b,c));return s/tl.length;}
+function anaTeamTopProducts(type,limit){
+  const agg={};
+  anaTeamLines(type).forEach(l=>{const L=anaData()[l]||{};for(const g in L){const G=L[g];for(const b in G.brands){const pr=G.brands[b].products;for(const c in pr){const v=anaSumMo(pr[c][ANA.metric]);if(!v)continue;const o=agg[c]||(agg[c]={n:pr[c].n,b:b,g:g,val:0});o.val+=v;}}}});
+  return Object.values(agg).sort((a,b)=>b.val-a.val).slice(0,limit);
+}
+function anaHotPanel(type){
+  const top=anaTeamTopProducts(type,20);if(!top.length)return "";
+  const per=ANA.period==="all"?"รวมทุกเดือน":fmtMonth(ANA.period);
+  let h='<div class="panel" style="border:2px solid #E4002B;margin-bottom:14px"><h3 style="margin:0 0 2px;font-size:16px">🔥 20 สินค้ามาแรง — ทีม '+type+' <span style="color:var(--muted);font-weight:600;font-size:13px">('+per+' · เรียงตาม'+(ANA.metric==="niv"?"มูลค่า":"จำนวน")+')</span></h3>';
+  h+='<div class="psub">ไอเดียสินค้าขายดีของทั้งทีม '+type+' — เอาไปเสนอลูกค้าได้เลย</div>';
+  h+='<table class="ana-tbl"><thead><tr><th>#</th><th>สินค้า</th><th>แบรนด์</th><th>กลุ่ม</th><th class="num">ยอดทีม</th></tr></thead><tbody>';
+  top.forEach((o,i)=>{h+='<tr><td style="font-weight:800;color:#E4002B">'+(i+1)+'</td><td>'+anaEsc(o.n)+'</td><td><span class="ana-dot" style="background:'+anaBrandColor(o.b)+'"></span>'+anaEsc(o.b)+'</td><td style="color:var(--muted)">'+anaEsc(o.g)+'</td><td class="num">'+anaFmt(o.val)+'</td></tr>';});
+  h+='</tbody></table></div>';return h;
+}
 function anaFmt(v){if(ANA.metric==="niv")return THB(v);return Math.round(v).toLocaleString("en-US")+" ชิ้น";}
 function anaFmtK(v){if(ANA.metric==="niv")return THBk(v);return Math.round(v).toLocaleString("en-US");}
 function anaIdxBadge(my,team){if(team<=0)return my>0?'<span class="ana-idx up">ทีมไม่ขาย</span>':'<span class="ana-idx eq">—</span>';const pct=Math.round((my/team-1)*100);const cls=pct>=8?"up":pct<=-8?"dn":"eq";return '<span class="ana-idx '+cls+'">'+(pct>0?"+":"")+pct+'%</span>';}
@@ -1832,16 +1906,24 @@ function anaUpdateCtl(){
   if(sc)sc.style.display=store?"":"none";
   if(so)so.style.display=(store&&!ANA.store)?"":"none";
 }
-function onAnaLine(){ANA.line=document.getElementById("anaLine").value;ANA.group=null;ANA.brand=null;ANA.store=null;renderAnalytics();}
-function onAnaStoreSearch(){ANA.storeFilter=document.getElementById("anaStoreSearch").value.trim().toLowerCase();renderAnalytics();}
-function anaSetMode(m){ANA.mode=m;ANA.group=null;ANA.brand=null;ANA.store=null;document.querySelectorAll("#anaMode button").forEach(b=>b.classList.toggle("on",b.dataset.mode===m));anaUpdateCtl();renderAnalytics();}
+function onAnaLine(){navPush();ANA.line=document.getElementById("anaLine").value;ANA.group=null;ANA.brand=null;ANA.store=null;ANA.storeFlat=false;renderAnalytics();}
+function onAnaStoreSearch(){ANA.storeFilter=document.getElementById("anaStoreSearch").value.trim().toLowerCase();if(ANA.storeFilter){ANA.store=null;ANA.group=null;ANA.brand=null;ANA.storeFlat=false;anaUpdateCtl();}renderAnalytics();}
+function anaSetMode(m){navPush();ANA.mode=m;ANA.group=null;ANA.brand=null;ANA.store=null;ANA.storeFlat=false;document.querySelectorAll("#anaMode button").forEach(b=>b.classList.toggle("on",b.dataset.mode===m));anaUpdateCtl();renderAnalytics();}
 function anaSetSort(s){ANA.storeSort=s;document.querySelectorAll("#anaStoreSort button").forEach(b=>b.classList.toggle("on",b.dataset.s===s));renderAnalytics();}
-function anaOpenStore(sc){ANA.store=sc;ANA.group=null;ANA.brand=null;anaUpdateCtl();renderAnalytics();}
+function anaOpenStore(sc){navPush();ANA.store=sc;ANA.group=null;ANA.brand=null;ANA.storeFlat=false;anaUpdateCtl();renderAnalytics();}
+function syncAnaControls(){
+  const lg=document.getElementById("anaLine");if(lg)lg.value=ANA.line||"";
+  const ps=document.getElementById("anaPeriod");if(ps)ps.value=ANA.period||"all";
+  document.querySelectorAll("#anaMetric button").forEach(b=>b.classList.toggle("on",b.dataset.m===ANA.metric));
+  document.querySelectorAll("#anaMode button").forEach(b=>b.classList.toggle("on",b.dataset.mode===ANA.mode));
+  document.querySelectorAll("#anaStoreSort button").forEach(b=>b.classList.toggle("on",b.dataset.s===ANA.storeSort));
+  if(typeof anaUpdateCtl==="function")anaUpdateCtl();
+}
 function onAnaPeriod(){ANA.period=document.getElementById("anaPeriod").value;renderAnalytics();}
 function anaSetMetric(m){ANA.metric=m;document.querySelectorAll("#anaMetric button").forEach(b=>b.classList.toggle("on",b.dataset.m===m));renderAnalytics();}
 function anaGoto(l){if(l==="groups"){ANA.group=null;ANA.brand=null;}else if(l==="brands"){ANA.brand=null;}renderAnalytics();}
-function anaOpenGroup(g){ANA.group=g;ANA.brand=null;renderAnalytics();}
-function anaOpenBrand(b){ANA.brand=b;renderAnalytics();}
+function anaOpenGroup(g){navPush();ANA.group=g;ANA.brand=null;renderAnalytics();}
+function anaOpenBrand(b){navPush();ANA.brand=b;renderAnalytics();}
 document.getElementById("anaMetric").addEventListener("click",e=>{const b=e.target.closest("button");if(b)anaSetMetric(b.dataset.m);});
 document.getElementById("anaMode").addEventListener("click",e=>{const b=e.target.closest("button");if(b)anaSetMode(b.dataset.mode);});
 document.getElementById("anaStoreSort").addEventListener("click",e=>{const b=e.target.closest("button");if(b)anaSetSort(b.dataset.s);});
@@ -1860,7 +1942,9 @@ function renderAnalytics(){
   const crumbEl=document.getElementById("anaCrumb"),cardsEl=document.getElementById("anaCards"),insEl=document.getElementById("anaInsight"),tblEl=document.getElementById("anaTable");
   if(anaChartObj){anaChartObj.destroy();anaChartObj=null;}
   if(anaChart2Obj){anaChart2Obj.destroy();anaChart2Obj=null;}
+  if(anaPieB){anaPieB.destroy();anaPieB=null;}if(anaPieG){anaPieG.destroy();anaPieG=null;}
   document.getElementById("anaChart2Panel").classList.add("hidden");
+  document.getElementById("anaPiePanel").classList.add("hidden");
   document.getElementById("anaChartPanel").classList.remove("hidden");
   const empty=!ANALYTICS||!ANALYTICS.data||!Object.keys(ANALYTICS.data).length;
   if(empty||!ANA.line){crumbEl.innerHTML="";cardsEl.innerHTML="";insEl.innerHTML='<div class="insight">ยังไม่มีข้อมูลวิเคราะห์สินค้า — แอดมินอัพไฟล์ยอดขายรายกลุ่ม/แบรนด์ (ปุ่มอัพโหลด → 🧪) ทีละไฟล์</div>';tblEl.innerHTML="";return;}
@@ -1884,7 +1968,7 @@ function renderAnaGroups(line,type){
   const maxv=Math.max(1,...rows.map(o=>Math.max(o.my,o.team)));
   let h='<table class="ana-tbl"><thead><tr><th>กลุ่มสินค้า (คลิกเพื่อเจาะดูแบรนด์)</th><th class="num">สาย '+line+'</th><th class="num">ค่าเฉลี่ยทีม</th><th>เทียบทีม</th><th style="width:90px"></th></tr></thead><tbody>';
   rows.forEach(o=>{h+='<tr class="clk" onclick="anaOpenGroup('+jsq(o.g)+')"><td>'+anaEsc(o.g)+'</td><td class="num">'+anaFmt(o.my)+'</td><td class="num">'+anaFmt(o.team)+'</td><td>'+anaIdxBadge(o.my,o.team)+'</td><td><div class="ana-mini"><span style="width:'+(o.my/maxv*100).toFixed(1)+'%;background:#1652B8"></span></div></td></tr>';});
-  h+='</tbody></table>';document.getElementById("anaTable").innerHTML=h;
+  h+='</tbody></table>';document.getElementById("anaTable").innerHTML=anaHotPanel(type)+h;
   document.getElementById("anaInsight").innerHTML=anaInsight(line,type,"สาย "+line,rows.map(o=>({nm:o.g,my:o.my,team:o.team})));
 }
 function renderAnaBrands(line,type){
@@ -1956,6 +2040,17 @@ function anaChart2Line(labels,data,label,color){
   anaChart2Obj=new Chart(ctx,{type:"line",data:{labels,datasets:[{label,data,borderColor:color,backgroundColor:color+"33",fill:true,tension:.3,pointRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>anaFmt(c.parsed.y)}}},scales:{y:{ticks:{callback:v=>anaFmtK(v)}}}}});
 }
+function spStoreByBrand(line,sc){const P=spStoreProds(line,sc),out={};for(const c in P){const b=spMeta(c).b;const v=spRecVal(P[c]);if(v)out[b]=(out[b]||0)+v;}return out;}
+function spStoreByGroup(line,sc){const P=spStoreProds(line,sc),out={};for(const c in P){const g=spMeta(c).g;const v=spRecVal(P[c]);if(v)out[g]=(out[g]||0)+v;}return out;}
+function spStoreAllProds(line,sc){const P=spStoreProds(line,sc),lp=spLatestPrev(),out=[];for(const c in P){const mt=spMeta(c);const val=spRecVal(P[c]);const lv=spRecMonth(P[c],lp.latest),pv=spRecMonth(P[c],lp.prev);if(val<=0&&lv<=0&&pv<=0)continue;out.push({c,n:mt.n,b:mt.b,g:mt.g,val,lv,pv});}return out;}
+function anaPie(canvasId,obj,colorFn,maxSlices){
+  const ctx=document.getElementById(canvasId);if(!ctx)return null;
+  let entries=Object.keys(obj).map(k=>({k,v:obj[k]})).sort((a,b)=>b.v-a.v);
+  if(entries.length>maxSlices){const head=entries.slice(0,maxSlices-1);const tail=entries.slice(maxSlices-1);const rest=tail.reduce((s,o)=>s+o.v,0);head.push({k:"อื่นๆ ("+tail.length+")",v:rest});entries=head;}
+  const labels=entries.map(e=>e.k),data=entries.map(e=>Math.round(e.v)),colors=entries.map(e=>e.k.indexOf("อื่นๆ")===0?"#B8C2D0":colorFn(e.k));
+  return new Chart(ctx.getContext("2d"),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:"#fff"}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{font:{size:10},boxWidth:11}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((a,b)=>a+b,0);return " "+c.label+": "+anaFmt(c.raw)+" ("+(t?(c.raw/t*100).toFixed(1):0)+"%)";}}}}}});
+}
 function renderAnaStoreMode(line,type){
   const noSM=!STOREPROD||!STOREPROD.data||!Object.keys(spData()[line]||{}).length;
   if(noSM){document.getElementById("anaCrumb").innerHTML='<span class="cur">สาย '+anaEsc(line)+' · ร้านค้า</span>';document.getElementById("anaCards").innerHTML="";document.getElementById("anaInsight").innerHTML='<div class="insight">สายนี้ยังไม่มีข้อมูลรายร้าน — อัพไฟล์ยอดขายรายกลุ่ม (🧪) ก่อน</div>';document.getElementById("anaTable").innerHTML="";if(anaChartObj){anaChartObj.destroy();anaChartObj=null;}return;}
@@ -1993,16 +2088,40 @@ function renderAnaStoreList(line){
   if(drop.length)ins+='🔴 น่าห่วง (ยอดหด): '+drop.map(o=>anaEsc(o.n)+' ('+pc(o)+'%)').join(", ");
   ins+='</div>';document.getElementById("anaInsight").innerHTML=ins;
 }
+function anaStoreFlat(on){navPush();ANA.storeFlat=on;renderAnalytics();}
 function renderAnaStoreDetail(line,sc){
   const lp=spLatestPrev(),st=spStores()[sc]||{},nm=st.n||sc;
-  let cr='<a onclick="anaStoreBack()">🏪 สาย '+anaEsc(line)+' · ร้านค้า</a> <span class="sep">›</span> ';
-  cr+=ANA.group?('<a onclick="anaGoto(\'groups\')">'+anaEsc(nm)+'</a>'):('<span class="cur">'+anaEsc(nm)+'</span>');
-  if(ANA.group)cr+=' <span class="sep">›</span> '+(ANA.brand?('<a onclick="anaGoto(\'brands\')">'+anaEsc(ANA.group)+'</a>'):('<span class="cur">'+anaEsc(ANA.group)+'</span>'));
-  if(ANA.brand)cr+=' <span class="sep">›</span> <span class="cur">'+anaEsc(ANA.brand)+'</span>';
+  const storeCur=ANA.storeFlat||ANA.group?('<a onclick="anaStoreHome()">'+anaEsc(nm)+'</a>'):('<span class="cur">'+anaEsc(nm)+'</span>');
+  let cr='<a onclick="anaStoreBack()">🏪 สาย '+anaEsc(line)+' · ร้านค้า</a> <span class="sep">›</span> '+storeCur;
+  if(ANA.storeFlat){cr+=' <span class="sep">›</span> <span class="cur">สินค้าทุกรายการ</span>';}
+  else{
+    if(ANA.group)cr+=' <span class="sep">›</span> '+(ANA.brand?('<a onclick="anaGoto(\'brands\')">'+anaEsc(ANA.group)+'</a>'):('<span class="cur">'+anaEsc(ANA.group)+'</span>'));
+    if(ANA.brand)cr+=' <span class="sep">›</span> <span class="cur">'+anaEsc(ANA.brand)+'</span>';
+  }
   document.getElementById("anaCrumb").innerHTML=cr;
-  if(!ANA.group)renderStoreGroups(line,sc,nm,lp);
+  if(ANA.storeFlat)renderStoreFlat(line,sc,nm,lp);
+  else if(!ANA.group)renderStoreGroups(line,sc,nm,lp);
   else if(!ANA.brand)renderStoreBrands(line,sc,nm,lp);
   else renderStoreProducts(line,sc,nm,lp);
+}
+function anaStoreHome(){navPush();ANA.group=null;ANA.brand=null;ANA.storeFlat=false;renderAnalytics();}
+function renderStoreFlat(line,sc,nm,lp){
+  let rows=spStoreAllProds(line,sc);rows.sort((a,b)=>b.val-a.val);
+  const tot=rows.reduce((s,o)=>s+o.val,0);
+  const latTot=spStoreMonth(line,sc,lp.latest),prevTot=spStoreMonth(line,sc,lp.prev);
+  document.getElementById("anaCards").innerHTML=
+    anaCard("ร้าน "+nm,rows.length+" รายการ")+
+    anaCard("ยอดรวม (ช่วงเลือก)",anaFmt(tot))+
+    anaCard("สินค้าขายดีสุด",rows.length?anaEsc(rows[0].n):"—")+
+    anaCard("โต/หด รวมร้าน (MoM)",spGrowBadge(latTot,prevTot));
+  const top=rows.slice(0,15);
+  anaBarH(top.map(o=>o.n),[{label:"ร้าน "+nm+" (ช่วงเลือก)",data:top.map(o=>o.val),backgroundColor:top.map(o=>anaBrandColor(o.b))}]);
+  let h='<table class="ana-tbl"><thead><tr><th>สินค้า</th><th>แบรนด์</th><th>กลุ่ม</th><th>รหัส</th><th class="num">ยอด (ช่วงเลือก)</th><th class="num">'+fmtMonth(lp.latest)+'</th><th>โต/หด (MoM)</th></tr></thead><tbody>';
+  rows.slice(0,400).forEach(o=>{h+='<tr><td>'+anaEsc(o.n)+'</td><td><span class="ana-dot" style="background:'+anaBrandColor(o.b)+'"></span>'+anaEsc(o.b)+'</td><td style="color:var(--muted)">'+anaEsc(o.g)+'</td><td style="color:var(--muted)">'+anaEsc(o.c)+'</td><td class="num">'+anaFmt(o.val)+'</td><td class="num">'+anaFmt(o.lv)+'</td><td>'+spGrowBadge(o.lv,o.pv)+'</td></tr>';});
+  h+='</tbody></table>';
+  if(rows.length>400)h+='<div style="padding:10px;color:var(--muted);font-size:12px">แสดง 400 รายการแรก</div>';
+  document.getElementById("anaTable").innerHTML=h;
+  document.getElementById("anaInsight").innerHTML='<div class="insight">สินค้าทุกรายการที่ร้าน '+anaEsc(nm)+' ซื้อ ('+(ANA.period==="all"?"รวมทุกเดือน":fmtMonth(ANA.period))+') — เปลี่ยนช่วงเวลาได้ที่ตัวเลือก "ช่วงเวลา" ด้านบน</div>';
 }
 function renderStoreGroups(line,sc,nm,lp){
   let rows=Object.values(spStoreGroupAgg(line,sc)).filter(o=>o.val>0);rows.sort((a,b)=>b.val-a.val);
@@ -2017,7 +2136,12 @@ function renderStoreGroups(line,sc,nm,lp){
   anaBar(top.map(o=>o.g),[{label:"ร้าน "+nm,data:top.map(o=>o.val),backgroundColor:top.map(o=>anaBrandColor(o.g))}]);
   const ms=(ANALYTICS.months&&ANALYTICS.months.length?ANALYTICS.months:(STOREPROD.months||[]));
   anaChart2Line(ms.map(fmtMonth),ms.map(mo=>spStoreMonth(line,sc,mo)),"ยอดรวมร้าน "+nm,"#1652B8");
-  let h='<table class="ana-tbl"><thead><tr><th>กลุ่มสินค้า (คลิกเพื่อเจาะแบรนด์ → สินค้า)</th><th class="num">ยอด (ช่วงเลือก)</th><th class="num">'+fmtMonth(lp.latest)+'</th><th class="num">'+fmtMonth(lp.prev)+'</th><th>โต/หด (MoM)</th></tr></thead><tbody>';
+  /* pie report: by brand + by category */
+  document.getElementById("anaPiePanel").classList.remove("hidden");
+  anaPieB=anaPie("anaPieBrand",spStoreByBrand(line,sc),anaBrandColor,9);
+  anaPieG=anaPie("anaPieGroup",spStoreByGroup(line,sc),anaBrandColor,9);
+  let h='<div style="margin-bottom:10px"><button class="upload-btn" style="background:var(--blue)" onclick="anaStoreFlat(true)">📋 ดูสินค้าทุกรายการของร้านนี้</button></div>';
+  h+='<table class="ana-tbl"><thead><tr><th>กลุ่มสินค้า (คลิกเพื่อเจาะแบรนด์ → สินค้า)</th><th class="num">ยอด (ช่วงเลือก)</th><th class="num">'+fmtMonth(lp.latest)+'</th><th class="num">'+fmtMonth(lp.prev)+'</th><th>โต/หด (MoM)</th></tr></thead><tbody>';
   rows.forEach(o=>{h+='<tr class="clk" onclick="anaOpenGroup('+jsq(o.g)+')"><td><span class="ana-dot" style="background:'+anaBrandColor(o.g)+'"></span>'+anaEsc(o.g)+'</td><td class="num">'+anaFmt(o.val)+'</td><td class="num">'+anaFmt(o.lv)+'</td><td class="num">'+anaFmt(o.pv)+'</td><td>'+spGrowBadge(o.lv,o.pv)+'</td></tr>';});
   h+='</tbody></table>';document.getElementById("anaTable").innerHTML=h;
   const ranked=rows.filter(o=>o.pv>0);const pc=o=>Math.round((o.lv/o.pv-1)*100);
@@ -2088,7 +2212,7 @@ function anaGroupStorePanel(line,g){
   byVal.forEach(o=>{h+='<tr class="clk" onclick="anaJumpStore('+jsq(o.sc)+')"><td>'+anaEsc(o.n)+'</td><td class="num">'+anaFmt(o.v)+'</td><td class="num">'+anaFmt(o.lv)+'</td><td>'+spGrowBadge(o.lv,o.pv)+'</td></tr>';});
   h+='</tbody></table></div>';return h;
 }
-function anaJumpStore(sc){ANA.mode="store";ANA.store=sc;ANA.group=null;ANA.brand=null;document.querySelectorAll("#anaMode button").forEach(b=>b.classList.toggle("on",b.dataset.mode==="store"));anaUpdateCtl();renderAnalytics();}
+function anaJumpStore(sc){navPush();ANA.mode="store";ANA.store=sc;ANA.group=null;ANA.brand=null;ANA.storeFlat=false;document.querySelectorAll("#anaMode button").forEach(b=>b.classList.toggle("on",b.dataset.mode==="store"));anaUpdateCtl();renderAnalytics();}
 
 /* ANALYTICS upload parser — efficient quoted-printable decode (handles ~60MB MHTML) + merge by month */
 function anaPurgeMonths(mos){
