@@ -49,7 +49,13 @@ export default async function handler(req, res) {
     if (!data.REQUESTS) data.REQUESTS = { data: {} };
     if (!data.REQUESTS.data) data.REQUESTS.data = {};
     if (!data.REQUESTS.data[body.date]) data.REQUESTS.data[body.date] = {};
-    data.REQUESTS.data[body.date][code] = { items, at: Date.now(), by: claims.name || code };
+    if (Object.keys(items).length === 0) {
+      // empty request = salesperson cleared all items -> remove their entry
+      delete data.REQUESTS.data[body.date][code];
+      if (Object.keys(data.REQUESTS.data[body.date]).length === 0) delete data.REQUESTS.data[body.date];
+    } else {
+      data.REQUESTS.data[body.date][code] = { items, at: Date.now(), by: claims.name || code };
+    }
 
     const json = JSON.stringify(data);
     const blob = await put("bd-data-" + Date.now() + ".json", json, {
