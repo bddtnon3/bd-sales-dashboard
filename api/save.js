@@ -14,6 +14,36 @@ async function readGzipBody(req) {
   return JSON.parse(gunzipSync(buf).toString("utf8"));
 }
 
+// Read the newest real snapshot currently in Blob (used to preserve sales requests).
+async function currentBlobData() {
+  try {
+    const { blobs } = await list({ prefix: "bd-data-" });
+    if (!blobs.length) return null;
+    blobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+    for (const b of blobs) {
+      try { const r = await fetch(b.url, { cache: "no-store" }); if (!r.ok) continue; const d = await r.json(); if (d && d.DATA) return d; } catch { /* try older */ }
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+// Sales product requests are written by /api/request (sales) — a manager save must
+// NOT clobber them. Merge both sides, keeping the newest entry per (date, line).
+function mergeRequests(a, b) {
+  const out = { data: {} };
+  [a && a.data, b && b.data].forEach((dd) => {
+    if (!dd) return;
+    for (const date in dd) {
+      out.data[date] = out.data[date] || {};
+      for (const line in dd[date]) {
+        const e = dd[date][line], ex = out.data[date][line];
+        if (!ex || (e && (e.at || 0) > (ex.at || 0))) out.data[date][line] = e;
+      }
+    }
+  });
+  return out;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method not allowed" });
 
@@ -47,7 +77,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const json = JSON.stringify({ DATA: body.DATA, STORE: body.STORE || { months: [], stores: [] }, KPI: body.KPI || { months: [], lines: {}, data: {}, workdays: 26 }, ORDERS: body.ORDERS || { dates: [], data: {}, names: {} }, STOCKD: body.STOCKD || { date: null, rows: [], names: {} }, REQUESTS: body.REQUESTS || { data: {} }, MASTER: body.MASTER || { items: {} }, ANALYTICS: body.ANALYTICS || { months: [], lines: {}, data: {} }, STOREPROD: body.STOREPROD || { months: [], cat: {}, stores: {}, data: {} }, STOREDAILY: body.STOREDAILY || { data: {} }, savedAt: Date.now() });
+    // preserve sales requests: merge server-side REQUESTS (authoritative) with the client's
+    const server = await currentBlobData();
+    const REQUESTS = mergeRequests(server && server.REQUESTS, body.REQUESTS);
+    const json = JSON.stringify({ DATA: body.DATA, STORE: body.STORE || { months: [], stores: [] }, KPI: body.KPI || { months: [], lines: {}, data: {}, workdays: 26 }, ORDERS: body.ORDERS || { dates: [], data: {}, names: {} }, STOCKD: body.STOCKD || { date: null, rows: [], names: {} }, REQUESTS, MASTER: body.MASTER || { items: {} }, ANALYTICS: body.ANALYTICS || { months: [], lines: {}, data: {} }, STOREPROD: body.STOREPROD || { months: [], cat: {}, stores: {}, data: {} }, STOREDAILY: body.STOREDAILY || { data: {} }, savedAt: Date.now() });
     const blob = await put("bd-data-" + Date.now() + ".json", json, {
       access: "public",
       contentType: "application/json",
