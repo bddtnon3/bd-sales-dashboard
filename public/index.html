@@ -1141,7 +1141,7 @@ function renderStoreAnalysis(){
   const growing=wx.filter(x=>x.p>0&&x.l>x.p*1.15).sort((a,b)=>(b.l-b.p)-(a.l-a.p)).slice(0,6);
   const declining=wx.filter(x=>x.p>0&&x.l>0&&x.l<x.p*0.85).sort((a,b)=>(a.l-a.p)-(b.l-b.p)).slice(0,6);
   const dropped=wx.filter(x=>x.p>0&&x.l===0).sort((a,b)=>b.p-a.p).slice(0,6);
-  const isNew=s=>{let first=-1;for(const i of ci){if(niv(s,i)>0){first=i;break;}}return first===last&&last!==ci[0];};
+  const isNew=s=>{let first=-1;for(let i=0;i<=last;i++){if(niv(s,i)>0){first=i;break;}}return first===last&&last!==0;};
   const news=stores.filter(isNew).sort((a,b)=>niv(b,last)-niv(a,last)).slice(0,6);
   const top=[...active].sort((a,b)=>niv(b,last)-niv(a,last)).slice(0,6);
   const lm=fmtMonth(STORE.months[last]),pm=prev!=null?fmtMonth(STORE.months[prev]):"";
