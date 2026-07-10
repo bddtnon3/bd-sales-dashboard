@@ -674,6 +674,9 @@ let ANALYTICS = {months:[],lines:{},data:{}};
 
 /* STOREPROD (per-store product detail by line): {months, cat:{code:{g,b,n}}, stores:{scode:{n,l}}, data:{disp:{scode:{code:{niv:{mo:v},pc:{mo:v}}}}}} */
 let STOREPROD = {months:[],cat:{},stores:{},data:{}};
+
+/* STOREDAILY (per-store per-day from daily bill files): {data:{"YYYY-MM-DD":{storeCode:{l:line,n:name,cs,pc,niv}}}} */
+let STOREDAILY = {data:{}};
 let STORE_IDX={};   // line code -> array of {code,name,m:[[cs,pc,niv]...]}
 function buildStoreIdx(){
   STORE_IDX={};
@@ -724,7 +727,7 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};}
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209622","2096_97","209698"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();navReset();
   }catch(ex){alert("โหลดข้อมูลจากเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
@@ -735,7 +738,7 @@ let _syncTimer=null;
 function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบันทึกขึ้นเซิร์ฟเวอร์กลาง...");clearTimeout(_syncTimer);_syncTimer=setTimeout(_doSync,700);}
 async function _doSync(){
   if(!TOKEN)return;
-  try{const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD})});
+  try{const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY})});
     if(r.ok)ulog("✅ บันทึกขึ้นเซิร์ฟเวอร์กลางแล้ว — ทุกคนจะเห็นเมื่อรีเฟรช");
     else{const e=await r.json().catch(()=>({}));ulog("⚠️ บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status)));}
   }catch(ex){ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
@@ -1096,8 +1099,8 @@ function openStore(code){
   document.getElementById("stSearch").value="";
   const d=DATA.lines[code];
   document.getElementById("stTitle").innerHTML=`<span class="tag ${d.type.toLowerCase()}">${d.display}</span> ${d.name} — เจาะลึกรายร้าน`;
-  {const rf=storeRefMonths();const rm=STORE.months[rf.last]?fmtMonth(STORE.months[rf.last]):"-";
-   document.getElementById("stSub").textContent=`${STORE_IDX[code].length} ร้าน · ข้อมูล ${fmtMonth(STORE.months[0])} – ${fmtMonth(STORE.months[STORE.months.length-1])} · เทียบ % ที่: ${rm} (ตามช่วงที่เลือกในหน้ายอดขาย)`;}
+  {const B=storeBuckets(code);const rm=B.cols[B.ref]?B.cols[B.ref].label:"-";const pm=B.prev!=null&&B.cols[B.prev]?B.cols[B.prev].label:"—";const uw=storeUnitWord(S.period);
+   document.getElementById("stSub").textContent=`${STORE_IDX[code]?STORE_IDX[code].length:Object.keys(B.rows).length} ร้าน · มุมมองราย${uw} · เทียบ % : ${rm} vs ${pm} (ตามช่วงที่เลือกในหน้ายอดขาย)`;}
   renderStoreAnalysis();renderStoreTable();
   stView("table");
   document.getElementById("storeModal").classList.remove("hidden");
@@ -1113,7 +1116,7 @@ function stView(v){
 function closeStore(){document.getElementById("storeModal").classList.add("hidden");}
 document.getElementById("stMetric").addEventListener("click",e=>{if(e.target.dataset.m){ST.metric=e.target.dataset.m;setSeg("stMetric","m",ST.metric);renderStoreTable();}});
 
-/* reference month indices for store drill — follows the period/key selected in the sales tab */
+/* period buckets for store drill — daily/weekly from bill files, month/quarter/year from by-store */
 function storeMonthOf(period,key){
   if(!key)return null;
   if(period==="monthly")return key;
@@ -1122,65 +1125,82 @@ function storeMonthOf(period,key){
   if(period==="quarter"){const q=quarters().find(x=>x.id===key);return q&&q.months.length?q.months[q.months.length-1]:null;}
   return null;
 }
-function storeRefMonths(){
-  const mk=storeMonthOf(S.period,S.key);
-  let last=mk?STORE.months.indexOf(mk):-1;
-  if(last<0){const ci=completeMonthIdx();last=ci.length?ci[ci.length-1]:STORE.months.length-1;}
-  const prev=last-1>=0?last-1:null;
-  return {last,prev};
+function storeUnitWord(p){return {daily:"วัน",weekly:"สัปดาห์",monthly:"เดือน",quarter:"ไตรมาส",yearly:"ปี"}[p]||"ช่วง";}
+function fmtDateShort(d){const dt=new Date(d+"T00:00:00");return dt.getDate()+"/"+(dt.getMonth()+1);}
+function fmtWeekShort(id){const[a,b]=String(id).split("__");const A=new Date(a+"T00:00:00"),B=new Date(b+"T00:00:00");return A.getDate()+"/"+(A.getMonth()+1)+"–"+B.getDate()+"/"+(B.getMonth()+1);}
+function storeBuckets(line){
+  const p=S.period;
+  if(p==="daily"||p==="weekly"){
+    const SD=(STOREDAILY&&STOREDAILY.data)||{};const dates=Object.keys(SD).sort();
+    const bucketOf=(p==="daily")?(d=>d):(d=>weekId(d));
+    const rows={},seen={},arr=[];
+    dates.forEach(d=>{const day=SD[d];for(const sc in day){const e=day[sc];if(String(e.l)!==String(line))continue;
+      const bk=bucketOf(d);if(!seen[bk]){seen[bk]=1;arr.push(bk);}
+      const r=rows[sc]||(rows[sc]={name:e.n||sc,vals:{}});const cur=r.vals[bk]||(r.vals[bk]=[0,0,0]);
+      cur[0]+=e.cs||0;cur[1]+=e.pc||0;cur[2]+=e.niv||0;}});
+    let keys=arr.sort();if(p==="daily"&&keys.length>21)keys=keys.slice(keys.length-21);
+    const cols=keys.map(k=>({key:k,label:(p==="daily")?fmtDateShort(k):fmtWeekShort(k)}));
+    let ref=keys.indexOf(S.key);if(ref<0)ref=keys.length-1;const prev=ref-1>=0?ref-1:null;
+    return {source:p,cols,ref,prev,rows};
+  }
+  const stores=STORE_IDX[line]||[];let cols=[],km={};
+  if(p==="quarter"){quarters().forEach(q=>{cols.push({key:q.id,label:q.id});km[q.id]=q.months;});}
+  else if(p==="yearly"){const ys={};STORE.months.forEach(m=>{const y=m.slice(0,4);(ys[y]=ys[y]||[]).push(m);});Object.keys(ys).sort().forEach(y=>{cols.push({key:y,label:"ปี "+(+y+543)});km[y]=ys[y];});}
+  else{STORE.months.forEach(m=>{cols.push({key:m,label:fmtMonth(m).replace(/ 25\d\d/,"")});km[m]=[m];});}
+  const midx=m=>STORE.months.indexOf(m);
+  const rows={};stores.forEach(s=>{const r=rows[s.code]||(rows[s.code]={name:s.name||s.code,vals:{}});cols.forEach(c=>{const a=[0,0,0];km[c.key].forEach(m=>{const mi=midx(m);if(mi>=0&&s.m[mi]){a[0]+=s.m[mi][0]||0;a[1]+=s.m[mi][1]||0;a[2]+=s.m[mi][2]||0;}});r.vals[c.key]=a;});});
+  let refKey;if(p==="quarter")refKey=S.key;else if(p==="yearly")refKey=String(S.key).slice(0,4);else refKey=storeMonthOf("monthly",S.key)||S.key;
+  let ref=cols.findIndex(c=>c.key===refKey);if(ref<0)ref=cols.length-1;const prev=ref-1>=0?ref-1:null;
+  return {source:p,cols,ref,prev,rows};
 }
 function renderStoreAnalysis(){
-  const stores=STORE_IDX[ST.code]||[];
-  if(!STORE.months||!STORE.months.length){document.getElementById("stAnalysis").innerHTML="";return;}
-  const {last,prev}=storeRefMonths();
-  if(last<0){document.getElementById("stAnalysis").innerHTML="";return;}
-  const niv=(s,i)=>i!=null&&s.m[i]?s.m[i][2]:0;
-  const active=stores.filter(s=>niv(s,last)>0);
-  const totLast=active.reduce((a,s)=>a+niv(s,last),0);
-  const wx=stores.map(s=>({s,l:niv(s,last),p:niv(s,prev)}));
+  const el=document.getElementById("stAnalysis");const B=storeBuckets(ST.code);
+  if(!B.cols.length||B.ref<0){el.innerHTML='<div class="an-summary">ยังไม่มีข้อมูลสำหรับช่วงเวลานี้ '+(S.period==="daily"||S.period==="weekly"?"— อัพไฟล์บิลรายวันก่อน":"")+'</div>';return;}
+  const unit=storeUnitWord(S.period),codes=Object.keys(B.rows);
+  const niv=(sc,ci)=>{if(ci==null||ci<0)return 0;const a=B.rows[sc].vals[B.cols[ci].key];return a?a[2]:0;};
+  const nameOf=sc=>B.rows[sc].name;
+  const active=codes.filter(sc=>niv(sc,B.ref)>0);const totLast=active.reduce((a,sc)=>a+niv(sc,B.ref),0);
+  const wx=codes.map(sc=>({sc,l:niv(sc,B.ref),p:niv(sc,B.prev)}));
   const growing=wx.filter(x=>x.p>0&&x.l>x.p*1.15).sort((a,b)=>(b.l-b.p)-(a.l-a.p)).slice(0,6);
   const declining=wx.filter(x=>x.p>0&&x.l>0&&x.l<x.p*0.85).sort((a,b)=>(a.l-a.p)-(b.l-b.p)).slice(0,6);
   const dropped=wx.filter(x=>x.p>0&&x.l===0).sort((a,b)=>b.p-a.p).slice(0,6);
-  const isNew=s=>{let first=-1;for(let i=0;i<=last;i++){if(niv(s,i)>0){first=i;break;}}return first===last&&last!==0;};
-  const news=stores.filter(isNew).sort((a,b)=>niv(b,last)-niv(a,last)).slice(0,6);
-  const top=[...active].sort((a,b)=>niv(b,last)-niv(a,last)).slice(0,6);
-  const lm=fmtMonth(STORE.months[last]),pm=prev!=null?fmtMonth(STORE.months[prev]):"";
-  const nm=s=>s.name||s.code;
+  const isNew=sc=>{let first=-1;for(let i=0;i<=B.ref;i++){if(niv(sc,i)>0){first=i;break;}}return first===B.ref&&B.ref!==0;};
+  const news=codes.filter(isNew).sort((a,b)=>niv(b,B.ref)-niv(a,B.ref)).slice(0,6);
+  const top=[...active].sort((a,b)=>niv(b,B.ref)-niv(a,B.ref)).slice(0,6);
+  const lm=B.cols[B.ref].label,pm=B.prev!=null?B.cols[B.prev].label:"";
   const li=(arr,fn)=>arr.length?arr.map(fn).join(""):`<div class="mini muted">— ไม่มี —</div>`;
-  let sum=`เดือนล่าสุด (${lm}) มีร้านที่ยังสั่งซื้อ <b>${active.length}</b> จาก <b>${stores.length}</b> ร้าน · ยอดรวม <b>${THB(totLast)}</b>`;
-  if(prev!=null)sum+=` · เทียบ ${pm}: 🔺โต ${growing.length} · 🔻ตก ${declining.length} · ⚠️หลุด ${dropped.length}`;
-  document.getElementById("stAnalysis").innerHTML=`
+  let sum=`${unit}ล่าสุด (${lm}) มีร้านสั่งซื้อ <b>${active.length}</b> จาก <b>${codes.length}</b> ร้าน · ยอดรวม <b>${THB(totLast)}</b>`;
+  if(B.prev!=null)sum+=` · เทียบ ${pm}: 🔺โต ${growing.length} · 🔻ตก ${declining.length} · ⚠️หลุด ${dropped.length}`;
+  el.innerHTML=`
     <div class="an-summary">🧠 ${sum}</div>
     <div class="an-grid">
-      <div class="an-box b-good"><h4>🏆 ร้านยอดสูงสุด</h4>${li(top,x=>`<div class="mini"><span>${nm(x)}</span><b>${THB(niv(x,last))}</b></div>`)}</div>
-      <div class="an-box b-up"><h4>🔺 ร้านโตเด่น <small>(vs ${pm})</small></h4>${li(growing,x=>`<div class="mini"><span>${nm(x.s)}</span><b class="up">+${THB(x.l-x.p)}</b></div>`)}</div>
-      <div class="an-box b-down"><h4>🔻 ร้านยอดตก <small>(vs ${pm})</small></h4>${li(declining,x=>`<div class="mini"><span>${nm(x.s)}</span><b class="down">${THB(x.l-x.p)}</b></div>`)}</div>
-      <div class="an-box b-warn"><h4>⚠️ ร้านหลุด <small>(เคยซื้อ ${pm} · ${lm} = 0)</small></h4>${li(dropped,x=>`<div class="mini"><span>${nm(x.s)}</span><b class="down">฿0</b></div>`)}</div>
-      <div class="an-box b-new"><h4>🆕 ร้านใหม่ <small>(เพิ่งเริ่มซื้อ ${lm})</small></h4>${li(news,x=>`<div class="mini"><span>${nm(x)}</span><b class="up">${THB(niv(x,last))}</b></div>`)}</div>
+      <div class="an-box b-good"><h4>🏆 ร้านยอดสูงสุด</h4>${li(top,sc=>`<div class="mini"><span>${nameOf(sc)}</span><b>${THB(niv(sc,B.ref))}</b></div>`)}</div>
+      <div class="an-box b-up"><h4>🔺 ร้านโตเด่น <small>(vs ${pm})</small></h4>${li(growing,x=>`<div class="mini"><span>${nameOf(x.sc)}</span><b class="up">+${THB(x.l-x.p)}</b></div>`)}</div>
+      <div class="an-box b-down"><h4>🔻 ร้านยอดตก <small>(vs ${pm})</small></h4>${li(declining,x=>`<div class="mini"><span>${nameOf(x.sc)}</span><b class="down">${THB(x.l-x.p)}</b></div>`)}</div>
+      <div class="an-box b-warn"><h4>⚠️ ร้านหลุด <small>(เคยซื้อ ${pm})</small></h4>${li(dropped,x=>`<div class="mini"><span>${nameOf(x.sc)}</span><b class="down">฿0</b></div>`)}</div>
+      <div class="an-box b-new"><h4>🆕 ร้านใหม่ <small>(เพิ่งเริ่ม ${lm})</small></h4>${li(news,sc=>`<div class="mini"><span>${nameOf(sc)}</span><b class="up">${THB(niv(sc,B.ref))}</b></div>`)}</div>
     </div>
-    <div class="an-tip">💡 <b>คำแนะนำเซลล์:</b> โฟกัสไปที่ <b>ร้านหลุด</b> และ <b>ร้านยอดตก</b> ก่อน — โทร/เข้าเยี่ยมเพื่อดึงกลับ, รักษา <b>ร้าน Top</b> ไม่ให้ถูกคู่แข่งแย่ง, และต่อยอด <b>ร้านใหม่/ร้านโต</b> ด้วยสินค้ากลุ่มอื่น</div>`;
+    <div class="an-tip">💡 <b>คำแนะนำเซลล์:</b> โฟกัส <b>ร้านหลุด</b> และ <b>ร้านยอดตก</b> ก่อน, รักษา <b>ร้าน Top</b>, ต่อยอด <b>ร้านใหม่/ร้านโต</b></div>`;
 }
-
 function renderStoreTable(){
-  const stores=STORE_IDX[ST.code]||[];
-  const mi=MIDX[ST.metric];
+  const B=storeBuckets(ST.code);const mi=MIDX[ST.metric];
   const q=(document.getElementById("stSearch").value||"").trim().toLowerCase();
-  const {last,prev}=storeRefMonths();
-  const v=(s,i)=>i!=null&&s.m[i]?s.m[i][mi]:0;
-  let list=stores.filter(s=>!q||(s.name||"").toLowerCase().includes(q)||String(s.code).includes(q));
-  list.sort((a,b)=>v(b,last)-v(a,last));
-  const lm=STORE.months[last]?fmtMonth(STORE.months[last]):"",pm=prev!=null&&STORE.months[prev]?fmtMonth(STORE.months[prev]):"";
-  const cols=["ร้าน",...STORE.months.map((m,i)=>fmtMonth(m).replace(/ 25\d\d/,"")+(i===last?" 🔵":i>last?" ⏳":"")),"เปลี่ยน"+(pm?` (${lm.replace(/ 25\d\d/,"")} vs ${pm.replace(/ 25\d\d/,"")})`:"")];
+  const val=(sc,ci)=>{if(ci==null||ci<0)return 0;const a=B.rows[sc].vals[B.cols[ci].key];return a?a[mi]:0;};
+  let list=Object.keys(B.rows).filter(sc=>!q||(B.rows[sc].name||"").toLowerCase().includes(q)||sc.includes(q));
+  list.sort((a,b)=>val(b,B.ref)-val(a,B.ref));
+  const isM=(B.source==="monthly"||B.source==="quarter"||B.source==="yearly");
+  const refL=B.cols[B.ref]?B.cols[B.ref].label:"",prevL=B.prev!=null&&B.cols[B.prev]?B.cols[B.prev].label:"";
+  const cols=["ร้าน",...B.cols.map((c,i)=>c.label+(i===B.ref?" 🔵":(isM&&i>B.ref?" ⏳":""))),"เปลี่ยน"+(prevL?` (${refL} vs ${prevL})`:"")];
   document.querySelector("#stTbl thead").innerHTML="<tr>"+cols.map(c=>`<th>${c}</th>`).join("")+"</tr>";
   let html="";
-  list.forEach(s=>{
-    const cells=STORE.months.map((m,i)=>{const x=v(s,i);const hl=i===last?' style="background:#EAF1FD;font-weight:700"':'';return `<td${hl}>${x?fmtMetric(x):"<span style='color:#cdd6e5'>–</span>"}</td>`;}).join("");
-    const l=v(s,last),p=v(s,prev);let chg="–",cc="";
+  list.forEach(sc=>{
+    const cells=B.cols.map((c,i)=>{const x=val(sc,i);const hl=i===B.ref?' style="background:#EAF1FD;font-weight:700"':'';return `<td${hl}>${x?fmtMetric(x):"<span style='color:#cdd6e5'>–</span>"}</td>`;}).join("");
+    const l=val(sc,B.ref),p=val(sc,B.prev);let chg="–",cc="";
     if(p>0){const pct=(l-p)/p*100;cc=pct>=5?"up":pct<=-5?"down":"mid";chg=(pct>=0?"+":"")+pct.toFixed(0)+"%";}
     else if(l>0){chg="ใหม่";cc="up";}
-    html+=`<tr><td style="text-align:left;font-weight:600">${s.name||s.code}</td>${cells}<td class="${cc}"><b>${chg}</b></td></tr>`;
+    html+=`<tr><td style="text-align:left;font-weight:600">${B.rows[sc].name||sc}</td>${cells}<td class="${cc}"><b>${chg}</b></td></tr>`;
   });
-  if(!list.length)html=`<tr><td colspan="${cols.length}" style="text-align:center;color:var(--muted);padding:24px">ไม่พบร้านที่ค้นหา</td></tr>`;
+  if(!list.length)html=`<tr><td colspan="${cols.length}" style="text-align:center;color:var(--muted);padding:24px">${Object.keys(B.rows).length?"ไม่พบร้านที่ค้นหา":((S.period==="daily"||S.period==="weekly")?"ยังไม่มีข้อมูลบิลรายวันของสายนี้ในช่วงนี้":"ยังไม่มีข้อมูลช่วงนี้")}</td></tr>`;
   document.querySelector("#stTbl tbody").innerHTML=html;
 }
 
@@ -1793,11 +1813,18 @@ function parseDaily(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true});
   const agg={};let dset=new Set();
+  if(!STOREDAILY||typeof STOREDAILY!=="object")STOREDAILY={data:{}};if(!STOREDAILY.data)STOREDAILY.data={};
+  const seenD={};
   for(let i=1;i<rows.length;i++){const r=rows[i];if(!r||!r[0])continue;
     const code=String(r[0]).trim();const dkey=toYMD(r[7]);if(!dkey)continue;
+    if(!seenD[dkey]){seenD[dkey]=1;STOREDAILY.data[dkey]={};}   /* re-upload replaces that day */
     dset.add(dkey);(agg[dkey]=agg[dkey]||{});agg[dkey][code]=(agg[dkey][code]||0)+(parseFloat(r[15])||0);
     if(!DATA.lines[code])addLine(code,r[2],r[1]);
+    const sc=r[4]!=null?String(r[4]).trim():"";
+    if(sc){const dd=STOREDAILY.data[dkey],e=dd[sc]||(dd[sc]={l:code,n:"",cs:0,pc:0,niv:0});
+      e.cs+=parseFloat(r[10])||0;e.pc+=parseFloat(r[11])||0;e.niv+=parseFloat(r[15])||0;e.n=r[5]!=null?String(r[5]):e.n;e.l=code;}
   }
+  Object.keys(seenD).forEach(dk=>{const dd=STOREDAILY.data[dk];for(const sc in dd){dd[sc].cs=Math.round(dd[sc].cs*10)/10;dd[sc].pc=Math.round(dd[sc].pc*10)/10;dd[sc].niv=Math.round(dd[sc].niv*100)/100;}});
   if(!dset.size)throw new Error("ไม่พบข้อมูลรายวัน (ตรวจว่าเป็นไฟล์รายการบิลรายวัน)");
   Object.keys(agg).forEach(d=>{Object.keys(agg[d]).forEach(c=>agg[d][c]=Math.round(agg[d][c]*100)/100);DATA.daily[d]=agg[d];});
   const perDay=[...dset].sort().map(d=>fmtDate(d)+" = "+THB(Object.values(DATA.daily[d]).reduce((a,b)=>a+b,0))).join(" · ");
