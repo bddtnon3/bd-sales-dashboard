@@ -62,9 +62,10 @@ export default async function handler(req, res) {
       access: "public", contentType: "application/json", addRandomSuffix: true,
     });
     try {
+      const KEEP = 8;
       const { blobs } = await list({ prefix: "bd-data-" });
-      const mine = new Date(blob.uploadedAt || Date.now()).getTime();
-      for (const b of blobs.filter((b) => b.url !== blob.url && new Date(b.uploadedAt).getTime() < mine)) await del(b.url);
+      blobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+      for (const b of blobs.slice(KEEP)) await del(b.url);
     } catch { /* best-effort cleanup */ }
 
     res.json({ ok: true });
