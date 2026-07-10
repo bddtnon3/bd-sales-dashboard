@@ -12,6 +12,18 @@ function seed() {
   return SEED;
 }
 
+// A snapshot is "empty" if it carries no real business data. We never let an empty
+// snapshot shadow a good one — protects against a bad/blank save wiping the view.
+function looksEmpty(d) {
+  if (!d || !d.DATA) return true;
+  const m = Object.keys(d.DATA.monthly || {}).length;
+  const dd = Object.keys(d.DATA.daily || {}).length;
+  const st = ((d.STOCKD && d.STOCKD.rows) || []).length;
+  const od = ((d.ORDERS && d.ORDERS.dates) || []).length;
+  const kp = ((d.KPI && d.KPI.months) || []).length;
+  return (m + dd + st + od + kp) === 0;
+}
+
 export default async function handler(req, res) {
   if (!verify(bearer(req))) return res.status(401).json({ error: "unauthorized" });
   res.setHeader("Cache-Control", "no-store");
@@ -22,14 +34,21 @@ export default async function handler(req, res) {
   try {
     const { blobs } = await list({ prefix: "bd-data-" });
     if (!blobs.length) return res.json(seed());
-    // newest wins
+    // newest first
     blobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
-    const r = await fetch(blobs[0].url, { cache: "no-store" });
-    if (!r.ok) return res.json(seed());
-    const data = await r.json();
-    res.json(data);
+    // Return the newest snapshot that actually has data. This automatically
+    // recovers real data if a blank/partial snapshot happens to be newest.
+    for (const b of blobs) {
+      try {
+        const r = await fetch(b.url, { cache: "no-store" });
+        if (!r.ok) continue;
+        const data = await r.json();
+        if (!looksEmpty(data)) return res.json(data);
+      } catch { /* try older snapshot */ }
+    }
+    // every snapshot was empty -> seed
+    return res.json(seed());
   } catch (e) {
-    // fall back gracefully so viewing never breaks
     res.json(seed());
   }
 }
