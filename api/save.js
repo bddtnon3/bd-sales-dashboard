@@ -16,20 +16,33 @@ export default async function handler(req, res) {
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = null; } }
   if (!body || !body.DATA) return res.status(400).json({ error: "ไม่มีข้อมูลที่จะบันทึก" });
 
+  // SAFETY: never let a blank/empty state overwrite good data. If the incoming payload
+  // carries no business data at all, refuse — this is almost always a client that
+  // failed to load before saving, and saving it would wipe everything.
+  const m = Object.keys((body.DATA && body.DATA.monthly) || {}).length;
+  const dd = Object.keys((body.DATA && body.DATA.daily) || {}).length;
+  const st = ((body.STOCKD && body.STOCKD.rows) || []).length;
+  const od = ((body.ORDERS && body.ORDERS.dates) || []).length;
+  const kp = ((body.KPI && body.KPI.months) || []).length;
+  if ((m + dd + st + od + kp) === 0) {
+    return res.status(409).json({ error: "ข้อมูลว่างเปล่า — ยกเลิกการบันทึกเพื่อป้องกันข้อมูลเดิมหาย (ลองรีเฟรชแล้วโหลดข้อมูลใหม่ก่อนอัพโหลด)" });
+  }
+
   try {
-    const json = JSON.stringify({ DATA: body.DATA, STORE: body.STORE || { months: [], stores: [] }, KPI: body.KPI || { months: [], lines: {}, data: {}, workdays: 26 }, ORDERS: body.ORDERS || { dates: [], data: {}, names: {} }, STOCKD: body.STOCKD || { date: null, rows: [], names: {} }, REQUESTS: body.REQUESTS || { data: {} }, MASTER: body.MASTER || { items: {} }, ANALYTICS: body.ANALYTICS || { months: [], lines: {}, data: {} }, STOREPROD: body.STOREPROD || { months: [], cat: {}, stores: {}, data: {} }, savedAt: Date.now() });
+    const json = JSON.stringify({ DATA: body.DATA, STORE: body.STORE || { months: [], stores: [] }, KPI: body.KPI || { months: [], lines: {}, data: {}, workdays: 26 }, ORDERS: body.ORDERS || { dates: [], data: {}, names: {} }, STOCKD: body.STOCKD || { date: null, rows: [], names: {} }, REQUESTS: body.REQUESTS || { data: {} }, MASTER: body.MASTER || { items: {} }, ANALYTICS: body.ANALYTICS || { months: [], lines: {}, data: {} }, STOREPROD: body.STOREPROD || { months: [], cat: {}, stores: {}, data: {} }, STOREDAILY: body.STOREDAILY || { data: {} }, savedAt: Date.now() });
     const blob = await put("bd-data-" + Date.now() + ".json", json, {
       access: "public",
       contentType: "application/json",
       addRandomSuffix: true,
     });
-    // keep only the newest snapshot — only delete blobs strictly OLDER than the one
-    // we just wrote, so a concurrent save can never delete a newer blob (data loss).
+    // Keep the last several snapshots as rolling backups (instead of only the newest).
+    // A bad single save can no longer erase history — older good snapshots survive and
+    // are auto-restored by api/data.js (which returns the newest NON-empty snapshot).
     try {
+      const KEEP = 8;
       const { blobs } = await list({ prefix: "bd-data-" });
-      const mine = new Date(blob.uploadedAt || Date.now()).getTime();
-      const olds = blobs.filter((b) => b.url !== blob.url && new Date(b.uploadedAt).getTime() < mine);
-      for (const b of olds) await del(b.url);
+      blobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+      for (const b of blobs.slice(KEEP)) await del(b.url);
     } catch { /* cleanup best-effort */ }
 
     res.json({ ok: true, url: blob.url });
