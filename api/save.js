@@ -1,5 +1,18 @@
 import { put, list, del } from "@vercel/blob";
+import { gunzipSync } from "zlib";
 import { verify, bearer } from "../lib/auth.js";
+
+// Accept a gzipped raw body (sent when the state is large, to stay under the
+// serverless request-size limit). Read the raw stream and inflate.
+async function readGzipBody(req) {
+  let buf = req.body;
+  if (!Buffer.isBuffer(buf)) {
+    const chunks = [];
+    for await (const c of req) chunks.push(typeof c === "string" ? Buffer.from(c) : c);
+    buf = Buffer.concat(chunks);
+  }
+  return JSON.parse(gunzipSync(buf).toString("utf8"));
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method not allowed" });
@@ -12,8 +25,13 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "ยังไม่ได้ตั้งค่า Blob storage (ดู README ขั้นตอนสร้าง Blob store)" });
   }
 
-  let body = req.body;
-  if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = null; } }
+  let body;
+  if (req.headers["x-body-gzip"]) {
+    try { body = await readGzipBody(req); } catch (e) { return res.status(400).json({ error: "อ่านข้อมูล (gzip) ไม่ได้: " + (e && e.message) }); }
+  } else {
+    body = req.body;
+    if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = null; } }
+  }
   if (!body || !body.DATA) return res.status(400).json({ error: "ไม่มีข้อมูลที่จะบันทึก" });
 
   // SAFETY: never let a blank/empty state overwrite good data. If the incoming payload
