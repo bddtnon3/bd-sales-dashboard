@@ -738,7 +738,12 @@ let _syncTimer=null;
 function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบันทึกขึ้นเซิร์ฟเวอร์กลาง...");clearTimeout(_syncTimer);_syncTimer=setTimeout(_doSync,700);}
 async function _doSync(){
   if(!TOKEN)return;
-  try{const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY})});
+  try{
+    const payload=JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY});
+    let body=payload,headers={"Content-Type":"application/json","Authorization":"Bearer "+TOKEN};
+    /* gzip to stay under the serverless request-size limit (~4.5MB); 8-9MB -> ~1.5MB */
+    try{if(typeof CompressionStream!=="undefined"){const cs=new Blob([payload]).stream().pipeThrough(new CompressionStream("gzip"));body=await new Response(cs).arrayBuffer();headers={"Content-Type":"application/octet-stream","x-body-gzip":"1","Authorization":"Bearer "+TOKEN};}}catch(e){}
+    const r=await fetch("/api/save",{method:"POST",headers,body});
     if(r.ok)ulog("✅ บันทึกขึ้นเซิร์ฟเวอร์กลางแล้ว — ทุกคนจะเห็นเมื่อรีเฟรช");
     else{const e=await r.json().catch(()=>({}));ulog("⚠️ บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status)));}
   }catch(ex){ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
