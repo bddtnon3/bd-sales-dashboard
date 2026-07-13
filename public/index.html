@@ -1418,6 +1418,10 @@ function fnameDate(name){
   return null;
 }
 function orderedMerged(day){const m={};const R=(day&&day.rounds)||{};Object.keys(R).forEach(rk=>{const it=R[rk];Object.keys(it).forEach(c=>{m[c]=(m[c]||0)+it[c];});});return m;}
+/* drop entry helpers — support both new {o,d,q} and old number format */
+function dropO(e){return (e&&typeof e==="object")?(e.o||0):0;}
+function dropD(e){return (e&&typeof e==="object")?(e.d||0):0;}
+function dropQ(e){return (e&&typeof e==="object")?(e.q||0):(typeof e==="number"?e:0);}
 function allOrderDates(){
   const s=new Set((ORDERS&&ORDERS.dates)||[]);
   Object.keys((REQUESTS&&REQUESTS.data)||{}).forEach(d=>s.add(d));
@@ -1445,10 +1449,12 @@ function renderOrder(){
   const ordered=orderedMerged(d),dropped=d.dropped||{};
   renderOrderManage(d);
   const oCodes=Object.keys(ordered),dCodes=Object.keys(dropped);
-  const recvCodes=oCodes.filter(c=>!(c in dropped));
+  const recvCodes=oCodes.filter(c=>!(c in dropped));            /* ได้ครบ (ไม่อยู่ในใบ drop) */
+  const partialCodes=dCodes.filter(c=>dropD(dropped[c])>0);     /* ได้บางส่วน */
   const totOrd=oCodes.reduce((s,c)=>s+(ordered[c]||0),0);
-  const totDrop=dCodes.reduce((s,c)=>s+(dropped[c]||ordered[c]||0),0);
-  const totRecv=recvCodes.reduce((s,c)=>s+(ordered[c]||0),0);
+  const totDrop=dCodes.reduce((s,c)=>s+(dropQ(dropped[c])||ordered[c]||0),0);   /* จำนวนที่ดรอปจริง (Q) */
+  const totRecv=recvCodes.reduce((s,c)=>s+(ordered[c]||0),0)+dCodes.reduce((s,c)=>s+dropD(dropped[c]),0); /* ได้ครบ + ได้บางส่วน */
+  const recvCount=recvCodes.length+partialCodes.length;
   const st=d.hasResult;
   bar.innerHTML=`🛒 การสั่งของ · ศูนย์ BD · วันสั่ง <b>${fmtDate(ORD.date)}</b>`;
   const chip=(t,ok)=>`<span class="ochip ${ok?'done':'wait'}">${t} ${ok?'✓':'…'}</span>`;
@@ -1461,27 +1467,30 @@ function renderOrder(){
     : `<div class="card"><div class="k">สถานะ</div><div class="v" style="font-size:16px">${st?"ได้ผลแล้ว":"รอ Unilever"}</div><div class="s">${st?"อัปเดตล่าสุด":"ตอบกลับช่วงเย็น–ดึก"}</div></div>`;
   document.getElementById("orderCards").innerHTML=`
     <div class="card"><div class="k">สั่งทั้งหมด</div><div class="v">${oCodes.length}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${totOrd.toLocaleString()} ลัง</div></div>
-    <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">ได้ของ (confirm)</div><div class="v up">${st?recvCodes.length:"–"}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${st?totRecv.toLocaleString()+" ลัง":"รอผล"}</div></div>
-    <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">Drop (สั่งไม่ได้)</div><div class="v down">${st?dCodes.length:"–"}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${st?totDrop.toLocaleString()+" ลัง":"รอผล"}</div></div>
+    <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">ได้ของ (confirm)</div><div class="v up">${st?recvCount:"–"}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${st?totRecv.toLocaleString()+" ลัง"+(partialCodes.length?" · บางส่วน "+partialCodes.length:""):"รอผล"}</div></div>
+    <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">Drop (สั่งไม่ได้)</div><div class="v down">${st?dCodes.length:"–"}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${st?totDrop.toLocaleString()+" ลัง (Q)":"รอผล"}</div></div>
     ${card4}`;
   const q=(document.getElementById("orderSearch").value||"").trim().toLowerCase();
   const match=c=>!q||c.includes(q)||oname(c).toLowerCase().includes(q);
   const dropEl=document.getElementById("orderDrop");
   if(!st){dropEl.innerHTML='<div class="note">⏳ ยังไม่ได้อัพไฟล์ Drop ของวันนี้ — รายการ drop จะขึ้นเมื่ออัพไฟล์ชื่อ "Drop DDMMYYYY"</div>';}
   else{
-    const dl=dCodes.filter(match).sort((a,b)=>(dropped[b]||ordered[b]||0)-(dropped[a]||ordered[a]||0));
+    const dl=dCodes.filter(match).sort((a,b)=>(dropQ(dropped[b])||ordered[b]||0)-(dropQ(dropped[a])||ordered[a]||0));
     dropEl.innerHTML=`<h3 style="color:var(--bad)">❌ รายการที่ถูก Drop — สั่งไม่ได้ (${dCodes.length})</h3>
-      <div class="psub">เซลล์ควรทราบ เพื่อไม่รับปากลูกค้ากับของเหล่านี้</div>
-      <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>สั่งไป (ลัง)</th></tr></thead><tbody>${
-        dl.length?dl.map(c=>`<tr><td>${c}</td><td style="text-align:left">${oname(c)||"<span style='color:var(--muted)'>(รหัสใหม่ ยังไม่มีชื่อในสต็อก)</span>"}</td><td><b>${dropped[c]||ordered[c]||0}</b></td></tr>`).join(""):`<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">ไม่พบรายการที่ค้นหา</td></tr>`
+      <div class="psub">เซลล์ควรทราบ เพื่อไม่รับปากลูกค้ากับของเหล่านี้ · <b>สั่ง</b> = สั่งไป (O) · <b>ได้</b> = ได้ของบางส่วน (P) · <b>ดรอป</b> = สั่งไม่ได้จริง (Q = O−P)</div>
+      <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>สั่ง (O)</th><th>ได้ (P)</th><th>ดรอป (Q)</th></tr></thead><tbody>${
+        dl.length?dl.map(c=>{const e=dropped[c];const o=dropO(e)||ordered[c]||0,dd2=dropD(e),qq=dropQ(e)||ordered[c]||0;return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"<span style='color:var(--muted)'>(รหัสใหม่ ยังไม่มีชื่อในสต็อก)</span>"}</td><td>${o||"-"}</td><td class="${dd2>0?'up':''}">${dd2||"-"}</td><td><b class="down">${qq}</b></td></tr>`;}).join(""):`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">ไม่พบรายการที่ค้นหา</td></tr>`
       }</tbody></table></div>`;
   }
   const recvEl=document.getElementById("orderRecv");
-  const showCodes=(st?recvCodes:oCodes).filter(match).sort((a,b)=>(ordered[b]||0)-(ordered[a]||0));
-  recvEl.innerHTML=`<h3 style="color:var(--good)">✅ ${st?"ได้ของครบ":"รายการที่สั่ง (รอผล)"} (${st?recvCodes.length:oCodes.length})</h3>
-    <div class="psub">${st?"รายการที่ Unilever ยืนยัน — พร้อมขาย":"ยังไม่ทราบผล จนกว่าจะอัพไฟล์ Confirm"}</div>
-    <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>จำนวน (ลัง)</th></tr></thead><tbody>${
-      showCodes.map(c=>`<tr><td>${c}</td><td style="text-align:left">${oname(c)||"<span style='color:var(--muted)'>(รหัสใหม่)</span>"}</td><td><b>${ordered[c]||0}</b></td></tr>`).join("")||`<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">ไม่พบรายการ</td></tr>`
+  /* fully received + partially received (from drop file P>0) */
+  const recvRows=(st?recvCodes:oCodes).map(c=>({c,qty:ordered[c]||0,partial:false}))
+    .concat(st?partialCodes.map(c=>({c,qty:dropD(dropped[c]),partial:true})):[])
+    .filter(o=>match(o.c)).sort((a,b)=>b.qty-a.qty);
+  recvEl.innerHTML=`<h3 style="color:var(--good)">✅ ${st?"ได้ของ (ครบ + บางส่วน)":"รายการที่สั่ง (รอผล)"} (${st?recvCount:oCodes.length})</h3>
+    <div class="psub">${st?"รายการที่ Unilever ยืนยัน — พร้อมขาย (บางส่วน = ได้ไม่ครบตามสั่ง)":"ยังไม่ทราบผล จนกว่าจะอัพไฟล์ Confirm"}</div>
+    <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ได้ (ลัง)</th></tr></thead><tbody>${
+      recvRows.map(o=>`<tr><td>${o.c}</td><td style="text-align:left">${oname(o.c)||"<span style='color:var(--muted)'>(รหัสใหม่)</span>"}${o.partial?' <span class="ana-idx" style="background:#FDF3DB;color:#9a7100">บางส่วน</span>':''}</td><td><b>${o.qty||0}</b></td></tr>`).join("")||`<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">ไม่พบรายการ</td></tr>`
     }</tbody></table></div>`;
 }
 function renderOrderManage(day){
@@ -1563,7 +1572,7 @@ function todayISO(){const d=new Date();return d.getFullYear()+"-"+String(d.getMo
 /* order round cutoff 09:00 — before 9am counts for today, from 9am onward goes to next day */
 function orderRoundDate(){const now=new Date();const d=new Date(now);if(now.getHours()>=9)d.setDate(d.getDate()+1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function reqDatesFor(code){return Object.keys((REQUESTS&&REQUESTS.data)||{}).filter(d=>REQUESTS.data[d]&&REQUESTS.data[d][code]).sort();}
-function reqStatusFn(date){const day=(ORDERS.data||{})[date];if(!day||!day.hasResult)return null;const dropped=day.dropped||{};return c=>(c in dropped)?"drop":"got";}
+function reqStatusFn(date){const day=(ORDERS.data||{})[date];if(!day||!day.hasResult)return null;const dropped=day.dropped||{};return c=>{if(!(c in dropped))return "got";return dropD(dropped[c])>0?"got":"drop";};}
 function openReqModal(){
   REQ.date=orderRoundDate();const mine=S.user&&S.user.code;
   const ex=REQUESTS.data&&REQUESTS.data[REQ.date]&&REQUESTS.data[REQ.date][mine];
@@ -1745,9 +1754,18 @@ function parseDrop(name,buf){
     if(hdr<0)return;
     const HH=(rows[hdr]||[]).map(x=>String(x==null?"":x).trim());
     const cMat=HH.indexOf("Material"),cDesc=HH.indexOf("Material Description");
+    const cOrd=HH.findIndex(v=>v==="Order Quantity"),cDel=HH.findIndex(v=>/^Deliver(y)? quantity$/i.test(v)),cDrp=HH.findIndex(v=>v==="Drop Quantity");
+    const num=x=>{const f=parseFloat(String(x==null?"":x).replace(/,/g,""));return isNaN(f)?0:f;};
     for(let i=hdr+1;i<rows.length;i++){const r=rows[i]||[];const code=String(r[cMat]==null?"":r[cMat]).trim();
-      if(!/^\d+$/.test(code))continue;items[code]=0;if(cDesc>=0&&r[cDesc])dropNames[code]=String(r[cDesc]);}
+      if(!/^\d+$/.test(code))continue;
+      const o=cOrd>=0?num(r[cOrd]):0, d=cDel>=0?num(r[cDel]):0;
+      let q=cDrp>=0?num(r[cDrp]):(o-d); if(q<0)q=0;
+      if(q<=0&&o<=0)continue;                 /* ไม่มีการดรอปจริง = ได้ครบ ไม่ต้องขึ้น drop */
+      const cur=items[code]||(items[code]={o:0,d:0,q:0}); cur.o+=o; cur.d+=d; cur.q+=q;
+      if(cDesc>=0&&r[cDesc])dropNames[code]=String(r[cDesc]);}
   });
+  /* keep only rows that actually have a drop (Q>0) */
+  Object.keys(items).forEach(c=>{if((items[c].q||0)<=0)delete items[c];});
   const date=fnameDate(name)||rdate;
   if(!date)throw new Error("ระบุวันที่ไม่ได้ (ตั้งชื่อไฟล์เช่น Drop 03072026.xlsx)");
   if(!Object.keys(items).length)throw new Error("ไม่พบรายการ Drop ในไฟล์ (ต้องเป็น Daily Drop Report ที่มีคอลัมน์ Material)");
