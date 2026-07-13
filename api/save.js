@@ -44,6 +44,56 @@ function mergeRequests(a, b) {
   return out;
 }
 
+/* ============================================================================
+ * SERVER-SIDE MERGE — the core data-safety guarantee.
+ * We NEVER overwrite the server state with the client's whole state. Instead we
+ * merge the incoming payload INTO the current server state, key by key:
+ *   - keyed maps (by date / month / line / store): union, client wins its own keys,
+ *     keys the client doesn't have are kept from the server (so nothing disappears).
+ *   - snapshots (stock / by-store / master): keep the fresher/bigger one, so a stale
+ *     client can never roll data back to an older version.
+ * Result: uploading/editing one section can never erase another section, and an
+ * out-of-date browser can never wipe newer data uploaded by someone else.
+ * ==========================================================================*/
+function keyMerge(server, client) { const out = Object.assign({}, server || {}); const c = client || {}; for (const k in c) out[k] = c[k]; return out; }
+function unionArr(a, b) { const o = [], seen = {}; [...(a || []), ...(b || [])].forEach((x) => { if (!seen[x]) { seen[x] = 1; o.push(x); } }); return o.sort(); }
+function stockScore(x) { if (!x) return -1; const up = x.up || 0; const d = x.date ? Number(String(x.date).replace(/-/g, "")) : 0; return up * 1e9 + d; }
+function pickNewerStock(a, b) { const ra = ((a && a.rows) || []).length, rb = ((b && b.rows) || []).length; if (!rb) return a || { date: null, rows: [], names: {} }; if (!ra) return b; return stockScore(b) >= stockScore(a) ? b : a; }
+function pickBiggerStore(a, b) { const am = ((a && a.months) || []).length, bm = ((b && b.months) || []).length; if (bm > am) return b; if (am > bm) return a || { months: [], stores: [] }; const as = ((a && a.stores) || []).length, bs = ((b && b.stores) || []).length; return bs >= as ? (b || { months: [], stores: [] }) : a; }
+function pickBiggerMaster(a, b) { const ai = Object.keys((a && a.items) || {}).length, bi = Object.keys((b && b.items) || {}).length; return bi >= ai ? (bi ? b : (a || { items: {} })) : a; }
+function mergeState(server, c) {
+  const s = server || {};
+  const sD = s.DATA || {}, cD = c.DATA || {};
+  const DATA = {
+    lines: keyMerge(sD.lines, cD.lines),
+    monthly: keyMerge(sD.monthly, cD.monthly),
+    daily: keyMerge(sD.daily, cD.daily),
+    focus_order: (cD.focus_order && cD.focus_order.length) ? cD.focus_order : (sD.focus_order || []),
+  };
+  const sK = s.KPI || {}, cK = c.KPI || {};
+  const KPI = { months: unionArr(sK.months, cK.months), lines: keyMerge(sK.lines, cK.lines), data: keyMerge(sK.data, cK.data), workdays: cK.workdays || sK.workdays || 26 };
+  const sO = s.ORDERS || {}, cO = c.ORDERS || {};
+  const ORDERS = { data: keyMerge(sO.data, cO.data), dates: unionArr(sO.dates, cO.dates), names: keyMerge(sO.names, cO.names) };
+  const sA = s.ANALYTICS || {}, cA = c.ANALYTICS || {};
+  const ANALYTICS = { months: unionArr(sA.months, cA.months), lines: keyMerge(sA.lines, cA.lines), data: keyMerge(sA.data, cA.data) };
+  const sP = s.STOREPROD || {}, cP = c.STOREPROD || {};
+  const STOREPROD = { months: unionArr(sP.months, cP.months), cat: keyMerge(sP.cat, cP.cat), stores: keyMerge(sP.stores, cP.stores), data: keyMerge(sP.data, cP.data) };
+  const STOREDAILY = { data: keyMerge((s.STOREDAILY && s.STOREDAILY.data), (c.STOREDAILY && c.STOREDAILY.data)) };
+  return {
+    DATA,
+    STORE: pickBiggerStore(s.STORE, c.STORE),
+    KPI,
+    ORDERS,
+    STOCKD: pickNewerStock(s.STOCKD, c.STOCKD),
+    REQUESTS: mergeRequests(s.REQUESTS, c.REQUESTS),
+    MASTER: pickBiggerMaster(s.MASTER, c.MASTER),
+    ANALYTICS,
+    STOREPROD,
+    STOREDAILY,
+    savedAt: Date.now(),
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method not allowed" });
 
@@ -77,10 +127,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    // preserve sales requests: merge server-side REQUESTS (authoritative) with the client's
+    // MERGE into the current server state instead of overwriting it — old data can't change.
     const server = await currentBlobData();
-    const REQUESTS = mergeRequests(server && server.REQUESTS, body.REQUESTS);
-    const json = JSON.stringify({ DATA: body.DATA, STORE: body.STORE || { months: [], stores: [] }, KPI: body.KPI || { months: [], lines: {}, data: {}, workdays: 26 }, ORDERS: body.ORDERS || { dates: [], data: {}, names: {} }, STOCKD: body.STOCKD || { date: null, rows: [], names: {} }, REQUESTS, MASTER: body.MASTER || { items: {} }, ANALYTICS: body.ANALYTICS || { months: [], lines: {}, data: {} }, STOREPROD: body.STOREPROD || { months: [], cat: {}, stores: {}, data: {} }, STOREDAILY: body.STOREDAILY || { data: {} }, savedAt: Date.now() });
+    const json = JSON.stringify(mergeState(server, body));
     const blob = await put("bd-data-" + Date.now() + ".json", json, {
       access: "public",
       contentType: "application/json",
