@@ -1573,6 +1573,14 @@ function todayISO(){const d=new Date();return d.getFullYear()+"-"+String(d.getMo
 function orderRoundDate(){const now=new Date();const d=new Date(now);if(now.getHours()>=9)d.setDate(d.getDate()+1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function reqDatesFor(code){return Object.keys((REQUESTS&&REQUESTS.data)||{}).filter(d=>REQUESTS.data[d]&&REQUESTS.data[d][code]).sort();}
 function reqStatusFn(date){const day=(ORDERS.data||{})[date];if(!day||!day.hasResult)return null;const dropped=day.dropped||{};return c=>{if(!(c in dropped))return "got";return dropD(dropped[c])>0?"got":"drop";};}
+/* per-code order outcome for a date (center ordered / received / dropped) — for sales status */
+function reqOutcome(date,code){
+  const day=(ORDERS.data||{})[date];if(!day||!day.hasResult)return null;
+  const om=orderedMerged(day),dp=day.dropped||{};
+  if(code in dp){const e=dp[code];const got=dropD(e),drop=dropQ(e),o=dropO(e)||om[code]||0;return {ordered:o,got:got,drop:drop,status:got>0?"partial":"drop"};}
+  if(code in om)return {ordered:om[code],got:om[code],drop:0,status:"got"};
+  return {ordered:0,got:0,drop:0,status:"notordered"};
+}
 function openReqModal(){
   REQ.date=orderRoundDate();const mine=S.user&&S.user.code;
   const ex=REQUESTS.data&&REQUESTS.data[REQ.date]&&REQUESTS.data[REQ.date][mine];
@@ -1640,10 +1648,19 @@ function renderMyRequest(){
   html+=`</div>`;
   const hist=reqDatesFor(mine).filter(d=>d!==cur).reverse();
   if(hist.length){
-    html+=`<div class="panel"><h3>📜 ประวัติคำขอ (ตัดรอบแล้ว)</h3><div class="psub">สถานะได้ของ/ไม่ได้ของ อัปเดตเมื่อ manager อัพผล Drop ของวันนั้น</div>`;
-    hist.slice(0,6).forEach(d=>{const req=REQUESTS.data[d][mine],items=req.items||{},st=reqStatusFn(d);
-      html+=`<div style="margin-top:10px"><div style="font-size:13px;font-weight:700;margin-bottom:4px">${fmtDate(d)}</div><div style="overflow-x:auto"><table><tbody>`+
-        Object.keys(items).map(c=>{const it=items[c],s=st?st(c):null;const badge=s==="drop"?'<span class="pill b">❌ ไม่ได้ของ</span>':s==="got"?'<span class="pill g">✅ ได้ของ</span>':'<span class="pill w">⏳ รอผล</span>';return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0}/${it.pc||0}</td><td>${badge}</td></tr>`;}).join("")+`</tbody></table></div></div>`;});
+    html+=`<div class="panel"><h3>📜 ประวัติคำขอ + สถานะการสั่งของ</h3><div class="psub">ศูนย์สั่งให้กี่ลัง · ได้ของกี่ลัง · <b style="color:var(--bad)">แถบแดง = ไม่ได้ของเลย</b> (อัปเดตเมื่อ manager อัพผล Drop ของวันนั้น) — เอาไว้อัปเดตลูกค้า</div>`;
+    hist.slice(0,8).forEach(d=>{const req=REQUESTS.data[d][mine],items=req.items||{};
+      html+=`<div style="margin-top:10px"><div style="font-size:13px;font-weight:700;margin-bottom:4px">${fmtDate(d)}</div><div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ขอ (ลัง/ชิ้น)</th><th>ศูนย์สั่ง</th><th>ได้ (ลัง)</th><th>สถานะ</th></tr></thead><tbody>`+
+        Object.keys(items).map(c=>{const it=items[c];const oc=reqOutcome(d,c);
+          let badge,rowStyle="",gotCell="-",ordCell="-";
+          if(!oc){badge='<span class="pill w">⏳ รอผล</span>';}
+          else{ordCell=oc.ordered||"-";
+            if(oc.status==="drop"){badge='<span class="pill b">❌ ไม่ได้ของ</span>';rowStyle=' style="background:#FDECEA"';gotCell='<b class="down">0</b>';}
+            else if(oc.status==="partial"){badge='<span class="pill w">🟡 ได้บางส่วน</span>';gotCell='<b>'+oc.got+'</b>';}
+            else if(oc.status==="got"){badge='<span class="pill g">✅ ได้ของ</span>';gotCell='<b>'+oc.got+'</b>';}
+            else{badge='<span class="pill" style="background:#EEF1F6;color:#607089">— ไม่มีในใบสั่ง</span>';}
+          }
+          return `<tr${rowStyle}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0}/${it.pc||0}</td><td>${ordCell}</td><td>${gotCell}</td><td>${badge}</td></tr>`;}).join("")+`</tbody></table></div></div>`;});
     html+=`</div>`;
   }
   el.innerHTML=html;
