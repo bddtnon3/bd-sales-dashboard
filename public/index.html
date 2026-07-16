@@ -1646,23 +1646,28 @@ function renderMyRequest(){
       Object.keys(curItems).map(c=>{const it=curItems[c];return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0} ลัง / ${it.pc||0} ชิ้น</td><td><button class="rm" onclick="reqQuickDel('${cur}','${c}')">✕</button></td></tr>`;}).join("")+`</tbody></table></div>`;
   }else html+=`<div class="psub" style="margin-top:6px">ยังไม่มีคำขอสำหรับรอบนี้ — กดปุ่มเพื่อขอสินค้าที่ต้องการ</div>`;
   html+=`</div>`;
-  const hist=reqDatesFor(mine).filter(d=>d!==cur).reverse();
-  if(hist.length){
-    html+=`<div class="panel"><h3>📜 ประวัติคำขอ + สถานะการสั่งของ</h3><div class="psub">ศูนย์สั่งให้กี่ลัง · ได้ของกี่ลัง · <b style="color:var(--bad)">แถบแดง = ไม่ได้ของเลย</b> (อัปเดตเมื่อ manager อัพผล Drop ของวันนั้น) — เอาไว้อัปเดตลูกค้า</div>`;
-    hist.slice(0,8).forEach(d=>{const req=REQUESTS.data[d][mine],items=req.items||{};
-      html+=`<div style="margin-top:10px"><div style="font-size:13px;font-weight:700;margin-bottom:4px">${fmtDate(d)}</div><div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ขอ (ลัง/ชิ้น)</th><th>ศูนย์สั่ง</th><th>ได้ (ลัง)</th><th>สถานะ</th></tr></thead><tbody>`+
-        Object.keys(items).map(c=>{const it=items[c];const oc=reqOutcome(d,c);
-          let badge,rowStyle="",gotCell="-",ordCell="-";
-          if(!oc){badge='<span class="pill w">⏳ รอผล</span>';}
-          else{ordCell=oc.ordered||"-";
-            if(oc.status==="drop"){badge='<span class="pill b">❌ ไม่ได้ของ</span>';rowStyle=' style="background:#FDECEA"';gotCell='<b class="down">0</b>';}
-            else if(oc.status==="partial"){badge='<span class="pill w">🟡 ได้บางส่วน</span>';gotCell='<b>'+oc.got+'</b>';}
-            else if(oc.status==="got"){badge='<span class="pill g">✅ ได้ของ</span>';gotCell='<b>'+oc.got+'</b>';}
-            else{badge='<span class="pill" style="background:#EEF1F6;color:#607089">— ไม่มีในใบสั่ง</span>';}
-          }
-          return `<tr${rowStyle}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0}/${it.pc||0}</td><td>${ordCell}</td><td>${gotCell}</td><td>${badge}</td></tr>`;}).join("")+`</tbody></table></div></div>`;});
-    html+=`</div>`;
+  /* status for the SELECTED date (from the date picker) — one day at a time */
+  const selDate=ORD.date;
+  html+=`<div class="panel"><h3>📜 คำขอของฉัน + สถานะการสั่งของ · ${selDate?fmtDate(selDate):"-"}</h3>
+    <div class="psub">ศูนย์สั่งให้กี่ลัง · ได้ของกี่ลัง · <b style="color:var(--bad)">แถบแดง = ไม่ได้ของเลย</b> — เลือกวันด้านบนเพื่อดูรอบอื่น (อัปเดตเมื่อ manager อัพผล Drop)</div>`;
+  const selReq=selDate&&REQUESTS.data&&REQUESTS.data[selDate]&&REQUESTS.data[selDate][mine];
+  const selItems=(selReq&&selReq.items)||{};
+  if(Object.keys(selItems).length){
+    html+=`<div style="overflow-x:auto;margin-top:8px"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ขอ (ลัง/ชิ้น)</th><th>ศูนย์สั่ง</th><th>ได้ (ลัง)</th><th>สถานะ</th></tr></thead><tbody>`+
+      Object.keys(selItems).map(c=>{const it=selItems[c];const oc=reqOutcome(selDate,c);
+        let badge,rowStyle="",gotCell="-",ordCell="-";
+        if(!oc){badge='<span class="pill w">⏳ รอผล</span>';}
+        else{ordCell=oc.ordered||"-";
+          if(oc.status==="drop"){badge='<span class="pill b">❌ ไม่ได้ของ</span>';rowStyle=' style="background:#FDECEA"';gotCell='<b class="down">0</b>';}
+          else if(oc.status==="partial"){badge='<span class="pill w">🟡 ได้บางส่วน</span>';gotCell='<b>'+oc.got+'</b>';}
+          else if(oc.status==="got"){badge='<span class="pill g">✅ ได้ของ</span>';gotCell='<b>'+oc.got+'</b>';}
+          else{badge='<span class="pill" style="background:#EEF1F6;color:#607089">— ไม่มีในใบสั่ง</span>';}
+        }
+        return `<tr${rowStyle}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0}/${it.pc||0}</td><td>${ordCell}</td><td>${gotCell}</td><td>${badge}</td></tr>`;}).join("")+`</tbody></table></div>`;
+  }else{
+    html+=`<div class="psub" style="margin-top:6px">ไม่มีคำขอของคุณสำหรับวันที่ ${selDate?fmtDate(selDate):"นี้"} — เลือกวันอื่นด้านบน หรือกด "＋ ขอสินค้า" เพื่อขอรอบถัดไป</div>`;
   }
+  html+=`</div>`;
   el.innerHTML=html;
 }
 function renderSalesRequests(){
