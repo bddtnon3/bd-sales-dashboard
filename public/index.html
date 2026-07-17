@@ -1584,7 +1584,26 @@ function reqOutcome(date,code){
 function fmtDayMon(d){const p=String(d).split("-");return (+p[2])+" "+MONTH_TH[+p[1]-1];}
 /* follow a requested code FORWARD across order rounds — find which day it was actually received.
    สั่ง 15 → ศูนย์สั่ง 16 ดรอป → สั่งอีก 17 ได้ของ ⇒ แสดง "ได้ของ 17 ก.ค." */
+/* normalize a product name so old/new (N-BVI ฯลฯ) codes of the SAME product match */
+function normProd(s){return String(s||"").toLowerCase().replace(/[\s.\-_()]/g,"").replace(/nbvi|bvi|bji|nbji/g,"");}
+/* main entry: exact-code first, then fall back to same-product (code substitution) */
 function reqFulfillment(reqDate,code){
+  const r=reqFulfillmentExact(reqDate,code);
+  if(r&&r.status!=="notordered")return r;
+  const want=normProd(oname(code));
+  if(want&&want.length>=6){
+    const dates=(ORDERS.dates||[]).filter(d=>d>=reqDate&&ORDERS.data[d]).sort();
+    const tried={};
+    for(const d of dates){const om=orderedMerged(ORDERS.data[d]);
+      for(const oc2 in om){if(oc2===code||tried[oc2])continue;tried[oc2]=1;
+        if(normProd((ORDERS.names&&ORDERS.names[oc2])||oname(oc2))===want){
+          const alt=reqFulfillmentExact(reqDate,oc2);
+          if(alt&&alt.status!=="notordered"){alt.alt=oc2;return alt;}
+        }}}
+  }
+  return r||{date:reqDate,status:"notordered",ordered:0,got:0,drop:0};
+}
+function reqFulfillmentExact(reqDate,code){
   const dates=(ORDERS.dates||[]).filter(d=>d>=reqDate && ORDERS.data[d]).sort();
   if(!dates.length)return null;                         /* ยังไม่มีใบสั่ง/ผลรอบไหนเลย */
   let received=null,pending=null,lastDrop=null;
@@ -1679,10 +1698,11 @@ function renderMyRequest(){
         if(!oc){badge='<span class="pill w">⏳ รอผล</span>';}
         else{ordCell=oc.ordered||"-";
           const dtxt=(oc.date&&oc.date!==selDate)?(' <small>· '+fmtDayMon(oc.date)+'</small>'):"";   /* ได้ของข้ามรอบ → โชว์วัน */
-          if(oc.status==="drop"){badge='<span class="pill b">❌ ยังไม่ได้ของ</span>';rowStyle=' style="background:#FDECEA"';gotCell='<b class="down">0</b>';}
-          else if(oc.status==="partial"){badge='<span class="pill w">🟡 ได้บางส่วน'+dtxt+'</span>';gotCell='<b>'+oc.got+'</b>';}
-          else if(oc.status==="got"){badge='<span class="pill g">✅ ได้ของ'+(oc.date&&oc.date!==selDate?' '+fmtDayMon(oc.date):"")+'</span>';gotCell='<b>'+oc.got+'</b>';}
-          else if(oc.status==="pending"){badge='<span class="pill w">🕓 สั่งแล้ว รอผล'+(oc.date&&oc.date!==selDate?' '+fmtDayMon(oc.date):"")+'</span>';gotCell='<span style="color:var(--muted)">รอผล</span>';}
+          const altTxt=oc.alt?(' <small style="color:#9a7100">(รหัสใหม่ '+oc.alt+')</small>'):"";      /* รหัสเปลี่ยน */
+          if(oc.status==="drop"){badge='<span class="pill b">❌ ยังไม่ได้ของ'+altTxt+'</span>';rowStyle=' style="background:#FDECEA"';gotCell='<b class="down">0</b>';}
+          else if(oc.status==="partial"){badge='<span class="pill w">🟡 ได้บางส่วน'+dtxt+'</span>'+altTxt;gotCell='<b>'+oc.got+'</b>';}
+          else if(oc.status==="got"){badge='<span class="pill g">✅ ได้ของ'+(oc.date&&oc.date!==selDate?' '+fmtDayMon(oc.date):"")+'</span>'+altTxt;gotCell='<b>'+oc.got+'</b>';}
+          else if(oc.status==="pending"){badge='<span class="pill w">🕓 สั่งแล้ว รอผล'+(oc.date&&oc.date!==selDate?' '+fmtDayMon(oc.date):"")+'</span>'+altTxt;gotCell='<span style="color:var(--muted)">รอผล</span>';}
           else{badge='<span class="pill" style="background:#EEF1F6;color:#607089">— ยังไม่ถูกสั่ง</span>';ordCell="-";}
         }
         return `<tr${rowStyle}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0}/${it.pc||0}</td><td>${ordCell}</td><td>${gotCell}</td><td>${badge}</td></tr>`;}).join("")+`</tbody></table></div>`;
