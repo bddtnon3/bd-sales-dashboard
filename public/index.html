@@ -1581,6 +1581,26 @@ function reqOutcome(date,code){
   if(code in om)return {ordered:om[code],got:om[code],drop:0,status:"got"};
   return {ordered:0,got:0,drop:0,status:"notordered"};
 }
+function fmtDayMon(d){const p=String(d).split("-");return (+p[2])+" "+MONTH_TH[+p[1]-1];}
+/* follow a requested code FORWARD across order rounds — find which day it was actually received.
+   สั่ง 15 → ศูนย์สั่ง 16 ดรอป → สั่งอีก 17 ได้ของ ⇒ แสดง "ได้ของ 17 ก.ค." */
+function reqFulfillment(reqDate,code){
+  const dates=(ORDERS.dates||[]).filter(d=>d>=reqDate && ORDERS.data[d]).sort();
+  if(!dates.length)return null;                         /* ยังไม่มีใบสั่ง/ผลรอบไหนเลย */
+  let received=null,pending=null,lastDrop=null;
+  for(const d of dates){const day=ORDERS.data[d];const om=orderedMerged(day);const inOrder=(code in om);const dp=day.dropped||{};
+    if(day.hasResult){
+      if(code in dp){const e=dp[code],got=dropD(e);
+        if(got>0){if(!received)received={date:d,ordered:dropO(e)||om[code]||0,got:got,drop:dropQ(e),status:"partial"};}
+        else lastDrop={date:d,ordered:dropO(e)||om[code]||0,got:0,drop:dropQ(e),status:"drop"};
+      }else if(inOrder){if(!received)received={date:d,ordered:om[code],got:om[code],drop:0,status:"got"};}
+    }else if(inOrder){pending={date:d,ordered:om[code],got:0,drop:0,status:"pending"};}   /* สั่งแล้ว รอผล */
+  }
+  if(received)return received;                          /* ได้ของแล้ว (รอบใดรอบหนึ่ง) — สำคัญสุด */
+  if(pending)return pending;                            /* สั่งแล้วแต่ยังไม่มีผล Drop */
+  if(lastDrop)return lastDrop;                          /* ดรอปทุกรอบ ยังไม่ได้ */
+  return {date:reqDate,status:"notordered",ordered:0,got:0,drop:0};
+}
 function openReqModal(){
   REQ.date=orderRoundDate();const mine=S.user&&S.user.code;
   const ex=REQUESTS.data&&REQUESTS.data[REQ.date]&&REQUESTS.data[REQ.date][mine];
@@ -1654,14 +1674,16 @@ function renderMyRequest(){
   const selItems=(selReq&&selReq.items)||{};
   if(Object.keys(selItems).length){
     html+=`<div style="overflow-x:auto;margin-top:8px"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ขอ (ลัง/ชิ้น)</th><th>ศูนย์สั่ง</th><th>ได้ (ลัง)</th><th>สถานะ</th></tr></thead><tbody>`+
-      Object.keys(selItems).map(c=>{const it=selItems[c];const oc=reqOutcome(selDate,c);
+      Object.keys(selItems).map(c=>{const it=selItems[c];const oc=reqFulfillment(selDate,c);
         let badge,rowStyle="",gotCell="-",ordCell="-";
         if(!oc){badge='<span class="pill w">⏳ รอผล</span>';}
         else{ordCell=oc.ordered||"-";
-          if(oc.status==="drop"){badge='<span class="pill b">❌ ไม่ได้ของ</span>';rowStyle=' style="background:#FDECEA"';gotCell='<b class="down">0</b>';}
-          else if(oc.status==="partial"){badge='<span class="pill w">🟡 ได้บางส่วน</span>';gotCell='<b>'+oc.got+'</b>';}
-          else if(oc.status==="got"){badge='<span class="pill g">✅ ได้ของ</span>';gotCell='<b>'+oc.got+'</b>';}
-          else{badge='<span class="pill" style="background:#EEF1F6;color:#607089">— ไม่มีในใบสั่ง</span>';}
+          const dtxt=(oc.date&&oc.date!==selDate)?(' <small>· '+fmtDayMon(oc.date)+'</small>'):"";   /* ได้ของข้ามรอบ → โชว์วัน */
+          if(oc.status==="drop"){badge='<span class="pill b">❌ ยังไม่ได้ของ</span>';rowStyle=' style="background:#FDECEA"';gotCell='<b class="down">0</b>';}
+          else if(oc.status==="partial"){badge='<span class="pill w">🟡 ได้บางส่วน'+dtxt+'</span>';gotCell='<b>'+oc.got+'</b>';}
+          else if(oc.status==="got"){badge='<span class="pill g">✅ ได้ของ'+(oc.date&&oc.date!==selDate?' '+fmtDayMon(oc.date):"")+'</span>';gotCell='<b>'+oc.got+'</b>';}
+          else if(oc.status==="pending"){badge='<span class="pill w">🕓 สั่งแล้ว รอผล'+(oc.date&&oc.date!==selDate?' '+fmtDayMon(oc.date):"")+'</span>';gotCell='<span style="color:var(--muted)">รอผล</span>';}
+          else{badge='<span class="pill" style="background:#EEF1F6;color:#607089">— ยังไม่ถูกสั่ง</span>';ordCell="-";}
         }
         return `<tr${rowStyle}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0}/${it.pc||0}</td><td>${ordCell}</td><td>${gotCell}</td><td>${badge}</td></tr>`;}).join("")+`</tbody></table></div>`;
   }else{
