@@ -445,7 +445,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
     <div id="orderView" class="hidden">
       <div class="controls">
         <div class="ctl"><label>เลือกวันสั่ง</label><button class="datebtn" onclick="openCal(allOrderDates(),ORD.date,pickOrderDate)"><span id="orderDateTxt">-</span><span>📅</span></button></div>
-        <div class="ctl"><label>ค้นหา (ในตาราง)</label><input id="orderSearch" placeholder="🔍 รหัส / ชื่อสินค้า" oninput="renderOrder()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:170px"></div>
+        <div class="ctl"><label>🔍 ค้นหาสถานะสินค้า (ทุกวันที่สั่ง)</label><input id="orderSearch" placeholder="พิมพ์รหัส / ชื่อสินค้า เพื่อดูสถานะ" oninput="renderOrder()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:230px"></div>
         <div class="spacer"></div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
           <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
@@ -454,6 +454,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <div class="kpi-monthbar" id="orderBar"></div>
       <div id="myRequest" style="display:none"></div>
       <div class="panel" id="salesRequests" style="display:none"></div>
+      <div class="panel hidden" id="orderSearchResult"></div>
       <div id="orderStatus"></div>
       <div class="cards" id="orderCards"></div>
       <div class="panel admin-only" id="orderManage" style="display:none"></div>
@@ -1492,6 +1493,36 @@ function renderOrder(){
     <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ได้ (ลัง)</th></tr></thead><tbody>${
       recvRows.map(o=>`<tr><td>${o.c}</td><td style="text-align:left">${oname(o.c)||"<span style='color:var(--muted)'>(รหัสใหม่)</span>"}${o.partial?' <span class="ana-idx" style="background:#FDF3DB;color:#9a7100">บางส่วน</span>':''}</td><td><b>${o.qty||0}</b></td></tr>`).join("")||`<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">ไม่พบรายการ</td></tr>`
     }</tbody></table></div>`;
+  renderOrderSearch();
+}
+/* search a product across ALL order days → its status per day (สั่ง/ได้/ดรอป). For sales & manager. */
+function renderOrderSearch(){
+  const el=document.getElementById("orderSearchResult");if(!el)return;
+  const q=(document.getElementById("orderSearch").value||"").trim().toLowerCase();
+  const toks=q.split(/\s+/).filter(Boolean);
+  if(!toks.length){el.classList.add("hidden");el.innerHTML="";return;}
+  el.classList.remove("hidden");
+  const dates=(ORDERS.dates||[]).slice().sort().reverse();
+  const hit=code=>{const h=(code+" "+(oname(code)||"")).toLowerCase();return toks.every(t=>h.indexOf(t)>=0);};
+  const matched={};
+  dates.forEach(d=>{const day=ORDERS.data[d]||{};const om=orderedMerged(day);Object.keys(om).forEach(c=>{if(hit(c))matched[c]=1;});Object.keys(day.dropped||{}).forEach(c=>{if(hit(c))matched[c]=1;});});
+  const codes=Object.keys(matched).slice(0,20);
+  let h=`<h3>🔍 ผลค้นหาสถานะสินค้า — "${q}"</h3><div class="psub">ประวัติทุกวันที่ศูนย์สั่งสินค้านี้ + สถานะ · ✅ได้ของ / 🟡บางส่วน / ❌ดรอป / 🕓รอผล</div>`;
+  if(!codes.length){h+=`<div class="psub" style="margin-top:8px">ไม่พบสินค้านี้ในใบสั่งวันไหนเลย — ลองคำอื่น หรือเช็กรหัส</div>`;el.innerHTML=h;return;}
+  codes.forEach(c=>{
+    const rows=dates.map(d=>{const day=ORDERS.data[d]||{};const om=orderedMerged(day);const inOrd=(c in om);const dp=day.dropped||{};
+      if(!inOrd&&!(c in dp))return null;
+      const ord=om[c]||dropO(dp[c])||0;let stat,gotv;
+      if(!day.hasResult){stat='<span class="pill w">🕓 รอผล</span>';gotv="-";}
+      else if(c in dp){const e=dp[c],got=dropD(e);if(got>0){stat='<span class="pill w">🟡 ได้บางส่วน</span>';gotv=got;}else{stat='<span class="pill b">❌ ดรอป</span>';gotv='<b class="down">0</b>';}}
+      else{stat='<span class="pill g">✅ ได้ของ</span>';gotv=ord;}
+      return `<tr><td>${fmtDate(d)}</td><td>${ord||"-"}</td><td>${gotv}</td><td>${stat}</td></tr>`;
+    }).filter(Boolean).join("");
+    h+=`<div style="margin-top:12px"><div style="font-weight:700;font-size:13.5px">${oname(c)||c} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${c}</span></div>
+      <div style="overflow-x:auto"><table><thead><tr><th>วันสั่ง</th><th>ศูนย์สั่ง (ลัง)</th><th>ได้ (ลัง)</th><th>สถานะ</th></tr></thead><tbody>${rows||'<tr><td colspan="4" style="color:var(--muted)">ยังไม่มีในใบสั่ง</td></tr>'}</tbody></table></div></div>`;
+  });
+  if(Object.keys(matched).length>20)h+=`<div class="psub" style="margin-top:8px">แสดง 20 รายการแรก — พิมพ์ให้เจาะจงขึ้น</div>`;
+  el.innerHTML=h;
 }
 function renderOrderManage(day){
   const el=document.getElementById("orderManage");if(!el)return;
