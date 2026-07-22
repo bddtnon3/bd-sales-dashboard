@@ -1552,7 +1552,7 @@ function ordClean(s){if(s==null)return "";s=String(s);const m=s.match(ORD_PROMO)
 function ordThai(s){s=String(s==null?"":s).trim();return s&&s.charCodeAt(0)>=0x0E00&&s.charCodeAt(0)<=0x0E7F;}
 function parseOrderForm(name,buf,kind){
   const wb=XLSX.read(buf,{type:"array"});
-  let inside=null;const items={},onames={};let ov=0,cv=0;
+  let inside=null;const items={},onames={},cats={},catN={};let ov=0,cv=0;
   const firstNum=(row,a,b)=>{row=row||[];for(let k=a;k<Math.min(b,row.length);k++){const v=parseFloat(String(row[k]||"").replace(/,/g,""));if(!isNaN(v)&&v!==0)return v;}return 0;};
   wb.SheetNames.forEach(sn=>{
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
@@ -1571,10 +1571,11 @@ function parseOrderForm(name,buf,kind){
       ccs.forEach(cc=>{
         const c0=ordClean(cc>=3?r[cc-3]:"");if(ordThai(c0))fam[cc]=c0;
         const code=String(r[cc]==null?"":r[cc]).trim();if(!/^\d+$/.test(code))return;
+        if(!cats[code])cats[code]=sn;                 /* หมวด = ชื่อ sheet (Home_Care ฯลฯ) */
         const q=parseFloat(r[cc+7])||0;   /* Order Confirm column only (ไม่รวม VMI Order = cc+6) */
         if(q)items[code]=Math.max(items[code]||0,Math.round(q));
         if(!onames[code]){const size=(cc>=1&&r[cc-1]!=null)?String(r[cc-1]):"";const variant=(cc>=2&&ordThai(r[cc-2]))?String(r[cc-2]):"";
-          const nm=ordThai(c0)?c0:fam[cc];const full=[nm,variant,size].filter(Boolean).join(" ").trim();if(full)onames[code]=full;}
+          const nm=ordThai(c0)?c0:fam[cc];const full=[nm,variant,size].filter(Boolean).join(" ").trim();if(full){onames[code]=full;const nn=normProd(full);if(nn&&nn.length>=6&&!catN[nn])catN[nn]=sn;}}
       });
     }
   });
@@ -1582,6 +1583,8 @@ function parseOrderForm(name,buf,kind){
   if(!date)throw new Error("ระบุวันที่ไม่ได้ — ใส่วันที่ในชื่อไฟล์ (เช่น Drop 03072026 หรือ BD_030726)");
   if(!Object.keys(items).length)throw new Error("ไม่พบรายการสินค้าในไฟล์ (ตรวจว่าเป็นไฟล์ใบสั่ง/Drop)");
   if(!ORDERS.data)ORDERS.data={};if(!ORDERS.dates)ORDERS.dates=[];if(!ORDERS.names)ORDERS.names={};
+  if(!ORDERS.cat)ORDERS.cat={};if(!ORDERS.catN)ORDERS.catN={};
+  Object.assign(ORDERS.cat,cats);Object.assign(ORDERS.catN,catN);   /* หมวดสินค้าจากใบสั่งซื้อ (โดยรหัส + ชื่อ เผื่อรหัสเปลี่ยน) */
   /* fill names for codes not already known (stock takes priority via oname) */
   Object.keys(onames).forEach(c=>{const inStock=STOCKD&&STOCKD.names&&STOCKD.names[c];if(!inStock&&!ORDERS.names[c])ORDERS.names[c]=onames[c];});
   const day=ORDERS.data[date]||(ORDERS.data[date]={rounds:{},dropped:null,hasResult:false});
@@ -1743,6 +1746,15 @@ function renderMyRequest(){
   html+=`</div>`;
   el.innerHTML=html;
 }
+const ORDER_CATS=["Home_Care","PC_Hair","PC_3D","Skin_Care1","Skin_Care2","Best_F1"];
+const CAT_ICON={Home_Care:"🏠",PC_Hair:"💇",PC_3D:"🧴",Skin_Care1:"🧼",Skin_Care2:"✨",Best_F1:"⭐","อื่นๆ":"📦"};
+/* category of a product for the order form — by code, then by name (codes change often) */
+function prodCategory(code){
+  const cat=(ORDERS&&ORDERS.cat)||{},catN=(ORDERS&&ORDERS.catN)||{};
+  if(cat[code])return cat[code];
+  const nn=normProd(oname(code));if(nn&&catN[nn])return catN[nn];
+  return "อื่นๆ";
+}
 function renderSalesRequests(){
   const el=document.getElementById("salesRequests");const d=ORD.date;
   const dayReq=((REQUESTS&&REQUESTS.data)||{})[d]||{};const codes=Object.keys(dayReq);
@@ -1753,10 +1765,19 @@ function renderSalesRequests(){
       return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0} / ${it.pc||0}</td></tr>`;}).join("");
     return `<div class="req-sales"><h4><span class="tag ct">${(DATA.lines[sc]&&DATA.lines[sc].display)||sc}</span> ${req.by||""} <small>· ${Object.keys(items).length} รายการ</small></h4>
       <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ลัง/ชิ้น</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;}).join("");
-  const combRows=Object.keys(combined).map(c=>`<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td><b>${combined[c].cs} / ${combined[c].pc}</b></td></tr>`).join("");
+  /* combined list grouped by order-form category (Home_Care ฯลฯ) so manager ไล่เทียบแต่ละหน้าได้ */
+  const byCat={};Object.keys(combined).forEach(c=>{const cat=prodCategory(c);(byCat[cat]=byCat[cat]||[]).push(c);});
+  const order=ORDER_CATS.concat(Object.keys(byCat).filter(k=>ORDER_CATS.indexOf(k)<0));
+  const haveCat=Object.keys((ORDERS&&ORDERS.cat)||{}).length>0;
+  let combHtml="";
+  order.forEach(cat=>{const list=byCat[cat];if(!list||!list.length)return;list.sort((a,b)=>combined[b].cs-combined[a].cs);
+    const tot=list.reduce((s,c)=>s+(combined[c].cs||0),0);
+    combHtml+=`<div style="margin-top:12px"><h4 style="margin:0 0 4px;border-bottom:2px solid var(--blue-soft);padding-bottom:3px">${CAT_ICON[cat]||"📦"} ${cat} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${list.length} รายการ · ${tot} ลัง</span></h4>
+      <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>รวม ลัง/ชิ้น</th></tr></thead><tbody>`+
+      list.map(c=>`<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td><b>${combined[c].cs} / ${combined[c].pc}</b></td></tr>`).join("")+`</tbody></table></div></div>`;});
   el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${fmtDate(d)} <span style="font-size:13px;color:var(--muted);font-weight:400">(${codes.length} สาย)</span></h3>
-    <div class="psub">รวมทุกสายเพื่อเปิดใบสั่ง + แยกรายเซลล์ให้ตรวจ</div>
-    <div class="req-combined"><h4>📋 รวมทั้งหมด (สำหรับเปิดใบสั่ง)</h4><div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>รวม ลัง/ชิ้น</th></tr></thead><tbody>${combRows}</tbody></table></div></div>
+    <div class="psub">รวมทุกสายเพื่อเปิดใบสั่ง (แบ่งตามหมวดในใบสั่งซื้อ ไล่เทียบทีละหน้าได้) + แยกรายเซลล์ให้ตรวจ</div>
+    <div class="req-combined"><h4>📋 รวมทั้งหมด (สำหรับเปิดใบสั่ง) — แบ่งตามหมวด</h4>${haveCat?"":'<div class="note">ℹ️ ยังไม่มีข้อมูลหมวด — อัพไฟล์ใบสั่ง (BD_...xlsx) สักครั้งเพื่อให้ระบบจับหมวดจากชีต Home_Care/PC_Hair/... ให้อัตโนมัติ</div>'}${combHtml}</div>
     <div class="req-perwrap">${perSales}</div>`;
 }
 

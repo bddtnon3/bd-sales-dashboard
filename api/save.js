@@ -73,7 +73,7 @@ function mergeState(server, c) {
   const sK = s.KPI || {}, cK = c.KPI || {};
   const KPI = { months: unionArr(sK.months, cK.months), lines: keyMerge(sK.lines, cK.lines), data: keyMerge(sK.data, cK.data), workdays: cK.workdays || sK.workdays || 26 };
   const sO = s.ORDERS || {}, cO = c.ORDERS || {};
-  const ORDERS = { data: keyMerge(sO.data, cO.data), dates: unionArr(sO.dates, cO.dates), names: keyMerge(sO.names, cO.names) };
+  const ORDERS = { data: keyMerge(sO.data, cO.data), dates: unionArr(sO.dates, cO.dates), names: keyMerge(sO.names, cO.names), cat: keyMerge(sO.cat, cO.cat), catN: keyMerge(sO.catN, cO.catN) };
   const sA = s.ANALYTICS || {}, cA = c.ANALYTICS || {};
   const ANALYTICS = { months: unionArr(sA.months, cA.months), lines: keyMerge(sA.lines, cA.lines), data: keyMerge(sA.data, cA.data) };
   const sP = s.STOREPROD || {}, cP = c.STOREPROD || {};
