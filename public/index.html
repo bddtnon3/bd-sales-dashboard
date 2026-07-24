@@ -1463,8 +1463,16 @@ function renderOrder(){
     ${chip("📝 สั่งแล้ว",true)}<span class="oarrow">→</span>${chip("📧 ส่ง Unilever",true)}<span class="oarrow">→</span>${chip(st?"🌙 ได้ผลแล้ว":"⏳ รอผล Unilever (ตอบช่วงเย็น)",st)}</div>`;
   const isMgrO=S.user&&S.user.role==="manager";
   const dv=Object.values(d.vals||{}).reduce((a,x)=>({ov:a.ov+(x.ov||0),cv:a.cv+(x.cv||0)}),{ov:0,cv:0});
+  const _conf=dv.cv||0,_c85=_conf*0.85,_drop=(d.dropVal||0),_net=_c85-_drop;   /* ประมาณการหลังหัก 15% แล้วลบ Drop */
+  const _b=n=>"฿"+Math.round(n).toLocaleString();
   const card4=isMgrO
-    ? `<div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">CON Confirm (มูลค่า)</div><div class="v" style="font-size:20px">${dv.cv?THBk(dv.cv):"–"}</div><div class="s">${dv.cv?"฿"+dv.cv.toLocaleString():"—"}${dv.ov?" · ประมาณ ฿"+Math.round(dv.ov).toLocaleString():""}</div></div>`
+    ? `<div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">CON Confirm (มูลค่า)</div><div class="v" style="font-size:19px">${_conf?THBk(_conf):"–"}</div>
+      <div style="margin-top:7px;font-size:12px;line-height:1.8">
+        <div style="display:flex;justify-content:space-between;gap:8px"><span style="color:var(--muted)">Con Confirm</span><b>${_conf?_b(_conf):"—"}</b></div>
+        <div style="display:flex;justify-content:space-between;gap:8px"><span style="color:var(--muted)">Con Confirm −15%</span><b>${_conf?_b(_c85):"—"}</b></div>
+        <div style="display:flex;justify-content:space-between;gap:8px"><span style="color:var(--muted)">Drop</span><b class="down">${_drop?_b(_drop):"฿0"}</b></div>
+        <div style="display:flex;justify-content:space-between;gap:8px;border-top:1px dashed #d7dbe6;margin-top:4px;padding-top:4px"><span style="color:var(--blue);font-weight:700">(Con Confirm −15%) − Drop</span><b class="up">${_conf?_b(_net):"—"}</b></div>
+      </div></div>`
     : `<div class="card"><div class="k">สถานะ</div><div class="v" style="font-size:16px">${st?"ได้ผลแล้ว":"รอ Unilever"}</div><div class="s">${st?"อัปเดตล่าสุด":"ตอบกลับช่วงเย็น–ดึก"}</div></div>`;
   document.getElementById("orderCards").innerHTML=`
     <div class="card"><div class="k">สั่งทั้งหมด</div><div class="v">${oCodes.length}<span style="font-size:14px;color:var(--muted)"> รายการ</span></div><div class="s">${totOrd.toLocaleString()} ลัง</div></div>
@@ -1540,7 +1548,7 @@ function deleteRound(date,round){
 }
 function deleteDrop(date){
   if(!confirm("ลบใบ Drop ของวัน "+fmtDate(date)+" ?"))return;
-  const day=ORDERS.data[date];if(day){day.dropped=null;day.hasResult=false;}
+  const day=ORDERS.data[date];if(day){day.dropped=null;day.hasResult=false;day.dropVal=0;}
   cleanupOrderDate(date);renderOrder();syncToServer();
 }
 function cleanupOrderDate(date){
@@ -1859,7 +1867,7 @@ function parseMaster(name,buf){
 }
 /* Daily Drop Report parser (clean table: Material / Material Description) */
 function parseDrop(name,buf){
-  const wb=XLSX.read(buf,{type:"array"});let rdate=null;const items={},dropNames={};
+  const wb=XLSX.read(buf,{type:"array"});let rdate=null;const items={},dropNames={};let dropVal=0;
   wb.SheetNames.forEach(sn=>{
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
     let hdr=-1;
@@ -1871,9 +1879,11 @@ function parseDrop(name,buf){
     const HH=(rows[hdr]||[]).map(x=>String(x==null?"":x).trim());
     const cMat=HH.indexOf("Material"),cDesc=HH.indexOf("Material Description");
     const cOrd=HH.findIndex(v=>v==="Order Quantity"),cDel=HH.findIndex(v=>/^Deliver(y)? quantity$/i.test(v)),cDrp=HH.findIndex(v=>v==="Drop Quantity");
+    const cDV=HH.findIndex(v=>/^drop value$/i.test(v));   /* มูลค่าที่ถูก Drop (column "Drop Value") — รวมยอดโชว์ในการ์ด CON Confirm */
     const num=x=>{const f=parseFloat(String(x==null?"":x).replace(/,/g,""));return isNaN(f)?0:f;};
     for(let i=hdr+1;i<rows.length;i++){const r=rows[i]||[];const code=String(r[cMat]==null?"":r[cMat]).trim();
       if(!/^\d+$/.test(code))continue;
+      dropVal+=cDV>=0?num(r[cDV]):0;    /* รวมมูลค่า Drop ทุกแถว (ใช้ยอดในไฟล์ตรงๆ ไม่หักลบ) */
       const o=cOrd>=0?num(r[cOrd]):0, d=cDel>=0?num(r[cDel]):0;
       let q=cDrp>=0?num(r[cDrp]):(o-d); if(q<0)q=0;
       if(q<=0&&o<=0)continue;                 /* ไม่มีการดรอปจริง = ได้ครบ ไม่ต้องขึ้น drop */
@@ -1887,7 +1897,7 @@ function parseDrop(name,buf){
   if(!Object.keys(items).length)throw new Error("ไม่พบรายการ Drop ในไฟล์ (ต้องเป็น Daily Drop Report ที่มีคอลัมน์ Material)");
   if(!ORDERS.data)ORDERS.data={};if(!ORDERS.dates)ORDERS.dates=[];if(!ORDERS.names)ORDERS.names={};
   const day=ORDERS.data[date]||(ORDERS.data[date]={rounds:{},dropped:null,hasResult:false});if(!day.rounds)day.rounds={};
-  day.dropped=items;day.hasResult=true;
+  day.dropped=items;day.hasResult=true;day.dropVal=Math.round(dropVal*100)/100;   /* มูลค่ารวมที่ถูก Drop วันนี้ */
   Object.keys(dropNames).forEach(c=>{if(!ORDERS.names[c])ORDERS.names[c]=dropNames[c];});
   if(!ORDERS.dates.includes(date))ORDERS.dates.push(date);ORDERS.dates.sort();
   ulog("✅ "+name+" (ใบ Drop) → drop "+Object.keys(items).length+" รายการ · วัน "+fmtDate(date));
