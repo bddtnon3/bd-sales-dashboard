@@ -311,6 +311,15 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 .ana-mini>span{display:block;height:100%}
 .backbtn{background:#fff;border:1.5px solid var(--blue);color:var(--blue);font-weight:700;padding:7px 14px;border-radius:9px;cursor:pointer;font-size:13.5px;margin-right:6px}
 .backbtn:hover{background:var(--blue-soft)}
+/* Perfect Store */
+.ps-pill{display:inline-block;min-width:20px;text-align:center;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:6px;margin-right:3px}
+.ps-pill.g{background:#E7F6EE;color:#1E9E5A}
+.ps-pill.r{background:#FBE9E9;color:#D64545}
+.ps-pill.a{background:#FDF3E3;color:#B77A1B}
+.ps-pill.o{background:#F1F3F7;color:#B4BECC}
+.ps-typetag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:12px;background:#EAF1FD;color:var(--blue);white-space:nowrap}
+.ps-typetag.n{background:#F1F3F7;color:#6B7A90}
+.ps-typetag.f{background:#F3EAFB;color:#7A3EB1}
 </style>
 </head>
 <body>
@@ -344,7 +353,8 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
   <main>
     <div class="tabs">
       <button class="tab on" data-tab="sales" onclick="switchTab('sales')">📊 ยอดขาย</button>
-      <button class="tab" data-tab="kpi" onclick="switchTab('kpi')">🎯 KPI ออนไลน์</button>
+      <button class="tab" data-tab="kpi" onclick="switchTab('kpi')">🎯 eB2B & Self Ordering</button>
+      <button class="tab" data-tab="ps" onclick="switchTab('ps')">⭐ Perfect Store</button>
       <button class="tab" data-tab="order" onclick="switchTab('order')">🛒 การสั่งของ</button>
       <button class="tab" data-tab="stock" onclick="switchTab('stock')">📦 สต็อก</button>
       <button class="tab" data-tab="ana" onclick="switchTab('ana')">🔬 วิเคราะห์เชิงลึก</button>
@@ -440,6 +450,28 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <div id="kpiReward"></div>
       <div id="kpiCharts"></div>
       <div class="panel" id="kpiPlan"></div>
+    </div>
+
+    <div id="psView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>รอบข้อมูล</label><select id="psRound" onchange="onPsRound()"></select></div>
+        <div class="ctl" id="psScopeCtl"><label>มุมมอง</label>
+          <div class="seg" id="psScope">
+            <button data-s="team" class="on">ภาพรวมทีม</button>
+            <button data-s="me">สายของฉัน</button>
+          </div>
+        </div>
+        <div class="ctl" id="psRouteCtl"><label>เจาะดูสาย (แผนโฟกัส)</label><select id="psRouteSel" onchange="onPsRoute()"></select></div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+        </div>
+      </div>
+      <div class="kpi-monthbar" id="psBar"></div>
+      <div class="cards" id="psCards"></div>
+      <div id="psCharts"></div>
+      <div class="panel" id="psPlan"></div>
+      <div class="panel" id="psStores"></div>
     </div>
 
     <div id="orderView" class="hidden">
@@ -555,8 +587,12 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
         <input id="fileStore" type="file" accept=".xls,.xlsx" multiple class="hidden">
       </div>
       <div class="up-row" data-group="kpi">
-        <label class="drop up-kpi" for="fileKPI">🎯 <b>KPI ออนไลน์ (Incentive)</b><small>อัพรายสัปดาห์ · ไฟล์ Salesman Incentive_DTT_...xlsx</small></label>
+        <label class="drop up-kpi" for="fileKPI">🎯 <b>eB2B & Self Ordering (Incentive)</b><small>อัพรายสัปดาห์ · ไฟล์ Salesman Incentive_DTT_...xlsx</small></label>
         <input id="fileKPI" type="file" accept=".xlsx,.xls" multiple class="hidden">
+      </div>
+      <div class="up-row" data-group="ps">
+        <label class="drop up-ps" for="filePS">⭐ <b>Perfect Store (AVD)</b><small>อัพทุกรอบที่ Unilever ส่งมา · ไฟล์ perfect_store_AVD_BM7_BD_30.07.xlsx (วันที่รอบจากชื่อไฟล์)</small></label>
+        <input id="filePS" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="order">
         <label class="drop up-order" for="fileOrder">🛒 <b>ใบสั่งของ</b><small>อัพทุกวัน · ไฟล์ใบสั่ง เช่น BD_030726.xlsx หรือ BD_030726(add1).xlsx</small></label>
@@ -678,6 +714,10 @@ let STOREPROD = {months:[],cat:{},stores:{},data:{}};
 
 /* STOREDAILY (per-store per-day from daily bill files): {data:{"YYYY-MM-DD":{storeCode:{l:line,n:name,cs,pc,niv}}}} */
 let STOREDAILY = {data:{}};
+
+/* PSTORE (Unilever Perfect Store AVD): {rounds:{"YYYY-MM-DD":{asof,bm,rows:[[route,code,name,type,isPS,a,v,d,months,gap,cta,gsv],...]}}}
+   type: F=PS Full, AD=PS Lite(A,D), AV=PS Lite(A,V), N=PS Nano · a/v/d: G/R/A/"" · isPS: 1/0 */
+let PSTORE = {rounds:{}};
 let STORE_IDX={};   // line code -> array of {code,name,m:[[cs,pc,niv]...]}
 function buildStoreIdx(){
   STORE_IDX={};
@@ -728,7 +768,7 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};}
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209622","2096_97","209698"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();navReset();
   }catch(ex){alert("โหลดข้อมูลจากเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
@@ -740,7 +780,7 @@ function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบั�
 async function _doSync(){
   if(!TOKEN)return;
   try{
-    const payload=JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY});
+    const payload=JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY,PSTORE});
     let body=payload,headers={"Content-Type":"application/json","Authorization":"Bearer "+TOKEN};
     /* gzip to stay under the serverless request-size limit (~4.5MB); 8-9MB -> ~1.5MB */
     try{if(typeof CompressionStream!=="undefined"){const cs=new Blob([payload]).stream().pipeThrough(new CompressionStream("gzip"));body=await new Response(cs).arrayBuffer();headers={"Content-Type":"application/octet-stream","x-body-gzip":"1","Authorization":"Bearer "+TOKEN};}}catch(e){}
@@ -1226,10 +1266,12 @@ function _switchTab(t){
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   document.getElementById("salesView").classList.toggle("hidden",t!=="sales");
   document.getElementById("kpiView").classList.toggle("hidden",t!=="kpi");
+  document.getElementById("psView").classList.toggle("hidden",t!=="ps");
   document.getElementById("orderView").classList.toggle("hidden",t!=="order");
   document.getElementById("stockView").classList.toggle("hidden",t!=="stock");
   document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
   if(t==="kpi")renderKPI();
+  if(t==="ps")renderPS();
   if(t==="order")renderOrder();
   if(t==="stock")renderStock();
   if(t==="ana")renderAnalytics();
@@ -1271,11 +1313,11 @@ function remainWorkdays(mk){
 function renderKPI(){
   if(!KPI||!KPI.months||!KPI.months.length){
     document.getElementById("kpiCards").innerHTML="";
-    document.getElementById("kpiCharts").innerHTML='<div class="panel"><div class="insight">ยังไม่มีข้อมูล KPI — แอดมินอัพไฟล์ Salesman Incentive ก่อน (ปุ่มอัพโหลด → 🎯 KPI ออนไลน์)</div></div>';
+    document.getElementById("kpiCharts").innerHTML='<div class="panel"><div class="insight">ยังไม่มีข้อมูล — แอดมินอัพไฟล์ Salesman Incentive ก่อน (ปุ่มอัพโหลด → 🎯 eB2B & Self Ordering)</div></div>';
     document.getElementById("kpiPlan").innerHTML="";return;
   }
   const mb=document.getElementById("kpiMonthBar");
-  if(mb)mb.innerHTML=`📊 KPI ออนไลน์ · ศูนย์ BD · กำลังแสดงเดือน <b>${fmtMonth(KPIS.month)}</b>`;
+  if(mb)mb.innerHTML=`📊 eB2B & Self Ordering · ศูนย์ BD · กำลังแสดงเดือน <b>${fmtMonth(KPIS.month)}</b>`;
   const mine=(S.user&&S.user.role==="sales")?S.user.code:null;
   const focusMe=(mine&&KPIS.scope==="me");
   const team=kpiRows();
@@ -1283,7 +1325,7 @@ function renderKPI(){
   renderKpiCards(team,rows,focusMe);
   if(focusMe&&!rows.length){
     document.getElementById("kpiReward").innerHTML="";
-    document.getElementById("kpiCharts").innerHTML='<div class="panel"><div class="insight">สายของคุณไม่อยู่ใน KPI ออนไลน์นี้ (KPI ครอบคลุมเฉพาะสาย CT)</div></div>';
+    document.getElementById("kpiCharts").innerHTML='<div class="panel"><div class="insight">สายของคุณไม่อยู่ในรายงาน eB2B & Self Ordering นี้ (ครอบคลุมเฉพาะสาย CT)</div></div>';
     document.getElementById("kpiPlan").innerHTML="";return;
   }
   renderKpiReward(team,rows,focusMe,mine);
@@ -1407,6 +1449,265 @@ function parseKPI(name,buf){
   const T=Object.values(md).reduce((a,v)=>({st:a.st+v.stores,ac:a.ac+v.active,or:a.or+v.orders,se:a.se+v.self,gh:a.gh+v.ghost}),{st:0,ac:0,or:0,se:0,gh:0});
   ulog("✅ "+name+" (KPI) → "+fmtMonth(mk)+" · "+n+" สาย · ศูนย์: Active "+T.ac+"/"+T.st+", Self "+T.se+"/"+T.or+", Ghost "+T.gh+"/"+T.or+" (เทียบ BySup ได้เลย)");
   initKPI();if(!document.getElementById("kpiView").classList.contains("hidden"))renderKPI();
+  syncToServer();
+}
+
+/* ====================== PERFECT STORE (AVD) ====================== */
+let PSS={round:null,scope:"team",route:"all",q:"",f:"no",_init:false};
+let psChartObjs=[];
+const PSF={route:0,code:1,name:2,type:3,yes:4,a:5,v:6,d:7,months:8,gap:9,cta:10,gsv:11};
+const PS_TYPE_NAME={F:"PS Full",AD:"PS Lite (A,D)",AV:"PS Lite (A,V)",N:"PS Nano"};
+function psRouteCode(route){const m=String(route).match(/_2(\d{2})$/);return m?("2096"+m[1]):null;}
+function psRouteDisp(route){const c=psRouteCode(route);const d=c&&DATA.lines&&DATA.lines[c];return d?d.display:String(route);}
+function psRouteName(route){const c=psRouteCode(route);const d=c&&DATA.lines&&DATA.lines[c];return (d&&d.name)?d.name:"";}
+function psRounds(){return Object.keys((PSTORE&&PSTORE.rounds)||{}).sort();}
+/* pillars still missing (planning aid) — pass/fail itself always comes from the file's Is Perfect column */
+function psNeed(r){
+  const need=[],t=r[PSF.type];
+  if(r[PSF.a]!=="G")need.push("A");
+  if((t==="F"||t==="AV")&&r[PSF.v]!=="G")need.push("V");
+  if((t==="F"||t==="AD")&&(r[PSF.d]==="R"||r[PSF.d]===""))need.push("D");
+  return need;
+}
+function psQuickWin(r){const nd=psNeed(r);return !r[PSF.yes]&&nd.length===1&&nd[0]==="A";}
+function psRouteAgg(rows){
+  const m={};
+  rows.forEach(r=>{
+    const rt=r[PSF.route];
+    const o=(m[rt]=m[rt]||{route:rt,stores:0,yes:0,gsv:0,gsvYes:0,quick:0,quickGsv:0});
+    o.stores++;o.gsv+=r[PSF.gsv];
+    if(r[PSF.yes]){o.yes++;o.gsvYes+=r[PSF.gsv];}
+    else if(psQuickWin(r)){o.quick++;o.quickGsv+=r[PSF.gsv];}
+  });
+  const arr=Object.values(m);
+  arr.forEach(o=>{o.disp=psRouteDisp(o.route);o.name=psRouteName(o.route);
+    o.numeric=o.stores?o.yes/o.stores*100:0;o.weighted=o.gsvYes*100;o.weightedIn=o.gsv?o.gsvYes/o.gsv*100:0;});
+  arr.sort((a,b)=>a.disp.localeCompare(b.disp,undefined,{numeric:true}));
+  return arr;
+}
+function psScopedRows(rk){
+  const rows=((PSTORE.rounds||{})[rk]||{}).rows||[];
+  if(PSS.scope==="me"&&S.user&&S.user.role==="sales")return rows.filter(r=>psRouteCode(r[PSF.route])===S.user.code);
+  return rows;
+}
+function onPsRound(){PSS.round=document.getElementById("psRound").value;renderPS();}
+function onPsRoute(){PSS.route=document.getElementById("psRouteSel").value;renderPsPlan();}
+document.getElementById("psScope").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;PSS.scope=b.dataset.s;setSeg("psScope","s",PSS.scope);renderPS();});
+function renderPS(){
+  const rounds=psRounds();
+  if(S.user&&S.user.role==="sales"&&!PSS._init){PSS._init=true;PSS.scope="me";setSeg("psScope","s","me");}
+  const scopeCtl=document.getElementById("psScopeCtl");if(scopeCtl)scopeCtl.style.display=(S.user&&S.user.role==="manager")?"none":"";
+  if(!rounds.length){
+    document.getElementById("psBar").innerHTML="";
+    document.getElementById("psCards").innerHTML="";
+    document.getElementById("psCharts").innerHTML='<div class="panel"><div class="insight">ยังไม่มีข้อมูล Perfect Store — แอดมินกดปุ่มอัพโหลด → ⭐ Perfect Store (ไฟล์ perfect_store_AVD_..._วว.ดด.xlsx)</div></div>';
+    document.getElementById("psPlan").innerHTML="";document.getElementById("psStores").innerHTML="";
+    document.getElementById("psRound").innerHTML="";return;
+  }
+  if(!PSS.round||!rounds.includes(PSS.round))PSS.round=rounds[rounds.length-1];
+  const selR=document.getElementById("psRound");
+  selR.innerHTML=rounds.slice().reverse().map(rk=>{const b=PSTORE.rounds[rk].bm;
+    return `<option value="${rk}"${rk===PSS.round?" selected":""}>${fmtDate(rk)}${b?" · BM"+b:""}</option>`;}).join("");
+  const rows=psScopedRows(PSS.round);
+  const meMode=(PSS.scope==="me"&&S.user&&S.user.role==="sales");
+  const bm=PSTORE.rounds[PSS.round].bm;
+  document.getElementById("psBar").innerHTML=`⭐ Perfect Store (AVD) · ${meMode?("สาย "+(DATA.lines[S.user.code]?DATA.lines[S.user.code].display:"")):"ศูนย์ BD"} · รอบวันที่ <b>${fmtDate(PSS.round)}</b>${bm?" (BM"+bm+")":""}`;
+  if(meMode&&!rows.length){
+    document.getElementById("psCards").innerHTML="";
+    document.getElementById("psCharts").innerHTML='<div class="panel"><div class="insight">สายของคุณไม่มีร้านในโครงการ Perfect Store รอบนี้</div></div>';
+    document.getElementById("psPlan").innerHTML="";document.getElementById("psStores").innerHTML="";return;
+  }
+  /* previous round (same scope) for trend */
+  const idx=rounds.indexOf(PSS.round);
+  const prevRows=idx>0?psScopedRows(rounds[idx-1]):null;
+  renderPsCards(rows,prevRows);
+  renderPsCharts(rows,meMode);
+  buildPsRouteSel(rows,meMode);
+  renderPsPlan();
+  renderPsStores(true);
+}
+function psTot(rows){
+  const t={stores:rows.length,yes:0,gsvYes:0,quick:0,quickGsv:0,quickGap:0};
+  rows.forEach(r=>{if(r[PSF.yes]){t.yes++;t.gsvYes+=r[PSF.gsv];}
+    else if(psQuickWin(r)){t.quick++;t.quickGsv+=r[PSF.gsv];t.quickGap+=Math.max(0,r[PSF.gap]);}});
+  return t;
+}
+function renderPsCards(rows,prevRows){
+  const t=psTot(rows),p=prevRows&&prevRows.length?psTot(prevRows):null;
+  const numeric=t.stores?t.yes/t.stores*100:0,weighted=t.gsvYes*100;
+  const d1=p?numeric-(p.stores?p.yes/p.stores*100:0):null;
+  const d2=p?weighted-p.gsvYes*100:null;
+  const trend=d=>d===null?"":`<span class="${d>=0?'up':'down'}" style="font-size:12px"> ${d>=0?"▲":"▼"} ${Math.abs(d).toFixed(1)} จุดจากรอบก่อน</span>`;
+  const nF=rows.filter(r=>r[PSF.type]==="F").length,nL=rows.filter(r=>r[PSF.type]==="AD"||r[PSF.type]==="AV").length,nN=rows.filter(r=>r[PSF.type]==="N").length;
+  document.getElementById("psCards").innerHTML=
+    `<div class="card"><div class="k">ร้านในโครงการ</div><div class="v">${t.stores.toLocaleString()}</div><div class="s">Full ${nF} · Lite ${nL} · Nano ${nN}</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #0F9ED5"><div class="k" style="color:#0F9ED5">Numeric — ร้านที่ผ่าน</div><div class="v">${numeric.toFixed(1)}%</div><div class="s">${t.yes.toLocaleString()} / ${t.stores.toLocaleString()} ร้าน${trend(d1)}</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #E97132"><div class="k" style="color:#E97132">Weighted — น้ำหนักที่ผ่าน</div><div class="v">${weighted.toFixed(1)}%</div><div class="s">รวม GSV Contribution ของร้านที่ผ่าน${trend(d2)}</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #4EA72E"><div class="k" style="color:#4EA72E">โอกาสเก็บง่าย (ขาดแค่ A)</div><div class="v">${t.quick.toLocaleString()}</div><div class="s">ถ้าปิดหมด Weighted +${(t.quickGsv*100).toFixed(1)} จุด · ต้องขายรวม ${t.quickGap.toLocaleString()} ชิ้น</div></div>`;
+}
+function renderPsCharts(rows,meMode){
+  const wrap=document.getElementById("psCharts");
+  psChartObjs.forEach(c=>{try{c.destroy();}catch(e){}});psChartObjs=[];wrap.innerHTML="";
+  const agg=psRouteAgg(rows);
+  if(agg.length<=1&&meMode){return;}
+  const mkPanel=(title,sub,color)=>{const p=document.createElement("div");p.className="panel kpi-panel";p.style.borderTop="3px solid "+color;
+    p.innerHTML=`<h3><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${color};margin-right:7px;vertical-align:-1px"></span>${title}</h3><div class="psub">${sub}</div><div class="chart-wrap" style="height:${Math.max(230,agg.length*30+70)}px"><canvas></canvas></div>`;
+    wrap.appendChild(p);return p;};
+  const mine=(S.user&&S.user.role==="sales")?S.user.code:null;
+  const mkChart=(panel,vals,color,fmt,tip)=>{
+    const colors=agg.map(o=>(mine&&psRouteCode(o.route)!==mine&&PSS.scope==="me")?"#CBD8EE":color);
+    const vPlugin={id:"psv",afterDatasetsDraw(ch){const ctx=ch.ctx,m=ch.getDatasetMeta(0);ctx.save();ctx.font="700 10px sans-serif";ctx.textAlign="center";ctx.fillStyle="#1B2536";vals.forEach((v,i)=>{const b=m.data[i];if(!b)return;ctx.fillText(fmt(v),b.x,b.y-4);});ctx.restore();}};
+    try{psChartObjs.push(new Chart(panel.querySelector("canvas"),{type:"bar",plugins:[vPlugin],
+      data:{labels:agg.map(o=>o.disp),datasets:[{data:vals,backgroundColor:colors,borderRadius:5,maxBarThickness:48}]},
+      options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:16}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>tip(agg[c.dataIndex])}}},
+        scales:{y:{beginAtZero:true,ticks:{callback:v=>v+"%"},grid:{color:"#EEF2F8"}},x:{grid:{display:false}}}}}));}catch(e){console.error("ps chart",e);}
+  };
+  const p1=mkPanel("Numeric — % ร้านที่ผ่านของแต่ละสาย","ร้านที่ Perfect = Yes ÷ ร้านทั้งหมดในสาย","#0F9ED5");
+  mkChart(p1,agg.map(o=>+o.numeric.toFixed(1)),"#0F9ED5",v=>v.toFixed(0)+"%",o=>" "+o.numeric.toFixed(1)+"% ("+o.yes+"/"+o.stores+" ร้าน)");
+  const p2=mkPanel("Weighted — น้ำหนัก GSV ที่ผ่านของแต่ละสาย","รวม GSV Contribution (ช่อง O) ของร้านที่ผ่าน — สายน้ำหนักมากดัน % ศูนย์ได้มาก","#E97132");
+  mkChart(p2,agg.map(o=>+o.weighted.toFixed(2)),"#E97132",v=>v.toFixed(1)+"%",o=>" "+o.weighted.toFixed(2)+"% ของศูนย์ (คิดในสายตัวเอง "+o.weightedIn.toFixed(1)+"%)");
+}
+function buildPsRouteSel(rows,meMode){
+  const ctl=document.getElementById("psRouteCtl"),sel=document.getElementById("psRouteSel");
+  const agg=psRouteAgg(rows);
+  if(meMode){ctl.style.display="none";PSS.route=agg.length?agg[0].route:"all";return;}
+  ctl.style.display="";
+  const routes=agg.map(o=>o.route);
+  if(PSS.route!=="all"&&!routes.includes(PSS.route))PSS.route="all";
+  sel.innerHTML=`<option value="all"${PSS.route==="all"?" selected":""}>ทุกสาย (สรุป)</option>`+
+    agg.map(o=>`<option value="${o.route}"${o.route===PSS.route?" selected":""}>${o.disp}${o.name?" · "+o.name:""}</option>`).join("");
+}
+function psPill(lab,cls){return `<span class="ps-pill ${cls}">${lab}</span>`;}
+function psAVD(r){
+  const t=r[PSF.type];
+  const a=psPill("A",r[PSF.a]==="G"?"g":"r");
+  const v=(t==="F"||t==="AV")?psPill("V",r[PSF.v]==="G"?"g":"r"):psPill("V","o");
+  const d=(t==="F"||t==="AD")?psPill("D",r[PSF.d]==="G"?"g":r[PSF.d]==="A"?"a":"r"):psPill("D","o");
+  return a+v+d;
+}
+function psTypeTag(t){const c=t==="F"?"f":t==="N"?"n":"";return `<span class="ps-typetag ${c}">${PS_TYPE_NAME[t]||t}</span>`;}
+function renderPsPlan(){
+  const el=document.getElementById("psPlan");
+  const rows=psScopedRows(PSS.round);
+  if(!rows.length){el.innerHTML="";return;}
+  const legend=`<div class="note">เกณฑ์ผ่าน: <b>A</b> ขายสินค้าแนะนำ (IQ) ให้ครบ · <b>V</b> ตั้งโชว์แล้วผ่านตรวจ · <b>D</b> ร้านกดสั่งเองผ่านแอพ (เขียว/เหลือง = ผ่าน) — "ขาดแค่ A" คือเซลล์ปิดเองได้ด้วยการขายให้ครบชิ้น</div>`;
+  if(PSS.route==="all"){
+    const agg=psRouteAgg(rows);
+    const plan=agg.map(o=>{
+      const cand=rows.filter(r=>r[PSF.route]===o.route&&psQuickWin(r)).sort((a,b)=>b[PSF.gsv]-a[PSF.gsv]);
+      const top=cand.slice(0,10);
+      const gap=top.reduce((s,r)=>s+Math.max(0,r[PSF.gap]),0);
+      const add=top.reduce((s,r)=>s+r[PSF.gsv],0)*100;
+      return {...o,cand:cand.length,gap,add};
+    });
+    el.innerHTML=`<h3>📋 แผนโฟกัสรอบหน้า — สรุปทุกสาย</h3>
+      <div class="psub">"ขาดแค่ A" = ร้านที่เหลือแค่ขาย IQ ให้ครบก็ผ่าน · Top-10 = เลือก 10 ร้านน้ำหนักมากสุดของสายนั้น (เลือกสายด้านบนเพื่อดูรายชื่อร้าน)</div>
+      ${legend}
+      <div style="overflow-x:auto"><table class="plan-tbl"><thead><tr><th>สาย</th><th>ผ่านแล้ว</th><th>Numeric</th><th>Weighted</th><th>ขาดแค่ A</th><th>Top-10 ต้องขาย (ชิ้น)</th><th>ถ้าปิด Top-10 ได้ Weighted</th></tr></thead><tbody>`+
+      plan.map(o=>`<tr><td><span class="tag ct">${o.disp}</span> <span style="color:var(--muted);font-size:11px">${o.name||""}</span></td>
+        <td>${o.yes}/${o.stores} ร้าน</td><td><b>${o.numeric.toFixed(1)}%</b></td><td><b>${o.weighted.toFixed(2)}%</b></td>
+        <td>${o.cand} ร้าน</td><td>${o.gap.toLocaleString()}</td>
+        <td class="up"><b>${(o.weighted+o.add).toFixed(2)}%</b> (+${o.add.toFixed(2)})</td></tr>`).join("")+
+      `</tbody></table></div>`;
+    return;
+  }
+  const route=PSS.route,disp=psRouteDisp(route),nm=psRouteName(route);
+  const mine=rows.filter(r=>r[PSF.route]===route);
+  const t=psTot(mine);
+  const quick=mine.filter(psQuickWin).sort((a,b)=>b[PSF.gsv]-a[PSF.gsv]);
+  const hard=mine.filter(r=>!r[PSF.yes]&&!psQuickWin(r)).sort((a,b)=>b[PSF.gsv]-a[PSF.gsv]);
+  const topQ=quick.slice(0,10);
+  const gap=topQ.reduce((s,r)=>s+Math.max(0,r[PSF.gap]),0);
+  const add=topQ.reduce((s,r)=>s+r[PSF.gsv],0)*100;
+  const rowH=(r,i)=>`<tr><td>${i+1}</td><td><b>${r[PSF.name]||r[PSF.code]}</b><div style="font-size:11px;color:var(--muted)">${r[PSF.code]}</div></td>
+    <td>${psTypeTag(r[PSF.type])}</td><td>${psAVD(r)}</td>
+    <td style="text-align:center"><b>${Math.max(0,r[PSF.gap])}</b></td>
+    <td style="text-align:center">${(r[PSF.gsv]*100).toFixed(2)}%</td>
+    <td style="font-size:11px;color:var(--muted)">${r[PSF.cta]||""}</td></tr>`;
+  el.innerHTML=`<h3>📋 แผนโฟกัสรอบหน้า — สาย ${disp}${nm?" · "+nm:""}</h3>
+    <div class="psub">ตอนนี้ผ่าน ${t.yes}/${t.stores} ร้าน (Numeric ${(t.stores?t.yes/t.stores*100:0).toFixed(1)}% · Weighted ${(t.gsvYes*100).toFixed(2)}%)</div>
+    ${legend}
+    <div class="an-summary">🎯 เป้ารอบหน้า: ปิด <b>Top-${topQ.length}</b> ร้านขาดแค่ A ต้องขายรวม <b>${gap.toLocaleString()} ชิ้น</b> → Weighted ขึ้นเป็น <b>${(t.gsvYes*100+add).toFixed(2)}%</b> (+${add.toFixed(2)} จุด) · Numeric ขึ้นเป็น <b>${t.stores?((t.yes+topQ.length)/t.stores*100).toFixed(1):0}%</b></div>
+    <h3 style="margin-top:14px">🟢 เก็บง่าย — ขาดแค่ A (เรียงตามน้ำหนักมากสุด ${quick.length} ร้าน)</h3>
+    <div style="overflow-x:auto"><table class="plan-tbl"><thead><tr><th>#</th><th style="text-align:left">ร้าน</th><th>ประเภท</th><th>สถานะ A·V·D</th><th>ต้องขายอีก (ชิ้น)</th><th>น้ำหนัก</th><th>Unilever แนะนำ</th></tr></thead><tbody>`+
+    quick.slice(0,20).map(rowH).join("")+`</tbody></table>${quick.length>20?'<div class="psub" style="margin-top:6px">แสดง 20 จาก '+quick.length+' ร้าน — ที่เหลือดูในตารางค้นหาด้านล่าง</div>':""}</div>
+    ${hard.length?`<h3 style="margin-top:16px">🟠 น้ำหนักสูงแต่ติดหลายด่าน (ต้องช่วยให้ร้านกดสั่ง/จัดโชว์ด้วย)</h3>
+    <div style="overflow-x:auto"><table class="plan-tbl"><thead><tr><th>#</th><th style="text-align:left">ร้าน</th><th>ประเภท</th><th>สถานะ A·V·D</th><th>ต้องขายอีก (ชิ้น)</th><th>น้ำหนัก</th><th>Unilever แนะนำ</th></tr></thead><tbody>`+
+    hard.slice(0,8).map(rowH).join("")+`</tbody></table></div>`:""}`;
+}
+function renderPsStores(rebuild){
+  const el=document.getElementById("psStores");
+  const rows=psScopedRows(PSS.round);
+  if(!rows.length){el.innerHTML="";return;}
+  if(rebuild||!document.getElementById("psQ")){
+    el.innerHTML=`<h3>🔎 ค้นหาร้านในโครงการ</h3>
+      <div class="psub">พิมพ์ชื่อหรือรหัสร้าน · กดปุ่มเพื่อกรองร้านที่ยังไม่ผ่าน/ผ่านแล้ว</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 12px">
+        <input id="psQ" value="${(PSS.q||"").replace(/"/g,"&quot;")}" placeholder="พิมพ์รหัส / ชื่อร้าน" oninput="PSS.q=this.value;renderPsStores()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:230px">
+        <div class="seg" id="psFilter">
+          <button data-f="no"${PSS.f==="no"?' class="on"':""} onclick="PSS.f='no';setSeg('psFilter','f','no');renderPsStores()">ยังไม่ผ่าน</button>
+          <button data-f="yes"${PSS.f==="yes"?' class="on"':""} onclick="PSS.f='yes';setSeg('psFilter','f','yes');renderPsStores()">ผ่านแล้ว</button>
+          <button data-f="all"${PSS.f==="all"?' class="on"':""} onclick="PSS.f='all';setSeg('psFilter','f','all');renderPsStores()">ทั้งหมด</button>
+        </div>
+      </div><div id="psStoreTbl"></div>`;
+  }
+  const q=(PSS.q||"").trim().toLowerCase();
+  let list=rows.filter(r=>PSS.f==="all"?true:PSS.f==="yes"?r[PSF.yes]:!r[PSF.yes]);
+  if(q)list=list.filter(r=>String(r[PSF.name]).toLowerCase().includes(q)||String(r[PSF.code]).includes(q));
+  list=list.slice().sort((a,b)=>b[PSF.gsv]-a[PSF.gsv]);
+  const total=list.length,show=list.slice(0,60);
+  document.getElementById("psStoreTbl").innerHTML=
+    `<div style="overflow-x:auto"><table class="plan-tbl"><thead><tr><th>สาย</th><th style="text-align:left">ร้าน</th><th>ประเภท</th><th>สถานะ A·V·D</th><th>ผ่าน?</th><th>ต้องขายอีก</th><th>น้ำหนัก</th><th>เป็น PS มาแล้ว (เดือน/12)</th></tr></thead><tbody>`+
+    show.map(r=>`<tr><td><span class="tag ct">${psRouteDisp(r[PSF.route])}</span></td>
+      <td style="text-align:left"><b>${r[PSF.name]||r[PSF.code]}</b><div style="font-size:11px;color:var(--muted)">${r[PSF.code]}</div></td>
+      <td>${psTypeTag(r[PSF.type])}</td><td>${psAVD(r)}</td>
+      <td class="${r[PSF.yes]?'up':'down'}">${r[PSF.yes]?"✔":"✘"}</td>
+      <td style="text-align:center">${r[PSF.yes]?"—":Math.max(0,r[PSF.gap])+" ชิ้น"}</td>
+      <td style="text-align:center">${(r[PSF.gsv]*100).toFixed(2)}%</td>
+      <td style="text-align:center">${r[PSF.months]||0}</td></tr>`).join("")+
+    `</tbody></table></div>`+(total>60?`<div class="psub" style="margin-top:6px">แสดง 60 จาก ${total.toLocaleString()} ร้าน — พิมพ์ค้นหาเพื่อกรอง</div>`:"");
+}
+function parsePS(name,buf){
+  const wb=XLSX.read(buf,{type:"array"});
+  let sh=null,hdr=null,hrow=0,rows=null;
+  for(const sn of wb.SheetNames){
+    const rr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true});
+    for(let i=0;i<Math.min(6,rr.length);i++){
+      const h=(rr[i]||[]).map(x=>String(x||"").toLowerCase());
+      if(h.some(x=>/route/.test(x))&&h.some(x=>/ps\s*type/.test(x))&&h.some(x=>/gsv/.test(x))){sh=sn;hdr=h;hrow=i;rows=rr;break;}
+    }
+    if(sh)break;
+  }
+  if(!sh)throw new Error("ไม่พบหัวตาราง Perfect Store (Route / PS Type / GSV) — ไม่ใช่ไฟล์ perfect_store?");
+  const col=re=>hdr.findIndex(x=>re.test(x));
+  const ci={route:col(/route/),code:col(/outlet\s*code/),name:col(/outlet\s*name/),type:col(/ps\s*type/),yes:col(/is\s*perfect/),
+    a:col(/^availab/),v:col(/^visib/),d:col(/^digit/),months:col(/ps\s*months/),gap:col(/gap\s*to/),cta:col(/call\s*to\s*action/),gsv:col(/gsv\s*contribution/)};
+  if(ci.route<0||ci.code<0||ci.yes<0||ci.gsv<0)throw new Error("คอลัมน์หลักไม่ครบ (Route / Outlet Code / Is Perfect / GSV) — ฟอร์แมตไฟล์อาจเปลี่ยน แจ้งให้ปรับโปรแกรมได้");
+  const T=t=>{t=String(t||"");if(/full/i.test(t))return "F";if(/nano/i.test(t))return "N";if(/lite/i.test(t))return /a\s*,\s*v/i.test(t)?"AV":"AD";return t.trim()||"?";};
+  const L=v=>{v=String(v||"").trim().toLowerCase();return v==="green"?"G":v==="red"?"R":v==="amber"?"A":"";};
+  const out=[];
+  for(let i=hrow+1;i<rows.length;i++){const r=rows[i];if(!r||!r[ci.route]||!r[ci.code])continue;
+    out.push([String(r[ci.route]).trim(),String(r[ci.code]).trim(),String(ci.name>=0?(r[ci.name]||""):"").trim(),
+      T(ci.type>=0?r[ci.type]:""),/^y/i.test(String(r[ci.yes]||""))?1:0,
+      L(ci.a>=0?r[ci.a]:""),L(ci.v>=0?r[ci.v]:""),L(ci.d>=0?r[ci.d]:""),
+      +(ci.months>=0?r[ci.months]:0)||0,+(ci.gap>=0?r[ci.gap]:0)||0,
+      String(ci.cta>=0?(r[ci.cta]||""):"").trim(),Math.round((parseFloat(ci.gsv>=0?r[ci.gsv]:0)||0)*1e6)/1e6]);
+  }
+  if(!out.length)throw new Error("ไม่พบข้อมูลร้านในไฟล์");
+  /* round key: dd.mm(.yy) before .xls in filename, e.g. perfect_store_AVD_BM7_BD_30.07.xlsx */
+  let rk=null,bm=null;
+  const bmM=name.match(/BM\s*_?(\d{1,2})/i);if(bmM)bm=+bmM[1];
+  const dm=name.match(/(\d{1,2})[._-](\d{1,2})(?:[._-](\d{2,4}))?(?=[^\d]*\.xls)/i);
+  if(dm){const d=+dm[1],mo=+dm[2];let y=dm[3]?+dm[3]:(new Date()).getFullYear();if(y<100)y+=2000;
+    if(mo>=1&&mo<=12&&d>=1&&d<=31)rk=y+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0");}
+  if(!rk){const n=new Date();rk=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0");}
+  if(!PSTORE||typeof PSTORE!=="object")PSTORE={rounds:{}};if(!PSTORE.rounds)PSTORE.rounds={};
+  PSTORE.rounds[rk]={asof:rk,bm:bm,rows:out};
+  const yes=out.filter(r=>r[PSF.yes]).length,w=out.reduce((s,r)=>s+(r[PSF.yes]?r[PSF.gsv]:0),0);
+  ulog("✅ "+name+" (Perfect Store) → รอบ "+fmtDate(rk)+(bm?" · BM"+bm:"")+" · "+out.length+" ร้าน · ผ่าน "+yes+" ("+(yes/out.length*100).toFixed(1)+"%) · Weighted "+(w*100).toFixed(1)+"%");
+  PSS.round=rk;
+  if(!document.getElementById("psView").classList.contains("hidden"))renderPS();
   syncToServer();
 }
 
@@ -1929,8 +2230,8 @@ function parseDrop(name,buf){
 
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){
-  const g={sales:"sales",kpi:"kpi",order:"order",stock:"stock",ana:"ana"}[CURTAB]||"sales";
-  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ KPI ออนไลน์",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์"}[g];
+  const g={sales:"sales",kpi:"kpi",ps:"ps",order:"order",stock:"stock",ana:"ana"}[CURTAB]||"sales";
+  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์"}[g];
   document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
   document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=el.dataset.group===g?"":"none";});
   document.getElementById("modal").classList.remove("hidden");
@@ -1948,6 +2249,7 @@ function handleTyped(e,kind){
     if(kind==="daily")parseDaily(f.name,ev.target.result);
     else if(kind==="month")parseMonthly(f.name,ev.target.result);
     else if(kind==="kpi")parseKPI(f.name,ev.target.result);
+    else if(kind==="ps")parsePS(f.name,ev.target.result);
     else if(kind==="order")parseOrderForm(f.name,ev.target.result,"order");
     else if(kind==="drop")parseDrop(f.name,ev.target.result);
     else if(kind==="stockd")parseStock(f.name,ev.target.result);
@@ -1961,6 +2263,7 @@ document.getElementById("fileDaily").addEventListener("change",e=>handleTyped(e,
 document.getElementById("fileMonth").addEventListener("change",e=>handleTyped(e,"month"));
 document.getElementById("fileStore").addEventListener("change",e=>handleTyped(e,"store"));
 document.getElementById("fileKPI").addEventListener("change",e=>handleTyped(e,"kpi"));
+document.getElementById("filePS").addEventListener("change",e=>handleTyped(e,"ps"));
 document.getElementById("fileOrder").addEventListener("change",e=>handleTyped(e,"order"));
 document.getElementById("fileDrop").addEventListener("change",e=>handleTyped(e,"drop"));
 document.getElementById("fileStock2").addEventListener("change",e=>handleTyped(e,"stockd"));

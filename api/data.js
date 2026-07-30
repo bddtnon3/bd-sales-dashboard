@@ -21,7 +21,8 @@ function looksEmpty(d) {
   const st = ((d.STOCKD && d.STOCKD.rows) || []).length;
   const od = ((d.ORDERS && d.ORDERS.dates) || []).length;
   const kp = ((d.KPI && d.KPI.months) || []).length;
-  return (m + dd + st + od + kp) === 0;
+  const ps = Object.keys((d.PSTORE && d.PSTORE.rounds) || {}).length;
+  return (m + dd + st + od + kp + ps) === 0;
 }
 
 export default async function handler(req, res) {
