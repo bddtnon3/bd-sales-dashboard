@@ -47,7 +47,10 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
 - `api/request.js` writes only a salesperson's own `REQUESTS[date][line]` — a manager save must
   never clobber sales requests (`mergeRequests`).
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
-  `mergeState` / `mergeRequests`, prove old data survives before pushing.
+  `mergeState` / `mergeRequests`, prove old data survives before pushing by running
+  **`node test/merge-safety.test.mjs`** (30 checks against the real `api/save.js`: old browser
+  tab without a new field, new upload vs existing keys, empty/crashed client, fresh blob store,
+  manager-vs-sales requests). It must print `ALL PASS`. Add a case whenever you add a section.
 
 ## Request-size limit (why the client gzips)
 Vercel caps the request body (~4.5 MB) and the blob is several MB, so the client gzips the
