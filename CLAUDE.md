@@ -15,6 +15,13 @@ the app UI; the sales team sees everything live. Features (all are tabs in one p
 Non-technical business owner. **Always respond in Thai**, keep it simple, avoid jargon.
 Say what you're about to do before anything side-effectful (commit, push, deploy).
 
+## Also read `HANDOFF.md`
+`HANDOFF.md` holds the project history and the *reasons* behind current behaviour: the data-loss
+incident and the safeguards it produced, business rules that are easy to get wrong (Drop O/P/Q,
+the −15% CON Confirm estimate, duplicate rows per product code, product codes changing over time,
+the 6 order-form categories), file-naming conventions for uploads, known limitations, and Vercel
+capacity notes. Read it before changing anything in the order/Drop flow or the merge logic.
+
 ## Deploy = commit to `main`
 Production auto-deploys from GitHub `main` (repo `bddtnon3/bd-sales-dashboard`) via Vercel (~1 min).
 There is NO separate deploy command. Live site: https://bd-sales-dashboard.vercel.app
