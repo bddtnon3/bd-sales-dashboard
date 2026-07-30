@@ -79,6 +79,9 @@ function mergeState(server, c) {
   const sP = s.STOREPROD || {}, cP = c.STOREPROD || {};
   const STOREPROD = { months: unionArr(sP.months, cP.months), cat: keyMerge(sP.cat, cP.cat), stores: keyMerge(sP.stores, cP.stores), data: keyMerge(sP.data, cP.data) };
   const STOREDAILY = { data: keyMerge((s.STOREDAILY && s.STOREDAILY.data), (c.STOREDAILY && c.STOREDAILY.data)) };
+  // Perfect Store rounds are keyed by round date: union — a client without PSTORE
+  // (old browser tab) or without some round can never erase rounds the server has.
+  const PSTORE = { rounds: keyMerge((s.PSTORE && s.PSTORE.rounds), (c.PSTORE && c.PSTORE.rounds)) };
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),
@@ -90,6 +93,7 @@ function mergeState(server, c) {
     ANALYTICS,
     STOREPROD,
     STOREDAILY,
+    PSTORE,
     savedAt: Date.now(),
   };
 }
@@ -122,7 +126,8 @@ export default async function handler(req, res) {
   const st = ((body.STOCKD && body.STOCKD.rows) || []).length;
   const od = ((body.ORDERS && body.ORDERS.dates) || []).length;
   const kp = ((body.KPI && body.KPI.months) || []).length;
-  if ((m + dd + st + od + kp) === 0) {
+  const ps = Object.keys((body.PSTORE && body.PSTORE.rounds) || {}).length;
+  if ((m + dd + st + od + kp + ps) === 0) {
     return res.status(409).json({ error: "ข้อมูลว่างเปล่า — ยกเลิกการบันทึกเพื่อป้องกันข้อมูลเดิมหาย (ลองรีเฟรชแล้วโหลดข้อมูลใหม่ก่อนอัพโหลด)" });
   }
 
