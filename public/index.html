@@ -583,7 +583,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
         <input id="fileMonth" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="sales">
-        <label class="drop up-store" for="fileStore">🏪 <b>ยอดรายร้าน (by store)</b><small>อัพเดือนละครั้ง (หรือรายสัปดาห์) · ไฟล์ Sales ... by store.xls</small></label>
+        <label class="drop up-store" for="fileStore">🏪 <b>ยอดรายร้าน (by store)</b><small>ไม่จำเป็นแล้ว — ไฟล์ 🧪 ยอดขายรายกลุ่ม/แบรนด์ สร้างยอดรายร้านให้เองอัตโนมัติ · เก็บไว้เผื่อกรณีพิเศษ</small></label>
         <input id="fileStore" type="file" accept=".xls,.xlsx" multiple class="hidden">
       </div>
       <div class="up-row" data-group="kpi">
@@ -637,7 +637,6 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <div class="store-tools">
         <div class="seg" id="stMetric">
           <button data-m="niv" class="on">ยอดขาย (NIV)</button>
-          <button data-m="cs">จำนวนลัง (CS)</button>
           <button data-m="pc">จำนวนชิ้น (PC)</button>
         </div>
         <input id="stSearch" placeholder="🔍 ค้นหาชื่อร้าน / รหัสร้าน" oninput="renderStoreTable()">
@@ -1140,7 +1139,7 @@ const MIDX={cs:0,pc:1,niv:2};
 const fmtQty=v=>Math.round(v).toLocaleString("en-US");
 const fmtMetric=v=>ST.metric==="niv"?THB(v):fmtQty(v);
 function openStore(code){
-  if(!STORE_IDX[code]){alert("ยังไม่มีข้อมูลรายร้านของสายนี้ (อัพไฟล์ by-store ก่อน)");return;}
+  if(!STORE_IDX[code]){alert("ยังไม่มีข้อมูลรายร้านของสายนี้ (อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์ก่อน — ระบบสร้างยอดรายร้านให้เอง)");return;}
   ST.code=code;ST.metric="niv";setSeg("stMetric","m","niv");
   document.getElementById("stSearch").value="";
   const d=DATA.lines[code];
@@ -2818,6 +2817,61 @@ function anaGroupStorePanel(line,g){
 function anaJumpStore(sc){navPush();ANA.mode="store";ANA.store=sc;ANA.group=null;ANA.brand=null;ANA.storeFlat=false;document.querySelectorAll("#anaMode button").forEach(b=>b.classList.toggle("on",b.dataset.mode==="store"));anaUpdateCtl();renderAnalytics();}
 
 /* ANALYTICS upload parser — efficient quoted-printable decode (handles ~60MB MHTML) + merge by month */
+/* Line code (2096xx) -> display name (CT11 / KA98 / ...).
+   Resolved from live data first, so a new salesperson shows up automatically — the old
+   hard-coded list silently dropped CT19 and KA99 and their sales never reached this tab. */
+function anaLineDisp(code){
+  const c=String(code==null?"":code).trim();
+  if(!/^2096/.test(c))return null;
+  const d=(DATA&&DATA.lines)?DATA.lines[c]:null;
+  if(d&&d.display&&d.display!==c)return d.display;
+  if(FOCUS_MAP[c])return FOCUS_MAP[c];
+  const m=c.match(/^2096_?(\d{2})$/);
+  if(m)return (+m[1]>=90?"KA":"CT")+m[1];
+  return null;
+}
+/* Rebuild the by-store table (STORE) out of the product-level data, so ONE upload feeds both
+   the analytics tab and the per-store drill-down. Merge semantics, never replace: months and
+   stores the analytics file does not cover keep whatever they already had. */
+function storeFromAnalytics(fresh){
+  const F={};(fresh||[]).forEach(mo=>F[mo]=1);   /* months this upload actually carries */
+  const rev={};for(const c in (DATA.lines||{})){const d=DATA.lines[c];if(d&&d.display)rev[d.display]=c;}
+  const agg={},moSeen={};
+  const SPd=(STOREPROD&&STOREPROD.data)||{};
+  for(const disp in SPd){
+    const line=rev[disp]||disp,stores=SPd[disp];
+    for(const sc in stores){
+      const key=line+"|"+sc,o=agg[key]||(agg[key]={name:((STOREPROD.stores||{})[sc]||{}).n||sc,mo:{}}),prods=stores[sc];
+      for(const pcode in prods){const P=prods[pcode];
+        for(const mo in (P.pc||{})){(o.mo[mo]||(o.mo[mo]=[0,0]))[0]+=P.pc[mo]||0;moSeen[mo]=1;}
+        for(const mo in (P.niv||{})){(o.mo[mo]||(o.mo[mo]=[0,0]))[1]+=P.niv[mo]||0;moSeen[mo]=1;}
+      }
+    }
+  }
+  if(!Object.keys(agg).length)return 0;
+  const oldMonths=(STORE&&STORE.months)||[],oldIdx={};
+  ((STORE&&STORE.stores)||[]).forEach(r=>{oldIdx[r[0]+"|"+r[1]]=r;});
+  const months=[...new Set([...oldMonths,...Object.keys(moSeen)])].sort();
+  const keys=[...new Set([...Object.keys(oldIdx),...Object.keys(agg)])];
+  const rows=keys.map(k=>{
+    const o=oldIdx[k],a=agg[k],p=k.indexOf("|");
+    const line=k.slice(0,p),sc=k.slice(p+1);
+    const name=(a&&a.name)||(o&&o[2])||sc;
+    const m=months.map(mo=>{
+      const oi=oldMonths.indexOf(mo),prev=(o&&oi>=0&&o[3]&&o[3][oi])?o[3][oi]:null;
+      /* Only the months in THIS upload are refreshed. For any other month the existing
+         figure wins and analytics is used purely to fill a gap — re-uploading one month
+         must never quietly restate a month the file does not even contain. */
+      const derived=(a&&a.mo[mo])?[prev?prev[0]:0,Math.round(a.mo[mo][0]),Math.round(a.mo[mo][1]*100)/100]:null;
+      if(F[mo])return derived||prev||[0,0,0];
+      if(prev&&(prev[1]||prev[2]))return prev;
+      return derived||prev||[0,0,0];
+    });
+    return [line,sc,name,m];
+  });
+  STORE={months,stores:rows};buildStoreIdx();
+  return rows.length;
+}
 function anaPurgeMonths(mos){
   for(const l in ANALYTICS.data){const L=ANALYTICS.data[l];for(const g in L){const G=L[g];for(const b in G.brands){const pr=G.brands[b].products;for(const c in pr){mos.forEach(mo=>{delete pr[c].niv[mo];delete pr[c].pc[mo];});}}}}
   if(STOREPROD&&STOREPROD.data)for(const l in STOREPROD.data){const L=STOREPROD.data[l];for(const s in L){const S=L[s];for(const c in S){mos.forEach(mo=>{delete S[c].niv[mo];delete S[c].pc[mo];});}}}
@@ -2842,37 +2896,65 @@ function parseAnalytics(name,buf){
   const monKey=x=>{const m=x.match(/^(\d{2})\.(\d{4})$/);return m?m[2]+"-"+m[1]:null;};
   const rowRe=/<tr[^>]*>([\s\S]*?)<\/tr>/gi,cellRe=/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
   const dcell=x=>x.replace(/<[^>]+>/g,"").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/&lt;/gi,"<").replace(/&gt;/gi,">").replace(/&quot;/gi,'"').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(+n)).replace(/ /g," ").trim();
-  const FA={"209611":"CT11","209612":"CT12","209613":"CT13","209614":"CT14","209615":"CT15","209616":"CT16","209617":"CT17","209622":"CT22","2096_97":"KA97","209697":"KA97","209698":"KA98"};
   if(!ANALYTICS||typeof ANALYTICS!=="object")ANALYTICS={months:[],lines:{},data:{}};
   if(!ANALYTICS.data)ANALYTICS.data={};if(!ANALYTICS.lines)ANALYTICS.lines={};if(!ANALYTICS.months)ANALYTICS.months=[];
   if(!STOREPROD||typeof STOREPROD!=="object")STOREPROD={months:[],cat:{},stores:{},data:{}};
   if(!STOREPROD.data)STOREPROD.data={};if(!STOREPROD.cat)STOREPROD.cat={};if(!STOREPROD.stores)STOREPROD.stores={};if(!STOREPROD.months)STOREPROD.months=[];
-  let m,months=null,matched=0;
+  /* Column layout is read from the report's own header rows (metric row + month row) and
+     paired positionally, exactly like parseStore. That way the file may carry any set of
+     key figures (PC/NIV today, + CS later) in any order without a code change. */
+  const METRE=/^(sale quantity in (pc|cs)|niv)$/i;
+  let m,months=null,matched=0,metLabels=null,colSpec=null,DS=null,skipped={};
   while((m=rowRe.exec(htmlStr))){
     const cells=[];let cm;cellRe.lastIndex=0;const rh=m[1];
     while((cm=cellRe.exec(rh)))cells.push(dcell(cm[1]));
-    if(!months){const mm=[];cells.forEach(x=>{const k=monKey(x);if(k&&mm.indexOf(k)<0)mm.push(k);});if(mm.length){months=mm;anaPurgeMonths(months);}continue;}
-    if(cells.length<14)continue;
-    const disp=FA[cells[4]];if(!disp)continue;
+    if(!months){
+      const monCols=cells.filter(x=>monKey(x));
+      if(!monCols.length){const mets=cells.filter(x=>METRE.test(x));if(mets.length)metLabels=mets;continue;}
+      const uniq=[];monCols.forEach(x=>{const k=monKey(x);if(uniq.indexOf(k)<0)uniq.push(k);});
+      months=uniq;anaPurgeMonths(months);
+      colSpec=[];
+      if(metLabels&&metLabels.length){
+        const n=Math.min(metLabels.length,monCols.length);
+        for(let k=0;k<n;k++){const L=metLabels[k].toUpperCase();
+          colSpec.push({met:/\bCS\b/.test(L)?"cs":/\bPC\b/.test(L)?"pc":"niv",mo:monKey(monCols[k])});}
+      }else{ /* older exports with no metric header: PC block then NIV block */
+        months.forEach(mo=>colSpec.push({met:"pc",mo}));
+        months.forEach(mo=>colSpec.push({met:"niv",mo}));
+      }
+      continue;
+    }
+    const disp=anaLineDisp(cells[4]);
+    if(!disp){if(/^\d{4,10}$/.test(cells[4]||""))skipped[cells[4]]=(skipped[cells[4]]||0)+1;continue;}
+    if(DS===null){const d=cells.length-colSpec.length;DS=(d>=8)?d:14;}
+    if(cells.length<DS+1)continue;
     const type=disp.charAt(0)==="K"?"KA":"CT";
     const scode=cells[6],sname=cells[7];
-    const grp=cells[9]||cells[8]||"(ไม่ระบุ)",brand=cells[11]||cells[10]||"(ไม่ระบุ)",code=cells[12],pname=cells[13];
-    const nm=months.length,tail=cells.slice(14,14+2*nm);let any=false;const pcv=[],niv=[];
-    for(let k=0;k<nm;k++){const pv=parseFloat(String(tail[k]||"").replace(/,/g,""))||0,nv=parseFloat(String(tail[nm+k]||"").replace(/,/g,""))||0;pcv.push(pv);niv.push(nv);if(pv||nv)any=true;}
+    /* label columns sit immediately before the figures, so index them off DS */
+    const grp=cells[DS-5]||cells[DS-6]||"(ไม่ระบุ)",brand=cells[DS-3]||cells[DS-4]||"(ไม่ระบุ)",code=cells[DS-2],pname=cells[DS-1];
+    if(!code)continue;
+    const val={};let any=false;
+    for(let k=0;k<colSpec.length;k++){
+      const v=parseFloat(String(cells[DS+k]||"").replace(/,/g,""))||0;if(!v)continue;
+      const c=colSpec[k],o=val[c.mo]||(val[c.mo]={pc:0,niv:0});
+      if(c.met!=="cs"){o[c.met]+=v;any=true;}   /* CS is not shown anywhere — ignore if present */
+    }
     if(!any)continue;matched++;
     ANALYTICS.lines[disp]={disp,type};
     const L=ANALYTICS.data[disp]||(ANALYTICS.data[disp]={});
     const G=L[grp]||(L[grp]={brands:{}});
     const B=G.brands[brand]||(G.brands[brand]={products:{}});
     const P=B.products[code]||(B.products[code]={n:pname,niv:{},pc:{}});
-    for(let k=0;k<nm;k++){const mo=months[k];if(niv[k])P.niv[mo]=Math.round(((P.niv[mo]||0)+niv[k])*10)/10;if(pcv[k])P.pc[mo]=Math.round((P.pc[mo]||0)+pcv[k]);}
-    /* store-level product detail (line->store->product) + product catalog */
+    const SS=scode?((STOREPROD.data[disp]||(STOREPROD.data[disp]={}))[scode]||((STOREPROD.data[disp])[scode]={})):null;
+    const SP=SS?(SS[code]||(SS[code]={niv:{},pc:{}})):null;
     if(scode){STOREPROD.stores[scode]={n:sname||scode,l:disp};
-      if(!STOREPROD.cat[code])STOREPROD.cat[code]={g:grp,b:brand,n:pname};
-      const SL=STOREPROD.data[disp]||(STOREPROD.data[disp]={});
-      const SS=SL[scode]||(SL[scode]={});
-      const SP=SS[code]||(SS[code]={niv:{},pc:{}});
-      for(let k=0;k<nm;k++){const mo=months[k];if(niv[k])SP.niv[mo]=Math.round(((SP.niv[mo]||0)+niv[k])*10)/10;if(pcv[k])SP.pc[mo]=Math.round((SP.pc[mo]||0)+pcv[k]);}
+      if(!STOREPROD.cat[code])STOREPROD.cat[code]={g:grp,b:brand,n:pname};}
+    /* keep 2 dp: these product figures are now also summed back into the by-store totals,
+       so 1 dp drifted a baht or two per store against the source report */
+    for(const mo in val){const nv=val[mo].niv,pv=val[mo].pc;
+      if(nv)P.niv[mo]=Math.round(((P.niv[mo]||0)+nv)*100)/100;
+      if(pv)P.pc[mo]=Math.round((P.pc[mo]||0)+pv);
+      if(SP){if(nv)SP.niv[mo]=Math.round(((SP.niv[mo]||0)+nv)*100)/100;if(pv)SP.pc[mo]=Math.round((SP.pc[mo]||0)+pv);}
     }
   }
   if(!months)throw new Error("ไม่พบคอลัมน์เดือน (MM.YYYY) — ไฟล์นี้อาจไม่ใช่รายงาน Daily Sales Summary");
@@ -2880,8 +2962,12 @@ function parseAnalytics(name,buf){
   const ms={};for(const l in ANALYTICS.data){const L=ANALYTICS.data[l];for(const g in L)for(const b in L[g].brands){const pr=L[g].brands[b].products;for(const c in pr){for(const x in pr[c].niv)ms[x]=1;for(const x in pr[c].pc)ms[x]=1;}}}
   ANALYTICS.months=Object.keys(ms).sort();ANALYTICS.up=Date.now();
   STOREPROD.months=ANALYTICS.months.slice();STOREPROD.up=Date.now();
+  const nStore=storeFromAnalytics(months);
   ulog("✅ "+name+" (วิเคราะห์สินค้า) → "+matched.toLocaleString()+" แถว · เดือน "+months.map(fmtMonth).join(", ")+" · รวม "+Object.keys(ANALYTICS.data).length+" สาย · "+Object.keys(STOREPROD.stores).length.toLocaleString()+" ร้าน");
+  if(nStore)ulog("&nbsp;&nbsp;↳ สร้างยอดขายรายร้านจากไฟล์เดียวกันแล้ว "+nStore.toLocaleString()+" ร้าน (ไม่ต้องอัพไฟล์ by-store แยกอีก)");
+  const sk=Object.keys(skipped);if(sk.length)ulog("&nbsp;&nbsp;⚠️ ข้ามรหัสสายที่ไม่รู้จัก: "+sk.slice(0,6).join(", ")+(sk.length>6?" …":""));
   initAnalytics();if(!document.getElementById("anaView").classList.contains("hidden"))renderAnalytics();
+  render();
   syncToServer();
 }
 
