@@ -729,7 +729,24 @@ function completeMonthIdx(){return STORE.months.map((m,i)=>i).filter(i=>STORE.mo
 
 /* Focus display map for parsing uploaded monthly files */
 const FOCUS_MAP={"209611":"CT11","209612":"CT12","209613":"CT13","209614":"CT14","209615":"CT15",
-"209616":"CT16","209617":"CT17","209622":"CT22","2096_97":"KA97","209698":"KA98"};
+"209616":"CT16","209617":"CT17","209619":"CT19","209622":"CT22","2096_97":"KA97","209698":"KA98","209699":"KA99"};
+/* Canonical MAIN-line order. Everything listed here counts as a main line: it shows in the
+   sales views without ticking "รวมสายเสริม". Promoting a line here is enough — ensureFocusOrder()
+   migrates data saved before the promotion, so nothing has to be re-uploaded. */
+const FOCUS_ORDER=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
+function ensureFocusOrder(){
+  if(!DATA.lines)DATA.lines={};
+  const cur=(DATA.focus_order||[]).slice();
+  FOCUS_ORDER.forEach(c=>{if(cur.indexOf(c)<0)cur.push(c);});
+  const seen={},out=[];
+  FOCUS_ORDER.forEach(c=>{if(cur.indexOf(c)>=0&&!seen[c]){seen[c]=1;out.push(c);}});
+  cur.forEach(c=>{if(!seen[c]){seen[c]=1;out.push(c);}});
+  const known=out.filter(c=>DATA.lines[c]);
+  DATA.focus_order=known.length?known:out;   /* never hand render() a line it has no data for */
+  known.forEach(c=>{const d=DATA.lines[c];d.focus=true;
+    if(FOCUS_MAP[c])d.display=FOCUS_MAP[c];
+    if(!d.type)d.type=String(d.display||"").charAt(0)==="K"?"KA":"CT";});
+}
 
 /* ====================== ACCOUNTS ====================== */
 /* v1 simple client-side auth. username = display code, password = code(lower)+"@bd" */
@@ -814,6 +831,7 @@ function pickOrderDate(d){ORD.date=d;const t=document.getElementById("orderDateT
 function fmtWeek(id){const[a,b]=id.split("__");return fmtDate(a)+" – "+fmtDate(b);}
 
 function initKeys(){
+  ensureFocusOrder();
   const seg=document.getElementById("periodSeg");
   seg.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.p===S.period));
   const sel=document.getElementById("keySel");sel.innerHTML="";
@@ -906,6 +924,7 @@ function periodWord(period){return {daily:"วันก่อนหน้า",we
 /* ====================== RENDER ====================== */
 function render(){
   if(!S.user)return;
+  ensureFocusOrder();
   document.getElementById("scopeCtl").style.display=S.user.role==="manager"?"none":"";
   const agg=aggregate();
   let rows=agg.rows;
@@ -1301,7 +1320,7 @@ function renderKPI(){
   renderKpiCards(team,rows,focusMe);
   if(focusMe&&!rows.length){
     document.getElementById("kpiReward").innerHTML="";
-    document.getElementById("kpiCharts").innerHTML='<div class="panel"><div class="insight">สายของคุณไม่อยู่ในรายงาน eB2B & Self Ordering นี้ (ครอบคลุมเฉพาะสาย CT)</div></div>';
+    document.getElementById("kpiCharts").innerHTML='<div class="panel"><div class="insight">สายของคุณไม่มีอยู่ในรายงาน eB2B & Self Ordering รอบนี้ — ไม่ต้องกังวล รายงานนี้ครอบคลุมเฉพาะบางสายเท่านั้น</div></div>';
     document.getElementById("kpiPlan").innerHTML="";return;
   }
   renderKpiReward(team,rows,focusMe,mine);

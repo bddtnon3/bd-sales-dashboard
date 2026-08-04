@@ -16,7 +16,7 @@ let s = tpl;
 // data placeholders -> empty server defaults (real data comes from /api/data)
 s = must(s, "const DATA = __SALESDATA__;", "DATA decl")
   .replace("const DATA = __SALESDATA__;",
-    'let DATA = {lines:{},monthly:{},daily:{},focus_order:["209611","209612","209613","209614","209615","209616","209617","209622","2096_97","209698"]};');
+    'let DATA = {lines:{},monthly:{},daily:{},focus_order:["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"]};');
 s = must(s, "let STORE = __STOREDATA__;", "STORE decl")
   .replace("let STORE = __STOREDATA__;", "let STORE = {months:[],stores:[]};\nlet TOKEN=null;");
 s = s.replace("let KPI = __KPIDATA__;", "let KPI = {months:[],lines:{},data:{},workdays:26};")
@@ -90,7 +90,7 @@ async function loadData(){
     if(r.status===401){logout();return;}
     const d=await r.json();
     if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};}
-    if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209622","2096_97","209698"];
+    if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();navReset();
   }catch(ex){alert("โหลดข้อมูลจากเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
 }
