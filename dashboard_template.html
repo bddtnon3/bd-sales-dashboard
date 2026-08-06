@@ -316,7 +316,14 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 .ps-pill.g{background:#E7F6EE;color:#1E9E5A}
 .ps-pill.r{background:#FBE9E9;color:#D64545}
 .ps-pill.a{background:#FDF3E3;color:#B77A1B}
-.ps-pill.o{background:#F1F3F7;color:#B4BECC}
+.ps-cta{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:12px;background:#EEF2F8;color:#48607F;margin-left:3px}
+.ps-sort{cursor:pointer;user-select:none;white-space:nowrap}
+.ps-sort:hover{color:var(--blue)}
+.ps-sort .ar{font-size:9px;margin-left:2px}
+.ps-gdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.ps-gdot.easy{background:#1E9E5A}.ps-gdot.easylow{background:#9BD3B4}.ps-gdot.hard{background:#E08A2E}.ps-gdot.done{background:#C7D0DE}
+.ps-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0 4px}
+.ps-toolbar input{padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:210px}
 .ps-typetag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:12px;background:#EAF1FD;color:var(--blue);white-space:nowrap}
 .ps-typetag.n{background:#F1F3F7;color:#6B7A90}
 .ps-typetag.f{background:#F3EAFB;color:#7A3EB1}
@@ -1448,7 +1455,7 @@ function parseKPI(name,buf){
 }
 
 /* ====================== PERFECT STORE (AVD) ====================== */
-let PSS={round:null,scope:"team",route:"all",q:"",f:"no",_init:false};
+let PSS={round:null,scope:"team",route:"all",q:"",f:"no",pf:"all",pq:"",psort:"gsv",pdir:"desc",_init:false};
 let psChartObjs=[];
 const PSF={route:0,code:1,name:2,type:3,yes:4,a:5,v:6,d:7,months:8,gap:9,cta:10,gsv:11};
 const PS_TYPE_NAME={F:"PS Full",AD:"PS Lite (A,D)",AV:"PS Lite (A,V)",N:"PS Nano"};
@@ -1486,7 +1493,7 @@ function psScopedRows(rk){
   return rows;
 }
 function onPsRound(){PSS.round=document.getElementById("psRound").value;renderPS();}
-function onPsRoute(){PSS.route=document.getElementById("psRouteSel").value;renderPsPlan();}
+function onPsRoute(){PSS.route=document.getElementById("psRouteSel").value;renderPsPlan(true);renderPsStores(true);}
 document.getElementById("psScope").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;PSS.scope=b.dataset.s;setSeg("psScope","s",PSS.scope);renderPS();});
 function renderPS(){
   const rounds=psRounds();
@@ -1518,7 +1525,7 @@ function renderPS(){
   renderPsCards(rows,prevRows);
   renderPsCharts(rows,meMode);
   buildPsRouteSel(rows,meMode);
-  renderPsPlan();
+  renderPsPlan(true);
   renderPsStores(true);
 }
 function psTot(rows){
@@ -1574,19 +1581,46 @@ function buildPsRouteSel(rows,meMode){
     agg.map(o=>`<option value="${o.route}"${o.route===PSS.route?" selected":""}>${o.disp}${o.name?" · "+o.name:""}</option>`).join("");
 }
 function psPill(lab,cls){return `<span class="ps-pill ${cls}">${lab}</span>`;}
+/* Only the pillars this store is actually measured on. A PS Lite (A,D) shop is never
+   judged on Visibility, so showing a greyed-out V just added noise. */
 function psAVD(r){
-  const t=r[PSF.type];
-  const a=psPill("A",r[PSF.a]==="G"?"g":"r");
-  const v=(t==="F"||t==="AV")?psPill("V",r[PSF.v]==="G"?"g":"r"):psPill("V","o");
-  const d=(t==="F"||t==="AD")?psPill("D",r[PSF.d]==="G"?"g":r[PSF.d]==="A"?"a":"r"):psPill("D","o");
-  return a+v+d;
+  const t=r[PSF.type],out=[psPill("A",r[PSF.a]==="G"?"g":"r")];
+  if(t==="F"||t==="AV")out.push(psPill("V",r[PSF.v]==="G"?"g":"r"));
+  if(t==="F"||t==="AD")out.push(psPill("D",r[PSF.d]==="G"?"g":r[PSF.d]==="A"?"a":"r"));
+  return out.join("");
+}
+/* Unilever's call-to-action in the three words the team actually uses:
+   A = IQ (ขายสินค้าแนะนำ) · V = สื่อ (ตั้งโชว์) · D = B2B (ร้านกดสั่งเอง) */
+function psCta(r){
+  const t=String(r[PSF.cta]||""),out=[];
+  if(/IQ/i.test(t))out.push("IQ");
+  if(/visibility/i.test(t))out.push("สื่อ");
+  if(/\bSO\b|\bAO\b/i.test(t))out.push("B2B");
+  if(!out.length)return '<span style="color:var(--muted)">—</span>';
+  return out.map(x=>`<span class="ps-cta">${x}</span>`).join("");
 }
 function psTypeTag(t){const c=t==="F"?"f":t==="N"?"n":"";return `<span class="ps-typetag ${c}">${PS_TYPE_NAME[t]||t}</span>`;}
-function renderPsPlan(){
+/* Bucket a store for the focus plan. "เก็บง่าย" = only Availability is missing, so the
+   salesperson closes it alone; it is split by weight against the route average because a
+   light shop moves the weighted score far less for the same effort. */
+const PS_GROUP={easy:{lab:"เก็บง่าย",dot:"easy"},easylow:{lab:"เก็บง่าย · น้ำหนักต่ำ",dot:"easylow"},hard:{lab:"เก็บยาก",dot:"hard"},done:{lab:"ผ่านแล้ว",dot:"done"}};
+function psGroupOf(r,avgW){
+  if(r[PSF.yes])return "done";
+  const nd=psNeed(r);
+  if(nd.length===1&&nd[0]==="A")return r[PSF.gsv]>=avgW?"easy":"easylow";
+  return "hard";
+}
+function psSort(col){
+  if(PSS.psort===col)PSS.pdir=(PSS.pdir==="desc")?"asc":"desc";
+  else{PSS.psort=col;PSS.pdir="desc";}
+  renderPsPlanTable();
+}
+function psSetGroup(g){PSS.pf=g;setSeg("psGroupSeg","g",g);renderPsPlanTable();}
+function renderPsPlan(rebuild){
   const el=document.getElementById("psPlan");
   const rows=psScopedRows(PSS.round);
   if(!rows.length){el.innerHTML="";return;}
-  const legend=`<div class="note">เกณฑ์ผ่าน: <b>A</b> ขายสินค้าแนะนำ (IQ) ให้ครบ · <b>V</b> ตั้งโชว์แล้วผ่านตรวจ · <b>D</b> ร้านกดสั่งเองผ่านแอพ (เขียว/เหลือง = ผ่าน) — "ขาดแค่ A" คือเซลล์ปิดเองได้ด้วยการขายให้ครบชิ้น</div>`;
+  const legend=`<div class="note">เกณฑ์ผ่าน: <b>A</b> ขายสินค้าแนะนำ (IQ) ให้ครบ · <b>V</b> ตั้งโชว์แล้วผ่านตรวจ · <b>D</b> ร้านกดสั่งเองผ่านแอพ (เขียว/เหลือง = ผ่าน) — ร้านไหนไม่ต้องทำข้อไหน จะไม่ขึ้นข้อนั้นเลย</div>`;
   if(PSS.route==="all"){
     const agg=psRouteAgg(rows);
     const plan=agg.map(o=>{
@@ -1610,34 +1644,63 @@ function renderPsPlan(){
   const route=PSS.route,disp=psRouteDisp(route),nm=psRouteName(route);
   const mine=rows.filter(r=>r[PSF.route]===route);
   const t=psTot(mine);
-  const quick=mine.filter(psQuickWin).sort((a,b)=>b[PSF.gsv]-a[PSF.gsv]);
-  const hard=mine.filter(r=>!r[PSF.yes]&&!psQuickWin(r)).sort((a,b)=>b[PSF.gsv]-a[PSF.gsv]);
-  const topQ=quick.slice(0,10);
+  const avgW=mine.length?mine.reduce((s,r)=>s+r[PSF.gsv],0)/mine.length:0;
+  const cnt={all:mine.length,easy:0,easylow:0,hard:0,done:0};
+  mine.forEach(r=>{cnt[psGroupOf(r,avgW)]++;});
+  const easy=mine.filter(r=>psGroupOf(r,avgW)==="easy").sort((a,b)=>b[PSF.gsv]-a[PSF.gsv]);
+  const topQ=easy.slice(0,10);
   const gap=topQ.reduce((s,r)=>s+Math.max(0,r[PSF.gap]),0);
   const add=topQ.reduce((s,r)=>s+r[PSF.gsv],0)*100;
-  const rowH=(r,i)=>`<tr><td>${i+1}</td><td><b>${r[PSF.name]||r[PSF.code]}</b><div style="font-size:11px;color:var(--muted)">${r[PSF.code]}</div></td>
-    <td>${psTypeTag(r[PSF.type])}</td><td>${psAVD(r)}</td>
-    <td style="text-align:center"><b>${Math.max(0,r[PSF.gap])}</b></td>
-    <td style="text-align:center">${(r[PSF.gsv]*100).toFixed(2)}%</td>
-    <td style="font-size:11px;color:var(--muted)">${r[PSF.cta]||""}</td></tr>`;
-  el.innerHTML=`<h3>📋 แผนโฟกัสรอบหน้า — สาย ${disp}${nm?" · "+nm:""}</h3>
-    <div class="psub">ตอนนี้ผ่าน ${t.yes}/${t.stores} ร้าน (Numeric ${(t.stores?t.yes/t.stores*100:0).toFixed(1)}% · Weighted ${(t.gsvYes*100).toFixed(2)}%)</div>
-    ${legend}
-    <div class="an-summary">🎯 เป้ารอบหน้า: ปิด <b>Top-${topQ.length}</b> ร้านขาดแค่ A ต้องขายรวม <b>${gap.toLocaleString()} ชิ้น</b> → Weighted ขึ้นเป็น <b>${(t.gsvYes*100+add).toFixed(2)}%</b> (+${add.toFixed(2)} จุด) · Numeric ขึ้นเป็น <b>${t.stores?((t.yes+topQ.length)/t.stores*100).toFixed(1):0}%</b></div>
-    <h3 style="margin-top:14px">🟢 เก็บง่าย — ขาดแค่ A (เรียงตามน้ำหนักมากสุด ${quick.length} ร้าน)</h3>
-    <div style="overflow-x:auto"><table class="plan-tbl"><thead><tr><th>#</th><th style="text-align:left">ร้าน</th><th>ประเภท</th><th>สถานะ A·V·D</th><th>ต้องขายอีก (ชิ้น)</th><th>น้ำหนัก</th><th>Unilever แนะนำ</th></tr></thead><tbody>`+
-    quick.slice(0,20).map(rowH).join("")+`</tbody></table>${quick.length>20?'<div class="psub" style="margin-top:6px">แสดง 20 จาก '+quick.length+' ร้าน — ที่เหลือดูในตารางค้นหาด้านล่าง</div>':""}</div>
-    ${hard.length?`<h3 style="margin-top:16px">🟠 น้ำหนักสูงแต่ติดหลายด่าน (ต้องช่วยให้ร้านกดสั่ง/จัดโชว์ด้วย)</h3>
-    <div style="overflow-x:auto"><table class="plan-tbl"><thead><tr><th>#</th><th style="text-align:left">ร้าน</th><th>ประเภท</th><th>สถานะ A·V·D</th><th>ต้องขายอีก (ชิ้น)</th><th>น้ำหนัก</th><th>Unilever แนะนำ</th></tr></thead><tbody>`+
-    hard.slice(0,8).map(rowH).join("")+`</tbody></table></div>`:""}`;
+  if(rebuild||!document.getElementById("psPlanTbl")){
+    const chip=(g,lab)=>`<button data-g="${g}"${PSS.pf===g?' class="on"':""} onclick="psSetGroup('${g}')">${lab} (${cnt[g]})</button>`;
+    el.innerHTML=`<h3>📋 แผนโฟกัสรอบหน้า — สาย ${disp}${nm?" · "+nm:""}</h3>
+      <div class="psub">ตอนนี้ผ่าน ${t.yes}/${t.stores} ร้าน (Numeric ${(t.stores?t.yes/t.stores*100:0).toFixed(1)}% · Weighted ${(t.gsvYes*100).toFixed(2)}%) · ร้านทั้งหมดในสายอยู่ในตารางเดียวด้านล่าง กดปุ่มเพื่อคัดกลุ่ม</div>
+      ${legend}
+      ${topQ.length?`<div class="an-summary">🎯 เป้ารอบหน้า: ปิด <b>Top-${topQ.length}</b> ร้านกลุ่มเก็บง่าย ต้องขายรวม <b>${gap.toLocaleString()} ชิ้น</b> → Weighted ขึ้นเป็น <b>${(t.gsvYes*100+add).toFixed(2)}%</b> (+${add.toFixed(2)} จุด) · Numeric ขึ้นเป็น <b>${t.stores?((t.yes+topQ.length)/t.stores*100).toFixed(1):0}%</b></div>`:""}
+      <div class="ps-toolbar">
+        <div class="seg" id="psGroupSeg">${chip("all","ทั้งหมด")}${chip("easy","🟢 เก็บง่าย")}${chip("easylow","🟡 เก็บง่าย · น้ำหนักต่ำ")}${chip("hard","🟠 เก็บยาก")}${chip("done","✔ ผ่านแล้ว")}</div>
+        <input id="psPQ" value="${(PSS.pq||"").replace(/"/g,"&quot;")}" placeholder="🔍 ค้นหาชื่อ / รหัสร้าน" oninput="PSS.pq=this.value;renderPsPlanTable()">
+      </div>
+      <div class="psub" style="margin:2px 0 8px">🟢 เก็บง่าย = ขาดแค่ A และน้ำหนักสูงกว่าค่าเฉลี่ยของสาย (${(avgW*100).toFixed(3)}%) · 🟡 = ขาดแค่ A แต่น้ำหนักต่ำกว่าเฉลี่ย · 🟠 เก็บยาก = ติดมากกว่า 1 ข้อ ต้องช่วยให้ร้านจัดโชว์/กดสั่งด้วย</div>
+      <div id="psPlanTbl"></div>`;
+  }
+  renderPsPlanTable();
+}
+function renderPsPlanTable(){
+  const host=document.getElementById("psPlanTbl");if(!host)return;
+  const rows=psScopedRows(PSS.round).filter(r=>r[PSF.route]===PSS.route);
+  const avgW=rows.length?rows.reduce((s,r)=>s+r[PSF.gsv],0)/rows.length:0;
+  const q=(PSS.pq||"").trim().toLowerCase();
+  let list=rows.filter(r=>PSS.pf==="all"||psGroupOf(r,avgW)===PSS.pf);
+  if(q)list=list.filter(r=>String(r[PSF.name]).toLowerCase().includes(q)||String(r[PSF.code]).includes(q));
+  const dir=PSS.pdir==="asc"?1:-1;
+  const key=r=>PSS.psort==="gap"?Math.max(0,r[PSF.gap]):r[PSF.gsv];
+  list=list.slice().sort((a,b)=>{const d=(key(a)-key(b))*dir;return d||(b[PSF.gsv]-a[PSF.gsv]);});
+  const ar=c=>PSS.psort===c?`<span class="ar">${PSS.pdir==="desc"?"▼":"▲"}</span>`:'<span class="ar" style="opacity:.25">▼</span>';
+  host.innerHTML=`<div style="overflow-x:auto"><table class="plan-tbl"><thead><tr>
+      <th>#</th><th style="text-align:left">ร้าน</th><th>ประเภท</th><th>สถานะ A·V·D</th><th>ผ่าน?</th>
+      <th class="ps-sort" onclick="psSort('gap')">ต้องขายอีก (ชิ้น) ${ar("gap")}</th>
+      <th class="ps-sort" onclick="psSort('gsv')">น้ำหนัก ${ar("gsv")}</th>
+      <th>UNILEVER แนะนำ</th></tr></thead><tbody>`+
+    (list.length?list.map((r,i)=>{const g=psGroupOf(r,avgW);
+      return `<tr><td><span class="ps-gdot ${PS_GROUP[g].dot}" title="${PS_GROUP[g].lab}"></span>${i+1}</td>
+      <td style="text-align:left"><b>${r[PSF.name]||r[PSF.code]}</b><div style="font-size:11px;color:var(--muted)">${r[PSF.code]}</div></td>
+      <td>${psTypeTag(r[PSF.type])}</td><td>${psAVD(r)}</td>
+      <td class="${r[PSF.yes]?'up':'down'}">${r[PSF.yes]?"✔":"✘"}</td>
+      <td style="text-align:center">${r[PSF.yes]?"—":"<b>"+Math.max(0,r[PSF.gap])+"</b>"}</td>
+      <td style="text-align:center">${(r[PSF.gsv]*100).toFixed(2)}%</td>
+      <td>${r[PSF.yes]?'<span style="color:var(--muted)">—</span>':psCta(r)}</td></tr>`;}).join("")
+      :'<tr><td colspan="8" style="color:var(--muted)">ไม่มีร้านในกลุ่มนี้</td></tr>')+
+    `</tbody></table></div><div class="psub" style="margin-top:6px">แสดง ${list.length.toLocaleString()} ร้าน${q?" (จากการค้นหา)":""}</div>`;
 }
 function renderPsStores(rebuild){
   const el=document.getElementById("psStores");
   const rows=psScopedRows(PSS.round);
-  if(!rows.length){el.innerHTML="";return;}
+  /* When one route is open, the plan above already lists every store in it — one table only. */
+  if(!rows.length||PSS.route!=="all"){el.innerHTML="";return;}
   if(rebuild||!document.getElementById("psQ")){
-    el.innerHTML=`<h3>🔎 ค้นหาร้านในโครงการ</h3>
-      <div class="psub">พิมพ์ชื่อหรือรหัสร้าน · กดปุ่มเพื่อกรองร้านที่ยังไม่ผ่าน/ผ่านแล้ว</div>
+    el.innerHTML=`<h3>🔎 ค้นหาร้านในโครงการ (ทุกสาย)</h3>
+      <div class="psub">พิมพ์ชื่อหรือรหัสร้าน · กดปุ่มเพื่อกรองร้านที่ยังไม่ผ่าน/ผ่านแล้ว · เลือกสายด้านบนเพื่อดูแผนรายสาย</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 12px">
         <input id="psQ" value="${(PSS.q||"").replace(/"/g,"&quot;")}" placeholder="พิมพ์รหัส / ชื่อร้าน" oninput="PSS.q=this.value;renderPsStores()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:230px">
         <div class="seg" id="psFilter">
