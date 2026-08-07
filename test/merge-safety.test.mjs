@@ -116,5 +116,33 @@ console.log("TEST 6 — first-ever save on a fresh blob store (server = null) mu
   check("no crash / shape valid", !!out.DATA && !!out.REQUESTS && !!out.STOCKD);
 }
 
+console.log("TEST 7 — deleting a wrongly-uploaded PS round must actually stick");
+{
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.PSTORE.rounds["2026-08-07"] = { asof: "2026-08-07", up: 1000, rows: [["bad"]] };   // the wrong file
+  const client = JSON.parse(JSON.stringify(srv));
+  delete client.PSTORE.rounds["2026-08-07"];
+  client.PSTORE.del = { "2026-08-07": 2000 };                                            // manager pressed delete
+  const out = mergeState(srv, client);
+  check("bad round removed", !out.PSTORE.rounds["2026-08-07"]);
+  check("good round untouched", !!out.PSTORE.rounds["2026-06-30"]);
+  check("tombstone kept", out.PSTORE.del["2026-08-07"] === 2000);
+
+  // a stale tab that still holds the deleted round saves afterwards
+  const stale = JSON.parse(JSON.stringify(srv));   // no del map, still has the bad round
+  const out2 = mergeState(out, stale);
+  check("stale tab cannot resurrect it", !out2.PSTORE.rounds["2026-08-07"]);
+  check("stale tab keeps every other section", !!out2.PSTORE.rounds["2026-06-30"] && Object.keys(out2.DATA.monthly).length === 2);
+
+  // re-uploading the same date later must win over the tombstone
+  const re = JSON.parse(JSON.stringify(out));
+  re.PSTORE.rounds["2026-08-07"] = { asof: "2026-08-07", up: 9000, rows: [["good"]] };
+  delete re.PSTORE.del["2026-08-07"];
+  const out3 = mergeState(out, re);
+  check("re-upload after delete is kept", !!out3.PSTORE.rounds["2026-08-07"]);
+  check("re-uploaded rows are the new ones", JSON.stringify(out3.PSTORE.rounds["2026-08-07"].rows) === JSON.stringify([["good"]]));
+  check("tombstone cleared after re-upload", !out3.PSTORE.del["2026-08-07"]);
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

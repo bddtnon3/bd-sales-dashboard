@@ -81,7 +81,17 @@ function mergeState(server, c) {
   const STOREDAILY = { data: keyMerge((s.STOREDAILY && s.STOREDAILY.data), (c.STOREDAILY && c.STOREDAILY.data)) };
   // Perfect Store rounds are keyed by round date: union — a client without PSTORE
   // (old browser tab) or without some round can never erase rounds the server has.
-  const PSTORE = { rounds: keyMerge((s.PSTORE && s.PSTORE.rounds), (c.PSTORE && c.PSTORE.rounds)) };
+  // Deleting a wrongly-uploaded round therefore needs an explicit tombstone (PSTORE.del),
+  // applied AFTER the union so a stale tab cannot bring the round back. A later re-upload
+  // of the same date wins, because its `up` stamp is newer than the tombstone.
+  const psRounds = keyMerge((s.PSTORE && s.PSTORE.rounds), (c.PSTORE && c.PSTORE.rounds));
+  const psDel = keyMerge((s.PSTORE && s.PSTORE.del), (c.PSTORE && c.PSTORE.del));
+  for (const k of Object.keys(psDel)) {
+    const r = psRounds[k];
+    if (r && (r.up || 0) > psDel[k]) delete psDel[k];   // re-uploaded after the delete
+    else delete psRounds[k];
+  }
+  const PSTORE = { rounds: psRounds, del: psDel };
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),

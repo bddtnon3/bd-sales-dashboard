@@ -323,6 +323,8 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 .ps-gdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
 .ps-gdot.easy{background:#1E9E5A}.ps-gdot.easylow{background:#9BD3B4}.ps-gdot.hard{background:#E08A2E}.ps-gdot.done{background:#C7D0DE}
 .ps-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0 4px}
+.ps-del{background:#fff;border:1.5px solid #E4A0A0;color:#C0392B;font-weight:700;padding:9px 14px;border-radius:9px;cursor:pointer;font-size:13.5px;white-space:nowrap}
+.ps-del:hover{background:#FBE9E9}
 .ps-toolbar input{padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:210px}
 .ps-typetag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:12px;background:#EAF1FD;color:var(--blue);white-space:nowrap}
 .ps-typetag.n{background:#F1F3F7;color:#6B7A90}
@@ -462,6 +464,9 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
     <div id="psView" class="hidden">
       <div class="controls">
         <div class="ctl"><label>รอบข้อมูล</label><select id="psRound" onchange="onPsRound()"></select></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="ps-del" onclick="psDeleteRound()">🗑 ลบรอบนี้</button>
+        </div>
         <div class="ctl" id="psScopeCtl"><label>มุมมอง</label>
           <div class="seg" id="psScope">
             <button data-s="team" class="on">ภาพรวมทีม</button>
@@ -1749,6 +1754,28 @@ function renderPsStores(rebuild){
       <td style="text-align:center">${r[PSF.months]||0}</td></tr>`).join("")+
     `</tbody></table></div>`+(total>60?`<div class="psub" style="margin-top:6px">แสดง 60 จาก ${total.toLocaleString()} ร้าน — พิมพ์ค้นหาเพื่อกรอง</div>`:"");
 }
+/* Delete one uploaded round (wrong file). Client-side removal alone would not stick:
+   the server unions rounds by key, so a stale tab would resurrect it. We therefore leave a
+   tombstone in PSTORE.del that api/save.js applies AFTER the union; re-uploading the same
+   date beats the tombstone because the new round carries a newer `up` stamp. */
+function psDeleteRound(){
+  const rk=PSS.round;
+  if(!rk||!PSTORE.rounds||!PSTORE.rounds[rk]){alert("ยังไม่มีรอบข้อมูลให้ลบ");return;}
+  const n=((PSTORE.rounds[rk].rows)||[]).length;
+  const left=Object.keys(PSTORE.rounds).filter(k=>k!==rk).length;
+  if(!confirm("ลบข้อมูล Perfect Store รอบวันที่ "+fmtDate(rk)+" ("+n.toLocaleString()+" ร้าน) ออกจากระบบ?\n\n"+
+     "• รอบอื่นที่เหลืออีก "+left+" รอบ จะไม่ถูกแตะต้อง\n"+
+     "• ข้อมูลส่วนอื่น (ยอดขาย สต็อก ใบสั่ง ฯลฯ) จะไม่ถูกแตะต้อง\n"+
+     "• ถ้าอัพไฟล์รอบวันเดียวกันใหม่ทีหลัง จะกลับมาแสดงตามปกติ"))return;
+  delete PSTORE.rounds[rk];
+  if(!PSTORE.del)PSTORE.del={};
+  PSTORE.del[rk]=Date.now();
+  PSS.round=null;
+  renderPS();
+  ulog("🗑 ลบรอบ Perfect Store "+fmtDate(rk)+" ("+n.toLocaleString()+" ร้าน) แล้ว");
+  syncToServer();
+  alert("ลบแล้ว — กำลังบันทึกขึ้นเซิร์ฟเวอร์\nอีกสักครู่ให้รีเฟรชหน้าเว็บเพื่อยืนยันว่าหายไปจริง");
+}
 function parsePS(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
   let sh=null,hdr=null,hrow=0,rows=null;
@@ -1784,7 +1811,9 @@ function parsePS(name,buf){
     if(mo>=1&&mo<=12&&d>=1&&d<=31)rk=y+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0");}
   if(!rk){const n=new Date();rk=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0");}
   if(!PSTORE||typeof PSTORE!=="object")PSTORE={rounds:{}};if(!PSTORE.rounds)PSTORE.rounds={};
-  PSTORE.rounds[rk]={asof:rk,bm:bm,rows:out};
+  /* `up` lets the server tell a fresh upload apart from a stale copy of a deleted round */
+  PSTORE.rounds[rk]={asof:rk,bm:bm,up:Date.now(),rows:out};
+  if(PSTORE.del)delete PSTORE.del[rk];
   const yes=out.filter(r=>r[PSF.yes]).length,w=out.reduce((s,r)=>s+(r[PSF.yes]?r[PSF.gsv]:0),0);
   ulog("✅ "+name+" (Perfect Store) → รอบ "+fmtDate(rk)+(bm?" · BM"+bm:"")+" · "+out.length+" ร้าน · ผ่าน "+yes+" ("+(yes/out.length*100).toFixed(1)+"%) · Weighted "+(w*100).toFixed(1)+"%");
   PSS.round=rk;
