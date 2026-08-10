@@ -144,5 +144,34 @@ console.log("TEST 7 — deleting a wrongly-uploaded PS round must actually stick
   check("tombstone cleared after re-upload", !out3.PSTORE.del["2026-08-07"]);
 }
 
+console.log("TEST 8 — eB2B contest table survives stale clients and never rolls backwards");
+{
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.EB2B = { asof: "2026-09-12", up: 5000, lines: { "209611": "CT11" }, data: { "209611": { n: 23, stores: [] } } };
+
+  const oldTab = JSON.parse(JSON.stringify(srv));
+  delete oldTab.EB2B;                                   // browser from before the feature
+  const out = mergeState(srv, oldTab);
+  check("contest survives a tab that has no EB2B at all", out.EB2B.data["209611"].n === 23);
+
+  const blank = JSON.parse(JSON.stringify(srv));
+  blank.EB2B = { asof: null, up: 0, lines: {}, data: {} };   // client that failed to load
+  check("blank client cannot wipe the contest", mergeState(srv, blank).EB2B.data["209611"].n === 23);
+
+  const older = JSON.parse(JSON.stringify(srv));
+  older.EB2B = { asof: "2026-08-10", up: 9999, lines: {}, data: { "209611": { n: 2, stores: [] } } };
+  check("an older report cannot roll the count back", mergeState(srv, older).EB2B.data["209611"].n === 23);
+
+  const newer = JSON.parse(JSON.stringify(srv));
+  newer.EB2B = { asof: "2026-09-20", up: 6000, lines: {}, data: { "209611": { n: 27, stores: [] } } };
+  check("a newer report is taken", mergeState(srv, newer).EB2B.data["209611"].n === 27);
+
+  const cleared = JSON.parse(JSON.stringify(srv));
+  cleared.EB2B = { asof: null, up: 9000, cleared: 9000, lines: {}, data: {} };
+  const outC = mergeState(srv, cleared);
+  check("an explicit clear by the manager goes through", !Object.keys(outC.EB2B.data).length);
+  check("clearing the contest touches nothing else", Object.keys(outC.DATA.monthly).length === 2 && !!outC.PSTORE.rounds["2026-06-30"]);
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

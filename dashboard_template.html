@@ -311,6 +311,42 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 .ana-mini>span{display:block;height:100%}
 .backbtn{background:#fff;border:1.5px solid var(--blue);color:var(--blue);font-weight:700;padding:7px 14px;border-radius:9px;cursor:pointer;font-size:13.5px;margin-right:6px}
 .backbtn:hover{background:var(--blue-soft)}
+/* eB2B opening contest */
+.eb-period{background:var(--blue-soft);border-radius:9px;padding:9px 14px;font-size:13.5px;white-space:nowrap}
+.eb-podium-wrap{text-align:center}
+.eb-podium{display:flex;align-items:flex-end;justify-content:center;gap:18px;margin:16px 0 6px;flex-wrap:wrap}
+.eb-pod{display:flex;flex-direction:column;align-items:center;min-width:96px}
+.eb-pod-medal{font-size:28px;line-height:1}
+.eb-pod-name{font-weight:800;font-size:15px;margin-top:2px}
+.eb-pod-name.me{color:var(--blue)}
+.eb-pod-sub{font-size:11px;color:var(--muted);margin-bottom:5px;min-height:14px}
+.eb-pod-block{width:92px;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:22px;box-shadow:0 2px 8px rgba(16,32,64,.12)}
+.eb-pod-block.p1{background:linear-gradient(180deg,#F6C544,#E0A200)}
+.eb-pod-block.p2{background:linear-gradient(180deg,#C5CFDD,#9CAABD)}
+.eb-pod-block.p3{background:linear-gradient(180deg,#DFA878,#C17F4B)}
+.eb-pod-block.empty{background:#EEF2F8}
+.eb-pod-pay{font-weight:800;font-size:13.5px;color:var(--good);background:#EAF6E2;border-radius:0 0 9px 9px;width:92px;padding:3px 0}
+.eb-progress{margin-top:14px}
+.eb-progress-bar{height:14px;border-radius:8px;background:var(--line);overflow:hidden}
+.eb-progress-bar>span{display:block;height:100%;background:linear-gradient(90deg,#0F9ED5,#4EA72E);border-radius:8px}
+.eb-progress-lab{font-size:13px;margin-top:6px;color:var(--muted)}
+.eb-tbl .eb-row{cursor:pointer}
+.eb-tbl .eb-row:hover{background:var(--blue-soft)}
+.eb-tbl .eb-row.me{background:#FFF8E5}
+.eb-rank{font-weight:800;white-space:nowrap}
+.eb-you{font-size:10.5px;font-weight:800;background:var(--blue);color:#fff;padding:1px 7px;border-radius:10px}
+.eb-mini{height:9px;border-radius:5px;background:var(--line);overflow:hidden;min-width:70px}
+.eb-mini>span{display:block;height:100%;background:#0F9ED5;border-radius:5px}
+.eb-detail>td{background:#F7F9FC}
+.eb-tiers{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.eb-tier{flex:1;min-width:130px;border-radius:11px;padding:12px 14px;text-align:center;border:1.5px solid var(--line)}
+.eb-tier-h{font-size:12px;color:var(--muted);font-weight:700}
+.eb-tier-v{font-size:26px;font-weight:800;margin:3px 0}
+.eb-tier-s{font-size:11px;color:var(--muted)}
+.eb-tier.t1{background:#F4F8FF;border-color:#CFE0F7}.eb-tier.t1 .eb-tier-v{color:#0F6FD5}
+.eb-tier.t2{background:#EAF6E2;border-color:#BFE3AB}.eb-tier.t2 .eb-tier-v{color:#3E8E22}
+.eb-tier.t3{background:#FCEEE3;border-color:#F3CFAE}.eb-tier.t3 .eb-tier-v{color:#D9700F}
+.eb-tier.t4{background:#F7EEFC;border-color:#E0C7F0}.eb-tier.t4 .eb-tier-v{color:#8A3EB1}
 /* Perfect Store */
 .ps-pill{display:inline-block;min-width:20px;text-align:center;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:6px;margin-right:3px}
 .ps-pill.g{background:#E7F6EE;color:#1E9E5A}
@@ -363,6 +399,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
     <div class="tabs">
       <button class="tab on" data-tab="sales" onclick="switchTab('sales')">📊 ยอดขาย</button>
       <button class="tab" data-tab="kpi" onclick="switchTab('kpi')">🎯 eB2B & Self Ordering</button>
+      <button class="tab" data-tab="eb" onclick="switchTab('eb')">🏆 แข่งขันเปิด eB2B (ส.ค.–ก.ย.)</button>
       <button class="tab" data-tab="ps" onclick="switchTab('ps')">⭐ Perfect Store</button>
       <button class="tab" data-tab="order" onclick="switchTab('order')">🛒 การสั่งของ</button>
       <button class="tab" data-tab="stock" onclick="switchTab('stock')">📦 สต็อก</button>
@@ -459,6 +496,24 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <div id="kpiReward"></div>
       <div id="kpiCharts"></div>
       <div class="panel" id="kpiPlan"></div>
+    </div>
+
+    <div id="ebView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>&nbsp;</label><div class="eb-period">🗓️ ช่วงแข่งขัน <b>1 ส.ค. – 30 ก.ย. 2569</b></div></div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+        </div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="ps-del" onclick="ebDelete()">🗑 ลบข้อมูล</button>
+        </div>
+      </div>
+      <div class="kpi-monthbar" id="ebBar"></div>
+      <div class="cards" id="ebCards"></div>
+      <div id="ebPodium"></div>
+      <div class="panel" id="ebTable"></div>
+      <div class="panel" id="ebRules"></div>
     </div>
 
     <div id="psView" class="hidden">
@@ -602,6 +657,10 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
         <label class="drop up-kpi" for="fileKPI">🎯 <b>eB2B & Self Ordering (Incentive)</b><small>อัพรายสัปดาห์ · ไฟล์ Salesman Incentive_DTT_...xlsx</small></label>
         <input id="fileKPI" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
+      <div class="up-row" data-group="eb">
+        <label class="drop up-eb" for="fileEB">🏆 <b>แข่งขันเปิด eB2B</b><small>อัพทุกครั้งที่ได้ไฟล์ใหม่ · ไฟล์ Migration_Report_File_data_as_of_..._2026.xlsx · <b>ไฟล์ใหญ่ ~30MB ใช้เวลา 30–60 วิ</b> อย่าเพิ่งปิดหน้าจอ</small></label>
+        <input id="fileEB" type="file" accept=".xlsx,.xls" multiple class="hidden">
+      </div>
       <div class="up-row" data-group="ps">
         <label class="drop up-ps" for="filePS">⭐ <b>Perfect Store (AVD)</b><small>อัพทุกรอบที่ Unilever ส่งมา · ไฟล์ perfect_store_AVD_BM7_BD_30.07.xlsx (วันที่รอบจากชื่อไฟล์)</small></label>
         <input id="filePS" type="file" accept=".xlsx,.xls" multiple class="hidden">
@@ -724,6 +783,9 @@ let STOREPROD = __STOREPRODDATA__;
 
 /* STOREDAILY (per-store per-day from daily bill files): {data:{"YYYY-MM-DD":{storeCode:{l:line,n:name,cs,pc,niv}}}} */
 let STOREDAILY = __STOREDAILYDATA__;
+
+/* EB2B (eB2B store-opening contest, Aug-Sep 2026): {asof,up,lines:{code:disp},data:{code:{n,stores:[[code,name,ymd]]}}} */
+let EB2B = __EB2BDATA__;
 
 /* PSTORE (Unilever Perfect Store AVD): {rounds:{"YYYY-MM-DD":{asof,bm,rows:[[route,code,name,type,isPS,a,v,d,months,gap,cta,gsv],...]}}}
    type: F=PS Full, AD=PS Lite(A,D), AV=PS Lite(A,V), N=PS Nano · a/v/d: G/R/A/"" · isPS: 1/0 */
@@ -1273,11 +1335,13 @@ function _switchTab(t){
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   document.getElementById("salesView").classList.toggle("hidden",t!=="sales");
   document.getElementById("kpiView").classList.toggle("hidden",t!=="kpi");
+  document.getElementById("ebView").classList.toggle("hidden",t!=="eb");
   document.getElementById("psView").classList.toggle("hidden",t!=="ps");
   document.getElementById("orderView").classList.toggle("hidden",t!=="order");
   document.getElementById("stockView").classList.toggle("hidden",t!=="stock");
   document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
   if(t==="kpi")renderKPI();
+  if(t==="eb")renderEB();
   if(t==="ps")renderPS();
   if(t==="order")renderOrder();
   if(t==="stock")renderStock();
@@ -1456,6 +1520,191 @@ function parseKPI(name,buf){
   const T=Object.values(md).reduce((a,v)=>({st:a.st+v.stores,ac:a.ac+v.active,or:a.or+v.orders,se:a.se+v.self,gh:a.gh+v.ghost}),{st:0,ac:0,or:0,se:0,gh:0});
   ulog("✅ "+name+" (KPI) → "+fmtMonth(mk)+" · "+n+" สาย · ศูนย์: Active "+T.ac+"/"+T.st+", Self "+T.se+"/"+T.or+", Ghost "+T.gh+"/"+T.or+" (เทียบ BySup ได้เลย)");
   initKPI();if(!document.getElementById("kpiView").classList.contains("hidden"))renderKPI();
+  syncToServer();
+}
+
+/* ====================== eB2B OPENING CONTEST (ส.ค.–ก.ย. 2569) ====================== */
+/* Two-month contest. Counted from the Migration Report: distributor 2096, routes whose name
+   starts with CT (CT19's route is TL_HPC_219 and is excluded by the owner's decision), and
+   the Ushopplus registration date falling inside the window. */
+const EB_START="2026-08-01",EB_END="2026-09-30",EB_TARGET=240;
+/* Tiered per-store bounty, applied to EVERY store once a tier is reached:
+   1-10 → 10฿ each · 11-20 → 20฿ each · 21+ → 30฿ each. (9→90, 11→220, 23→690) */
+function ebPay(n){n=Math.max(0,n|0);return n<=10?n*10:n<=20?n*20:n*30;}
+function ebNextTier(n){if(n<10)return{need:10-n,rate:20,at:10};if(n<20)return{need:20-n,rate:30,at:20};return null;}
+let EBS={open:null};
+function ebRows(){
+  const d=(EB2B&&EB2B.data)||{},L=(EB2B&&EB2B.lines)||{};
+  const rows=Object.keys(d).map(c=>({code:c,disp:L[c]||((DATA.lines||{})[c]||{}).display||c,
+    name:(((DATA.lines||{})[c])||{}).name||"",n:d[c].n||0,stores:d[c].stores||[],pay:ebPay(d[c].n||0)}));
+  rows.sort((a,b)=>b.n-a.n||a.disp.localeCompare(b.disp,undefined,{numeric:true}));
+  /* competition ranking: equal counts share a rank */
+  let last=null,rank=0;
+  rows.forEach((r,i)=>{if(r.n!==last){rank=i+1;last=r.n;}r.rank=rank;});
+  return rows;
+}
+/* Medals only for lines that actually opened something — a 0 is not a podium finish.
+   The turtle waits until most of the field has started, so nobody is shamed in week one. */
+function ebMedal(r,rows){
+  if(r.n>0){if(r.rank===1)return "🏆";if(r.rank===2)return "🥈";if(r.rank===3)return "🥉";}
+  const min=rows.length?rows[rows.length-1].n:0,max=rows.length?rows[0].n:0;
+  const bottom=rows.filter(x=>x.n===min).length;
+  if(max>min&&r.n===min&&bottom*2<=rows.length)return "🐢";
+  return "";
+}
+function ebDelete(){
+  if(!EB2B||!EB2B.data||!Object.keys(EB2B.data).length){alert("ยังไม่มีข้อมูลให้ลบ");return;}
+  if(!confirm("ลบข้อมูลการแข่งขันเปิด eB2B ทั้งหมดออกจากระบบ?\n\n• ข้อมูลส่วนอื่น (ยอดขาย สต็อก ใบสั่ง Perfect Store) จะไม่ถูกแตะต้อง\n• อัพไฟล์ใหม่เมื่อไหร่ก็กลับมาแสดงตามปกติ"))return;
+  EB2B={asof:null,up:Date.now(),cleared:Date.now(),lines:{},data:{}};
+  renderEB();ulog("🗑 ลบข้อมูลแข่งขันเปิด eB2B แล้ว");syncToServer();
+  alert("ลบแล้ว — กำลังบันทึกขึ้นเซิร์ฟเวอร์");
+}
+function renderEB(){
+  const rows=ebRows();
+  const bar=document.getElementById("ebBar");
+  if(!rows.length){
+    bar.innerHTML="🏆 แข่งขันเปิดร้าน eB2B · 1 ส.ค. – 30 ก.ย. 2569";
+    document.getElementById("ebCards").innerHTML="";
+    document.getElementById("ebPodium").innerHTML="";
+    document.getElementById("ebTable").innerHTML='<div class="insight">ยังไม่มีข้อมูล — แอดมินกดปุ่มอัพโหลด → 🏆 แข่งขันเปิด eB2B (ไฟล์ Migration Report ของ Unilever)</div>';
+    document.getElementById("ebRules").innerHTML=ebRulesHtml();return;
+  }
+  const tot=rows.reduce((a,r)=>a+r.n,0),totPay=rows.reduce((a,r)=>a+r.pay,0);
+  const pct=EB_TARGET?tot/EB_TARGET*100:0;
+  bar.innerHTML=`🏆 แข่งขันเปิดร้าน eB2B · ศูนย์ BD · <b>1 ส.ค. – 30 ก.ย. 2569</b>${EB2B.asof?` · ข้อมูล ณ <b>${fmtDate(EB2B.asof)}</b>`:""} · ${rows.length} สายที่ร่วมแข่ง`;
+  const days=ebDaysLeft();
+  document.getElementById("ebCards").innerHTML=
+    `<div class="card kpi-card" style="border-top:3px solid #0F9ED5"><div class="k" style="color:#0F9ED5">เปิดได้แล้วทั้งศูนย์</div><div class="v">${tot.toLocaleString()}</div><div class="s">จากเป้า ${EB_TARGET} ร้าน</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #4EA72E"><div class="k" style="color:#4EA72E">ความคืบหน้าเป้าศูนย์</div><div class="v ${pct>=100?'up':''}">${pct.toFixed(1)}%</div><div class="s">${Math.max(0,EB_TARGET-tot).toLocaleString()} ร้านถึงเป้า</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #E97132"><div class="k" style="color:#E97132">เงินรางวัลรวมตอนนี้</div><div class="v">฿${totPay.toLocaleString()}</div><div class="s">คิดตามเกณฑ์ขั้นบันได</div></div>`+
+    `<div class="card"><div class="k">เหลือเวลา</div><div class="v" style="font-size:22px">${days>0?days+" วัน":"จบแล้ว"}</div><div class="s">${days>0?"ถึง 30 ก.ย. 2569":"ปิดการแข่งขัน"}</div></div>`;
+  document.getElementById("ebPodium").innerHTML=ebPodiumHtml(rows,tot);
+  document.getElementById("ebTable").innerHTML=ebTableHtml(rows);
+  document.getElementById("ebRules").innerHTML=ebRulesHtml();
+}
+function ebDaysLeft(){
+  const now=new Date();const end=new Date(EB_END+"T23:59:59");
+  return Math.max(0,Math.ceil((end-now)/86400000));
+}
+function ebPodiumHtml(rows,tot){
+  if(!rows.length||rows[0].n<=0)return `<div class="panel"><div class="insight">ยังไม่มีสายไหนเปิดร้านได้ในช่วงแข่งขัน — เริ่มได้เลย ใครเปิดก่อนขึ้นนำก่อน 🚀</div></div>`;
+  const win=r=>rows.find(x=>x.rank===r&&x.n>0);
+  const pod=[win(2),win(1),win(3)];
+  const meta=[{m:"🥈",cls:"p2",h:78},{m:"🏆",cls:"p1",h:104},{m:"🥉",cls:"p3",h:58}];
+  const mine=(S.user&&S.user.role==="sales")?S.user.code:null;
+  return `<div class="panel eb-podium-wrap"><h3>🏅 อันดับผู้นำ</h3>
+    <div class="psub">อันดับ 1 รับรางวัลพิเศษเพิ่ม (ยังไม่ประกาศว่าคืออะไร 🎁)</div>
+    <div class="eb-podium">`+pod.map((r,i)=>{
+      if(!r)return `<div class="eb-pod"><div class="eb-pod-medal" style="opacity:.3">${meta[i].m}</div>
+        <div class="eb-pod-name" style="color:var(--muted)">ยังว่าง</div><div class="eb-pod-sub"></div>
+        <div class="eb-pod-block empty" style="height:${meta[i].h}px"></div><div class="eb-pod-pay" style="background:#F1F3F7;color:var(--muted)">—</div></div>`;
+      return `<div class="eb-pod">
+        <div class="eb-pod-medal">${meta[i].m}</div>
+        <div class="eb-pod-name${r.code===mine?" me":""}">${r.disp}</div>
+        <div class="eb-pod-sub">${r.name||""}</div>
+        <div class="eb-pod-block ${meta[i].cls}" style="height:${meta[i].h}px"><span>${r.n}</span></div>
+        <div class="eb-pod-pay">฿${r.pay.toLocaleString()}</div></div>`;}).join("")+
+    `</div>
+    <div class="eb-progress"><div class="eb-progress-bar"><span style="width:${Math.min(100,tot/EB_TARGET*100).toFixed(1)}%"></span></div>
+      <div class="eb-progress-lab">เป้าศูนย์ <b>${EB_TARGET}</b> ร้าน · ตอนนี้ <b>${tot}</b> ร้าน (${(tot/EB_TARGET*100).toFixed(1)}%)</div></div></div>`;
+}
+function ebTableHtml(rows){
+  const mine=(S.user&&S.user.role==="sales")?S.user.code:null;
+  const maxN=Math.max(1,rows[0]?rows[0].n:1);
+  return `<h3>📊 ตารางคะแนน — เปิดร้านได้กี่ร้าน</h3>
+    <div class="psub">กดที่แถวเพื่อดูรายชื่อร้านที่เปิดได้ · เงินรางวัลคิดตามเกณฑ์ขั้นบันได (ดูด้านล่าง)</div>
+    <div style="overflow-x:auto"><table class="plan-tbl eb-tbl"><thead><tr>
+      <th>อันดับ</th><th style="text-align:left">สาย</th><th>เปิดได้ (ร้าน)</th><th style="width:26%">สัดส่วน</th><th>เงินรางวัล</th><th>อีกกี่ร้านขึ้นขั้นถัดไป</th></tr></thead><tbody>`+
+    rows.map(r=>{
+      const nx=ebNextTier(r.n);
+      const detail=EBS.open===r.code?`<tr class="eb-detail"><td colspan="6">${ebStoresHtml(r)}</td></tr>`:"";
+      return `<tr class="eb-row${r.code===mine?" me":""}" onclick="ebToggle('${r.code}')">
+        <td><span class="eb-rank">${ebMedal(r,rows)||""} ${r.n>0?r.rank:"–"}</span></td>
+        <td style="text-align:left"><b>${r.disp}</b> <span style="color:var(--muted);font-size:12px">${r.name||""}</span>${r.code===mine?' <span class="eb-you">คุณ</span>':""}</td>
+        <td style="text-align:center"><b style="font-size:16px">${r.n}</b></td>
+        <td><div class="eb-mini"><span style="width:${(r.n/maxN*100).toFixed(1)}%"></span></div></td>
+        <td style="text-align:center"><b>฿${r.pay.toLocaleString()}</b></td>
+        <td style="text-align:center;font-size:12px;color:var(--muted)">${nx?`อีก <b>${nx.need}</b> ร้าน → ร้านละ ฿${nx.rate}`:"ขั้นสูงสุดแล้ว 🔥"}</td></tr>`+detail;}).join("")+
+    `</tbody></table></div>`;
+}
+function ebStoresHtml(r){
+  if(!r.stores.length)return '<div class="psub">ยังไม่มีร้านที่เปิดในช่วงแข่งขัน</div>';
+  const list=r.stores.slice().sort((a,b)=>String(b[2]).localeCompare(String(a[2])));
+  return `<div class="psub" style="margin-bottom:6px">ร้านที่ ${r.disp} เปิดได้ ${list.length} ร้าน (เรียงจากล่าสุด)</div>
+    <div style="overflow-x:auto"><table class="plan-tbl"><thead><tr><th>#</th><th style="text-align:left">ร้าน</th><th>รหัส</th><th>วันที่ลงทะเบียน</th></tr></thead><tbody>`+
+    list.map((x,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${x[1]||"-"}</td><td>${x[0]}</td><td>${fmtDate(x[2])}</td></tr>`).join("")+
+    `</tbody></table></div>`;
+}
+function ebToggle(code){EBS.open=(EBS.open===code)?null:code;renderEB();}
+function ebRulesHtml(){
+  const ex=[[9,ebPay(9)],[10,ebPay(10)],[11,ebPay(11)],[20,ebPay(20)],[23,ebPay(23)],[30,ebPay(30)]];
+  return `<h3>💰 เกณฑ์เงินรางวัล</h3>
+    <div class="psub">ยิ่งเปิดเยอะ อัตราต่อร้านยิ่งขึ้น <b>และคิดย้อนกลับไปตั้งแต่ร้านแรก</b></div>
+    <div class="eb-tiers">
+      <div class="eb-tier t1"><div class="eb-tier-h">1–10 ร้าน</div><div class="eb-tier-v">฿10</div><div class="eb-tier-s">ต่อร้าน</div></div>
+      <div class="eb-tier t2"><div class="eb-tier-h">11–20 ร้าน</div><div class="eb-tier-v">฿20</div><div class="eb-tier-s">ต่อร้าน (ทุกร้าน)</div></div>
+      <div class="eb-tier t3"><div class="eb-tier-h">21 ร้านขึ้นไป</div><div class="eb-tier-v">฿30</div><div class="eb-tier-s">ต่อร้าน (ทุกร้าน)</div></div>
+      <div class="eb-tier t4"><div class="eb-tier-h">อันดับ 1</div><div class="eb-tier-v">🎁</div><div class="eb-tier-s">รางวัลพิเศษ (รอประกาศ)</div></div>
+    </div>
+    <div class="note" style="margin-top:10px">ตัวอย่าง: ${ex.map(([n,p])=>`เปิด <b>${n}</b> ร้าน = <b>฿${p.toLocaleString()}</b>`).join(" · ")}</div>
+    <div class="psub" style="margin-top:8px">นับเฉพาะร้านที่ลงทะเบียน Ushopplus ระหว่าง 1 ส.ค. – 30 ก.ย. 2569 · เฉพาะสาย CT ของศูนย์ BD (2096)</div>`;
+}
+function parseEB2B(name,buf){
+  const wb=XLSX.read(buf,{type:"array",cellDates:true});
+  const shName=wb.SheetNames.find(x=>/ข้อมูลรายร้าน/.test(x))||wb.SheetNames[0];
+  const ws=wb.Sheets[shName];
+  if(!ws||!ws["!ref"])throw new Error("ไม่พบชีต \"ข้อมูลรายร้านค้า\" ในไฟล์");
+  const ref=XLSX.utils.decode_range(ws["!ref"]),EC=XLSX.utils.encode_cell;
+  const at=(r,c)=>ws[EC({r:r,c:c})];
+  const tx=(r,c)=>{const x=at(r,c);return x==null?"":String(x.w!=null&&x.t!=="n"?x.w:x.v).trim();};
+  let hr=-1,ci=null;
+  for(let R=ref.s.r;R<=Math.min(ref.s.r+15,ref.e.r);R++){
+    const m={};
+    for(let C=ref.s.c;C<=ref.e.c;C++){
+      const t=tx(R,C).replace(/\s+/g," ").trim();if(!t)continue;
+      if(/^DT$/i.test(t))m.dt=C;
+      else if(/^รหัสร้าน/.test(t))m.code=C;
+      else if(/^ชื่อร้าน/.test(t))m.sname=C;
+      else if(/^รหัสสายวิ่ง/.test(t))m.rcode=C;
+      else if(/^สายวิ่ง$/.test(t))m.route=C;
+      else if(/ลงทะเบียน\s*ushopplus/i.test(t))m.reg=C;
+    }
+    if(m.dt!=null&&m.route!=null&&m.reg!=null){hr=R;ci=m;break;}
+  }
+  if(hr<0)throw new Error("ไม่พบหัวตาราง (DT / สายวิ่ง / วันที่ลงทะเบียน Ushopplus) — ไฟล์นี้อาจไม่ใช่ Migration Report");
+  const OUR="2096",lines={},data={};
+  let scanned=0,ours=0,ct=0,inWin=0;
+  for(let R=hr+1;R<=ref.e.r;R++){
+    const d=at(R,ci.dt);if(!d)continue;scanned++;
+    if(String(d.w!=null&&d.t!=="n"?d.w:d.v).trim()!==OUR)continue;
+    ours++;
+    const route=tx(R,ci.route);
+    if(!/^CT/i.test(route))continue;          /* CT routes only — TL_/KA_ are out */
+    ct++;
+    let code=ci.rcode!=null?tx(R,ci.rcode):"";
+    if(!/^2096/.test(code)){const m2=route.match(/_2(\d{2})$/);code=m2?"2096"+m2[1]:code;}
+    if(!code)continue;
+    if(!lines[code])lines[code]=((DATA.lines||{})[code]||{}).display||FOCUS_MAP[code]||route;
+    const e=data[code]||(data[code]={n:0,stores:[]});
+    const reg=at(R,ci.reg);if(!reg||reg.v==null||reg.v==="")continue;
+    const ymd=toYMD(reg.v);
+    if(!ymd||ymd<EB_START||ymd>EB_END)continue;
+    inWin++;e.n++;
+    e.stores.push([String(ci.code!=null?tx(R,ci.code):""),String(ci.sname!=null?tx(R,ci.sname):""),ymd]);
+  }
+  if(!ct)throw new Error("ไม่พบร้านของศูนย์ BD (2096) สาย CT ในไฟล์ — ตรวจว่าอัพไฟล์ถูกตัวไหม");
+  /* "data as of" — filename first, then the banner cell at the top of the sheet */
+  let asof=null;
+  const MON="jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
+  const MN={jan:"01",feb:"02",mar:"03",apr:"04",may:"05",jun:"06",jul:"07",aug:"08",sep:"09",oct:"10",nov:"11",dec:"12"};
+  let mm=name.toLowerCase().match(new RegExp("(\\d{1,2})[_ -]("+MON+")[a-z]*[_ -](20\\d{2})"));
+  if(!mm){let hay="";for(let R=ref.s.r;R<=Math.min(ref.s.r+6,ref.e.r);R++)for(let C=ref.s.c;C<=Math.min(ref.s.c+4,ref.e.c);C++)hay+=" "+tx(R,C);
+    mm=hay.toLowerCase().match(new RegExp("as of\\s*(\\d{1,2})\\s*("+MON+")[a-z]*\\s*(20\\d{2})"));}
+  if(mm)asof=mm[3]+"-"+MN[mm[2]]+"-"+String(mm[1]).padStart(2,"0");
+  EB2B={asof:asof,up:Date.now(),lines:lines,data:data};
+  const tot=Object.values(data).reduce((a,x)=>a+x.n,0);
+  ulog("✅ "+name+" (แข่งขัน eB2B) → อ่าน "+scanned.toLocaleString()+" แถว · ศูนย์ BD "+ours.toLocaleString()+" ร้าน · สาย CT "+ct.toLocaleString()+" ร้าน ("+Object.keys(data).length+" สาย) · เปิดในช่วงแข่งขัน <b>"+tot+"</b> ร้าน"+(asof?" · ข้อมูล ณ "+fmtDate(asof):""));
+  if(!document.getElementById("ebView").classList.contains("hidden"))renderEB();
   syncToServer();
 }
 
@@ -2317,8 +2566,8 @@ function parseDrop(name,buf){
 
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){
-  const g={sales:"sales",kpi:"kpi",ps:"ps",order:"order",stock:"stock",ana:"ana"}[CURTAB]||"sales";
-  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์"}[g];
+  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",stock:"stock",ana:"ana"}[CURTAB]||"sales";
+  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์"}[g];
   document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
   document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=el.dataset.group===g?"":"none";});
   document.getElementById("modal").classList.remove("hidden");
@@ -2337,6 +2586,7 @@ function handleTyped(e,kind){
     else if(kind==="month")parseMonthly(f.name,ev.target.result);
     else if(kind==="kpi")parseKPI(f.name,ev.target.result);
     else if(kind==="ps")parsePS(f.name,ev.target.result);
+    else if(kind==="eb")parseEB2B(f.name,ev.target.result);
     else if(kind==="order")parseOrderForm(f.name,ev.target.result,"order");
     else if(kind==="drop")parseDrop(f.name,ev.target.result);
     else if(kind==="stockd")parseStock(f.name,ev.target.result);
@@ -2351,6 +2601,7 @@ document.getElementById("fileMonth").addEventListener("change",e=>handleTyped(e,
 document.getElementById("fileStore").addEventListener("change",e=>handleTyped(e,"store"));
 document.getElementById("fileKPI").addEventListener("change",e=>handleTyped(e,"kpi"));
 document.getElementById("filePS").addEventListener("change",e=>handleTyped(e,"ps"));
+document.getElementById("fileEB").addEventListener("change",e=>handleTyped(e,"eb"));
 document.getElementById("fileOrder").addEventListener("change",e=>handleTyped(e,"order"));
 document.getElementById("fileDrop").addEventListener("change",e=>handleTyped(e,"drop"));
 document.getElementById("fileStock2").addEventListener("change",e=>handleTyped(e,"stockd"));

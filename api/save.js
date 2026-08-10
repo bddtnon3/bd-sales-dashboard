@@ -61,6 +61,24 @@ function stockScore(x) { if (!x) return -1; const up = x.up || 0; const d = x.da
 function pickNewerStock(a, b) { const ra = ((a && a.rows) || []).length, rb = ((b && b.rows) || []).length; if (!rb) return a || { date: null, rows: [], names: {} }; if (!ra) return b; return stockScore(b) >= stockScore(a) ? b : a; }
 function pickBiggerStore(a, b) { const am = ((a && a.months) || []).length, bm = ((b && b.months) || []).length; if (bm > am) return b; if (am > bm) return a || { months: [], stores: [] }; const as = ((a && a.stores) || []).length, bs = ((b && b.stores) || []).length; return bs >= as ? (b || { months: [], stores: [] }) : a; }
 function pickBiggerMaster(a, b) { const ai = Object.keys((a && a.items) || {}).length, bi = Object.keys((b && b.items) || {}).length; return bi >= ai ? (bi ? b : (a || { items: {} })) : a; }
+// The eB2B contest table is a full snapshot of the whole window, re-uploaded each time a
+// fresh Migration Report arrives, so "keep the fresher one" is right — but never let an
+// empty payload (old tab, or a client that failed to load) replace a populated one. An
+// explicit clear from the manager carries `cleared` and is allowed through.
+function ebStamp(x) {
+  if (!x) return null;
+  const n = Object.keys((x && x.data) || {}).length;
+  if (!n && !x.cleared) return null;
+  return [x.asof ? Number(String(x.asof).replace(/-/g, "")) : 0, x.up || 0, x.cleared || 0];
+}
+function pickNewerEb(a, b) {
+  const sa = ebStamp(a), sb = ebStamp(b);
+  if (!sb) return a || { asof: null, up: 0, lines: {}, data: {} };
+  if (!sa) return b;
+  if (Math.max(sb[2], sb[1]) > Math.max(sa[2], sa[1]) && sb[2]) return b;   // explicit clear wins if newest
+  if (sb[0] !== sa[0]) return sb[0] > sa[0] ? b : a;
+  return sb[1] >= sa[1] ? b : a;
+}
 function mergeState(server, c) {
   const s = server || {};
   const sD = s.DATA || {}, cD = c.DATA || {};
@@ -92,6 +110,7 @@ function mergeState(server, c) {
     else delete psRounds[k];
   }
   const PSTORE = { rounds: psRounds, del: psDel };
+  const EB2B = pickNewerEb(s.EB2B, c.EB2B);
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),
@@ -104,6 +123,7 @@ function mergeState(server, c) {
     STOREPROD,
     STOREDAILY,
     PSTORE,
+    EB2B,
     savedAt: Date.now(),
   };
 }
@@ -137,7 +157,8 @@ export default async function handler(req, res) {
   const od = ((body.ORDERS && body.ORDERS.dates) || []).length;
   const kp = ((body.KPI && body.KPI.months) || []).length;
   const ps = Object.keys((body.PSTORE && body.PSTORE.rounds) || {}).length;
-  if ((m + dd + st + od + kp + ps) === 0) {
+  const eb = Object.keys((body.EB2B && body.EB2B.data) || {}).length;
+  if ((m + dd + st + od + kp + ps + eb) === 0) {
     return res.status(409).json({ error: "ข้อมูลว่างเปล่า — ยกเลิกการบันทึกเพื่อป้องกันข้อมูลเดิมหาย (ลองรีเฟรชแล้วโหลดข้อมูลใหม่ก่อนอัพโหลด)" });
   }
 
