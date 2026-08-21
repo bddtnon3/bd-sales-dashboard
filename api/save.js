@@ -111,6 +111,12 @@ function mergeState(server, c) {
   }
   const PSTORE = { rounds: psRounds, del: psDel };
   const EB2B = pickNewerEb(s.EB2B, c.EB2B);
+  // Order-form product status is keyed by PO date, exactly like ORDERS: union the days so a
+  // client that has not seen an older day can never drop it, and re-uploading one day only
+  // refreshes that day.
+  const sPS = s.POSTATUS || {}, cPS = c.POSTATUS || {};
+  const posData = keyMerge(sPS.data, cPS.data);
+  const POSTATUS = { data: posData, dates: Object.keys(posData).sort() };
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),
@@ -124,6 +130,7 @@ function mergeState(server, c) {
     STOREDAILY,
     PSTORE,
     EB2B,
+    POSTATUS,
     savedAt: Date.now(),
   };
 }
@@ -158,7 +165,8 @@ export default async function handler(req, res) {
   const kp = ((body.KPI && body.KPI.months) || []).length;
   const ps = Object.keys((body.PSTORE && body.PSTORE.rounds) || {}).length;
   const eb = Object.keys((body.EB2B && body.EB2B.data) || {}).length;
-  if ((m + dd + st + od + kp + ps + eb) === 0) {
+  const po = Object.keys((body.POSTATUS && body.POSTATUS.data) || {}).length;
+  if ((m + dd + st + od + kp + ps + eb + po) === 0) {
     return res.status(409).json({ error: "ข้อมูลว่างเปล่า — ยกเลิกการบันทึกเพื่อป้องกันข้อมูลเดิมหาย (ลองรีเฟรชแล้วโหลดข้อมูลใหม่ก่อนอัพโหลด)" });
   }
 

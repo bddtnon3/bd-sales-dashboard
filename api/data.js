@@ -23,7 +23,8 @@ function looksEmpty(d) {
   const kp = ((d.KPI && d.KPI.months) || []).length;
   const ps = Object.keys((d.PSTORE && d.PSTORE.rounds) || {}).length;
   const eb = Object.keys((d.EB2B && d.EB2B.data) || {}).length;
-  return (m + dd + st + od + kp + ps + eb) === 0;
+  const po = Object.keys((d.POSTATUS && d.POSTATUS.data) || {}).length;
+  return (m + dd + st + od + kp + ps + eb + po) === 0;
 }
 
 export default async function handler(req, res) {

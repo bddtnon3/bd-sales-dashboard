@@ -173,5 +173,38 @@ console.log("TEST 8 — eB2B contest table survives stale clients and never roll
   check("clearing the contest touches nothing else", Object.keys(outC.DATA.monthly).length === 2 && !!outC.PSTORE.rounds["2026-06-30"]);
 }
 
+console.log("TEST 9 — order-form product status accumulates by PO date and never loses a day");
+{
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.POSTATUS = { dates: ["2026-07-01", "2026-07-02"], data: {
+    "2026-07-01": { up: 1, file: "BD_010726.xlsx", items: { "111": { s: 1 } } },
+    "2026-07-02": { up: 2, file: "BD_020726.xlsx", items: { "222": { p: "12F1", b: 12, f: 1 } } },
+  } };
+
+  const oldTab = JSON.parse(JSON.stringify(srv));
+  delete oldTab.POSTATUS;                                  // browser from before the feature
+  const o1 = mergeState(srv, oldTab);
+  check("both PO days survive a tab with no POSTATUS", Object.keys(o1.POSTATUS.data).length === 2);
+  check("dates stay in step with data", o1.POSTATUS.dates.join(",") === "2026-07-01,2026-07-02");
+
+  const blank = JSON.parse(JSON.stringify(srv));
+  blank.POSTATUS = { dates: [], data: {} };                 // client that failed to load
+  check("blank client cannot wipe PO status", Object.keys(mergeState(srv, blank).POSTATUS.data).length === 2);
+
+  const newDay = JSON.parse(JSON.stringify(srv));
+  newDay.POSTATUS.data["2026-08-21"] = { up: 3, file: "BD_210826.xlsx", items: { "333": { q: 8 } } };
+  const o2 = mergeState(srv, newDay);
+  check("a new PO day is added alongside the old ones", Object.keys(o2.POSTATUS.data).length === 3);
+  check("the July days are untouched", o2.POSTATUS.data["2026-07-01"].items["111"].s === 1);
+
+  const redo = JSON.parse(JSON.stringify(srv));            // re-uploading one day refreshes only it
+  redo.POSTATUS.data["2026-07-02"] = { up: 9, file: "BD_020726 (add1).xlsx", items: { "222": { p: "8F1", b: 8, f: 1 } } };
+  const o3 = mergeState(srv, redo);
+  check("re-upload refreshes that day", o3.POSTATUS.data["2026-07-02"].items["222"].b === 8);
+  check("re-upload leaves the other day alone", o3.POSTATUS.data["2026-07-01"].items["111"].s === 1);
+  check("PO status does not disturb any other section",
+        Object.keys(o3.DATA.monthly).length === 2 && !!o3.PSTORE.rounds["2026-06-30"] && o3.ORDERS.dates.length === 2);
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

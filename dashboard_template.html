@@ -314,6 +314,12 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 .req-sent{background:#EAF6E2;border:1.5px solid #BFE3AB;border-radius:10px;padding:10px 12px;margin:8px 0 4px;font-size:13px}
 .req-sent-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .req-sent-list>span{background:#fff;border:1px solid #CFE7BE;border-radius:8px;padding:3px 9px;font-size:12px}
+.ps2-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ps2-chip{font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:20px;cursor:pointer;border:1.5px solid transparent}
+.ps2-chip.up{background:#EAF6E2;color:#2E7D32;border-color:#BFE3AB}
+.ps2-chip.dn{background:#FDECEA;color:#C62828;border-color:#F3C0BA}
+.ps2-chip:hover{filter:brightness(.96)}
+.ps2-dot{display:inline-block;width:11px;height:11px;border-radius:3px;border:1px solid rgba(0,0,0,.15);vertical-align:-1px;margin-right:5px}
 /* eB2B opening contest */
 .eb-period{background:var(--blue-soft);border-radius:9px;padding:9px 14px;font-size:13.5px;white-space:nowrap}
 .eb-podium-wrap{text-align:center}
@@ -406,6 +412,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <button class="tab" data-tab="ps" onclick="switchTab('ps')">⭐ Perfect Store</button>
       <button class="tab" data-tab="order" onclick="switchTab('order')">🛒 การสั่งของ</button>
       <button class="tab" data-tab="stock" onclick="switchTab('stock')">📦 สต็อก</button>
+      <button class="tab admin-upload" data-tab="pos" style="display:none" onclick="switchTab('pos')">📋 สถานะสินค้า Unilever</button>
       <button class="tab" data-tab="ana" onclick="switchTab('ana')">🔬 วิเคราะห์เชิงลึก</button>
     </div>
     <div id="salesView">
@@ -583,6 +590,21 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <div class="kpi-monthbar" id="stockBar"></div>
       <div class="cards" id="stockCards"></div>
       <div class="panel" id="stockTable"></div>
+    </div>
+
+    <div id="posView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>รอบใบสั่ง</label><select id="posDate" onchange="PS2.date=this.value;renderPOS()"></select></div>
+        <div class="ctl"><label>🔍 ค้นหาสินค้า</label><input id="posQ" placeholder="พิมพ์รหัส / ชื่อสินค้า" oninput="PS2.q=this.value;renderPOSBody()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:220px"></div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+        </div>
+      </div>
+      <div class="kpi-monthbar" id="posBar"></div>
+      <div class="cards" id="posCards"></div>
+      <div id="posDiff"></div>
+      <div id="posBody"></div>
     </div>
 
     <div id="anaView" class="hidden">
@@ -787,6 +809,11 @@ let STOREPROD = __STOREPRODDATA__;
 /* STOREDAILY (per-store per-day from daily bill files): {data:{"YYYY-MM-DD":{storeCode:{l:line,n:name,cs,pc,niv}}}} */
 let STOREDAILY = __STOREDAILYDATA__;
 
+/* POSTATUS (Unilever order-form product status read from the PO colour coding):
+   {dates:[...], data:{"YYYY-MM-DD":{up,file,items:{code:{p,b,f,q,x,s,k}}}}}
+   Only FLAGGED products are stored (names/categories already live in ORDERS.names/cat). */
+let POSTATUS = __POSTATUSDATA__;
+
 /* EB2B (eB2B store-opening contest, Aug-Sep 2026): {asof,up,lines:{code:disp},data:{code:{n,stores:[[code,name,ymd]]}}} */
 let EB2B = __EB2BDATA__;
 
@@ -856,8 +883,9 @@ function doLogin(){
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
   initKeys();render();initKPI();initOrder();initAnalytics();navReset();
+  _switchTab("sales");   /* never leave the previous user's tab (incl. manager-only ones) open */
 }
-function logout(){S.user=null;document.getElementById("app").classList.add("hidden");
+function logout(){S.user=null;_switchTab("sales");document.getElementById("app").classList.add("hidden");
   document.getElementById("login").classList.remove("hidden");
   document.getElementById("p").value="";}
 document.getElementById("p").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
@@ -1342,12 +1370,14 @@ function _switchTab(t){
   document.getElementById("psView").classList.toggle("hidden",t!=="ps");
   document.getElementById("orderView").classList.toggle("hidden",t!=="order");
   document.getElementById("stockView").classList.toggle("hidden",t!=="stock");
+  document.getElementById("posView").classList.toggle("hidden",t!=="pos");
   document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
   if(t==="kpi")renderKPI();
   if(t==="eb")renderEB();
   if(t==="ps")renderPS();
   if(t==="order")renderOrder();
   if(t==="stock")renderStock();
+  if(t==="pos")renderPOS();
   if(t==="ana")renderAnalytics();
 }
 let KPIS={month:null,show:{active:true,self:true,ghost:true},scope:"team"};
@@ -2217,9 +2247,27 @@ function cleanupOrderDate(date){
 const ORD_PROMO=/(On-inv|Rebate|FTR|Twin ?Pack|W%|F\/O|F\/P|\(6\+1\)|\d+F1|Franchise|WashXpress|\(25)/;
 function ordClean(s){if(s==null)return "";s=String(s);const m=s.match(ORD_PROMO);if(m)s=s.slice(0,m.index);return s.replace(/^[\s.\-]+|[\s.\-]+$/g,"");}
 function ordThai(s){s=String(s==null?"":s).trim();return s&&s.charCodeAt(0)>=0x0E00&&s.charCodeAt(0)<=0x0E7F;}
+/* ---- colour coding used by Unilever's order form (verified against a real BD_*.xlsx) ----
+   name cell  grey  A5A5A5 -> temporarily out of stock (orderable, but nothing will arrive)
+   name cell  yellow FFFF00 -> on-invoice free goods; the text carries the ratio e.g. 12F1 / 11F3
+   code cell  yellow FFFF00 -> the product's code changed (this is the NEW code)
+   code cell  pink   FFCCFF -> newly opened product
+   order cell yellow FFFF00 -> a quota was granted; the number in the cell is the cap (cases)
+   order cell any other fill -> ordering is closed for this product
+   Theme fills are the sheet's plain white background and must not count as a marker. */
+const PO_GREY="A5A5A5",PO_YEL="FFFF00",PO_PINK="FFCCFF";
+function poFill(ws,R,C){
+  const c=ws[XLSX.utils.encode_cell({r:R,c:C})];
+  if(!c||!c.s||!c.s.patternType||c.s.patternType==="none")return null;
+  const fg=c.s.fgColor;if(!fg||!fg.rgb)return null;              /* theme fill = plain background */
+  const v=String(fg.rgb).slice(-6).toUpperCase();
+  return (v==="FFFFFF"||v==="000000")?null:v;
+}
+const PO_F=/(\d{1,2})\s*F\s*(\d{1,2})/i;
 function parseOrderForm(name,buf,kind){
-  const wb=XLSX.read(buf,{type:"array"});
+  const wb=XLSX.read(buf,{type:"array",cellStyles:true});
   let inside=null;const items={},onames={},cats={},catN={};let ov=0,cv=0;
+  const flags={};   /* code -> {p,b,f,q,x,s,k} for the product-status tab */
   const firstNum=(row,a,b)=>{row=row||[];for(let k=a;k<Math.min(b,row.length);k++){const v=parseFloat(String(row[k]||"").replace(/,/g,""));if(!isNaN(v)&&v!==0)return v;}return 0;};
   wb.SheetNames.forEach(sn=>{
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
@@ -2234,10 +2282,32 @@ function parseOrderForm(name,buf,kind){
     if(hdr<0)return;
     const ccs=[];(rows[hdr]||[]).forEach((c,j)=>{if(String(c||"").trim()==="รหัส")ccs.push(j);});
     const fam={};ccs.forEach(cc=>fam[cc]="");
+    const ws=wb.Sheets[sn],rng=XLSX.utils.decode_range(ws["!ref"]||"A1"),R0=rng.s.r,C0=rng.s.c;
     for(let i=hdr+2;i<rows.length;i++){const r=rows[i]||[];
       ccs.forEach(cc=>{
         const c0=ordClean(cc>=3?r[cc-3]:"");if(ordThai(c0))fam[cc]=c0;
         const code=String(r[cc]==null?"":r[cc]).trim();if(!/^\d+$/.test(code))return;
+        if(kind!=="drop"){
+          /* sheet_to_json(header:1) shifts BOTH axes by the sheet's used-range origin,
+             so a style lookup has to add R0/C0 back to reach the real cell. */
+          const R=R0+i,W=(j)=>poFill(ws,R,C0+j);
+          /* Unilever paints the promo/out-of-stock band on whichever of the two name cells
+             actually holds the text, so both must be read — yellow wins if either carries it. */
+          const f3=cc>=3?W(cc-3):null,f2=cc>=2?W(cc-2):null;
+          const nf=(f3===PO_YEL||f2===PO_YEL)?PO_YEL:(f3===PO_GREY||f2===PO_GREY)?PO_GREY:(f3||f2);
+          const kf=W(cc),of=W(cc+6)||W(cc+7);
+          const fl={};
+          if(nf===PO_GREY)fl.s=1;
+          if(nf===PO_YEL){const t=[cc>=3?r[cc-3]:"",cc>=2?r[cc-2]:""].map(x=>String(x==null?"":x)).join(" ");
+            const m=t.match(PO_F);if(m){fl.p=m[1]+"F"+m[2];fl.b=+m[1];fl.f=+m[2];}else fl.p="?";}
+          if(kf===PO_YEL)fl.k=1;else if(kf===PO_PINK)fl.k=2;
+          /* The cap is the LEFT cell (VMI Order, cc+6) per the owner's rule. cc+7 (Order Confirm)
+             holds the centre's own quantity and is what ORDERS reads, so taking the cap from cc+7
+             would compare a number with itself. */
+          if(of===PO_YEL){const qv=parseFloat(r[cc+6]);fl.q=Math.round((isNaN(qv)||!qv)?(parseFloat(r[cc+7])||0):qv);}
+          else if(of)fl.x=of;
+          if(Object.keys(fl).length)flags[code]=Object.assign(flags[code]||{},fl);
+        }
         if(!cats[code])cats[code]=sn;                 /* หมวด = ชื่อ sheet (Home_Care ฯลฯ) */
         const q=parseFloat(r[cc+7])||0;   /* Order Confirm column only (ไม่รวม VMI Order = cc+6) */
         if(q)items[code]=Math.max(items[code]||0,Math.round(q));
@@ -2259,12 +2329,157 @@ function parseOrderForm(name,buf,kind){
   if(kind==="drop"){day.dropped=items;day.hasResult=true;
     ulog("✅ "+name+" (ใบ Drop) → drop "+Object.keys(items).length+" รายการ · วัน "+fmtDate(date));}
   else{const rm=name.match(/\(add(\d+)\)/i);const round=rm?("add"+rm[1]):"main";day.rounds[round]=items;
+    if(Object.keys(flags).length){
+      if(!POSTATUS||typeof POSTATUS!=="object")POSTATUS={dates:[],data:{}};
+      if(!POSTATUS.data)POSTATUS.data={};if(!POSTATUS.dates)POSTATUS.dates=[];
+      POSTATUS.data[date]={up:Date.now(),file:name,items:flags};
+      if(!POSTATUS.dates.includes(date))POSTATUS.dates.push(date);POSTATUS.dates.sort();
+      const cnt=k=>Object.keys(flags).filter(c=>flags[c][k]).length;
+      ulog("&nbsp;&nbsp;↳ 📋 สถานะสินค้า: 🎁 แถม "+cnt("p")+" · 🎫 โควต้า "+cnt("q")+" · ⚠️ ของขาด "+cnt("s")+" · ⛔ ปิดช่อง "+cnt("x")+" · 🔄 รหัสใหม่ "+cnt("k"));
+      if(!document.getElementById("posView").classList.contains("hidden")){PS2.date=date;renderPOS();}
+    }
     if(!day.vals)day.vals={};day.vals[round]={ov:Math.round(ov*100)/100,cv:Math.round(cv*100)/100};
     ulog("✅ "+name+" (ใบสั่ง รอบ "+round+") → "+Object.keys(items).length+" รายการ · CON Confirm ฿"+Math.round(cv).toLocaleString()+" · วัน "+fmtDate(date));}
   if(!ORDERS.dates.includes(date))ORDERS.dates.push(date);ORDERS.dates.sort();
   initOrder();ORD.date=date;{const t=document.getElementById("orderDateTxt");if(t)t.textContent=fmtDate(date);}
   if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
   syncToServer();
+}
+
+/* ====================== UNILEVER PRODUCT STATUS (จากสีในใบสั่ง) ====================== */
+let PS2={date:null,q:""};
+/* Sections in the order the owner reviews them: promo -> quota -> out of stock -> closed -> new code */
+const PS_SEC=[
+  {k:"p",icon:"🎁",title:"โปรโมชั่นแถมในบิล",color:"#C79A00",bg:"#FFFBEA",
+   sub:'ต้องสั่งให้<b>หารลงตัว</b>ตามอัตราแถม ถึงจะได้ของแถมในบิล — ระบบเช็คจำนวนที่ศูนย์สั่งจริงให้แล้ว'},
+  {k:"q",icon:"🎫",title:"โควต้าที่เปิดให้สั่ง",color:"#B7791F",bg:"#FFF8E5",
+   sub:'สั่งได้ไม่เกินจำนวนที่ Unilever กำหนด แล้วได้ของตามนั้นแน่นอน'},
+  {k:"s",icon:"⚠️",title:"ของขาดชั่วคราว",color:"#7A7A7A",bg:"#F4F5F7",
+   sub:'ยังกดสั่งได้ แต่<b>ของขาด สั่งไปก็ไม่ได้ของ</b> — ถ้าศูนย์สั่งไปแล้วจะขึ้นเตือนให้'},
+  {k:"x",icon:"⛔",title:"ปิดช่องสั่ง — สั่งไม่ได้",color:"#B03A5B",bg:"#FDF0F4",
+   sub:'ช่องสั่งถูกปิด อาจเปลี่ยนรหัส เปลี่ยนโฉม หรือยุติการขาย'},
+  {k:"k",icon:"🔄",title:"รหัสสินค้าใหม่",color:"#2B6CB0",bg:"#F1F6FE",
+   sub:'รหัสนี้คือรหัส<b>ใหม่</b> — รหัสเดิมมักยังอยู่ในใบสั่งแต่สั่งไม่ได้แล้ว'}];
+/* Always derive the list from the stored days, so a stale POSTATUS.dates can never hide a day. */
+function psDates(){return Object.keys(((POSTATUS&&POSTATUS.data)||{})).sort();}
+function psDay(d){return ((POSTATUS&&POSTATUS.data)||{})[d]||null;}
+/* how many cases the centre actually ordered that day, across every round */
+function psOrdered(date,code){const day=(ORDERS.data||{})[date];if(!day)return 0;return (orderedMerged(day)||{})[code]||0;}
+function psName(code){return anaEsc(oname(code)||"");}
+function psCat(code){return anaEsc((ORDERS.cat&&ORDERS.cat[code])||"");}
+function psRows(day,key){
+  const it=(day&&day.items)||{},out=[];
+  for(const c in it){if(it[c][key]!=null&&it[c][key]!==0&&it[c][key]!==false)out.push(Object.assign({code:c},it[c]));}
+  out.sort((a,b)=>(psName(a.code)||a.code).localeCompare(psName(b.code)||b.code,"th"));
+  return out;
+}
+function renderPOS(){
+  if(!(S.user&&S.user.role==="manager")){
+    document.getElementById("posBar").innerHTML="";document.getElementById("posCards").innerHTML="";
+    document.getElementById("posDiff").innerHTML="";
+    document.getElementById("posBody").innerHTML='<div class="panel"><div class="insight">หน้านี้สำหรับผู้จัดการเท่านั้น</div></div>';return;}
+  const ds=psDates(),sel=document.getElementById("posDate");
+  if(!ds.length){
+    document.getElementById("posBar").innerHTML="📋 สถานะสินค้า Unilever";
+    document.getElementById("posCards").innerHTML="";document.getElementById("posDiff").innerHTML="";
+    document.getElementById("posBody").innerHTML='<div class="panel"><div class="insight">ยังไม่มีข้อมูล — อัพไฟล์ใบสั่งซื้อ (🛒 ใบสั่งของ) หนึ่งครั้ง ระบบจะอ่านสถานะจากสีในไฟล์ให้เอง<br><br><b>หมายเหตุ:</b> ใบสั่งที่เคยอัพก่อนหน้านี้ยังไม่มีข้อมูลสี (ระบบเพิ่งเริ่มเก็บ) — ถ้าอยากได้ย้อนหลัง ให้อัพไฟล์เดิมของเดือน 7–8 ซ้ำอีกครั้ง ข้อมูลการสั่งเดิมไม่หาย</div></div>';
+    if(sel)sel.innerHTML="";return;}
+  if(!PS2.date||!ds.includes(PS2.date))PS2.date=ds[ds.length-1];
+  sel.innerHTML=ds.slice().reverse().map(d=>`<option value="${d}"${d===PS2.date?" selected":""}>${fmtDate(d)}</option>`).join("");
+  const day=psDay(PS2.date);
+  document.getElementById("posBar").innerHTML=`📋 สถานะสินค้า Unilever · รอบใบสั่งวันที่ <b>${fmtDate(PS2.date)}</b>${day.file?` · จากไฟล์ <b>${anaEsc(day.file)}</b>`:""} · อ่านจากสีในใบสั่งอัตโนมัติ`;
+  const n=k=>psRows(day,k).length;
+  document.getElementById("posCards").innerHTML=PS_SEC.map(sec=>
+    `<div class="card kpi-card" style="border-top:3px solid ${sec.color};cursor:pointer" onclick="document.getElementById('ps-${sec.k}').scrollIntoView({behavior:'smooth',block:'start'})">
+      <div class="k" style="color:${sec.color}">${sec.icon} ${sec.title}</div><div class="v">${n(sec.k).toLocaleString()}</div><div class="s">รายการ</div></div>`).join("");
+  renderPOSDiff();renderPOSBody();
+}
+function renderPOSDiff(){
+  if(!(S.user&&S.user.role==="manager"))return;
+  const ds=psDates(),i=ds.indexOf(PS2.date),el=document.getElementById("posDiff");
+  if(i<=0){el.innerHTML=`<div class="panel"><div class="psub">ยังไม่มีรอบก่อนหน้าให้เทียบ — อัพใบสั่งอีกวันแล้วระบบจะสรุป "อะไรเปลี่ยนไปบ้าง" ให้อัตโนมัติ</div></div>`;return;}
+  const cur=psDay(PS2.date),prv=psDay(ds[i-1]);
+  const ci=(cur&&cur.items)||{},pi=(prv&&prv.items)||{};
+  const has=(o,c,k)=>!!(o[c]&&o[c][k]!=null&&o[c][k]!==0&&o[c][k]!==false);
+  const all={};Object.keys(ci).forEach(c=>all[c]=1);Object.keys(pi).forEach(c=>all[c]=1);
+  const grp={};PS_SEC.forEach(sec=>grp[sec.k]={on:[],off:[]});
+  Object.keys(all).forEach(c=>PS_SEC.forEach(sec=>{
+    const a=has(ci,c,sec.k),b=has(pi,c,sec.k);
+    if(a&&!b)grp[sec.k].on.push(c);else if(!a&&b)grp[sec.k].off.push(c);}));
+  const LAB={p:["เริ่มมีโปรแถม","หมดโปรแถม"],q:["เปิดโควต้าใหม่","ปิดโควต้า"],s:["ของขาดเพิ่ม","กลับมามีของ"],x:["ถูกปิดช่องสั่ง","เปิดให้สั่งได้อีก"],k:["ขึ้นรหัสใหม่","ไม่ใช่รหัสใหม่แล้ว"]};
+  const chips=[];
+  PS_SEC.forEach(sec=>{const g=grp[sec.k];
+    if(g.on.length)chips.push(`<span class="ps2-chip up" onclick="psShowDiff('${sec.k}','on')">${sec.icon} ${LAB[sec.k][0]} <b>${g.on.length}</b></span>`);
+    if(g.off.length)chips.push(`<span class="ps2-chip dn" onclick="psShowDiff('${sec.k}','off')">${sec.icon} ${LAB[sec.k][1]} <b>${g.off.length}</b></span>`);});
+  window.__psDiff=grp;
+  el.innerHTML=`<div class="panel" style="border:2px solid var(--blue)">
+    <h3>⚡ เปลี่ยนแปลงจากรอบก่อน (${fmtDate(ds[i-1])} → ${fmtDate(PS2.date)})</h3>
+    <div class="psub">สิ่งที่ต่างไปจากใบสั่งรอบที่แล้ว — กดที่ป้ายเพื่อดูรายชื่อสินค้า</div>
+    <div class="ps2-chips">${chips.length?chips.join(""):'<span class="psub">ไม่มีอะไรเปลี่ยนจากรอบก่อน</span>'}</div>
+    <div id="psDiffList"></div></div>`;
+}
+function psShowDiff(k,dir){
+  const g=(window.__psDiff||{})[k];if(!g)return;
+  const sec=PS_SEC.find(x=>x.k===k),list=g[dir]||[];
+  const LAB={p:["เริ่มมีโปรแถม","หมดโปรแถม"],q:["เปิดโควต้าใหม่","ปิดโควต้า"],s:["ของขาดเพิ่ม","กลับมามีของ"],x:["ถูกปิดช่องสั่ง","เปิดให้สั่งได้อีก"],k:["ขึ้นรหัสใหม่","ไม่ใช่รหัสใหม่แล้ว"]};
+  document.getElementById("psDiffList").innerHTML=`<div style="margin-top:10px"><b>${sec.icon} ${LAB[k][dir==="on"?0:1]} (${list.length})</b>
+    <div style="overflow-x:auto;margin-top:6px"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>หมวด</th></tr></thead><tbody>`+
+    list.map(c=>`<tr><td>${c}</td><td style="text-align:left">${psName(c)||"-"}</td><td>${psCat(c)||"-"}</td></tr>`).join("")+`</tbody></table></div></div>`;
+}
+function psMatch(c){const q=(PS2.q||"").trim().toLowerCase();if(!q)return true;
+  return String(c).includes(q)||String(psName(c)).toLowerCase().includes(q);}
+function renderPOSBody(){
+  if(!(S.user&&S.user.role==="manager")){renderPOS();return;}
+  const day=psDay(PS2.date);if(!day){document.getElementById("posBody").innerHTML="";return;}
+  document.getElementById("posBody").innerHTML=PS_SEC.map(sec=>{
+    const rows=psRows(day,sec.k).filter(r=>psMatch(r.code));
+    const total=psRows(day,sec.k).length;
+    return `<div class="panel" id="ps-${sec.k}" style="border-left:5px solid ${sec.color}">
+      <h3 style="color:${sec.color}">${sec.icon} ${sec.title} <span style="color:var(--muted);font-weight:600;font-size:14px">(${rows.length===total?total:rows.length+" จาก "+total})</span></h3>
+      <div class="psub">${sec.sub}</div>
+      ${rows.length?psTable(sec,rows):'<div class="psub" style="margin-top:8px">'+(total?"ไม่พบรายการที่ค้นหา":"ไม่มีรายการในกลุ่มนี้")+'</div>'}</div>`;}).join("");
+}
+function psTable(sec,rows){
+  const head={p:`<th>แถม</th><th>ศูนย์สั่งวันนี้ (ลัง)</th><th style="text-align:left">เช็คจำนวนแถม</th>`,
+              q:`<th>โควต้าสูงสุด (ลัง)</th><th>ใส่ในช่อง Order Confirm</th><th style="text-align:left">สถานะ</th>`,
+              s:`<th>ศูนย์สั่งวันนี้ (ลัง)</th><th style="text-align:left">สถานะ</th>`,
+              x:`<th style="text-align:left">สถานะ</th>`,
+              k:`<th style="text-align:left">สถานะ</th>`}[sec.k];
+  const cell=r=>{
+    const ord=psOrdered(PS2.date,r.code);
+    if(sec.k==="p"){
+      const b=r.b||0,f=r.f||0;
+      if(!b)return `<td>—</td><td style="text-align:center">${ord||"-"}</td><td style="text-align:left"><span class="psub">อ่านอัตราแถมไม่ได้ ตรวจในไฟล์อีกที</span></td>`;
+      const rem=ord%b,free=Math.floor(ord/b)*f;
+      let note;
+      if(!ord)note='<span class="psub">ยังไม่ได้สั่งวันนี้</span>';
+      else if(rem===0)note=`<span class="pill g">✅ หารลงตัว ได้แถม ${free} ลัง</span>`;
+      else{
+        const dn=ord-rem,up=ord+(b-rem),fdn=Math.floor(ord/b)*f,fup=(Math.floor(ord/b)+1)*f;
+        /* suggesting "order 0" helps nobody, so below one full set only offer the step up */
+        const tip=dn>0?`ลดเหลือ ${dn} (แถม ${fdn}) หรือเพิ่มเป็น ${up} ลัง (แถม ${fup})`
+                      :`เพิ่มอีก ${b-rem} ลัง เป็น ${up} ลัง จะได้แถม ${fup} ลัง`;
+        note=`<span class="pill b">⚠️ เหลือเศษ ${rem} ลัง ไม่ได้แถม</span> <span class="psub">${tip}</span>`;}
+      return `<td style="text-align:center"><b>ซื้อ ${b} แถม ${f}</b></td><td style="text-align:center">${ord||"-"}</td><td style="text-align:left">${note}</td>`;
+    }
+    if(sec.k==="q"){
+      const q=r.q||0,left=q-ord;
+      const st=!ord?'<span class="psub">ยังไม่ได้ใส่จำนวน — เหลือสิทธิ์เต็ม '+q+' ลัง</span>'
+        :ord>q?`<span class="pill b">⚠️ ใส่เกินโควต้า ${ord-q} ลัง — จะได้แค่ ${q} ลัง</span>`
+        :ord===q?'<span class="pill g">✅ ใส่เต็มโควต้าแล้ว</span>'
+        :`<span class="pill w">เหลือสิทธิ์อีก ${left} ลัง</span>`;
+      return `<td style="text-align:center"><b>${q}</b></td><td style="text-align:center">${ord||"-"}</td><td style="text-align:left">${st}</td>`;
+    }
+    if(sec.k==="s"){
+      const st=ord?`<span class="pill b">⚠️ ศูนย์สั่งไป ${ord} ลัง แต่ของขาด — เตรียมโดน Drop</span>`:'<span class="psub">ยังไม่ได้สั่ง — ดีแล้ว</span>';
+      return `<td style="text-align:center">${ord||"-"}</td><td style="text-align:left">${st}</td>`;
+    }
+    if(sec.k==="x")return `<td style="text-align:left"><span class="ps2-dot" style="background:#${r.x}"></span> ปิดช่องสั่ง${ord?` · <b class="down">ศูนย์ใส่จำนวนไป ${ord} ลัง (จะสั่งไม่ได้)</b>`:""}</td>`;
+    return `<td style="text-align:left">${r.k===2?'<span class="pill w">🆕 สินค้าเปิดใหม่</span>':'<span class="pill g">🔄 รหัสใหม่ — ใช้รหัสนี้แทนรหัสเดิม</span>'}${ord?` · สั่งแล้ว ${ord} ลัง`:""}</td>`;
+  };
+  return `<div style="overflow-x:auto;margin-top:8px"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>หมวด</th>${head}</tr></thead><tbody>`+
+    rows.map(r=>`<tr><td>${r.code}</td><td style="text-align:left">${psName(r.code)||'<span class="psub">(ไม่มีชื่อในระบบ)</span>'}</td><td style="font-size:11px;color:var(--muted)">${psCat(r.code)||"-"}</td>${cell(r)}</tr>`).join("")+
+    `</tbody></table></div>`;
 }
 
 /* ====================== SALES REQUESTS (คำขอสินค้าเซลล์) ====================== */
@@ -2604,7 +2819,7 @@ function parseDrop(name,buf){
 
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){
-  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",stock:"stock",ana:"ana"}[CURTAB]||"sales";
+  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",ana:"ana"}[CURTAB]||"sales";
   const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์"}[g];
   document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
   document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=el.dataset.group===g?"":"none";});
