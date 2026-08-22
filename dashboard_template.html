@@ -2292,12 +2292,36 @@ function ordThai(s){s=String(s==null?"":s).trim();return s&&s.charCodeAt(0)>=0x0
    order cell any other fill -> ordering is closed for this product
    Theme fills are the sheet's plain white background and must not count as a marker. */
 const PO_GREY="A5A5A5",PO_YEL="FFFF00",PO_PINK="FFCCFF";
+/* Standard Office theme palette. SpreadsheetML theme indexes are
+   0=background1, 1=text1, 2=background2, 3=text2, 4..9=accent1..6. */
+const PO_THEME=["FFFFFF","000000","E7E6E6","44546A","4472C4","ED7D31","A5A5A5","FFC000","5B9BD5","70AD47"];
+function poTint(hex,t){
+  if(!t)return hex;
+  let out="";
+  for(let i=0;i<6;i+=2){const v=parseInt(hex.substr(i,2),16);
+    const n=(t<0)?Math.round(v*(1+t)):Math.round(v*(1-t)+255*t);
+    out+=Math.max(0,Math.min(255,n)).toString(16).padStart(2,"0").toUpperCase();}
+  return out;
+}
 function poFill(ws,R,C){
   const c=ws[XLSX.utils.encode_cell({r:R,c:C})];
   if(!c||!c.s||!c.s.patternType||c.s.patternType==="none")return null;
-  const fg=c.s.fgColor;if(!fg||!fg.rgb)return null;              /* theme fill = plain background */
-  const v=String(fg.rgb).slice(-6).toUpperCase();
+  const fg=c.s.fgColor;if(!fg)return null;
+  let v=null;
+  if(fg.rgb)v=String(fg.rgb).slice(-6).toUpperCase();
+  /* A theme colour is a real fill too: Unilever's out-of-stock band is sometimes plain
+     A5A5A5 and sometimes "background 1, darker 35%", which only resolves to grey once the
+     tint is applied. Untinted theme 0 is the sheet's white background and still drops out. */
+  else if(fg.theme!=null&&PO_THEME[fg.theme])v=poTint(PO_THEME[fg.theme],fg.tint||0);
+  else return null;
   return (v==="FFFFFF"||v==="000000")?null:v;
+}
+/* Match any neutral mid grey, so both A5A5A5 and the tinted A6A6A6 count as out of stock. */
+function poIsGrey(v){
+  if(!v||v.length!==6)return false;
+  const r=parseInt(v.substr(0,2),16),g=parseInt(v.substr(2,2),16),b=parseInt(v.substr(4,2),16);
+  if(isNaN(r)||isNaN(g)||isNaN(b))return false;
+  return Math.abs(r-g)<=10&&Math.abs(g-b)<=10&&Math.abs(r-b)<=10&&r>=0x66&&r<=0xCC;
 }
 const PO_F=/(\d{1,2})\s*F\s*(\d{1,2})/i;
 /* The blank confirm form is named like 7001_15389839_Confirm_15389839_HPC_220826.xlsm —
@@ -2341,7 +2365,7 @@ function parseOrderForm(name,buf,kind){
           /* Unilever paints the promo/out-of-stock band on whichever of the two name cells
              actually holds the text, so both must be read — yellow wins if either carries it. */
           const f3=cc>=3?W(cc-3):null,f2=cc>=2?W(cc-2):null;
-          const nf=(f3===PO_YEL||f2===PO_YEL)?PO_YEL:(f3===PO_GREY||f2===PO_GREY)?PO_GREY:(f3||f2);
+          const nf=(f3===PO_YEL||f2===PO_YEL)?PO_YEL:(poIsGrey(f3)||poIsGrey(f2))?PO_GREY:(f3||f2);
           const kf=W(cc),of=W(cc+6)||W(cc+7);
           const fl={};
           if(nf===PO_GREY)fl.s=1;
