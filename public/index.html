@@ -314,6 +314,20 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 .req-sent{background:#EAF6E2;border:1.5px solid #BFE3AB;border-radius:10px;padding:10px 12px;margin:8px 0 4px;font-size:13px}
 .req-sent-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .req-sent-list>span{background:#fff;border:1px solid #CFE7BE;border-radius:8px;padding:3px 9px;font-size:12px}
+.pos-subtabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+.pos-st{background:#fff;border:1.5px solid var(--line);color:var(--muted);font-weight:700;font-size:13px;padding:8px 14px;border-radius:20px;cursor:pointer;white-space:nowrap}
+.pos-st:hover{border-color:var(--blue);color:var(--blue)}
+.pos-st.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.pos-card{cursor:pointer;transition:transform .08s}
+.pos-card:hover{transform:translateY(-2px)}
+.pos-card.on{box-shadow:0 0 0 2.5px var(--blue) inset}
+.so-tbl .so-row{cursor:pointer}
+.so-tbl .so-row:hover{background:var(--blue-soft)}
+.so-detail>td{background:#F7F9FC;text-align:left}
+.so-cat{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12.5px}
+.so-cat>span:first-child{min-width:96px}
+.so-cbar{flex:1;height:9px;border-radius:5px;background:var(--line);overflow:hidden;min-width:60px}
+.so-cbar>span{display:block;height:100%;background:#0F9ED5;border-radius:5px}
 .ps2-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .ps2-chip{font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:20px;cursor:pointer;border:1.5px solid transparent}
 .ps2-chip.up{background:#EAF6E2;color:#2E7D32;border-color:#BFE3AB}
@@ -412,7 +426,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <button class="tab" data-tab="ps" onclick="switchTab('ps')">⭐ Perfect Store</button>
       <button class="tab" data-tab="order" onclick="switchTab('order')">🛒 การสั่งของ</button>
       <button class="tab" data-tab="stock" onclick="switchTab('stock')">📦 สต็อก</button>
-      <button class="tab admin-upload" data-tab="pos" style="display:none" onclick="switchTab('pos')">📋 สถานะสินค้า Unilever</button>
+      <button class="tab admin-upload" data-tab="pos" style="display:none" onclick="switchTab('pos')">📊 วิเคราะห์การสั่งของ</button>
       <button class="tab" data-tab="ana" onclick="switchTab('ana')">🔬 วิเคราะห์เชิงลึก</button>
     </div>
     <div id="salesView">
@@ -594,17 +608,35 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 
     <div id="posView" class="hidden">
       <div class="controls">
-        <div class="ctl"><label>รอบใบสั่ง</label><select id="posDate" onchange="PS2.date=this.value;renderPOS()"></select></div>
-        <div class="ctl"><label>🔍 ค้นหาสินค้า</label><input id="posQ" placeholder="พิมพ์รหัส / ชื่อสินค้า" oninput="PS2.q=this.value;renderPOSBody()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:220px"></div>
+        <div class="ctl"><label>หมวดวิเคราะห์</label>
+          <div class="seg" id="posMain">
+            <button data-m="prod" class="on" onclick="posSetMain('prod')">📋 สถานะสินค้า Unilever</button>
+            <button data-m="sales" onclick="posSetMain('sales')">🧑‍💼 การสั่งของของเซลล์</button>
+          </div>
+        </div>
+        <div class="ctl" id="posDateCtl"><label>รอบใบสั่ง</label><select id="posDate" onchange="PS2.date=this.value;renderPOS()"></select></div>
+        <div class="ctl" id="posMonthCtl" style="display:none"><label>ช่วงเวลา</label><select id="posMonth" onchange="PS2.month=this.value;renderSalesOrd()"></select></div>
+        <div class="ctl" id="posQCtl"><label>🔍 ค้นหาสินค้า</label><input id="posQ" placeholder="พิมพ์รหัส / ชื่อสินค้า" oninput="PS2.q=this.value;renderPOSBody()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:200px"></div>
         <div class="spacer"></div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
           <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
         </div>
       </div>
-      <div class="kpi-monthbar" id="posBar"></div>
-      <div class="cards" id="posCards"></div>
-      <div id="posDiff"></div>
-      <div id="posBody"></div>
+      <div id="posProdWrap">
+        <div class="kpi-monthbar" id="posBar"></div>
+        <div class="cards" id="posCards"></div>
+        <div class="pos-subtabs" id="posSubTabs"></div>
+        <div id="posOverview"></div>
+        <div id="posDiff"></div>
+        <div id="posBody"></div>
+      </div>
+      <div id="posSalesWrap" class="hidden">
+        <div class="kpi-monthbar" id="soBar"></div>
+        <div class="cards" id="soCards"></div>
+        <div id="soChart"></div>
+        <div class="panel" id="soTable"></div>
+        <div id="soDetail"></div>
+      </div>
     </div>
 
     <div id="anaView" class="hidden">
@@ -689,6 +721,10 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <div class="up-row" data-group="ps">
         <label class="drop up-ps" for="filePS">⭐ <b>Perfect Store (AVD)</b><small>อัพทุกรอบที่ Unilever ส่งมา · ไฟล์ perfect_store_AVD_BM7_BD_30.07.xlsx (วันที่รอบจากชื่อไฟล์)</small></label>
         <input id="filePS" type="file" accept=".xlsx,.xls" multiple class="hidden">
+      </div>
+      <div class="up-row" data-group="order">
+        <label class="drop up-blank" for="fileBlank">🔎 <b>ใบเปล่า — ดูโปรฯ ก่อนสั่ง</b><small>อัพก่อนเริ่มสั่งของ · ไฟล์ ..._Confirm_..._HPC_<b>220826</b>.xlsm (วันที่อยู่ท้ายชื่อไฟล์) · อ่านเฉพาะโปรฯ/โควต้า/ของขาด <b>ไม่แตะข้อมูลการสั่ง</b></small></label>
+        <input id="fileBlank" type="file" accept=".xlsm,.xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="order">
         <label class="drop up-order" for="fileOrder">🛒 <b>ใบสั่งของ</b><small>อัพทุกวัน · ไฟล์ใบสั่ง เช่น BD_030726.xlsx หรือ BD_030726(add1).xlsx</small></label>
@@ -2287,7 +2323,18 @@ function poFill(ws,R,C){
   return (v==="FFFFFF"||v==="000000")?null:v;
 }
 const PO_F=/(\d{1,2})\s*F\s*(\d{1,2})/i;
+/* The blank confirm form is named like 7001_15389839_Confirm_15389839_HPC_220826.xlsm —
+   fnameDate() would latch onto the 8-digit job number, so take the LAST ddmmyy group. */
+function poDate6(name){
+  const all=[...String(name).replace(/\.[a-z]+$/i,"").matchAll(/(?<!\d)(\d{6})(?!\d)/g)].map(x=>x[1]);
+  for(let i=all.length-1;i>=0;i--){const s=all[i],d=+s.slice(0,2),mo=+s.slice(2,4),y=+("20"+s.slice(4,6));
+    if(d>=1&&d<=31&&mo>=1&&mo<=12)return y+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0");}
+  return null;
+}
+/* kind:"blank" = the empty confirm form the owner uploads BEFORE ordering, just to see what
+   is on promo today. It carries no quantities, so it must never touch ORDERS — only POSTATUS. */
 function parseOrderForm(name,buf,kind){
+  const blank=(kind==="blank");
   const wb=XLSX.read(buf,{type:"array",cellStyles:true});
   let inside=null;const items={},onames={},cats={},catN={};let ov=0,cv=0;
   const flags={};   /* code -> {p,b,f,q,x,s,k} for the product-status tab */
@@ -2339,28 +2386,37 @@ function parseOrderForm(name,buf,kind){
       });
     }
   });
-  const date=fnameDate(name)||inside;
-  if(!date)throw new Error("ระบุวันที่ไม่ได้ — ใส่วันที่ในชื่อไฟล์ (เช่น Drop 03072026 หรือ BD_030726)");
-  if(!Object.keys(items).length)throw new Error("ไม่พบรายการสินค้าในไฟล์ (ตรวจว่าเป็นไฟล์ใบสั่ง/Drop)");
+  const date=(blank?(poDate6(name)||inside):(fnameDate(name)||inside));
+  if(!date)throw new Error("ระบุวันที่ไม่ได้ — ใส่วันที่ท้ายชื่อไฟล์ (เช่น ..._HPC_220826.xlsm หรือ BD_220826.xlsx)");
+  if(!blank&&!Object.keys(items).length)throw new Error("ไม่พบรายการสินค้าในไฟล์ (ตรวจว่าเป็นไฟล์ใบสั่ง/Drop)");
+  if(blank&&!Object.keys(flags).length)throw new Error("อ่านสถานะสินค้าจากไฟล์ไม่ได้ (ไม่พบแถบสีในใบสั่ง) — ตรวจว่าอัพไฟล์ถูกตัวไหม");
+  const saveFlags=()=>{
+    if(!Object.keys(flags).length)return 0;
+    if(!POSTATUS||typeof POSTATUS!=="object")POSTATUS={dates:[],data:{}};
+    if(!POSTATUS.data)POSTATUS.data={};if(!POSTATUS.dates)POSTATUS.dates=[];
+    POSTATUS.data[date]={up:Date.now(),file:name,items:flags};
+    if(!POSTATUS.dates.includes(date))POSTATUS.dates.push(date);POSTATUS.dates.sort();
+    const cnt=k=>Object.keys(flags).filter(c=>flags[c][k]).length;
+    ulog("&nbsp;&nbsp;↳ 📋 สถานะสินค้า: 🎁 แถม "+cnt("p")+" · 🎫 โควต้า "+cnt("q")+" · ⚠️ ของขาด "+cnt("s")+" · ⛔ ปิดช่อง "+cnt("x")+" · 🔄 รหัสใหม่ "+cnt("k"));
+    if(!document.getElementById("posView").classList.contains("hidden")){PS2.date=date;renderPOS();}
+    return Object.keys(flags).length;
+  };
   if(!ORDERS.data)ORDERS.data={};if(!ORDERS.dates)ORDERS.dates=[];if(!ORDERS.names)ORDERS.names={};
   if(!ORDERS.cat)ORDERS.cat={};if(!ORDERS.catN)ORDERS.catN={};
   Object.assign(ORDERS.cat,cats);Object.assign(ORDERS.catN,catN);   /* หมวดสินค้าจากใบสั่งซื้อ (โดยรหัส + ชื่อ เผื่อรหัสเปลี่ยน) */
   /* fill names for codes not already known (stock takes priority via oname) */
   Object.keys(onames).forEach(c=>{const inStock=STOCKD&&STOCKD.names&&STOCKD.names[c];if(!inStock&&!ORDERS.names[c])ORDERS.names[c]=onames[c];});
+  if(blank){
+    const n=saveFlags();
+    ulog("✅ "+name+" (ใบเปล่าดูโปรฯ) → รอบ "+fmtDate(date)+" · อ่านสถานะ "+n+" รายการ · <b>ไม่แตะข้อมูลการสั่งของ</b> — พอสั่งเสร็จแล้วอัพ BD_"+date.slice(8,10)+date.slice(5,7)+date.slice(2,4)+" ฝั่งใบสั่งของ จำนวนจะขึ้นมาเอง");
+    syncToServer();return;
+  }
   const day=ORDERS.data[date]||(ORDERS.data[date]={rounds:{},dropped:null,hasResult:false});
   if(!day.rounds)day.rounds={};
   if(kind==="drop"){day.dropped=items;day.hasResult=true;
     ulog("✅ "+name+" (ใบ Drop) → drop "+Object.keys(items).length+" รายการ · วัน "+fmtDate(date));}
   else{const rm=name.match(/\(add(\d+)\)/i);const round=rm?("add"+rm[1]):"main";day.rounds[round]=items;
-    if(Object.keys(flags).length){
-      if(!POSTATUS||typeof POSTATUS!=="object")POSTATUS={dates:[],data:{}};
-      if(!POSTATUS.data)POSTATUS.data={};if(!POSTATUS.dates)POSTATUS.dates=[];
-      POSTATUS.data[date]={up:Date.now(),file:name,items:flags};
-      if(!POSTATUS.dates.includes(date))POSTATUS.dates.push(date);POSTATUS.dates.sort();
-      const cnt=k=>Object.keys(flags).filter(c=>flags[c][k]).length;
-      ulog("&nbsp;&nbsp;↳ 📋 สถานะสินค้า: 🎁 แถม "+cnt("p")+" · 🎫 โควต้า "+cnt("q")+" · ⚠️ ของขาด "+cnt("s")+" · ⛔ ปิดช่อง "+cnt("x")+" · 🔄 รหัสใหม่ "+cnt("k"));
-      if(!document.getElementById("posView").classList.contains("hidden")){PS2.date=date;renderPOS();}
-    }
+    saveFlags();
     if(!day.vals)day.vals={};day.vals[round]={ov:Math.round(ov*100)/100,cv:Math.round(cv*100)/100};
     ulog("✅ "+name+" (ใบสั่ง รอบ "+round+") → "+Object.keys(items).length+" รายการ · CON Confirm ฿"+Math.round(cv).toLocaleString()+" · วัน "+fmtDate(date));}
   if(!ORDERS.dates.includes(date))ORDERS.dates.push(date);ORDERS.dates.sort();
@@ -2370,18 +2426,19 @@ function parseOrderForm(name,buf,kind){
 }
 
 /* ====================== UNILEVER PRODUCT STATUS (จากสีในใบสั่ง) ====================== */
-let PS2={date:null,q:""};
+let PS2={main:"prod",date:null,q:"",sec:"all",chart:"bar",month:"all",openLine:null};
+let posChartObj=null,soChartObj=null;
 /* Sections in the order the owner reviews them: promo -> quota -> out of stock -> closed -> new code */
 const PS_SEC=[
-  {k:"p",icon:"🎁",title:"โปรโมชั่นแถมในบิล",color:"#C79A00",bg:"#FFFBEA",
+  {k:"p",icon:"🎁",title:"โปรโมชั่นแถมในบิล",color:"#C79A00",
    sub:'ต้องสั่งให้<b>หารลงตัว</b>ตามอัตราแถม ถึงจะได้ของแถมในบิล — ระบบเช็คจำนวนที่ศูนย์สั่งจริงให้แล้ว'},
-  {k:"q",icon:"🎫",title:"โควต้าที่เปิดให้สั่ง",color:"#B7791F",bg:"#FFF8E5",
+  {k:"q",icon:"🎫",title:"โควต้าที่เปิดให้สั่ง",color:"#B7791F",
    sub:'สั่งได้ไม่เกินจำนวนที่ Unilever กำหนด แล้วได้ของตามนั้นแน่นอน'},
-  {k:"s",icon:"⚠️",title:"ของขาดชั่วคราว",color:"#7A7A7A",bg:"#F4F5F7",
+  {k:"s",icon:"⚠️",title:"ของขาดชั่วคราว",color:"#7A7A7A",
    sub:'ยังกดสั่งได้ แต่<b>ของขาด สั่งไปก็ไม่ได้ของ</b> — ถ้าศูนย์สั่งไปแล้วจะขึ้นเตือนให้'},
-  {k:"x",icon:"⛔",title:"ปิดช่องสั่ง — สั่งไม่ได้",color:"#B03A5B",bg:"#FDF0F4",
+  {k:"x",icon:"⛔",title:"ปิดช่องสั่ง — สั่งไม่ได้",color:"#B03A5B",
    sub:'ช่องสั่งถูกปิด อาจเปลี่ยนรหัส เปลี่ยนโฉม หรือยุติการขาย'},
-  {k:"k",icon:"🔄",title:"รหัสสินค้าใหม่",color:"#2B6CB0",bg:"#F1F6FE",
+  {k:"k",icon:"🔄",title:"รหัสสินค้าใหม่",color:"#2B6CB0",
    sub:'รหัสนี้คือรหัส<b>ใหม่</b> — รหัสเดิมมักยังอยู่ในใบสั่งแต่สั่งไม่ได้แล้ว'}];
 /* Always derive the list from the stored days, so a stale POSTATUS.dates can never hide a day. */
 function psDates(){return Object.keys(((POSTATUS&&POSTATUS.data)||{})).sort();}
@@ -2389,33 +2446,87 @@ function psDay(d){return ((POSTATUS&&POSTATUS.data)||{})[d]||null;}
 /* how many cases the centre actually ordered that day, across every round */
 function psOrdered(date,code){const day=(ORDERS.data||{})[date];if(!day)return 0;return (orderedMerged(day)||{})[code]||0;}
 function psName(code){return anaEsc(oname(code)||"");}
-function psCat(code){return anaEsc((ORDERS.cat&&ORDERS.cat[code])||"");}
+function psCat(code){
+  const c=(ORDERS.cat&&ORDERS.cat[code])||"";
+  if(c)return anaEsc(c);
+  const n=normProd(oname(code));                       /* codes change; fall back on the name */
+  return anaEsc((n&&ORDERS.catN&&ORDERS.catN[n])||"");
+}
 function psRows(day,key){
   const it=(day&&day.items)||{},out=[];
   for(const c in it){if(it[c][key]!=null&&it[c][key]!==0&&it[c][key]!==false)out.push(Object.assign({code:c},it[c]));}
   out.sort((a,b)=>(psName(a.code)||a.code).localeCompare(psName(b.code)||b.code,"th"));
   return out;
 }
+function posSetMain(m){
+  PS2.main=m;setSeg("posMain","m",m);
+  document.getElementById("posProdWrap").classList.toggle("hidden",m!=="prod");
+  document.getElementById("posSalesWrap").classList.toggle("hidden",m!=="sales");
+  document.getElementById("posDateCtl").style.display=m==="prod"?"":"none";
+  document.getElementById("posQCtl").style.display=m==="prod"?"":"none";
+  document.getElementById("posMonthCtl").style.display=m==="sales"?"":"none";
+  if(m==="sales")renderSalesOrd();else renderPOS();
+}
+function psSetSec(k){PS2.sec=k;renderPOS();}
+function psSetChart(t){PS2.chart=t;renderPOSOverview();}
 function renderPOS(){
   if(!(S.user&&S.user.role==="manager")){
-    document.getElementById("posBar").innerHTML="";document.getElementById("posCards").innerHTML="";
-    document.getElementById("posDiff").innerHTML="";
+    ["posBar","posCards","posDiff","posOverview","posSubTabs"].forEach(i=>{const e=document.getElementById(i);if(e)e.innerHTML="";});
     document.getElementById("posBody").innerHTML='<div class="panel"><div class="insight">หน้านี้สำหรับผู้จัดการเท่านั้น</div></div>';return;}
+  if(PS2.main==="sales"){renderSalesOrd();return;}
   const ds=psDates(),sel=document.getElementById("posDate");
   if(!ds.length){
     document.getElementById("posBar").innerHTML="📋 สถานะสินค้า Unilever";
-    document.getElementById("posCards").innerHTML="";document.getElementById("posDiff").innerHTML="";
-    document.getElementById("posBody").innerHTML='<div class="panel"><div class="insight">ยังไม่มีข้อมูล — อัพไฟล์ใบสั่งซื้อ (🛒 ใบสั่งของ) หนึ่งครั้ง ระบบจะอ่านสถานะจากสีในไฟล์ให้เอง<br><br><b>หมายเหตุ:</b> ใบสั่งที่เคยอัพก่อนหน้านี้ยังไม่มีข้อมูลสี (ระบบเพิ่งเริ่มเก็บ) — ถ้าอยากได้ย้อนหลัง ให้อัพไฟล์เดิมของเดือน 7–8 ซ้ำอีกครั้ง ข้อมูลการสั่งเดิมไม่หาย</div></div>';
+    ["posCards","posDiff","posOverview","posSubTabs"].forEach(i=>document.getElementById(i).innerHTML="");
+    document.getElementById("posBody").innerHTML='<div class="panel"><div class="insight">ยังไม่มีข้อมูล — อัพ <b>ใบเปล่า (ดูโปรฯ ก่อนสั่ง)</b> หรือ <b>ใบสั่งของ</b> หนึ่งครั้ง ระบบจะอ่านสถานะจากสีในไฟล์ให้เอง<br><br><b>หมายเหตุ:</b> ใบสั่งที่เคยอัพก่อนหน้านี้ยังไม่มีข้อมูลสี (ระบบเพิ่งเริ่มเก็บ) — ถ้าอยากได้ย้อนหลัง ให้อัพไฟล์เดิมของเดือน 7–8 ซ้ำอีกครั้ง ข้อมูลการสั่งเดิมไม่หาย</div></div>';
     if(sel)sel.innerHTML="";return;}
   if(!PS2.date||!ds.includes(PS2.date))PS2.date=ds[ds.length-1];
   sel.innerHTML=ds.slice().reverse().map(d=>`<option value="${d}"${d===PS2.date?" selected":""}>${fmtDate(d)}</option>`).join("");
   const day=psDay(PS2.date);
-  document.getElementById("posBar").innerHTML=`📋 สถานะสินค้า Unilever · รอบใบสั่งวันที่ <b>${fmtDate(PS2.date)}</b>${day.file?` · จากไฟล์ <b>${anaEsc(day.file)}</b>`:""} · อ่านจากสีในใบสั่งอัตโนมัติ`;
   const n=k=>psRows(day,k).length;
+  const ordDay=(ORDERS.data||{})[PS2.date];
+  document.getElementById("posBar").innerHTML=`📋 สถานะสินค้า Unilever · รอบใบสั่งวันที่ <b>${fmtDate(PS2.date)}</b>${day.file?` · จากไฟล์ <b>${anaEsc(day.file)}</b>`:""}`+
+    (ordDay?` · <b style="color:var(--good)">มีข้อมูลการสั่งแล้ว</b>`:` · <span style="color:var(--muted)">ยังไม่ได้อัพใบสั่งของวันนี้ — จำนวนสั่งจะขึ้นเองเมื่ออัพ</span>`);
   document.getElementById("posCards").innerHTML=PS_SEC.map(sec=>
-    `<div class="card kpi-card" style="border-top:3px solid ${sec.color};cursor:pointer" onclick="document.getElementById('ps-${sec.k}').scrollIntoView({behavior:'smooth',block:'start'})">
-      <div class="k" style="color:${sec.color}">${sec.icon} ${sec.title}</div><div class="v">${n(sec.k).toLocaleString()}</div><div class="s">รายการ</div></div>`).join("");
-  renderPOSDiff();renderPOSBody();
+    `<div class="card kpi-card pos-card${PS2.sec===sec.k?" on":""}" style="border-top:3px solid ${sec.color}" onclick="psSetSec('${sec.k}')">
+      <div class="k" style="color:${sec.color}">${sec.icon} ${sec.title}</div><div class="v">${n(sec.k).toLocaleString()}</div><div class="s">รายการ${PS2.sec===sec.k?" · กำลังดูอยู่":" · กดเพื่อดู"}</div></div>`).join("");
+  document.getElementById("posSubTabs").innerHTML=
+    `<button class="pos-st${PS2.sec==="all"?" on":""}" onclick="psSetSec('all')">📈 ภาพรวม</button>`+
+    PS_SEC.map(sec=>`<button class="pos-st${PS2.sec===sec.k?" on":""}" onclick="psSetSec('${sec.k}')">${sec.icon} ${sec.title} (${n(sec.k)})</button>`).join("");
+  const isAll=PS2.sec==="all";
+  document.getElementById("posOverview").classList.toggle("hidden",!isAll);
+  document.getElementById("posDiff").classList.toggle("hidden",!isAll);
+  if(isAll){renderPOSOverview();renderPOSDiff();document.getElementById("posBody").innerHTML="";}
+  else{renderPOSBody();}
+}
+function renderPOSOverview(){
+  const day=psDay(PS2.date);if(!day)return;
+  const el=document.getElementById("posOverview");
+  const vals=PS_SEC.map(sec=>psRows(day,sec.k).length),tot=vals.reduce((a,b)=>a+b,0);
+  el.innerHTML=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div><h3>📈 ภาพรวมสถานะสินค้าวันนี้</h3><div class="psub">รวม <b>${tot.toLocaleString()}</b> รายการที่มีสถานะพิเศษ · กดการ์ด ปุ่ม หรือแท่งในกราฟ เพื่อดูรายชื่อสินค้าหมวดนั้น</div></div>
+      <div class="seg" id="posChartSeg">
+        <button data-c="bar"${PS2.chart==="bar"?' class="on"':""} onclick="psSetChart('bar')">📊 แท่ง</button>
+        <button data-c="pie"${PS2.chart==="pie"?' class="on"':""} onclick="psSetChart('pie')">🥧 วงกลม</button>
+      </div></div>
+    <div class="chart-wrap" style="height:${PS2.chart==="pie"?340:300}px"><canvas id="posCanvas"></canvas></div></div>`;
+  try{if(posChartObj)posChartObj.destroy();}catch(e){}
+  const cv=document.getElementById("posCanvas");if(!cv||typeof Chart==="undefined")return;
+  const labels=PS_SEC.map(sec=>sec.icon+" "+sec.title),colors=PS_SEC.map(sec=>sec.color);
+  const common={responsive:true,maintainAspectRatio:false};
+  try{
+    posChartObj=(PS2.chart==="pie")
+      ? new Chart(cv,{type:"doughnut",data:{labels:labels,datasets:[{data:vals,backgroundColor:colors,borderWidth:2,borderColor:"#fff"}]},
+          options:Object.assign({},common,{plugins:{legend:{position:"right",labels:{font:{size:13},padding:12}},
+            tooltip:{callbacks:{label:c=>" "+c.label+": "+c.raw.toLocaleString()+" รายการ ("+(tot?(c.raw/tot*100).toFixed(1):0)+"%)"}}},
+            onClick:(e,els)=>{if(els&&els.length)psSetSec(PS_SEC[els[0].index].k);}})})
+      : new Chart(cv,{type:"bar",plugins:[{id:"vl",afterDatasetsDraw(ch){const ctx=ch.ctx,m=ch.getDatasetMeta(0);ctx.save();ctx.font="700 12px sans-serif";ctx.textAlign="center";ctx.fillStyle="#1B2536";vals.forEach((v,i)=>{const b=m.data[i];if(b)ctx.fillText(v.toLocaleString(),b.x,b.y-5);});ctx.restore();}}],
+          data:{labels:labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:6,maxBarThickness:72}]},
+          options:Object.assign({},common,{layout:{padding:{top:18}},plugins:{legend:{display:false},
+            tooltip:{callbacks:{label:c=>" "+c.raw.toLocaleString()+" รายการ"}}},
+            scales:{y:{beginAtZero:true,grid:{color:"#EEF2F8"}},x:{grid:{display:false}}},
+            onClick:(e,els)=>{if(els&&els.length)psSetSec(PS_SEC[els[0].index].k);}})});
+  }catch(e){console.error("pos chart",e);}
 }
 function renderPOSDiff(){
   if(!(S.user&&S.user.role==="manager"))return;
@@ -2453,14 +2564,14 @@ function psMatch(c){const q=(PS2.q||"").trim().toLowerCase();if(!q)return true;
   return String(c).includes(q)||String(psName(c)).toLowerCase().includes(q);}
 function renderPOSBody(){
   if(!(S.user&&S.user.role==="manager")){renderPOS();return;}
-  const day=psDay(PS2.date);if(!day){document.getElementById("posBody").innerHTML="";return;}
-  document.getElementById("posBody").innerHTML=PS_SEC.map(sec=>{
-    const rows=psRows(day,sec.k).filter(r=>psMatch(r.code));
-    const total=psRows(day,sec.k).length;
-    return `<div class="panel" id="ps-${sec.k}" style="border-left:5px solid ${sec.color}">
+  const day=psDay(PS2.date);if(!day||PS2.sec==="all"){document.getElementById("posBody").innerHTML="";return;}
+  const sec=PS_SEC.find(x=>x.k===PS2.sec);if(!sec)return;
+  const total=psRows(day,sec.k).length,rows=psRows(day,sec.k).filter(r=>psMatch(r.code));
+  document.getElementById("posBody").innerHTML=
+    `<div class="panel" style="border-left:5px solid ${sec.color}">
       <h3 style="color:${sec.color}">${sec.icon} ${sec.title} <span style="color:var(--muted);font-weight:600;font-size:14px">(${rows.length===total?total:rows.length+" จาก "+total})</span></h3>
       <div class="psub">${sec.sub}</div>
-      ${rows.length?psTable(sec,rows):'<div class="psub" style="margin-top:8px">'+(total?"ไม่พบรายการที่ค้นหา":"ไม่มีรายการในกลุ่มนี้")+'</div>'}</div>`;}).join("");
+      ${rows.length?psTable(sec,rows):'<div class="psub" style="margin-top:8px">'+(total?"ไม่พบรายการที่ค้นหา":"ไม่มีรายการในกลุ่มนี้")+'</div>'}</div>`;
 }
 function psTable(sec,rows){
   const head={p:`<th>แถม</th><th>ศูนย์สั่งวันนี้ (ลัง)</th><th style="text-align:left">เช็คจำนวนแถม</th>`,
@@ -2503,6 +2614,108 @@ function psTable(sec,rows){
   return `<div style="overflow-x:auto;margin-top:8px"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>หมวด</th>${head}</tr></thead><tbody>`+
     rows.map(r=>`<tr><td>${r.code}</td><td style="text-align:left">${psName(r.code)||'<span class="psub">(ไม่มีชื่อในระบบ)</span>'}</td><td style="font-size:11px;color:var(--muted)">${psCat(r.code)||"-"}</td>${cell(r)}</tr>`).join("")+
     `</tbody></table></div>`;
+}
+
+/* ---------------- สถานะการสั่งของของเซลล์ (จากคำขอที่เซลล์คีย์เข้ามา) ---------------- */
+function soMonths(){const m={};Object.keys((REQUESTS&&REQUESTS.data)||{}).forEach(d=>m[d.slice(0,7)]=1);return Object.keys(m).sort();}
+function soAgg(){
+  const R=(REQUESTS&&REQUESTS.data)||{},per={};
+  Object.keys(R).sort().forEach(date=>{
+    if(PS2.month!=="all"&&date.slice(0,7)!==PS2.month)return;
+    const dd=R[date]||{};
+    for(const line in dd){
+      const it=(dd[line]||{}).items||{};const codes=Object.keys(it);if(!codes.length)continue;
+      const o=per[line]||(per[line]={line:line,days:0,items:0,cs:0,pc:0,got:0,drop:0,none:0,pending:0,cat:{},prod:{}});
+      o.days++;
+      codes.forEach(code=>{
+        o.items++;o.cs+=it[code].cs||0;o.pc+=it[code].pc||0;
+        const f=reqFulfillment(date,code),st=f?f.status:"notordered";
+        if(st==="got"||st==="partial")o.got++;else if(st==="drop")o.drop++;
+        else if(st==="pending")o.pending++;else o.none++;
+        const cat=psCat(code)||"ไม่ระบุหมวด";o.cat[cat]=(o.cat[cat]||0)+1;
+        o.prod[code]=(o.prod[code]||0)+1;
+      });
+    }
+  });
+  const rows=Object.values(per).map(o=>{
+    const decided=o.got+o.drop+o.none;
+    o.disp=((DATA.lines||{})[o.line]||{}).display||o.line;
+    o.name=((DATA.lines||{})[o.line]||{}).name||"";
+    o.okPct=decided?o.got/decided*100:null;             /* ได้ของจริง ÷ รายการที่รู้ผลแล้ว */
+    o.ordPct=decided?(o.got+o.drop)/decided*100:null;   /* ศูนย์สั่งให้ ÷ รายการที่รู้ผลแล้ว */
+    return o;});
+  rows.sort((a,b)=>b.items-a.items);
+  return rows;
+}
+function soPill(v){if(v==null)return '<span class="psub">—</span>';
+  const c=v>=80?"g":v>=60?"w":"b";return `<span class="pill ${c}">${v.toFixed(0)}%</span>`;}
+function renderSalesOrd(){
+  if(!(S.user&&S.user.role==="manager"))return;
+  const ms=soMonths(),sel=document.getElementById("posMonth");
+  if(sel)sel.innerHTML=`<option value="all"${PS2.month==="all"?" selected":""}>ทุกเดือน</option>`+
+    ms.slice().reverse().map(m=>`<option value="${m}"${m===PS2.month?" selected":""}>${fmtMonth(m)}</option>`).join("");
+  const rows=soAgg();
+  const bar=document.getElementById("soBar");
+  if(!rows.length){
+    bar.innerHTML="🧑‍💼 สถานะการสั่งของของเซลล์";
+    document.getElementById("soCards").innerHTML="";document.getElementById("soChart").innerHTML="";
+    document.getElementById("soTable").innerHTML='<div class="insight">ยังไม่มีคำขอจากเซลล์ในช่วงนี้ — ข้อมูลจะขึ้นเองเมื่อเซลล์กดขอสินค้าในแท็บ 🛒 การสั่งของ</div>';
+    document.getElementById("soDetail").innerHTML="";return;}
+  const T=rows.reduce((a,o)=>({items:a.items+o.items,got:a.got+o.got,drop:a.drop+o.drop,none:a.none+o.none,pending:a.pending+o.pending,cs:a.cs+o.cs}),{items:0,got:0,drop:0,none:0,pending:0,cs:0});
+  const dec=T.got+T.drop+T.none;
+  bar.innerHTML=`🧑‍💼 สถานะการสั่งของของเซลล์ · ${PS2.month==="all"?"ทุกเดือนที่มีข้อมูล":fmtMonth(PS2.month)} · ${rows.length} สายที่เคยขอของ · รวม ${T.items.toLocaleString()} รายการ`;
+  document.getElementById("soCards").innerHTML=
+    `<div class="card kpi-card" style="border-top:3px solid #0F9ED5"><div class="k" style="color:#0F9ED5">รายการที่เซลล์ขอ</div><div class="v">${T.items.toLocaleString()}</div><div class="s">${T.cs.toLocaleString()} ลัง · ${rows.length} สาย</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #4EA72E"><div class="k" style="color:#4EA72E">ได้ของจริง</div><div class="v ${dec&&T.got/dec>=0.8?"up":""}">${dec?(T.got/dec*100).toFixed(1):0}%</div><div class="s">${T.got.toLocaleString()} จาก ${dec.toLocaleString()} รายการที่รู้ผลแล้ว</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #E97132"><div class="k" style="color:#E97132">ศูนย์ไม่ได้สั่งให้</div><div class="v ${T.none?"down":""}">${T.none.toLocaleString()}</div><div class="s">เซลล์ขอมาแต่ไม่ได้เปิดใบสั่ง</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #D64545"><div class="k" style="color:#D64545">สั่งแล้วโดน Drop</div><div class="v ${T.drop?"down":""}">${T.drop.toLocaleString()}</div><div class="s">Unilever ไม่ส่งของมา${T.pending?" · รอผลอีก "+T.pending:""}</div></div>`;
+  renderSoChart(rows);
+  const detail=(o)=>{
+    const cats=Object.entries(o.cat).sort((a,b)=>b[1]-a[1]);
+    const prods=Object.entries(o.prod).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const maxc=cats.length?cats[0][1]:1;
+    return `<tr class="so-detail"><td colspan="8"><div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px"><b>หมวดสินค้าที่ ${o.disp} ขอบ่อย</b>
+        ${cats.map(([c,n])=>`<div class="so-cat"><span>${c}</span><div class="so-cbar"><span style="width:${(n/maxc*100).toFixed(0)}%"></span></div><b>${n}</b></div>`).join("")||'<div class="psub">ไม่มีข้อมูลหมวด (อัพใบสั่งซื้อเพื่อให้ระบบรู้หมวดสินค้า)</div>'}</div>
+      <div style="flex:1;min-width:260px"><b>สินค้าที่ขอบ่อยที่สุด</b>
+        <div style="overflow-x:auto"><table class="plan-tbl" style="margin-top:6px"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>ขอกี่ครั้ง</th></tr></thead><tbody>
+        ${prods.map(([c,n])=>`<tr><td>${c}</td><td style="text-align:left">${psName(c)||"-"}</td><td style="text-align:center">${n}</td></tr>`).join("")}
+        </tbody></table></div></div></div></td></tr>`;};
+  document.getElementById("soTable").innerHTML=`<h3>📋 สรุปรายสาย</h3>
+    <div class="psub">กดที่แถวเพื่อดูว่าสายนั้นขอสินค้าหมวดไหนบ่อย · <b>% ได้ของ</b> = ได้ของจริง ÷ รายการที่รู้ผลแล้ว (ไม่รวมรายการที่ยังรอผล)</div>
+    <div style="overflow-x:auto;margin-top:8px"><table class="plan-tbl so-tbl"><thead><tr>
+      <th style="text-align:left">สาย</th><th>วันที่ขอ</th><th>รายการ</th><th>ลัง</th>
+      <th>✅ ได้ของ</th><th>❌ โดน Drop</th><th>⚪ ศูนย์ไม่ได้สั่ง</th><th>% ได้ของ</th></tr></thead><tbody>`+
+    rows.map(o=>`<tr class="so-row" onclick="soToggle('${o.line}')">
+      <td style="text-align:left"><b>${o.disp}</b> <span style="color:var(--muted);font-size:12px">${o.name}</span></td>
+      <td style="text-align:center">${o.days}</td><td style="text-align:center"><b>${o.items}</b></td>
+      <td style="text-align:center">${o.cs.toLocaleString()}</td>
+      <td style="text-align:center" class="up">${o.got}</td>
+      <td style="text-align:center" class="${o.drop?"down":""}">${o.drop||"-"}</td>
+      <td style="text-align:center" class="${o.none?"down":""}">${o.none||"-"}</td>
+      <td style="text-align:center">${soPill(o.okPct)}</td></tr>`+(PS2.openLine===o.line?detail(o):"")).join("")+
+    `</tbody></table></div>`;
+  document.getElementById("soDetail").innerHTML="";
+}
+function soToggle(line){PS2.openLine=(PS2.openLine===line)?null:line;renderSalesOrd();}
+function renderSoChart(rows){
+  const el=document.getElementById("soChart");
+  el.innerHTML=`<div class="panel"><h3>📊 เทียบรายสาย</h3>
+    <div class="psub">ความยาวแท่ง = จำนวนรายการที่ขอ · สีในแท่งบอกว่าจบลงยังไง</div>
+    <div class="chart-wrap" style="height:${Math.max(240,rows.length*44+70)}px"><canvas id="soCanvas"></canvas></div></div>`;
+  try{if(soChartObj)soChartObj.destroy();}catch(e){}
+  const cv=document.getElementById("soCanvas");if(!cv||typeof Chart==="undefined")return;
+  try{
+    soChartObj=new Chart(cv,{type:"bar",
+      data:{labels:rows.map(o=>o.disp),datasets:[
+        {label:"✅ ได้ของ",data:rows.map(o=>o.got),backgroundColor:"#4EA72E",stack:"s",borderRadius:4},
+        {label:"❌ โดน Drop",data:rows.map(o=>o.drop),backgroundColor:"#D64545",stack:"s",borderRadius:4},
+        {label:"⚪ ศูนย์ไม่ได้สั่ง",data:rows.map(o=>o.none),backgroundColor:"#E0A800",stack:"s",borderRadius:4},
+        {label:"⏳ รอผล",data:rows.map(o=>o.pending),backgroundColor:"#C7D0DE",stack:"s",borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:"y",
+        plugins:{legend:{position:"top"},tooltip:{callbacks:{label:c=>" "+c.dataset.label+": "+c.raw+" รายการ"}}},
+        scales:{x:{stacked:true,beginAtZero:true,grid:{color:"#EEF2F8"}},y:{stacked:true,grid:{display:false}}}}});
+  }catch(e){console.error("so chart",e);}
 }
 
 /* ====================== SALES REQUESTS (คำขอสินค้าเซลล์) ====================== */
@@ -2829,6 +3042,17 @@ function parseDrop(name,buf){
   const date=fnameDate(name)||rdate;
   if(!date)throw new Error("ระบุวันที่ไม่ได้ (ตั้งชื่อไฟล์เช่น Drop 03072026.xlsx)");
   if(!Object.keys(items).length)throw new Error("ไม่พบรายการ Drop ในไฟล์ (ต้องเป็น Daily Drop Report ที่มีคอลัมน์ Material)");
+  const saveFlags=()=>{
+    if(!Object.keys(flags).length)return 0;
+    if(!POSTATUS||typeof POSTATUS!=="object")POSTATUS={dates:[],data:{}};
+    if(!POSTATUS.data)POSTATUS.data={};if(!POSTATUS.dates)POSTATUS.dates=[];
+    POSTATUS.data[date]={up:Date.now(),file:name,items:flags};
+    if(!POSTATUS.dates.includes(date))POSTATUS.dates.push(date);POSTATUS.dates.sort();
+    const cnt=k=>Object.keys(flags).filter(c=>flags[c][k]).length;
+    ulog("&nbsp;&nbsp;↳ 📋 สถานะสินค้า: 🎁 แถม "+cnt("p")+" · 🎫 โควต้า "+cnt("q")+" · ⚠️ ของขาด "+cnt("s")+" · ⛔ ปิดช่อง "+cnt("x")+" · 🔄 รหัสใหม่ "+cnt("k"));
+    if(!document.getElementById("posView").classList.contains("hidden")){PS2.date=date;renderPOS();}
+    return Object.keys(flags).length;
+  };
   if(!ORDERS.data)ORDERS.data={};if(!ORDERS.dates)ORDERS.dates=[];if(!ORDERS.names)ORDERS.names={};
   const day=ORDERS.data[date]||(ORDERS.data[date]={rounds:{},dropped:null,hasResult:false});if(!day.rounds)day.rounds={};
   day.dropped=items;day.hasResult=true;day.dropVal=Math.round(dropVal*100)/100;day.dropLines=lines;   /* มูลค่ารวม + ทุกบรรทัดดิบ (สลับดูแบบ Excel) */
@@ -2864,6 +3088,7 @@ function handleTyped(e,kind){
     else if(kind==="ps")parsePS(f.name,ev.target.result);
     else if(kind==="eb")parseEB2B(f.name,ev.target.result);
     else if(kind==="order")parseOrderForm(f.name,ev.target.result,"order");
+    else if(kind==="blank")parseOrderForm(f.name,ev.target.result,"blank");
     else if(kind==="drop")parseDrop(f.name,ev.target.result);
     else if(kind==="stockd")parseStock(f.name,ev.target.result);
     else if(kind==="master")parseMaster(f.name,ev.target.result);
@@ -2879,6 +3104,7 @@ document.getElementById("fileKPI").addEventListener("change",e=>handleTyped(e,"k
 document.getElementById("filePS").addEventListener("change",e=>handleTyped(e,"ps"));
 document.getElementById("fileEB").addEventListener("change",e=>handleTyped(e,"eb"));
 document.getElementById("fileOrder").addEventListener("change",e=>handleTyped(e,"order"));
+document.getElementById("fileBlank").addEventListener("change",e=>handleTyped(e,"blank"));
 document.getElementById("fileDrop").addEventListener("change",e=>handleTyped(e,"drop"));
 document.getElementById("fileStock2").addEventListener("change",e=>handleTyped(e,"stockd"));
 document.getElementById("fileMaster").addEventListener("change",e=>handleTyped(e,"master"));
