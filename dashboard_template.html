@@ -311,6 +311,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 .ana-mini>span{display:block;height:100%}
 .backbtn{background:#fff;border:1.5px solid var(--blue);color:var(--blue);font-weight:700;padding:7px 14px;border-radius:9px;cursor:pointer;font-size:13.5px;margin-right:6px}
 .backbtn:hover{background:var(--blue-soft)}
+.req-warn{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:10px;background:#FDECEA;color:#C0392B;margin-left:4px;white-space:nowrap}
 .req-sent{background:#EAF6E2;border:1.5px solid #BFE3AB;border-radius:10px;padding:10px 12px;margin:8px 0 4px;font-size:13px}
 .req-sent-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .req-sent-list>span{background:#fff;border:1px solid #CFE7BE;border-radius:8px;padding:3px 9px;font-size:12px}
@@ -2339,6 +2340,8 @@ function parseOrderForm(name,buf,kind){
   const wb=XLSX.read(buf,{type:"array",cellStyles:true});
   let inside=null;const items={},onames={},cats={},catN={};let ov=0,cv=0;
   const flags={};   /* code -> {p,b,f,q,x,s,k} for the product-status tab */
+  const allCodes={}; /* every code the form offered that round — lets us tell "not on the form"
+                        apart from "on the form, open, but the office chose not to order it" */
   const firstNum=(row,a,b)=>{row=row||[];for(let k=a;k<Math.min(b,row.length);k++){const v=parseFloat(String(row[k]||"").replace(/,/g,""));if(!isNaN(v)&&v!==0)return v;}return 0;};
   wb.SheetNames.forEach(sn=>{
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
@@ -2358,6 +2361,7 @@ function parseOrderForm(name,buf,kind){
       ccs.forEach(cc=>{
         const c0=ordClean(cc>=3?r[cc-3]:"");if(ordThai(c0))fam[cc]=c0;
         const code=String(r[cc]==null?"":r[cc]).trim();if(!/^\d+$/.test(code))return;
+        if(kind!=="drop")allCodes[code]=1;
         if(kind!=="drop"){
           /* sheet_to_json(header:1) shifts BOTH axes by the sheet's used-range origin,
              so a style lookup has to add R0/C0 back to reach the real cell. */
@@ -2395,7 +2399,7 @@ function parseOrderForm(name,buf,kind){
     if(!Object.keys(flags).length)return 0;
     if(!POSTATUS||typeof POSTATUS!=="object")POSTATUS={dates:[],data:{}};
     if(!POSTATUS.data)POSTATUS.data={};if(!POSTATUS.dates)POSTATUS.dates=[];
-    POSTATUS.data[date]={up:Date.now(),file:name,items:flags};
+    POSTATUS.data[date]={up:Date.now(),file:name,items:flags,all:Object.keys(allCodes).sort().join(",")};
     if(!POSTATUS.dates.includes(date))POSTATUS.dates.push(date);POSTATUS.dates.sort();
     const cnt=k=>Object.keys(flags).filter(c=>flags[c][k]).length;
     ulog("&nbsp;&nbsp;↳ 📋 สถานะสินค้า: 🎁 แถม "+cnt("p")+" · 🎫 โควต้า "+cnt("q")+" · ⚠️ ของขาด "+cnt("s")+" · ⛔ ปิดช่อง "+cnt("x")+" · 🔄 รหัสใหม่ "+cnt("k"));
@@ -2410,7 +2414,7 @@ function parseOrderForm(name,buf,kind){
   if(blank){
     const n=saveFlags();
     ulog("✅ "+name+" (ใบเปล่าดูโปรฯ) → รอบ "+fmtDate(date)+" · อ่านสถานะ "+n+" รายการ · <b>ไม่แตะข้อมูลการสั่งของ</b> — พอสั่งเสร็จแล้วอัพ BD_"+date.slice(8,10)+date.slice(5,7)+date.slice(2,4)+" ฝั่งใบสั่งของ จำนวนจะขึ้นมาเอง");
-    syncToServer();return;
+    pgBust();syncToServer();return;
   }
   const day=ORDERS.data[date]||(ORDERS.data[date]={rounds:{},dropped:null,hasResult:false});
   if(!day.rounds)day.rounds={};
@@ -2423,7 +2427,7 @@ function parseOrderForm(name,buf,kind){
   if(!ORDERS.dates.includes(date))ORDERS.dates.push(date);ORDERS.dates.sort();
   initOrder();ORD.date=date;{const t=document.getElementById("orderDateTxt");if(t)t.textContent=fmtDate(date);}
   if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
-  syncToServer();
+  pgBust();syncToServer();
 }
 
 /* ====================== UNILEVER PRODUCT STATUS (จากสีในใบสั่ง) ====================== */
@@ -2617,6 +2621,108 @@ function psTable(sec,rows){
     `</tbody></table></div>`;
 }
 
+/* ============================================================================
+ * WHY AN ITEM THE SALES TEAM ASKED FOR NEVER GOT ORDERED
+ * "The office didn't order it" lumps together two very different things, and the owner
+ * needs them apart: the form made it impossible (grey band = out of stock, filled order
+ * cell = closed/discontinued/reformulating, or simply absent from that round's form), or
+ * the form was open and the office chose to skip it (price, timing, ...).
+ * Codes are renumbered often, so a request may name an old or a new code for the same
+ * product; we resolve through the product NAME the way reqFulfillment already does, and
+ * surface the replacement code when one is obvious.
+ * ==========================================================================*/
+const PO_WHY={
+  oos:    {icon:"⚠️",lab:"ของขาดชั่วคราว",pill:"w",note:"Unilever คาดสีเทาไว้ = ของขาด สั่งไปก็ไม่ได้ของ"},
+  closed: {icon:"⛔",lab:"ปิดช่องสั่ง",pill:"b",note:"ช่องสั่งถูกถมสี = เลิกผลิต ปรับสูตร หรือเปลี่ยนรหัส"},
+  notin:  {icon:"📭",lab:"ไม่มีในใบสั่งรอบนั้น",pill:"b",note:"สินค้านี้ไม่ได้อยู่ในใบสั่งของวันนั้นเลย"},
+  skip:   {icon:"💰",lab:"ศูนย์ไม่ได้สั่ง",pill:"",note:"ช่องสั่งเปิดปกติ แต่ศูนย์เลือกไม่สั่งรอบนี้ (เช่น ราคาไม่ได้)"},
+  unknown:{icon:"❔",lab:"ไม่ทราบสาเหตุ",pill:"",note:"ยังไม่มีข้อมูลสีของใบสั่งวันนั้น — อัพใบสั่งวันนั้นซ้ำ ระบบจะบอกสาเหตุได้"}};
+const PO_WHY_ORDER=["oos","closed","notin","skip","unknown"];
+const _pgEmpty={};
+let _pgIdx=null,_pgS=null,_pgM=null,_pgO=null;
+/* ล้าง cache หลังพาร์สไฟล์ที่เพิ่มชื่อสินค้า (พาร์สเซอร์แก้ ORDERS.names ในที่เดิม) */
+function pgBust(){_pgIdx=null;}
+/* name -> [codes] across stock, master and the order form, so a renumbered product stays one thing.
+   The cache guard is an O(1) identity check — building an Object.keys() count key here cost
+   ~0.5ms on EVERY call, which dominated the whole "why wasn't it ordered" pass. */
+function prodNameIdx(){
+  const S=(STOCKD&&STOCKD.names)||_pgEmpty,M=(MASTER&&MASTER.items)||_pgEmpty,O=(ORDERS&&ORDERS.names)||_pgEmpty;
+  if(_pgIdx&&_pgS===S&&_pgM===M&&_pgO===O)return _pgIdx;
+  const idx={},seen={};
+  [S,M,O].forEach(m=>{
+    for(const c in m){if(seen[c])continue;seen[c]=1;
+      const k=normProd(m[c]);if(!k||k.length<6)continue;(idx[k]=idx[k]||[]).push(String(c));}});
+  _pgS=S;_pgM=M;_pgO=O;_pgIdx=idx;return idx;
+}
+function codeAliases(code){
+  const k=normProd(oname(code));
+  const g=(k&&k.length>=6)?(prodNameIdx()[k]||[]):[];
+  return g.length?g:[String(code)];
+}
+/* nearest round whose colour data we actually hold, for a request made on reqDate.
+   BOUNDED: a form issued weeks later says nothing about that day's request, so if the
+   nearest round we hold is further away than PO_NEAR_DAYS we answer "ไม่ทราบ" instead of
+   judging the office against the wrong form. */
+const PO_NEAR_DAYS=7;
+function poDayGap(a,b){return Math.abs((new Date(a+"T00:00:00")-new Date(b+"T00:00:00"))/86400000);}
+function poRoundFor(reqDate){
+  const ds=psDates();if(!ds.length)return null;
+  if(ds.indexOf(reqDate)>=0)return reqDate;
+  const after=ds.filter(d=>d>=reqDate);
+  const cand=after.length?after[0]:ds[ds.length-1];
+  return poDayGap(cand,reqDate)<=PO_NEAR_DAYS?cand:null;
+}
+/* true / false / null(=this round was stored before we kept the full code list) */
+function poInForm(day,code){
+  if(!day)return null;
+  if(day.items&&day.items[code])return true;
+  if(!day.all)return null;
+  return (","+day.all+",").indexOf(","+code+",")>=0;
+}
+function poWhy(reqDate,code){
+  const at=poRoundFor(reqDate);
+  if(!at)return {why:"unknown"};
+  const day=psDay(at),items=(day&&day.items)||{};
+  const cls=c=>{const f=items[c];return (f&&f.s)?"oos":(f&&f.x)?"closed":"skip";};
+  let why,used=String(code),aliases=null;
+  const here=poInForm(day,used);
+  if(items[used])why=cls(used);
+  else if(here===true)why="skip";
+  else{
+    /* the exact code is not on this round's form — it may have been renumbered */
+    aliases=codeAliases(used);
+    const alt=aliases.filter(c=>c!==used&&(items[c]||poInForm(day,c)===true));
+    if(alt.length){used=alt[0];why=cls(used);}
+    else why=(here===null)?"unknown":"notin";
+  }
+  /* an obvious successor: same product, on the form, orderable, and marked as a new code */
+  let succ=null;
+  if(why==="closed"||why==="oos"||why==="notin"){
+    succ=(aliases||codeAliases(code)).find(c=>c!==String(code)&&items[c]&&!items[c].s&&!items[c].x&&items[c].k)||null;
+  }
+  return {why:why,at:at,code:used,newCode:succ,exact:(at===reqDate)};
+}
+function poWhyBadge(w){
+  const W=PO_WHY[(w&&w.why)||"unknown"]||PO_WHY.unknown;
+  return `<span class="pill ${W.pill}" title="${W.note}">${W.icon} ${W.lab}</span>`+
+    (w&&w.newCode?` <small style="color:#9a7100">→ ใช้รหัสใหม่ <b>${w.newCode}</b></small>`:"")+
+    (w&&w.at&&!w.exact?` <small style="color:var(--muted)">(อ้างอิงใบ ${fmtDayMon(w.at)})</small>`:"");
+}
+/* Has an order round on/after this date actually been uploaded yet?
+   Until it has, nobody can say WHY something was not ordered — the round has not
+   happened. Without this gate every fresh request was labelled "ศูนย์ไม่ได้สั่ง". */
+function ordRoundKnown(d){return (ORDERS.dates||[]).some(x=>x>=d&&ORDERS.data&&ORDERS.data[x]);}
+/* short warning used while a salesperson is picking products */
+function reqWarn(code){
+  if(!psDates().length)return "";
+  const w=poWhy(REQ.date||orderRoundDate(),code);
+  if(w.why==="oos"||w.why==="closed"||w.why==="notin"){
+    const W=PO_WHY[w.why];
+    return `<span class="req-warn">${W.icon} ${W.lab}${w.newCode?" · ใช้รหัสใหม่ "+w.newCode:""}</span>`;
+  }
+  return "";
+}
+
 /* ---------------- สถานะการสั่งของของเซลล์ (จากคำขอที่เซลล์คีย์เข้ามา) ---------------- */
 function soMonths(){const m={};Object.keys((REQUESTS&&REQUESTS.data)||{}).forEach(d=>m[d.slice(0,7)]=1);return Object.keys(m).sort();}
 function soAgg(){
@@ -2626,13 +2732,15 @@ function soAgg(){
     const dd=R[date]||{};
     for(const line in dd){
       const it=(dd[line]||{}).items||{};const codes=Object.keys(it);if(!codes.length)continue;
-      const o=per[line]||(per[line]={line:line,days:0,items:0,cs:0,pc:0,got:0,drop:0,none:0,pending:0,cat:{},prod:{}});
+      const o=per[line]||(per[line]={line:line,days:0,items:0,cs:0,pc:0,got:0,drop:0,none:0,pending:0,approx:0,why:{},cat:{},prod:{}});
       o.days++;
       codes.forEach(code=>{
         o.items++;o.cs+=it[code].cs||0;o.pc+=it[code].pc||0;
-        const f=reqFulfillment(date,code),st=f?f.status:"notordered";
+        const f=reqFulfillment(date,code),st=(f&&f.status)||"notordered";
         if(st==="got"||st==="partial")o.got++;else if(st==="drop")o.drop++;
-        else if(st==="pending")o.pending++;else o.none++;
+        else if(st==="pending")o.pending++;
+        else if(!ordRoundKnown(date))o.pending++;   /* ยังไม่ได้อัพใบสั่งรอบนั้น — ยังไม่รู้ผล ไม่ใช่ "ศูนย์ไม่สั่ง" */
+        else{o.none++;const w=poWhy(date,code);o.why[w.why]=(o.why[w.why]||0)+1;if(w.at&&!w.exact)o.approx++;}
         const cat=psCat(code)||"ไม่ระบุหมวด";o.cat[cat]=(o.cat[cat]||0)+1;
         o.prod[code]=(o.prod[code]||0)+1;
       });
@@ -2663,37 +2771,43 @@ function renderSalesOrd(){
     document.getElementById("soTable").innerHTML='<div class="insight">ยังไม่มีคำขอจากเซลล์ในช่วงนี้ — ข้อมูลจะขึ้นเองเมื่อเซลล์กดขอสินค้าในแท็บ 🛒 การสั่งของ</div>';
     document.getElementById("soDetail").innerHTML="";return;}
   const T=rows.reduce((a,o)=>({items:a.items+o.items,got:a.got+o.got,drop:a.drop+o.drop,none:a.none+o.none,pending:a.pending+o.pending,cs:a.cs+o.cs}),{items:0,got:0,drop:0,none:0,pending:0,cs:0});
+  const W={};PO_WHY_ORDER.forEach(k=>W[k]=rows.reduce((a,o)=>a+((o.why||{})[k]||0),0));
+  const cantOrder=W.oos+W.closed+W.notin;
   const dec=T.got+T.drop+T.none;
   bar.innerHTML=`🧑‍💼 สถานะการสั่งของของเซลล์ · ${PS2.month==="all"?"ทุกเดือนที่มีข้อมูล":fmtMonth(PS2.month)} · ${rows.length} สายที่เคยขอของ · รวม ${T.items.toLocaleString()} รายการ`;
   document.getElementById("soCards").innerHTML=
     `<div class="card kpi-card" style="border-top:3px solid #0F9ED5"><div class="k" style="color:#0F9ED5">รายการที่เซลล์ขอ</div><div class="v">${T.items.toLocaleString()}</div><div class="s">${T.cs.toLocaleString()} ลัง · ${rows.length} สาย</div></div>`+
     `<div class="card kpi-card" style="border-top:3px solid #4EA72E"><div class="k" style="color:#4EA72E">ได้ของจริง</div><div class="v ${dec&&T.got/dec>=0.8?"up":""}">${dec?(T.got/dec*100).toFixed(1):0}%</div><div class="s">${T.got.toLocaleString()} จาก ${dec.toLocaleString()} รายการที่รู้ผลแล้ว</div></div>`+
-    `<div class="card kpi-card" style="border-top:3px solid #E97132"><div class="k" style="color:#E97132">ศูนย์ไม่ได้สั่งให้</div><div class="v ${T.none?"down":""}">${T.none.toLocaleString()}</div><div class="s">เซลล์ขอมาแต่ไม่ได้เปิดใบสั่ง</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #7A7A7A"><div class="k" style="color:#7A7A7A">🚫 สั่งไม่ได้</div><div class="v">${cantOrder.toLocaleString()}</div><div class="s">⚠️ ของขาด ${W.oos} · ⛔ ปิดช่อง ${W.closed} · 📭 ไม่มีในใบ ${W.notin}</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #E97132"><div class="k" style="color:#E97132">💰 ศูนย์เลือกไม่สั่ง</div><div class="v ${W.skip?"down":""}">${W.skip.toLocaleString()}</div><div class="s">ช่องสั่งเปิดปกติ (เช่น ราคาไม่ได้)${W.unknown?" · ❔ ไม่ทราบอีก "+W.unknown:""}</div></div>`+
     `<div class="card kpi-card" style="border-top:3px solid #D64545"><div class="k" style="color:#D64545">สั่งแล้วโดน Drop</div><div class="v ${T.drop?"down":""}">${T.drop.toLocaleString()}</div><div class="s">Unilever ไม่ส่งของมา${T.pending?" · รอผลอีก "+T.pending:""}</div></div>`;
   renderSoChart(rows);
   const detail=(o)=>{
     const cats=Object.entries(o.cat).sort((a,b)=>b[1]-a[1]);
     const prods=Object.entries(o.prod).sort((a,b)=>b[1]-a[1]).slice(0,10);
     const maxc=cats.length?cats[0][1]:1;
-    return `<tr class="so-detail"><td colspan="8"><div style="display:flex;gap:24px;flex-wrap:wrap">
+    return `<tr class="so-detail"><td colspan="9"><div style="display:flex;gap:24px;flex-wrap:wrap">
       <div style="flex:1;min-width:260px"><b>หมวดสินค้าที่ ${o.disp} ขอบ่อย</b>
         ${cats.map(([c,n])=>`<div class="so-cat"><span>${c}</span><div class="so-cbar"><span style="width:${(n/maxc*100).toFixed(0)}%"></span></div><b>${n}</b></div>`).join("")||'<div class="psub">ไม่มีข้อมูลหมวด (อัพใบสั่งซื้อเพื่อให้ระบบรู้หมวดสินค้า)</div>'}</div>
       <div style="flex:1;min-width:260px"><b>สินค้าที่ขอบ่อยที่สุด</b>
         <div style="overflow-x:auto"><table class="plan-tbl" style="margin-top:6px"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>ขอกี่ครั้ง</th></tr></thead><tbody>
         ${prods.map(([c,n])=>`<tr><td>${c}</td><td style="text-align:left">${psName(c)||"-"}</td><td style="text-align:center">${n}</td></tr>`).join("")}
         </tbody></table></div></div></div></td></tr>`;};
+  const approxN=rows.reduce((a,o)=>a+(o.approx||0),0);
   document.getElementById("soTable").innerHTML=`<h3>📋 สรุปรายสาย</h3>
-    <div class="psub">กดที่แถวเพื่อดูว่าสายนั้นขอสินค้าหมวดไหนบ่อย · <b>% ได้ของ</b> = ได้ของจริง ÷ รายการที่รู้ผลแล้ว (ไม่รวมรายการที่ยังรอผล)</div>
+    <div class="psub">กดที่แถวเพื่อดูรายละเอียด · <b>🚫 สั่งไม่ได้</b> = ใบสั่งคาดเทา / ปิดช่อง / ไม่มีในใบ (ไม่ใช่ความผิดใคร) · <b>💰 ศูนย์ไม่สั่ง</b> = ช่องเปิดปกติแต่ไม่ได้สั่ง · <b>% ได้ของ</b> = ได้ของจริง ÷ รายการที่รู้ผลแล้ว</div>
+    ${approxN?`<div class="psub" style="color:#9a7100">หมายเหตุ: ${approxN} รายการเทียบกับ<b>ใบสั่งคนละวัน</b> (วันนั้นยังไม่ได้อัพใบสั่ง) — อัพใบสั่งของวันนั้นเพิ่ม ตัวเลขจะแม่นขึ้น</div>`:""}
     <div style="overflow-x:auto;margin-top:8px"><table class="plan-tbl so-tbl"><thead><tr>
       <th style="text-align:left">สาย</th><th>วันที่ขอ</th><th>รายการ</th><th>ลัง</th>
-      <th>✅ ได้ของ</th><th>❌ โดน Drop</th><th>⚪ ศูนย์ไม่ได้สั่ง</th><th>% ได้ของ</th></tr></thead><tbody>`+
+      <th>✅ ได้ของ</th><th>❌ โดน Drop</th><th>🚫 สั่งไม่ได้</th><th>💰 ศูนย์ไม่สั่ง</th><th>% ได้ของ</th></tr></thead><tbody>`+
     rows.map(o=>`<tr class="so-row" onclick="soToggle('${o.line}')">
       <td style="text-align:left"><b>${o.disp}</b> <span style="color:var(--muted);font-size:12px">${o.name}</span></td>
       <td style="text-align:center">${o.days}</td><td style="text-align:center"><b>${o.items}</b></td>
       <td style="text-align:center">${o.cs.toLocaleString()}</td>
       <td style="text-align:center" class="up">${o.got}</td>
       <td style="text-align:center" class="${o.drop?"down":""}">${o.drop||"-"}</td>
-      <td style="text-align:center" class="${o.none?"down":""}">${o.none||"-"}</td>
+      <td style="text-align:center" title="⚠️ ของขาด ${(o.why||{}).oos||0} · ⛔ ปิดช่อง ${(o.why||{}).closed||0} · 📭 ไม่มีในใบ ${(o.why||{}).notin||0}">${(((o.why||{}).oos||0)+((o.why||{}).closed||0)+((o.why||{}).notin||0))||"-"}</td>
+      <td style="text-align:center" class="${(o.why||{}).skip?"down":""}">${(o.why||{}).skip||"-"}</td>
       <td style="text-align:center">${soPill(o.okPct)}</td></tr>`+(PS2.openLine===o.line?detail(o):"")).join("")+
     `</tbody></table></div>`;
   document.getElementById("soDetail").innerHTML="";
@@ -2711,7 +2825,9 @@ function renderSoChart(rows){
       data:{labels:rows.map(o=>o.disp),datasets:[
         {label:"✅ ได้ของ",data:rows.map(o=>o.got),backgroundColor:"#4EA72E",stack:"s",borderRadius:4},
         {label:"❌ โดน Drop",data:rows.map(o=>o.drop),backgroundColor:"#D64545",stack:"s",borderRadius:4},
-        {label:"⚪ ศูนย์ไม่ได้สั่ง",data:rows.map(o=>o.none),backgroundColor:"#E0A800",stack:"s",borderRadius:4},
+        {label:"🚫 สั่งไม่ได้ (ของขาด/ปิดช่อง)",data:rows.map(o=>((o.why||{}).oos||0)+((o.why||{}).closed||0)+((o.why||{}).notin||0)),backgroundColor:"#8E9AAB",stack:"s",borderRadius:4},
+        {label:"💰 ศูนย์เลือกไม่สั่ง",data:rows.map(o=>(o.why||{}).skip||0),backgroundColor:"#E0A800",stack:"s",borderRadius:4},
+        {label:"❔ ไม่ทราบสาเหตุ",data:rows.map(o=>(o.why||{}).unknown||0),backgroundColor:"#B9B2A6",stack:"s",borderRadius:4},
         {label:"⏳ รอผล",data:rows.map(o=>o.pending),backgroundColor:"#C7D0DE",stack:"s",borderRadius:4}]},
       options:{responsive:true,maintainAspectRatio:false,indexAxis:"y",
         plugins:{legend:{position:"top"},tooltip:{callbacks:{label:c=>" "+c.dataset.label+": "+c.raw+" รายการ"}}},
@@ -2801,7 +2917,7 @@ function renderReqResults(){
   const sv=reqSaved();
   el.innerHTML=show.length?show.map(r=>{const q=sv[r.c];
     const tag=q?` · <b style="color:#B77A1B">ขอไปแล้ว ${q.cs||0} ลัง${q.pc?" / "+q.pc+" ชิ้น":""}</b>`:"";
-    return `<div class="req-opt" onclick="reqAdd('${r.c}')"><div class="oi"><b>${r.n||r.c}</b><span>${r.c} · ${r.inStock?("คงเหลือ "+(r.bal||"-")):'<span style="color:#b8860b">ไม่มีในสต็อก (จาก master)</span>'}${tag}</span></div><span class="oadd">${q?"✏️ แก้":"＋ เพิ่ม"}</span></div>`;}).join(""):`<div class="psub" style="padding:12px">ไม่พบสินค้าที่ค้นหา (ลองอัพ master data ถ้ายังไม่ครบ)</div>`;
+    return `<div class="req-opt" onclick="reqAdd('${r.c}')"><div class="oi"><b>${r.n||r.c}</b><span>${r.c} · ${r.inStock?("คงเหลือ "+(r.bal||"-")):'<span style="color:#b8860b">ไม่มีในสต็อก (จาก master)</span>'}${tag} ${reqWarn(r.c)}</span></div><span class="oadd">${q?"✏️ แก้":"＋ เพิ่ม"}</span></div>`;}).join(""):`<div class="psub" style="padding:12px">ไม่พบสินค้าที่ค้นหา (ลองอัพ master data ถ้ายังไม่ครบ)</div>`;
 }
 function reqAdd(code){
   if(!REQ.cart[code]){const sv=reqSaved()[code];
@@ -2820,7 +2936,7 @@ function renderReqCart(){
     </div>`:"";
   if(!codes.length){el.innerHTML=head+'<div class="psub" style="margin-top:6px">ยังไม่ได้เลือกสินค้า — พิมพ์ค้นหาด้านบน แล้วกด ＋ เพิ่ม</div>';return;}
   el.innerHTML=head+`<div class="psub" style="margin:8px 0 6px">🛒 รายการที่จะขอเพิ่ม (${codes.length}) — ใส่จำนวน ลัง/ชิ้น</div>`+codes.map(c=>{const it=REQ.cart[c];
-    return `<div class="req-cart-item"><div class="ci"><b>${oname(c)||c}</b><span>${c}${it.edit?' · <b style="color:#B77A1B">แก้ไขของเดิม</b>':""}</span></div>
+    return `<div class="req-cart-item"><div class="ci"><b>${oname(c)||c}</b><span>${c}${it.edit?' · <b style="color:#B77A1B">แก้ไขของเดิม</b>':""} ${reqWarn(c)}</span></div>
       <div class="qty"><div style="text-align:center"><input type="number" min="0" value="${it.cs||""}" placeholder="0" oninput="reqSet('${c}','cs',this.value)"><label>ลัง</label></div>
       <div style="text-align:center"><input type="number" min="0" value="${it.pc||""}" placeholder="0" oninput="reqSet('${c}','pc',this.value)"><label>ชิ้น</label></div></div>
       <button class="rm" onclick="delete REQ.cart['${c}'];renderReqCart()">✕</button></div>`;}).join("");
@@ -2870,7 +2986,8 @@ function renderMyRequest(){
     <div class="psub">แก้ไขจำนวน/ลบได้จนถึง <b>9:00 น.</b> — หลัง 9 โมงตัดรอบส่ง manager แล้วขึ้นรอบใหม่</div>`;
   if(Object.keys(curItems).length){
     html+=`<div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ขอ</th><th></th></tr></thead><tbody>`+
-      Object.keys(curItems).map(c=>{const it=curItems[c];return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0} ลัง / ${it.pc||0} ชิ้น</td><td><button class="rm" onclick="reqQuickDel('${cur}','${c}')">✕</button></td></tr>`;}).join("")+`</tbody></table></div>`;
+      Object.keys(curItems).map(c=>{const it=curItems[c];const wn=reqWarn(c);
+        return `<tr${wn?' style="background:#FFF6F5"':""}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}${wn?"<div style=\"margin-top:2px\">"+wn+"</div>":""}</td><td>${it.cs||0} ลัง / ${it.pc||0} ชิ้น</td><td><button class="rm" onclick="reqQuickDel('${cur}','${c}')">✕</button></td></tr>`;}).join("")+`</tbody></table></div>`;
   }else html+=`<div class="psub" style="margin-top:6px">ยังไม่มีคำขอสำหรับรอบนี้ — กดปุ่มเพื่อขอสินค้าที่ต้องการ</div>`;
   html+=`</div>`;
   /* status for the SELECTED date (from the date picker) — one day at a time */
@@ -2881,17 +2998,18 @@ function renderMyRequest(){
   const selItems=(selReq&&selReq.items)||{};
   if(Object.keys(selItems).length){
     html+=`<div style="overflow-x:auto;margin-top:8px"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ขอ (ลัง/ชิ้น)</th><th>ศูนย์สั่ง</th><th>ได้ (ลัง)</th><th>สถานะ</th></tr></thead><tbody>`+
-      Object.keys(selItems).map(c=>{const it=selItems[c];const oc=reqFulfillment(selDate,c);
-        let badge,rowStyle="",gotCell="-",ordCell="-";
-        if(!oc){badge='<span class="pill w">⏳ รอผล</span>';}
-        else{ordCell=oc.ordered||"-";
+      Object.keys(selItems).map(c=>{const it=selItems[c];const oc=reqFulfillment(selDate,c)||{status:"notordered"};
+        let badge,rowStyle="",gotCell="-",ordCell=oc.ordered||"-";
+        {
           const dtxt=(oc.date&&oc.date!==selDate)?(' <small>· '+fmtDayMon(oc.date)+'</small>'):"";   /* ได้ของข้ามรอบ → โชว์วัน */
           const altTxt=oc.alt?(' <small style="color:#9a7100">(รหัสใหม่ '+oc.alt+')</small>'):"";      /* รหัสเปลี่ยน */
           if(oc.status==="drop"){badge='<span class="pill b">❌ ยังไม่ได้ของ'+altTxt+'</span>';rowStyle=' style="background:#FDECEA"';gotCell='<b class="down">0</b>';}
           else if(oc.status==="partial"){badge='<span class="pill w">🟡 ได้บางส่วน'+dtxt+'</span>'+altTxt;gotCell='<b>'+oc.got+'</b>';}
           else if(oc.status==="got"){badge='<span class="pill g">✅ ได้ของ'+(oc.date&&oc.date!==selDate?' '+fmtDayMon(oc.date):"")+'</span>'+altTxt;gotCell='<b>'+oc.got+'</b>';}
           else if(oc.status==="pending"){badge='<span class="pill w">🕓 สั่งแล้ว รอผล'+(oc.date&&oc.date!==selDate?' '+fmtDayMon(oc.date):"")+'</span>'+altTxt;gotCell='<span style="color:var(--muted)">รอผล</span>';}
-          else{badge='<span class="pill" style="background:#EEF1F6;color:#607089">— ยังไม่ถูกสั่ง</span>';ordCell="-";}
+          /* ยังไม่ได้อัพใบสั่งรอบนี้ = ยังไม่รู้ผล — ห้ามโทษศูนย์ก่อนที่ศูนย์จะได้สั่ง */
+          else if(!ordRoundKnown(selDate)){badge='<span class="pill w" title="ยังไม่ได้อัพไฟล์ใบสั่งของรอบนี้ ระบบจึงยังบอกผลไม่ได้">⏳ รอผล — ยังไม่ได้อัพใบสั่งรอบนี้</span>';ordCell="-";}
+          else{badge=poWhyBadge(poWhy(selDate,c));ordCell="-";}
         }
         return `<tr${rowStyle}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0}/${it.pc||0}</td><td>${ordCell}</td><td>${gotCell}</td><td>${badge}</td></tr>`;}).join("")+`</tbody></table></div>`;
   }else{
@@ -2993,7 +3111,7 @@ function parseStock(name,buf){
   if(!ORDERS.names)ORDERS.names={};Object.keys(names).forEach(c=>{ORDERS.names[c]=names[c];});
   ulog("✅ "+name+" (สต็อก) → "+out.length+" รายการ (ขาย "+out.filter(x=>x.wh==="sale").length+" / แถม "+out.filter(x=>x.wh==="gift").length+") · ณ "+fmtDate(d));
   renderStock();if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
-  syncToServer();
+  pgBust();syncToServer();
 }
 /* Master product catalog (Unilever full list): Item_Code + TH_Description */
 function parseMaster(name,buf){
@@ -3009,7 +3127,7 @@ function parseMaster(name,buf){
   if(!Object.keys(items).length)throw new Error("ไม่พบรายการสินค้าใน master data");
   MASTER={date:fnameDate(name)||new Date().toISOString().slice(0,10),items:items,up:Date.now()};
   ulog("✅ "+name+" (Master Data) → "+Object.keys(items).length+" รายการ (ใช้ค้นหาคำขอ + เติมชื่อสินค้าที่หมดสต็อก)");
-  syncToServer();
+  pgBust();syncToServer();
 }
 /* Daily Drop Report parser (clean table: Material / Material Description) */
 function parseDrop(name,buf){
@@ -3047,7 +3165,7 @@ function parseDrop(name,buf){
     if(!Object.keys(flags).length)return 0;
     if(!POSTATUS||typeof POSTATUS!=="object")POSTATUS={dates:[],data:{}};
     if(!POSTATUS.data)POSTATUS.data={};if(!POSTATUS.dates)POSTATUS.dates=[];
-    POSTATUS.data[date]={up:Date.now(),file:name,items:flags};
+    POSTATUS.data[date]={up:Date.now(),file:name,items:flags,all:Object.keys(allCodes).sort().join(",")};
     if(!POSTATUS.dates.includes(date))POSTATUS.dates.push(date);POSTATUS.dates.sort();
     const cnt=k=>Object.keys(flags).filter(c=>flags[c][k]).length;
     ulog("&nbsp;&nbsp;↳ 📋 สถานะสินค้า: 🎁 แถม "+cnt("p")+" · 🎫 โควต้า "+cnt("q")+" · ⚠️ ของขาด "+cnt("s")+" · ⛔ ปิดช่อง "+cnt("x")+" · 🔄 รหัสใหม่ "+cnt("k"));
@@ -3062,7 +3180,7 @@ function parseDrop(name,buf){
   ulog("✅ "+name+" (ใบ Drop) → drop "+Object.keys(items).length+" รายการ · วัน "+fmtDate(date));
   initOrder();ORD.date=date;{const t=document.getElementById("orderDateTxt");if(t)t.textContent=fmtDate(date);}
   if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
-  syncToServer();
+  pgBust();syncToServer();
 }
 
 /* ====================== UPLOAD (admin) ====================== */

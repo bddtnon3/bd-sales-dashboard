@@ -2,6 +2,7 @@
    Loads the REAL mergeState/mergeRequests source out of api/save.js (imports and the
    HTTP handler stripped) so we test the shipped code, not a copy. */
 import { readFileSync } from "fs";
+import { newestReal, looksEmpty } from "../lib/snapshot.js";
 
 const HERE = new URL(".", import.meta.url);
 const src = readFileSync(new URL("../api/save.js", HERE), "utf8");
@@ -204,6 +205,86 @@ console.log("TEST 9 — order-form product status accumulates by PO date and nev
   check("re-upload leaves the other day alone", o3.POSTATUS.data["2026-07-01"].items["111"].s === 1);
   check("PO status does not disturb any other section",
         Object.keys(o3.DATA.monthly).length === 2 && !!o3.PSTORE.rounds["2026-06-30"] && o3.ORDERS.dates.length === 2);
+}
+
+console.log("TEST 10 — the PO round's full code list survives every merge path");
+{
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.POSTATUS = { dates: ["2026-08-20", "2026-08-21"], data: {
+    "2026-08-20": { up: 1, file: "old.xlsx", items: { "111": { s: 1 } } },              // stored before "all" existed
+    "2026-08-21": { up: 2, file: "BD_210826.xlsx", items: { "222": { x: "00FFFF" } }, all: "111,222,333" },
+  } };
+
+  const oldTab = JSON.parse(JSON.stringify(srv));
+  delete oldTab.POSTATUS;
+  const o1 = mergeState(srv, oldTab);
+  check("code list survives a tab with no POSTATUS", o1.POSTATUS.data["2026-08-21"].all === "111,222,333");
+  check("the pre-'all' day is left exactly as it was", o1.POSTATUS.data["2026-08-20"].all === undefined);
+
+  const blank = JSON.parse(JSON.stringify(srv));
+  blank.POSTATUS = { dates: [], data: {} };
+  check("blank client cannot wipe the code list", mergeState(srv, blank).POSTATUS.data["2026-08-21"].all === "111,222,333");
+
+  const reup = JSON.parse(JSON.stringify(srv));   // re-upload one day with a different offering
+  reup.POSTATUS.data["2026-08-21"] = { up: 9, file: "BD_210826 (add1).xlsx", items: { "333": { s: 1 } }, all: "333,444" };
+  const o2 = mergeState(srv, reup);
+  check("re-upload replaces that day's code list", o2.POSTATUS.data["2026-08-21"].all === "333,444");
+  check("re-upload leaves the other day alone", o2.POSTATUS.data["2026-08-20"].items["111"].s === 1);
+  check("re-upload disturbs no other section",
+        Object.keys(o2.DATA.monthly).length === 2 && !!o2.PSTORE.rounds["2026-06-30"] && o2.ORDERS.dates.length === 2);
+}
+
+console.log("TEST 11 — a sales request can NEVER republish the bundled seed (lib/snapshot.js)");
+{
+  /* The read path shared by api/data.js, api/save.js and api/request.js. api/request.js
+     used to read only the newest blob and, on any non-OK fetch, fall back to the bundled
+     seed — then WRITE that seed back as the newest snapshot, rolling the whole app back to
+     July and evicting the good backups after 8 more requests. */
+  const live = {
+    DATA: { lines: {}, monthly: { "2026-08": {} }, daily: { "2026-08-21": {} }, focus_order: [] },
+    ORDERS: { dates: ["2026-08-21"], data: {}, names: {} },
+    POSTATUS: { dates: ["2026-08-21"], data: { "2026-08-21": { all: "111,222" } } },
+    PSTORE: { rounds: { "2026-07-30": {} } },
+    REQUESTS: { data: { "2026-08-20": { "209611": { items: { p: 1 }, at: 1 } } } },
+  };
+  const seedish = { DATA: { lines: {}, monthly: { "2026-07": {} }, daily: {}, focus_order: [] }, ORDERS: { dates: ["2026-07-11"], data: {}, names: {} } };
+  const blobs = [
+    { url: "new", uploadedAt: "2026-08-22T02:00:00Z" },
+    { url: "old", uploadedAt: "2026-08-21T02:00:00Z" },
+  ];
+  const listFn = async () => ({ blobs: blobs.slice() });
+  const mkFetch = (map) => async (url) => {
+    const v = map[url];
+    if (!v) return { ok: false, json: async () => { throw new Error("no"); } };
+    return { ok: true, json: async () => JSON.parse(JSON.stringify(v)) };
+  };
+
+  // the newest blob 503s (the exact CDN hiccup that used to publish the seed)
+  const r1 = await newestReal(listFn, mkFetch({ old: live }));
+  check("a broken newest blob falls through to the older REAL snapshot", !!r1.data && !!r1.data.POSTATUS);
+  check("it does NOT report a first-run (which would write the seed)", !r1.first);
+  check("the older snapshot still carries the PO colour data", r1.data.POSTATUS.data["2026-08-21"].all === "111,222");
+  check("and another line's request", !!r1.data.REQUESTS.data["2026-08-20"]);
+
+  // NOTHING readable at all -> must refuse to write, not fall back to the seed
+  const r2 = await newestReal(listFn, mkFetch({}));
+  check("nothing readable → fail (caller must 503, never write)", r2.fail === true && !r2.data);
+  check("fail is not mistaken for a first run", !r2.first);
+
+  // an empty snapshot must never shadow a good older one
+  const r3 = await newestReal(listFn, mkFetch({ new: { DATA: { lines: {}, monthly: {}, daily: {} } }, old: live }));
+  check("an empty newest snapshot is skipped for the real one", !!r3.data && !!r3.data.POSTATUS);
+
+  // genuinely first-ever run
+  const r4 = await newestReal(async () => ({ blobs: [] }), mkFetch({}));
+  check("a truly empty store reports first-run", r4.first === true && !r4.data);
+
+  // looksEmpty must recognise every section as "real data"
+  check("looksEmpty: blank state is empty", looksEmpty({ DATA: { monthly: {}, daily: {} } }) === true);
+  check("looksEmpty: PO status alone counts as real data", looksEmpty({ DATA: {}, POSTATUS: { data: { "2026-08-21": {} } } }) === false);
+  check("looksEmpty: PS round alone counts as real data", looksEmpty({ DATA: {}, PSTORE: { rounds: { "2026-07-30": {} } } }) === false);
+  check("looksEmpty: eB2B alone counts as real data", looksEmpty({ DATA: {}, EB2B: { data: { "209611": {} } } }) === false);
+  check("looksEmpty: the bundled seed is NOT empty (so it must never be written back)", looksEmpty(seedish) === false);
 }
 
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));

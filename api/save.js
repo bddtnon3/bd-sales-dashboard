@@ -1,6 +1,7 @@
 import { put, list, del } from "@vercel/blob";
 import { gunzipSync } from "zlib";
 import { verify, bearer } from "../lib/auth.js";
+import { newestReal, looksEmpty } from "../lib/snapshot.js";
 
 // Accept a gzipped raw body (sent when the state is large, to stay under the
 // serverless request-size limit). Read the raw stream and inflate.
@@ -15,16 +16,10 @@ async function readGzipBody(req) {
 }
 
 // Read the newest real snapshot currently in Blob (used to preserve sales requests).
+// Shared walk — see lib/snapshot.js. Returns {data} / {first:true} / {fail:true}.
 async function currentBlobData() {
-  try {
-    const { blobs } = await list({ prefix: "bd-data-" });
-    if (!blobs.length) return null;
-    blobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
-    for (const b of blobs) {
-      try { const r = await fetch(b.url, { cache: "no-store" }); if (!r.ok) continue; const d = await r.json(); if (d && d.DATA) return d; } catch { /* try older */ }
-    }
-  } catch { /* ignore */ }
-  return null;
+  try { return await newestReal(list, fetch); }
+  catch { return { fail: true }; }
 }
 
 // Sales product requests are written by /api/request (sales) — a manager save must
@@ -158,22 +153,17 @@ export default async function handler(req, res) {
   // SAFETY: never let a blank/empty state overwrite good data. If the incoming payload
   // carries no business data at all, refuse — this is almost always a client that
   // failed to load before saving, and saving it would wipe everything.
-  const m = Object.keys((body.DATA && body.DATA.monthly) || {}).length;
-  const dd = Object.keys((body.DATA && body.DATA.daily) || {}).length;
-  const st = ((body.STOCKD && body.STOCKD.rows) || []).length;
-  const od = ((body.ORDERS && body.ORDERS.dates) || []).length;
-  const kp = ((body.KPI && body.KPI.months) || []).length;
-  const ps = Object.keys((body.PSTORE && body.PSTORE.rounds) || {}).length;
-  const eb = Object.keys((body.EB2B && body.EB2B.data) || {}).length;
-  const po = Object.keys((body.POSTATUS && body.POSTATUS.data) || {}).length;
-  if ((m + dd + st + od + kp + ps + eb + po) === 0) {
+  if (looksEmpty(body)) {
     return res.status(409).json({ error: "ข้อมูลว่างเปล่า — ยกเลิกการบันทึกเพื่อป้องกันข้อมูลเดิมหาย (ลองรีเฟรชแล้วโหลดข้อมูลใหม่ก่อนอัพโหลด)" });
   }
 
   try {
     // MERGE into the current server state instead of overwriting it — old data can't change.
-    const server = await currentBlobData();
-    const json = JSON.stringify(mergeState(server, body));
+    // If the store holds blobs but none could be read, refuse rather than publish a
+    // snapshot that was not built on the real state.
+    const cur = await currentBlobData();
+    if (cur.fail) return res.status(503).json({ error: "อ่านข้อมูลเดิมจากเซิร์ฟเวอร์ไม่ได้ ยังไม่ได้บันทึก — กรุณาลองใหม่อีกครั้ง" });
+    const json = JSON.stringify(mergeState(cur.data || null, body));
     const blob = await put("bd-data-" + Date.now() + ".json", json, {
       access: "public",
       contentType: "application/json",

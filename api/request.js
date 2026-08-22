@@ -1,6 +1,7 @@
 import { put, list, del } from "@vercel/blob";
 import { readFileSync } from "fs";
 import { verify, bearer } from "../lib/auth.js";
+import { newestReal, looksEmpty } from "../lib/snapshot.js";
 
 let SEED = null;
 function seed() {
@@ -9,16 +10,6 @@ function seed() {
     catch { SEED = {}; }
   }
   return JSON.parse(JSON.stringify(SEED));
-}
-
-async function readCurrent() {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return seed();
-  const { blobs } = await list({ prefix: "bd-data-" });
-  if (!blobs.length) return seed();
-  blobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
-  const r = await fetch(blobs[0].url, { cache: "no-store" });
-  if (!r.ok) return seed();
-  return await r.json();
 }
 
 // Any logged-in salesperson may submit their OWN product request.
@@ -45,7 +36,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const data = await readCurrent();
+    // SAFETY: read the newest snapshot that is actually readable and non-empty
+    // (same walk as api/save.js and api/data.js). If the store holds blobs but
+    // none of them could be read, refuse — writing here would publish a
+    // seed-derived state on top of live data and, after 8 more writes, evict
+    // every good backup. Better a visible error than silent data loss.
+    const cur = await newestReal(list, fetch);
+    if (cur.fail) return res.status(503).json({ error: "อ่านข้อมูลล่าสุดจากเซิร์ฟเวอร์ไม่ได้ ยังไม่ได้บันทึกคำขอ — กรุณาลองใหม่อีกครั้ง" });
+    const data = cur.first ? seed() : cur.data;   // seed only on a genuinely first-ever run
+
     if (!data.REQUESTS) data.REQUESTS = { data: {} };
     if (!data.REQUESTS.data) data.REQUESTS.data = {};
     if (!data.REQUESTS.data[body.date]) data.REQUESTS.data[body.date] = {};
@@ -57,10 +56,16 @@ export default async function handler(req, res) {
       data.REQUESTS.data[body.date][code] = { items, at: Date.now(), by: claims.name || code };
     }
 
+    // Belt and braces: never publish a blank state over a live store (mirrors api/save.js).
+    if (!cur.first && looksEmpty(data)) {
+      return res.status(409).json({ error: "ข้อมูลว่างเปล่า — ยกเลิกการบันทึกเพื่อป้องกันข้อมูลเดิมหาย" });
+    }
+
     const json = JSON.stringify(data);
     const blob = await put("bd-data-" + Date.now() + ".json", json, {
       access: "public", contentType: "application/json", addRandomSuffix: true,
     });
+    // Prune only AFTER a write that was based on a real snapshot.
     try {
       const KEEP = 8;
       const { blobs } = await list({ prefix: "bd-data-" });
@@ -68,7 +73,7 @@ export default async function handler(req, res) {
       for (const b of blobs.slice(KEEP)) await del(b.url);
     } catch { /* best-effort cleanup */ }
 
-    res.json({ ok: true });
+    res.json({ ok: true, url: blob.url });
   } catch (e) {
     res.status(500).json({ error: String(e && e.message ? e.message : e) });
   }

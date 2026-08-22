@@ -46,11 +46,17 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   **8 rolling backups**. `api/data.js` returns the newest **non-empty** snapshot (auto-recovery).
 - `api/request.js` writes only a salesperson's own `REQUESTS[date][line]` — a manager save must
   never clobber sales requests (`mergeRequests`).
+- **All three endpoints read the blob through `lib/snapshot.js` (`newestReal` + `looksEmpty`).**
+  It walks newest→oldest, skips anything unreadable or empty, and reports `{fail:true}` when the
+  store has blobs but none is readable — the caller must then answer **503 and write nothing**.
+  Never re-add a "fall back to the seed" branch on a *write* path: `api/request.js` once did that
+  and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
-  `mergeState` / `mergeRequests`, prove old data survives before pushing by running
-  **`node test/merge-safety.test.mjs`** (30 checks against the real `api/save.js`: old browser
-  tab without a new field, new upload vs existing keys, empty/crashed client, fresh blob store,
-  manager-vs-sales requests). It must print `ALL PASS`. Add a case whenever you add a section.
+  `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
+  running **`node test/merge-safety.test.mjs`** (71 checks against the real `api/save.js` and the
+  real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
+  empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
+  status, and the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
 
 ## Request-size limit (why the client gzips)
 Vercel caps the request body (~4.5 MB) and the blob is several MB, so the client gzips the
@@ -70,9 +76,11 @@ code, never printed.
 - `public/index.html` — generated output that Vercel serves. Do not edit by hand.
 - `api/*.js` — Vercel serverless functions (ESM): `login`, `data` (read newest non-empty blob),
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write).
-- `lib/auth.js` — token sign/verify. `seed-data.json` — bundled starting data (used until the
-  first real upload). Note: `package.json` has `"type":"module"`, so the build script must stay
-  `.cjs` (CommonJS) while `api/*.js` are ESM.
+- `lib/auth.js` — token sign/verify. `lib/snapshot.js` — the one shared blob-read walk
+  (`newestReal`) + `looksEmpty`, used by `data`, `save` and `request` so they cannot drift.
+  `seed-data.json` — bundled starting data (used until the
+  first real upload; **read-only — never written back to the blob**). Note: `package.json` has
+  `"type":"module"`, so the build script must stay `.cjs` (CommonJS) while `api/*.js` are ESM.
 
 ## How data gets in
 The manager/admin uploads Excel files via the in-app upload buttons (🛒 order form, Drop report,
