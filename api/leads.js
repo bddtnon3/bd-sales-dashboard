@@ -26,11 +26,12 @@ export default async function handler(req, res) {
       cursor = page.hasMore ? page.cursor : null;
     } while (cursor && blobs.length < 5000);
 
-    blobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+    const recs = blobs.filter((b) => /\.json$/i.test(b.pathname || b.url || ""));
+    recs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
 
     const leads = [];
-    for (let i = 0; i < blobs.length; i += CONC) {
-      const part = await Promise.all(blobs.slice(i, i + CONC).map(async (b) => {
+    for (let i = 0; i < recs.length; i += CONC) {
+      const part = await Promise.all(recs.slice(i, i + CONC).map(async (b) => {
         try {
           const r = await fetch(b.url, { cache: "no-store" });
           if (!r.ok) return null;

@@ -330,6 +330,8 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 .so-cbar{flex:1;height:9px;border-radius:5px;background:var(--line);overflow:hidden;min-width:60px}
 .so-cbar>span{display:block;height:100%;background:#0F9ED5;border-radius:5px}
 /* ---------- สมัครร้านค้าใหม่ ---------- */
+img.ld-photo{width:100%;max-width:230px;height:160px;object-fit:cover;border-radius:11px;
+  border:1px solid var(--line);margin-top:6px;background:var(--bg)}
 select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12.5px;
   font-weight:700;background:#fff;max-width:170px}
 #ldTable a[href^="tel:"]{color:var(--blue);text-decoration:none;font-weight:600}
@@ -660,6 +662,8 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         </div>
         <div class="ctl"><label>อำเภอ</label><select id="ldAmphoe" onchange="ldSet('am',this.value)"></select></div>
         <div class="ctl"><label>สายที่ส่งต่อ</label><select id="ldLine" onchange="ldSet('line',this.value)"></select></div>
+        <div class="ctl"><label>ร้านติดดาว</label><select id="ldStar" onchange="ldSet('star',this.value)">
+          <option value="all">ทั้งหมด</option><option value="1">⭐ เฉพาะที่สนใจ</option></select></div>
         <div class="ctl"><label>🔍 ค้นหา</label><input id="ldQ" placeholder="ชื่อ / เบอร์ / ร้าน / ตำบล" oninput="LD.q=this.value;renderLeads()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:210px"></div>
         <div class="spacer"></div>
         <div class="ctl"><label>&nbsp;</label>
@@ -2889,7 +2893,7 @@ const LD_ST={
   open:   {icon:"✅",lab:"เปิดร้านแล้ว",pill:"g",color:"#4EA72E"},
   drop:   {icon:"🚫",lab:"ไม่สนใจ / ปิดเคส",pill:"b",color:"#8E9AAB"}};
 const LD_ST_ORDER=["new","contact","open","drop"];
-let LD={st:"all",am:"all",line:"all",q:"",open:null,busy:false};
+let LD={st:"all",am:"all",line:"all",star:"all",q:"",open:null,busy:false};
 
 function ldMetaOf(id){return ((LEADS&&LEADS.meta)||{})[id]||{};}
 function ldDeleted(id){return !!((LEADS&&LEADS.del)||{})[id];}
@@ -2944,7 +2948,8 @@ function ldRows(){
     if(LD.st!=="all"&&r.st!==LD.st)return false;
     if(LD.am!=="all"&&r.l.amphoe!==LD.am)return false;
     if(LD.line!=="all"&&r.line!==LD.line)return false;
-    if(q){const hay=[r.l.first,r.l.last,r.l.phone,r.l.shop,r.l.tambon,r.l.amphoe,r.l.type,r.store].join(" ").toLowerCase();
+    if(LD.star==="1"&&!r.l.star)return false;
+    if(q){const hay=[r.l.first,r.l.last,r.l.phone,r.l.shopname,r.l.shop,r.l.tambon,r.l.amphoe,r.l.type,r.store].join(" ").toLowerCase();
       if(hay.indexOf(q)<0)return false;}
     return true;
   }).sort((a,b)=>(b.l.at||0)-(a.l.at||0));
@@ -2952,6 +2957,14 @@ function ldRows(){
 function ldSet(k,v){LD[k]=v;
   if(k==="st")document.querySelectorAll("#ldStSeg button").forEach(b=>b.classList.toggle("on",b.dataset.s===v));
   renderLeads();}
+/* พิกัดร้าน: ถ้าอ่านเป็นตัวเลขได้ ทำลิงก์เปิดแผนที่ให้เลย ถ้าเป็นลิงก์ที่ลูกค้าวางมาก็เปิดลิงก์นั้น */
+function ldMapURL(l){
+  if(!l)return null;
+  if(typeof l.lat==="number"&&typeof l.lng==="number")return "https://www.google.com/maps?q="+l.lat+","+l.lng;
+  const t=String(l.loc||"");
+  return /^https?:\/\//i.test(t)?t:null;
+}
+function ldShopName(l){return (l&&(l.shopname||""))||((l&&l.shop||"").split("\n")[0])||"(ไม่ได้ระบุชื่อร้าน)";}
 function ldEsc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function ldPhone(p){const d=String(p||"").replace(/\D/g,"");
   return d.length===10?d.slice(0,3)+"-"+d.slice(3,6)+"-"+d.slice(6):d.length===9?d.slice(0,2)+"-"+d.slice(2,5)+"-"+d.slice(5):d;}
@@ -2981,9 +2994,13 @@ function ldDel(id){
 function ldToggle(id){LD.open=(LD.open===id)?null:id;renderLeads();}
 function ldExport(){
   const rows=ldRows();
-  const head=["วันที่สมัคร","ชื่อ","นามสกุล","เบอร์","ร้าน/ที่ตั้ง","ตำบล","อำเภอ","ประเภทร้าน","สถานะ","ส่งต่อสาย","รหัสร้าน","ยอดขายสะสม(บาท)","หมายเหตุ","ข้อความจากผู้สมัคร"];
+  const head=["วันที่สมัคร","ชื่อร้านค้า","ชื่อ","นามสกุล","เบอร์","ที่ตั้งร้าน","ตำบล","อำเภอ","ประเภทร้าน",
+    "ละติจูด","ลองจิจูด","ลิงก์แผนที่","รูปหน้าร้าน","ใบกำกับภาษี","ร้านติดดาว",
+    "สถานะ","ส่งต่อสาย","รหัสร้าน","ยอดขายสะสม(บาท)","หมายเหตุ","ข้อความจากผู้สมัคร"];
   const esc=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
-  const body=rows.map(r=>[ldDate(r.l.at),r.l.first,r.l.last,r.l.phone,r.l.shop,r.l.tambon,r.l.amphoe,r.l.type,
+  const body=rows.map(r=>[ldDate(r.l.at),ldShopName(r.l),r.l.first,r.l.last,r.l.phone,r.l.shop,r.l.tambon,r.l.amphoe,r.l.type,
+    (r.l.lat==null?"":r.l.lat),(r.l.lng==null?"":r.l.lng),ldMapURL(r.l)||r.l.loc||"",r.l.photo||"",
+    r.l.tax?"ต้องการ":"ไม่ต้องการ",r.l.star?"สนใจ":"ไม่สนใจ",
     (LD_ST[r.st]||{}).lab||r.st,ldLineName(r.line),r.store,Math.round(r.niv),r.m.note||"",r.l.note||""].map(esc).join(","));
   const csv="﻿"+[head.map(esc).join(",")].concat(body).join("\r\n");
   const a=document.createElement("a");
@@ -3028,6 +3045,7 @@ function renderLeads(){
   const thisMonth=curMonthKey(),newThis=all.filter(r=>r.month===thisMonth).length;
   const niv=all.reduce((a,r)=>a+r.niv,0);
   const opened=all.filter(r=>r.st==="open").length;
+  const stars=all.filter(r=>r.l.star).length,taxes=all.filter(r=>r.l.tax).length;
   bar.innerHTML=`🏪 สมัครร้านค้าใหม่ · รับใบสมัครแล้ว ${all.length.toLocaleString()} ร้าน`+
     (newThis?` · เดือนนี้ ${newThis} ร้าน`:"")+
     ` <span style="font-weight:400;opacity:.85">— ลิงก์สมัคร: <b>${ldJoinURL()}</b></span>`;
@@ -3036,6 +3054,7 @@ function renderLeads(){
     `<div class="card kpi-card" style="border-top:3px solid #0F9ED5"><div class="k" style="color:#0F9ED5">ใบสมัครทั้งหมด</div><div class="v">${all.length.toLocaleString()}</div><div class="s">เดือนนี้ ${newThis} ร้าน · ${Object.keys(ams).length} อำเภอ</div></div>`+
     `<div class="card kpi-card" style="border-top:3px solid #E97132"><div class="k" style="color:#E97132">🆕 รอติดต่อ</div><div class="v ${C["new"]?"down":""}">${C["new"]}</div><div class="s">📞 ติดต่อแล้ว ${C.contact} ร้าน</div></div>`+
     `<div class="card kpi-card" style="border-top:3px solid #4EA72E"><div class="k" style="color:#4EA72E">✅ เปิดร้านแล้ว</div><div class="v ${opened?"up":""}">${opened}</div><div class="s">${all.length?(opened/all.length*100).toFixed(0):0}% ของใบสมัครทั้งหมด</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #C8901A"><div class="k" style="color:#C8901A">⭐ สนใจร้านติดดาว</div><div class="v ${stars?"up":""}">${stars}</div><div class="s">ขอใบกำกับภาษี ${taxes} ร้าน</div></div>`+
     `<div class="card kpi-card" style="border-top:3px solid #7030A0"><div class="k" style="color:#7030A0">ยอดขายที่สร้างได้</div><div class="v">฿${Math.round(niv).toLocaleString()}</div><div class="s">${niv?"จากร้านที่ผูกรหัสแล้ว":"ผูกรหัสร้านเพื่อให้ระบบดึงยอดให้"}</div></div>`;
 
   /* ---- breakdowns: อำเภอ (+ตำบล) · ประเภทร้าน · สายที่ส่งต่อ ---- */
@@ -3066,16 +3085,34 @@ function renderLeads(){
         <b style="font-size:15px">${ldJoinURL()}</b><br>
         <span class="psub">พอมีคนกรอก ใบสมัครจะเด้งมาที่หน้านี้เอง (กด 🔄 ดึงใบสมัครใหม่)</span></div>`;
     return;}
-  const detail=(r)=>`<tr class="so-detail"><td colspan="8">
+  const detail=(r)=>{const mp=ldMapURL(r.l);return `<tr class="so-detail"><td colspan="9">
     <div style="display:flex;gap:24px;flex-wrap:wrap">
-      <div style="flex:1;min-width:270px">
+      <div style="flex:0 0 230px;min-width:200px">
+        <b>รูปหน้าร้าน</b>
+        ${r.l.photo
+          ?`<a href="${ldEsc(r.l.photo)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+              <img src="${ldEsc(r.l.photo)}" alt="หน้าร้าน ${ldEsc(ldShopName(r.l))}" loading="lazy" class="ld-photo"></a>
+            <div class="psub" style="margin-top:4px">กดที่รูปเพื่อดูขนาดเต็ม</div>`
+          :'<div class="psub" style="margin-top:6px">— ใบสมัครนี้ไม่ได้แนบรูป —</div>'}
+      </div>
+      <div style="flex:1;min-width:250px">
         <b>ที่ตั้งร้าน</b><div style="margin:4px 0 10px;white-space:pre-wrap">${ldEsc(r.l.shop)}</div>
         <b>พื้นที่</b><div style="margin:4px 0 10px">ต.${ldEsc(r.l.tambon)} อ.${ldEsc(r.l.amphoe)} จ.นนทบุรี</div>
+        <b>หมุดโลเคชั่น</b>
+        <div style="margin:4px 0 10px">${mp
+          ?`<a href="${ldEsc(mp)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 เปิดแผนที่</a>`+
+           (r.l.lat!=null?` <span class="psub">${r.l.lat.toFixed(6)}, ${r.l.lng.toFixed(6)}</span>`:"")
+          :`<span class="psub">${r.l.loc?ldEsc(r.l.loc):"— ไม่ได้ระบุ —"}</span>`}</div>
         ${r.l.note?`<b>ข้อความจากผู้สมัคร</b><div style="margin:4px 0 10px;white-space:pre-wrap">${ldEsc(r.l.note)}</div>`:""}
         <b>บันทึกภายใน</b><div style="margin:4px 0">${r.m.note?ldEsc(r.m.note):'<span class="psub">— ยังไม่มี —</span>'}
           <button class="rm" style="margin-left:8px" onclick="event.stopPropagation();ldNoteEdit('${r.l.id}')">✎ แก้</button></div>
       </div>
-      <div style="flex:1;min-width:270px">
+      <div style="flex:1;min-width:250px">
+        <b>คำขอจากผู้สมัคร</b>
+        <div style="margin:5px 0 12px">
+          <span class="pill ${r.l.tax?"g":""}">${r.l.tax?"🧾 ต้องการใบกำกับภาษี":"🧾 ไม่ต้องการใบกำกับภาษี"}</span>
+          <span class="pill ${r.l.star?"w":""}" style="margin-left:6px">${r.l.star?"⭐ สนใจร้านติดดาว":"ไม่สนใจร้านติดดาว"}</span>
+        </div>
         <b>ส่งต่อให้เซลล์สาย</b>
         <div style="margin:4px 0 12px"><select onchange="ldAssign('${r.l.id}',this.value)" onclick="event.stopPropagation()"
           style="padding:8px 10px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:200px">${ldLineOpts(r.line)}</select></div>
@@ -3086,29 +3123,31 @@ function renderLeads(){
         <div class="psub">${r.store?(r.storeName?("✅ ตรงกับร้าน <b>"+ldEsc(r.storeName)+"</b> · ยอดสะสม ฿"+Math.round(r.niv).toLocaleString()):"⚠️ ยังไม่พบรหัสนี้ในข้อมูลรายร้าน (อัพไฟล์ยอดขายรายร้านก่อน)"):"ใส่รหัสร้านแล้วระบบจะดึงยอดขายของร้านนี้มาให้เอง"}</div>
         <div style="margin-top:12px"><button class="rm" onclick="event.stopPropagation();ldDel('${r.l.id}')">🗑 ซ่อนใบสมัครนี้</button></div>
       </div>
-    </div></td></tr>`;
+    </div></td></tr>`;};
   el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <h3>📋 รายชื่อผู้สมัคร · ${rows.length.toLocaleString()} จาก ${all.length.toLocaleString()} ใบ</h3>
       <button class="upload-btn" onclick="ldExport()">⬇ ดาวน์โหลด Excel (CSV)</button></div>
-    <div class="psub">กดที่แถวเพื่อดูที่ตั้งร้าน ส่งต่อให้เซลล์ และผูกรหัสร้าน</div>
+    <div class="psub">กดที่แถวเพื่อดูรูปหน้าร้าน หมุดแผนที่ ส่งต่อให้เซลล์ และผูกรหัสร้าน · <b>⭐</b> = สนใจร้านติดดาว · <b>🧾</b> = ขอใบกำกับภาษี</div>
     <div style="overflow-x:auto;margin-top:8px"><table class="plan-tbl so-tbl"><thead><tr>
-      <th>วันที่สมัคร</th><th style="text-align:left">ผู้สมัคร</th><th>เบอร์ติดต่อ</th>
-      <th style="text-align:left">พื้นที่</th><th>ประเภทร้าน</th><th>สถานะ</th><th>ส่งต่อสาย</th><th>ยอดขาย</th></tr></thead><tbody>`+
+      <th>วันที่สมัคร</th><th style="text-align:left">ร้านค้า / ผู้สมัคร</th><th>เบอร์ติดต่อ</th>
+      <th style="text-align:left">พื้นที่</th><th>ประเภทร้าน</th><th>แผนที่</th><th>สถานะ</th><th>ส่งต่อสาย</th><th>ยอดขาย</th></tr></thead><tbody>`+
     (rows.length?rows.map(r=>{const W=LD_ST[r.st]||LD_ST["new"];
       return `<tr class="so-row" onclick="ldToggle('${r.l.id}')">
         <td style="text-align:center;white-space:nowrap">${ldDate(r.l.at)}</td>
-        <td style="text-align:left"><b>${ldEsc(r.l.first)} ${ldEsc(r.l.last)}</b>
-          <div class="psub" style="margin:0">${ldEsc((r.l.shop||"").split("\n")[0]).slice(0,44)}</div></td>
+        <td style="text-align:left">
+          <b>${ldEsc(ldShopName(r.l))}</b>${r.l.star?' <span title="สนใจร้านติดดาว">⭐</span>':""}${r.l.tax?' <span title="ขอใบกำกับภาษี">🧾</span>':""}
+          <div class="psub" style="margin:0">${ldEsc(r.l.first)} ${ldEsc(r.l.last)}</div></td>
         <td style="text-align:center;white-space:nowrap"><a href="tel:${ldEsc(r.l.phone)}" onclick="event.stopPropagation()">${ldPhone(r.l.phone)}</a></td>
         <td style="text-align:left">${ldEsc(r.l.tambon)}<div class="psub" style="margin:0">อ.${ldEsc(r.l.amphoe)}</div></td>
         <td style="text-align:center">${ldEsc(r.l.type)}</td>
+        <td style="text-align:center">${ldMapURL(r.l)?`<a href="${ldEsc(ldMapURL(r.l))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="เปิดแผนที่">📍</a>`:'<span class="psub">—</span>'}</td>
         <td style="text-align:center"><select onclick="event.stopPropagation()" onchange="ldSetSt('${r.l.id}',this.value)"
           class="ld-st" style="border-color:${W.color};color:${W.color}">${
           LD_ST_ORDER.map(k=>`<option value="${k}"${k===r.st?" selected":""}>${LD_ST[k].icon} ${LD_ST[k].lab}</option>`).join("")}</select></td>
         <td style="text-align:center">${r.line?ldEsc(((DATA.lines||{})[r.line]||{}).display||r.line):'<span class="psub">—</span>'}</td>
         <td style="text-align:center">${r.niv?"฿"+Math.round(r.niv).toLocaleString():'<span class="psub">—</span>'}</td></tr>`+
         (LD.open===r.l.id?detail(r):"");}).join("")
-      :`<tr><td colspan="8"><div class="insight">ไม่มีใบสมัครที่ตรงกับตัวกรอง — ลองเปลี่ยนสถานะ/อำเภอ หรือล้างคำค้น</div></td></tr>`)+
+      :`<tr><td colspan="9"><div class="insight">ไม่มีใบสมัครที่ตรงกับตัวกรอง — ลองเปลี่ยนสถานะ/อำเภอ หรือล้างคำค้น</div></td></tr>`)+
     `</tbody></table></div>`;
 }
 
