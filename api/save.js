@@ -112,6 +112,18 @@ function mergeState(server, c) {
   const sPS = s.POSTATUS || {}, cPS = c.POSTATUS || {};
   const posData = keyMerge(sPS.data, cPS.data);
   const POSTATUS = { data: posData, dates: Object.keys(posData).sort() };
+  // Manager notes on shop applications, keyed by lead id: union, newest entry per id wins.
+  // The applications themselves live in their own `bd-lead-*` blobs (api/apply.js) and are
+  // never touched here — this is only the manager's status / assigned line / store code.
+  // Hiding a junk application needs an explicit tombstone (LEADS.del), applied after the
+  // union so a stale tab cannot bring it back.
+  const sL = s.LEADS || {}, cL = c.LEADS || {};
+  const lMeta = Object.assign({}, sL.meta || {});
+  for (const k in (cL.meta || {})) {
+    const e = cL.meta[k], ex = lMeta[k];
+    if (!ex || (e && (e.at || 0) >= (ex.at || 0))) lMeta[k] = e;
+  }
+  const LEADS = { meta: lMeta, del: keyMerge(sL.del, cL.del) };
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),
@@ -126,6 +138,7 @@ function mergeState(server, c) {
     PSTORE,
     EB2B,
     POSTATUS,
+    LEADS,
     savedAt: Date.now(),
   };
 }

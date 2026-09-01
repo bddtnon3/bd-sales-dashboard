@@ -33,6 +33,8 @@ s = must(s, "let EB2B = __EB2BDATA__;", "EB2B decl")
   .replace("let EB2B = __EB2BDATA__;", "let EB2B = {asof:null,up:0,lines:{},data:{}};");
 s = must(s, "let POSTATUS = __POSTATUSDATA__;", "POSTATUS decl")
   .replace("let POSTATUS = __POSTATUSDATA__;", "let POSTATUS = {dates:[],data:{}};");
+s = must(s, "let LEADS = __LEADSDATA__;", "LEADS decl")
+  .replace("let LEADS = __LEADSDATA__;", "let LEADS = {meta:{},del:{}};");
 
 // accounts -> server side
 const ACC_BLOCK = `/* ====================== ACCOUNTS ====================== */
@@ -94,7 +96,8 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},del:{}};}
+    LEADSRAW=[];LEADSLOADED=false;   /* shop applications are re-fetched per session */
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();navReset();
     _switchTab("sales");   /* never leave the previous user's tab (incl. manager-only ones) open */
@@ -107,7 +110,7 @@ function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบั�
 async function _doSync(){
   if(!TOKEN)return;
   try{
-    const payload=JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY,PSTORE,EB2B,POSTATUS});
+    const payload=JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY,PSTORE,EB2B,POSTATUS,LEADS});
     let body=payload,headers={"Content-Type":"application/json","Authorization":"Bearer "+TOKEN};
     /* gzip to stay under the serverless request-size limit (~4.5MB); 8-9MB -> ~1.5MB */
     try{if(typeof CompressionStream!=="undefined"){const cs=new Blob([payload]).stream().pipeThrough(new CompressionStream("gzip"));body=await new Response(cs).arrayBuffer();headers={"Content-Type":"application/octet-stream","x-body-gzip":"1","Authorization":"Bearer "+TOKEN};}}catch(e){}

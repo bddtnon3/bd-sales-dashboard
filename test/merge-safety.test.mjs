@@ -287,5 +287,41 @@ console.log("TEST 11 — a sales request can NEVER republish the bundled seed (l
   check("looksEmpty: the bundled seed is NOT empty (so it must never be written back)", looksEmpty(seedish) === false);
 }
 
+console.log("TEST 12 — manager notes on shop applications (LEADS) never roll back or vanish");
+{
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.LEADS = { meta: {
+    L1: { st: "open", line: "209611", store: "1234567", at: 1000 },
+    L2: { st: "contact", at: 900 },
+  }, del: { L9: 500 } };
+
+  const oldTab = JSON.parse(JSON.stringify(srv));
+  delete oldTab.LEADS;                                   // browser from before the feature
+  const o1 = mergeState(srv, oldTab);
+  check("notes survive a tab with no LEADS at all", o1.LEADS.meta.L1.store === "1234567");
+  check("the hidden-application tombstone survives too", o1.LEADS.del.L9 === 500);
+
+  const blank = JSON.parse(JSON.stringify(srv));
+  blank.LEADS = { meta: {}, del: {} };                   // client that failed to load
+  check("blank client cannot wipe the notes", Object.keys(mergeState(srv, blank).LEADS.meta).length === 2);
+
+  const stale = JSON.parse(JSON.stringify(srv));         // tab that still holds the OLD status
+  stale.LEADS.meta.L1 = { st: "new", at: 400 };
+  check("a stale tab cannot roll a status backwards", mergeState(srv, stale).LEADS.meta.L1.st === "open");
+
+  const fresh = JSON.parse(JSON.stringify(srv));         // manager updates one, adds one
+  fresh.LEADS.meta.L1 = { st: "drop", at: 2000 };
+  fresh.LEADS.meta.L3 = { st: "new", at: 2100 };
+  const o2 = mergeState(srv, fresh);
+  check("a newer edit wins", o2.LEADS.meta.L1.st === "drop");
+  check("a new application's note is added", !!o2.LEADS.meta.L3);
+  check("the untouched one is kept", o2.LEADS.meta.L2.st === "contact");
+  check("touching LEADS disturbs no other section",
+        Object.keys(o2.DATA.monthly).length === 2 && !!o2.PSTORE.rounds["2026-06-30"] && o2.ORDERS.dates.length === 2);
+
+  const first = mergeState(null, { DATA: { lines: {}, monthly: {}, daily: {} } });
+  check("fresh blob store gets a valid LEADS shape", !!first.LEADS && !!first.LEADS.meta && !!first.LEADS.del);
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

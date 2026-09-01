@@ -329,6 +329,12 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 .so-cat>span:first-child{min-width:96px}
 .so-cbar{flex:1;height:9px;border-radius:5px;background:var(--line);overflow:hidden;min-width:60px}
 .so-cbar>span{display:block;height:100%;background:#0F9ED5;border-radius:5px}
+/* ---------- สมัครร้านค้าใหม่ ---------- */
+select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12.5px;
+  font-weight:700;background:#fff;max-width:170px}
+#ldTable a[href^="tel:"]{color:var(--blue);text-decoration:none;font-weight:600}
+#ldTable a[href^="tel:"]:hover{text-decoration:underline}
+#ldBar b{background:rgba(255,255,255,.22);padding:2px 8px;border-radius:6px;font-weight:700}
 .ps2-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .ps2-chip{font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:20px;cursor:pointer;border:1.5px solid transparent}
 .ps2-chip.up{background:#EAF6E2;color:#2E7D32;border-color:#BFE3AB}
@@ -428,6 +434,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
       <button class="tab" data-tab="order" onclick="switchTab('order')">🛒 การสั่งของ</button>
       <button class="tab" data-tab="stock" onclick="switchTab('stock')">📦 สต็อก</button>
       <button class="tab admin-upload" data-tab="pos" style="display:none" onclick="switchTab('pos')">📊 วิเคราะห์การสั่งของ</button>
+      <button class="tab admin-upload" data-tab="lead" style="display:none" onclick="switchTab('lead')">🏪 สมัครร้านค้าใหม่</button>
       <button class="tab" data-tab="ana" onclick="switchTab('ana')">🔬 วิเคราะห์เชิงลึก</button>
     </div>
     <div id="salesView">
@@ -638,6 +645,32 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
         <div class="panel" id="soTable"></div>
         <div id="soDetail"></div>
       </div>
+    </div>
+
+    <div id="leadView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>สถานะ</label>
+          <div class="seg" id="ldStSeg">
+            <button data-s="all" class="on" onclick="ldSet('st','all')">ทั้งหมด</button>
+            <button data-s="new" onclick="ldSet('st','new')">🆕 ใหม่</button>
+            <button data-s="contact" onclick="ldSet('st','contact')">📞 ติดต่อแล้ว</button>
+            <button data-s="open" onclick="ldSet('st','open')">✅ เปิดร้านแล้ว</button>
+            <button data-s="drop" onclick="ldSet('st','drop')">🚫 ไม่สนใจ</button>
+          </div>
+        </div>
+        <div class="ctl"><label>อำเภอ</label><select id="ldAmphoe" onchange="ldSet('am',this.value)"></select></div>
+        <div class="ctl"><label>สายที่ส่งต่อ</label><select id="ldLine" onchange="ldSet('line',this.value)"></select></div>
+        <div class="ctl"><label>🔍 ค้นหา</label><input id="ldQ" placeholder="ชื่อ / เบอร์ / ร้าน / ตำบล" oninput="LD.q=this.value;renderLeads()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:210px"></div>
+        <div class="spacer"></div>
+        <div class="ctl"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="ldRefresh(true)">🔄 ดึงใบสมัครใหม่</button>
+          <button class="upload-btn" onclick="ldCopyLink()" style="margin-left:8px">🔗 คัดลอกลิงก์สมัคร</button>
+        </div>
+      </div>
+      <div class="kpi-monthbar" id="ldBar"></div>
+      <div class="cards" id="ldCards"></div>
+      <div id="ldBreak"></div>
+      <div class="panel" id="ldTable"></div>
     </div>
 
     <div id="anaView" class="hidden">
@@ -857,6 +890,13 @@ let EB2B = __EB2BDATA__;
 /* PSTORE (Unilever Perfect Store AVD): {rounds:{"YYYY-MM-DD":{asof,bm,rows:[[route,code,name,type,isPS,a,v,d,months,gap,cta,gsv],...]}}}
    type: F=PS Full, AD=PS Lite(A,D), AV=PS Lite(A,V), N=PS Nano · a/v/d: G/R/A/"" · isPS: 1/0 */
 let PSTORE = __PSTOREDATA__;
+/* Shop applications from the public /join.html page.
+   LEADS = the MANAGER's notes only: {meta:{id:{st,line,store,note,at}}, del:{id:ts}} — it rides
+   along in the normal save/merge. The applications themselves live in their own `bd-lead-*`
+   blobs and are fetched read-only from /api/leads into LEADSRAW, so a public form submission
+   can never touch the sales data. */
+let LEADS = __LEADSDATA__;
+let LEADSRAW=[],LEADSLOADED=false;
 let STORE_IDX={};   // line code -> array of {code,name,m:[[cs,pc,niv]...]}
 function buildStoreIdx(){
   STORE_IDX={};
@@ -1408,6 +1448,7 @@ function _switchTab(t){
   document.getElementById("orderView").classList.toggle("hidden",t!=="order");
   document.getElementById("stockView").classList.toggle("hidden",t!=="stock");
   document.getElementById("posView").classList.toggle("hidden",t!=="pos");
+  document.getElementById("leadView").classList.toggle("hidden",t!=="lead");
   document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
   if(t==="kpi")renderKPI();
   if(t==="eb")renderEB();
@@ -1415,6 +1456,7 @@ function _switchTab(t){
   if(t==="order")renderOrder();
   if(t==="stock")renderStock();
   if(t==="pos")renderPOS();
+  if(t==="lead")ldRefresh();
   if(t==="ana")renderAnalytics();
 }
 let KPIS={month:null,show:{active:true,self:true,ghost:true},scope:"team"};
@@ -2833,6 +2875,241 @@ function renderSoChart(rows){
         plugins:{legend:{position:"top"},tooltip:{callbacks:{label:c=>" "+c.dataset.label+": "+c.raw+" รายการ"}}},
         scales:{x:{stacked:true,beginAtZero:true,grid:{color:"#EEF2F8"}},y:{stacked:true,grid:{display:false}}}}});
   }catch(e){console.error("so chart",e);}
+}
+
+/* ============================================================================
+ * 🏪 สมัครร้านค้าใหม่ — ใบสมัครจากหน้า /join.html
+ * ใบสมัครเก็บแยกเป็นไฟล์ของตัวเอง (bd-lead-*) อ่านผ่าน /api/leads เท่านั้น
+ * ส่วนที่ manager กรอกเอง (สถานะ / ส่งต่อสายไหน / รหัสร้าน) เก็บใน LEADS.meta
+ * ซึ่งเดินทางไปกับการบันทึกปกติ จึงรวมกับข้อมูลเดิมแบบไม่ทับของเก่า
+ * ==========================================================================*/
+const LD_ST={
+  new:    {icon:"🆕",lab:"ใหม่ (ยังไม่ติดต่อ)",pill:"w",color:"#0F9ED5"},
+  contact:{icon:"📞",lab:"ติดต่อแล้ว",pill:"",color:"#E97132"},
+  open:   {icon:"✅",lab:"เปิดร้านแล้ว",pill:"g",color:"#4EA72E"},
+  drop:   {icon:"🚫",lab:"ไม่สนใจ / ปิดเคส",pill:"b",color:"#8E9AAB"}};
+const LD_ST_ORDER=["new","contact","open","drop"];
+let LD={st:"all",am:"all",line:"all",q:"",open:null,busy:false};
+
+function ldMetaOf(id){return ((LEADS&&LEADS.meta)||{})[id]||{};}
+function ldDeleted(id){return !!((LEADS&&LEADS.del)||{})[id];}
+function ldWrite(id,patch){
+  if(!LEADS)LEADS={meta:{},del:{}};
+  if(!LEADS.meta)LEADS.meta={};
+  const cur=LEADS.meta[id]||{};
+  LEADS.meta[id]=Object.assign({},cur,patch,{at:Date.now()});
+  syncToServer();
+}
+/* ยอดขายที่ร้านนี้ทำได้ — จากรหัสร้านที่ manager ผูกไว้ (ข้อมูลรายร้านที่อัพเข้าระบบ) */
+function ldSales(store){
+  if(!store)return null;
+  const rows=(STORE&&STORE.stores)||[];
+  for(let i=0;i<rows.length;i++){
+    if(String(rows[i][1])===String(store)){
+      const m=rows[i][3]||[];let niv=0;
+      m.forEach(x=>{niv+=(x&&x[2])||0;});
+      return {niv:niv,name:rows[i][2],line:rows[i][0]};
+    }
+  }
+  return {niv:0,name:null,line:null};
+}
+async function ldRefresh(force){
+  if(!(S.user&&S.user.role==="manager"))return;
+  if(LEADSLOADED&&!force){renderLeads();return;}
+  if(LD.busy)return;
+  LD.busy=true;
+  const bar=document.getElementById("ldBar");
+  if(bar)bar.innerHTML="🏪 สมัครร้านค้าใหม่ · กำลังโหลดใบสมัคร...";
+  try{
+    const r=await fetch("/api/leads",{headers:{"Authorization":"Bearer "+(typeof TOKEN!=="undefined"&&TOKEN?TOKEN:"")}});
+    if(r.ok){const d=await r.json();LEADSRAW=(d&&d.leads)||[];LEADSLOADED=true;}
+    else if(r.status===401){logout();return;}
+    else{LEADSRAW=[];LEADSLOADED=true;}
+  }catch(e){LEADSRAW=[];LEADSLOADED=true;}
+  LD.busy=false;renderLeads();
+}
+function ldAll(){
+  return LEADSRAW.filter(l=>l&&l.id&&!ldDeleted(l.id)).map(l=>{
+    const m=ldMetaOf(l.id);
+    const st=m.st||"new";
+    const sale=ldSales(m.store);
+    return {l:l,m:m,st:st,store:m.store||"",line:m.line||"",
+      niv:(sale&&sale.niv)||0,storeName:(sale&&sale.name)||"",
+      month:(l.at?new Date(l.at):new Date()).toISOString().slice(0,7)};
+  });
+}
+function ldRows(){
+  const q=(LD.q||"").trim().toLowerCase();
+  return ldAll().filter(r=>{
+    if(LD.st!=="all"&&r.st!==LD.st)return false;
+    if(LD.am!=="all"&&r.l.amphoe!==LD.am)return false;
+    if(LD.line!=="all"&&r.line!==LD.line)return false;
+    if(q){const hay=[r.l.first,r.l.last,r.l.phone,r.l.shop,r.l.tambon,r.l.amphoe,r.l.type,r.store].join(" ").toLowerCase();
+      if(hay.indexOf(q)<0)return false;}
+    return true;
+  }).sort((a,b)=>(b.l.at||0)-(a.l.at||0));
+}
+function ldSet(k,v){LD[k]=v;
+  if(k==="st")document.querySelectorAll("#ldStSeg button").forEach(b=>b.classList.toggle("on",b.dataset.s===v));
+  renderLeads();}
+function ldEsc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function ldPhone(p){const d=String(p||"").replace(/\D/g,"");
+  return d.length===10?d.slice(0,3)+"-"+d.slice(3,6)+"-"+d.slice(6):d.length===9?d.slice(0,2)+"-"+d.slice(2,5)+"-"+d.slice(5):d;}
+function ldDate(ts){if(!ts)return "-";const d=new Date(ts);
+  return d.getDate()+" "+MONTH_TH[d.getMonth()]+" "+String(d.getFullYear()+543).slice(2)+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
+
+function ldSetSt(id,st){ldWrite(id,{st:st});renderLeads();}
+function ldAssign(id,line){ldWrite(id,{line:line});renderLeads();}
+function ldStoreCode(id,v){
+  const code=String(v||"").replace(/\s/g,"");
+  const patch={store:code};
+  if(code&&(ldMetaOf(id).st||"new")!=="open")patch.st="open";     /* ผูกรหัสร้านแล้ว = เปิดร้านแล้ว */
+  ldWrite(id,patch);renderLeads();
+}
+function ldNoteEdit(id){
+  const cur=ldMetaOf(id).note||"";
+  const v=prompt("บันทึกภายในเกี่ยวกับร้านนี้ (เห็นเฉพาะ manager)",cur);
+  if(v===null)return;ldWrite(id,{note:v.trim()});renderLeads();
+}
+function ldDel(id){
+  const r=LEADSRAW.find(x=>x&&x.id===id);
+  if(!confirm("ซ่อนใบสมัครนี้ออกจากรายการ?\n\n"+((r&&(r.first+" "+r.last))||id)+"\n\nใช้กับใบสมัครที่กรอกเล่น/ซ้ำ — ข้อมูลอื่นไม่ถูกแตะต้อง"))return;
+  if(!LEADS)LEADS={meta:{},del:{}};
+  if(!LEADS.del)LEADS.del={};
+  LEADS.del[id]=Date.now();syncToServer();renderLeads();
+}
+function ldToggle(id){LD.open=(LD.open===id)?null:id;renderLeads();}
+function ldExport(){
+  const rows=ldRows();
+  const head=["วันที่สมัคร","ชื่อ","นามสกุล","เบอร์","ร้าน/ที่ตั้ง","ตำบล","อำเภอ","ประเภทร้าน","สถานะ","ส่งต่อสาย","รหัสร้าน","ยอดขายสะสม(บาท)","หมายเหตุ","ข้อความจากผู้สมัคร"];
+  const esc=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+  const body=rows.map(r=>[ldDate(r.l.at),r.l.first,r.l.last,r.l.phone,r.l.shop,r.l.tambon,r.l.amphoe,r.l.type,
+    (LD_ST[r.st]||{}).lab||r.st,ldLineName(r.line),r.store,Math.round(r.niv),r.m.note||"",r.l.note||""].map(esc).join(","));
+  const csv="﻿"+[head.map(esc).join(",")].concat(body).join("\r\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download="ใบสมัครร้านค้า_"+todayISO()+".csv";a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+/* ลิงก์สมัครที่ manager ส่งให้ร้านค้า */
+function ldJoinURL(){
+  const o=(location&&location.origin&&location.origin!=="null")?location.origin:"https://bd-sales-dashboard.vercel.app";
+  return o+"/join.html";
+}
+function ldCopyLink(){
+  const u=ldJoinURL();
+  const done=()=>{ulog("📋 คัดลอกลิงก์สมัครแล้ว: "+u);alert("คัดลอกลิงก์แล้ว\n\n"+u+"\n\nส่งลิงก์นี้ให้ร้านค้าที่สนใจได้เลย");};
+  try{navigator.clipboard.writeText(u).then(done,()=>prompt("คัดลอกลิงก์นี้",u));}
+  catch(e){prompt("คัดลอกลิงก์นี้",u);}
+}
+function ldLineName(code){if(!code)return "";
+  const d=(DATA.lines||{})[code];return d?(d.display+(d.name?" · "+d.name:"")):code;}
+function ldLineOpts(sel){
+  return '<option value="">— ยังไม่ส่งต่อ —</option>'+
+    (DATA.focus_order||[]).map(c=>{const d=(DATA.lines||{})[c]||{};
+      return `<option value="${c}"${c===sel?" selected":""}>${ldEsc(d.display||c)}${d.name?" · "+ldEsc(d.name):""}</option>`;}).join("");
+}
+
+function renderLeads(){
+  if(!(S.user&&S.user.role==="manager"))return;
+  const all=ldAll(),rows=ldRows();
+  /* filters */
+  const ams={};all.forEach(r=>{if(r.l.amphoe)ams[r.l.amphoe]=(ams[r.l.amphoe]||0)+1;});
+  const amSel=document.getElementById("ldAmphoe");
+  if(amSel)amSel.innerHTML='<option value="all">ทุกอำเภอ</option>'+
+    Object.keys(ams).sort().map(a=>`<option value="${ldEsc(a)}"${a===LD.am?" selected":""}>${ldEsc(a)} (${ams[a]})</option>`).join("");
+  const lnSel=document.getElementById("ldLine");
+  if(lnSel)lnSel.innerHTML='<option value="all">ทุกสาย</option><option value=""'+(LD.line===""?" selected":"")+'>— ยังไม่ส่งต่อ —</option>'+
+    (DATA.focus_order||[]).map(c=>{const d=(DATA.lines||{})[c]||{};
+      return `<option value="${c}"${c===LD.line?" selected":""}>${ldEsc(d.display||c)}</option>`;}).join("");
+
+  const bar=document.getElementById("ldBar");
+  const C={};LD_ST_ORDER.forEach(k=>C[k]=all.filter(r=>r.st===k).length);
+  const thisMonth=curMonthKey(),newThis=all.filter(r=>r.month===thisMonth).length;
+  const niv=all.reduce((a,r)=>a+r.niv,0);
+  const opened=all.filter(r=>r.st==="open").length;
+  bar.innerHTML=`🏪 สมัครร้านค้าใหม่ · รับใบสมัครแล้ว ${all.length.toLocaleString()} ร้าน`+
+    (newThis?` · เดือนนี้ ${newThis} ร้าน`:"")+
+    ` <span style="font-weight:400;opacity:.85">— ลิงก์สมัคร: <b>${ldJoinURL()}</b></span>`;
+
+  document.getElementById("ldCards").innerHTML=
+    `<div class="card kpi-card" style="border-top:3px solid #0F9ED5"><div class="k" style="color:#0F9ED5">ใบสมัครทั้งหมด</div><div class="v">${all.length.toLocaleString()}</div><div class="s">เดือนนี้ ${newThis} ร้าน · ${Object.keys(ams).length} อำเภอ</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #E97132"><div class="k" style="color:#E97132">🆕 รอติดต่อ</div><div class="v ${C["new"]?"down":""}">${C["new"]}</div><div class="s">📞 ติดต่อแล้ว ${C.contact} ร้าน</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #4EA72E"><div class="k" style="color:#4EA72E">✅ เปิดร้านแล้ว</div><div class="v ${opened?"up":""}">${opened}</div><div class="s">${all.length?(opened/all.length*100).toFixed(0):0}% ของใบสมัครทั้งหมด</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #7030A0"><div class="k" style="color:#7030A0">ยอดขายที่สร้างได้</div><div class="v">฿${Math.round(niv).toLocaleString()}</div><div class="s">${niv?"จากร้านที่ผูกรหัสแล้ว":"ผูกรหัสร้านเพื่อให้ระบบดึงยอดให้"}</div></div>`;
+
+  /* ---- breakdowns: อำเภอ (+ตำบล) · ประเภทร้าน · สายที่ส่งต่อ ---- */
+  const grp=(fn)=>{const o={};all.forEach(r=>{const k=fn(r)||"ไม่ระบุ";o[k]=(o[k]||0)+1;});
+    return Object.entries(o).sort((a,b)=>b[1]-a[1]);};
+  const byAm=grp(r=>r.l.amphoe),byType=grp(r=>r.l.type),byLine=grp(r=>r.line?ldLineName(r.line):"— ยังไม่ส่งต่อ —");
+  const tamOf=(am)=>{const o={};all.forEach(r=>{if(r.l.amphoe===am)o[r.l.tambon||"ไม่ระบุ"]=(o[r.l.tambon||"ไม่ระบุ"]||0)+1;});
+    return Object.entries(o).sort((a,b)=>b[1]-a[1]);};
+  const barsOf=(list,max,extra)=>list.map(([k,n])=>
+    `<div class="so-cat"><span>${ldEsc(k)}${extra?extra(k):""}</span><div class="so-cbar"><span style="width:${(n/max*100).toFixed(0)}%"></span></div><b>${n}</b></div>`).join("");
+  const mx=(l)=>l.length?l[0][1]:1;
+  document.getElementById("ldBreak").innerHTML=
+    `<div class="panel"><h3>📍 ใบสมัครมาจากไหน</h3>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:8px">
+        <div style="flex:1;min-width:250px"><b>รายอำเภอ</b>
+          ${barsOf(byAm,mx(byAm),(k)=>{const t=tamOf(k);return t.length?`<small style="color:var(--muted)"> · ${t.slice(0,3).map(x=>x[0]+" "+x[1]).join(", ")}${t.length>3?" …":""}</small>`:"";})||'<div class="psub">ยังไม่มีข้อมูล</div>'}</div>
+        <div style="flex:1;min-width:220px"><b>ประเภทร้านค้า</b>
+          ${barsOf(byType,mx(byType))||'<div class="psub">ยังไม่มีข้อมูล</div>'}</div>
+        <div style="flex:1;min-width:220px"><b>ส่งต่อให้สาย</b>
+          ${barsOf(byLine,mx(byLine))||'<div class="psub">ยังไม่มีข้อมูล</div>'}</div>
+      </div></div>`;
+
+  /* ---- table ---- */
+  const el=document.getElementById("ldTable");
+  if(!all.length){
+    el.innerHTML=`<h3>📋 รายชื่อผู้สมัคร</h3>
+      <div class="insight">ยังไม่มีใบสมัครเข้ามา — ส่งลิงก์นี้ให้ร้านค้าที่สนใจได้เลย<br>
+        <b style="font-size:15px">${ldJoinURL()}</b><br>
+        <span class="psub">พอมีคนกรอก ใบสมัครจะเด้งมาที่หน้านี้เอง (กด 🔄 ดึงใบสมัครใหม่)</span></div>`;
+    return;}
+  const detail=(r)=>`<tr class="so-detail"><td colspan="8">
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div style="flex:1;min-width:270px">
+        <b>ที่ตั้งร้าน</b><div style="margin:4px 0 10px;white-space:pre-wrap">${ldEsc(r.l.shop)}</div>
+        <b>พื้นที่</b><div style="margin:4px 0 10px">ต.${ldEsc(r.l.tambon)} อ.${ldEsc(r.l.amphoe)} จ.นนทบุรี</div>
+        ${r.l.note?`<b>ข้อความจากผู้สมัคร</b><div style="margin:4px 0 10px;white-space:pre-wrap">${ldEsc(r.l.note)}</div>`:""}
+        <b>บันทึกภายใน</b><div style="margin:4px 0">${r.m.note?ldEsc(r.m.note):'<span class="psub">— ยังไม่มี —</span>'}
+          <button class="rm" style="margin-left:8px" onclick="event.stopPropagation();ldNoteEdit('${r.l.id}')">✎ แก้</button></div>
+      </div>
+      <div style="flex:1;min-width:270px">
+        <b>ส่งต่อให้เซลล์สาย</b>
+        <div style="margin:4px 0 12px"><select onchange="ldAssign('${r.l.id}',this.value)" onclick="event.stopPropagation()"
+          style="padding:8px 10px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:200px">${ldLineOpts(r.line)}</select></div>
+        <b>รหัสร้านในระบบ (พอเปิดร้านแล้ว)</b>
+        <div style="margin:4px 0 6px"><input value="${ldEsc(r.store)}" placeholder="เช่น 1234567" onclick="event.stopPropagation()"
+          onchange="ldStoreCode('${r.l.id}',this.value)"
+          style="padding:8px 10px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;width:170px"></div>
+        <div class="psub">${r.store?(r.storeName?("✅ ตรงกับร้าน <b>"+ldEsc(r.storeName)+"</b> · ยอดสะสม ฿"+Math.round(r.niv).toLocaleString()):"⚠️ ยังไม่พบรหัสนี้ในข้อมูลรายร้าน (อัพไฟล์ยอดขายรายร้านก่อน)"):"ใส่รหัสร้านแล้วระบบจะดึงยอดขายของร้านนี้มาให้เอง"}</div>
+        <div style="margin-top:12px"><button class="rm" onclick="event.stopPropagation();ldDel('${r.l.id}')">🗑 ซ่อนใบสมัครนี้</button></div>
+      </div>
+    </div></td></tr>`;
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <h3>📋 รายชื่อผู้สมัคร · ${rows.length.toLocaleString()} จาก ${all.length.toLocaleString()} ใบ</h3>
+      <button class="upload-btn" onclick="ldExport()">⬇ ดาวน์โหลด Excel (CSV)</button></div>
+    <div class="psub">กดที่แถวเพื่อดูที่ตั้งร้าน ส่งต่อให้เซลล์ และผูกรหัสร้าน</div>
+    <div style="overflow-x:auto;margin-top:8px"><table class="plan-tbl so-tbl"><thead><tr>
+      <th>วันที่สมัคร</th><th style="text-align:left">ผู้สมัคร</th><th>เบอร์ติดต่อ</th>
+      <th style="text-align:left">พื้นที่</th><th>ประเภทร้าน</th><th>สถานะ</th><th>ส่งต่อสาย</th><th>ยอดขาย</th></tr></thead><tbody>`+
+    (rows.length?rows.map(r=>{const W=LD_ST[r.st]||LD_ST["new"];
+      return `<tr class="so-row" onclick="ldToggle('${r.l.id}')">
+        <td style="text-align:center;white-space:nowrap">${ldDate(r.l.at)}</td>
+        <td style="text-align:left"><b>${ldEsc(r.l.first)} ${ldEsc(r.l.last)}</b>
+          <div class="psub" style="margin:0">${ldEsc((r.l.shop||"").split("\n")[0]).slice(0,44)}</div></td>
+        <td style="text-align:center;white-space:nowrap"><a href="tel:${ldEsc(r.l.phone)}" onclick="event.stopPropagation()">${ldPhone(r.l.phone)}</a></td>
+        <td style="text-align:left">${ldEsc(r.l.tambon)}<div class="psub" style="margin:0">อ.${ldEsc(r.l.amphoe)}</div></td>
+        <td style="text-align:center">${ldEsc(r.l.type)}</td>
+        <td style="text-align:center"><select onclick="event.stopPropagation()" onchange="ldSetSt('${r.l.id}',this.value)"
+          class="ld-st" style="border-color:${W.color};color:${W.color}">${
+          LD_ST_ORDER.map(k=>`<option value="${k}"${k===r.st?" selected":""}>${LD_ST[k].icon} ${LD_ST[k].lab}</option>`).join("")}</select></td>
+        <td style="text-align:center">${r.line?ldEsc(((DATA.lines||{})[r.line]||{}).display||r.line):'<span class="psub">—</span>'}</td>
+        <td style="text-align:center">${r.niv?"฿"+Math.round(r.niv).toLocaleString():'<span class="psub">—</span>'}</td></tr>`+
+        (LD.open===r.l.id?detail(r):"");}).join("")
+      :`<tr><td colspan="8"><div class="insight">ไม่มีใบสมัครที่ตรงกับตัวกรอง — ลองเปลี่ยนสถานะ/อำเภอ หรือล้างคำค้น</div></td></tr>`)+
+    `</tbody></table></div>`;
 }
 
 /* ====================== SALES REQUESTS (คำขอสินค้าเซลล์) ====================== */

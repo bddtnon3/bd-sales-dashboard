@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>สมัครเป็นร้านค้าคู่ค้า · บริษัท บีดี ดิสทริบิวชั่น จำกัด</title>
+<meta name="description" content="สมัครเป็นร้านค้าคู่ค้ากับ บริษัท บีดี ดิสทริบิวชั่น จำกัด ผู้จัดจำหน่ายสินค้ายูนิลีเวอร์ในพื้นที่จังหวัดนนทบุรี — ส่งถึงหน้าร้าน มีเซลล์ดูแลประจำสาย">
+<meta property="og:title" content="สมัครเป็นร้านค้าคู่ค้า · BD Distribution">
+<meta property="og:description" content="ผู้จัดจำหน่ายสินค้ายูนิลีเวอร์ พื้นที่นนทบุรี — สมัครฟรี ส่งถึงหน้าร้าน">
+<meta property="og:image" content="/img/products.jpg">
+<link rel="icon" href="/img/bd-mark.png">
+<style>
+:root{
+  /* Unilever CI */
+  --uni:#1F36C7; --uni-dark:#101C86; --uni-soft:#EEF1FF; --uni-line:#D8DEFB;
+  --ink:#141A2E; --muted:#666F85; --line:#E4E8F2; --bg:#F7F9FE; --white:#fff;
+  --good:#1E9E5A; --bad:#D64545;
+  --shadow:0 1px 3px rgba(16,28,134,.07),0 10px 34px rgba(16,28,134,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Sarabun','Segoe UI',system-ui,sans-serif;color:var(--ink);background:var(--bg);
+  -webkit-font-smoothing:antialiased;line-height:1.6}
+img{max-width:100%;display:block}
+/* faint warehouse behind the whole page — proof it is a real distribution centre, but quiet */
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:url('/img/warehouse-door.jpg') center 18% / cover no-repeat;
+  opacity:.14;filter:saturate(.55)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(247,249,254,.93) 0%,rgba(247,249,254,.97) 40%,#F7F9FE 100%)}
+.wrap{max-width:940px;margin:0 auto;padding:0 18px}
+
+/* ---------- header ---------- */
+header{background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:40}
+.hd{max-width:940px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;gap:12px}
+.hd img{width:46px;height:46px;object-fit:contain;flex:none}
+.hd .nm{font-weight:800;font-size:16px;letter-spacing:-.2px;line-height:1.25}
+.hd .sb{font-size:11.5px;color:var(--muted);line-height:1.3}
+.hd .cta{margin-left:auto;background:var(--uni);color:#fff;border:none;border-radius:999px;
+  padding:10px 20px;font:700 14px/1 inherit;text-decoration:none;white-space:nowrap}
+.hd .cta:hover{background:var(--uni-dark)}
+
+/* ---------- hero ---------- */
+.hero{text-align:center;padding:44px 0 8px}
+.badge{display:inline-flex;align-items:center;gap:7px;background:var(--uni-soft);color:var(--uni);
+  border:1px solid var(--uni-line);border-radius:999px;padding:6px 15px;font-size:13px;font-weight:700;margin-bottom:16px}
+.hero h1{font-size:34px;line-height:1.25;letter-spacing:-.6px;font-weight:800}
+.hero h1 b{color:var(--uni)}
+.hero p{color:var(--muted);font-size:16px;margin:14px auto 0;max-width:560px}
+.hero .btns{margin-top:26px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{background:var(--uni);color:#fff;border:none;border-radius:12px;padding:14px 30px;
+  font:700 16px/1 inherit;text-decoration:none;display:inline-block;box-shadow:0 8px 22px rgba(31,54,199,.24)}
+.btn:hover{background:var(--uni-dark)}
+.btn.ghost{background:#fff;color:var(--uni);border:1.5px solid var(--uni-line);box-shadow:none}
+
+.shot{margin:26px 0 0;border-radius:20px;overflow:hidden;box-shadow:var(--shadow);background:#fff}
+
+/* ---------- brands ---------- */
+.brands{margin:34px 0 0;background:#fff;border:1px solid var(--line);border-radius:20px;
+  padding:22px 18px 24px;box-shadow:var(--shadow)}
+.brands h3{text-align:center;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.4px;margin-bottom:16px}
+.blist{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-items:stretch}
+.blchip{background:#FAFBFC;border:1px solid var(--line);border-radius:13px;height:78px;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px}
+.bl{background-image:url('/img/unilever-brands.jpg');background-repeat:no-repeat;flex:none}
+@media(max-width:560px){.blist{grid-template-columns:repeat(3,1fr)}.blchip{height:66px}}
+
+/* ---------- sections ---------- */
+section{padding:40px 0}
+h2{font-size:24px;font-weight:800;letter-spacing:-.3px;text-align:center}
+h2+.sub{text-align:center;color:var(--muted);margin-top:8px;font-size:15px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:26px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 18px;box-shadow:var(--shadow)}
+.card .ic{width:42px;height:42px;border-radius:12px;background:var(--uni-soft);color:var(--uni);
+  display:flex;align-items:center;justify-content:center;font-size:21px;margin-bottom:12px}
+.card b{display:block;font-size:15.5px;margin-bottom:5px}
+.card span{color:var(--muted);font-size:13.5px}
+@media(max-width:820px){.cards{grid-template-columns:repeat(2,1fr)}}
+
+/* ---------- warehouse band ---------- */
+.dc{position:relative;border-radius:20px;overflow:hidden;margin-top:8px;
+  border:1px solid var(--line);box-shadow:var(--shadow)}
+.dc img{width:100%;height:250px;object-fit:cover;opacity:.42;filter:saturate(.7)}
+.dc .ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:20px;background:linear-gradient(180deg,rgba(255,255,255,.86),rgba(255,255,255,.93))}
+.dc .ov b{font-size:19px}
+.dc .ov span{color:var(--muted);font-size:14px;margin-top:6px;max-width:520px}
+.dcstat{display:flex;gap:26px;margin-top:14px;flex-wrap:wrap;justify-content:center}
+.dcstat div{text-align:center}
+.dcstat i{display:block;font-style:normal;font-size:20px;font-weight:800;color:var(--uni)}
+.dcstat em{font-style:normal;font-size:12px;color:var(--muted)}
+
+/* ---------- form ---------- */
+.formwrap{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);
+  padding:30px 28px 28px;margin-top:8px}
+.formwrap .ft{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.formwrap .ft .n{width:34px;height:34px;border-radius:10px;background:var(--uni);color:#fff;flex:none;
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
+.formwrap h2{text-align:left;font-size:21px}
+.formwrap .lead{color:var(--muted);font-size:14px;margin:2px 0 22px 46px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.f{display:flex;flex-direction:column;gap:6px}
+.f.full{grid-column:1/-1}
+.f label{font-size:13.5px;font-weight:700}
+.f label i{font-style:normal;color:var(--bad)}
+.f .hint{font-size:12px;color:var(--muted);font-weight:400}
+.f input,.f select,.f textarea{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:11px;
+  font:15px/1.5 inherit;background:#fff;color:var(--ink)}
+.f textarea{resize:vertical;min-height:82px}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--uni);box-shadow:0 0 0 3px rgba(31,54,199,.1)}
+.f.bad input,.f.bad select,.f.bad textarea{border-color:var(--bad)}
+.err{color:var(--bad);font-size:12.5px;min-height:0}
+.f.bad .err{min-height:18px}
+.types{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.types label{display:flex;align-items:center;gap:9px;border:1.5px solid var(--line);border-radius:11px;
+  padding:11px 13px;font-size:14px;font-weight:600;cursor:pointer;background:#fff}
+.types label:hover{border-color:var(--uni-line);background:var(--uni-soft)}
+.types input{width:17px;height:17px;accent-color:var(--uni);flex:none}
+.types label.on{border-color:var(--uni);background:var(--uni-soft);color:var(--uni)}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.types{grid-template-columns:1fr 1fr}}
+@media(max-width:430px){.types{grid-template-columns:1fr}}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.submit{width:100%;margin-top:24px;padding:16px;background:var(--uni);color:#fff;border:none;border-radius:13px;
+  font:800 17px/1 inherit;box-shadow:0 10px 26px rgba(31,54,199,.26)}
+.submit:hover:not(:disabled){background:var(--uni-dark)}
+.submit:disabled{opacity:.6;box-shadow:none;cursor:default}
+.pdpa{font-size:12px;color:var(--muted);margin-top:14px;text-align:center;line-height:1.7}
+.formmsg{margin-top:14px;padding:13px 15px;border-radius:11px;font-size:14px;font-weight:600;display:none}
+.formmsg.e{display:block;background:#FDECEA;color:var(--bad);border:1px solid #F6CFCA}
+
+/* ---------- done ---------- */
+#done{display:none;text-align:center;padding:56px 26px}
+#done .tick{width:76px;height:76px;border-radius:50%;background:var(--good);color:#fff;font-size:38px;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+#done h2{font-size:26px}
+#done p{color:var(--muted);margin-top:10px;font-size:15.5px}
+.recap{max-width:430px;margin:24px auto 0;text-align:left;background:var(--uni-soft);border:1px solid var(--uni-line);
+  border-radius:14px;padding:16px 18px;font-size:14px}
+.recap div{display:flex;gap:10px;padding:4px 0}
+.recap div span{color:var(--muted);min-width:96px;flex:none}
+.recap div b{font-weight:700}
+
+/* ---------- footer ---------- */
+footer{background:#fff;border-top:1px solid var(--line);margin-top:44px;padding:30px 0 36px}
+.fgrid{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+.fgrid img{width:74px;height:74px;object-fit:contain;flex:none}
+.fgrid .co b{font-size:15.5px;display:block}
+.fgrid .co{font-size:13.5px;color:var(--muted);line-height:1.85}
+.fgrid .co .en{font-size:12px;letter-spacing:.2px}
+.fnote{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media(max-width:700px){.hero h1{font-size:27px}.hero p{font-size:15px}h2{font-size:21px}
+  .formwrap{padding:24px 18px}.formwrap .lead{margin-left:0}.dc img{height:200px}}
+@media(max-width:520px){
+  .hd{gap:9px;padding:9px 14px}.hd img{width:38px;height:38px}
+  .hd .nm{font-size:14px}.hd .sb{display:none}
+  .hd .cta{padding:9px 15px;font-size:13px}
+  .hero{padding:30px 0 4px}.recap{margin-left:0;margin-right:0}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd">
+    <img src="/img/bd-mark.png" alt="BD Distribution">
+    <div>
+      <div class="nm">บริษัท บีดี ดิสทริบิวชั่น จำกัด</div>
+      <div class="sb">ผู้จัดจำหน่ายสินค้ายูนิลีเวอร์ · จังหวัดนนทบุรี</div>
+    </div>
+    <a class="cta" href="#form">สมัครร้านค้า</a>
+  </div>
+</header>
+
+<div id="page">
+<div class="wrap">
+
+  <div class="hero">
+    <div class="badge">🤝 รับสมัครร้านค้าคู่ค้า พื้นที่นนทบุรี</div>
+    <h1>ขายสินค้า<b>ยูนิลีเวอร์</b><br>รับตรงจากศูนย์กระจายสินค้า</h1>
+    <p>ร้านโชห่วย ร้านค้าส่ง ร้านออนไลน์ และร้านค้าทุกประเภทในนนทบุรี
+       สมัครเป็นร้านค้าคู่ค้ากับเราได้ฟรี มีเซลล์เข้าดูแลถึงหน้าร้าน</p>
+    <div class="btns">
+      <a class="btn" href="#form">กรอกใบสมัคร ใช้เวลา 1 นาที</a>
+      <a class="btn ghost" href="#why">ทำไมต้องสั่งกับเรา</a>
+    </div>
+  </div>
+
+  <div class="shot"><img src="/img/products.jpg" alt="สินค้ายูนิลีเวอร์ที่จัดจำหน่าย" loading="lazy"></div>
+
+  <div class="brands">
+    <h3>แบรนด์ในเครือยูนิลีเวอร์ที่เราจัดจำหน่าย</h3>
+    <div class="blist" id="blist"></div>
+  </div>
+
+  <section id="why">
+    <h2>ทำไมร้านค้าถึงสั่งกับ บีดี ดิสทริบิวชั่น</h2>
+    <div class="sub">เราเป็นผู้จัดจำหน่ายที่ได้รับแต่งตั้งจากยูนิลีเวอร์ ดูแลพื้นที่นนทบุรีโดยตรง</div>
+    <div class="cards">
+      <div class="card"><div class="ic">🚚</div><b>ส่งถึงหน้าร้าน</b><span>มีรถส่งประจำสายทั่วนนทบุรี ไม่ต้องไปรับเอง ไม่ต้องเสียค่าขนส่ง</span></div>
+      <div class="card"><div class="ic">🏷️</div><b>ราคาตัวแทนจำหน่าย</b><span>รับตรงจากศูนย์ ไม่ผ่านคนกลาง ได้ราคาสำหรับร้านค้าจริง</span></div>
+      <div class="card"><div class="ic">🎁</div><b>โปรโมชั่นจากยูนิลีเวอร์</b><span>ของแถมในบิลและรายการส่งเสริมการขายรอบใหม่ทุกเดือน</span></div>
+      <div class="card"><div class="ic">👤</div><b>มีเซลล์ประจำสาย</b><span>มีพนักงานขายดูแลร้านของคุณโดยเฉพาะ สั่งของ–เช็คของ ได้ตลอด</span></div>
+    </div>
+  </section>
+
+  <section style="padding-top:8px">
+    <div class="dc">
+      <img src="/img/warehouse-inside.jpg" alt="ภายในศูนย์กระจายสินค้า" loading="lazy">
+      <div class="ov">
+        <b>ศูนย์กระจายสินค้าของเรา · บางบัวทอง นนทบุรี</b>
+        <span>สต็อกสินค้าพร้อมส่งทุกวันทำการ จัดของตามใบสั่งของร้านค้าและกระจายออกตามสายวิ่ง</span>
+        <div class="dcstat">
+          <div><i>6</i><em>อำเภอที่ให้บริการ</em></div>
+          <div><i>1,000+</i><em>รายการสินค้า</em></div>
+          <div><i>ทุกวันทำการ</i><em>รอบจัดส่ง</em></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="form" style="padding-top:12px">
+    <div class="formwrap">
+      <div class="ft"><div class="n">✓</div><h2>ใบสมัครร้านค้าคู่ค้า</h2></div>
+      <div class="lead">กรอกข้อมูลสั้น ๆ แล้วทีมงานจะติดต่อกลับภายใน 1–2 วันทำการ</div>
+
+      <form id="f" novalidate autocomplete="on">
+        <div class="grid">
+          <div class="f" id="w-first">
+            <label for="first">ชื่อ <i>*</i></label>
+            <input id="first" name="first" maxlength="60" autocomplete="given-name" placeholder="เช่น สมชาย">
+            <div class="err"></div>
+          </div>
+          <div class="f" id="w-last">
+            <label for="last">นามสกุล <i>*</i></label>
+            <input id="last" name="last" maxlength="60" autocomplete="family-name" placeholder="เช่น ใจดี">
+            <div class="err"></div>
+          </div>
+          <div class="f full" id="w-phone">
+            <label for="phone">เบอร์ติดต่อกลับ <i>*</i> <span class="hint">— ใช้ติดต่อยืนยันการสมัคร</span></label>
+            <input id="phone" name="phone" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="08X-XXX-XXXX">
+            <div class="err"></div>
+          </div>
+
+          <div class="f full" id="w-shop">
+            <label for="shop">ชื่อร้าน และที่ตั้งร้านค้า <i>*</i>
+              <span class="hint">— บ้านเลขที่ / หมู่ / ถนน / จุดสังเกต</span></label>
+            <textarea id="shop" name="shop" maxlength="400" placeholder="เช่น ร้านป้าแดง 39/12 หมู่ 4 ถนน 345 ตรงข้ามปั๊มน้ำมัน"></textarea>
+            <div class="err"></div>
+          </div>
+          <div class="f" id="w-amphoe">
+            <label for="amphoe">อำเภอ <i>*</i></label>
+            <select id="amphoe" name="amphoe"><option value="">— เลือกอำเภอ —</option></select>
+            <div class="err"></div>
+          </div>
+          <div class="f" id="w-tambon">
+            <label for="tambon">ตำบล <i>*</i></label>
+            <select id="tambon" name="tambon"><option value="">— เลือกอำเภอก่อน —</option></select>
+            <input id="tambonOther" maxlength="60" placeholder="พิมพ์ชื่อตำบล" style="display:none;margin-top:8px">
+            <div class="err"></div>
+          </div>
+
+          <div class="f full" id="w-type">
+            <label>ประเภทร้านค้า <i>*</i></label>
+            <div class="types" id="types"></div>
+            <input id="typeOther" maxlength="60" placeholder="ระบุประเภทร้านของคุณ" style="display:none;margin-top:4px">
+            <div class="err"></div>
+          </div>
+
+          <div class="f full">
+            <label for="note">อยากบอกอะไรเพิ่มเติมไหม <span class="hint">— ไม่บังคับ</span></label>
+            <textarea id="note" name="note" maxlength="300" style="min-height:64px" placeholder="เช่น สนใจสินค้ากลุ่มผงซักฟอกเป็นหลัก / สะดวกให้ติดต่อช่วงบ่าย"></textarea>
+          </div>
+        </div>
+
+        <div class="hp" aria-hidden="true"><label>อย่ากรอกช่องนี้<input id="website" name="website" tabindex="-1" autocomplete="off"></label></div>
+
+        <button class="submit" id="sb" type="submit">ส่งใบสมัคร</button>
+        <div class="formmsg" id="msg"></div>
+        <div class="pdpa">การกดส่งใบสมัคร ถือว่าท่านยินยอมให้ บริษัท บีดี ดิสทริบิวชั่น จำกัด
+          เก็บและใช้ข้อมูลข้างต้นเพื่อติดต่อกลับและเปิดบัญชีร้านค้าเท่านั้น</div>
+      </form>
+    </div>
+  </section>
+
+</div>
+</div>
+
+<div id="done">
+  <div class="tick">✓</div>
+  <h2>ได้รับใบสมัครของคุณแล้ว</h2>
+  <p>ทีมงาน บีดี ดิสทริบิวชั่น จะติดต่อกลับภายใน 1–2 วันทำการ<br>ขอบคุณที่สนใจเป็นร้านค้าคู่ค้ากับเราครับ</p>
+  <div class="recap" id="recap"></div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="fgrid">
+      <img src="/img/bd-logo.png" alt="BD Distribution">
+      <div class="co">
+        <b>บริษัท บีดี ดิสทริบิวชั่น จำกัด</b>
+        <div class="en">BD DISTRIBUTION COMPANY LIMITED</div>
+        เลขทะเบียนนิติบุคคล 0105536070028<br>
+        39/12-13 หมู่ที่ 4 ถนน 345 ตำบลละหาร<br>
+        อำเภอบางบัวทอง จังหวัดนนทบุรี 11110
+      </div>
+    </div>
+    <div class="fnote">
+      <span>© บริษัท บีดี ดิสทริบิวชั่น จำกัด · ผู้จัดจำหน่ายสินค้ายูนิลีเวอร์ พื้นที่นนทบุรี</span>
+      <span>เครื่องหมายการค้าทั้งหมดเป็นของยูนิลีเวอร์</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ---------- brand sprite: crops of /img/unilever-brands.jpg (1200x800).
+   Only the brands BD carries are shown — Lipton / closeup / aviance / TONI&GUY are left out. ---- */
+var SHEET=[1200,800];
+var BRANDS=[
+  {n:"AXE",     x:925, y:32,  w:138, h:58},
+  {n:"POND'S",  x:748, y:98,  w:172, h:62},
+  {n:"LUX",     x:752, y:262, w:162, h:70},
+  {n:"Rexona",  x:296, y:296, w:110, h:115},
+  {n:"Vim",     x:1052,y:190, w:110, h:80},
+  {n:"Dove",    x:166, y:486, w:155, h:96},
+  {n:"โอโม่",    x:932, y:375, w:92,  h:95},
+  {n:"sunsilk", x:216, y:656, w:136, h:74},
+  {n:"Knorr",   x:966, y:600, w:122, h:96},
+  {n:"Unilever Food Solutions",x:708,y:534,w:182,h:104}
+];
+(function(){
+  var el=document.getElementById("blist"), h="";
+  for(var i=0;i<BRANDS.length;i++)
+    h+='<div class="blchip"><div class="bl" data-i="'+i+'" title="'+BRANDS[i].n+
+       '" role="img" aria-label="'+BRANDS[i].n+'"></div></div>';
+  el.innerHTML=h;
+  /* size the crops from the real chip width so nothing is clipped on a phone */
+  function layout(){
+    var chips=el.querySelectorAll(".blchip");if(!chips.length)return;
+    var cw=chips[0].clientWidth-14, ch=chips[0].clientHeight-14;
+    for(var i=0;i<chips.length;i++){
+      var b=BRANDS[i], d=chips[i].firstChild, s=Math.min(cw/b.w, ch/b.h);
+      d.style.width=(b.w*s).toFixed(1)+"px";d.style.height=(b.h*s).toFixed(1)+"px";
+      d.style.backgroundSize=(SHEET[0]*s).toFixed(1)+"px "+(SHEET[1]*s).toFixed(1)+"px";
+      d.style.backgroundPosition=(-b.x*s).toFixed(1)+"px "+(-b.y*s).toFixed(1)+"px";
+    }
+  }
+  layout();
+  var t;addEventListener("resize",function(){clearTimeout(t);t=setTimeout(layout,120);});
+})();
+
+/* ---------- Nonthaburi districts / subdistricts ---------- */
+var AREA={
+ "เมืองนนทบุรี":["สวนใหญ่","ตลาดขวัญ","บางเขน","บางกระสอ","ท่าทราย","บางไผ่","บางศรีเมือง","บางกร่าง","ไทรม้า","บางรักน้อย"],
+ "บางกรวย":["วัดชลอ","บางกรวย","บางสีทอง","บางขนุน","บางขุนกอง","บางคูเวียง","มหาสวัสดิ์","ปลายบาง","ศาลากลาง"],
+ "บางใหญ่":["บางม่วง","บางแม่นาง","บางเลน","เสาธงหิน","บางใหญ่","บ้านใหม่"],
+ "บางบัวทอง":["โสนลอย","บางบัวทอง","บางรักใหญ่","บางคูรัด","ละหาร","ลำโพ","พิมลราช","บางรักพัฒนา"],
+ "ไทรน้อย":["ไทรน้อย","ราษฎร์นิยม","หนองเพรางาย","ไทรใหญ่","ขุนศรี","คลองขวาง","ทวีวัฒนา"],
+ "ปากเกร็ด":["ปากเกร็ด","บางตลาด","บ้านใหม่","บางพูด","บางตะไนย์","คลองพระอุดม","ท่าอิฐ","เกาะเกร็ด","อ้อมเกร็ด","คลองข่อย","บางพลับ","คลองเกลือ"]
+};
+var OTHER="พื้นที่อื่น (นอกนนทบุรี)";
+var TYPES=["ร้านโชห่วย","ร้านค้าส่ง","ร้านออนไลน์","ขายของเอง","ร้านซักรีด","ร้านเครื่องครัว/เบเกอรี่","ร้านเพ็ทช็อป","อื่นๆ (ระบุเอง)"];
+
+var $=function(id){return document.getElementById(id)};
+var amphoe=$("amphoe"), tambon=$("tambon"), tOther=$("tambonOther");
+(function(){
+  var h="";for(var k in AREA)h+='<option value="'+k+'">'+k+'</option>';
+  amphoe.insertAdjacentHTML("beforeend",h+'<option value="'+OTHER+'">'+OTHER+'</option>');
+  var t="";for(var i=0;i<TYPES.length;i++){
+    t+='<label data-v="'+TYPES[i]+'"><input type="radio" name="stype" value="'+TYPES[i]+'"><span>'+TYPES[i]+'</span></label>';}
+  $("types").innerHTML=t;
+})();
+amphoe.onchange=function(){
+  var list=AREA[amphoe.value]||[], h='<option value="">— เลือกตำบล —</option>';
+  for(var i=0;i<list.length;i++)h+='<option value="'+list[i]+'">'+list[i]+'</option>';
+  h+='<option value="__o">อื่นๆ (พิมพ์เอง)</option>';
+  tambon.innerHTML=h;
+  var out=(amphoe.value===OTHER);
+  tambon.style.display=out?"none":"";tOther.style.display=out?"":"none";
+  if(!out)tOther.value="";
+  clr("w-amphoe");clr("w-tambon");
+};
+tambon.onchange=function(){tOther.style.display=(tambon.value==="__o")?"":"none";clr("w-tambon");};
+$("types").onclick=function(e){
+  var lb=e.target.closest("label");if(!lb)return;
+  var ls=this.querySelectorAll("label");
+  for(var i=0;i<ls.length;i++)ls[i].classList.remove("on");
+  lb.classList.add("on");lb.querySelector("input").checked=true;
+  $("typeOther").style.display=(lb.dataset.v===TYPES[TYPES.length-1])?"":"none";
+  clr("w-type");
+};
+
+/* ---------- validation ---------- */
+function bad(w,m){var e=$(w);e.classList.add("bad");e.querySelector(".err").textContent=m;}
+function clr(w){var e=$(w);if(!e)return;e.classList.remove("bad");var q=e.querySelector(".err");if(q)q.textContent="";}
+["first","last","phone","shop"].forEach(function(id){$(id).oninput=function(){clr("w-"+id)};});
+/* Thai mobile 0X-XXXX-XXXX / landline 0X-XXX-XXXX — 9 or 10 digits starting with 0 */
+function okPhone(v){var d=v.replace(/\D/g,"");return /^0\d{8,9}$/.test(d);}
+function val(){
+  var e=null,g=function(id){return $(id).value.trim();};
+  if(!g("first")){bad("w-first","กรุณากรอกชื่อ");e=e||"w-first";}
+  if(!g("last")){bad("w-last","กรุณากรอกนามสกุล");e=e||"w-last";}
+  if(!g("phone")){bad("w-phone","กรุณากรอกเบอร์ติดต่อกลับ");e=e||"w-phone";}
+  else if(!okPhone(g("phone"))){bad("w-phone","เบอร์ไม่ถูกต้อง — ใส่เลข 9–10 หลัก ขึ้นต้นด้วย 0");e=e||"w-phone";}
+  if(g("shop").length<6){bad("w-shop","กรุณากรอกชื่อร้านและที่ตั้งให้ครบ");e=e||"w-shop";}
+  if(!amphoe.value){bad("w-amphoe","กรุณาเลือกอำเภอ");e=e||"w-amphoe";}
+  var tb=tamValue();
+  if(!tb){bad("w-tambon","กรุณาระบุตำบล");e=e||"w-tambon";}
+  if(!typeValue()){bad("w-type","กรุณาเลือกประเภทร้านค้า");e=e||"w-type";}
+  return e;
+}
+function tamValue(){
+  if(amphoe.value===OTHER||tambon.value==="__o")return tOther.value.trim();
+  return tambon.value;
+}
+function typeValue(){
+  var r=document.querySelector('input[name="stype"]:checked');if(!r)return "";
+  if(r.value===TYPES[TYPES.length-1])return $("typeOther").value.trim();
+  return r.value;
+}
+
+/* ---------- submit ---------- */
+var T0=Date.now();
+$("f").onsubmit=async function(ev){
+  ev.preventDefault();
+  var msg=$("msg");msg.className="formmsg";
+  var e=val();
+  if(e){$(e).scrollIntoView({block:"center"});return;}
+  var body={
+    first:$("first").value.trim(), last:$("last").value.trim(),
+    phone:$("phone").value.trim(), shop:$("shop").value.trim(),
+    amphoe:amphoe.value, tambon:tamValue(), type:typeValue(),
+    note:$("note").value.trim(), website:$("website").value, ms:Date.now()-T0
+  };
+  var b=$("sb");b.disabled=true;b.textContent="กำลังส่ง...";
+  try{
+    var r=await fetch("/api/apply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    var d=await r.json().catch(function(){return {};});
+    if(!r.ok)throw new Error(d.error||("ส่งไม่สำเร็จ (HTTP "+r.status+")"));
+    $("page").style.display="none";document.querySelector("header .cta").style.display="none";
+    $("recap").innerHTML=
+      '<div><span>ชื่อผู้สมัคร</span><b>'+esc(body.first+" "+body.last)+'</b></div>'+
+      '<div><span>เบอร์ติดต่อ</span><b>'+esc(body.phone)+'</b></div>'+
+      '<div><span>ประเภทร้าน</span><b>'+esc(body.type)+'</b></div>'+
+      '<div><span>พื้นที่</span><b>ต.'+esc(body.tambon)+' อ.'+esc(body.amphoe)+'</b></div>';
+    $("done").style.display="block";window.scrollTo(0,0);
+  }catch(ex){
+    msg.className="formmsg e";msg.textContent="⚠️ "+ex.message+" — กรุณาลองใหม่อีกครั้ง หรือโทรติดต่อศูนย์โดยตรง";
+    b.disabled=false;b.textContent="ส่งใบสมัคร";
+  }
+};
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+</script>
+</body>
+</html>
