@@ -2511,10 +2511,12 @@ const PS_SEC=[
    sub:'สั่งได้ไม่เกินจำนวนที่ Unilever กำหนด แล้วได้ของตามนั้นแน่นอน'},
   {k:"s",icon:"⚠️",title:"ของขาดชั่วคราว",color:"#7A7A7A",
    sub:'ยังกดสั่งได้ แต่<b>ของขาด สั่งไปก็ไม่ได้ของ</b> — ถ้าศูนย์สั่งไปแล้วจะขึ้นเตือนให้'},
-  {k:"x",icon:"⛔",title:"ปิดช่องสั่ง — สั่งไม่ได้",color:"#B03A5B",
-   sub:'ช่องสั่งถูกปิด อาจเปลี่ยนรหัส เปลี่ยนโฉม หรือยุติการขาย'},
-  {k:"k",icon:"🔄",title:"รหัสสินค้าใหม่",color:"#2B6CB0",
-   sub:'รหัสนี้คือรหัส<b>ใหม่</b> — รหัสเดิมมักยังอยู่ในใบสั่งแต่สั่งไม่ได้แล้ว'}];
+  {k:"x",icon:"🔄",title:"ยังไม่เปิดให้สั่ง",color:"#0F9ED5",
+   sub:'ช่องสั่ง<b>ถมสีฟ้า</b> = ปิดเฉพาะรอบนี้ ส่วนใหญ่เป็นช่วง<b>สลับรหัสเก่า/ใหม่</b> — ดูคอลัมน์ขวาว่ารอบนี้ให้สั่งรหัสไหนแทน'},
+  {k:"xd",icon:"⛔",title:"เลิกขายแล้ว",color:"#B03A5B",
+   sub:'ช่องสั่ง<b>ถมสีชมพู</b> = ตัดออกจากรายการถาวร ไม่มีรหัสใหม่มาแทน ไม่ต้องสั่งอีก'},
+  {k:"k",icon:"🆕",title:"รหัสสินค้าใหม่",color:"#2B6CB0",
+   sub:'รหัสนี้คือรหัส<b>ใหม่</b> — บางตัวยังไม่เปิดให้สั่ง ต้องสั่งรหัสเดิมไปก่อน ดูคอลัมน์ขวา'}];
 /* Always derive the list from the stored days, so a stale POSTATUS.dates can never hide a day. */
 function psDates(){return Object.keys(((POSTATUS&&POSTATUS.data)||{})).sort();}
 function psDay(d){return ((POSTATUS&&POSTATUS.data)||{})[d]||null;}
@@ -2529,8 +2531,23 @@ function psCat(code){
 }
 function psRows(day,key){
   const it=(day&&day.items)||{},out=[];
+  /* "x" holds the fill colour of the order cell; the two colours mean different things,
+     so the tab shows them as two groups: x = ฟ้า (ปิดชั่วคราว), xd = ชมพู (เลิกขาย). */
+  if(key==="x"||key==="xd"){
+    const want=(key==="xd")?"dropped":"closed";
+    for(const c in it){if(it[c].x&&poClosedKind(it[c].x)===want)out.push(Object.assign({code:c},it[c]));}
+  }else if(key==="k"){
+    /* pink is the quota marker, not a new code — it has its own section */
+    for(const c in it){if(it[c].k===1)out.push(Object.assign({code:c},it[c]));}
+  }else
   for(const c in it){if(it[c][key]!=null&&it[c][key]!==0&&it[c][key]!==false)out.push(Object.assign({code:c},it[c]));}
-  out.sort((a,b)=>(psName(a.code)||a.code).localeCompare(psName(b.code)||b.code,"th"));
+  const byName=(a,b)=>(psName(a.code)||a.code).localeCompare(psName(b.code)||b.code,"th");
+  if(key==="x"||key==="xd"||key==="k"){
+    /* rows we can actually answer ("order this code instead") come first — that is the
+       only part of the list the manager can act on today */
+    const pick={};out.forEach(r=>{const sw=psSwap(r.code);pick[r.code]=(sw&&sw.pick)?1:0;});
+    out.sort((a,b)=>(pick[b.code]-pick[a.code])||byName(a,b));
+  }else out.sort(byName);
   return out;
 }
 function posSetMain(m){
@@ -2609,13 +2626,17 @@ function renderPOSDiff(){
   if(i<=0){el.innerHTML=`<div class="panel"><div class="psub">ยังไม่มีรอบก่อนหน้าให้เทียบ — อัพใบสั่งอีกวันแล้วระบบจะสรุป "อะไรเปลี่ยนไปบ้าง" ให้อัตโนมัติ</div></div>`;return;}
   const cur=psDay(PS2.date),prv=psDay(ds[i-1]);
   const ci=(cur&&cur.items)||{},pi=(prv&&prv.items)||{};
-  const has=(o,c,k)=>!!(o[c]&&o[c][k]!=null&&o[c][k]!==0&&o[c][k]!==false);
+  const has=(o,c,k)=>{const e=o[c];if(!e)return false;
+    if(k==="x")return !!(e.x&&poClosedKind(e.x)==="closed");
+    if(k==="xd")return !!(e.x&&poClosedKind(e.x)==="dropped");
+    return !!(e[k]!=null&&e[k]!==0&&e[k]!==false);};
   const all={};Object.keys(ci).forEach(c=>all[c]=1);Object.keys(pi).forEach(c=>all[c]=1);
   const grp={};PS_SEC.forEach(sec=>grp[sec.k]={on:[],off:[]});
   Object.keys(all).forEach(c=>PS_SEC.forEach(sec=>{
     const a=has(ci,c,sec.k),b=has(pi,c,sec.k);
     if(a&&!b)grp[sec.k].on.push(c);else if(!a&&b)grp[sec.k].off.push(c);}));
-  const LAB={p:["เริ่มมีโปรแถม","หมดโปรแถม"],q:["เปิดโควต้าใหม่","ปิดโควต้า"],s:["ของขาดเพิ่ม","กลับมามีของ"],x:["ถูกปิดช่องสั่ง","เปิดให้สั่งได้อีก"],k:["ขึ้นรหัสใหม่","ไม่ใช่รหัสใหม่แล้ว"]};
+  const LAB={p:["เริ่มมีโปรแถม","หมดโปรแถม"],q:["เปิดโควต้าใหม่","ปิดโควต้า"],s:["ของขาดเพิ่ม","กลับมามีของ"],
+    x:["ปิดช่องสั่งเพิ่ม","เปิดให้สั่งได้แล้ว"],xd:["เลิกขายเพิ่ม","กลับมาขายอีกครั้ง"],k:["ขึ้นรหัสใหม่","ไม่ใช่รหัสใหม่แล้ว"]};
   const chips=[];
   PS_SEC.forEach(sec=>{const g=grp[sec.k];
     if(g.on.length)chips.push(`<span class="ps2-chip up" onclick="psShowDiff('${sec.k}','on')">${sec.icon} ${LAB[sec.k][0]} <b>${g.on.length}</b></span>`);
@@ -2630,7 +2651,8 @@ function renderPOSDiff(){
 function psShowDiff(k,dir){
   const g=(window.__psDiff||{})[k];if(!g)return;
   const sec=PS_SEC.find(x=>x.k===k),list=g[dir]||[];
-  const LAB={p:["เริ่มมีโปรแถม","หมดโปรแถม"],q:["เปิดโควต้าใหม่","ปิดโควต้า"],s:["ของขาดเพิ่ม","กลับมามีของ"],x:["ถูกปิดช่องสั่ง","เปิดให้สั่งได้อีก"],k:["ขึ้นรหัสใหม่","ไม่ใช่รหัสใหม่แล้ว"]};
+  const LAB={p:["เริ่มมีโปรแถม","หมดโปรแถม"],q:["เปิดโควต้าใหม่","ปิดโควต้า"],s:["ของขาดเพิ่ม","กลับมามีของ"],
+    x:["ปิดช่องสั่งเพิ่ม","เปิดให้สั่งได้แล้ว"],xd:["เลิกขายเพิ่ม","กลับมาขายอีกครั้ง"],k:["ขึ้นรหัสใหม่","ไม่ใช่รหัสใหม่แล้ว"]};
   document.getElementById("psDiffList").innerHTML=`<div style="margin-top:10px"><b>${sec.icon} ${LAB[k][dir==="on"?0:1]} (${list.length})</b>
     <div style="overflow-x:auto;margin-top:6px"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>หมวด</th></tr></thead><tbody>`+
     list.map(c=>`<tr><td>${c}</td><td style="text-align:left">${psName(c)||"-"}</td><td>${psCat(c)||"-"}</td></tr>`).join("")+`</tbody></table></div></div>`;
@@ -2648,12 +2670,49 @@ function renderPOSBody(){
       <div class="psub">${sec.sub}</div>
       ${rows.length?psTable(sec,rows):'<div class="psub" style="margin-top:8px">'+(total?"ไม่พบรายการที่ค้นหา":"ไม่มีรายการในกลุ่มนี้")+'</div>'}</div>`;
 }
+/* ============================================================================
+ * "รอบนี้ให้สั่งรหัสไหน" — the old/new code switch, read out of the form's own colours.
+ *
+ * Pattern found in the 01/09 form (1,254 rows): the order cell is filled with TWO
+ * different colours and they are not the same thing.
+ *   ฟ้า 00FFFF (94 rows)  — 66% of them are ALSO a new code (yellow code cell), and they
+ *                           carry a release note in the name ("สั่ง1กย", "1st 20 กย") 8x
+ *                           more often than an open row. Never on a grey-band row.
+ *                           => "not open THIS round", the switch-over marker.
+ *   ชมพู FF00FF (11 rows) — never a new code, never grey, never on promo, and the SKU has
+ *                           no replacement anywhere in the form. => dropped for good.
+ * Of the 24 SKUs that carry two codes, the most common state by far is
+ * "new code = ฟ้า, old code = open" — i.e. keep buying the OLD one until it is released.
+ * So the right answer is never "use the new code": it is whichever code of that product
+ * the form leaves orderable this round.
+ * ==========================================================================*/
+function psSwap(code){
+  const day=psDay(PS2.date);if(!day)return null;
+  const items=(day.items)||{};
+  const sibs=codeAliases(code).filter(c=>c!==String(code)&&poInForm(day,c)===true);
+  if(!sibs.length)return null;
+  const okNow=sibs.filter(c=>!(items[c]&&(items[c].s||items[c].x)));
+  const pick=okNow.find(c=>items[c]&&items[c].k===1)||okNow[0]||null;
+  return {pick:pick,sibs:sibs,items:items};
+}
+function psSwapCell(code,dead){
+  const r=psSwap(code);
+  if(!r||!r.sibs.length)
+    return dead?'<span class="psub">ไม่มีรหัสอื่นของสินค้านี้ในใบสั่ง — ตัดออกได้เลย</span>'
+               :'<span class="psub">ไม่มีรหัสอื่นในใบสั่ง — รอบนี้สั่งไม่ได้</span>';
+  if(r.pick)return `<span class="pill g">✅ สั่งรหัส <b>${r.pick}</b> แทน</span>`+
+    (r.items[r.pick]&&r.items[r.pick].k===1?' <span class="psub">(รหัสใหม่)</span>':' <span class="psub">(รหัสเดิม)</span>');
+  const why=r.sibs.map(c=>{const f=r.items[c]||{};
+    return c+(f.s?" ของขาด":f.x?(poClosedKind(f.x)==="dropped"?" เลิกขาย":" ปิดชั่วคราว"):"");}).join(" · ");
+  return `<span class="pill b">⚠️ รหัสอื่นก็สั่งไม่ได้</span> <span class="psub">${why}</span>`;
+}
 function psTable(sec,rows){
   const head={p:`<th>แถม</th><th>ศูนย์สั่งวันนี้ (ลัง)</th><th style="text-align:left">เช็คจำนวนแถม</th>`,
               q:`<th>โควต้าสูงสุด (ลัง)</th><th>ใส่ในช่อง Order Confirm</th><th style="text-align:left">สถานะ</th>`,
               s:`<th>ศูนย์สั่งวันนี้ (ลัง)</th><th style="text-align:left">สถานะ</th>`,
-              x:`<th style="text-align:left">สถานะ</th>`,
-              k:`<th style="text-align:left">สถานะ</th>`}[sec.k];
+              x:`<th style="text-align:left">สถานะ</th><th style="text-align:left">รอบนี้ให้สั่งรหัสไหน</th>`,
+              xd:`<th style="text-align:left">สถานะ</th><th style="text-align:left">มีตัวแทนไหม</th>`,
+              k:`<th style="text-align:left">สถานะ</th><th style="text-align:left">รอบนี้ให้สั่งรหัสไหน</th>`}[sec.k];
   const cell=r=>{
     const ord=psOrdered(PS2.date,r.code);
     if(sec.k==="p"){
@@ -2683,8 +2742,14 @@ function psTable(sec,rows){
       const st=ord?`<span class="pill b">⚠️ ศูนย์สั่งไป ${ord} ลัง แต่ของขาด — เตรียมโดน Drop</span>`:'<span class="psub">ยังไม่ได้สั่ง — ดีแล้ว</span>';
       return `<td style="text-align:center">${ord||"-"}</td><td style="text-align:left">${st}</td>`;
     }
-    if(sec.k==="x")return `<td style="text-align:left"><span class="ps2-dot" style="background:#${r.x}"></span> ปิดช่องสั่ง${ord?` · <b class="down">ศูนย์ใส่จำนวนไป ${ord} ลัง (จะสั่งไม่ได้)</b>`:""}</td>`;
-    return `<td style="text-align:left">${r.k===2?'<span class="pill w">🆕 สินค้าเปิดใหม่</span>':'<span class="pill g">🔄 รหัสใหม่ — ใช้รหัสนี้แทนรหัสเดิม</span>'}${ord?` · สั่งแล้ว ${ord} ลัง`:""}</td>`;
+    if(sec.k==="x"||sec.k==="xd"){
+      const dead=(sec.k==="xd");
+      const st=`<span class="ps2-dot" style="background:#${r.x}"></span> ${dead?"เลิกขายถาวร":"ปิดชั่วคราวรอบนี้"}`+
+        (ord?` · <b class="down">ศูนย์ใส่จำนวนไป ${ord} ลัง (จะสั่งไม่ได้)</b>`:"");
+      return `<td style="text-align:left">${st}</td><td style="text-align:left">${psSwapCell(r.code,dead)}</td>`;
+    }
+    return `<td style="text-align:left">${r.k===2?'<span class="pill w">🎫 รหัสโควต้า</span>':'<span class="pill g">🆕 รหัสใหม่</span>'}${ord?` · สั่งแล้ว ${ord} ลัง`:""}</td>`+
+      `<td style="text-align:left">${psSwapCell(r.code,false)}</td>`;
   };
   return `<div style="overflow-x:auto;margin-top:8px"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>หมวด</th>${head}</tr></thead><tbody>`+
     rows.map(r=>`<tr><td>${r.code}</td><td style="text-align:left">${psName(r.code)||'<span class="psub">(ไม่มีชื่อในระบบ)</span>'}</td><td style="font-size:11px;color:var(--muted)">${psCat(r.code)||"-"}</td>${cell(r)}</tr>`).join("")+
@@ -2703,11 +2768,18 @@ function psTable(sec,rows){
  * ==========================================================================*/
 const PO_WHY={
   oos:    {icon:"⚠️",lab:"ของขาดชั่วคราว",pill:"w",note:"Unilever คาดสีเทาไว้ = ของขาด สั่งไปก็ไม่ได้ของ"},
-  closed: {icon:"⛔",lab:"ปิดช่องสั่ง",pill:"b",note:"ช่องสั่งถูกถมสี = เลิกผลิต ปรับสูตร หรือเปลี่ยนรหัส"},
+  /* ใบสั่งถมช่อง "สั่ง" ด้วยสองสีคนละความหมาย (ดูวิเคราะห์ในไฟล์ 01/09):
+     ฟ้า 00FFFF = ยังไม่เปิดให้สั่งรอบนี้ (ส่วนใหญ่เป็นรหัสใหม่ที่รอเปิด หรือรหัสเก่าที่กำลังถูกแทน)
+     ชมพู FF00FF = เลิกขายถาวร (ไม่มีรหัสใหม่ ไม่มีโปรฯ ไม่คาดเทา — ตัดออกจากรายการ) */
+  closed: {icon:"🔄",lab:"ยังไม่เปิดให้สั่ง",pill:"b",note:"ช่องสั่งถมสีฟ้า = ปิดชั่วคราวรอบนี้ มักเป็นช่วงสลับรหัสเก่า/ใหม่"},
+  dropped:{icon:"⛔",lab:"เลิกขายแล้ว",pill:"b",note:"ช่องสั่งถมสีชมพู = ตัดออกจากรายการถาวร ไม่ต้องสั่งอีก"},
   notin:  {icon:"📭",lab:"ไม่มีในใบสั่งรอบนั้น",pill:"b",note:"สินค้านี้ไม่ได้อยู่ในใบสั่งของวันนั้นเลย"},
   skip:   {icon:"💰",lab:"ศูนย์ไม่ได้สั่ง",pill:"",note:"ช่องสั่งเปิดปกติ แต่ศูนย์เลือกไม่สั่งรอบนี้ (เช่น ราคาไม่ได้)"},
   unknown:{icon:"❔",lab:"ไม่ทราบสาเหตุ",pill:"",note:"ยังไม่มีข้อมูลสีของใบสั่งวันนั้น — อัพใบสั่งวันนั้นซ้ำ ระบบจะบอกสาเหตุได้"}};
-const PO_WHY_ORDER=["oos","closed","notin","skip","unknown"];
+const PO_WHY_ORDER=["oos","closed","dropped","notin","skip","unknown"];
+const PO_CLOSED_TEMP="00FFFF";   /* ฟ้า = ปิดชั่วคราว */
+const PO_CLOSED_DEAD="FF00FF";   /* ชมพู = เลิกขาย   */
+function poClosedKind(x){return String(x||"").toUpperCase()===PO_CLOSED_DEAD?"dropped":"closed";}
 const _pgEmpty={};
 let _pgIdx=null,_pgS=null,_pgM=null,_pgO=null;
 /* ล้าง cache หลังพาร์สไฟล์ที่เพิ่มชื่อสินค้า (พาร์สเซอร์แก้ ORDERS.names ในที่เดิม) */
@@ -2753,7 +2825,7 @@ function poWhy(reqDate,code){
   const at=poRoundFor(reqDate);
   if(!at)return {why:"unknown"};
   const day=psDay(at),items=(day&&day.items)||{};
-  const cls=c=>{const f=items[c];return (f&&f.s)?"oos":(f&&f.x)?"closed":"skip";};
+  const cls=c=>{const f=items[c];return (f&&f.s)?"oos":(f&&f.x)?poClosedKind(f.x):"skip";};
   let why,used=String(code),aliases=null;
   const here=poInForm(day,used);
   if(items[used])why=cls(used);
@@ -2765,10 +2837,16 @@ function poWhy(reqDate,code){
     if(alt.length){used=alt[0];why=cls(used);}
     else why=(here===null)?"unknown":"notin";
   }
-  /* an obvious successor: same product, on the form, orderable, and marked as a new code */
+  /* Which OTHER code of the same product can actually be ordered this round?
+     A fully open code carries no colour at all, so "has a flag" is the wrong test — the
+     usual switch-over is new-code-closed + old-code-wide-open, and the open one has no
+     flag to find. Test "on the form AND not blocked" instead, preferring a code the form
+     marks as new (yellow code cell; pink means quota, not a new code). */
   let succ=null;
-  if(why==="closed"||why==="oos"||why==="notin"){
-    succ=(aliases||codeAliases(code)).find(c=>c!==String(code)&&items[c]&&!items[c].s&&!items[c].x&&items[c].k)||null;
+  if(why==="closed"||why==="dropped"||why==="oos"||why==="notin"){
+    const cand=(aliases||codeAliases(code)).filter(c=>c!==String(code)&&poInForm(day,c)===true
+      &&!(items[c]&&(items[c].s||items[c].x)));
+    succ=cand.find(c=>items[c]&&items[c].k===1)||cand[0]||null;
   }
   return {why:why,at:at,code:used,newCode:succ,exact:(at===reqDate)};
 }
@@ -2786,7 +2864,7 @@ function ordRoundKnown(d){return (ORDERS.dates||[]).some(x=>x>=d&&ORDERS.data&&O
 function reqWarn(code){
   if(!psDates().length)return "";
   const w=poWhy(REQ.date||orderRoundDate(),code);
-  if(w.why==="oos"||w.why==="closed"||w.why==="notin"){
+  if(w.why==="oos"||w.why==="closed"||w.why==="dropped"||w.why==="notin"){
     const W=PO_WHY[w.why];
     return `<span class="req-warn">${W.icon} ${W.lab}${w.newCode?" · ใช้รหัสใหม่ "+w.newCode:""}</span>`;
   }
@@ -3367,13 +3445,22 @@ function prodCategory(code){
   const nn=normProd(oname(code));if(nn&&catN[nn])return catN[nn];
   return "อื่นๆ";
 }
+/* สายไหนขอสินค้าตัวนี้บ้าง — เรียงตามลำดับสายหลัก ให้ manager อ่านง่าย */
+function reqLineTags(lines){
+  if(!lines||!lines.length)return '<span class="psub">—</span>';
+  const ord=DATA.focus_order||[];
+  return lines.slice().sort((a,b)=>{const ia=ord.indexOf(a),ib=ord.indexOf(b);
+      return (ia<0?999:ia)-(ib<0?999:ib);})
+    .map(c=>`<span class="tag ct">${((DATA.lines||{})[c]||{}).display||c}</span>`).join(" ");
+}
 function renderSalesRequests(){
   const el=document.getElementById("salesRequests");const d=ORD.date;
   const dayReq=((REQUESTS&&REQUESTS.data)||{})[d]||{};const codes=Object.keys(dayReq);
   if(!codes.length){el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${d?fmtDate(d):"-"}</h3><div class="psub">ยังไม่มีคำขอของเซลล์ในวันนี้ (เซลล์ส่งคำขอผ่านแอปแล้วจะเด้งมาที่นี่)</div>`;return;}
   const combined={};
   const perSales=codes.map(sc=>{const req=dayReq[sc],items=req.items||{};
-    const rows=Object.keys(items).map(c=>{const it=items[c];combined[c]=combined[c]||{cs:0,pc:0};combined[c].cs+=it.cs||0;combined[c].pc+=it.pc||0;
+    const rows=Object.keys(items).map(c=>{const it=items[c];combined[c]=combined[c]||{cs:0,pc:0,lines:[]};combined[c].cs+=it.cs||0;combined[c].pc+=it.pc||0;
+      if(combined[c].lines.indexOf(sc)<0)combined[c].lines.push(sc);
       return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0} / ${it.pc||0}</td></tr>`;}).join("");
     return `<div class="req-sales"><h4><span class="tag ct">${(DATA.lines[sc]&&DATA.lines[sc].display)||sc}</span> ${req.by||""} <small>· ${Object.keys(items).length} รายการ</small></h4>
       <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ลัง/ชิ้น</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;}).join("");
@@ -3385,8 +3472,8 @@ function renderSalesRequests(){
   order.forEach(cat=>{const list=byCat[cat];if(!list||!list.length)return;list.sort((a,b)=>combined[b].cs-combined[a].cs);
     const tot=list.reduce((s,c)=>s+(combined[c].cs||0),0);
     combHtml+=`<div style="margin-top:12px"><h4 style="margin:0 0 4px;border-bottom:2px solid var(--blue-soft);padding-bottom:3px">${CAT_ICON[cat]||"📦"} ${cat} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${list.length} รายการ · ${tot} ลัง</span></h4>
-      <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>รวม ลัง/ชิ้น</th></tr></thead><tbody>`+
-      list.map(c=>`<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td><b>${combined[c].cs} / ${combined[c].pc}</b></td></tr>`).join("")+`</tbody></table></div></div>`;});
+      <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>รวม ลัง/ชิ้น</th><th>สาย</th></tr></thead><tbody>`+
+      list.map(c=>`<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td><b>${combined[c].cs} / ${combined[c].pc}</b></td><td>${reqLineTags(combined[c].lines)}</td></tr>`).join("")+`</tbody></table></div></div>`;});
   el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${fmtDate(d)} <span style="font-size:13px;color:var(--muted);font-weight:400">(${codes.length} สาย)</span></h3>
     <div class="psub">รวมทุกสายเพื่อเปิดใบสั่ง (แบ่งตามหมวดในใบสั่งซื้อ ไล่เทียบทีละหน้าได้) + แยกรายเซลล์ให้ตรวจ</div>
     <div class="req-combined"><h4>📋 รวมทั้งหมด (สำหรับเปิดใบสั่ง) — แบ่งตามหมวด</h4>${haveCat?"":'<div class="note">ℹ️ ยังไม่มีข้อมูลหมวด — อัพไฟล์ใบสั่ง (BD_...xlsx) สักครั้งเพื่อให้ระบบจับหมวดจากชีต Home_Care/PC_Hair/... ให้อัตโนมัติ</div>'}${combHtml}</div>

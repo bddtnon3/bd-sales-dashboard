@@ -58,6 +58,24 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, and the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
 
+## The order form's colour grammar (analysed from the 01/09 confirm form)
+The order cell is filled with **two different colours that mean two different things** — do not
+merge them again. Evidence from that file (1,254 rows):
+- **ฟ้า `00FFFF` (94 rows) = ปิดชั่วคราวรอบนี้**, the code-switch marker. 66% are ALSO a new code
+  (yellow code cell), they carry a release note in the name (`สั่ง1กย`, `1st 20 กย`) 8x more often
+  than an open row, and they never appear on a grey band.
+- **ชมพู `FF00FF` (11 rows) = เลิกขายถาวร.** Never a new code, never grey, never on promo, and the
+  SKU has no replacement anywhere in the form.
+- **Pink code cell `FFCCFF` is the QUOTA marker, not a new code** — all 4 pink codes are exactly
+  the 4 quota rows. Only a yellow code cell (`k===1`) means "new code".
+- Grey band and a filled order cell are mutually exclusive: an out-of-stock item is left
+  orderable, so it never needs the cell closed.
+Of the 24 SKUs carrying two codes, the commonest state is **new = ฟ้า, old = open** — Unilever is
+saying "keep buying the old code until the new one is released". So the answer to "which code do I
+order?" is never "the new one": it is whichever code of that product the form leaves orderable
+this round (`psSwap` / the `succ` search in `poWhy`). A fully open code carries NO colour, so
+never test "has a flag" when looking for the orderable sibling.
+
 ## Public shop-application page (`public/join.html` → `api/apply.js`)
 A link the manager sends to shop owners in Nonthaburi. **It is reachable without logging in**, so
 `api/apply.js` writes each application as its own small blob under a SEPARATE prefix
