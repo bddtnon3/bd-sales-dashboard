@@ -71,10 +71,10 @@ header{background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-bottom:
 .bgrp h4::after{content:"";flex:1;height:1px;background:var(--line)}
 .blist{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .blist.n2{grid-template-columns:repeat(2,1fr);max-width:470px}
+/* keep this white — the gradient-heavy logos are matted onto white to stay small */
 .bchip{background:#fff;border:1px solid var(--line);border-radius:13px;padding:9px 8px 7px;text-align:center}
-.bmark{height:46px;display:flex;align-items:center;justify-content:center;margin-bottom:5px}
-.bmark img{max-height:46px;max-width:100%;width:auto;object-fit:contain}
-.bmark .wm{font-weight:800;font-size:19px;letter-spacing:.5px;line-height:1.1}
+.bmark{height:56px;display:flex;align-items:center;justify-content:center;margin-bottom:5px}
+.bmark img{max-height:56px;max-width:100%;width:auto;object-fit:contain;border-radius:5px}
 .bth{font-size:12px;color:var(--muted);font-weight:600}
 @media(max-width:640px){.blist{grid-template-columns:repeat(3,1fr)}.blist.n2{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:420px){.blist{grid-template-columns:repeat(2,1fr)}}
@@ -479,27 +479,11 @@ var $=function(id){return document.getElementById(id)};
 
 /* ================= brands, grouped the way the owner sells them ================= */
 var BGROUPS=[
- {t:"🧺 ซักผ้า",b:[
-   {th:"บรีส",     wm:"Breeze",   c:"#0B4DA2"},
-   {th:"โอโม",     img:"omo"},
-   {th:"ซันไลต์",   wm:"Sunlight", c:"#0E9A4A"},
-   {th:"คอมฟอร์ท", wm:"Comfort",  c:"#2E3192"}]},
- {t:"💇 ดูแลสุขภาพผม",b:[
-   {th:"ซันซิล",    img:"sunsilk"},
-   {th:"เคลียร์",   wm:"CLEAR",    c:"#111111",sp:"2px"},
-   {th:"โดฟ",      img:"dove"},
-   {th:"เทรซาเม่",  wm:"TRESemmé", c:"#111111"}]},
- {t:"🧴 ดูแลสุขภาพผิว",b:[
-   {th:"วาสลีน",   wm:"Vaseline", c:"#0033A0"},
-   {th:"ซิตร้า",    wm:"Citra",    c:"#8C1D2C",it:1},
-   {th:"พอนด์ส",   img:"ponds"},
-   {th:"ลักส์",     img:"lux"}]},
- {t:"🍲 อาหาร",b:[
-   {th:"คนอร์",     img:"knorr"},
-   {th:"เบสท์ฟู้ด", wm:"Best Foods",c:"#123C8C"}]},
- {t:"🚿 ทำความสะอาดสุขภัณฑ์",b:[
-   {th:"โปรแมกซ์", wm:"Promax",   c:"#1B2A6B"},
-   {th:"วิม",       img:"vim"}]}
+ {t:"🧺 ซักผ้า",b:[{th:"บรีส",f:"breeze.jpg"},{th:"โอโม",f:"omo.png"},{th:"ซันไลต์",f:"sunlight.jpg"},{th:"คอมฟอร์ท",f:"comfort.png"}]},
+ {t:"💇 ดูแลสุขภาพผม",b:[{th:"ซันซิล",f:"sunsilk.png"},{th:"เคลียร์",f:"clear.png"},{th:"โดฟ",f:"dove.png"},{th:"เทรซาเม่",f:"tresemme.png"}]},
+ {t:"🧴 ดูแลสุขภาพผิว",b:[{th:"วาสลีน",f:"vaseline.jpg"},{th:"ซิตร้า",f:"citra.png"},{th:"พอนด์ส",f:"ponds.png"},{th:"ลักส์",f:"lux.png"}]},
+ {t:"🍲 อาหาร",b:[{th:"คนอร์",f:"knorr.png"},{th:"เบสท์ฟู้ด",f:"bestfoods.jpg"}]},
+ {t:"🚿 ทำความสะอาดสุขภัณฑ์",b:[{th:"โปรแมกซ์",f:"promax.jpg"},{th:"วิม",f:"vim.jpg"}]}
 ];
 (function(){
   var h="";
@@ -507,10 +491,10 @@ var BGROUPS=[
     var g=BGROUPS[i];
     h+='<div class="bgrp"><h4>'+g.t+'</h4><div class="blist'+(g.b.length===2?" n2":"")+'">';
     for(var j=0;j<g.b.length;j++){
-      var b=g.b[j],mark;
-      if(b.img)mark='<img src="/img/brand/'+b.img+'.png" alt="'+b.th+'" loading="lazy">';
-      else mark='<span class="wm" style="color:'+b.c+(b.sp?";letter-spacing:"+b.sp:"")+(b.it?";font-style:italic":"")+'">'+b.wm+'</span>';
-      h+='<div class="bchip"><div class="bmark">'+mark+'</div><div class="bth">'+b.th+'</div></div>';
+      var b=g.b[j];
+      h+='<div class="bchip"><div class="bmark">'+
+         '<img src="/img/brand/'+b.f+'" alt="'+b.th+'" loading="lazy">'+
+         '</div><div class="bth">'+b.th+'</div></div>';
     }
     h+='</div></div>';
   }
