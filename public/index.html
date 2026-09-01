@@ -35,6 +35,10 @@ input,select{font-family:inherit}
 .login-card button:hover{background:var(--blue-dark)}
 .login-err{color:var(--bad);font-size:13px;margin-top:12px;min-height:18px}
 .login-hint{margin-top:20px;font-size:12px;color:var(--muted);line-height:1.6}
+.login-join{display:block;margin-top:16px;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;
+  font-size:13px;color:var(--muted);text-decoration:none;background:var(--bg)}
+.login-join b{color:var(--blue)}
+.login-join:hover{border-color:var(--blue);background:var(--blue-soft)}
 
 /* ---------- APP ---------- */
 header{background:#fff;border-bottom:1px solid var(--line);padding:0 22px;height:60px;
@@ -413,6 +417,8 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
     <button onclick="doLogin()">เข้าสู่ระบบ</button>
     <div class="login-err" id="loginErr"></div>
     <div class="login-hint">เข้าสู่ระบบด้วยชื่อผู้ใช้ (รหัสสายของคุณ) และรหัสผ่านที่ได้รับจากแอดมิน<br>หากลืมรหัสผ่าน กรุณาติดต่อแอดมิน</div>
+    <!-- ร้านค้าที่ได้ลิงก์สมัครมาแล้วเปิดโดเมนเปล่า ๆ จะมาโผล่ที่หน้านี้ — พาไปหน้าสมัครให้เลย -->
+    <a class="login-join" href="/join.html">🏪 เป็นร้านค้าที่อยากสมัครเป็นคู่ค้า? <b>กรอกใบสมัครที่นี่</b></a>
   </div>
 </div>
 
