@@ -171,6 +171,12 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cal-day.has:hover{background:var(--blue);color:#fff}
 .cal-day.sel{background:var(--blue);color:#fff;font-weight:800}
 .cal-legend{margin-top:12px;font-size:12px;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cal-status{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);line-height:1.7}
+.cal-status b{color:var(--ink)}
+.cal-status .warn{color:var(--warn);font-weight:700}
+.cal-status button{margin-top:8px;width:100%;padding:9px;border:1.5px solid var(--blue);background:var(--blue-soft);
+  color:var(--blue);border-radius:9px;font:700 12.5px/1 inherit;cursor:pointer}
+.cal-status button:hover{background:var(--blue);color:#fff}
 .cal-dot{width:12px;height:12px;border-radius:4px;background:var(--blue-soft);border:1px solid var(--blue);display:inline-block}
 /* sales request modal */
 #reqModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px}
@@ -836,6 +842,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
     </div>
     <div class="cal-grid" id="calGrid"></div>
     <div class="cal-legend"><span class="cal-dot"></span> วันที่มีข้อมูล (กดได้) · <span style="color:var(--muted)">วันจางๆ = ยังไม่มีข้อมูล</span></div>
+    <div class="cal-status" id="calStatus"></div>
   </div>
 </div>
 
@@ -1040,7 +1047,22 @@ function renderCal(){
     const has=CAL.dates.has(ds),sel=ds===CAL.sel;
     h+=`<div class="cal-day ${sel?'sel':has?'has':'no'}" ${has?`onclick="calPick('${ds}')"`:""}>${d}</div>`;}
   document.getElementById("calGrid").innerHTML=h;
+  /* Say plainly what data exists. An empty month used to look exactly like data loss:
+     the owner paged forward to a month that has not been uploaded yet and saw a grid of
+     grey days with nothing telling them the other months were still there. */
+  const el=document.getElementById("calStatus");if(!el)return;
+  const all=[...CAL.dates].sort();
+  const inMonth=all.filter(d=>d.slice(0,7)===(y+"-"+String(mo+1).padStart(2,"0"))).length;
+  const last=all[all.length-1],first0=all[0];
+  el.innerHTML=(inMonth
+      ?`เดือนนี้มีข้อมูล <b>${inMonth} วัน</b>`
+      :`<span class="warn">⚠️ เดือน ${MONTH_TH[mo]} ${y+543} ยังไม่ได้อัพข้อมูล</span>`)+
+    (all.length?`<br>ทั้งหมดในระบบ <b>${all.length} วัน</b> · ${fmtDate(first0)} – <b>${fmtDate(last)}</b>`
+               :`<br>ยังไม่มีข้อมูลรายวันในระบบเลย`)+
+    ((!inMonth&&last)?`<button onclick="calGoto('${last}')">⏪ ไปเดือนที่มีข้อมูลล่าสุด (${fmtDate(last)})</button>`:"");
 }
+/* jump the calendar to the month of a date that does have data */
+function calGoto(ds){CAL.month=new Date(ds+"T00:00:00");CAL.month.setDate(1);renderCal();}
 function calPick(ds){closeCal();if(CAL.pick)CAL.pick(ds);}
 function pickDailyDate(d){S.key=d;const b=document.getElementById("calBtn");if(b)b.querySelector("span").textContent=fmtDate(d);render();}
 function pickOrderDate(d){ORD.date=d;const t=document.getElementById("orderDateTxt");if(t)t.textContent=fmtDate(d);renderOrder();}
