@@ -1,6 +1,6 @@
 import { list } from "@vercel/blob";
 import { verify, bearer } from "../lib/auth.js";
-import { LEAD_PREFIX } from "../lib/snapshot.js";
+import { LEAD_PREFIX, newestReal } from "../lib/snapshot.js";
 
 /* Manager-only read of the shop applications written by the public /api/apply.
    Read-only: it never writes anything, and it never touches the `bd-data-*`
@@ -12,8 +12,10 @@ const CONC = 12;
 export default async function handler(req, res) {
   const claims = verify(bearer(req));
   if (!claims) return res.status(401).json({ error: "unauthorized" });
-  if (claims.role !== "manager") return res.status(403).json({ error: "เฉพาะแอดมิน/ผู้จัดการเท่านั้น" });
   res.setHeader("Cache-Control", "no-store");
+  // The manager sees every application. A salesperson sees ONLY the shops the manager
+  // assigned to their own line — so they can follow the opening through — and nothing else.
+  const onlyLine = (claims.role === "manager") ? null : (claims.code || "__none__");
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) return res.json({ leads: [] });
 
@@ -43,6 +45,17 @@ export default async function handler(req, res) {
     }
 
     leads.sort((a, b) => (b.at || 0) - (a.at || 0));
+
+    if (onlyLine) {
+      // read-only peek at the snapshot for the assignment map; never written here
+      let meta = {}, del = {};
+      try {
+        const cur = await newestReal(list, fetch);
+        const L = (cur.data && cur.data.LEADS) || {};
+        meta = L.meta || {}; del = L.del || {};
+      } catch { /* no assignments readable -> the salesperson simply sees none */ }
+      return res.json({ leads: leads.filter((l) => (meta[l.id] || {}).line === onlyLine && !del[l.id]) });
+    }
     res.json({ leads });
   } catch (e) {
     res.status(500).json({ error: String(e && e.message ? e.message : e) });

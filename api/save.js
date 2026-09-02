@@ -118,12 +118,22 @@ function mergeState(server, c) {
   // Hiding a junk application needs an explicit tombstone (LEADS.del), applied after the
   // union so a stale tab cannot bring it back.
   const sL = s.LEADS || {}, cL = c.LEADS || {};
-  const lMeta = Object.assign({}, sL.meta || {});
-  for (const k in (cL.meta || {})) {
-    const e = cL.meta[k], ex = lMeta[k];
-    if (!ex || (e && (e.at || 0) >= (ex.at || 0))) lMeta[k] = e;
-  }
-  const LEADS = { meta: lMeta, del: keyMerge(sL.del, cL.del) };
+  const newestById = (a, b) => {
+    const out = Object.assign({}, a || {});
+    for (const k in (b || {})) {
+      const e = b[k], ex = out[k];
+      if (!ex || (e && (e.at || 0) >= (ex.at || 0))) out[k] = e;
+    }
+    return out;
+  };
+  // `meta` is the manager's own note on an application; `sales` is the progress the
+  // assigned salesperson reports back (api/leadstatus.js). Two separate maps on purpose:
+  // neither side can overwrite the other's half, and each merges newest-wins per lead id.
+  const LEADS = {
+    meta: newestById(sL.meta, cL.meta),
+    sales: newestById(sL.sales, cL.sales),
+    del: keyMerge(sL.del, cL.del),
+  };
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),

@@ -34,7 +34,7 @@ s = must(s, "let EB2B = __EB2BDATA__;", "EB2B decl")
 s = must(s, "let POSTATUS = __POSTATUSDATA__;", "POSTATUS decl")
   .replace("let POSTATUS = __POSTATUSDATA__;", "let POSTATUS = {dates:[],data:{}};");
 s = must(s, "let LEADS = __LEADSDATA__;", "LEADS decl")
-  .replace("let LEADS = __LEADSDATA__;", "let LEADS = {meta:{},del:{}};");
+  .replace("let LEADS = __LEADSDATA__;", "let LEADS = {meta:{},sales:{},del:{}};");
 
 // accounts -> server side
 const ACC_BLOCK = `/* ====================== ACCOUNTS ====================== */
@@ -62,6 +62,7 @@ function doLogin(){
   /* sales default to own line view; manager sees team */
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
+  document.querySelectorAll(".sales-only").forEach(e=>e.style.display=acc.role==="sales"?"":"none");
   initKeys();render();initKPI();initOrder();initAnalytics();navReset();
   _switchTab("sales");   /* never leave the previous user's tab (incl. manager-only ones) open */
 }
@@ -89,6 +90,7 @@ async function afterLogin(){
   document.getElementById("uAv").textContent=(acc.role==="manager"?"M":(acc.name||"").substring(0,2)).toUpperCase();
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
+  document.querySelectorAll(".sales-only").forEach(e=>e.style.display=acc.role==="sales"?"":"none");
   await loadData();
 }
 async function loadData(){
@@ -96,7 +98,7 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},del:{}};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};}
     LEADSRAW=[];LEADSLOADED=false;   /* shop applications are re-fetched per session */
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();navReset();

@@ -14,6 +14,7 @@
   --shadow:0 1px 3px rgba(16,42,93,.08),0 6px 24px rgba(16,42,93,.06);
 }
 *{box-sizing:border-box;margin:0;padding:0}
+html{overflow-x:hidden}
 body{font-family:'Segoe UI','Sarabun',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
 .hidden{display:none!important}
 button{font-family:inherit;cursor:pointer}
@@ -217,8 +218,13 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 #orderDrop table td:first-child,#orderRecv table td:first-child{font-variant-numeric:tabular-nums;color:var(--muted)}
 
 /* tabs */
-.tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:2px solid var(--line)}
-.tab{background:none;border:none;padding:11px 18px;font-size:15px;font-weight:700;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px}
+/* The tab strip is wider than a phone. It must scroll INSIDE itself — otherwise the whole
+   page scrolls sideways and every heading below gets cut off at the left edge. */
+.tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:2px solid var(--line);
+  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:none;padding:11px 18px;font-size:15px;font-weight:700;color:var(--muted);
+  border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;flex:0 0 auto}
 .tab.on{color:var(--blue);border-bottom-color:var(--blue)}
 .seg.multi button.on{background:var(--blue);color:#fff}
 
@@ -297,6 +303,24 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
   .reward-grid{grid-template-columns:1fr 1fr}
   .store-subtabs{padding:8px 12px 0}
   .ssub{padding:9px 12px;font-size:13.5px}
+  /* --- ตารางใบสมัครร้านค้า: บนมือถือเปลี่ยนเป็นการ์ด ไม่ให้ตัวหนังสือทับกัน --- */
+  #ldTable table.plan-tbl{min-width:0;width:100%}
+  #ldTable thead{display:none}
+  #ldTable table,#ldTable tbody,#ldTable tr,#ldTable td{display:block;width:100%}
+  #ldTable tr.so-row{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;padding:6px 10px;background:#fff}
+  #ldTable tr.so-row>td{border:none;padding:5px 0;text-align:left!important;
+    display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  #ldTable tr.so-row>td::before{content:attr(data-l);color:var(--muted);font-size:12px;flex:0 0 auto;font-weight:600}
+  #ldTable tr.so-row>td:first-child{border-bottom:1px solid var(--line);margin-bottom:4px;padding-bottom:7px}
+  #ldTable tr.so-row .psub{margin:0;text-align:right}
+  #ldTable select.ld-st{max-width:none;width:100%}
+  #ldTable tr.so-detail{margin:-6px 0 12px}
+  #ldTable tr.so-detail>td{padding:12px;border:1px solid var(--blue-soft);border-radius:12px;background:#F7F9FC}
+  /* the detail panel is three flex columns on desktop — stack them on a phone */
+  #ldTable tr.so-detail>td>div{flex-direction:column;gap:16px!important}
+  #ldTable tr.so-detail>td>div>div{min-width:0!important;flex:1 1 auto!important}
+  img.ld-photo{max-width:100%;height:auto;max-height:240px}
+  #ldTable input,#ldTable select{max-width:100%}
 }
 
 @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
@@ -340,6 +364,41 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 .so-cbar{flex:1;height:9px;border-radius:5px;background:var(--line);overflow:hidden;min-width:60px}
 .so-cbar>span{display:block;height:100%;background:#0F9ED5;border-radius:5px}
 /* ---------- สมัครร้านค้าใหม่ ---------- */
+/* ---------- ร้านใหม่ของฉัน (ฝั่งเซลล์) — ออกแบบให้ใช้บนมือถือเป็นหลัก ---------- */
+.ms-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.ms-card{border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}
+.ms-card.open{border-color:var(--blue);box-shadow:var(--shadow)}
+.ms-head{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
+.ms-head:hover{background:var(--blue-soft)}
+.ms-t{flex:1;min-width:0}
+.ms-t b{font-size:15px;display:block;overflow-wrap:anywhere}
+.ms-caret{color:var(--muted);font-size:11px;flex:none}
+.ms-steps{display:flex;align-items:center;gap:4px;padding:0 14px 12px}
+.ms-step{width:26px;height:26px;border-radius:50%;background:var(--bg);border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:12px;flex:none;filter:grayscale(1);opacity:.45}
+.ms-step.on{background:var(--blue-soft);border-color:var(--blue);filter:none;opacity:1}
+.ms-line{flex:1;height:2px;background:var(--line);border-radius:2px}
+.ms-body{border-top:1px solid var(--line);padding:14px}
+.ms-photo{width:100%;max-height:210px;object-fit:cover;border-radius:11px;border:1px solid var(--line);margin-bottom:12px}
+.ms-info{display:flex;flex-direction:column;gap:7px;font-size:14px}
+.ms-info>div{display:flex;gap:10px;align-items:flex-start}
+.ms-info>div>span{color:var(--muted);flex:0 0 96px;font-size:12.5px;padding-top:1px}
+.ms-info b{font-weight:700;min-width:0;overflow-wrap:anywhere}
+.ms-info a{color:var(--blue);text-decoration:none}
+.ms-act{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+.ms-next{background:var(--blue-soft);color:var(--blue);border-radius:10px;padding:9px 12px;font-size:13px;font-weight:700;margin-bottom:10px}
+.ms-btns{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.ms-b{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:11px 8px;font:600 13px/1.3 inherit;
+  color:var(--ink);text-align:center}
+.ms-b:hover{border-color:var(--blue);color:var(--blue)}
+.ms-b.on{border-color:var(--blue);background:var(--blue);color:#fff;font-weight:800}
+.ms-lab{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:14px 0 5px}
+.ms-in{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font:15px/1.4 inherit}
+.ms-in:focus{outline:none;border-color:var(--blue)}
+.ms-note{font-size:14px;overflow-wrap:anywhere}
+@media(max-width:480px){.ms-btns{grid-template-columns:1fr}.ms-info>div{flex-direction:column;gap:1px}
+  .ms-info>div>span{flex:none}}
+
 img.ld-photo{width:100%;max-width:230px;height:160px;object-fit:cover;border-radius:11px;
   border:1px solid var(--line);margin-top:6px;background:var(--bg)}
 select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12.5px;
@@ -449,6 +508,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <button class="tab" data-tab="stock" onclick="switchTab('stock')">📦 สต็อก</button>
       <button class="tab admin-upload" data-tab="pos" style="display:none" onclick="switchTab('pos')">📊 วิเคราะห์การสั่งของ</button>
       <button class="tab admin-upload" data-tab="lead" style="display:none" onclick="switchTab('lead')">🏪 สมัครร้านค้าใหม่</button>
+      <button class="tab sales-only" data-tab="myshop" style="display:none" onclick="switchTab('myshop')">🏪 ร้านใหม่ของฉัน</button>
       <button class="tab" data-tab="ana" onclick="switchTab('ana')">🔬 วิเคราะห์เชิงลึก</button>
     </div>
     <div id="salesView">
@@ -659,6 +719,12 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <div class="panel" id="soTable"></div>
         <div id="soDetail"></div>
       </div>
+    </div>
+
+    <div id="myshopView" class="hidden">
+      <div class="kpi-monthbar" id="msBar"></div>
+      <div class="cards" id="msCards"></div>
+      <div id="msList"></div>
     </div>
 
     <div id="leadView" class="hidden">
@@ -913,7 +979,7 @@ let PSTORE = {rounds:{}};
    along in the normal save/merge. The applications themselves live in their own `bd-lead-*`
    blobs and are fetched read-only from /api/leads into LEADSRAW, so a public form submission
    can never touch the sales data. */
-let LEADS = {meta:{},del:{}};
+let LEADS = {meta:{},sales:{},del:{}};   /* {meta:{id:…manager}, sales:{id:…เซลล์รายงานกลับ}, del:{id:ts}} */
 let LEADSRAW=[],LEADSLOADED=false;
 let STORE_IDX={};   // line code -> array of {code,name,m:[[cs,pc,niv]...]}
 function buildStoreIdx(){
@@ -975,6 +1041,7 @@ async function afterLogin(){
   document.getElementById("uAv").textContent=(acc.role==="manager"?"M":(acc.name||"").substring(0,2)).toUpperCase();
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
+  document.querySelectorAll(".sales-only").forEach(e=>e.style.display=acc.role==="sales"?"":"none");
   await loadData();
 }
 async function loadData(){
@@ -982,7 +1049,7 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},del:{}};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};}
     LEADSRAW=[];LEADSLOADED=false;   /* shop applications are re-fetched per session */
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();navReset();
@@ -1505,6 +1572,7 @@ function _switchTab(t){
   document.getElementById("stockView").classList.toggle("hidden",t!=="stock");
   document.getElementById("posView").classList.toggle("hidden",t!=="pos");
   document.getElementById("leadView").classList.toggle("hidden",t!=="lead");
+  document.getElementById("myshopView").classList.toggle("hidden",t!=="myshop");
   document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
   if(t==="kpi")renderKPI();
   if(t==="eb")renderEB();
@@ -1513,6 +1581,7 @@ function _switchTab(t){
   if(t==="stock")renderStock();
   if(t==="pos")renderPOS();
   if(t==="lead")ldRefresh();
+  if(t==="myshop")msRefresh();
   if(t==="ana")renderAnalytics();
 }
 let KPIS={month:null,show:{active:true,self:true,ghost:true},scope:"team"};
@@ -3259,26 +3328,177 @@ function renderLeads(){
       <button class="upload-btn" onclick="ldExport()">⬇ ดาวน์โหลด Excel (CSV)</button></div>
     <div class="psub">กดที่แถวเพื่อดูรูปหน้าร้าน หมุดแผนที่ ส่งต่อให้เซลล์ และผูกรหัสร้าน · <b>⭐</b> = สนใจร้านติดดาว · <b>🧾</b> = ขอใบกำกับภาษี</div>
     <div style="overflow-x:auto;margin-top:8px"><table class="plan-tbl so-tbl"><thead><tr>
-      <th>วันที่สมัคร</th><th style="text-align:left">ร้านค้า / ผู้สมัคร</th><th>เบอร์ติดต่อ</th>
-      <th style="text-align:left">พื้นที่</th><th>ประเภทร้าน</th><th>แผนที่</th><th>สถานะ</th><th>ส่งต่อสาย</th><th>ยอดขาย</th></tr></thead><tbody>`+
+      <th style="text-align:left">ร้านค้า / ผู้สมัคร</th><th>วันที่สมัคร</th><th>เบอร์ติดต่อ</th>
+      <th style="text-align:left">พื้นที่</th><th>ประเภทร้าน</th><th>แผนที่</th><th>สถานะ (manager)</th><th>ส่งต่อสาย / เซลล์รายงาน</th><th>ยอดขาย</th></tr></thead><tbody>`+
     (rows.length?rows.map(r=>{const W=LD_ST[r.st]||LD_ST["new"];
+      const sv=msSalesOf(r.l.id),SW=sv.st?(MS_ST[sv.st]||null):null;
       return `<tr class="so-row" onclick="ldToggle('${r.l.id}')">
-        <td style="text-align:center;white-space:nowrap">${ldDate(r.l.at)}</td>
-        <td style="text-align:left">
+        <td data-l="ร้านค้า" style="text-align:left">
           <b>${ldEsc(ldShopName(r.l))}</b>${r.l.star?' <span title="สนใจร้านติดดาว">⭐</span>':""}${r.l.tax?' <span title="ขอใบกำกับภาษี">🧾</span>':""}
           <div class="psub" style="margin:0">${ldEsc(r.l.first)} ${ldEsc(r.l.last)}</div></td>
-        <td style="text-align:center;white-space:nowrap"><a href="tel:${ldEsc(r.l.phone)}" onclick="event.stopPropagation()">${ldPhone(r.l.phone)}</a></td>
-        <td style="text-align:left">${ldEsc(r.l.tambon)}<div class="psub" style="margin:0">อ.${ldEsc(r.l.amphoe)}</div></td>
-        <td style="text-align:center">${ldEsc(r.l.type)}</td>
-        <td style="text-align:center">${ldMapURL(r.l)?`<a href="${ldEsc(ldMapURL(r.l))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="เปิดแผนที่">📍</a>`:'<span class="psub">—</span>'}</td>
-        <td style="text-align:center"><select onclick="event.stopPropagation()" onchange="ldSetSt('${r.l.id}',this.value)"
+        <td data-l="วันที่สมัคร" style="text-align:center;white-space:nowrap">${ldDate(r.l.at)}</td>
+        <td data-l="เบอร์ติดต่อ" style="text-align:center;white-space:nowrap"><a href="tel:${ldEsc(r.l.phone)}" onclick="event.stopPropagation()">${ldPhone(r.l.phone)}</a></td>
+        <td data-l="พื้นที่" style="text-align:left">${ldEsc(r.l.tambon)}<div class="psub" style="margin:0">อ.${ldEsc(r.l.amphoe)}</div></td>
+        <td data-l="ประเภทร้าน" style="text-align:center">${ldEsc(r.l.type)}</td>
+        <td data-l="แผนที่" style="text-align:center">${ldMapURL(r.l)?`<a href="${ldEsc(ldMapURL(r.l))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="เปิดแผนที่">📍 เปิดแผนที่</a>`:'<span class="psub">—</span>'}</td>
+        <td data-l="สถานะ (manager)" style="text-align:center"><select onclick="event.stopPropagation()" onchange="ldSetSt('${r.l.id}',this.value)"
           class="ld-st" style="border-color:${W.color};color:${W.color}">${
           LD_ST_ORDER.map(k=>`<option value="${k}"${k===r.st?" selected":""}>${LD_ST[k].icon} ${LD_ST[k].lab}</option>`).join("")}</select></td>
-        <td style="text-align:center">${r.line?ldEsc(((DATA.lines||{})[r.line]||{}).display||r.line):'<span class="psub">—</span>'}</td>
-        <td style="text-align:center">${r.niv?"฿"+Math.round(r.niv).toLocaleString():'<span class="psub">—</span>'}</td></tr>`+
+        <td data-l="ส่งต่อสาย" style="text-align:center">${r.line
+          ?ldEsc(((DATA.lines||{})[r.line]||{}).display||r.line)+
+            (SW?` <span class="pill ${SW.pill}" style="font-size:11px">${SW.icon} ${SW.lab}</span>`
+                :' <span class="psub" style="font-size:11px">ยังไม่รายงาน</span>')
+          :'<span class="psub">—</span>'}</td>
+        <td data-l="ยอดขาย" style="text-align:center">${r.niv?"฿"+Math.round(r.niv).toLocaleString():'<span class="psub">—</span>'}</td></tr>`+
         (LD.open===r.l.id?detail(r):"");}).join("")
       :`<tr><td colspan="9"><div class="insight">ไม่มีใบสมัครที่ตรงกับตัวกรอง — ลองเปลี่ยนสถานะ/อำเภอ หรือล้างคำค้น</div></td></tr>`)+
     `</tbody></table></div>`;
+}
+
+/* ============================================================================
+ * 🏪 ร้านใหม่ของฉัน — ฝั่งเซลล์
+ * manager กด "ส่งต่อให้เซลล์สาย" ในแท็บสมัครร้านค้าใหม่ → ร้านนั้นโผล่ที่นี่ให้เซลล์เจ้าของสาย
+ * เซลล์กดอัปเดตความคืบหน้า (ติดต่อแล้ว / เข้าไปพบ / เปิดร้านสำเร็จ / ไม่สนใจ) แล้ว manager
+ * เห็นทันทีในแท็บของตัวเอง เซลล์เขียนได้เฉพาะ LEADS.sales[id] ของร้านในสายตัวเองเท่านั้น
+ * (ตรวจสิทธิ์ที่เซิร์ฟเวอร์ใน api/leadstatus.js) แตะข้อมูลฝั่ง manager ไม่ได้เลย
+ * ==========================================================================*/
+const MS_ST={
+  todo:     {icon:"🆕",lab:"เพิ่งได้รับมอบหมาย",pill:"w",color:"#0F9ED5",next:"โทรหาร้านแล้วกด “ติดต่อแล้ว”"},
+  contacted:{icon:"📞",lab:"ติดต่อร้านแล้ว",   pill:"w",color:"#E97132",next:"นัดเข้าไปดูหน้าร้าน"},
+  visited:  {icon:"🚗",lab:"เข้าไปพบร้านแล้ว", pill:"w",color:"#7030A0",next:"เปิดบิลแรกแล้วกด “เปิดร้านสำเร็จ”"},
+  opened:   {icon:"✅",lab:"เปิดร้านสำเร็จ",   pill:"g",color:"#4EA72E",next:"ใส่รหัสร้านเพื่อให้ระบบดึงยอดขายมาให้"},
+  reject:   {icon:"🚫",lab:"ร้านไม่สนใจ",      pill:"b",color:"#8E9AAB",next:"เขียนเหตุผลไว้ให้ manager ทราบ"}};
+const MS_ORDER=["todo","contacted","visited","opened","reject"];
+let MS={busy:false,open:null};
+
+function msSalesOf(id){return ((LEADS&&LEADS.sales)||{})[id]||{};}
+function msMine(){
+  const me=S.user&&S.user.code;if(!me)return [];
+  return LEADSRAW.filter(l=>l&&l.id&&!ldDeleted(l.id)&&((ldMetaOf(l.id).line||"")===me))
+    .map(l=>({l:l,sv:msSalesOf(l.id),m:ldMetaOf(l.id)}))
+    .map(r=>Object.assign(r,{st:r.sv.st||"todo"}))
+    .sort((a,b)=>{const rank=x=>(x.st==="opened"||x.st==="reject")?1:0;
+      return (rank(a)-rank(b))||((b.l.at||0)-(a.l.at||0));});
+}
+async function msRefresh(force){
+  if(!(S.user&&S.user.role==="sales"))return;
+  if(LEADSLOADED&&!force){renderMyShops();return;}
+  if(MS.busy)return;
+  MS.busy=true;
+  const bar=document.getElementById("msBar");if(bar)bar.innerHTML="🏪 ร้านใหม่ของฉัน · กำลังโหลด...";
+  try{
+    const r=await fetch("/api/leads",{headers:{"Authorization":"Bearer "+(typeof TOKEN!=="undefined"&&TOKEN?TOKEN:"")}});
+    if(r.status===401){logout();return;}
+    if(r.ok){const d=await r.json();LEADSRAW=(d&&d.leads)||[];}
+    else LEADSRAW=[];
+    LEADSLOADED=true;
+  }catch(e){LEADSRAW=[];LEADSLOADED=true;}
+  MS.busy=false;renderMyShops();
+}
+function msToggle(id){MS.open=(MS.open===id)?null:id;renderMyShops();}
+async function msSet(id,st){
+  const cur=msSalesOf(id);
+  let store=cur.store||"",note=cur.note||"";
+  if(st==="opened"){
+    const v=prompt("เปิดร้านสำเร็จแล้ว 🎉\n\nใส่รหัสร้านในระบบ (ถ้ายังไม่มีให้เว้นว่างไว้ก่อนได้)",store);
+    if(v===null)return;store=String(v||"").replace(/\s/g,"");
+  }
+  if(st==="reject"){
+    const v=prompt("ร้านไม่สนใจ — เขียนเหตุผลสั้น ๆ ให้ manager ทราบ",note);
+    if(v===null)return;note=String(v||"").trim();
+  }
+  await msSave(id,st,note,store);
+}
+async function msNote(id){
+  const cur=msSalesOf(id);
+  const v=prompt("บันทึกถึง manager เกี่ยวกับร้านนี้",cur.note||"");
+  if(v===null)return;
+  await msSave(id,cur.st||"todo",String(v).trim(),cur.store||"");
+}
+async function msStore(id,v){
+  const cur=msSalesOf(id);
+  await msSave(id,cur.st||"todo",cur.note||"",String(v||"").replace(/\s/g,""));
+}
+async function msSave(id,st,note,store){
+  if(!LEADS)LEADS={meta:{},sales:{},del:{}};
+  if(!LEADS.sales)LEADS.sales={};
+  const before=LEADS.sales[id];
+  /* วาดผลทันทีให้เซลล์เห็นว่ากดติด แล้วค่อยยืนยันกับเซิร์ฟเวอร์ */
+  LEADS.sales[id]={st:st,note:note,store:store,at:Date.now(),by:(S.user&&S.user.name)||"",line:(S.user&&S.user.code)||""};
+  renderMyShops();
+  try{
+    const r=await fetch("/api/leadstatus",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+(typeof TOKEN!=="undefined"&&TOKEN?TOKEN:"")},
+      body:JSON.stringify({id:id,st:st,note:note,store:store})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||("HTTP "+r.status));}
+  }catch(ex){
+    if(before)LEADS.sales[id]=before;else delete LEADS.sales[id];   /* ย้อนกลับ ไม่ให้เห็นผิด */
+    renderMyShops();
+    alert("บันทึกไม่สำเร็จ: "+ex.message+"\n\nสถานะยังไม่ถูกเปลี่ยน กรุณาลองใหม่อีกครั้ง");
+  }
+}
+function renderMyShops(){
+  if(!(S.user&&S.user.role==="sales"))return;
+  const rows=msMine();
+  const bar=document.getElementById("msBar");
+  const C={};MS_ORDER.forEach(k=>C[k]=rows.filter(r=>r.st===k).length);
+  const done=C.opened,todo=rows.length-C.opened-C.reject;
+  bar.innerHTML=`🏪 ร้านใหม่ของฉัน · สาย ${((DATA.lines||{})[S.user.code]||{}).display||S.user.code} · ได้รับมอบหมาย ${rows.length} ร้าน`;
+  document.getElementById("msCards").innerHTML=
+    `<div class="card kpi-card" style="border-top:3px solid #0F9ED5"><div class="k" style="color:#0F9ED5">ร้านที่ต้องตามต่อ</div><div class="v ${todo?"down":""}">${todo}</div><div class="s">🆕 ใหม่ ${C.todo} · 📞 ติดต่อแล้ว ${C.contacted} · 🚗 เข้าพบแล้ว ${C.visited}</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #4EA72E"><div class="k" style="color:#4EA72E">✅ เปิดร้านสำเร็จ</div><div class="v ${done?"up":""}">${done}</div><div class="s">${rows.length?(done/rows.length*100).toFixed(0):0}% ของร้านที่ได้รับมอบหมาย</div></div>`+
+    `<div class="card kpi-card" style="border-top:3px solid #8E9AAB"><div class="k" style="color:#8E9AAB">🚫 ไม่สนใจ</div><div class="v">${C.reject}</div><div class="s">ปิดเคสแล้ว</div></div>`;
+
+  const el=document.getElementById("msList");
+  if(!rows.length){
+    el.innerHTML=`<div class="panel"><h3>📋 รายชื่อร้านใหม่</h3>
+      <div class="insight">ยังไม่มีร้านใหม่ที่ถูกส่งต่อมาให้สายคุณ<br>
+        <span class="psub">เมื่อมีร้านสมัครเข้ามาและ manager ส่งต่อให้สายคุณ ร้านจะเด้งมาที่นี่เอง</span></div></div>`;
+    return;}
+  el.innerHTML=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <h3>📋 รายชื่อร้านใหม่ · ${rows.length} ร้าน</h3>
+      <button class="upload-btn" onclick="msRefresh(true)">🔄 ดึงข้อมูลใหม่</button></div>
+    <div class="psub">กดที่ร้านเพื่อดูรายละเอียดและอัปเดตสถานะ — manager จะเห็นสิ่งที่คุณอัปเดตทันที</div>
+    <div class="ms-list">`+rows.map(r=>msCard(r)).join("")+`</div></div>`;
+}
+function msCard(r){
+  const W=MS_ST[r.st]||MS_ST.todo, id=r.l.id, open=(MS.open===id), mp=ldMapURL(r.l);
+  const steps=MS_ORDER.filter(k=>k!=="reject").map(k=>{
+    const on=MS_ORDER.indexOf(r.st)>=MS_ORDER.indexOf(k)&&r.st!=="reject";
+    return `<div class="ms-step${on?" on":""}" title="${MS_ST[k].lab}">${MS_ST[k].icon}</div>`;}).join('<div class="ms-line"></div>');
+  return `<div class="ms-card${open?" open":""}">
+    <div class="ms-head" onclick="msToggle('${id}')">
+      <div class="ms-t">
+        <b>${ldEsc(ldShopName(r.l))}</b>${r.l.star?' <span title="สนใจร้านติดดาว">⭐</span>':""}${r.l.tax?' <span title="ขอใบกำกับภาษี">🧾</span>':""}
+        <div class="psub" style="margin:2px 0 0">ต.${ldEsc(r.l.tambon)} อ.${ldEsc(r.l.amphoe)} · ${ldEsc(r.l.type)}</div>
+      </div>
+      <span class="pill ${W.pill}" style="white-space:nowrap">${W.icon} ${W.lab}</span>
+      <span class="ms-caret">${open?"▲":"▼"}</span>
+    </div>
+    <div class="ms-steps">${steps}</div>
+    ${open?`<div class="ms-body">
+      ${r.l.photo?`<a href="${ldEsc(r.l.photo)}" target="_blank" rel="noopener"><img class="ms-photo" src="${ldEsc(r.l.photo)}" alt="หน้าร้าน" loading="lazy"></a>`:""}
+      <div class="ms-info">
+        <div><span>ผู้ติดต่อ</span><b>${ldEsc(r.l.first)} ${ldEsc(r.l.last)}</b></div>
+        <div><span>เบอร์โทร</span><a href="tel:${ldEsc(r.l.phone)}"><b>${ldPhone(r.l.phone)}</b></a></div>
+        <div><span>ที่ตั้งร้าน</span><b style="white-space:pre-wrap">${ldEsc(r.l.shop)}</b></div>
+        ${mp?`<div><span>แผนที่</span><a href="${ldEsc(mp)}" target="_blank" rel="noopener"><b>📍 เปิดนำทาง</b></a></div>`:""}
+        ${r.l.note?`<div><span>ร้านฝากบอก</span><b style="white-space:pre-wrap">${ldEsc(r.l.note)}</b></div>`:""}
+        ${r.m.note?`<div><span>manager สั่ง</span><b style="white-space:pre-wrap">${ldEsc(r.m.note)}</b></div>`:""}
+      </div>
+      <div class="ms-act">
+        <div class="ms-next">👉 ขั้นต่อไป: ${W.next}</div>
+        <div class="ms-btns">${MS_ORDER.map(k=>
+          `<button class="ms-b${k===r.st?" on":""}" onclick="msSet('${id}','${k}')">${MS_ST[k].icon} ${MS_ST[k].lab}</button>`).join("")}</div>
+        <label class="ms-lab">รหัสร้านในระบบ (พอเปิดบิลแรกแล้ว)</label>
+        <input class="ms-in" value="${ldEsc(r.sv.store||r.m.store||"")}" placeholder="เช่น 1234567"
+          onchange="msStore('${id}',this.value)">
+        <label class="ms-lab">บันทึกถึง manager</label>
+        <div class="ms-note">${r.sv.note?ldEsc(r.sv.note):'<span class="psub">— ยังไม่มี —</span>'}
+          <button class="rm" onclick="msNote('${id}')">✎ เขียน</button></div>
+        ${r.sv.at?`<div class="psub" style="margin-top:8px">อัปเดตล่าสุด ${ldDate(r.sv.at)}</div>`:""}
+      </div></div>`:""}
+  </div>`;
 }
 
 /* ====================== SALES REQUESTS (คำขอสินค้าเซลล์) ====================== */

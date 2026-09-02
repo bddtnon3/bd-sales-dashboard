@@ -320,7 +320,42 @@ console.log("TEST 12 — manager notes on shop applications (LEADS) never roll b
         Object.keys(o2.DATA.monthly).length === 2 && !!o2.PSTORE.rounds["2026-06-30"] && o2.ORDERS.dates.length === 2);
 
   const first = mergeState(null, { DATA: { lines: {}, monthly: {}, daily: {} } });
-  check("fresh blob store gets a valid LEADS shape", !!first.LEADS && !!first.LEADS.meta && !!first.LEADS.del);
+  check("fresh blob store gets a valid LEADS shape", !!first.LEADS && !!first.LEADS.meta && !!first.LEADS.del && !!first.LEADS.sales);
+}
+
+console.log("TEST 13 — the salesperson's progress and the manager's notes never overwrite each other");
+{
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.LEADS = {
+    meta:  { L1: { st: "contact", line: "209613", at: 1000 } },
+    sales: { L1: { st: "contacted", note: "โทรแล้ว", at: 1100, line: "209613" } },
+    del: {},
+  };
+
+  // the manager saves from a tab that has never seen the salesperson's report
+  const mgr = JSON.parse(JSON.stringify(srv));
+  delete mgr.LEADS.sales;
+  mgr.LEADS.meta.L1 = { st: "open", line: "209613", store: "1234567", at: 2000 };
+  const o1 = mergeState(srv, mgr);
+  check("manager's newer note is taken", o1.LEADS.meta.L1.store === "1234567");
+  check("the salesperson's report survives a manager save", o1.LEADS.sales.L1.st === "contacted");
+
+  // the salesperson reports again from a tab holding an older manager note
+  const sale = JSON.parse(JSON.stringify(o1));
+  sale.LEADS.meta.L1 = { st: "contact", line: "209613", at: 1000 };   // stale half
+  sale.LEADS.sales.L1 = { st: "opened", store: "1234567", at: 3000, line: "209613" };
+  const o2 = mergeState(o1, sale);
+  check("newer sales progress is taken", o2.LEADS.sales.L1.st === "opened");
+  check("a stale tab cannot roll the manager's note back", o2.LEADS.meta.L1.store === "1234567");
+
+  // an old browser that predates the feature entirely
+  const oldTab = JSON.parse(JSON.stringify(o2));
+  delete oldTab.LEADS;
+  const o3 = mergeState(o2, oldTab);
+  check("both halves survive a tab with no LEADS at all",
+        o3.LEADS.sales.L1.st === "opened" && o3.LEADS.meta.L1.store === "1234567");
+  check("touching LEADS still disturbs no other section",
+        Object.keys(o3.DATA.monthly).length === 2 && !!o3.PSTORE.rounds["2026-06-30"] && o3.ORDERS.dates.length === 2);
 }
 
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));

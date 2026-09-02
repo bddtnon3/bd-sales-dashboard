@@ -82,9 +82,14 @@ A link the manager sends to shop owners in Nonthaburi. **It is reachable without
 (`bd-lead-*`, constant in `lib/snapshot.js`). It must **never** read, merge or write `bd-data-*` —
 otherwise a public form could roll the sales data back and, after 8 submissions, evict every
 backup. `api/leads.js` (manager only) reads those blobs; it never writes.
-Only the manager's own notes (status / assigned line / store code) go into the saved state, as
-`LEADS = {meta:{id:{st,line,store,note,at}}, del:{id:ts}}` — merged newest-wins per id, with
-tombstones for junk applications. Bot protection is a hidden honeypot field plus a minimum
+Only notes go into the saved state, never the applications themselves:
+`LEADS = {meta:{id:…manager}, sales:{id:…salesperson}, del:{id:ts}}` — two separate maps so the
+two sides cannot overwrite each other, each merged newest-wins per id, with tombstones for junk.
+When the manager assigns a line, the shop appears in that salesperson's **🏪 ร้านใหม่ของฉัน** tab
+(`.sales-only`, hidden from the manager). They report progress through **`api/leadstatus.js`**,
+which writes ONLY `LEADS.sales[id]` and only for a lead whose `meta[id].line` is their own line —
+same newest-real-snapshot walk, 503-and-write-nothing on an unreadable store. `api/leads.js` is
+role-aware: the manager gets every application, a salesperson only the ones assigned to them. Bot protection is a hidden honeypot field plus a minimum
 dwell time; the manager can hide anything that slips through.
 The page has two views (hash routes `#/` and `#/apply`), so the form is its own screen.
 The shop-front photo is shrunk in the browser to 1400px/JPEG before upload and stored as its own
@@ -117,6 +122,7 @@ code, never printed.
 - `api/*.js` — Vercel serverless functions (ESM): `login`, `data` (read newest non-empty blob),
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write),
   `apply` (PUBLIC shop application → its own `bd-lead-*` blob), `leads` (manager-only read).
+- `api/leadstatus.js` — a salesperson reports progress on a shop assigned to them.
 - `lib/auth.js` — token sign/verify. `lib/snapshot.js` — the one shared blob-read walk
   (`newestReal`) + `looksEmpty`, used by `data`, `save` and `request` so they cannot drift.
   `seed-data.json` — bundled starting data (used until the
