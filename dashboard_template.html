@@ -158,6 +158,21 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 /* date button + calendar picker */
 .datebtn{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:9px 14px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;min-width:150px;justify-content:space-between}
 .datebtn:hover{border-color:var(--blue)}
+#copyModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:140;display:flex;align-items:center;justify-content:center;padding:18px}
+.copy-card{background:#fff;border-radius:16px;padding:16px 18px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.copy-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.copy-head b{font-size:15px}
+.copy-card textarea{width:100%;height:230px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;
+  font:13px/1.6 inherit;resize:vertical;background:var(--bg);color:var(--ink);-webkit-user-select:all;user-select:all}
+.copy-again{width:100%;margin-top:10px;padding:11px;border:none;border-radius:10px;background:var(--blue);color:#fff;font:700 14px/1 inherit}
+#bdToast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);z-index:200;
+  background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;font-size:14px;font-weight:700;
+  box-shadow:0 10px 30px rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;max-width:90vw;text-align:center}
+#bdToast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.copy-btn{border:1.5px solid var(--blue);background:var(--blue-soft);color:var(--blue);border-radius:10px;
+  padding:10px 14px;font:700 13.5px/1 inherit;cursor:pointer}
+.copy-btn:hover{background:var(--blue);color:#fff}
+.copy-btn.wide{width:100%;padding:12px;font-size:14px;margin-top:10px}
 #calModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:130;display:flex;align-items:center;justify-content:center;padding:20px}
 .cal-card{background:#fff;border-radius:16px;padding:16px 18px;width:330px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .cal-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
@@ -898,6 +913,18 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 </div>
 
 <!-- CALENDAR PICKER -->
+<!-- ถ้าเบราว์เซอร์ไม่ให้คัดลอกอัตโนมัติ (iOS บางรุ่น) เปิดกล่องนี้ให้กดค้างคัดลอกเอง -->
+<div id="copyModal" class="hidden">
+  <div class="copy-card">
+    <div class="copy-head"><b id="copyTitle">คัดลอกข้อความ</b>
+      <button class="modal-x" onclick="bdCopyClose()">✕</button></div>
+    <div class="psub" style="margin-bottom:8px">กดค้างที่ข้อความ → เลือกทั้งหมด → คัดลอก แล้วนำไปวางในไลน์ได้เลย</div>
+    <textarea id="copyBox" readonly onclick="this.select()"></textarea>
+    <button class="copy-again" onclick="bdCopyRetry()">📋 ลองคัดลอกอัตโนมัติอีกครั้ง</button>
+  </div>
+</div>
+<div id="bdToast"></div>
+
 <div id="calModal" class="hidden">
   <div class="cal-card">
     <div class="cal-head">
@@ -3183,16 +3210,88 @@ function ldExport(){
   a.download="ใบสมัครร้านค้า_"+todayISO()+".csv";a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 }
+/* ============================================================================
+ * คัดลอกข้อมูลร้านไปวางในกลุ่มไลน์ — กดปุ่มเดียว
+ * iOS จะยอมให้เขียน clipboard เฉพาะตอนกดปุ่มจริง ๆ และเฉพาะ https เท่านั้น
+ * ถ้าไม่ผ่านก็ลอง execCommand ต่อ และถ้ายังไม่ได้ค่อยเปิดกล่องให้กดค้างคัดลอกเอง
+ * ==========================================================================*/
+let _copyPending="";
+function bdToast(msg){
+  const t=document.getElementById("bdToast");if(!t)return;
+  t.textContent=msg;t.classList.add("on");
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("on"),2400);
+}
+function bdCopyBox(text,title){
+  _copyPending=text;
+  document.getElementById("copyTitle").textContent=title||"คัดลอกข้อความ";
+  const box=document.getElementById("copyBox");box.value=text;
+  document.getElementById("copyModal").classList.remove("hidden");
+  setTimeout(()=>{try{box.focus();box.select();}catch(e){}},60);
+}
+function bdCopyClose(){document.getElementById("copyModal").classList.add("hidden");}
+function bdCopyRetry(){bdCopy(_copyPending,"คัดลอกแล้ว ✓","");}
+async function bdCopy(text,okMsg,title){
+  if(!text)return false;
+  try{
+    if(navigator.clipboard&&window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      bdCopyClose();bdToast(okMsg||"คัดลอกแล้ว ✓");return true;}
+  }catch(e){}
+  try{
+    const ta=document.createElement("textarea");
+    ta.value=text;ta.setAttribute("readonly","");
+    ta.style.cssText="position:fixed;top:0;left:0;opacity:0;pointer-events:none";
+    document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,text.length);
+    const ok=document.execCommand("copy");ta.remove();
+    if(ok){bdCopyClose();bdToast(okMsg||"คัดลอกแล้ว ✓");return true;}
+  }catch(e){}
+  bdCopyBox(text,title);return false;
+}
+/* ข้อความสรุปร้านหนึ่งร้าน สำหรับวางในไลน์ (ไลน์ไม่รองรับตัวหนา ใช้ข้อความล้วน + อีโมจิ) */
+function leadShareText(l){
+  if(!l)return "";
+  const m=ldMetaOf(l.id),sv=(typeof msSalesOf==="function")?msSalesOf(l.id):{};
+  const out=[];
+  out.push("🏪 "+ldShopName(l));
+  const who=[l.first,l.last].filter(Boolean).join(" ");
+  if(who)out.push("👤 ผู้ติดต่อ: "+who);
+  if(l.phone)out.push("📞 "+ldPhone(l.phone));
+  if(l.shop)out.push("🏠 "+String(l.shop).replace(/\s*\n\s*/g," "));
+  const outside=/นอกนนทบุรี|พื้นที่อื่น/.test(String(l.amphoe||""));
+  out.push("📍 ต."+(l.tambon||"-")+" "+(outside?"("+l.amphoe+")":"อ."+(l.amphoe||"-")+" จ.นนทบุรี"));
+  if(l.type)out.push("🏬 ประเภทร้าน: "+l.type);
+  const mp=ldMapURL(l);
+  if(mp)out.push("🗺️ แผนที่: "+mp);
+  if(l.photo)out.push("🖼️ รูปหน้าร้าน: "+l.photo);
+  out.push(l.tax?"🧾 ต้องการใบกำกับภาษี":"🧾 ไม่ต้องการใบกำกับภาษี");
+  if(l.star)out.push("⭐ สนใจสมัครร้านติดดาว");
+  if(l.note)out.push("💬 ร้านฝากบอก: "+l.note);
+  out.push("📅 สมัครเมื่อ "+ldDate(l.at));
+  if(m.line)out.push("👥 ส่งต่อให้ "+ldLineName(m.line));
+  const st=sv&&sv.st&&MS_ST[sv.st];
+  if(st)out.push("📊 ความคืบหน้า: "+st.lab+(sv.note?" — "+sv.note:""));
+  const code=(sv&&sv.store)||m.store||"";
+  if(code)out.push("🔖 รหัสร้านในระบบ: "+code);
+  return out.join("\n");
+}
+function leadCopyOne(id){
+  const l=LEADSRAW.find(x=>x&&x.id===id);if(!l)return;
+  bdCopy(leadShareText(l),"คัดลอกข้อมูลร้านแล้ว ✓ วางในไลน์ได้เลย","ข้อมูลร้าน "+ldShopName(l));
+}
+function leadCopyMany(list,title){
+  if(!list||!list.length){bdToast("ไม่มีร้านให้คัดลอก");return;}
+  const sep="\n━━━━━━━━━━━━━━\n";
+  const head="🏪 ร้านค้าใหม่ "+list.length+" ร้าน (จากระบบ BD Distribution)";
+  bdCopy(head+sep+list.map(l=>leadShareText(l)).join(sep),
+    "คัดลอก "+list.length+" ร้านแล้ว ✓",title||"ข้อมูลร้านค้าใหม่");
+}
 /* ลิงก์สมัครที่ manager ส่งให้ร้านค้า */
 function ldJoinURL(){
   const o=(location&&location.origin&&location.origin!=="null")?location.origin:"https://bd-sales-dashboard.vercel.app";
   return o+"/join.html";
 }
 function ldCopyLink(){
-  const u=ldJoinURL();
-  const done=()=>{ulog("📋 คัดลอกลิงก์สมัครแล้ว: "+u);alert("คัดลอกลิงก์แล้ว\n\n"+u+"\n\nส่งลิงก์นี้ให้ร้านค้าที่สนใจได้เลย");};
-  try{navigator.clipboard.writeText(u).then(done,()=>prompt("คัดลอกลิงก์นี้",u));}
-  catch(e){prompt("คัดลอกลิงก์นี้",u);}
+  bdCopy(ldJoinURL(),"คัดลอกลิงก์สมัครแล้ว ✓ ส่งให้ร้านค้าได้เลย","ลิงก์สมัครร้านค้า");
 }
 function ldLineName(code){if(!code)return "";
   const d=(DATA.lines||{})[code];return d?(d.display+(d.name?" · "+d.name:"")):code;}
@@ -3296,12 +3395,15 @@ function renderLeads(){
           onchange="ldStoreCode('${r.l.id}',this.value)"
           style="padding:8px 10px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;width:170px"></div>
         <div class="psub">${r.store?(r.storeName?("✅ ตรงกับร้าน <b>"+ldEsc(r.storeName)+"</b> · ยอดสะสม ฿"+Math.round(r.niv).toLocaleString()):"⚠️ ยังไม่พบรหัสนี้ในข้อมูลรายร้าน (อัพไฟล์ยอดขายรายร้านก่อน)"):"ใส่รหัสร้านแล้วระบบจะดึงยอดขายของร้านนี้มาให้เอง"}</div>
+        <button class="copy-btn wide" onclick="event.stopPropagation();leadCopyOne('${r.l.id}')">📋 คัดลอกข้อมูลร้าน (ส่งเข้ากลุ่มไลน์)</button>
         <div style="margin-top:12px"><button class="rm" onclick="event.stopPropagation();ldDel('${r.l.id}')">🗑 ซ่อนใบสมัครนี้</button></div>
       </div>
     </div></td></tr>`;};
   el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <h3>📋 รายชื่อผู้สมัคร · ${rows.length.toLocaleString()} จาก ${all.length.toLocaleString()} ใบ</h3>
-      <button class="upload-btn" onclick="ldExport()">⬇ ดาวน์โหลด Excel (CSV)</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="copy-btn" onclick="leadCopyMany(ldRows().map(r=>r.l),'ร้านค้าใหม่ทั้งหมด')">📋 คัดลอกทุกร้านที่เห็น (${rows.length})</button>
+        <button class="upload-btn" onclick="ldExport()">⬇ ดาวน์โหลด Excel (CSV)</button></div></div>
     <div class="psub">กดที่แถวเพื่อดูรูปหน้าร้าน หมุดแผนที่ ส่งต่อให้เซลล์ และผูกรหัสร้าน · <b>⭐</b> = สนใจร้านติดดาว · <b>🧾</b> = ขอใบกำกับภาษี</div>
     <div style="overflow-x:auto;margin-top:8px"><table class="plan-tbl so-tbl"><thead><tr>
       <th style="text-align:left">ร้านค้า / ผู้สมัคร</th><th>วันที่สมัคร</th><th>เบอร์ติดต่อ</th>
@@ -3469,6 +3571,7 @@ function msCard(r){
         <label class="ms-lab">รหัสร้านในระบบ (พอเปิดบิลแรกแล้ว)</label>
         <input class="ms-in" value="${ldEsc(r.sv.store||r.m.store||"")}" placeholder="เช่น 1234567"
           onchange="msStore('${id}',this.value)">
+        <button class="copy-btn wide" onclick="leadCopyOne('${id}')">📋 คัดลอกข้อมูลร้าน (ส่งเข้ากลุ่มไลน์)</button>
         <label class="ms-lab">บันทึกถึง manager</label>
         <div class="ms-note">${r.sv.note?ldEsc(r.sv.note):'<span class="psub">— ยังไม่มี —</span>'}
           <button class="rm" onclick="msNote('${id}')">✎ เขียน</button></div>
