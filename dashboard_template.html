@@ -169,6 +169,11 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;font-size:14px;font-weight:700;
   box-shadow:0 10px 30px rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;max-width:90vw;text-align:center}
 #bdToast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+/* กดที่รหัส/ชื่อสินค้าในตารางแล้วคัดลอกได้เลย — ไม่มีปุ่ม ให้รู้ตอนเอาเมาส์ชี้พอ */
+.cp-able{cursor:pointer;text-decoration:underline dotted var(--muted);text-underline-offset:3px}
+.cp{cursor:pointer}
+.cp-hit{animation:cpFlash .5s ease-out}
+@keyframes cpFlash{0%{background:var(--blue);color:#fff}100%{background:transparent}}
 .copy-btn{border:1.5px solid var(--blue);background:var(--blue-soft);color:var(--blue);border-radius:10px;
   padding:10px 14px;font:700 13.5px/1 inherit;cursor:pointer}
 .copy-btn:hover{background:var(--blue);color:#fff}
@@ -3285,6 +3290,51 @@ function leadCopyMany(list,title){
   bdCopy(head+sep+list.map(l=>leadShareText(l)).join(sep),
     "คัดลอก "+list.length+" ร้านแล้ว ✓",title||"ข้อมูลร้านค้าใหม่");
 }
+/* ============================================================================
+ * กดที่ "รหัสสินค้า" หรือ "ชื่อสินค้า" ในตารางไหนก็ได้ → คัดลอกทันที
+ * ไม่ใส่ปุ่มเพิ่มสักอัน: ตรวจจากตัวเซลล์เอง
+ *   - เซลล์ที่เป็นตัวเลขล้วน 6–9 หลัก = รหัสสินค้า
+ *   - เซลล์ที่อยู่ "ถัดจาก" เซลล์รหัส = ชื่อสินค้า (ทุกตารางในแอปเรียงแบบนี้เหมือนกันหมด)
+ * ดักที่ชั้น capture เพื่อไม่ให้ไปกดโดนแถวที่กดแล้วกางรายละเอียด
+ * ==========================================================================*/
+const CP_CODE=/^\d{6,9}$/;
+function cpTxt(el){return ((el&&(el.innerText||el.textContent))||"").replace(/\s+/g," ").trim();}
+function cpFind(target){
+  if(!target||!target.closest)return null;
+  if(target.closest("a,button,input,select,textarea,option"))return null;
+  const marked=target.closest(".cp");
+  if(marked)return {el:marked,txt:cpTxt(marked)};
+  const td=target.closest("td");
+  if(!td)return null;
+  const txt=cpTxt(td);
+  if(CP_CODE.test(txt))return {el:td,txt:txt};                    /* รหัสสินค้า */
+  const prev=td.previousElementSibling;                            /* ชื่อสินค้า = ช่องถัดจากรหัส */
+  if(prev&&CP_CODE.test(cpTxt(prev))&&txt&&txt!=="-"&&txt!=="—"&&txt.length<=140)return {el:td,txt:txt};
+  return null;
+}
+document.addEventListener("click",function(e){
+  try{
+    /* กำลังลากเลือกข้อความอยู่ ไม่ใช่การกดเพื่อคัดลอก */
+    if(String(window.getSelection?window.getSelection():"").trim()!=="")return;
+    const hit=cpFind(e.target);
+    if(!hit||!hit.txt)return;
+    e.stopPropagation();
+    bdCopy(hit.txt,"คัดลอกแล้ว: "+hit.txt.slice(0,44));
+    hit.el.classList.remove("cp-hit");void hit.el.offsetWidth;hit.el.classList.add("cp-hit");
+    setTimeout(()=>hit.el.classList.remove("cp-hit"),520);
+  }catch(ex){}
+},true);
+/* บอกใบ้เฉพาะตอนเอาเมาส์ชี้ (มือถือไม่มี hover อยู่แล้ว กดได้เลย) */
+let _cpHover=null;
+document.addEventListener("mouseover",function(e){
+  const hit=cpFind(e.target);
+  const el=hit?hit.el:null;
+  if(el===_cpHover)return;
+  if(_cpHover)_cpHover.classList.remove("cp-able");
+  _cpHover=el;
+  if(el){el.classList.add("cp-able");if(!el.title)el.title="กดเพื่อคัดลอก";}
+},true);
+
 /* ลิงก์สมัครที่ manager ส่งให้ร้านค้า */
 function ldJoinURL(){
   const o=(location&&location.origin&&location.origin!=="null")?location.origin:"https://bd-sales-dashboard.vercel.app";
@@ -3802,7 +3852,7 @@ function renderSalesRequests(){
       <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>รวม ลัง/ชิ้น</th><th>สาย</th></tr></thead><tbody>`+
       list.map(c=>`<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td><b>${combined[c].cs} / ${combined[c].pc}</b></td><td>${reqLineTags(combined[c].lines)}</td></tr>`).join("")+`</tbody></table></div></div>`;});
   el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${fmtDate(d)} <span style="font-size:13px;color:var(--muted);font-weight:400">(${codes.length} สาย)</span></h3>
-    <div class="psub">รวมทุกสายเพื่อเปิดใบสั่ง (แบ่งตามหมวดในใบสั่งซื้อ ไล่เทียบทีละหน้าได้) + แยกรายเซลล์ให้ตรวจ</div>
+    <div class="psub">รวมทุกสายเพื่อเปิดใบสั่ง (แบ่งตามหมวดในใบสั่งซื้อ ไล่เทียบทีละหน้าได้) + แยกรายเซลล์ให้ตรวจ · <b>กดที่รหัสหรือชื่อสินค้า = คัดลอกทันที</b></div>
     <div class="req-combined"><h4>📋 รวมทั้งหมด (สำหรับเปิดใบสั่ง) — แบ่งตามหมวด</h4>${haveCat?"":'<div class="note">ℹ️ ยังไม่มีข้อมูลหมวด — อัพไฟล์ใบสั่ง (BD_...xlsx) สักครั้งเพื่อให้ระบบจับหมวดจากชีต Home_Care/PC_Hair/... ให้อัตโนมัติ</div>'}${combHtml}</div>
     <div class="req-perwrap">${perSales}</div>`;
 }
