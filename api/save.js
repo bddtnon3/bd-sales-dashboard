@@ -134,6 +134,13 @@ function mergeState(server, c) {
     sales: newestById(sL.sales, cL.sales),
     del: keyMerge(sL.del, cL.del),
   };
+  // DCI Score of the depot, keyed by period (BM1..BM12 / Q1..Q4): union the periods exactly
+  // like POSTATUS, so a client that has not loaded DCI (old tab) can never erase it and a
+  // re-upload only refreshes the periods that file actually contains.
+  const sC = s.DCI || {}, cC = c.DCI || {};
+  const dciData = keyMerge(sC.data, cC.data);
+  const dciOrd = (p) => { const m = /^BM(\d+)$/.exec(String(p)); if (m) return (+m[1]) * 10; const q = /^Q([1-4])$/.exec(String(p)); return q ? (+q[1]) * 30 + 5 : 999; };
+  const DCI = { data: dciData, periods: Object.keys(dciData).sort((a, b) => dciOrd(a) - dciOrd(b)), up: Math.max(sC.up || 0, cC.up || 0), file: (cC.up || 0) >= (sC.up || 0) ? (cC.file || sC.file || "") : (sC.file || "") };
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),
@@ -149,6 +156,7 @@ function mergeState(server, c) {
     EB2B,
     POSTATUS,
     LEADS,
+    DCI,
     savedAt: Date.now(),
   };
 }

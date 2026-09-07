@@ -358,5 +358,57 @@ console.log("TEST 13 — the salesperson's progress and the manager's notes neve
         Object.keys(o3.DATA.monthly).length === 2 && !!o3.PSTORE.rounds["2026-06-30"] && o3.ORDERS.dates.length === 2);
 }
 
+console.log("TEST 14 — the depot's DCI Score periods are never dropped");
+{
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.DCI = {
+    up: 1000, file: "dci-q1.xlsm",
+    periods: ["BM1", "BM2", "BM3", "Q1"],
+    data: { BM1: { tot: 104.4 }, BM2: { tot: 107.2 }, BM3: { tot: 108.9 }, Q1: { tot: 106.8 } },
+  };
+
+  // an old browser tab that predates the DCI feature saves something else entirely
+  const oldTab = JSON.parse(JSON.stringify(srv));
+  delete oldTab.DCI;
+  const o1 = mergeState(srv, oldTab);
+  check("a tab with no DCI at all cannot erase it", o1.DCI.periods.length === 4 && o1.DCI.data.Q1.tot === 106.8);
+
+  // the manager uploads a newer file that only carries Q2's months
+  const up = JSON.parse(JSON.stringify(o1));
+  up.DCI = {
+    up: 2000, file: "dci-q2.xlsm",
+    periods: ["BM4", "BM5", "BM6", "Q2"],
+    data: { BM4: { tot: 100.9 }, BM5: { tot: 97.3 }, BM6: { tot: 101.2 }, Q2: { tot: 99.8 } },
+  };
+  const o2 = mergeState(o1, up);
+  check("the new periods are added", o2.DCI.data.BM5.tot === 97.3);
+  check("Q1's periods survive an upload that only had Q2", o2.DCI.data.BM1.tot === 104.4 && o2.DCI.data.Q1.tot === 106.8);
+  check("periods come back in calendar order",
+        o2.DCI.periods.join(",") === "BM1,BM2,BM3,Q1,BM4,BM5,BM6,Q2");
+  check("the newest file name/stamp wins", o2.DCI.up === 2000 && o2.DCI.file === "dci-q2.xlsm");
+
+  // a stale tab (loaded before the Q2 upload) saves an unrelated section
+  const stale = JSON.parse(JSON.stringify(o1));
+  stale.DATA.daily["2026-08-01"] = { a: 9 };
+  const o3 = mergeState(o2, stale);
+  check("a stale tab cannot roll DCI back to the Q1-only file",
+        o3.DCI.data.BM5.tot === 97.3 && o3.DCI.periods.length === 8);
+
+  // re-uploading the same period refreshes it rather than duplicating it
+  const re = JSON.parse(JSON.stringify(o3));
+  re.DCI = { up: 3000, file: "dci-fix.xlsm", periods: ["BM5"], data: { BM5: { tot: 98.1 } } };
+  const o4 = mergeState(o3, re);
+  check("re-uploading one period refreshes just that one", o4.DCI.data.BM5.tot === 98.1 && o4.DCI.periods.length === 8);
+  check("adding DCI still disturbs no other section",
+        Object.keys(o4.DATA.monthly).length === 2 && !!o4.PSTORE.rounds["2026-06-30"] &&
+        o4.ORDERS.dates.length === 2 && Object.keys(o4.DATA.daily).length === 3);
+
+  // a fresh blob store: first ever save carries DCI and nothing is lost
+  const first = mergeState(null, { DATA: server.DATA, DCI: srv.DCI });
+  check("first save into an empty store keeps DCI", first.DCI.data.BM3.tot === 108.9);
+  check("looksEmpty: DCI alone does NOT count as real data (a DCI-only save is still refused)",
+        looksEmpty({ DATA: {}, DCI: srv.DCI }) === true);
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

@@ -253,6 +253,40 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .plan-tbl th,.plan-tbl td{white-space:nowrap}
 .plan-tbl td:first-child{text-align:left}
 .kpi-card .v{font-size:24px}
+/* ---------- DCI SCORE ---------- */
+.dci-pb{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:8px;padding:4px 10px;
+  font-size:12.5px;font-weight:800;margin:2px 3px 2px 0}
+.dci-pb.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.dci-src{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:5px}
+.dci-c{font-weight:800}
+.dci-c.g,td.g{background:#EAF7EE;color:var(--good)} .dci-c.w,td.w{background:#FDF3DB;color:#8a6500}
+.dci-c.b,td.b{background:#FBE9E9;color:var(--bad)} .dci-c.z{background:var(--bg);color:#B7BFCC;font-weight:600}
+.dci-w{font-size:11px;opacity:.65;font-weight:700}
+.dci-sub{font-size:11.5px;color:var(--muted);font-weight:500;margin-top:2px;white-space:normal}
+.dci-tot td{font-weight:800;border-top:2px solid var(--line)}
+.dci-selc{box-shadow:inset 2px 0 0 var(--blue),inset -2px 0 0 var(--blue)}
+.dci-gap{color:var(--bad);font-weight:800}
+.dci-lg{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:800;margin-left:4px}
+.dci-lg.g{background:#EAF7EE;color:var(--good)}.dci-lg.w{background:#FDF3DB;color:#8a6500}
+.dci-lg.b{background:#FBE9E9;color:var(--bad)}.dci-lg.z{background:var(--bg);color:#96A0B0}
+.dci-bars{position:relative;display:flex;align-items:flex-end;gap:10px;padding:10px 4px 0;overflow-x:auto}
+.dci-b{flex:1;min-width:52px;text-align:center}
+.dci-bv{font-size:12px;font-weight:800;color:var(--ink);margin-bottom:4px}
+.dci-bt{height:130px;display:flex;align-items:flex-end;justify-content:center}
+.dci-bt i{display:block;width:70%;border-radius:6px 6px 0 0}
+.dci-bt i.g{background:var(--good)} .dci-bt i.w{background:var(--warn)}
+.dci-bl{font-size:11.5px;font-weight:700;color:var(--muted);padding-top:6px;height:28px}
+.dci-b.on .dci-bl{color:var(--blue)} .dci-b.on .dci-bv{color:var(--blue)}
+.dci-100{position:absolute;left:0;right:0;border-top:2px dashed var(--blue);pointer-events:none}
+.dci-100 span{position:absolute;right:0;top:-16px;font-size:11px;font-weight:800;color:var(--blue);
+  background:#fff;padding:0 5px;border-radius:4px}
+.dci-risks{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.dci-risk{border-radius:10px;padding:12px 14px;font-size:12.5px;line-height:1.6;border-left:4px solid}
+.dci-risk b{font-size:13.5px}
+.dci-risk.g{background:#EAF7EE;border-color:var(--good)}
+.dci-risk.w{background:#FDF3DB;border-color:var(--warn)}
+.dci-risk.b{background:#FBE9E9;border-color:var(--bad)}
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .kpi-monthbar{background:var(--blue-soft);border-left:4px solid var(--blue);border-radius:0 8px 8px 0;padding:9px 14px;margin-bottom:14px;font-size:14px;color:var(--blue-dark)}
 .kpi-monthbar b{font-size:15px}
 
@@ -434,6 +468,8 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 .ps2-dot{display:inline-block;width:11px;height:11px;border-radius:3px;border:1px solid rgba(0,0,0,.15);vertical-align:-1px;margin-right:5px}
 /* eB2B opening contest */
 .eb-period{background:var(--blue-soft);border-radius:9px;padding:9px 14px;font-size:13.5px;white-space:nowrap}
+.eb-period.dci-hd{white-space:normal;line-height:1.5}   /* ยาวเกินจอมือถือถ้าไม่ให้ตัดบรรทัด */
+.controls .ctl{min-width:0}                             /* ให้ย่อได้ ไม่ดันหน้าจอกว้างเกิน */
 .eb-podium-wrap{text-align:center}
 .eb-podium{display:flex;align-items:flex-end;justify-content:center;gap:18px;margin:16px 0 6px;flex-wrap:wrap}
 .eb-pod{display:flex;flex-direction:column;align-items:center;min-width:96px}
@@ -527,6 +563,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <button class="tab" data-tab="order" onclick="switchTab('order')">🛒 การสั่งของ</button>
       <button class="tab" data-tab="stock" onclick="switchTab('stock')">📦 สต็อก</button>
       <button class="tab admin-upload" data-tab="pos" style="display:none" onclick="switchTab('pos')">📊 วิเคราะห์การสั่งของ</button>
+      <button class="tab admin-upload" data-tab="dci" style="display:none" onclick="switchTab('dci')">📈 DCI Score ศูนย์</button>
       <button class="tab admin-upload" data-tab="lead" style="display:none" onclick="switchTab('lead')">🏪 สมัครร้านค้าใหม่</button>
       <button class="tab sales-only" data-tab="myshop" style="display:none" onclick="switchTab('myshop')">🏪 ร้านใหม่ของฉัน</button>
       <button class="tab" data-tab="ana" onclick="switchTab('ana')">🔬 วิเคราะห์เชิงลึก</button>
@@ -665,6 +702,22 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div id="psCharts"></div>
       <div class="panel" id="psPlan"></div>
       <div class="panel" id="psStores"></div>
+    </div>
+
+    <div id="dciView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>&nbsp;</label><div class="eb-period dci-hd">🏢 DCI Score 2026 · ศูนย์ <b>BD DISTRIBUTION</b> (DT 50006820)</div></div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+        </div>
+      </div>
+      <div class="kpi-monthbar" id="dciBar"></div>
+      <div class="cards" id="dciCards"></div>
+      <div class="panel" id="dciTrend" style="margin-bottom:20px"></div>
+      <div class="panel" id="dciGap" style="margin-bottom:20px"></div>
+      <div class="panel" id="dciRisk" style="margin-bottom:20px"></div>
+      <div class="panel" id="dciMatrix"></div>
     </div>
 
     <div id="orderView" class="hidden">
@@ -878,6 +931,10 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <label class="drop up-master" for="fileMaster">📚 <b>Master Data (สินค้าทั้งหมด)</b><small>อัพเดือนละครั้ง · ไฟล์ data ...xlsx (แคตตาล็อกเต็ม ใช้ค้นหาสินค้าที่หมดสต็อก)</small></label>
         <input id="fileMaster" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
+      <div class="up-row" data-group="dci">
+        <label class="drop up-dci" for="fileDCI">📈 <b>DCI Score ของศูนย์</b><small>อัพทุกครั้งที่ Unilever ส่งไฟล์ใหม่ · ไฟล์ R1_GBKK__EAST_DCI_Score_2026_....xlsm · <b>ถ้าไฟล์ใส่รหัสผ่านไว้ ให้เปิดแล้ว Save As เป็นไฟล์ใหม่ที่ไม่ใส่รหัสก่อน</b></small></label>
+        <input id="fileDCI" type="file" accept=".xlsm,.xlsx,.xls" multiple class="hidden">
+      </div>
       <div class="up-row" data-group="ana">
         <label class="drop up-ana" for="fileAna">🧪 <b>ยอดขายรายกลุ่ม/แบรนด์/สินค้า</b><small>อัพเดือนละครั้ง · ไฟล์ Sales 1-2 2026.xls ฯลฯ · <b>อัพทีละไฟล์</b> (ไฟล์ใหญ่ ~60MB ใช้เวลา 20-40 วิ) ระบบรวมเดือนให้เอง</small></label>
         <input id="fileAna" type="file" accept=".xls,.xlsx" multiple class="hidden">
@@ -1012,6 +1069,13 @@ let PSTORE = __PSTOREDATA__;
    can never touch the sales data. */
 let LEADS = __LEADSDATA__;   /* {meta:{id:…manager}, sales:{id:…เซลล์รายงานกลับ}, del:{id:ts}} */
 let LEADSRAW=[],LEADSLOADED=false;
+
+/* DCI Score ของศูนย์ (ไฟล์ DCI Score จาก Unilever) — ผู้จัดการเท่านั้น
+   {up,file,periods:["BM1","Q1",…],data:{"BM5":{tot,totCov,cov,it:{"3":{s,pct:[],plan:[],comp:[],…}}}}} */
+let DCI = __DCIDATA__;
+/* ข้อมูลตั้งต้น (อ่านจากไฟล์ DCI Score 2026 ของศูนย์ BM1–BM7) — อ่านอย่างเดียว ไม่เคยถูกเขียนกลับ
+   ใช้แสดงผลเมื่อเซิร์ฟเวอร์ยังไม่มี DCI พออัพไฟล์ใหม่ ข้อมูลจริงจะทับการแสดงผลนี้ทันที */
+const DCI_SEED = {"up":1788739200000,"periods":["BM1","BM2","BM3","Q1","BM4","BM5","BM6","Q2","BM7"],"data":{"BM1":{"tot":104.438,"totCov":104.438,"cov":0.6764,"it":{"1":{"s":53.143,"iop":[24.2,18.2],"act":[24.899,19.9627],"pct":[1.0289,1.0969]},"2":{"s":12,"pct":[1.3639]},"3":{"s":0,"plan":[2148],"comp":[724],"pct":[0.3371]},"4":{"s":5.886,"plan":[1043],"comp":[336],"pct":[0.3221]},"5":{"s":7,"plan":[4834],"comp":[4245],"pct":[0.8782,0.8905]},"6":{"s":6.409,"pct":[0.9352]},"7":{"s":10,"tgt":[0.35,0.35],"pct":[0.4851,0.5703]},"8":{"s":10,"tgt":[1],"pct":[1.7601]}},"uni":4283,"pjp":2897},"BM2":{"tot":107.154,"totCov":107.154,"cov":0.6523,"it":{"1":{"s":54.93,"iop":[17.1,16.4],"act":[18.7364,18.0647],"pct":[1.0957,1.1015]},"2":{"s":12,"pct":[1.3639]},"3":{"s":0,"plan":[2126],"comp":[762],"pct":[0.3584]},"4":{"s":7,"plan":[939],"comp":[361],"pct":[0.3845]},"5":{"s":7,"plan":[4297],"comp":[4092],"pct":[0.9523,1.1398]},"6":{"s":6.223,"pct":[0.9306]},"7":{"s":10,"tgt":[0.35,0.35],"pct":[0.4626,0.4021]},"8":{"s":10,"tgt":[1],"pct":[3.2095]}},"uni":4283,"pjp":2794},"BM3":{"tot":108.929,"totCov":108.929,"cov":0.657,"it":{"1":{"s":58.597,"iop":[22.4,20.2],"act":[27.7696,22.3038],"pct":[1.2397,1.1041]},"2":{"s":10.206,"pct":[1.1051]},"3":{"s":0,"plan":[2132],"comp":[831],"pct":[0.3898]},"4":{"s":7,"plan":[1306],"comp":[538],"pct":[0.4119]},"5":{"s":7,"plan":[4607],"comp":[4223],"pct":[0.9166,1.2079]},"6":{"s":6.127,"pct":[0.9282]},"7":{"s":10,"tgt":[0.35,0.35],"pct":[0.4513,0.3836]},"8":{"s":10,"tgt":[1],"pct":[2.3978]}},"uni":4283,"pjp":2814},"Q1":{"tot":106.831,"totCov":106.831,"cov":0.657,"it":{"1":{"s":55.547,"iop":[63.7,54.8],"act":[71.4051,60.3312],"pct":[1.121,1.1009]},"2":{"s":11.402,"pct":[0]},"3":{"s":0,"plan":[0],"comp":[0],"pct":[0]},"4":{"s":6.629,"plan":[0],"comp":[0],"pct":[0]},"5":{"s":7,"plan":[0],"comp":[0],"pct":[0,0]},"6":{"s":6.253,"pct":[0]},"7":{"s":10,"tgt":[0,0],"pct":[0,0]},"8":{"s":10,"tgt":[0],"pct":[0]}},"uni":4283,"pjp":2814},"BM4":{"tot":100.944,"totCov":100.944,"cov":0.6608,"it":{"1":{"s":53.486,"iop":[12,14],"act":[12.3392,15.5562],"pct":[1.0283,1.1112]},"2":{"s":0,"pct":[0]},"3":{"s":5.458,"plan":[2138],"comp":[865],"pct":[0.4046]},"4":{"s":12,"plan":[1179],"comp":[486],"pct":[0.4122]},"5":{"s":0,"plan":[0],"comp":[0],"pct":[0,0]},"6":{"s":0,"pct":[0]},"7":{"s":15,"tgt":[0.35,0.35],"pct":[0.4734,0.6199]},"8":{"s":15,"tgt":[1],"pct":[1.9452]}},"uni":4283,"pjp":2830},"BM5":{"tot":97.253,"totCov":97.253,"cov":0.8134,"it":{"1":{"s":50.131,"iop":[18,18.7],"act":[18.0248,18.7724],"pct":[1.0014,1.0039]},"2":{"s":0,"pct":[0]},"3":{"s":5.121,"plan":[2141],"comp":[859],"pct":[0.4012]},"4":{"s":12,"plan":[1147],"comp":[506],"pct":[0.4412]},"5":{"s":0,"plan":[0],"comp":[0],"pct":[0,0]},"6":{"s":0,"pct":[0]},"7":{"s":15,"tgt":[0.35,0.35],"pct":[0.4851,0.5703]},"8":{"s":15,"tgt":[1],"pct":[1.7601]}},"uni":4283,"pjp":3484},"BM6":{"tot":101.199,"totCov":101.199,"cov":0.6785,"it":{"1":{"s":54.199,"iop":[21.4,18.6],"act":[22.5367,20.7358],"pct":[1.0531,1.1148]},"2":{"s":0,"pct":[0]},"3":{"s":5,"plan":[2200],"comp":[880],"pct":[0.4]},"4":{"s":12,"plan":[1166],"comp":[472],"pct":[0.4048]},"5":{"s":0,"plan":[0],"comp":[0],"pct":[0,0]},"6":{"s":0,"pct":[0]},"7":{"s":15,"tgt":[0.35,0.35],"pct":[0.4467,0.376]},"8":{"s":15,"tgt":[1],"pct":[1.4714]}},"uni":4283,"pjp":2906},"Q2":{"tot":99.758,"totCov":99.758,"cov":0.6785,"it":{"1":{"s":52.564,"iop":[51.4,51.3],"act":[52.9007,55.0644],"pct":[1.0292,1.0734]},"2":{"s":0,"pct":[0]},"3":{"s":5.193,"plan":[0],"comp":[0],"pct":[0]},"4":{"s":12,"plan":[0],"comp":[0],"pct":[0]},"5":{"s":0,"plan":[0],"comp":[0],"pct":[0,0]},"6":{"s":0,"pct":[0]},"7":{"s":15,"tgt":[0,0],"pct":[0,0]},"8":{"s":15,"tgt":[0],"pct":[0]}},"uni":4283,"pjp":2906},"BM7":{"tot":106.398,"totCov":106.398,"cov":0.6797,"it":{"1":{"s":51.976,"iop":[15.6,16.5],"act":[15.7672,17.6276],"pct":[1.0107,1.0683]},"2":{"s":12,"pct":[1.6388]},"3":{"s":3.421,"plan":[2202],"comp":[904],"pct":[0.4105]},"4":{"s":7,"plan":[1307],"comp":[561],"pct":[0.4292]},"5":{"s":0,"plan":[0],"comp":[0],"pct":[0,0]},"6":{"s":12,"pct":[2.5846]},"7":{"s":10,"tgt":[0.35,0.35],"pct":[0.4135,0.4811]},"8":{"s":10,"tgt":[1],"pct":[1.2649]}},"uni":4283,"pjp":2911}},"file":"R1_GBKK__EAST_DCI_Score_2026_BD_DISTRIBUTION.xlsm"};
 let STORE_IDX={};   // line code -> array of {code,name,m:[[cs,pc,niv]...]}
 function buildStoreIdx(){
   STORE_IDX={};
@@ -1579,6 +1643,7 @@ function _switchTab(t){
   document.getElementById("orderView").classList.toggle("hidden",t!=="order");
   document.getElementById("stockView").classList.toggle("hidden",t!=="stock");
   document.getElementById("posView").classList.toggle("hidden",t!=="pos");
+  document.getElementById("dciView").classList.toggle("hidden",t!=="dci");
   document.getElementById("leadView").classList.toggle("hidden",t!=="lead");
   document.getElementById("myshopView").classList.toggle("hidden",t!=="myshop");
   document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
@@ -1588,6 +1653,7 @@ function _switchTab(t){
   if(t==="order")renderOrder();
   if(t==="stock")renderStock();
   if(t==="pos")renderPOS();
+  if(t==="dci")renderDCI();
   if(t==="lead")ldRefresh();
   if(t==="myshop")msRefresh();
   if(t==="ana")renderAnalytics();
@@ -3987,10 +4053,246 @@ function parseDrop(name,buf){
   pgBust();syncToServer();
 }
 
+/* ============================================================================
+ * DCI SCORE ของศูนย์ (ผู้จัดการเท่านั้น)
+ *
+ * กติกาทั้งหมดด้านล่างอ่านมาจาก "สูตรจริง" ในไฟล์ DCI Score 2026 ของ Unilever:
+ *   - คะแนนรวม = ผลบวกคะแนน 8 ข้อ และ "น้ำหนักเต็ม" ของ 8 ข้อรวมกันได้ 100 พอดี
+ *     => 100 คือเส้นแบ่ง "ทำได้ตามเป้า" ไม่ใช่เพดาน (บางข้อทำเกินเป้าได้คะแนนเกินน้ำหนัก)
+ *   - น้ำหนักเปลี่ยนตามช่วง: Q2 ตัดข้อ 2,5,6 ออก แล้วโยกไปเพิ่มที่ข้อ 3,4,7,8
+ *   - ในไฟล์ไม่มีคะแนนติดลบเลย ต่ำสุดคือ 0 — หน้านี้จึงแสดง "เก็บได้เท่าไหร่ / ขาดอีกเท่าไหร่"
+ *     ไม่แสดงเลขติดลบ
+ * ==========================================================================*/
+/* DCI-RULES-BEGIN */
+const DCI_ITEMS=[
+  {n:1,name:"Sales Growth",th:"ยอดขายโตตามเป้า (1st + 2nd Sales)"},
+  {n:2,name:"Line per store / IQ",th:"จำนวนไลน์สินค้าต่อร้าน"},
+  {n:3,name:"Active eB2B",th:"สายที่ร้านสั่งผ่าน eB2B"},
+  {n:4,name:"Self ordering eB2B",th:"สายที่ร้านกดสั่งเอง"},
+  {n:5,name:"PJP + GEO Match",th:"เข้าเยี่ยมตามแผน + พิกัดตรง"},
+  {n:6,name:"Effective Outlet / Perfect Store",th:"ร้าน Effective / Perfect Store AVD"},
+  {n:7,name:"Combo Drive",th:"ขายพ่วง HCF + BWPC"},
+  {n:8,name:"Flash Deal",th:"สินค้าใหม่ NPD"}
+];
+/* น้ำหนักเต็มของแต่ละข้อ (รวมกันได้ 100 ทุกช่วง) */
+const DCI_W={Q1:[50,10,5,5,5,5,10,10],Q2:[50,0,10,10,0,0,15,15],H2:[50,10,5,5,0,10,10,10]};
+/* เส้น % ที่ต้องข้ามถึงจะได้ "คะแนนเต็มตามน้ำหนัก" ของข้อนั้น (เท่ากันทุกช่วงตามสูตรในไฟล์) */
+const DCI_FULL={3:0.45,4:0.30};
+/* ต่ำกว่าเส้นนี้ = ได้ 0 ทันที (หน้าผา) */
+const DCI_ZERO={1:0.95,3:0.40,4:0.25};
+const DCI_COV=0.495;   /* Coverage ต่ำกว่านี้ = คะแนนรวมกลายเป็น 0 ทั้งเดือน */
+function dciPhase(p){const m=/^BM(\d+)$/.exec(String(p));const n=m?+m[1]:0;
+  if(p==="Q1"||(n>=1&&n<=3))return "Q1";
+  if(p==="Q2"||(n>=4&&n<=6))return "Q2";
+  return "H2";}
+function dciW(p,n){return DCI_W[dciPhase(p)][n-1];}
+function dciOrd(p){const m=/^BM(\d+)$/.exec(String(p));if(m)return (+m[1])*10;
+  const q=/^Q([1-4])$/.exec(String(p));if(q)return (+q[1])*30+5;return 999;}
+function dciSort(a){return (a||[]).slice().sort((x,y)=>dciOrd(x)-dciOrd(y));}
+/* DCI-RULES-END */
+
+/* DCI-EXTRACT-BEGIN */
+/* อ่านชีต DCI Score (rows = sheet_to_json header:1) ให้เป็นโครงข้อมูลของแอป
+   ยึดจาก "ป้ายข้อความ" ในไฟล์ ไม่ยึดเลขบรรทัด เผื่อ Unilever แทรก/ย้ายแถว */
+function dciExtract(rows){
+  const S=v=>v==null?"":String(v).trim();
+  const N=v=>{const x=typeof v==="number"?v:parseFloat(v);return isFinite(x)?x:null;};
+  const R3=v=>Math.round(v*1000)/1000;
+  let hr=-1;
+  for(let i=0;i<rows.length&&hr<0;i++){const r=rows[i]||[];
+    for(let c=0;c<r.length;c++)if(/^BM1$/i.test(S(r[c]))){hr=i;break;}}
+  if(hr<0)throw new Error("ไม่พบหัวตาราง BM1 — ตรวจว่าเป็นไฟล์ DCI Score และไฟล์ไม่ได้ใส่รหัสผ่าน");
+  /* เอาเฉพาะคอลัมน์รายเดือน (BM) และรายไตรมาส (Q) — ข้าม Year End / YTD ที่เป็นค่าเฉลี่ยทั้งปี */
+  const cols=[];
+  (rows[hr]||[]).forEach((v,c)=>{const t=S(v).toUpperCase();
+    if(/^BM([1-9]|1[0-2])$/.test(t)||/^Q[1-4]$/.test(t))cols.push([c,t]);});
+  if(!cols.length)throw new Error("ไม่พบคอลัมน์ BM/Q ในไฟล์");
+  const data={};cols.forEach(([,p])=>{data[p]={tot:0,totCov:0,cov:0,it:{}};});
+  const slot=(p,n)=>{const it=data[p].it;return it[n]||(it[n]={s:0});};
+  const push=(n,key,r)=>{cols.forEach(([c,p])=>{const o=slot(p,n);(o[key]=o[key]||[]).push(N(r[c])||0);});};
+  let cur=0,seen=0;
+  for(let i=hr+1;i<rows.length;i++){
+    const r=rows[i]||[];const a=S(r[0]),b=S(r[1]),d=S(r[3]);
+    if(/^[1-8]$/.test(a))cur=+a;
+    if(/^Total Score/i.test(b)&&cur){cols.forEach(([c,p])=>{slot(p,cur).s=R3(N(r[c])||0);});seen++;continue;}
+    if(/^%\s*Coverage/i.test(b)){cols.forEach(([c,p])=>{data[p].cov=N(r[c])||0;});continue;}
+    if(/^Total DCI Score/i.test(b)){cols.forEach(([c,p])=>{data[p].tot=R3(N(r[c])||0);});continue;}
+    if(/คิดเงื่อนไข/.test(d)&&!/ไม่คิด/.test(d)){cols.forEach(([c,p])=>{data[p].totCov=R3(N(r[c])||0);});continue;}
+    if(/^Universe/i.test(b)){cols.forEach(([c,p])=>{data[p].uni=N(r[c])||0;});continue;}
+    if(/^Total PJP/i.test(b)){cols.forEach(([c,p])=>{data[p].pjp=N(r[c])||0;});continue;}
+    if(!cur)continue;
+    if(/%\s*Achieve/i.test(d))push(cur,"pct",r);
+    else if(/%\s*Target/i.test(d))push(cur,"tgt",r);
+    else if(/Planned Calls/i.test(d))push(cur,"plan",r);
+    else if(/Complied Calls/i.test(d))push(cur,"comp",r);
+    else if(/^IOP/i.test(d))push(cur,"iop",r);
+    else if(/^Actual/i.test(d))push(cur,"act",r);
+  }
+  if(seen<6)throw new Error("อ่านคะแนนได้ไม่ครบ (เจอ "+seen+" ข้อ) — ตรวจว่าเป็นไฟล์ DCI Score ฉบับเต็ม");
+  /* ทิ้งช่วงที่ยังไม่มีข้อมูล และทิ้ง "ไตรมาสที่ยังไม่ครบ 3 เดือน" ด้วย —
+     ในไฟล์ ช่องไตรมาสเป็นค่าเฉลี่ย/ผลรวมของ 3 เดือน ถ้าเดือนยังไม่ครบเลขจะต่ำหลอกตา
+     (เช่น Q3 ที่มีแค่ BM7 จะขึ้น 70 กว่าๆ ทั้งที่ BM7 จริงๆ ได้ 106) */
+  const has=p=>(data[p]&&data[p].tot>0);
+  const periods=dciSort(cols.map(([,p])=>p).filter(p=>{
+    if(!has(p))return false;
+    const q=/^Q([1-4])$/.exec(p);
+    if(!q)return true;
+    const b=(+q[1]-1)*3;
+    return has("BM"+(b+1))&&has("BM"+(b+2))&&has("BM"+(b+3));
+  }));
+  const out={up:Date.now(),periods,data:{}};
+  periods.forEach(p=>{out.data[p]=data[p];});
+  if(!periods.length)throw new Error("ยังไม่มีเดือนไหนที่มีคะแนนในไฟล์นี้");
+  return out;
+}
+/* DCI-EXTRACT-END */
+
+function parseDCI(name,buf){
+  const wb=XLSX.read(buf,{type:"array"});
+  let best=null;
+  wb.SheetNames.forEach(sn=>{
+    if(best)return;
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true});
+    try{best=dciExtract(rows);}catch(e){/* ลองชีตถัดไป */}
+  });
+  if(!best)throw new Error("อ่านไฟล์ DCI ไม่ได้ — ถ้าไฟล์ใส่รหัสผ่านไว้ ให้เปิดแล้ว Save As เป็นไฟล์ใหม่ที่ไม่ใส่รหัสก่อน");
+  best.file=name;
+  if(!DCI||typeof DCI!=="object")DCI={};
+  DCI.data=Object.assign({},DCI.data||{},best.data);
+  DCI.periods=dciSort(Object.keys(DCI.data));
+  DCI.up=best.up;DCI.file=name;
+  ulog("✅ "+name+" (DCI Score) → "+best.periods.length+" ช่วง: "+best.periods.join(", "));
+  DCIS.p=best.periods[best.periods.length-1];
+  if(!document.getElementById("dciView").classList.contains("hidden"))renderDCI();
+  syncToServer();
+}
+
+/* ---------- หน้าจอ DCI ---------- */
+let DCIS={p:null};
+function dciSrc(){return (DCI&&DCI.periods&&DCI.periods.length)?DCI:DCI_SEED;}
+function dciIsSeed(){return dciSrc()===DCI_SEED;}
+function dciPct(v){return (v*100).toFixed(1)+"%";}
+function dciNum(v){return (Math.round(v*100)/100).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2});}
+/* สีของช่องคะแนน: เขียว=เก็บครบ/เกิน · เหลือง=เก็บได้ไม่ครบ · แดง=ได้ 0 ทั้งที่มีน้ำหนัก · เทา=ไม่นับรอบนี้ */
+function dciCls(w,s){if(!w)return "z";if(s>=w-0.005)return "g";if(s<=0)return "b";return "w";}
+function renderDCI(){
+  const src=dciSrc(),ps=src.periods||[];
+  const bar=document.getElementById("dciBar");
+  if(!ps.length){bar.innerHTML="ยังไม่มีข้อมูล DCI — กด <b>＋ อัพโหลดไฟล์</b> เพื่อใส่ไฟล์ DCI Score";
+    document.getElementById("dciCards").innerHTML="";document.getElementById("dciTrend").innerHTML="";
+    document.getElementById("dciGap").innerHTML="";document.getElementById("dciRisk").innerHTML="";
+    document.getElementById("dciMatrix").innerHTML="";return;}
+  if(!DCIS.p||ps.indexOf(DCIS.p)<0)DCIS.p=ps[ps.length-1];
+  const p=DCIS.p,d=src.data[p],ph=dciPhase(p);
+  bar.innerHTML="📈 <b>DCI Score "+(src.file?"":"")+"</b> เลือกช่วง: "+
+    ps.map(x=>'<button class="dci-pb'+(x===p?" on":"")+'" onclick="DCIS.p=\''+x+'\';renderDCI()">'+x+"</button>").join("")+
+    '<span class="dci-src">'+(dciIsSeed()
+      ? "ข้อมูลตั้งต้นจากไฟล์ DCI Score 2026 (BM1–BM7) — อัพไฟล์ใหม่เพื่ออัปเดต"
+      : ("อัพเดตล่าสุด "+new Date(src.up||0).toLocaleDateString("th-TH")+(src.file?" · "+src.file:"")))+"</span>";
+
+  /* ---- การ์ดสรุป ---- */
+  const tot=d.tot||0,covOk=(d.cov||0)>=DCI_COV;
+  let gotW=0,fullW=0,miss=[],bonus=[];
+  DCI_ITEMS.forEach(it=>{const w=dciW(p,it.n),s=(d.it[it.n]||{}).s||0;
+    fullW+=w;gotW+=Math.min(s,w);
+    if(w&&s<w-0.005)miss.push({it,w,s,gap:w-s});
+    if(s>w+0.005)bonus.push({it,w,s,gap:s-w});});
+  miss.sort((a,b)=>b.gap-a.gap);
+  const gapTot=miss.reduce((a,b)=>a+b.gap,0),bonTot=bonus.reduce((a,b)=>a+b.gap,0);
+  const card=(k,v,s,cls)=>'<div class="card"><div class="k">'+k+'</div><div class="v '+(cls||"")+'">'+v+'</div><div class="s '+(cls||"")+'">'+s+"</div></div>";
+  document.getElementById("dciCards").innerHTML=
+    card("คะแนนรวม "+p,dciNum(tot),(tot>=100?"✅ ผ่านเส้น 100":"⚠️ ต่ำกว่าเส้น 100 อยู่ "+dciNum(100-tot)+" คะแนน"),tot>=100?"up":"down")+
+    card("เก็บได้ไม่ครบ",dciNum(gapTot),miss.length?("จาก "+miss.length+" ข้อ · ตัวฉุดหลัก: "+miss[0].it.name):"เก็บครบทุกข้อ",gapTot>0?"mid":"up")+
+    card("โบนัสเกินน้ำหนัก","+"+dciNum(bonTot),bonus.length?bonus.map(b=>b.it.name).join(" · "):"ยังไม่มีข้อไหนทำเกินเป้า",bonTot>0?"up":"")+
+    card("% Coverage",dciPct(d.cov||0),covOk?("✅ ผ่านเส้น "+dciPct(DCI_COV)):("⛔ ต่ำกว่า "+dciPct(DCI_COV)+" คะแนนรวมจะเป็น 0"),covOk?"up":"down");
+
+  /* ---- กราฟคะแนนรวมรายเดือน ---- */
+  const mo=ps.filter(x=>/^BM/.test(x)),mx=Math.max(110,...mo.map(x=>src.data[x].tot||0));
+  document.getElementById("dciTrend").innerHTML='<h3>คะแนนรวมรายเดือน เทียบเส้น 100</h3>'+
+    '<div class="psub">แท่งเขียว = ผ่านเส้น 100 · แท่งส้ม = ยังไม่ถึง — เส้นประคือเส้น 100</div>'+
+    '<div class="dci-bars">'+mo.map(x=>{const v=src.data[x].tot||0,h=Math.round(v/mx*130);
+      return '<div class="dci-b'+(x===p?" on":"")+'" onclick="DCIS.p=\''+x+'\';renderDCI()">'+
+        '<div class="dci-bv">'+dciNum(v)+'</div><div class="dci-bt"><i class="'+(v>=100?"g":"w")+'" style="height:'+h+'px"></i></div>'+
+        '<div class="dci-bl">'+x+"</div></div>";}).join("")+
+      '<div class="dci-100" style="bottom:'+(28+Math.round(100/mx*130))+'px"><span>เส้น 100 = ทำได้ตามเป้า</span></div></div>';
+
+  /* ---- ตารางเมทริกซ์ 8 ข้อ × ทุกช่วง ---- */
+  let h='<h3>คะแนน 8 ข้อ ทุกช่วง</h3><div class="psub">ตัวเลขคือคะแนนที่เก็บได้จริง (ในไฟล์ไม่มีคะแนนติดลบ ต่ำสุดคือ 0) · '+
+    '<span class="dci-lg g">เก็บครบ</span> <span class="dci-lg w">เก็บไม่ครบ</span> <span class="dci-lg b">ได้ 0</span> <span class="dci-lg z">ไม่นับรอบนี้</span></div>'+
+    '<div class="tblwrap"><table><thead><tr><th>ข้อ</th>'+ps.map(x=>"<th"+(x===p?' class="dci-selc"':"")+">"+x+"</th>").join("")+"</tr></thead><tbody>";
+  DCI_ITEMS.forEach(it=>{
+    h+='<tr><td><b>'+it.n+". "+it.name+'</b><div class="dci-sub">'+it.th+"</div></td>";
+    ps.forEach(x=>{const w=dciW(x,it.n),s=(src.data[x].it[it.n]||{}).s||0;
+      h+='<td class="dci-c '+dciCls(w,s)+(x===p?" dci-selc":"")+'">'+(w?dciNum(s)+'<span class="dci-w">/'+w+"</span>":"—")+"</td>";});
+    h+="</tr>";});
+  h+='<tr class="dci-tot"><td><b>คะแนนรวม</b></td>'+ps.map(x=>{const v=src.data[x].tot||0;
+    return '<td class="'+(v>=100?"g":"w")+(x===p?" dci-selc":"")+'">'+dciNum(v)+"</td>";}).join("")+"</tr>";
+  h+='<tr><td>% Coverage (ต้อง ≥ '+dciPct(DCI_COV)+")</td>"+ps.map(x=>{const c=src.data[x].cov||0;
+    return '<td class="'+(c>=DCI_COV?"g":"b")+(x===p?" dci-selc":"")+'">'+dciPct(c)+"</td>";}).join("")+"</tr>";
+  h+="</tbody></table></div>";
+  document.getElementById("dciMatrix").innerHTML=h;
+
+  /* ---- รูรั่วของช่วงที่เลือก + สิ่งที่ต้องทำ ---- */
+  let g='<h3>'+p+" — เก็บคะแนนได้ไม่ครบตรงไหน</h3>"+
+    '<div class="psub">ช่วง '+ph+" · น้ำหนักเต็มรวม "+fullW+' คะแนน (ข้อที่น้ำหนัก 0 คือรอบนี้ไม่นับ)</div>';
+  if(!miss.length)g+='<div class="insight">เก็บครบทุกข้อในรอบนี้ 🎉</div>';
+  else{
+    g+='<div class="tblwrap"><table><thead><tr><th>ข้อที่ฉุดคะแนน</th><th>น้ำหนักเต็ม</th><th>เก็บได้</th><th>ขาดอีก</th><th>ต้องทำอะไร</th></tr></thead><tbody>';
+    miss.forEach(m=>{
+      g+="<tr><td><b>"+m.it.n+". "+m.it.name+"</b></td><td>"+m.w+"</td><td>"+dciNum(m.s)+'</td><td class="dci-gap">'+dciNum(m.gap)+"</td><td>"+dciAdvice(p,m)+"</td></tr>";});
+    g+="</tbody></table></div>";
+    g+='<div class="insight" style="margin-top:14px">รวมแล้วรอบนี้ขาดอยู่ <b>'+dciNum(gapTot)+"</b> คะแนน"+
+      (bonTot>0?(" แต่ได้โบนัสจากข้อที่ทำเกินเป้ามา <b>+"+dciNum(bonTot)+"</b> คะแนน"):"")+
+      " → คะแนนรวมออกมา <b>"+dciNum(tot)+"</b>"+(tot>=100?" ผ่านเส้น 100 แล้ว":" ยังขาดอีก <b>"+dciNum(100-tot)+"</b> คะแนนถึงจะแตะ 100")+"</div>";
+  }
+  document.getElementById("dciGap").innerHTML=g;
+
+  /* ---- จุดเสี่ยง ---- */
+  let rk='<h3>จุดเสี่ยงที่ต้องเฝ้า</h3><div class="psub">สองอย่างนี้ไม่ได้ค่อยๆ ลด แต่ตกเป็น 0 ทันทีเมื่อหลุดเส้น</div><div class="dci-risks">';
+  const sg=(d.it[1]||{}).pct||[],sgMin=sg.length?Math.min.apply(null,sg):0;
+  rk+=dciRisk("ยอดขายโต (ข้อ 1)",sgMin,DCI_ZERO[1],
+    "ต่ำกว่า 95% ของเป้า คะแนนข้อนี้กลายเป็น 0 ทันที (เสียทีเดียว "+dciW(p,1)+" คะแนน)");
+  rk+=dciRisk("% Coverage",d.cov||0,DCI_COV,
+    "ต่ำกว่า "+dciPct(DCI_COV)+" คะแนนรวมทั้งเดือนกลายเป็น 0");
+  if(dciW(p,3))rk+=dciRisk("Active eB2B (ข้อ 3)",((d.it[3]||{}).pct||[])[0]||0,DCI_ZERO[3],
+    "ต่ำกว่า 40% คะแนนข้อนี้กลายเป็น 0 ทันที (เสีย "+dciW(p,3)+" คะแนน)");
+  rk+="</div>";
+  document.getElementById("dciRisk").innerHTML=rk;
+}
+/* การ์ดจุดเสี่ยง — ไม่แสดงเลขติดลบ ถ้าหลุดเส้นไปแล้วให้บอกว่า "ต้องดันขึ้นอีกเท่าไหร่" แทน
+   ช่วงไหนที่ไฟล์ไม่ได้ให้ % มา (เช่นช่องไตรมาสของบางข้อ) ก็ไม่ต้องขึ้นการ์ด */
+function dciRisk(name,v,floor,what){
+  if(!v)return "";
+  const gap=Math.round((v-floor)*10000)/100;
+  const cls=gap<=0?"b":(gap<3?"w":"g");
+  const now=gap>0
+    ? "ตอนนี้ "+dciPct(v)+" ห่างจากเส้น "+dciNum(gap)+" จุด"
+    : "ตอนนี้ "+dciPct(v)+" — หลุดเส้นไปแล้ว ต้องดันขึ้นอีก "+dciNum(Math.abs(gap))+" จุด";
+  return '<div class="dci-risk '+cls+'"><b>'+name+"</b><div>"+what+"</div><div><b>"+now+"</b></div></div>";
+}
+/* คำแนะนำเป็นตัวเลขจริง: ต้องเพิ่มอีกกี่สายถึงจะเก็บคะแนนข้อนั้นได้เต็ม */
+function dciAdvice(p,m){
+  const n=m.it.n,e=(dciSrc().data[p].it[n])||{};
+  const need=DCI_FULL[n];
+  if(need){
+    const plan=(e.plan||[])[0]||0,comp=(e.comp||[])[0]||0,pct=(e.pct||[])[0]||0;
+    if(plan>0){const want=Math.ceil(need*plan),add=Math.max(0,want-comp);
+      return "ตอนนี้ <b>"+dciPct(pct)+"</b> ("+comp.toLocaleString()+"/"+plan.toLocaleString()+" สาย) — ต้องดันให้ถึง <b>"+
+        dciPct(need)+"</b> คือหาเพิ่มอีก <b>"+add.toLocaleString()+" สาย</b>";}
+    return "ต้องดันให้ถึง "+dciPct(need);
+  }
+  if(n===1){const pct=(e.pct||[]);
+    return "ทำได้ "+pct.map(dciPct).join(" / ")+" — ทุก 1% ที่เกินเป้า ได้เพิ่มประมาณ 0.5 คะแนน (ตันที่ 125%)";}
+  if(n===7||n===8){const t=(e.tgt||[]),a=(e.pct||[]);
+    return "ผ่าน/ไม่ผ่านล้วนๆ — เป้า "+t.map(dciPct).join(" / ")+" ทำได้ "+a.map(dciPct).join(" / ")+" (ทำเกินไม่ได้คะแนนเพิ่ม)";}
+  const pct=(e.pct||[]);
+  return pct.length?("ทำได้ "+pct.map(dciPct).join(" / ")):"ยังไม่มีข้อมูลในไฟล์รอบนี้";
+}
+
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){
-  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",ana:"ana"}[CURTAB]||"sales";
-  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์"}[g];
+  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",ana:"ana",dci:"dci"}[CURTAB]||"sales";
+  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์",dci:"📈 อัพไฟล์ DCI Score ของศูนย์"}[g];
   document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
   document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=el.dataset.group===g?"":"none";});
   document.getElementById("modal").classList.remove("hidden");
@@ -4016,6 +4318,7 @@ function handleTyped(e,kind){
     else if(kind==="stockd")parseStock(f.name,ev.target.result);
     else if(kind==="master")parseMaster(f.name,ev.target.result);
     else if(kind==="ana")parseAnalytics(f.name,ev.target.result);
+    else if(kind==="dci")parseDCI(f.name,ev.target.result);
     else parseStore(f.name,ev.target.result);
   }catch(err){ulog("❌ "+f.name+": "+err.message);console.error(err);}};rd.readAsArrayBuffer(f);});
   e.target.value="";
@@ -4032,6 +4335,7 @@ document.getElementById("fileDrop").addEventListener("change",e=>handleTyped(e,"
 document.getElementById("fileStock2").addEventListener("change",e=>handleTyped(e,"stockd"));
 document.getElementById("fileMaster").addEventListener("change",e=>handleTyped(e,"master"));
 document.getElementById("fileAna").addEventListener("change",e=>handleTyped(e,"ana"));
+document.getElementById("fileDCI").addEventListener("change",e=>handleTyped(e,"dci"));
 
 /* timezone-safe date -> YYYY-MM-DD (avoids UTC rollback of Excel dates) */
 function serialToYMD(serial){const d=new Date(Date.UTC(1899,11,30)+Math.round(serial)*86400000);
