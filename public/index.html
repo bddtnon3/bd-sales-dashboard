@@ -563,7 +563,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <button class="tab" data-tab="order" onclick="switchTab('order')">🛒 การสั่งของ</button>
       <button class="tab" data-tab="stock" onclick="switchTab('stock')">📦 สต็อก</button>
       <button class="tab admin-upload" data-tab="pos" style="display:none" onclick="switchTab('pos')">📊 วิเคราะห์การสั่งของ</button>
-      <button class="tab admin-upload" data-tab="dci" style="display:none" onclick="switchTab('dci')">📈 DCI Score ศูนย์</button>
+      <button class="tab" data-tab="dci" onclick="switchTab('dci')">📈 DCI Score ศูนย์</button>
       <button class="tab admin-upload" data-tab="lead" style="display:none" onclick="switchTab('lead')">🏪 สมัครร้านค้าใหม่</button>
       <button class="tab sales-only" data-tab="myshop" style="display:none" onclick="switchTab('myshop')">🏪 ร้านใหม่ของฉัน</button>
       <button class="tab" data-tab="ana" onclick="switchTab('ana')">🔬 วิเคราะห์เชิงลึก</button>
@@ -4202,7 +4202,9 @@ function dciCls(w,s){if(!w)return "z";if(s>=w-0.005)return "g";if(s<=0)return "b
 function renderDCI(){
   const src=dciSrc(),ps=src.periods||[];
   const bar=document.getElementById("dciBar");
-  if(!ps.length){bar.innerHTML="ยังไม่มีข้อมูล DCI — กด <b>＋ อัพโหลดไฟล์</b> เพื่อใส่ไฟล์ DCI Score";
+  const mgr=!!(S.user&&S.user.role==="manager");
+  if(!ps.length){bar.innerHTML=mgr?"ยังไม่มีข้อมูล DCI — กด <b>＋ อัพโหลดไฟล์</b> เพื่อใส่ไฟล์ DCI Score"
+                                  :"ยังไม่มีข้อมูล DCI — รอผู้จัดการอัพไฟล์เข้ามาก่อน";
     document.getElementById("dciCards").innerHTML="";document.getElementById("dciTrend").innerHTML="";
     document.getElementById("dciGap").innerHTML="";document.getElementById("dciRisk").innerHTML="";
     document.getElementById("dciMatrix").innerHTML="";return;}
@@ -4211,8 +4213,8 @@ function renderDCI(){
   bar.innerHTML="📈 <b>DCI Score "+(src.file?"":"")+"</b> เลือกช่วง: "+
     ps.map(x=>'<button class="dci-pb'+(x===p?" on":"")+'" onclick="DCIS.p=\''+x+'\';renderDCI()">'+x+"</button>").join("")+
     '<span class="dci-src">'+(dciIsSeed()
-      ? "ข้อมูลตั้งต้นจากไฟล์ DCI Score 2026 (BM1–BM7) — อัพไฟล์ใหม่เพื่ออัปเดต"
-      : ("อัพเดตล่าสุด "+new Date(src.up||0).toLocaleDateString("th-TH")+(src.file?" · "+src.file:"")))+"</span>";
+      ? ("ข้อมูลตั้งต้นจากไฟล์ DCI Score 2026 (BM1–BM7)"+(mgr?" — อัพไฟล์ใหม่เพื่ออัปเดต":""))
+      : ("อัพเดตล่าสุด "+new Date(src.up||0).toLocaleDateString("th-TH")+(mgr&&src.file?" · "+src.file:"")))+"</span>";
 
   /* ---- การ์ดสรุป ---- */
   const tot=d.tot||0,covOk=(d.cov||0)>=DCI_COV;

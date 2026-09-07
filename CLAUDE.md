@@ -116,8 +116,9 @@ code, never printed.
 - `dashboard_template.html` — the entire UI + all Excel parsers (`parseDaily`, `parseMonthly`,
   `parseKPI`, `parseOrderForm`, `parseDrop`, `parseStock`, `parseMaster`, `parseStore`,
   `parseAnalytics`) and renderers (`render`, `renderOrder`, `renderStock`, analytics, etc.).
-  The manager-only **📈 DCI Score** tab (`parseDCI`/`dciExtract`/`renderDCI`) scores the depot
-  against Unilever's DCI sheet — its rules are in `HANDOFF.md` §5; read them before touching it.
+  The **📈 DCI Score** tab (`parseDCI`/`dciExtract`/`renderDCI`) scores the depot against
+  Unilever's DCI sheet. Everyone sees it; only the manager can upload. Its rules are in
+  `HANDOFF.md` §5 — read them before touching it.
 - `build.cjs` — regenerates `public/index.html` from the template (run after every edit).
 - `public/index.html` — generated output that Vercel serves. Do not edit by hand.
 - `public/join.html` + `public/img/*` — the public shop-application page (hand-written).
