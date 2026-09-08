@@ -250,6 +250,10 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 
 /* KPI */
 #kpiCharts .panel{margin-bottom:20px}
+.ps-cat{margin-top:14px}
+.ps-cat:first-child{margin-top:6px}
+.ps-cat h4{font-size:13.5px;margin:0 0 4px;padding-bottom:3px;border-bottom:2px solid var(--blue-soft)}
+.ps-cat h4 span{color:var(--muted);font-weight:400;font-size:12px}
 .plan-tbl th,.plan-tbl td{white-space:nowrap}
 .plan-tbl td:first-child{text-align:left}
 .kpi-card .v{font-size:24px}
@@ -2863,6 +2867,7 @@ function renderPOSBody(){
     `<div class="panel" style="border-left:5px solid ${sec.color}">
       <h3 style="color:${sec.color}">${sec.icon} ${sec.title} <span style="color:var(--muted);font-weight:600;font-size:14px">(${rows.length===total?total:rows.length+" จาก "+total})</span></h3>
       <div class="psub">${sec.sub}</div>
+      ${Object.keys((ORDERS&&ORDERS.cat)||{}).length?"":'<div class="note">ℹ️ ยังไม่มีข้อมูลหมวด — อัพไฟล์ใบสั่ง (BD_...xlsx) สักครั้ง เพื่อให้ระบบแบ่งหมวดจากชีต Home_Care/PC_Hair/... ให้อัตโนมัติ</div>'}
       ${rows.length?psTable(sec,rows):'<div class="psub" style="margin-top:8px">'+(total?"ไม่พบรายการที่ค้นหา":"ไม่มีรายการในกลุ่มนี้")+'</div>'}</div>`;
 }
 /* ============================================================================
@@ -2946,9 +2951,16 @@ function psTable(sec,rows){
     return `<td style="text-align:left">${r.k===2?'<span class="pill w">🎫 รหัสโควต้า</span>':'<span class="pill g">🆕 รหัสใหม่</span>'}${ord?` · สั่งแล้ว ${ord} ลัง`:""}</td>`+
       `<td style="text-align:left">${psSwapCell(r.code,false)}</td>`;
   };
-  return `<div style="overflow-x:auto;margin-top:8px"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>หมวด</th>${head}</tr></thead><tbody>`+
-    rows.map(r=>`<tr><td>${r.code}</td><td style="text-align:left">${psName(r.code)||'<span class="psub">(ไม่มีชื่อในระบบ)</span>'}</td><td style="font-size:11px;color:var(--muted)">${psCat(r.code)||"-"}</td>${cell(r)}</tr>`).join("")+
-    `</tbody></table></div>`;
+  const line=r=>`<tr><td>${r.code}</td><td style="text-align:left">${psName(r.code)||'<span class="psub">(ไม่มีชื่อในระบบ)</span>'}</td>${cell(r)}</tr>`;
+  const tbl=list=>`<div style="overflow-x:auto"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th>${head}</tr></thead><tbody>`+
+    list.map(line).join("")+`</tbody></table></div>`;
+  /* แบ่งตามหมวดในใบสั่งซื้อ (Home_Care / PC_Hair / …) เรียงลำดับเดียวกับใบสั่ง
+     เพื่อให้ไล่เทียบทีละหน้ากับไฟล์ Confirm ได้ตรงๆ — หมวดจึงเป็นหัวข้อ ไม่ใช่คอลัมน์แล้ว */
+  const byCat={};rows.forEach(r=>{(byCat[prodCategory(r.code)]=byCat[prodCategory(r.code)]||[]).push(r);});
+  const cats=ORDER_CATS.concat(Object.keys(byCat).filter(k=>ORDER_CATS.indexOf(k)<0)).filter(k=>byCat[k]&&byCat[k].length);
+  if(cats.length<2)return `<div style="margin-top:8px">${tbl(rows)}</div>`;   /* หมวดเดียวก็ไม่ต้องมีหัวข้อให้รก */
+  return `<div style="margin-top:8px">`+cats.map(k=>
+    `<div class="ps-cat"><h4>${CAT_ICON[k]||"📦"} ${k} <span>· ${byCat[k].length} รายการ</span></h4>${tbl(byCat[k])}</div>`).join("")+`</div>`;
 }
 
 /* ============================================================================
