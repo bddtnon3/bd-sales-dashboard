@@ -250,6 +250,9 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 
 /* KPI */
 #kpiCharts .panel{margin-bottom:20px}
+.q-spark{display:inline-flex;align-items:flex-end;gap:2px;height:20px}
+.q-spark i{display:block;width:6px;background:var(--line);border-radius:1px}
+.q-spark i.on{background:var(--blue)}
 .ps-cat{margin-top:14px}
 .ps-cat:first-child{margin-top:6px}
 .ps-cat h4{font-size:13.5px;margin:0 0 4px;padding-bottom:3px;border-bottom:2px solid var(--blue-soft)}
@@ -570,6 +573,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <button class="tab" data-tab="dci" onclick="switchTab('dci')">📈 DCI Score ศูนย์</button>
       <button class="tab admin-upload" data-tab="lead" style="display:none" onclick="switchTab('lead')">🏪 สมัครร้านค้าใหม่</button>
       <button class="tab sales-only" data-tab="myshop" style="display:none" onclick="switchTab('myshop')">🏪 ร้านใหม่ของฉัน</button>
+      <button class="tab" data-tab="quiet" onclick="switchTab('quiet')">🔔 ร้านเงียบ</button>
       <button class="tab" data-tab="ana" onclick="switchTab('ana')">🔬 วิเคราะห์เชิงลึก</button>
     </div>
     <div id="salesView">
@@ -706,6 +710,30 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div id="psCharts"></div>
       <div class="panel" id="psPlan"></div>
       <div class="panel" id="psStores"></div>
+    </div>
+
+    <div id="quietView" class="hidden">
+      <div class="controls">
+        <div class="ctl" id="qScopeCtl"><label>มุมมอง</label>
+          <div class="seg" id="qScope">
+            <button data-s="ct" class="on">สาย CT ทั้งหมด</button>
+            <button data-s="all">ทุกสาย</button>
+          </div>
+        </div>
+        <div class="ctl" id="qLineCtl"><label>เจาะดูสาย</label><select id="qLineSel" onchange="QS.line=this.value;renderQuiet()"></select></div>
+        <div class="ctl"><label>รายการที่ดู</label>
+          <div class="seg" id="qSec">
+            <button data-k="q" class="on">เงียบครบ 3 เดือน</button>
+            <button data-k="w">เฝ้าระวัง (2 เดือน)</button>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="ctl"><label>&nbsp;</label><button class="upload-btn" onclick="qCopy()">📋 คัดลอกไปวางใน LINE</button></div>
+      </div>
+      <div class="kpi-monthbar" id="quietBar"></div>
+      <div class="cards" id="quietCards"></div>
+      <div class="panel" id="quietLines" style="margin-bottom:20px"></div>
+      <div class="panel" id="quietList"></div>
     </div>
 
     <div id="dciView" class="hidden">
@@ -1672,6 +1700,7 @@ function _switchTab(t){
   document.getElementById("stockView").classList.toggle("hidden",t!=="stock");
   document.getElementById("posView").classList.toggle("hidden",t!=="pos");
   document.getElementById("dciView").classList.toggle("hidden",t!=="dci");
+  document.getElementById("quietView").classList.toggle("hidden",t!=="quiet");
   document.getElementById("leadView").classList.toggle("hidden",t!=="lead");
   document.getElementById("myshopView").classList.toggle("hidden",t!=="myshop");
   document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
@@ -1682,6 +1711,7 @@ function _switchTab(t){
   if(t==="stock")renderStock();
   if(t==="pos")renderPOS();
   if(t==="dci")renderDCI();
+  if(t==="quiet")renderQuiet();
   if(t==="lead")ldRefresh();
   if(t==="myshop")msRefresh();
   if(t==="ana")renderAnalytics();
@@ -4326,6 +4356,175 @@ function dciAdvice(p,m){
   const pct=(e.pct||[]);
   return pct.length?("ทำได้ "+pct.map(dciPct).join(" / ")):"ยังไม่มีข้อมูลในไฟล์รอบนี้";
 }
+
+/* ============================================================================
+ * ร้านเงียบ — ร้านที่ไม่มียอดขายติดต่อกันหลายเดือน (ทุกแอคเคาท์เห็น)
+ *
+ * อ่านจาก STORE (ยอดรายร้านรายเดือน) ที่มีอยู่แล้ว ไม่ต้องอัพไฟล์เพิ่ม
+ *
+ * กับดักที่ต้องระวัง: เดือนที่กำลังอัพอยู่ (หรืออัพไปได้แค่ไม่กี่วัน) ยอดจะต่ำผิดปกติ
+ * ถ้านับเดือนนั้นเป็น "เงียบ" ด้วย ร้านเกือบทั้งหมดจะติดบัญชีหมด — ผิดและน่ากลัวเปล่าๆ
+ * `qFull()` จึงคัดเอาเฉพาะเดือนที่ยอดรวมถึงเกณฑ์ (>=25% ของเดือนกลาง) มาใช้ตรวจ
+ * ==========================================================================*/
+const Q_MONTHS=3;            /* เงียบกี่เดือนติดถึงนับว่าหลุด */
+const Q_HI=5000,Q_MID=1000;  /* เส้นแบ่งความสำคัญ จากยอดเฉลี่ยต่อเดือนตอนที่ยังซื้ออยู่ */
+let QS={sec:"q",line:"all",scope:"ct"};
+const qHas=r=>((r&&r[0])||0)>0||((r&&r[1])||0)>0||((r&&r[2])||0)>0;
+const qNiv=r=>Math.round(((r&&r[2])||0)*100)/100;
+/* เดือนที่ข้อมูลครบพอจะเชื่อได้ (คืน index ของ STORE.months) */
+function qFull(){
+  const M=(STORE&&STORE.months)||[],S=(STORE&&STORE.stores)||[];
+  if(!M.length||!S.length)return {full:[],part:[]};
+  const tot=M.map((m,i)=>S.reduce((a,s)=>a+qNiv((s[3]||[])[i]),0));
+  const med=[...tot].sort((a,b)=>a-b)[Math.floor(tot.length/2)]||0;
+  const full=[],part=[];
+  M.forEach((m,i)=>{(tot[i]>=med*0.25?full:part).push(i);});
+  return {full,part};
+}
+function qRow(s,fi){
+  const m=s[3]||[],act=fi.filter(i=>qHas(m[i]));
+  const last=act.length?act[act.length-1]:-1;
+  const vals=fi.map(i=>qNiv(m[i]));
+  const sum=Math.round(vals.reduce((a,b)=>a+b,0)*100)/100;
+  const avg=act.length?Math.round(sum/act.length*100)/100:0;
+  return {line:s[0],code:s[1],name:s[2]||"",vals,sum,avg,
+    last,lastVal:last<0?0:qNiv(m[last]),
+    gap:fi.length-(last<0?-1:fi.indexOf(last))-1,
+    pri:avg>=Q_HI?2:avg>=Q_MID?1:0};
+}
+/* สแกนทั้งระบบครั้งเดียว แล้วแยกเป็น "เงียบครบ" กับ "เฝ้าระวัง" */
+function qScan(){
+  const {full,part}=qFull();
+  const out={full,part,ok:full.length>=Q_MONTHS,win:[],q:[],w:[]};
+  if(!out.ok)return out;
+  const win=full.slice(-Q_MONTHS);out.win=win;
+  const tail=win.slice(-(Q_MONTHS-1));            /* ช่วงเฝ้าระวัง = ท้ายๆ ของหน้าต่าง */
+  ((STORE&&STORE.stores)||[]).forEach(s=>{
+    const m=s[3]||[];
+    if(win.every(i=>!qHas(m[i])))out.q.push(qRow(s,full));
+    else if(tail.length&&tail.every(i=>!qHas(m[i]))&&qHas(m[win[0]]))out.w.push(qRow(s,full));
+  });
+  const byVal=(a,b)=>b.sum-a.sum||String(a.line).localeCompare(String(b.line));
+  out.q.sort(byVal);out.w.sort(byVal);
+  return out;
+}
+function qDisp(l){return ((DATA.lines||{})[l]||{}).display||l;}
+function qType(l){return ((DATA.lines||{})[l]||{}).type||"";}
+function qMine(){return (S.user&&S.user.role==="sales")?S.user.code:null;}
+/* สายที่ผู้ใช้คนนี้มีสิทธิ์เห็น */
+function qLines(scan){
+  const mine=qMine();
+  if(mine)return [mine];
+  const all=[...new Set(((STORE&&STORE.stores)||[]).map(s=>s[0]))];
+  return all.filter(l=>QS.scope==="all"||qType(l)==="CT").sort((a,b)=>qDisp(a).localeCompare(qDisp(b)));
+}
+function qPri(p){return p===2?'<span class="pill b">🔴 สูง</span>':p===1?'<span class="pill w">🟡 กลาง</span>':'<span class="pill" style="background:var(--bg);color:var(--muted)">⚪ ต่ำ</span>';}
+/* แท่งเล็กๆ ให้เห็นว่าร้านค่อยๆ ซาลง หรือหายไปทีเดียว */
+function qSpark(r,labels){
+  const mx=Math.max.apply(null,r.vals.concat([1]));
+  return '<span class="q-spark" title="'+labels.map((m,i)=>m+" = "+THB(r.vals[i])).join(" · ")+'">'+
+    r.vals.map(v=>'<i style="height:'+Math.max(2,Math.round(v/mx*18))+'px" class="'+(v>0?"on":"")+'"></i>').join("")+"</span>";
+}
+function qRows(scan){
+  const list=(QS.sec==="w")?scan.w:scan.q;
+  const mine=qMine(),allow=qLines(scan);
+  return list.filter(r=>mine?r.line===mine:(allow.indexOf(r.line)>=0&&(QS.line==="all"||r.line===QS.line)));
+}
+function renderQuiet(){
+  const scan=qScan(),bar=document.getElementById("quietBar");
+  const mine=qMine(),isMgr=!!(S.user&&S.user.role==="manager");
+  document.getElementById("qScopeCtl").style.display=isMgr?"":"none";
+  document.getElementById("qLineCtl").style.display=isMgr?"":"none";
+  const blank=t=>{["quietCards","quietLines","quietList"].forEach(i=>document.getElementById(i).innerHTML="");bar.innerHTML=t;};
+  if(!((STORE&&STORE.stores)||[]).length)
+    return blank("ยังไม่มีข้อมูลยอดรายร้าน — "+(isMgr?"อัพไฟล์ <b>🧪 ยอดขายรายกลุ่ม/แบรนด์</b> สักครั้ง ระบบจะสร้างยอดรายร้านให้เอง":"รอผู้จัดการอัพไฟล์ยอดขายเข้ามาก่อน"));
+  if(!scan.ok)
+    return blank("ต้องมีข้อมูลยอดรายร้านครบอย่างน้อย "+Q_MONTHS+" เดือนก่อน จึงจะตรวจได้ (ตอนนี้มี "+scan.full.length+" เดือน)");
+
+  const M=STORE.months,lab=i=>fmtMonth(M[i]);
+  const winTxt=scan.win.map(lab).join(" + ");
+  /* สายของผู้ใช้คนนี้ */
+  const lines=qLines(scan);
+  if(isMgr){
+    const sel=document.getElementById("qLineSel");
+    if(QS.line!=="all"&&lines.indexOf(QS.line)<0)QS.line="all";
+    sel.innerHTML='<option value="all">ทุกสายที่ดูอยู่</option>'+lines.map(l=>`<option value="${l}"${l===QS.line?" selected":""}>${qDisp(l)}</option>`).join("");
+  }
+  setSeg("qSec","k",QS.sec);setSeg("qScope","s",QS.scope);
+  bar.innerHTML="🔔 <b>ร้านที่ไม่มียอดขายติดต่อกัน "+Q_MONTHS+" เดือน</b> · ช่วงที่ตรวจ <b>"+winTxt+"</b>"+
+    (mine?" · สายของคุณ <b>"+qDisp(mine)+"</b>":"")+
+    '<span class="dci-src">นับจากยอดขายรายร้าน '+scan.full.length+" เดือนที่ข้อมูลครบ ("+scan.full.map(lab).join(", ")+")"+
+    (scan.part.length?" · ไม่นับ "+scan.part.map(lab).join(", ")+" เพราะยอดยังไม่ครบเดือน":"")+"</span>";
+
+  const rows=qRows(scan),other=(QS.sec==="w")?scan.q:scan.w;
+  const otherN=other.filter(r=>mine?r.line===mine:(lines.indexOf(r.line)>=0&&(QS.line==="all"||r.line===QS.line))).length;
+  const storeN=((STORE&&STORE.stores)||[]).filter(s=>mine?s[0]===mine:(lines.indexOf(s[0])>=0&&(QS.line==="all"||s[0]===QS.line))).length;
+  const lost=rows.reduce((a,r)=>a+r.sum,0),hi=rows.filter(r=>r.pri===2).length;
+  const card=(k,v,sub,cls)=>'<div class="card"><div class="k">'+k+'</div><div class="v '+(cls||"")+'">'+v+'</div><div class="s '+(cls||"")+'">'+sub+"</div></div>";
+  document.getElementById("quietCards").innerHTML=
+    card(QS.sec==="w"?"เฝ้าระวัง (เงียบ "+(Q_MONTHS-1)+" เดือน)":"ร้านที่เงียบครบ "+Q_MONTHS+" เดือน",rows.length.toLocaleString()+" ร้าน",
+      storeN?"จากร้านทั้งหมด "+storeN.toLocaleString()+" ร้าน ("+(Math.round(rows.length/storeN*1000)/10)+"%)":"-",rows.length?"down":"up")+
+    card("ยอดที่หายไป",THB(lost),"คือยอดที่ร้านกลุ่มนี้เคยซื้อในช่วง "+scan.full.length+" เดือน",lost>0?"down":"")+
+    card("ร้านใหญ่ที่ต้องรีบ",hi.toLocaleString()+" ร้าน","เคยซื้อเกิน "+THB(Q_HI)+"/เดือน — ไปก่อนร้านอื่น",hi?"down":"up")+
+    card(QS.sec==="w"?"เงียบครบ "+Q_MONTHS+" เดือนแล้ว":"เฝ้าระวัง (เงียบ "+(Q_MONTHS-1)+" เดือน)",otherN.toLocaleString()+" ร้าน",
+      QS.sec==="w"?("กดปุ่ม “เงียบครบ "+Q_MONTHS+" เดือน” เพื่อดู"):("ยังไม่ครบ "+Q_MONTHS+" เดือน — รีบไปตอนนี้ยังทัน"),"mid");
+
+  /* ตารางสรุปรายสาย (ผู้จัดการ) */
+  const lp=document.getElementById("quietLines");
+  if(mine||lines.length<2)lp.innerHTML="";
+  else{
+    const stores=(STORE&&STORE.stores)||[];
+    let h='<h3>สรุปรายสาย</h3><div class="psub">กดที่ชื่อสายเพื่อเจาะดูเฉพาะสายนั้น · <b>ร้านหลุด</b> กับ <b>เงินที่หาย</b> เป็นคนละเรื่องกัน — บางสายหลุดหลายร้านแต่เป็นร้านเล็ก บางสายหลุดไม่กี่ร้านแต่เป็นร้านใหญ่</div>'+
+      '<div class="tblwrap"><table><thead><tr><th>สาย</th><th>ร้านทั้งหมด</th><th>เงียบครบ '+Q_MONTHS+' เดือน</th><th>คิดเป็น %</th><th>ยอดที่หายไป</th><th>ร้านใหญ่ที่ต้องรีบ</th><th>เฝ้าระวัง</th></tr></thead><tbody>';
+    const agg=lines.map(l=>{const all=stores.filter(s=>s[0]===l).length;
+      const q=scan.q.filter(r=>r.line===l);
+      return {l,all,n:q.length,lost:q.reduce((a,r)=>a+r.sum,0),hi:q.filter(r=>r.pri===2).length,w:scan.w.filter(r=>r.line===l).length};});
+    agg.sort((a,b)=>b.lost-a.lost||b.n-a.n);
+    agg.forEach(o=>{h+='<tr'+(QS.line===o.l?' style="background:var(--blue-soft)"':"")+
+      '><td><a href="#" onclick="QS.line=&#39;'+o.l+'&#39;;renderQuiet();return false" style="font-weight:800;color:var(--blue);text-decoration:none">'+qDisp(o.l)+'</a></td>'+
+      '<td>'+o.all.toLocaleString()+"</td><td><b>"+o.n+'</b></td><td>'+(o.all?Math.round(o.n/o.all*1000)/10:0)+'%</td>'+
+      '<td class="'+(o.lost>0?"down":"")+'"><b>'+THB(o.lost)+"</b></td><td>"+(o.hi||"-")+"</td><td>"+(o.w||"-")+"</td></tr>";});
+    const T=(f)=>agg.reduce((a,o)=>a+o[f],0);
+    h+='<tr class="dci-tot"><td><b>รวม</b></td><td>'+T("all").toLocaleString()+"</td><td>"+T("n")+"</td><td>"+
+      (T("all")?Math.round(T("n")/T("all")*1000)/10:0)+'%</td><td>'+THB(T("lost"))+"</td><td>"+T("hi")+"</td><td>"+T("w")+"</td></tr>";
+    lp.innerHTML=h+"</tbody></table></div>";
+  }
+
+  /* รายชื่อร้าน */
+  const labs=scan.full.map(lab),showLine=!mine&&QS.line==="all"&&lines.length>1;
+  let h='<h3>'+(QS.sec==="w"?"เฝ้าระวัง — เงียบมา "+(Q_MONTHS-1)+" เดือน":"ร้านที่เงียบครบ "+Q_MONTHS+" เดือน")+
+    ' <span style="color:var(--muted);font-weight:600;font-size:14px">('+rows.length+" ร้าน)</span></h3>"+
+    '<div class="psub">'+(QS.sec==="w"?"ยังไม่ครบ "+Q_MONTHS+" เดือน รีบเข้าไปตอนนี้ยังดึงกลับได้":"ไม่มียอดเลยใน "+winTxt)+
+    ' · เรียงจากร้านที่เคยซื้อมากไปน้อย · <b>กดที่รหัสหรือชื่อร้าน = คัดลอกทันที</b></div>';
+  if(!rows.length)h+='<div class="insight">ไม่มีร้านหลุดในกลุ่มนี้ 🎉</div>';
+  else h+='<div class="tblwrap"><table>'+
+    '<thead><tr>'+(showLine?"<th>สาย</th>":"")+'<th>รหัสร้าน</th><th style="text-align:left">ชื่อร้าน</th>'+
+    '<th>ซื้อครั้งสุดท้าย</th><th>เงียบมาแล้ว</th><th>ยอดที่เคยซื้อ</th><th>เฉลี่ย/เดือน</th><th>ความสำคัญ</th><th>ย้อนหลัง '+labs.length+' เดือน</th></tr></thead><tbody>'+
+    rows.map(r=>"<tr>"+(showLine?'<td><span class="tag '+(qType(r.line)==="KA"?"ka":"ct")+'">'+qDisp(r.line)+"</span></td>":"")+
+      "<td>"+r.code+'</td><td style="text-align:left">'+anaEsc(r.name||"(ไม่มีชื่อ)")+"</td>"+
+      "<td>"+(r.last<0?'<span class="psub">ไม่เคยมียอดเลย</span>':fmtMonth(M[r.last]))+"</td>"+
+      '<td><b class="down">'+r.gap+" เดือน</b></td><td><b>"+THB(r.sum)+"</b></td><td>"+THB(r.avg)+"</td>"+
+      "<td>"+qPri(r.pri)+"</td><td>"+qSpark(r,labs)+"</td></tr>").join("")+
+    "</tbody></table></div>";
+  document.getElementById("quietList").innerHTML=h;
+}
+/* ข้อความสำหรับวางในกรุ๊ป LINE */
+function qCopy(){
+  const scan=qScan();
+  if(!scan.ok)return bdToast("ยังไม่มีข้อมูลพอให้คัดลอก");
+  const rows=qRows(scan),M=STORE.months;
+  if(!rows.length)return bdToast("ไม่มีร้านในกลุ่มนี้");
+  const mine=qMine();
+  const head=(QS.sec==="w")?"⚠️ ร้านเฝ้าระวัง — เงียบมา "+(Q_MONTHS-1)+" เดือน":"🔔 ร้านที่ไม่มียอดขายติดกัน "+Q_MONTHS+" เดือน";
+  const txt=[head,"ช่วงที่ตรวจ: "+scan.win.map(i=>fmtMonth(M[i])).join(" + "),
+    (mine?"สาย "+qDisp(mine):(QS.line==="all"?"ทุกสายที่ดูอยู่":"สาย "+qDisp(QS.line)))+" · "+rows.length+" ร้าน · ยอดที่หายไป "+THB(rows.reduce((a,r)=>a+r.sum,0)),""]
+    .concat(rows.map((r,i)=>(i+1)+". "+(mine?"":"["+qDisp(r.line)+"] ")+r.code+" "+(r.name||"(ไม่มีชื่อ)")+
+      "\n   ซื้อครั้งสุดท้าย "+(r.last<0?"ไม่เคยมียอด":fmtMonth(M[r.last]))+" · เงียบ "+r.gap+" เดือน · เคยซื้อ "+THB(r.sum)+
+      (r.pri===2?" · 🔴 ร้านใหญ่":r.pri===1?" · 🟡":""))).join("\n");
+  bdCopy(txt,"คัดลอกรายชื่อ "+rows.length+" ร้านแล้ว ✓","รายชื่อร้านเงียบ");
+}
+document.getElementById("qSec").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;QS.sec=b.dataset.k;renderQuiet();});
+document.getElementById("qScope").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;QS.scope=b.dataset.s;QS.line="all";renderQuiet();});
 
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){
