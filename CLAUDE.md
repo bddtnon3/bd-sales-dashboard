@@ -116,9 +116,6 @@ code, never printed.
 - `dashboard_template.html` — the entire UI + all Excel parsers (`parseDaily`, `parseMonthly`,
   `parseKPI`, `parseOrderForm`, `parseDrop`, `parseStock`, `parseMaster`, `parseStore`,
   `parseAnalytics`) and renderers (`render`, `renderOrder`, `renderStock`, analytics, etc.).
-  The **🔔 ร้านเงียบ** tab (`qScan`/`renderQuiet`) lists shops with no sales for 3 straight
-  months, off the `STORE` data already in state — a salesperson sees only their own line.
-  It must keep ignoring months whose upload is still partial; see `HANDOFF.md` §5.
   The **📈 DCI Score** tab (`parseDCI`/`dciExtract`/`renderDCI`) scores the depot against
   Unilever's DCI sheet. Everyone sees it; only the manager can upload. Its rules are in
   `HANDOFF.md` §5 — read them before touching it.
