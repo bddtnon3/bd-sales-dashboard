@@ -126,6 +126,10 @@ code, never printed.
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write),
   `apply` (PUBLIC shop application → its own `bd-lead-*` blob), `leads` (manager-only read).
 - `api/leadstatus.js` — a salesperson reports progress on a shop assigned to them.
+  On that tab each shop also has copy / save-CSV / save-photo buttons so the rep can hand the
+  shop straight to the admin who opens the customer account. Download filenames must stay
+  ASCII (`fnAscii`) — Chromium drops a non-ASCII `a.download` name *and its extension*; see
+  `HANDOFF.md` §5.
 - `lib/auth.js` — token sign/verify. `lib/snapshot.js` — the one shared blob-read walk
   (`newestReal`) + `looksEmpty`, used by `data`, `save` and `request` so they cannot drift.
   `seed-data.json` — bundled starting data (used until the

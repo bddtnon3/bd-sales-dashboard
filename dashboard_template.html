@@ -178,6 +178,9 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   padding:10px 14px;font:700 13.5px/1 inherit;cursor:pointer}
 .copy-btn:hover{background:var(--blue);color:#fff}
 .copy-btn.wide{width:100%;padding:12px;font-size:14px;margin-top:10px}
+.ms-save{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.ms-save .copy-btn{width:100%;padding:11px 8px;font-size:13px;margin:0}
+@media(max-width:480px){.ms-save{grid-template-columns:1fr}}
 #calModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:130;display:flex;align-items:center;justify-content:center;padding:20px}
 .cal-card{background:#fff;border-radius:16px;padding:16px 18px;width:330px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .cal-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
@@ -3290,7 +3293,7 @@ function ldExport(){
   const csv="﻿"+[head.map(esc).join(",")].concat(body).join("\r\n");
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
-  a.download="ใบสมัครร้านค้า_"+todayISO()+".csv";a.click();
+  a.download="BD-leads-"+todayISO()+".csv";a.click();   /* ASCII เท่านั้น — ดู fnAscii */
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 }
 /* ============================================================================
@@ -3663,9 +3666,81 @@ function renderMyShops(){
     return;}
   el.innerHTML=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <h3>📋 รายชื่อร้านใหม่ · ${rows.length} ร้าน</h3>
-      <button class="upload-btn" onclick="msRefresh(true)">🔄 ดึงข้อมูลใหม่</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="copy-btn" onclick="msSaveAll()">⬇ เซฟทุกร้าน (Excel/CSV)</button>
+        <button class="upload-btn" onclick="msRefresh(true)">🔄 ดึงข้อมูลใหม่</button></div></div>
     <div class="psub">กดที่ร้านเพื่อดูรายละเอียดและอัปเดตสถานะ — manager จะเห็นสิ่งที่คุณอัปเดตทันที</div>
     <div class="ms-list">`+rows.map(r=>msCard(r)).join("")+`</div></div>`;
+}
+/* ---------------------------------------------------------------------------
+ * เซลล์เซฟข้อมูลร้าน + รูปหน้าร้าน เพื่อส่งต่อให้แอดมินเปิดบัญชีลูกค้าใหม่
+ * ทำ 3 อย่างให้ครบชุด: คัดลอกข้อความ (เหมือนฝั่ง manager) · เซฟไฟล์ข้อมูล (CSV) · เซฟรูป
+ * รูปอยู่บนโดเมนของที่เก็บไฟล์ (คนละโดเมนกับเว็บ) ถ้าดึงมาทำไฟล์ไม่ได้เพราะเบราว์เซอร์กั้น
+ * จะเปิดรูปในแท็บใหม่ให้กดค้างเซฟเอง — ไม่ปล่อยให้กดแล้วเงียบ
+ * ------------------------------------------------------------------------- */
+/* ชื่อไฟล์ต้องเป็นอักษรอังกฤษ/ตัวเลขล้วน — Chromium ทิ้งชื่อไฟล์ทั้งชื่อ (รวมนามสกุล!) ถ้ามีอักษรไทย
+   แล้วเซฟออกมาเป็นไฟล์ชื่อ "download" เฉยๆ เปิดด้วย Excel ไม่ได้ ชื่อร้านภาษาไทยอยู่ข้างในไฟล์แล้ว */
+function fnAscii(s,fallback){
+  const v=String(s==null?"":s).replace(/[^A-Za-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  return v||fallback||"file";
+}
+function msFname(l,ext){
+  const ph=String((l&&l.phone)||"").replace(/\D/g,"");
+  return "BD-shop-"+fnAscii(ph||(l&&l.id),"new")+"."+ext;
+}
+function msDownload(blob,name){
+  const u=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=u;a.download=name;a.style.display="none";
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),8000);
+}
+function msLeadOf(id){return LEADSRAW.find(x=>x&&x.id===id)||null;}
+/* แถวข้อมูลร้าน — คอลัมน์เดียวกับที่แอดมินต้องใช้เปิดบัญชี */
+const MS_CSV_HEAD=["ชื่อร้านค้า","ชื่อผู้ติดต่อ","นามสกุล","เบอร์โทร","ที่ตั้งร้าน","ตำบล","อำเภอ","จังหวัด",
+  "ประเภทร้าน","ละติจูด","ลองจิจูด","ลิงก์แผนที่","ลิงก์รูปหน้าร้าน","ใบกำกับภาษี","ร้านติดดาว",
+  "รหัสร้านในระบบ","สถานะจากเซลล์","บันทึกของเซลล์","ข้อความจากร้าน","สายที่ดูแล","วันที่สมัคร"];
+function msCsvRow(l){
+  const m=ldMetaOf(l.id),sv=msSalesOf(l.id),st=MS_ST[sv.st]||null;
+  const outside=/นอกนนทบุรี|พื้นที่อื่น/.test(String(l.amphoe||""));
+  return [ldShopName(l),l.first,l.last,l.phone,l.shop,l.tambon,l.amphoe,outside?"":"นนทบุรี",
+    l.type,(l.lat==null?"":l.lat),(l.lng==null?"":l.lng),ldMapURL(l)||l.loc||"",l.photo||"",
+    l.tax?"ต้องการ":"ไม่ต้องการ",l.star?"สนใจ":"ไม่สนใจ",
+    sv.store||m.store||"",st?st.lab:"ยังไม่รายงาน",sv.note||"",l.note||"",
+    ldLineName(m.line)||"",ldDate(l.at)];
+}
+function msCsv(list){
+  const esc=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+  return "﻿"+[MS_CSV_HEAD.map(esc).join(",")]
+    .concat(list.map(l=>msCsvRow(l).map(esc).join(","))).join("\r\n");
+}
+function msSaveOne(id){
+  const l=msLeadOf(id);if(!l)return bdToast("ไม่พบข้อมูลร้านนี้ — กด 🔄 ดึงข้อมูลใหม่");
+  msDownload(new Blob([msCsv([l])],{type:"text/csv;charset=utf-8"}),msFname(l,"csv"));
+  bdToast("เซฟข้อมูลร้านแล้ว ✓ เปิดด้วย Excel ได้เลย");
+}
+function msSaveAll(){
+  const list=msMine().map(r=>r.l);
+  if(!list.length)return bdToast("ยังไม่มีร้านให้เซฟ");
+  msDownload(new Blob([msCsv(list)],{type:"text/csv;charset=utf-8"}),
+    "BD-newshops-"+fnAscii(((DATA.lines||{})[S.user.code]||{}).display||S.user.code,"line")+"-"+todayISO()+".csv");
+  bdToast("เซฟ "+list.length+" ร้านแล้ว ✓");
+}
+async function msSavePhoto(id){
+  const l=msLeadOf(id);if(!l)return bdToast("ไม่พบข้อมูลร้านนี้ — กด 🔄 ดึงข้อมูลใหม่");
+  if(!l.photo)return bdToast("ร้านนี้ไม่ได้แนบรูปหน้าร้านมา");
+  const ext=(String(l.photo).split("?")[0].match(/\.(jpe?g|png|webp)$/i)||[,"jpg"])[1].toLowerCase();
+  try{
+    const r=await fetch(l.photo,{cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const b=await r.blob();
+    if(!b.size)throw new Error("empty");
+    msDownload(b,msFname(l,ext));
+    bdToast("เซฟรูปหน้าร้านแล้ว ✓ แนบส่งในไลน์ได้เลย");
+  }catch(e){
+    /* คนละโดเมน เบราว์เซอร์อาจไม่ให้ดึงมาทำไฟล์ — เปิดรูปให้กดค้างเซฟเอง */
+    window.open(l.photo,"_blank","noopener");
+    bdToast("เปิดรูปในแท็บใหม่แล้ว — กดค้างที่รูปเพื่อบันทึกลงเครื่อง");
+  }
 }
 function msCard(r){
   const W=MS_ST[r.st]||MS_ST.todo, id=r.l.id, open=(MS.open===id), mp=ldMapURL(r.l);
@@ -3699,7 +3774,14 @@ function msCard(r){
         <label class="ms-lab">รหัสร้านในระบบ (พอเปิดบิลแรกแล้ว)</label>
         <input class="ms-in" value="${ldEsc(r.sv.store||r.m.store||"")}" placeholder="เช่น 1234567"
           onchange="msStore('${id}',this.value)">
-        <button class="copy-btn wide" onclick="leadCopyOne('${id}')">📋 คัดลอกข้อมูลร้าน (ส่งเข้ากลุ่มไลน์)</button>
+        <div class="ms-lab" style="margin-top:12px">ส่งต่อให้แอดมินเปิดบัญชีลูกค้าใหม่</div>
+        <button class="copy-btn wide" style="margin-top:4px" onclick="leadCopyOne('${id}')">📋 คัดลอกข้อมูลร้าน (ส่งเข้ากลุ่มไลน์)</button>
+        <div class="ms-save">
+          <button class="copy-btn" onclick="msSaveOne('${id}')">⬇ เซฟข้อมูลร้าน (Excel/CSV)</button>
+          ${r.l.photo
+            ?`<button class="copy-btn" onclick="msSavePhoto('${id}')">🖼️ เซฟรูปหน้าร้าน</button>`
+            :`<button class="copy-btn" disabled title="ร้านนี้ไม่ได้แนบรูปมา" style="opacity:.45">🖼️ ไม่มีรูปหน้าร้าน</button>`}
+        </div>
         <label class="ms-lab">บันทึกถึง manager</label>
         <div class="ms-note">${r.sv.note?ldEsc(r.sv.note):'<span class="psub">— ยังไม่มี —</span>'}
           <button class="rm" onclick="msNote('${id}')">✎ เขียน</button></div>
