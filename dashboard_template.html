@@ -2572,7 +2572,10 @@ function poIsGrey(v){
   if(isNaN(r)||isNaN(g)||isNaN(b))return false;
   return Math.abs(r-g)<=10&&Math.abs(g-b)<=10&&Math.abs(r-b)<=10&&r>=0x66&&r<=0xCC;
 }
-const PO_F=/(\d{1,2})\s*F\s*(\d{1,2})/i;
+/* อัตราแถมในชื่อสินค้า เขียนมาหลายแบบ: 6F1 · 6FREE1 · 6FOC1 · 6+1 · (6+1)
+   ถ้าจับแค่รูป nFm อย่างเดียว "6FREE1" จะอ่านไม่ออก แล้วขึ้นว่า "อ่านอัตราแถมไม่ได้"
+   (กันจับผิดด้วยแถบสีเหลืองอยู่แล้ว — ตรวจอัตราแถมเฉพาะชื่อที่ Unilever คาดเหลือง) */
+const PO_F=/(\d{1,2})\s*(?:F(?:REE|OC)?|\+)\s*(\d{1,2})/i;
 /* The blank confirm form is named like 7001_15389839_Confirm_15389839_HPC_220826.xlsm —
    fnameDate() would latch onto the 8-digit job number, so take the LAST ddmmyy group. */
 function poDate6(name){
@@ -3977,13 +3980,24 @@ function stkIdx(){
   _stkIdxSrc=rows;_stkIdx=m;return m;
 }
 function stkBust(){_stkIdx=null;}
+/* แปลงข้อความ "ลัง/ชิ้น" เป็นตัวเลข
+   ⚠️ ไฟล์สต็อกเขียนยอดติดลบเป็น "- 46/12" — เครื่องหมายลบแยกจากตัวเลขด้วยช่องว่าง
+   ถ้าจับด้วย /-?\d+/ เครื่องหมายลบจะหายไป ยอด -46 ลัง กลายเป็น +46 ลัง (ของจริงมี 24 แถว)
+   ใช้เกณฑ์เดียวกับ stkLow: มีลบที่ไหนก็ถือว่ายอดก้อนนี้ติดลบทั้งคู่ */
+function stkParse(raw){
+  const s=String(raw==null?"":raw).replace(/\s+/g,"");
+  const neg=s.indexOf("-")>=0;
+  const m=s.match(/\d+/g)||[];
+  const cs=parseInt(m[0])||0,pc=parseInt(m[1])||0;
+  return neg?{cs:-cs,pc:-pc}:{cs:cs,pc:pc};
+}
 /* คืน null ถ้าสินค้านี้ไม่มีในไฟล์สต็อก (คนละเรื่องกับ "มีแต่เหลือ 0") */
 function stkOf(code){
   const r=stkIdx()[code];
   if(!r)return null;
   const s=String(r.i==null?"":r.i).trim();
-  const m=s.match(/-?\d+/g)||[];
-  return {raw:s||"-",cs:parseInt(m[0])||0,pc:parseInt(m[1])||0,
+  const n=stkParse(s);
+  return {raw:s||"-",cs:n.cs,pc:n.pc,pack:parseInt(r.d)||0,
     low:("lo" in r)?r.lo:stkLow(r.i),po:String(r.po==null?"":r.po).trim(),name:r.n||""};
 }
 /* ช่องสต็อกในตาราง — แดงถ้าหมด/ติดลบ, ส้มถ้าของที่ขอมากกว่าที่มีอยู่
