@@ -3952,26 +3952,69 @@ function renderMyRequest(){
   const selReq=selDate&&REQUESTS.data&&REQUESTS.data[selDate]&&REQUESTS.data[selDate][mine];
   const selItems=(selReq&&selReq.items)||{};
   if(Object.keys(selItems).length){
-    html+=`<div style="overflow-x:auto;margin-top:8px"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ขอ (ลัง/ชิ้น)</th><th>ศูนย์สั่ง</th><th>ได้ (ลัง)</th><th>สถานะ</th></tr></thead><tbody>`+
-      Object.keys(selItems).map(c=>{const it=selItems[c];const oc=reqFulfillment(selDate,c)||{status:"notordered"};
-        let badge,rowStyle="",gotCell="-",ordCell=oc.ordered||"-";
-        {
-          const dtxt=(oc.date&&oc.date!==selDate)?(' <small>· '+fmtDayMon(oc.date)+'</small>'):"";   /* ได้ของข้ามรอบ → โชว์วัน */
-          const altTxt=oc.alt?(' <small style="color:#9a7100">(รหัสใหม่ '+oc.alt+')</small>'):"";      /* รหัสเปลี่ยน */
-          if(oc.status==="drop"){badge='<span class="pill b">❌ ยังไม่ได้ของ'+altTxt+'</span>';rowStyle=' style="background:#FDECEA"';gotCell='<b class="down">0</b>';}
-          else if(oc.status==="partial"){badge='<span class="pill w">🟡 ได้บางส่วน'+dtxt+'</span>'+altTxt;gotCell='<b>'+oc.got+'</b>';}
-          else if(oc.status==="got"){badge='<span class="pill g">✅ ได้ของ'+(oc.date&&oc.date!==selDate?' '+fmtDayMon(oc.date):"")+'</span>'+altTxt;gotCell='<b>'+oc.got+'</b>';}
-          else if(oc.status==="pending"){badge='<span class="pill w">🕓 สั่งแล้ว รอผล'+(oc.date&&oc.date!==selDate?' '+fmtDayMon(oc.date):"")+'</span>'+altTxt;gotCell='<span style="color:var(--muted)">รอผล</span>';}
-          /* ยังไม่ได้อัพใบสั่งรอบนี้ = ยังไม่รู้ผล — ห้ามโทษศูนย์ก่อนที่ศูนย์จะได้สั่ง */
-          else if(!ordRoundKnown(selDate)){badge='<span class="pill w" title="ยังไม่ได้อัพไฟล์ใบสั่งของรอบนี้ ระบบจึงยังบอกผลไม่ได้">⏳ รอผล — ยังไม่ได้อัพใบสั่งรอบนี้</span>';ordCell="-";}
-          else{badge=poWhyBadge(poWhy(selDate,c));ordCell="-";}
-        }
-        return `<tr${rowStyle}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0}/${it.pc||0}</td><td>${ordCell}</td><td>${gotCell}</td><td>${badge}</td></tr>`;}).join("")+`</tbody></table></div>`;
+    html+=`<div style="overflow-x:auto;margin-top:8px"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ขอ (ลัง/ชิ้น)</th><th>สต็อกคงเหลือ</th><th>ศูนย์สั่ง</th><th>ได้ (ลัง)</th><th>สถานะ</th></tr></thead><tbody>`+
+      Object.keys(selItems).map(c=>{const it=selItems[c];
+        const R=reqStatusCell(selDate,c);
+        return `<tr${R.style}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0}/${it.pc||0}</td><td>${stkCell(c,it.cs||0)}</td><td>${R.ord}</td><td>${R.got}</td><td>${R.badge}</td></tr>`;}).join("")+`</tbody></table></div>`;
   }else{
     html+=`<div class="psub" style="margin-top:6px">ไม่มีคำขอของคุณสำหรับวันที่ ${selDate?fmtDate(selDate):"นี้"} — เลือกวันอื่นด้านบน หรือกด "＋ ขอสินค้า" เพื่อขอรอบถัดไป</div>`;
   }
   html+=`</div>`;
   el.innerHTML=html;
+}
+/* ============================================================================
+ * สต็อกคงเหลือของสินค้าหนึ่งตัว — จากไฟล์สต็อกที่อัพล่าสุด (STOCKD)
+ * นับแต่ "คลังขาย" (wh:'sale') เท่านั้น เพราะคลังแถมเป็นของที่ Unilever ให้มาฟรี
+ * ไม่ได้ซื้อเข้า จะเอามาคิดว่าต้องสั่งเพิ่มหรือไม่ไม่ได้
+ * คอลัมน์ "คงเหลือ" (r.i) เป็นข้อความรูปแบบ "ลัง/ชิ้น" เช่น "3/24"
+ * ==========================================================================*/
+let _stkIdx=null,_stkIdxSrc=null;
+function stkIdx(){
+  const rows=(STOCKD&&STOCKD.rows)||_pgEmpty;
+  if(_stkIdx&&_stkIdxSrc===rows)return _stkIdx;          /* เช็คด้วย identity — O(1) เหมือน prodNameIdx */
+  const m={};
+  (Array.isArray(rows)?rows:[]).forEach(r=>{if(r&&r.wh==="sale"&&!m[r.c])m[r.c]=r;});
+  _stkIdxSrc=rows;_stkIdx=m;return m;
+}
+function stkBust(){_stkIdx=null;}
+/* คืน null ถ้าสินค้านี้ไม่มีในไฟล์สต็อก (คนละเรื่องกับ "มีแต่เหลือ 0") */
+function stkOf(code){
+  const r=stkIdx()[code];
+  if(!r)return null;
+  const s=String(r.i==null?"":r.i).trim();
+  const m=s.match(/-?\d+/g)||[];
+  return {raw:s||"-",cs:parseInt(m[0])||0,pc:parseInt(m[1])||0,
+    low:("lo" in r)?r.lo:stkLow(r.i),po:String(r.po==null?"":r.po).trim(),name:r.n||""};
+}
+/* ช่องสต็อกในตาราง — แดงถ้าหมด/ติดลบ, ส้มถ้าของที่ขอมากกว่าที่มีอยู่
+   ถ้ายังไม่เคยอัพไฟล์สต็อกเลย ต้องบอกว่า "ยังไม่มีข้อมูล" ไม่ใช่โชว์ 0 ให้เข้าใจผิดว่าของหมด */
+function stkCell(code,wantCs){
+  if(!((STOCKD&&STOCKD.rows)||[]).length)return '<span class="psub">ยังไม่มีข้อมูล</span>';
+  const s=stkOf(code);
+  if(!s)return '<span class="psub" title="ไม่พบรหัสนี้ในไฟล์สต็อกคลังขาย">ไม่มีในสต็อก</span>';
+  const onWay=(s.po&&s.po!=="0"&&s.po!=="0/0")?(' <small class="up" title="ของกำลังเข้าคลัง ยังไม่ได้ปรับเข้าสต็อก">+'+s.po+' กำลังเข้า</small>'):"";
+  if(s.low)return '<b class="down" title="คงเหลือ 0 หรือติดลบ">'+s.raw+'</b>'+onWay;
+  if(wantCs>0&&s.cs<wantCs)return '<b class="mid" title="เซลล์ขอ '+wantCs+' ลัง แต่สต็อกเหลือ '+s.cs+' ลัง">'+s.raw+'</b>'+onWay;
+  return "<b>"+s.raw+"</b>"+onWay;
+}
+/* ============================================================================
+ * ป้ายสถานะการสั่งของของสินค้าหนึ่งตัว เทียบกับคำขอของวันนั้น
+ * ใช้ร่วมกันทั้งหน้าเซลล์ (renderMyRequest) และหน้า manager (renderSalesRequests)
+ * เพื่อไม่ให้สองหน้าคิดคนละแบบแล้วเลขไม่ตรงกัน
+ * ==========================================================================*/
+function reqStatusCell(reqDate,code){
+  const oc=reqFulfillment(reqDate,code)||{status:"notordered"};
+  const dtxt=(oc.date&&oc.date!==reqDate)?(" <small>· "+fmtDayMon(oc.date)+"</small>"):"";
+  const altTxt=oc.alt?(' <small style="color:#9a7100">(รหัสใหม่ '+oc.alt+")</small>"):"";
+  let badge,style="",got="-",ord=oc.ordered||"-";
+  if(oc.status==="drop"){badge='<span class="pill b">❌ ยังไม่ได้ของ'+altTxt+"</span>";style=' style="background:#FDECEA"';got='<b class="down">0</b>';}
+  else if(oc.status==="partial"){badge='<span class="pill w">🟡 ได้บางส่วน'+dtxt+"</span>"+altTxt;got="<b>"+oc.got+"</b>";}
+  else if(oc.status==="got"){badge='<span class="pill g">✅ ได้ของ'+dtxt+"</span>"+altTxt;got="<b>"+oc.got+"</b>";}
+  else if(oc.status==="pending"){badge='<span class="pill w">🕓 สั่งแล้ว รอผล'+dtxt+"</span>"+altTxt;got='<span style="color:var(--muted)">รอผล</span>';}
+  /* ยังไม่ได้อัพใบสั่งรอบนี้ = ยังไม่รู้ผล — ห้ามโทษศูนย์ก่อนที่ศูนย์จะได้สั่ง */
+  else if(!ordRoundKnown(reqDate)){badge='<span class="pill w" title="ยังไม่ได้อัพไฟล์ใบสั่งของรอบนี้ ระบบจึงยังบอกผลไม่ได้">⏳ รอผล — ยังไม่ได้อัพใบสั่งรอบนี้</span>';ord="-";}
+  else{badge=poWhyBadge(poWhy(reqDate,code));ord="-";}
+  return {oc:oc,badge:badge,style:style,got:got,ord:ord};
 }
 const ORDER_CATS=["Home_Care","PC_Hair","PC_3D","Skin_Care1","Skin_Care2","Best_F1"];
 const CAT_ICON={Home_Care:"🏠",PC_Hair:"💇",PC_3D:"🧴",Skin_Care1:"🧼",Skin_Care2:"✨",Best_F1:"⭐","อื่นๆ":"📦"};
@@ -4009,10 +4052,14 @@ function renderSalesRequests(){
   order.forEach(cat=>{const list=byCat[cat];if(!list||!list.length)return;list.sort((a,b)=>combined[b].cs-combined[a].cs);
     const tot=list.reduce((s,c)=>s+(combined[c].cs||0),0);
     combHtml+=`<div style="margin-top:12px"><h4 style="margin:0 0 4px;border-bottom:2px solid var(--blue-soft);padding-bottom:3px">${CAT_ICON[cat]||"📦"} ${cat} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${list.length} รายการ · ${tot} ลัง</span></h4>
-      <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>รวม ลัง/ชิ้น</th><th>สาย</th></tr></thead><tbody>`+
-      list.map(c=>`<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td><b>${combined[c].cs} / ${combined[c].pc}</b></td><td>${reqLineTags(combined[c].lines)}</td></tr>`).join("")+`</tbody></table></div></div>`;});
+      <div class="tblwrap"><table><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>รวม ลัง/ชิ้น</th><th>สต็อกคงเหลือ</th><th>ศูนย์สั่ง</th><th>ได้ (ลัง)</th><th style="text-align:left">สถานะการสั่ง</th><th>สาย</th></tr></thead><tbody>`+
+      list.map(c=>{const R=reqStatusCell(d,c);
+        return `<tr${R.style}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td><b>${combined[c].cs} / ${combined[c].pc}</b></td>`+
+          `<td>${stkCell(c,combined[c].cs||0)}</td><td>${R.ord}</td><td>${R.got}</td><td style="text-align:left">${R.badge}</td>`+
+          `<td>${reqLineTags(combined[c].lines)}</td></tr>`;}).join("")+`</tbody></table></div></div>`;});
   el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${fmtDate(d)} <span style="font-size:13px;color:var(--muted);font-weight:400">(${codes.length} สาย)</span></h3>
-    <div class="psub">รวมทุกสายเพื่อเปิดใบสั่ง (แบ่งตามหมวดในใบสั่งซื้อ ไล่เทียบทีละหน้าได้) + แยกรายเซลล์ให้ตรวจ · <b>กดที่รหัสหรือชื่อสินค้า = คัดลอกทันที</b></div>
+    <div class="psub">รวมทุกสายเพื่อเปิดใบสั่ง (แบ่งตามหมวดในใบสั่งซื้อ ไล่เทียบทีละหน้าได้) + แยกรายเซลล์ให้ตรวจ · <b>กดที่รหัสหรือชื่อสินค้า = คัดลอกทันที</b>
+      <br><b>สต็อกคงเหลือ</b> = คลังขาย จากไฟล์สต็อกที่อัพล่าสุด รูปแบบ ลัง/ชิ้น · <span class="down">แดง</span> = หมด/ติดลบ · <span class="mid">ส้ม</span> = มีน้อยกว่าที่เซลล์ขอ · <b>สถานะการสั่ง</b> = ไล่ตามไปข้างหน้าทุกรอบ ถ้ารหัสเปลี่ยนก็ตามให้</div>
     <div class="req-combined"><h4>📋 รวมทั้งหมด (สำหรับเปิดใบสั่ง) — แบ่งตามหมวด</h4>${haveCat?"":'<div class="note">ℹ️ ยังไม่มีข้อมูลหมวด — อัพไฟล์ใบสั่ง (BD_...xlsx) สักครั้งเพื่อให้ระบบจับหมวดจากชีต Home_Care/PC_Hair/... ให้อัตโนมัติ</div>'}${combHtml}</div>
     <div class="req-perwrap">${perSales}</div>`;
 }
@@ -4071,7 +4118,7 @@ function parseStock(name,buf){
   }
   if(!out.length)throw new Error("ไม่พบรายการสินค้าในไฟล์สต็อก");
   const d=fnameDate(name)||new Date().toISOString().slice(0,10);
-  STOCKD={date:d,rows:out,names:names,up:Date.now()};
+  STOCKD={date:d,rows:out,names:names,up:Date.now()};stkBust();
   if(!ORDERS.names)ORDERS.names={};Object.keys(names).forEach(c=>{ORDERS.names[c]=names[c];});
   ulog("✅ "+name+" (สต็อก) → "+out.length+" รายการ (ขาย "+out.filter(x=>x.wh==="sale").length+" / แถม "+out.filter(x=>x.wh==="gift").length+") · ณ "+fmtDate(d));
   renderStock();if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
