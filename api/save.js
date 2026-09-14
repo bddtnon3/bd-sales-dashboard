@@ -141,6 +141,14 @@ function mergeState(server, c) {
   const dciData = keyMerge(sC.data, cC.data);
   const dciOrd = (p) => { const m = /^BM(\d+)$/.exec(String(p)); if (m) return (+m[1]) * 10; const q = /^Q([1-4])$/.exec(String(p)); return q ? (+q[1]) * 30 + 5 : 999; };
   const DCI = { data: dciData, periods: Object.keys(dciData).sort((a, b) => dciOrd(a) - dciOrd(b)), up: Math.max(sC.up || 0, cC.up || 0), file: (cC.up || 0) >= (sC.up || 0) ? (cC.file || sC.file || "") : (sC.file || "") };
+  // Minimum stock per product, typed in by the manager a few codes at a time over many
+  // sessions and from more than one browser. keyMerge would be wrong here: it lets EVERY
+  // client key overwrite, so a tab opened this morning still holding v:5 would roll back the
+  // v:9 someone typed at noon. newestById compares `at` and refuses that rollback — the same
+  // rule already used for LEADS.meta. A cleared value arrives as {v:null} (an in-map
+  // tombstone); deleting the key instead would simply be undone by this union.
+  const sM = s.MINSTOCK || {}, cM = c.MINSTOCK || {};
+  const MINSTOCK = { man: newestById(sM.man, cM.man) };
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),
@@ -157,6 +165,7 @@ function mergeState(server, c) {
     POSTATUS,
     LEADS,
     DCI,
+    MINSTOCK,
     savedAt: Date.now(),
   };
 }

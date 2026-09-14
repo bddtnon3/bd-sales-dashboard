@@ -253,6 +253,15 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 
 /* KPI */
 #kpiCharts .panel{margin-bottom:20px}
+.po-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}
+.po-opt{display:flex;align-items:flex-start;gap:9px;border:1.5px solid var(--line);border-radius:10px;
+  padding:10px 12px;background:#fff;cursor:pointer}
+.po-opt.on{border-color:var(--blue);background:var(--blue-soft)}
+.po-opt input{width:17px;height:17px;accent-color:var(--blue);margin-top:1px;flex-shrink:0}
+.po-opt b{font-size:13.5px;display:block} .po-opt small{font-size:11.5px;color:var(--muted);display:block;margin-top:1px}
+.po-in{width:82px;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:13.5px;text-align:right;font-weight:700}
+.po-in:focus{outline:none;border-color:var(--blue)}
+.po-minbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .ps-cat{margin-top:14px}
 .ps-cat:first-child{margin-top:6px}
 .ps-cat h4{font-size:13.5px;margin:0 0 4px;padding-bottom:3px;border-bottom:2px solid var(--blue-soft)}
@@ -737,14 +746,32 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         </div>
       </div>
       <div class="kpi-monthbar" id="orderBar"></div>
-      <div id="myRequest" style="display:none"></div>
-      <div class="panel" id="salesRequests" style="display:none"></div>
+      <!-- ผลค้นหาต้องอยู่นอกทุกแท็บย่อย: renderOrderSearch คุม .hidden ของตัวมันเอง
+           ถ้าเอาไปซ่อนในแท็บที่ปิดอยู่ ค้นหาแล้วจะไม่เห็นอะไรเลย -->
       <div class="panel hidden" id="orderSearchResult"></div>
-      <div id="orderStatus"></div>
-      <div class="cards" id="orderCards"></div>
-      <div class="panel admin-only" id="orderManage" style="display:none"></div>
-      <div class="panel" id="orderDrop"></div>
-      <div class="panel" id="orderRecv"></div>
+      <div class="pos-subtabs" id="ordSubTabs">
+        <button class="pos-st on" data-k="req" onclick="ordSetSec('req')">📥 คำขอสินค้าจากเซลล์</button>
+        <button class="pos-st" data-k="ord" onclick="ordSetSec('ord')">📄 ใบสั่งของ (แอดมินอัพ)</button>
+        <button class="pos-st" data-k="drop" onclick="ordSetSec('drop')">❌ ใบ Drop (แอดมินอัพ)</button>
+        <button class="pos-st" data-k="po" onclick="ordSetSec('po')">🧮 คำนวณ PO อัตโนมัติ</button>
+      </div>
+      <div id="ordSecReq">
+        <div id="myRequest" style="display:none"></div>
+        <div class="panel" id="salesRequests" style="display:none"></div>
+      </div>
+      <div id="ordSecOrd" class="hidden">
+        <div id="orderStatus"></div>
+        <div class="cards" id="orderCards"></div>
+        <div class="panel" id="orderManage" style="display:none"></div>
+        <div class="panel" id="orderRecv"></div>
+      </div>
+      <div id="ordSecDrop" class="hidden">
+        <div class="panel" id="orderManageDrop" style="display:none"></div>
+        <div class="panel" id="orderDrop"></div>
+      </div>
+      <div id="ordSecPo" class="hidden">
+        <div class="panel" id="poCalc"></div>
+      </div>
     </div>
 
     <div id="stockView" class="hidden">
@@ -1077,6 +1104,13 @@ let PSTORE = __PSTOREDATA__;
 let LEADS = __LEADSDATA__;   /* {meta:{id:…manager}, sales:{id:…เซลล์รายงานกลับ}, del:{id:ts}} */
 let LEADSRAW=[],LEADSLOADED=false;
 
+/* MINSTOCK — สต็อกขั้นต่ำต่อสินค้า ที่ผู้จัดการทยอยกรอกเอง (ใช้คำนวณ PO อัตโนมัติ)
+   {man:{code:{v,at,by}}}  v = จำนวนลังขั้นต่ำ · v:null = เคลียร์ค่าแล้ว (ต้องเป็น tombstone
+   ไม่ใช่ลบ key ออก เพราะ merge ฝั่งเซิร์ฟเวอร์เป็นการรวม key — ลบแล้วค่าเดิมจะกลับมา)
+   v:0 คือ "ห้ามสั่งอัตโนมัติ" ซึ่งเป็นค่าที่ตั้งใจได้ จึงใช้ null แทนความหมาย "ไม่ได้ตั้ง"
+   ค่าที่ระบบ "คำนวณให้" ไม่เก็บลงนี่ — คิดสดตอนแสดงผล ไม่งั้นการคำนวณรอบเดียวจะทับ
+   ค่าที่กรอกมือไว้ทั้งหมดด้วยกติกา newest-wins */
+let MINSTOCK = __MINSTOCKDATA__;
 /* DCI Score ของศูนย์ (ไฟล์ DCI Score จาก Unilever) — ผู้จัดการเท่านั้น
    {up,file,periods:["BM1","Q1",…],data:{"BM5":{tot,totCov,cov,it:{"3":{s,pct:[],plan:[],comp:[],…}}}}} */
 let DCI = __DCIDATA__;
@@ -2366,7 +2400,7 @@ function parsePS(name,buf){
 }
 
 /* ====================== ORDERING (สั่งของ) ====================== */
-let ORD={date:null,dropView:'sum'};
+let ORD={date:null,dropView:'sum',sec:'req'};
 function setDropView(m){ORD.dropView=m;renderOrder();}
 function oname(c){return (STOCKD&&STOCKD.names&&STOCKD.names[c])||(MASTER&&MASTER.items&&MASTER.items[c])||(ORDERS.names&&ORDERS.names[c])||"";}
 function fnameDate(name){
@@ -2389,8 +2423,25 @@ function initOrder(){
   ORD.date=ds.length?ds[ds.length-1]:null;
   const t=document.getElementById("orderDateTxt");if(t)t.textContent=ORD.date?fmtDate(ORD.date):"-";
 }
+/* ============================================================================
+ * แท็บย่อยของหน้า "การสั่งของ" — คำขอเซลล์ / ใบสั่งของ / ใบ Drop / คำนวณ PO
+ * ไม่แตะ switchTab/CURTAB/openUpload เลย เป็นการซ่อน-แสดงกล่องล้วนๆ
+ * ⚠️ renderOrder ต้องเติมข้อมูลทุกกล่อง "ทุกครั้ง" แม้กล่องนั้นถูกซ่อนอยู่ —
+ *    ห้ามข้ามกล่องที่ซ่อน เพราะ parser เรียก renderOrder() แล้วผู้ใช้สลับแท็บทีหลัง
+ *    ถ้าข้าม จะเห็นข้อมูลเก่าค้าง
+ * ==========================================================================*/
+const ORD_SECS={req:"ordSecReq",ord:"ordSecOrd",drop:"ordSecDrop",po:"ordSecPo"};
+function ordSetSec(k){
+  if(!ORD_SECS[k])k="req";
+  ORD.sec=k;
+  for(const x in ORD_SECS)document.getElementById(ORD_SECS[x]).classList.toggle("hidden",x!==k);
+  document.querySelectorAll("#ordSubTabs .pos-st").forEach(b=>b.classList.toggle("on",b.dataset.k===k));
+  if(k==="po")renderPoCalc();
+}
 function renderOrder(){
   const bar=document.getElementById("orderBar");if(!bar)return;
+  if(!ORD.sec)ORD.sec="req";
+  ordSetSec(ORD.sec);
   /* sales request sections (role-based) */
   const isSales=S.user&&S.user.role==="sales";
   document.getElementById("myRequest").style.display=isSales?"":"none";
@@ -2398,9 +2449,14 @@ function renderOrder(){
   if(isSales)renderMyRequest();else renderSalesRequests();
   if(!ORDERS||!ORDERS.dates||!ORDERS.dates.length){
     bar.innerHTML="🛒 การสั่งของ · ศูนย์ BD";
-    document.getElementById("orderStatus").innerHTML="";document.getElementById("orderCards").innerHTML="";
-    document.getElementById("orderDrop").innerHTML='<div class="insight">ยังไม่มีข้อมูลการสั่งของ — แอดมินอัพไฟล์ใบสั่ง / ไฟล์ Confirm ก่อน (ปุ่มอัพโหลด → 🛒)</div>';
-    document.getElementById("orderRecv").innerHTML="";return;
+    const none='<div class="insight">ยังไม่มีข้อมูลการสั่งของ — แอดมินอัพไฟล์ใบสั่ง / ไฟล์ Confirm ก่อน (ปุ่มอัพโหลด → 🛒)</div>';
+    document.getElementById("orderStatus").innerHTML=none;   /* ขึ้นในแท็บใบสั่งของ */
+    document.getElementById("orderCards").innerHTML="";
+    document.getElementById("orderDrop").innerHTML=none;     /* และในแท็บใบ Drop */
+    document.getElementById("orderRecv").innerHTML="";
+    document.getElementById("orderManage").style.display="none";
+    document.getElementById("orderManageDrop").style.display="none";
+    renderPoCalc();return;
   }
   const d=(ORDERS.data||{})[ORD.date]||{rounds:{},dropped:null,hasResult:false};
   const ordered=orderedMerged(d),dropped=d.dropped||{};
@@ -2507,13 +2563,17 @@ function renderOrderSearch(){
   el.innerHTML=h;
 }
 function renderOrderManage(day){
-  const el=document.getElementById("orderManage");if(!el)return;
-  const isM=S.user&&S.user.role==="manager";el.style.display=isM?"":"none";if(!isM){el.innerHTML="";return;}
+  /* แท็บย่อยแยกใบสั่งกับใบ Drop ออกจากกัน กล่อง "ไฟล์ที่อัพ" จึงต้องมีในทั้งสองแท็บ
+     .admin-only ไม่มี CSS รองรับ (เป็นคลาสตกค้าง) ต้องคุมด้วย style.display เองทั้งสองกล่อง */
+  const isM=S.user&&S.user.role==="manager";
   const R=(day&&day.rounds)||{};const rk=Object.keys(R);
-  let chips=rk.map(r=>`<span class="filechip">📄 ใบสั่ง <b>${r}</b> · ${Object.keys(R[r]).length} รายการ <button title="ลบ" onclick="deleteRound('${ORD.date}','${r}')">✕</button></span>`).join("");
-  if(day&&day.dropped)chips+=`<span class="filechip drop">❌ ใบ Drop · ${Object.keys(day.dropped).length} รายการ <button title="ลบ" onclick="deleteDrop('${ORD.date}')">✕</button></span>`;
-  if(!chips)chips='<span class="psub">ยังไม่มีไฟล์ของวันนี้</span>';
-  el.innerHTML=`<h3>🗂️ ไฟล์ที่อัพของ ${fmtDate(ORD.date)} (แอดมิน)</h3><div class="psub">กด ✕ เพื่อลบถ้าอัพผิดไฟล์ — ลบแล้วบันทึกอัตโนมัติ</div><div class="filechips">${chips}</div>`;
+  const head=`<h3>🗂️ ไฟล์ที่อัพของ ${fmtDate(ORD.date)} (แอดมิน)</h3><div class="psub">กด ✕ เพื่อลบถ้าอัพผิดไฟล์ — ลบแล้วบันทึกอัตโนมัติ</div>`;
+  const fill=(id,chips)=>{const el=document.getElementById(id);if(!el)return;
+    el.style.display=isM?"":"none";
+    if(!isM){el.innerHTML="";return;}
+    el.innerHTML=head+`<div class="filechips">${chips||'<span class="psub">ยังไม่มีไฟล์ของวันนี้</span>'}</div>`;};
+  fill("orderManage",rk.map(r=>`<span class="filechip">📄 ใบสั่ง <b>${r}</b> · ${Object.keys(R[r]).length} รายการ <button title="ลบ" onclick="deleteRound('${ORD.date}','${r}')">✕</button></span>`).join(""));
+  fill("orderManageDrop",(day&&day.dropped)?`<span class="filechip drop">❌ ใบ Drop · ${Object.keys(day.dropped).length} รายการ <button title="ลบ" onclick="deleteDrop('${ORD.date}')">✕</button></span>`:"");
 }
 function deleteRound(date,round){
   if(!confirm("ลบใบสั่งรอบ "+round+" ของวัน "+fmtDate(date)+" ?"))return;
@@ -4446,6 +4506,286 @@ function dciAdvice(p,m){
   return pct.length?("ทำได้ "+pct.map(dciPct).join(" / ")):"ยังไม่มีข้อมูลในไฟล์รอบนี้";
 }
 
+/* ============================================================================
+ * 🧮 คำนวณ PO อัตโนมัติ  (ผู้จัดการเท่านั้น)
+ *
+ * อ่านอย่างเดียว — ห้ามเขียนทับ ORDERS / POSTATUS / STOCKD / REQUESTS เด็ดขาด
+ * (merge ฝั่งเซิร์ฟเวอร์ของสามก้อนนั้นเป็นแบบทับทั้ง key ถ้าเครื่องคำนวณไป
+ *  "เติมข้อมูล" ใส่ จะกลายเป็นทางที่ทำข้อมูลการสั่งจริงหาย และไม่มี tombstone กู้)
+ * จำนวนที่ผู้จัดการแก้เองเก็บไว้ในหน่วยความจำรอบนี้เท่านั้น (PO.edit) ไม่บันทึกขึ้นเซิร์ฟเวอร์
+ *
+ * ฐานการสั่ง 3 แบบ เลือกทีละอันหรือรวมกันก็ได้ (เอาค่าที่มากที่สุดของอันที่เลือก):
+ *   req  ตามที่เซลล์ขอ        · หักสต็อกที่มีอยู่ได้ (ติ๊ก "หักสต็อก")
+ *   min  ตาม minimum stock    · ต้องเติมให้ถึงขั้นต่ำ = min − คงเหลือ − ของกำลังเข้า
+ *   promo ปรับตามโปรโมชั่น    · ปัดขึ้นให้หารอัตราแถมลงตัว (6F1 → หาร 6 ลงตัว)
+ * แล้วตัดด้วยโควต้า (q) ถ้ามี · และตัดรายการที่ห้ามสั่งออก (คาดเทา / ปิดช่อง)
+ * ==========================================================================*/
+let PO={basis:{req:true,min:true,promo:true},sub:true,edit:{},minEdit:{},show:"can"};
+const PO_BLOCK={
+  oos:    {icon:"⚠️",lab:"ของขาดชั่วคราว",why:"Unilever คาดสีเทาไว้ — สั่งไปก็ไม่ได้ของ"},
+  closed: {icon:"🔄",lab:"ยังไม่เปิดให้สั่ง",why:"ช่องสั่งถูกปิดรอบนี้ (ฟ้า) — มักรอรหัสใหม่เปิด"},
+  dropped:{icon:"⛔",lab:"เลิกขายแล้ว",why:"ช่องสั่งเป็นสีชมพู = เลิกขายถาวร"},
+  notin:  {icon:"❔",lab:"ไม่มีในใบสั่งรอบนี้",why:"รหัสนี้ไม่อยู่ในใบสั่งของรอบที่เลือก"},
+  noform: {icon:"📄",lab:"ยังไม่ได้อัพใบสั่งรอบนี้",why:"อัพใบเปล่า/ใบสั่งของรอบนี้ก่อน ระบบจะรู้ว่าสั่งได้หรือไม่"}
+};
+/* สต็อกขั้นต่ำที่ผู้จัดการกรอกไว้ (null/ไม่มี = ยังไม่ได้ตั้ง) */
+function msGet(code){
+  const e=((MINSTOCK&&MINSTOCK.man)||{})[code];
+  return (e&&e.v!=null)?e.v:null;
+}
+/* ค่าที่ "ระบบแนะนำ" — คิดสดทุกครั้ง ไม่บันทึก เพื่อไม่ให้ทับค่าที่กรอกมือไว้
+   ใช้ยอดขายจริงย้อนหลังจาก ANALYTICS (ชิ้น/เดือน) ÷ ขนาดบรรจุ = ลัง/เดือน
+   แล้วเอาครึ่งเดือนเป็นขั้นต่ำ (ศูนย์สั่งของประมาณเดือนละ 2 รอบ) */
+function msSuggest(code){
+  const nd=((ANALYTICS&&ANALYTICS.data)||{})[code];
+  const pcm=(nd&&nd.pc)||null;if(!pcm)return null;
+  const ms=Object.keys(pcm).sort().slice(-3);if(!ms.length)return null;
+  const avgPc=ms.reduce((a,m)=>a+(pcm[m]||0),0)/ms.length;
+  if(!(avgPc>0))return null;
+  const st=stkOf(code),pack=(st&&st.pack)||0;
+  if(!pack)return null;
+  return Math.max(1,Math.ceil(avgPc/pack/2));
+}
+/* "รอบนี้ให้สั่งรหัสไหน" — เหมือน psSwap แต่รับก้อนข้อมูลของรอบนั้นมาตรงๆ
+   psSwap อ่าน PS2.date (ตัวแปรของแท็บวิเคราะห์การสั่งของ) ใช้ข้ามหน้าไม่ได้
+   กติกา: รหัสที่ "อยู่ในใบสั่ง และไม่ถูกบล็อค" — รหัสที่เปิดสั่งได้จะไม่มีสีเลย
+   ห้ามเช็คว่า "มีธง" เพราะตัวที่เปิดสั่งได้คือตัวที่ไม่มีธง */
+function poSwapFor(day,code){
+  if(!day)return null;
+  const items=day.items||{};
+  const sibs=codeAliases(code).filter(c=>c!==String(code)&&poInForm(day,c)===true);
+  if(!sibs.length)return null;
+  const okNow=sibs.filter(c=>!(items[c]&&(items[c].s||items[c].x)));
+  const self=items[String(code)]||{};
+  const selfOk=poInForm(day,String(code))!==false&&!(self.s||self.x);
+  if(selfOk)return {pick:null,sibs:sibs,items:items};   /* ตัวเดิมยังสั่งได้ ไม่ต้องสลับ */
+  const pick=okNow.find(c=>items[c]&&items[c].k===1)||okNow[0]||null;
+  return {pick:pick,sibs:sibs,items:items};
+}
+/* ความต้องการรวมของเซลล์ในวันที่เลือก → {cs,pc,lines} ต่อรหัส */
+function poReqOf(date){
+  const dayReq=((REQUESTS&&REQUESTS.data)||{})[date]||{};
+  const out={};
+  Object.keys(dayReq).forEach(sc=>{const it=(dayReq[sc]&&dayReq[sc].items)||{};
+    Object.keys(it).forEach(c=>{const e=out[c]||(out[c]={cs:0,pc:0,lines:[]});
+      e.cs+=it[c].cs||0;e.pc+=it[c].pc||0;if(e.lines.indexOf(sc)<0)e.lines.push(sc);});});
+  return out;
+}
+/* ปัดขึ้นให้หารอัตราแถมลงตัว — ปัดขึ้นเท่านั้น จะได้ไม่สั่งน้อยกว่าที่ต้องการ */
+function poPromoRound(qty,b){
+  if(!(b>1)||!(qty>0))return qty;
+  const rem=qty%b;
+  return rem===0?qty:qty+(b-rem);
+}
+/* ---- หัวใจ: คำนวณทั้งใบ ---- */
+function poBuild(date){
+  const req=poReqOf(date);
+  const fd=poRoundFor(date);                        /* วันของใบสั่ง/ใบเปล่าที่ใกล้ที่สุด (null ถ้าไม่มี/ห่างเกิน 7 วัน) */
+  const day=fd?psDay(fd):null;
+  const flags=(day&&day.items)||{};
+  const codes={};
+  Object.keys(req).forEach(c=>codes[c]=1);
+  if(PO.basis.min)Object.keys((MINSTOCK&&MINSTOCK.man)||{}).forEach(c=>{if(msGet(c)!=null)codes[c]=1;});
+  const can=[],cant=[];
+  Object.keys(codes).forEach(code=>{
+    const r=req[code]||{cs:0,pc:0,lines:[]};
+    const st=stkOf(code);
+    const onHand=st?st.cs:0,pack=(st&&st.pack)||0;
+    const inb=st?stkParse(st.po).cs:0;              /* ของกำลังเข้าคลัง (เปิดใบสั่งซื้อค้าง) */
+    const minV=msGet(code);
+    /* ---- รหัสที่สั่งได้จริงรอบนี้ (รหัสเปลี่ยน → ต้องสั่งตัวที่ใบสั่งเปิดให้) ---- */
+    const sw=poSwapFor(day,code);
+    const target=(sw&&sw.pick)?sw.pick:code;
+    const f=flags[target]||{};
+    /* ---- ห้ามสั่ง ---- */
+    let block=null;
+    if(!day)block="noform";
+    else if(f.s)block="oos";
+    else if(f.x)block=poClosedKind(f.x);
+    else if(poInForm(day,target)===false)block="notin";
+    /* ---- ความต้องการจากแต่ละฐาน ---- */
+    const reqCs=(r.cs||0)+(pack>0?Math.ceil((r.pc||0)/pack):0);
+    const needReq=PO.basis.req?(PO.sub?Math.max(0,reqCs-Math.max(0,onHand)-Math.max(0,inb)):reqCs):0;
+    const needMin=(PO.basis.min&&minV!=null)?Math.max(0,minV-onHand-Math.max(0,inb)):0;
+    let qty=Math.max(needReq,needMin);
+    const promoB=(f.b>1)?f.b:0;
+    const beforePromo=qty;
+    if(PO.basis.promo&&promoB&&qty>0)qty=poPromoRound(qty,promoB);
+    const cap=(f.q>0)?f.q:0;
+    const beforeCap=qty;
+    if(cap&&qty>cap)qty=cap;
+    const row={code:code,target:target,name:oname(code)||oname(target)||"",cat:prodCategory(code),
+      reqCs:reqCs,reqRaw:r,lines:r.lines,onHand:onHand,inb:inb,pack:pack,minV:minV,
+      needReq:needReq,needMin:needMin,promoB:promoB,promoF:(f.f||0),beforePromo:beforePromo,
+      cap:cap,beforeCap:beforeCap,qty:qty,block:block,swapped:(target!==code)};
+    if(block)cant.push(row);else if(qty>0)can.push(row);else cant.push(Object.assign({},row,{block:"zero"}));
+  });
+  const byCat=(a,b)=>{const ia=ORDER_CATS.indexOf(a.cat),ib=ORDER_CATS.indexOf(b.cat);
+    return (ia<0?99:ia)-(ib<0?99:ib)||b.qty-a.qty||String(a.code).localeCompare(String(b.code));};
+  can.sort(byCat);cant.sort(byCat);
+  return {date:date,hasForm:!!day,formDate:fd,can:can,cant:cant};
+}
+/* จำนวนสุดท้ายของแถว = ที่ผู้จัดการแก้เอง ถ้าไม่ได้แก้ก็ใช้ที่ระบบคำนวณ */
+function poQty(row){const e=PO.edit[row.code];return (e==null)?row.qty:e;}
+function poSetQty(code,v){
+  const n=Math.max(0,parseInt(v)||0);
+  PO.edit[code]=n;renderPoCalc();
+}
+function poResetEdits(){PO.edit={};renderPoCalc();}
+function poToggle(k){PO.basis[k]=!PO.basis[k];renderPoCalc();}
+function poToggleSub(){PO.sub=!PO.sub;renderPoCalc();}
+function poShow(k){PO.show=k;renderPoCalc();}
+/* ---- หน้าจอคำนวณ PO ---- */
+function renderPoCalc(){
+  const el=document.getElementById("poCalc");if(!el)return;
+  const isM=S.user&&S.user.role==="manager";
+  if(!isM){el.innerHTML='<div class="insight">หน้านี้สำหรับผู้จัดการ — ใช้เปิดใบสั่งซื้อของศูนย์</div>';return;}
+  const date=ORD.date;
+  if(!date){el.innerHTML='<div class="insight">เลือกวันสั่งด้านบนก่อน</div>';return;}
+  const B=poBuild(date);
+  const can=B.can,cant=B.cant;
+  const totCs=can.reduce((a,r)=>a+poQty(r),0);
+  const nEdit=Object.keys(PO.edit).length;
+  const chk=(k,lab,sub)=>`<label class="po-opt${PO.basis[k]?" on":""}"><input type="checkbox" ${PO.basis[k]?"checked":""} onchange="poToggle('${k}')"><span><b>${lab}</b><small>${sub}</small></span></label>`;
+  let h=`<h3>🧮 คำนวณ PO อัตโนมัติ · รอบ ${fmtDate(date)}</h3>
+    <div class="psub">ระบบคิดให้จากคำขอของเซลล์ + สต็อกที่เหลือ + สต็อกขั้นต่ำ + โปรโมชั่น แล้ว<b>ตัดรายการที่สั่งไม่ได้ออก</b>
+      · ตัวเลขทุกช่องแก้ไขได้ก่อนโหลดไฟล์ · ระบบ<b>ไม่แตะข้อมูลการสั่งของจริง</b>เลย</div>
+    <div class="po-opts">
+      ${chk("req","ตามที่เซลล์ขอ","รวมคำขอทุกสายของรอบนี้")}
+      ${chk("min","ตาม minimum stock","เติมให้ถึงขั้นต่ำที่ตั้งไว้")}
+      ${chk("promo","ปรับตามโปรโมชั่น","ปัดขึ้นให้หารอัตราแถมลงตัว")}
+      <label class="po-opt${PO.sub?" on":""}"><input type="checkbox" ${PO.sub?"checked":""} onchange="poToggleSub()"><span><b>หักสต็อกที่มีอยู่</b><small>สั่งเฉพาะส่วนที่ขาด ไม่สั่งซ้ำของที่มี</small></span></label>
+    </div>`;
+  if(!B.hasForm)h+=`<div class="note">⚠️ ยังไม่ได้อัพใบสั่ง/ใบเปล่าของรอบนี้ — ระบบจึงยังไม่รู้ว่าตัวไหนสั่งได้ ตัวไหนคาดเทา/ปิดช่อง ยังคำนวณจำนวนให้ได้ แต่ยังไม่ควรส่ง PO</div>`;
+  else if(B.formDate!==date)h+=`<div class="note">ℹ️ ใช้สถานะสินค้าจากใบสั่งวันที่ <b>${fmtDate(B.formDate)}</b> (ไม่มีใบของวันที่เลือกพอดี)</div>`;
+  const cntBy={};cant.forEach(r=>{cntBy[r.block]=(cntBy[r.block]||0)+1;});
+  h+=`<div class="cards" style="margin:14px 0 4px">
+    <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">สั่งได้</div><div class="v up">${can.length}</div><div class="s">รายการ · รวม <b>${totCs.toLocaleString()} ลัง</b></div></div>
+    <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">สั่งไม่ได้</div><div class="v ${cant.filter(r=>r.block!=="zero").length?"down":""}">${cant.filter(r=>r.block!=="zero").length}</div><div class="s">${Object.keys(cntBy).filter(k=>k!=="zero").map(k=>(PO_BLOCK[k]||{}).icon+" "+(PO_BLOCK[k]||{}).lab+" "+cntBy[k]).join(" · ")||"ไม่มี"}</div></div>
+    <div class="card"><div class="k">ไม่ต้องสั่ง</div><div class="v">${cntBy.zero||0}</div><div class="s">ของในสต็อกพอแล้ว</div></div>
+    <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:var(--warn)">แก้ไขด้วยมือ</div><div class="v ${nEdit?"mid":""}">${nEdit}</div><div class="s">${nEdit?'<button class="rm" onclick="poResetEdits()">↺ คืนค่าที่ระบบคำนวณ</button>':"ยังไม่ได้แก้"}</div></div>
+  </div>
+  <div class="pos-subtabs">
+    <button class="pos-st${PO.show==="can"?" on":""}" onclick="poShow('can')">✅ สั่งได้ (${can.length})</button>
+    <button class="pos-st${PO.show==="cant"?" on":""}" onclick="poShow('cant')">🚫 สั่งไม่ได้ (${cant.filter(r=>r.block!=="zero").length})</button>
+    <button class="pos-st${PO.show==="min"?" on":""}" onclick="poShow('min')">📐 ตั้งสต็อกขั้นต่ำ</button>
+  </div>`;
+  if(PO.show==="min")h+=poMinPanel(can.concat(cant));
+  else if(PO.show==="cant")h+=poCantTable(cant);
+  else h+=poCanTable(can,totCs);
+  el.innerHTML=h;
+}
+function poCanTable(can,totCs){
+  if(!can.length)return '<div class="insight">ยังไม่มีรายการที่ต้องสั่ง — ลองติ๊กฐานการสั่งเพิ่ม หรือเช็คว่าเซลล์ส่งคำขอมาแล้ว</div>';
+  const byCat={};can.forEach(r=>{(byCat[r.cat]=byCat[r.cat]||[]).push(r);});
+  const cats=ORDER_CATS.concat(Object.keys(byCat).filter(k=>ORDER_CATS.indexOf(k)<0)).filter(k=>byCat[k]);
+  let h=`<div class="psub" style="margin-top:10px"><b>ที่มาของจำนวน</b> = มากที่สุดของฐานที่ติ๊กไว้ แล้วปัดตามโปรฯ และตัดด้วยโควต้า · กดที่ช่อง <b>สั่ง (ลัง)</b> เพื่อแก้เอง</div>`;
+  cats.forEach(cat=>{const list=byCat[cat];
+    const sub=list.reduce((a,r)=>a+poQty(r),0);
+    h+=`<div class="ps-cat"><h4>${CAT_ICON[cat]||"📦"} ${cat} <span>· ${list.length} รายการ · ${sub.toLocaleString()} ลัง</span></h4>
+      <div class="tblwrap"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th>
+        <th>เซลล์ขอ</th><th>คงเหลือ</th><th>กำลังเข้า</th><th>ขั้นต่ำ</th><th>โปรฯ</th><th>โควต้า</th><th>สั่ง (ลัง)</th><th style="text-align:left">ที่มา</th></tr></thead><tbody>`+
+      list.map(r=>{const q=poQty(r),ed=(PO.edit[r.code]!=null&&PO.edit[r.code]!==r.qty);
+        return `<tr${ed?' style="background:#FDF3DB"':""}><td>${r.code}${r.swapped?`<div class="dci-sub">→ สั่ง ${r.target}</div>`:""}</td>
+          <td style="text-align:left">${anaEsc(r.name)||'<span class="psub">-</span>'}</td>
+          <td>${r.reqCs||"-"}</td><td class="${r.onHand<=0?"down":""}">${r.onHand}</td><td>${r.inb||"-"}</td>
+          <td>${r.minV==null?'<span class="psub">-</span>':r.minV}</td>
+          <td>${r.promoB?`<span class="pill w">${r.promoB}F${r.promoF}</span>`:'<span class="psub">-</span>'}</td>
+          <td>${r.cap?r.cap:'<span class="psub">-</span>'}</td>
+          <td><input class="po-in" type="number" min="0" value="${q}" onchange="poSetQty('${r.code}',this.value)"></td>
+          <td style="text-align:left"><span class="psub">${poWhyQty(r)}</span></td></tr>`;}).join("")+
+      `</tbody></table></div></div>`;});
+  h+=`<div class="insight" style="margin-top:14px">รวมที่จะสั่ง <b>${can.length}</b> รายการ · <b>${totCs.toLocaleString()} ลัง</b>
+    <div class="psub" style="margin-top:6px">ขั้นต่อไป: ดาวน์โหลดใบ PO — <b>อยู่ระหว่างพัฒนา</b> ต้องอัพไฟล์ใบเปล่าของรอบนี้เข้ามาตอนโหลด ระบบจะเติมเลขลงในไฟล์เดิมโดยไม่แตะรูปแบบไฟล์</div></div>`;
+  return h;
+}
+/* อธิบายที่มาของจำนวนแบบอ่านรู้เรื่อง — ให้ตรวจได้ว่าระบบคิดมาจากอะไร */
+function poWhyQty(r){
+  const p=[];
+  if(PO.basis.req&&r.reqCs)p.push(PO.sub?`เซลล์ขอ ${r.reqCs} − คงเหลือ ${Math.max(0,r.onHand)}${r.inb>0?` − กำลังเข้า ${r.inb}`:""} = ${r.needReq}`:`เซลล์ขอ ${r.reqCs}`);
+  if(PO.basis.min&&r.minV!=null)p.push(`ขั้นต่ำ ${r.minV} − คงเหลือ ${r.onHand}${r.inb>0?` − กำลังเข้า ${r.inb}`:""} = ${r.needMin}`);
+  if(p.length>1)p.push(`เอาค่ามากสุด = ${r.beforePromo}`);
+  if(PO.basis.promo&&r.promoB&&r.beforePromo!==r.beforeCap)p.push(`ปัดขึ้นให้หาร ${r.promoB} ลงตัว = ${r.beforeCap}`);
+  if(r.cap&&r.beforeCap>r.cap)p.push(`ตัดตามโควต้า ${r.cap}`);
+  return p.length?p.join(" → "):"ไม่มีฐานการสั่งที่ติ๊กไว้";
+}
+function poCantTable(cant){
+  if(!cant.length)return '<div class="insight">ทุกรายการสั่งได้หมด 🎉</div>';
+  const grp={};cant.forEach(r=>{(grp[r.block]=grp[r.block]||[]).push(r);});
+  const order=["oos","closed","dropped","notin","noform","zero"].filter(k=>grp[k]);
+  let h="";
+  order.forEach(k=>{
+    const info=(k==="zero")?{icon:"✔️",lab:"ไม่ต้องสั่ง — ของในสต็อกพอแล้ว",why:"คำนวณแล้วได้ 0 ลัง"}:(PO_BLOCK[k]||{icon:"❔",lab:k,why:""});
+    h+=`<div class="ps-cat"><h4>${info.icon} ${info.lab} <span>· ${grp[k].length} รายการ</span></h4>
+      <div class="psub" style="margin-bottom:6px">${info.why}</div>
+      <div class="tblwrap"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>เซลล์ขอ</th><th>คงเหลือ</th><th style="text-align:left">${k==="zero"?"ที่มา":"รอบนี้ให้สั่งรหัสไหน"}</th></tr></thead><tbody>`+
+      grp[k].map(r=>`<tr><td>${r.code}</td><td style="text-align:left">${anaEsc(r.name)||'<span class="psub">-</span>'}</td>
+        <td>${r.reqCs||"-"}</td><td class="${r.onHand<=0?"down":""}">${r.onHand}</td>
+        <td style="text-align:left">${k==="zero"?('<span class="psub">'+poWhyQty(r)+"</span>"):poSwapCell(r)}</td></tr>`).join("")+
+      `</tbody></table></div></div>`;});
+  return h;
+}
+function poSwapCell(r){
+  if(r.swapped)return `<span class="pill g">✅ สั่งรหัส <b>${r.target}</b> แทน</span>`;
+  return '<span class="psub">ไม่มีรหัสอื่นของสินค้านี้ที่สั่งได้รอบนี้</span>';
+}
+/* ---- ตั้งสต็อกขั้นต่ำ: ทยอยกรอกได้ + ปุ่มให้ระบบแนะนำ ---- */
+function poMinPanel(rows){
+  const seen={},list=[];
+  rows.forEach(r=>{if(!seen[r.code]){seen[r.code]=1;list.push(r);}});
+  Object.keys((MINSTOCK&&MINSTOCK.man)||{}).forEach(c=>{if(!seen[c]&&msGet(c)!=null){seen[c]=1;
+    list.push({code:c,name:oname(c)||"",cat:prodCategory(c),onHand:(stkOf(c)||{cs:0}).cs,reqCs:0,minV:msGet(c)});}});
+  const dirty=Object.keys(PO.minEdit).length;
+  let h=`<div class="psub" style="margin-top:10px">กรอกเท่าที่พร้อม ไม่ต้องครบทุกตัว — <b>ค่าที่ยังไม่กรอกจะไม่ถูกนำมาคำนวณ</b>
+    · ใส่ <b>0</b> = ห้ามสั่งอัตโนมัติ · ล้างช่องให้ว่าง = ยกเลิกค่าที่ตั้งไว้
+    <br>ปุ่ม <b>ระบบแนะนำ</b> คิดจากยอดขายจริง 3 เดือนล่าสุด ÷ ขนาดบรรจุ ÷ 2 (ศูนย์สั่งเดือนละ ~2 รอบ) — ใส่ให้ในช่องแต่ยัง<b>ไม่บันทึกจนกดปุ่มบันทึก</b></div>
+    <div class="po-minbar">
+      <button class="upload-btn" onclick="poMinSuggestAll()">✨ ระบบแนะนำให้ทุกช่องที่ยังว่าง</button>
+      <button class="copy-btn" onclick="poMinSave()"${dirty?"":" disabled style='opacity:.45'"}>💾 บันทึกสต็อกขั้นต่ำ${dirty?" ("+dirty+" รายการ)":""}</button>
+      ${dirty?'<button class="rm" onclick="PO.minEdit={};renderPoCalc()">↺ ทิ้งที่แก้</button>':""}
+    </div>`;
+  if(!list.length)return h+'<div class="insight">ยังไม่มีสินค้าให้ตั้งค่า — รอคำขอจากเซลล์ หรืออัพไฟล์สต็อกก่อน</div>';
+  h+=`<div class="tblwrap" style="margin-top:10px"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>หมวด</th>
+    <th>คงเหลือ</th><th>เซลล์ขอรอบนี้</th><th>ระบบแนะนำ</th><th>สต็อกขั้นต่ำ (ลัง)</th></tr></thead><tbody>`+
+    list.map(r=>{const cur=(PO.minEdit[r.code]!==undefined)?PO.minEdit[r.code]:msGet(r.code);
+      const sug=msSuggest(r.code),ed=(PO.minEdit[r.code]!==undefined);
+      return `<tr${ed?' style="background:#FDF3DB"':""}><td>${r.code}</td><td style="text-align:left">${anaEsc(r.name)||'<span class="psub">-</span>'}</td>
+        <td style="font-size:11px;color:var(--muted)">${r.cat}</td>
+        <td class="${r.onHand<=0?"down":""}">${r.onHand}</td><td>${r.reqCs||"-"}</td>
+        <td>${sug==null?'<span class="psub">ไม่มียอดขายย้อนหลัง</span>':`<button class="rm" onclick="poMinSet('${r.code}',${sug})">ใช้ ${sug}</button>`}</td>
+        <td><input class="po-in" type="number" min="0" placeholder="ยังไม่ตั้ง" value="${cur==null?"":cur}" onchange="poMinSet('${r.code}',this.value)"></td></tr>`;}).join("")+
+    `</tbody></table></div>`;
+  return h;
+}
+function poMinSet(code,v){
+  const t=String(v==null?"":v).trim();
+  PO.minEdit[code]=(t==="")?null:Math.max(0,parseInt(t)||0);   /* null = ยกเลิกค่า (tombstone) */
+  renderPoCalc();
+}
+function poMinSuggestAll(){
+  let n=0;
+  document.querySelectorAll("#poCalc tbody tr").forEach(tr=>{
+    const code=tr.cells[0]&&tr.cells[0].textContent.trim();if(!code)return;
+    if(msGet(code)!=null||PO.minEdit[code]!==undefined)return;
+    const s=msSuggest(code);if(s!=null){PO.minEdit[code]=s;n++;}
+  });
+  if(!n)return bdToast("ไม่มีช่องว่างที่ระบบคำนวณให้ได้ (ต้องมียอดขายย้อนหลัง + ขนาดบรรจุ)");
+  renderPoCalc();bdToast("ใส่ค่าแนะนำให้ "+n+" รายการ — กด 💾 เพื่อบันทึก");
+}
+/* บันทึกทีเดียวทั้งชุด — ห้ามบันทึกทุกครั้งที่พิมพ์
+   ทุกครั้งที่บันทึกจะเขียน snapshot เต็มก้อนขึ้นเซิร์ฟเวอร์และหมุน backup (เก็บแค่ 8 ชุด)
+   ถ้าบันทึกทีละช่อง กรอก 20 ตัวก็หมุน backup หายทั้งวง */
+function poMinSave(){
+  const codes=Object.keys(PO.minEdit);
+  if(!codes.length)return bdToast("ยังไม่มีอะไรให้บันทึก");
+  if(!MINSTOCK||typeof MINSTOCK!=="object")MINSTOCK={man:{}};
+  if(!MINSTOCK.man)MINSTOCK.man={};
+  const at=Date.now(),by=(S.user&&S.user.name)||"manager";
+  codes.forEach(c=>{MINSTOCK.man[c]={v:PO.minEdit[c],at:at,by:by};});   /* v:null = tombstone */
+  PO.minEdit={};
+  renderPoCalc();syncToServer();
+  bdToast("บันทึกสต็อกขั้นต่ำ "+codes.length+" รายการแล้ว ✓");
+}
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){
   const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",ana:"ana",dci:"dci"}[CURTAB]||"sales";

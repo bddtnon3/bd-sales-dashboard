@@ -410,5 +410,62 @@ console.log("TEST 14 — the depot's DCI Score periods are never dropped");
         looksEmpty({ DATA: {}, DCI: srv.DCI }) === true);
 }
 
+console.log("TEST 15 — minimum stock typed in a few codes at a time never rolls back");
+{
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.MINSTOCK = { man: {
+    "64829056": { v: 20, at: 1000, by: "ผู้จัดการ" },
+    "64939086": { v: 5, at: 1000, by: "ผู้จัดการ" },
+  } };
+
+  // a tab from before the feature existed saves something else
+  const oldTab = JSON.parse(JSON.stringify(srv));
+  delete oldTab.MINSTOCK;
+  const o1 = mergeState(srv, oldTab);
+  check("a tab with no MINSTOCK at all cannot erase it",
+        o1.MINSTOCK.man["64829056"].v === 20 && Object.keys(o1.MINSTOCK.man).length === 2);
+
+  // the manager types two more codes from a second browser
+  const b2 = JSON.parse(JSON.stringify(o1));
+  b2.MINSTOCK.man["65446209"] = { v: 12, at: 2000, by: "ผู้จัดการ" };
+  b2.MINSTOCK.man["64826009"] = { v: 0, at: 2000, by: "ผู้จัดการ" };
+  const o2 = mergeState(o1, b2);
+  check("codes added later are kept alongside the earlier ones", Object.keys(o2.MINSTOCK.man).length === 4);
+  check("v:0 survives — it means 'never auto-order', not 'unset'", o2.MINSTOCK.man["64826009"].v === 0);
+
+  // THE case keyMerge would get wrong: a stale tab still holding the old number
+  const stale = JSON.parse(JSON.stringify(o1));                 // loaded before the noon edits
+  stale.MINSTOCK.man["64829056"] = { v: 20, at: 1000, by: "ผู้จัดการ" };
+  const noon = JSON.parse(JSON.stringify(o2));
+  noon.MINSTOCK.man["64829056"] = { v: 9, at: 3000, by: "ผู้จัดการ" };
+  const o3 = mergeState(o2, noon);
+  check("the noon edit is taken", o3.MINSTOCK.man["64829056"].v === 9);
+  const o4 = mergeState(o3, stale);
+  check("a stale tab CANNOT roll a minimum back to its old value", o4.MINSTOCK.man["64829056"].v === 9);
+  check("...and the stale tab's other codes are untouched", o4.MINSTOCK.man["65446209"].v === 12);
+
+  // clearing a value must be a tombstone: deleting the key is undone by the union
+  const del = JSON.parse(JSON.stringify(o4));
+  delete del.MINSTOCK.man["64939086"];
+  const o5 = mergeState(o4, del);
+  check("deleting the key does NOT clear it (this is why we need a tombstone)",
+        o5.MINSTOCK.man["64939086"].v === 5);
+  const tomb = JSON.parse(JSON.stringify(o4));
+  tomb.MINSTOCK.man["64939086"] = { v: null, at: 4000, by: "ผู้จัดการ" };
+  const o6 = mergeState(o4, tomb);
+  check("a {v:null} tombstone DOES clear it", o6.MINSTOCK.man["64939086"].v === null);
+  check("...and the tombstone itself survives a later stale save",
+        mergeState(o6, o4).MINSTOCK.man["64939086"].v === null);
+
+  // first save into an empty store, and no cross-section damage
+  const first = mergeState(null, { DATA: server.DATA, MINSTOCK: srv.MINSTOCK });
+  check("first save into an empty store keeps MINSTOCK", first.MINSTOCK.man["64829056"].v === 20);
+  check("touching MINSTOCK disturbs no other section",
+        Object.keys(o6.DATA.monthly).length === 2 && !!o6.PSTORE.rounds["2026-06-30"] &&
+        o6.ORDERS.dates.length === 2 && Object.keys(o6.REQUESTS.data).length >= 1);
+  check("looksEmpty: MINSTOCK alone does NOT count as real data (same call as DCI)",
+        looksEmpty({ DATA: {}, MINSTOCK: srv.MINSTOCK }) === true);
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

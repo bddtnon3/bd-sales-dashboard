@@ -119,6 +119,10 @@ code, never printed.
   The **📈 DCI Score** tab (`parseDCI`/`dciExtract`/`renderDCI`) scores the depot against
   Unilever's DCI sheet. Everyone sees it; only the manager can upload. Its rules are in
   `HANDOFF.md` §5 — read them before touching it.
+  **การสั่งของ** has four sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO.
+  The auto-PO calculator (`poBuild`/`renderPoCalc`) and `MINSTOCK` (minimum stock per code) have
+  rules that are easy to get wrong — read `HANDOFF.md` §5 before touching either. The calculator
+  is strictly READ-ONLY over ORDERS/POSTATUS/STOCKD/REQUESTS.
 - `build.cjs` — regenerates `public/index.html` from the template (run after every edit).
 - `public/index.html` — generated output that Vercel serves. Do not edit by hand.
 - `public/join.html` + `public/img/*` — the public shop-application page (hand-written).
