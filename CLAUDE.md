@@ -123,9 +123,15 @@ code, never printed.
   The auto-PO calculator (`poBuild`/`renderPoCalc`) and `MINSTOCK` (minimum stock per code) have
   rules that are easy to get wrong — read `HANDOFF.md` §5 before touching either. The calculator
   is strictly READ-ONLY over ORDERS/POSTATUS/STOCKD/REQUESTS.
+  Generating the real PO file (`xlsmFill`) patches the manager's own blank .xlsm inside the zip —
+  never rewrite the workbook, or the macros, formatting and Unilever's sensitivity label are lost.
+  The form's totals/weight/volume/value are FORMULAS over the Order Confirm column, so the output
+  sets `fullCalcOnLoad="1"` and the manager must open it in Excel once before emailing. Rules and
+  the five assumptions to re-check if Unilever changes the form: `HANDOFF.md` §5.
 - `build.cjs` — regenerates `public/index.html` from the template (run after every edit).
 - `public/index.html` — generated output that Vercel serves. Do not edit by hand.
 - `public/join.html` + `public/img/*` — the public shop-application page (hand-written).
+- `public/vendor/jszip.min.js` — vendored (MIT), lazy-loaded only when a PO file is generated.
 - `api/*.js` — Vercel serverless functions (ESM): `login`, `data` (read newest non-empty blob),
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write),
   `apply` (PUBLIC shop application → its own `bd-lead-*` blob), `leads` (manager-only read).

@@ -253,6 +253,11 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 
 /* KPI */
 #kpiCharts .panel{margin-bottom:20px}
+.po-make{margin-top:16px;border:1.5px solid var(--blue);border-radius:12px;padding:16px 18px;background:var(--blue-soft)}
+.po-make h4{font-size:14.5px;margin:0 0 6px}
+.po-sum{font-size:14px;margin-bottom:10px}
+.po-make .drop{margin-bottom:0}
+.po-steps{margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--ink)}
 .po-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}
 .po-opt{display:flex;align-items:flex-start;gap:9px;border:1.5px solid var(--line);border-radius:10px;
   padding:10px 12px;background:#fff;cursor:pointer}
@@ -4635,6 +4640,334 @@ function poResetEdits(){PO.edit={};renderPoCalc();}
 function poToggle(k){PO.basis[k]=!PO.basis[k];renderPoCalc();}
 function poToggleSub(){PO.sub=!PO.sub;renderPoCalc();}
 function poShow(k){PO.show=k;renderPoCalc();}
+/* ============================================================================
+ * xlsmFill — เติมตัวเลขลงในไฟล์ใบสั่งซื้อ .xlsm ของเดิม โดยไม่แตะอะไรอย่างอื่นเลย
+ *
+ * ทำไมต้องผ่าไฟล์ zip เอง: ถ้าสร้างไฟล์ใหม่ด้วยไลบรารี Excel มาโคร (vbaProject.bin)
+ * รูปแบบ สี เซลล์ผสาน การตั้งค่าพิมพ์ และป้ายกำกับความปลอดภัยจะหายทั้งหมด
+ * ผู้รับอ่านไฟล์ไม่ได้จริง — เจ้าของยืนยันข้อนี้เอง
+ *
+ * แนวทาง: ไฟล์ .xlsm คือ zip → แก้เฉพาะ xl/worksheets/sheetN.xml ที่ต้องกรอก
+ * เขียนกลับด้วย {createFolders:false} เพื่อไม่ให้ JSZip แทรก entry โฟลเดอร์เพิ่ม
+ *
+ * ⚠️ สำคัญ: ในใบจริงมีสูตร ~1,620 สูตรต่อชีต ที่อ้างถึงคอลัมน์ Order Confirm
+ *    (น้ำหนัก / ปริมาตร / พาเลท / ของแถม / ยอดรวม / มูลค่า) ถ้าเติมเลขแล้วไม่คำนวณใหม่
+ *    ค่าพวกนั้นจะค้างเป็นของเก่าทั้งหมด → ผู้รับได้ใบสั่งที่มีจำนวนแต่ยอดรวมเป็น 0
+ *    จึงตั้ง fullCalcOnLoad="1" ให้ Excel คำนวณใหม่ทันทีที่เปิด และต้องบอกผู้ใช้ให้
+ *    เปิดไฟล์ใน Excel หนึ่งครั้งก่อนส่ง (ซึ่งเป็นขั้นที่ควรตรวจใบสั่งอยู่แล้ว)
+ *
+ * พิกัดที่รับเข้ามาเป็นพิกัดจริงของชีต (0-based) ไม่ใช่ index ของ sheet_to_json
+ * ==========================================================================*/
+var MAXROW=1048575,MAXCOL=16383;
+
+function colName(n){var s="";n++;while(n>0){var m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=(n-m-1)/26;}return s;}
+function colNum(s){var n=0;for(var i=0;i<s.length;i++)n=n*26+(s.charCodeAt(i)-64);return n-1;}
+function refOf(r,c){return colName(c)+(r+1);}
+/* อ่าน attribute แบบไม่สนว่าใช้ " หรือ ' ครอบ */
+function attr(tag,name){
+  var m=new RegExp("\\s"+name+"\\s*=\\s*(\"([^\"]*)\"|'([^']*)')","i").exec(tag);
+  return m?(m[2]!==undefined?m[2]:m[3]):null;
+}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+/* ---- หา path ของชีตจากชื่อชีต (ผ่าน workbook.xml + rels และเช็ค Type จริง) ---- */
+function sheetPaths(wbXml,relsXml){
+  var out={},rel={};
+  var re=/<Relationship\b[^>]*>/g,m;
+  while((m=re.exec(relsXml))){
+    var t=attr(m[0],"Type")||"";
+    if(t.indexOf("/worksheet")<0)continue;          /* ต้องเป็น worksheet จริง ไม่ใช่ theme ที่ Id ชนกัน */
+    var id=attr(m[0],"Id"),tg=attr(m[0],"Target")||"";
+    if(!id)continue;
+    tg=tg.replace(/^\/xl\//,"").replace(/^\.\//,"");
+    rel[id]="xl/"+tg;
+  }
+  var rs=/<sheet\b[^>]*\/?>/g;
+  while((m=rs.exec(wbXml))){
+    var nm=attr(m[0],"name"),rid=attr(m[0],"r:id")||attr(m[0],"id");
+    if(nm&&rid&&rel[rid])out[nm]=rel[rid];
+  }
+  return out;
+}
+
+/* ---- เติมค่าลงใน XML ของชีตหนึ่งแผ่น ---- */
+function patchSheet(xml,edits){
+  var rep={written:[],inserted:[],rowsInserted:[],refusedFormula:[],spansDropped:[],dimension:null};
+  edits.forEach(function(e){
+    if(!Number.isInteger(e.row)||!Number.isInteger(e.col))throw new Error("พิกัดไม่ใช่จำนวนเต็ม");
+    if(e.row<0||e.row>MAXROW||e.col<0||e.col>MAXCOL)throw new Error("พิกัดเกินขอบเขตของ Excel: "+e.row+","+e.col);
+    if(typeof e.value!=="number"||!isFinite(e.value))throw new Error("ค่าที่เขียนต้องเป็นตัวเลข");
+  });
+  /* จัดกลุ่มตามแถว แล้วไล่จากแถวมากไปน้อย/คอลัมน์มากไปน้อย เพื่อไม่ให้ index เคลื่อน */
+  var byRow={};
+  edits.forEach(function(e){(byRow[e.row]=byRow[e.row]||[]).push(e);});
+  var rowNums=Object.keys(byRow).map(Number).sort(function(a,b){return b-a;});
+
+  rowNums.forEach(function(rIdx){
+    var list=byRow[rIdx].slice().sort(function(a,b){return b.col-a.col;});
+    var rowRe=new RegExp('<row\\b[^>]*\\br\\s*=\\s*(?:"'+(rIdx+1)+'"|\''+(rIdx+1)+'\')[^>]*>','g');
+    var rm=rowRe.exec(xml);
+    if(!rm){
+      /* ยังไม่มีแถวนี้ — แทรกแถวใหม่ให้อยู่ในลำดับที่ถูก */
+      var cells=list.slice().sort(function(a,b){return a.col-b.col;})
+        .map(function(e){return '<c r="'+refOf(e.row,e.col)+'"><v>'+e.value+'</v></c>';}).join("");
+      var newRow='<row r="'+(rIdx+1)+'">'+cells+"</row>";
+      var all=[],re2=/<row\b[^>]*\br\s*=\s*(?:"(\d+)"|'(\d+)')[^>]*>/g,mm;
+      while((mm=re2.exec(xml)))all.push({n:+(mm[1]||mm[2]),i:mm.index});
+      var after=all.filter(function(x){return x.n>rIdx+1;});
+      if(after.length)xml=xml.slice(0,after[0].i)+newRow+xml.slice(after[0].i);
+      else{var sd=xml.indexOf("</sheetData>");
+        if(sd<0)throw new Error("ไฟล์นี้ไม่มี sheetData — ไม่ใช่แผ่นงาน Excel ปกติ");
+        xml=xml.slice(0,sd)+newRow+xml.slice(sd);}
+      rep.rowsInserted.push(rIdx+1);
+      list.forEach(function(e){rep.inserted.push(refOf(e.row,e.col));});
+      return;
+    }
+    /* ตัดเอาเนื้อของแถวนี้ออกมาทำงาน */
+    var openTag=rm[0],start=rm.index,bodyStart=start+openTag.length;
+    var selfClose=/\/>\s*$/.test(openTag);
+    var end,body;
+    if(selfClose){body="";end=bodyStart;}
+    else{var close=xml.indexOf("</row>",bodyStart);
+      if(close<0)throw new Error("แถว "+(rIdx+1)+" ไม่ปิด tag");
+      body=xml.slice(bodyStart,close);end=close;}
+    /* ทุกเซลล์ในแถวต้องมี r= ไม่งั้นการแทรกจะไปผิดตำแหน่งแบบเงียบๆ */
+    var cRe=/<c\b([^>]*?)(\/>|>)/g,cm,cellsIdx=[];
+    while((cm=cRe.exec(body))){
+      var a=cm[1],ref=attr("<c "+a+">","r");
+      if(!ref)throw new Error("แถว "+(rIdx+1)+" มีเซลล์ที่ไม่มีพิกัด (r=) — ไฟล์รูปแบบนี้ยังไม่รองรับ");
+      var cEnd;
+      if(cm[2]==="/>")cEnd=cm.index+cm[0].length;
+      else{var cc=body.indexOf("</c>",cm.index);if(cc<0)throw new Error("เซลล์ "+ref+" ไม่ปิด tag");cEnd=cc+4;}
+      cellsIdx.push({ref:ref,col:colNum(ref.replace(/\d+/g,"")),s:cm.index,e:cEnd,
+        attrs:a,self:(cm[2]==="/>"),text:body.slice(cm.index,cEnd)});
+      cRe.lastIndex=cEnd;
+    }
+    list.forEach(function(e){
+      var want=refOf(e.row,e.col);
+      var hit=null;for(var i=0;i<cellsIdx.length;i++)if(cellsIdx[i].ref===want){hit=cellsIdx[i];break;}
+      if(hit){
+        if(/<f[\s>]/.test(hit.text)){rep.refusedFormula.push(want);return;}   /* ห้ามทับสูตร */
+        var st=attr("<c "+hit.attrs+">","s");
+        var cm2=attr("<c "+hit.attrs+">","cm"),vm=attr("<c "+hit.attrs+">","vm");
+        var nu='<c r="'+want+'"'+(st!=null?' s="'+st+'"':"")+(cm2!=null?' cm="'+cm2+'"':"")+
+               (vm!=null?' vm="'+vm+'"':"")+"><v>"+e.value+"</v></c>";
+        body=body.slice(0,hit.s)+nu+body.slice(hit.e);
+        var d=nu.length-(hit.e-hit.s);
+        cellsIdx.forEach(function(x){if(x.s>hit.s){x.s+=d;x.e+=d;}});
+        hit.e=hit.s+nu.length;hit.text=nu;hit.self=false;hit.attrs=' r="'+want+'"'+(st!=null?' s="'+st+'"':"");
+        rep.written.push(want);
+      }else{
+        /* ไม่มีเซลล์นี้ — แทรกตามลำดับคอลัมน์ และสืบสไตล์จากคอลัมน์เดียวกันแถวอื่น
+           ไม่งั้นช่องที่เติมจะไม่มีสี/รูปแบบ ฟอร์มที่ส่งไปจะหน้าตาไม่เหมือนเดิม */
+        var inh=inheritStyle(xml,e.col,rIdx);
+        var nu2='<c r="'+want+'"'+(inh!=null?' s="'+inh+'"':"")+"><v>"+e.value+"</v></c>";
+        var at=body.length,ins=null;
+        for(var j=0;j<cellsIdx.length;j++)if(cellsIdx[j].col>e.col){ins=cellsIdx[j];break;}
+        if(ins)at=ins.s;
+        body=body.slice(0,at)+nu2+body.slice(at);
+        cellsIdx.forEach(function(x){if(x.s>=at)  {x.s+=nu2.length;x.e+=nu2.length;}});
+        cellsIdx.push({ref:want,col:e.col,s:at,e:at+nu2.length,attrs:' r="'+want+'"',self:false,text:nu2});
+        cellsIdx.sort(function(a,b){return a.s-b.s;});
+        rep.inserted.push(want);
+      }
+    });
+    /* spans เป็นแค่คำใบ้ ถ้ามันแคบไปหรือเป็นลิสต์หลายช่วง ให้ตัดทิ้งเลย ปลอดภัยกว่าคำนวณผิด */
+    var sp=attr(openTag,"spans");
+    var maxCol=Math.max.apply(null,list.map(function(e){return e.col+1;}));
+    var newOpen=openTag;
+    if(sp!=null){
+      var one=/^(\d+):(\d+)$/.exec(sp.trim());
+      if(!one||+one[2]<maxCol){
+        newOpen=openTag.replace(/\sspans\s*=\s*(?:"[^"]*"|'[^']*')/i,"");
+        rep.spansDropped.push(rIdx+1);
+      }
+    }
+    if(selfClose)newOpen=newOpen.replace(/\/>\s*$/,">");
+    xml=xml.slice(0,start)+newOpen+body+(selfClose?"</row>":"")+xml.slice(end);
+  });
+
+  /* dimension ต้องครอบเซลล์ที่เขียน ไม่งั้นตัวอ่านบางตัวจะมองไม่เห็น */
+  var dm=/<dimension\b[^>]*\bref\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*\/>/.exec(xml);
+  if(dm){
+    var ref=dm[1]||dm[2],p=ref.split(":");
+    var a1=p[0],b1=p[1]||p[0];
+    var r1=+a1.replace(/\D/g,"")-1,c1=colNum(a1.replace(/\d+/g,""));
+    var r2=+b1.replace(/\D/g,"")-1,c2=colNum(b1.replace(/\d+/g,""));
+    var nr1=r1,nc1=c1,nr2=r2,nc2=c2;
+    edits.forEach(function(e){
+      if(e.row<nr1)nr1=e.row; if(e.col<nc1)nc1=e.col;
+      if(e.row>nr2)nr2=e.row; if(e.col>nc2)nc2=e.col;});
+    if(nr1!==r1||nc1!==c1||nr2!==r2||nc2!==c2){
+      var nref=refOf(nr1,nc1)+":"+refOf(nr2,nc2);
+      xml=xml.replace(dm[0],'<dimension ref="'+nref+'"/>');
+      rep.dimension=ref+" -> "+nref;
+    }
+  }
+  return {xml:xml,report:rep};
+}
+/* สไตล์ของคอลัมน์เดียวกันในแถวใกล้ๆ → ใช้เป็นสไตล์ของเซลล์ที่แทรกใหม่ */
+function inheritStyle(xml,col,rIdx){
+  var cn=colName(col);
+  for(var d=1;d<=25;d++){
+    for(var k=0;k<2;k++){
+      var r=(k?rIdx-d:rIdx+d)+1;if(r<1)continue;
+      var m=new RegExp('<c\\b[^>]*\\br\\s*=\\s*(?:"'+cn+r+'"|\''+cn+r+'\')([^>]*)').exec(xml);
+      if(m){var st=attr("<c "+m[1]+">","s");if(st!=null)return st;}
+    }
+  }
+  return null;
+}
+/* บังคับให้ Excel คำนวณสูตรใหม่ทั้งไฟล์ตอนเปิด — จำเป็นเพราะยอดรวม/น้ำหนัก/มูลค่า
+   เป็นสูตรที่อ้างถึงช่องที่เราเพิ่งเติม ค่าที่ cache ไว้จะเป็นของเก่า */
+function setFullCalc(wbXml){
+  if(/fullCalcOnLoad\s*=\s*(?:"1"|'1')/.test(wbXml))return {xml:wbXml,ok:true,changed:false};
+  var self=/<calcPr\b[^>]*\/>/.exec(wbXml);
+  if(self){
+    var t=self[0].replace(/\/>$/,' fullCalcOnLoad="1"/>');
+    wbXml=wbXml.replace(self[0],t);
+  }else{
+    var open=/<calcPr\b[^>]*>/.exec(wbXml);
+    if(open)wbXml=wbXml.replace(open[0],open[0].replace(/>$/,' fullCalcOnLoad="1">'));
+    else{
+      /* ต้องวางตามลำดับ schema: หลัง sheets/functionGroups/externalReferences/definedNames */
+      var anchor=null;
+      ["</definedNames>","</externalReferences>","</functionGroups>","</sheets>"].forEach(function(t){
+        if(anchor===null){var i=wbXml.indexOf(t);if(i>=0)anchor=i+t.length;}});
+      if(anchor===null)return {xml:wbXml,ok:false,changed:false};
+      wbXml=wbXml.slice(0,anchor)+'<calcPr calcId="191029" fullCalcOnLoad="1"/>'+wbXml.slice(anchor);
+    }
+  }
+  var ok=/fullCalcOnLoad\s*=\s*(?:"1"|'1')/.test(wbXml);
+  return {xml:wbXml,ok:ok,changed:true};
+}
+
+/* ---- ตัวเรียกหลัก ---- */
+async function xlsmFill(JSZipLib,bytes,editsBySheet,opts){
+  opts=opts||{};
+  var zip;
+  try{zip=await JSZipLib.loadAsync(bytes);}
+  catch(e){throw new Error("เปิดไฟล์ไม่ได้ — ถ้าไฟล์ใส่รหัสผ่านหรือเป็น .xls แบบเก่า ให้เปิดใน Excel แล้ว Save As เป็น .xlsm ที่ไม่ใส่รหัสก่อน");}
+  var wbF=zip.file("xl/workbook.xml"),relF=zip.file("xl/_rels/workbook.xml.rels");
+  if(!wbF||!relF)throw new Error("ไฟล์นี้ไม่ใช่ไฟล์ Excel ที่สมบูรณ์ (ไม่พบ workbook)");
+  var wbXml=await wbF.async("string"),relXml=await relF.async("string");
+  var paths=sheetPaths(wbXml,relXml);
+  var report={sheets:{},changedEntries:[],fullCalc:false};
+  for(var name in editsBySheet){
+    var edits=editsBySheet[name];if(!edits||!edits.length)continue;
+    var path=paths[name];
+    if(!path)throw new Error('ไม่พบแผ่นงาน "'+name+'" ในไฟล์นี้ — อัพไฟล์ใบสั่งให้ตรงรอบหรือไม่?');
+    var f=zip.file(path);if(!f)throw new Error("ไฟล์ภายในหาย: "+path);
+    var xml=await f.async("string");
+    var r=patchSheet(xml,edits);
+    zip.file(path,r.xml,{createFolders:false});
+    report.sheets[name]=r.report;report.changedEntries.push(path);
+  }
+  var fc=setFullCalc(wbXml);
+  if(!fc.ok)throw new Error("ตั้งค่าให้ Excel คำนวณยอดรวมใหม่ไม่ได้ — ยังไม่สร้างไฟล์ เพื่อกันยอดรวมผิด");
+  if(fc.changed){zip.file("xl/workbook.xml",fc.xml,{createFolders:false});report.changedEntries.push("xl/workbook.xml");}
+  report.fullCalc=true;
+  var out=await zip.generateAsync({type:opts.type||"nodebuffer",compression:"DEFLATE",
+    mimeType:"application/vnd.ms-excel.sheet.macroenabled.12"},opts.onUpdate);
+  return {out:out,report:report};
+}
+
+/* ============================================================================
+ * สร้างใบ PO จริง — เติมตัวเลขลงในไฟล์ใบเปล่าของรอบนั้น
+ *
+ * ทำไมต้องให้อัพไฟล์ใบเปล่าตอนโหลด (ไม่เก็บไฟล์ไว้ในระบบ):
+ *   - ไฟล์ใบเดียว ~700KB ถ้าเก็บทุกรอบจะกินพื้นที่และดันข้อมูลก้อนหลักเกินโควต้าคำขอของ Vercel
+ *   - ใบเปล่าของแต่ละรอบถือโปรฯ/โควต้า/ของขาด/รหัสใหม่ของรอบนั้นมาด้วย ต้องใช้ใบของรอบนั้นจริงๆ
+ *   - parseOrderForm อ่านค่าจากไฟล์แล้วทิ้ง buffer ไป จึงไม่มีไบต์เดิมเหลืออยู่
+ * ==========================================================================*/
+let POF={busy:false,msg:""};
+/* โหลด JSZip ตอนกดใช้จริงเท่านั้น (98KB) ไม่ถ่วงการเปิดหน้าเว็บบนมือถือ */
+function poLoadZip(){
+  if(window.JSZip)return Promise.resolve(window.JSZip);
+  return new Promise((res,rej)=>{
+    const s=document.createElement("script");
+    s.src="/vendor/jszip.min.js";
+    s.onload=()=>window.JSZip?res(window.JSZip):rej(new Error("โหลดตัวช่วยเขียนไฟล์ไม่สำเร็จ"));
+    s.onerror=()=>rej(new Error("โหลดตัวช่วยเขียนไฟล์ไม่ได้ — ตรวจอินเทอร์เน็ตแล้วลองใหม่"));
+    document.head.appendChild(s);
+  });
+}
+/* หาว่าแต่ละรหัสสินค้าอยู่แถวไหน คอลัมน์ Order Confirm ไหน ในไฟล์ใบเปล่าที่เพิ่งเลือก
+   ⚠️ sheet_to_json(header:1) เลื่อน index ตามจุดเริ่มของ used range ต้องบวก R0/C0 กลับ
+      เพื่อให้ได้พิกัดจริงของชีต ไม่งั้นจะเขียนผิดคอลัมน์แบบเงียบๆ (เคยเกือบพลาด) */
+function poLocate(wb){
+  const loc={},dup=[];let cells=0;
+  wb.SheetNames.forEach(sn=>{
+    const ws=wb.Sheets[sn];if(!ws||!ws["!ref"])return;
+    const R=XLSX.utils.decode_range(ws["!ref"]);
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+    let hdr=-1;
+    for(let i=0;i<rows.length&&hdr<0;i++)if((rows[i]||[]).some(c=>String(c||"").trim()==="รหัส"))hdr=i;
+    if(hdr<0)return;
+    const ccs=[];(rows[hdr]||[]).forEach((c,j)=>{if(String(c||"").trim()==="รหัส")ccs.push(j);});
+    for(let i=hdr+2;i<rows.length;i++){
+      const r=rows[i]||[];
+      for(const cc of ccs){
+        const code=String(r[cc]==null?"":r[cc]).trim();
+        if(!/^\d+$/.test(code))continue;
+        cells++;
+        const hit={s:sn,row:R.s.r+i,col:R.s.c+cc+7};
+        if(loc[code])dup.push(code);else loc[code]=hit;
+      }
+    }
+  });
+  return {loc:loc,dup:dup,cells:cells};
+}
+function poSetBusy(b,msg){POF.busy=b;POF.msg=msg||"";renderPoCalc();}
+/* ปุ่มเลือกไฟล์ → เติมเลข → ดาวน์โหลด */
+async function poMakeFile(ev){
+  const f=ev&&ev.target&&ev.target.files&&ev.target.files[0];
+  if(ev&&ev.target)ev.target.value="";
+  if(!f)return;
+  if(POF.busy)return;
+  const B=poBuild(ORD.date);
+  const lines=B.can.map(r=>({code:r.target,qty:poQty(r),from:r.code})).filter(x=>x.qty>0);
+  if(!lines.length){bdToast("ยังไม่มีรายการที่จะสั่ง");return;}
+  poSetBusy(true,"กำลังอ่านไฟล์ใบเปล่า...");
+  try{
+    const JSZipLib=await poLoadZip();
+    const buf=await f.arrayBuffer();
+    poSetBusy(true,"กำลังหาตำแหน่งช่องที่ต้องกรอก...");
+    let wb;
+    try{wb=XLSX.read(new Uint8Array(buf),{type:"array"});}
+    catch(e){throw new Error("อ่านไฟล์นี้ไม่ได้ — ถ้าใส่รหัสผ่านไว้ ให้เปิดใน Excel แล้ว Save As เป็นไฟล์ใหม่ที่ไม่ใส่รหัสก่อน");}
+    const L=poLocate(wb);
+    if(!L.cells)throw new Error("ไฟล์นี้ไม่ใช่ใบสั่งซื้อ (ไม่พบหัวตาราง 'รหัส') — เลือกไฟล์ ..._Confirm_..._HPC_xxxxxx.xlsm");
+    if(L.dup.length)throw new Error("ไฟล์นี้มีรหัสสินค้าซ้ำ "+L.dup.length+" รหัส ระบบไม่แน่ใจว่าจะกรอกช่องไหน — ยังไม่สร้างไฟล์");
+    /* เช็คว่าเป็นใบของรอบเดียวกันไหม (กันเอาใบรอบเก่ามาเติม) */
+    const fdate=poDate6(f.name);
+    const warn=(fdate&&fdate!==ORD.date)?("⚠️ ไฟล์เป็นของรอบ "+fmtDate(fdate)+" แต่กำลังคำนวณรอบ "+fmtDate(ORD.date)):"";
+    const edits={},miss=[],ok=[];
+    lines.forEach(x=>{
+      const h=L.loc[x.code];
+      if(!h){miss.push(x);return;}
+      (edits[h.s]=edits[h.s]||[]).push({row:h.row,col:h.col,value:x.qty});
+      ok.push(x);
+    });
+    if(!ok.length)throw new Error("ไม่พบรหัสที่จะสั่งเลยในไฟล์นี้ ("+lines.length+" รายการ) — ไฟล์อาจเป็นของรอบอื่น");
+    poSetBusy(true,"กำลังเติมตัวเลข "+ok.length+" รายการลงในไฟล์...");
+    const {out,report}=await xlsmFill(JSZipLib,new Uint8Array(buf),edits,{type:"blob",
+      onUpdate:m=>{if(m&&m.percent!=null)POF.msg="กำลังบันทึกไฟล์ "+Math.round(m.percent)+"%";}});
+    /* ชื่อไฟล์ต้องเป็นอังกฤษล้วน — Chromium ทิ้งชื่อไฟล์ทั้งชื่อรวมนามสกุลถ้ามีอักษรไทย */
+    const dd=String(ORD.date||"").replace(/-/g,"");
+    const name="BD-PO-"+fnAscii(dd.slice(6,8)+dd.slice(4,6)+dd.slice(2,4),"round")+".xlsm";
+    msDownload(out,name);
+    const nMiss=miss.length;
+    bdToast("สร้างใบ PO แล้ว ✓ "+ok.length+" รายการ"+(nMiss?(" · ไม่พบในไฟล์ "+nMiss):""));
+    POF.last={n:ok.length,miss:miss,name:name,warn:warn,
+      refused:Object.keys(report.sheets).reduce((a,k)=>a.concat(report.sheets[k].refusedFormula||[]),[]),
+      sheets:Object.keys(edits)};
+  }catch(e){
+    POF.last=null;
+    alert("สร้างใบ PO ไม่สำเร็จ\n\n"+(e&&e.message?e.message:e)+"\n\nข้อมูลในระบบไม่ถูกแตะต้อง");
+  }finally{poSetBusy(false,"");}
+}
+
 /* ---- หน้าจอคำนวณ PO ---- */
 function renderPoCalc(){
   const el=document.getElementById("poCalc");if(!el)return;
@@ -4695,9 +5028,29 @@ function poCanTable(can,totCs){
           <td><input class="po-in" type="number" min="0" value="${q}" onchange="poSetQty('${r.code}',this.value)"></td>
           <td style="text-align:left"><span class="psub">${poWhyQty(r)}</span></td></tr>`;}).join("")+
       `</tbody></table></div></div>`;});
-  h+=`<div class="insight" style="margin-top:14px">รวมที่จะสั่ง <b>${can.length}</b> รายการ · <b>${totCs.toLocaleString()} ลัง</b>
-    <div class="psub" style="margin-top:6px">ขั้นต่อไป: ดาวน์โหลดใบ PO — <b>อยู่ระหว่างพัฒนา</b> ต้องอัพไฟล์ใบเปล่าของรอบนี้เข้ามาตอนโหลด ระบบจะเติมเลขลงในไฟล์เดิมโดยไม่แตะรูปแบบไฟล์</div></div>`;
+  h+=poMakeBox(can,totCs);
   return h;
+}
+/* กล่องสร้างไฟล์ PO ท้ายตาราง */
+function poMakeBox(can,totCs){
+  const L=POF.last;
+  let h=`<div class="po-make">
+    <h4>📤 สร้างใบ PO ส่งศูนย์</h4>
+    <div class="po-sum">รวมที่จะสั่ง <b>${can.length}</b> รายการ · <b>${totCs.toLocaleString()} ลัง</b></div>`;
+  if(POF.busy)h+=`<div class="note">⏳ ${anaEsc(POF.msg||"กำลังทำงาน...")} — อย่าปิดหน้าจอ</div>`;
+  else h+=`<label class="drop up-po" for="filePOblank">📄 <b>เลือกไฟล์ใบเปล่าของรอบนี้ แล้วระบบจะเติมเลขให้</b>
+      <small>ไฟล์ <b>..._Confirm_..._HPC_${String(ORD.date||"").replace(/-/g,"").slice(6,8)}${String(ORD.date||"").replace(/-/g,"").slice(4,6)}${String(ORD.date||"").replace(/-/g,"").slice(2,4)}.xlsm</b> — ระบบกรอกแค่ช่อง Order Confirm ส่วนอื่นในไฟล์ไม่แตะเลย (มาโคร สี รูปแบบ เหมือนเดิมทุกไบต์)</small></label>
+    <input id="filePOblank" type="file" accept=".xlsm,.xlsx" class="hidden" onchange="poMakeFile(event)">`;
+  h+=`<div class="po-steps"><b>ขั้นตอนส่งจริง:</b> เลือกไฟล์ใบเปล่า → ระบบเติมเลขให้ → <b>เปิดใน Excel เช็คแล้วกด Save</b> → ส่งเมล
+    <div class="psub" style="margin-top:4px">ต้องเปิดใน Excel หนึ่งครั้งก่อนส่ง เพราะยอดรวม/น้ำหนัก/มูลค่า/ของแถม ในใบเป็น<b>สูตร</b> Excel จะคำนวณให้เองทันทีที่เปิด (ระบบตั้งค่าให้แล้ว)</div></div>`;
+  if(L){
+    h+=`<div class="insight" style="margin-top:12px">✅ สร้างไฟล์ <b>${anaEsc(L.name)}</b> แล้ว — กรอก <b>${L.n}</b> รายการ ในชีต ${L.sheets.join(", ")}`;
+    if(L.warn)h+=`<div class="note" style="margin-top:6px">${anaEsc(L.warn)}</div>`;
+    if(L.miss&&L.miss.length)h+=`<div class="psub" style="margin-top:6px"><b>ไม่พบในไฟล์ ${L.miss.length} รายการ</b> (ไฟล์อาจเป็นของรอบอื่น): ${L.miss.slice(0,12).map(x=>x.code).join(", ")}${L.miss.length>12?" …":""}</div>`;
+    if(L.refused&&L.refused.length)h+=`<div class="note" style="margin-top:6px">⚠️ ข้ามช่องที่เป็นสูตร ${L.refused.length} ช่อง: ${L.refused.slice(0,8).join(", ")}</div>`;
+    h+=`</div>`;
+  }
+  return h+`</div>`;
 }
 /* อธิบายที่มาของจำนวนแบบอ่านรู้เรื่อง — ให้ตรวจได้ว่าระบบคิดมาจากอะไร */
 function poWhyQty(r){
