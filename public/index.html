@@ -3106,10 +3106,29 @@ function reqFrom(reqDate){return dayShift(reqDate,-REQ_BACK_DAYS);}
    judging the office against the wrong form. */
 const PO_NEAR_DAYS=7;
 function poDayGap(a,b){return Math.abs((new Date(a+"T00:00:00")-new Date(b+"T00:00:00"))/86400000);}
+/* รอบสั่งของที่ "เกี่ยวกับ" คำขอของวันนี้
+   ย้อนหลังได้ตาม REQ_BACK_DAYS (คำขอหลัง 9 โมงไปอยู่รอบวันถัดไป แต่ศูนย์สั่งวันนี้ไปแล้ว)
+   และไปข้างหน้าได้ไม่เกิน PO_NEAR_DAYS (ระบบสั่งปกติ: เซลล์ขอวันที่ 16 → ศูนย์สั่งวันที่ 17) */
+function ordRoundsFor(reqDate){
+  const from=reqFrom(reqDate);
+  return (ORDERS.dates||[]).filter(d=>d>=from&&ORDERS.data&&ORDERS.data[d]
+    &&poDayGap(d,reqDate)<=PO_NEAR_DAYS).sort();
+}
+/* รอบที่ศูนย์ "มีโอกาสสั่งล่าสุด" สำหรับคำขอนี้ — ใช้ตัดสินสถานะสินค้า
+   เอารอบล่าสุดในช่วง เพราะเป็นสถานะสินค้าที่ใหม่สุดที่ศูนย์เห็นตอนเปิดใบสั่ง */
+function ordServedAt(reqDate){const rs=ordRoundsFor(reqDate);return rs.length?rs[rs.length-1]:null;}
+/* ใบสั่ง (สี) ที่จะใช้ตัดสินว่าทำไมสินค้าตัวนี้ไม่ได้ถูกสั่ง
+   ⚠️ เดิมเลือก "ใบที่ตรงวันคำขอ" ก่อน ซึ่งผิดกับวิธีทำงานจริงของเจ้าของ:
+      เซลล์ขอวันที่ 16 → ศูนย์สั่งวันที่ 17 · สีบนใบเปลี่ยนระหว่างสองวันนั้นได้
+      (เจอจริง 17 ก.ย. 69: 65599222 ใบ 16 ยังเปิด แต่ใบ 17 ปิดช่องแล้ว
+       ระบบจึงรายงานว่า "ศูนย์ไม่ได้สั่ง" ทั้งที่ความจริงคือ "ยังไม่เปิดให้สั่ง")
+      ต้องเอาใบของ "รอบที่สั่งจริง" มาก่อนใบที่ตรงวันคำขอ */
 function poRoundFor(reqDate){
   const ds=psDates();if(!ds.length)return null;
-  if(ds.indexOf(reqDate)>=0)return reqDate;
-  const after=ds.filter(d=>d>=reqDate);
+  const served=ordServedAt(reqDate);
+  if(served&&ds.indexOf(served)>=0)return served;     /* 1) ใบของรอบที่ศูนย์สั่งจริง */
+  if(ds.indexOf(reqDate)>=0)return reqDate;           /* 2) ใบตรงวันคำขอ */
+  const after=ds.filter(d=>d>=reqDate);               /* 3) ใบถัดไปข้างหน้า แล้วค่อยถอยหลัง */
   const cand=after.length?after[0]:ds[ds.length-1];
   return poDayGap(cand,reqDate)<=PO_NEAR_DAYS?cand:null;
 }
@@ -3147,13 +3166,18 @@ function poWhy(reqDate,code){
       &&!(items[c]&&(items[c].s||items[c].x)));
     succ=cand.find(c=>items[c]&&items[c].k===1)||cand[0]||null;
   }
-  return {why:why,at:at,code:used,newCode:succ,exact:(at===reqDate)};
+  return {why:why,at:at,code:used,newCode:succ,exact:(at===reqDate),
+    served:(at===ordServedAt(reqDate))};
 }
 function poWhyBadge(w){
   const W=PO_WHY[(w&&w.why)||"unknown"]||PO_WHY.unknown;
   return `<span class="pill ${W.pill}" title="${W.note}">${W.icon} ${W.lab}</span>`+
     (w&&w.newCode?` <small style="color:#9a7100">→ ใช้รหัสใหม่ <b>${w.newCode}</b></small>`:"")+
-    (w&&w.at&&!w.exact?` <small style="color:var(--muted)">(อ้างอิงใบ ${fmtDayMon(w.at)})</small>`:"");
+    (w&&w.at&&!w.exact
+      ? (w.served
+          ? ` <small style="color:var(--muted)">(ตามใบสั่ง ${fmtDayMon(w.at)})</small>`
+          : ` <small style="color:var(--muted)">(อ้างอิงใบ ${fmtDayMon(w.at)})</small>`)
+      : "");
 }
 /* Has an order round on/after this date actually been uploaded yet?
    Until it has, nobody can say WHY something was not ordered — the round has not
@@ -3188,7 +3212,8 @@ function soAgg(){
         if(st==="got"||st==="partial")o.got++;else if(st==="drop")o.drop++;
         else if(st==="pending")o.pending++;
         else if(!ordRoundKnown(date))o.pending++;   /* ยังไม่ได้อัพใบสั่งรอบนั้น — ยังไม่รู้ผล ไม่ใช่ "ศูนย์ไม่สั่ง" */
-        else{o.none++;const w=poWhy(date,code);o.why[w.why]=(o.why[w.why]||0)+1;if(w.at&&!w.exact)o.approx++;}
+        else{o.none++;const w=poWhy(date,code);o.why[w.why]=(o.why[w.why]||0)+1;
+          if(w.at&&!w.exact&&!w.served)o.approx++;}   /* ใบของรอบที่สั่งจริงไม่ใช่การเดา */
         const cat=psCat(code)||"ไม่ระบุหมวด";o.cat[cat]=(o.cat[cat]||0)+1;
         o.prod[code]=(o.prod[code]||0)+1;
       });
