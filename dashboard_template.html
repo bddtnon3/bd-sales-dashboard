@@ -3055,6 +3055,27 @@ function codeAliases(code){
   const g=(k&&k.length>=6)?(prodNameIdx()[k]||[]):[];
   return g.length?g:[String(code)];
 }
+/* ============================================================================
+ * ช่วงวันที่ของ "ใบสั่งที่นับว่าเป็นรอบเดียวกับคำขอ" — ต้องใช้ตัวเดียวกันทุกที่
+ *
+ * รอบคำขอตัดที่ 9:00 น. (orderRoundDate): เซลล์กดสั่ง 10 โมงวันที่ 14 → คำขอไปอยู่รอบวันที่ 15
+ * แต่ศูนย์สั่งของไปแล้วตอนเช้าวันที่ 14 → ใบสั่งจริงอยู่ที่วันที่ 14
+ * ถ้ามองไปข้างหน้าอย่างเดียว ระบบจะไม่เห็นใบวันที่ 14 แล้วรายงานว่า "ศูนย์ไม่ได้สั่ง"
+ * ทั้งที่สั่งไปแล้ว — เจ้าของเจอเองวันที่ 17 ก.ย. 69
+ *
+ * ⚠️ ถ้าจะแก้ช่วงนี้ ต้องแก้ที่ค่าคงที่ตัวเดียวนี้ ห้ามไปเขียน d>=reqDate กระจายไว้หลายที่อีก
+ *    เพราะเดิม "ถูกสั่งหรือยัง" มองข้างหน้า แต่ "ใบรอบไหน" (poRoundFor) ถอยหลังได้ถึง 7 วัน
+ *    สองคำตอบจึงขัดกันเอง: ใบบอกว่าเปิดให้สั่ง แต่ระบบหาใบสั่งไม่เจอ
+ * ==========================================================================*/
+const REQ_BACK_DAYS=1;
+function dayShift(d,n){
+  const t=new Date(String(d)+"T00:00:00");if(isNaN(t))return d;
+  t.setDate(t.getDate()+n);
+  return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+}
+/* วันแรกสุดที่ยังนับว่าเป็นรอบเดียวกับคำขอของ reqDate */
+function reqFrom(reqDate){return dayShift(reqDate,-REQ_BACK_DAYS);}
+
 /* nearest round whose colour data we actually hold, for a request made on reqDate.
    BOUNDED: a form issued weeks later says nothing about that day's request, so if the
    nearest round we hold is further away than PO_NEAR_DAYS we answer "ไม่ทราบ" instead of
@@ -3113,7 +3134,8 @@ function poWhyBadge(w){
 /* Has an order round on/after this date actually been uploaded yet?
    Until it has, nobody can say WHY something was not ordered — the round has not
    happened. Without this gate every fresh request was labelled "ศูนย์ไม่ได้สั่ง". */
-function ordRoundKnown(d){return (ORDERS.dates||[]).some(x=>x>=d&&ORDERS.data&&ORDERS.data[x]);}
+function ordRoundKnown(d){const from=reqFrom(d);
+  return (ORDERS.dates||[]).some(x=>x>=from&&ORDERS.data&&ORDERS.data[x]);}
 /* short warning used while a salesperson is picking products */
 function reqWarn(code){
   if(!psDates().length)return "";
@@ -3884,7 +3906,8 @@ function reqFulfillment(reqDate,code){
   if(r&&r.status!=="notordered")return r;
   const want=normProd(oname(code));
   if(want&&want.length>=6){
-    const dates=(ORDERS.dates||[]).filter(d=>d>=reqDate&&ORDERS.data[d]).sort();
+    const from=reqFrom(reqDate);
+    const dates=(ORDERS.dates||[]).filter(d=>d>=from&&ORDERS.data[d]).sort();
     const tried={};
     for(const d of dates){const om=orderedMerged(ORDERS.data[d]);
       for(const oc2 in om){if(oc2===code||tried[oc2])continue;tried[oc2]=1;
@@ -3896,7 +3919,8 @@ function reqFulfillment(reqDate,code){
   return r||{date:reqDate,status:"notordered",ordered:0,got:0,drop:0};
 }
 function reqFulfillmentExact(reqDate,code){
-  const dates=(ORDERS.dates||[]).filter(d=>d>=reqDate && ORDERS.data[d]).sort();
+  const from=reqFrom(reqDate);
+  const dates=(ORDERS.dates||[]).filter(d=>d>=from && ORDERS.data[d]).sort();
   if(!dates.length)return null;                         /* ยังไม่มีใบสั่ง/ผลรอบไหนเลย */
   let received=null,pending=null,lastDrop=null;
   for(const d of dates){const day=ORDERS.data[d];const om=orderedMerged(day);const inOrder=(code in om);const dp=day.dropped||{};
@@ -4610,8 +4634,26 @@ function poBuild(date){
     else if(poInForm(day,target)===false)block="notin";
     /* ---- ความต้องการจากแต่ละฐาน ---- */
     const reqCs=(r.cs||0)+(pack>0?Math.ceil((r.pc||0)/pack):0);
-    const needReq=PO.basis.req?(PO.sub?Math.max(0,reqCs-Math.max(0,onHand)-Math.max(0,inb)):reqCs):0;
-    const needMin=(PO.basis.min&&minV!=null)?Math.max(0,minV-onHand-Math.max(0,inb)):0;
+    /* สั่งไปแล้วในรอบเดียวกัน (รวมใบเมื่อวานตาม REQ_BACK_DAYS) — ถ้าไม่หัก จะสั่งซ้ำ
+       หักเฉพาะของที่ยัง "ไม่มีทาง" อยู่ในเลขสต็อกที่เห็น:
+         - รอผล (pending) = ของยังไม่มา แต่สั่งไปแล้ว → หักทุกกรณี
+         - ได้ของแล้ว แต่ไฟล์สต็อกเก่ากว่าวันที่ได้ของ → เลขคงเหลือยังไม่รวมของล็อตนั้น → หัก
+       ถ้าไฟล์สต็อกใหม่กว่าวันได้ของ แปลว่า onHand รวมของล็อตนั้นแล้ว ห้ามหักซ้ำ
+       ถูกดรอปไม่หัก เพราะของไม่ได้มาจริง */
+    const ff=reqFulfillment(date,code)||{};
+    const stkDate=(STOCKD&&STOCKD.date)||"";
+    let already=0,alreadyWhy="";
+    if(ff.status==="pending"){already=ff.ordered||0;alreadyWhy="สั่งไปแล้ว รอผล";}
+    else if((ff.status==="got"||ff.status==="partial")&&ff.got>0&&(!stkDate||(ff.date&&ff.date>=stkDate))){
+      /* ไฟล์สต็อก "วันเดียวกัน" กับวันได้ของ = ตอบไม่ได้ว่าถ่ายก่อนหรือหลังของเข้าคลัง
+         เลือกฝั่ง "ยังไม่รวม" แล้วหักไว้ เพราะสั่งซ้ำเสียเงินและเปลืองคลัง
+         ส่วนสั่งขาดเพิ่มรอบหน้าได้ · ตัวเลขโชว์ในคอลัมน์ "สั่งไปแล้ว" และในช่อง "ที่มา"
+         ผู้จัดการเห็นแล้วกดแก้เองได้ถ้ารู้ว่าของยังไม่มาจริง */
+      already=ff.got;alreadyWhy="ได้ของแล้ว ("+(ff.date||"")+") แต่ไฟล์สต็อกลงวันที่ "+stkDate+" อาจยังไม่รวมของล็อตนี้";
+    }
+    const cover=Math.max(0,onHand)+Math.max(0,inb)+already;
+    const needReq=PO.basis.req?(PO.sub?Math.max(0,reqCs-cover):reqCs):0;
+    const needMin=(PO.basis.min&&minV!=null)?Math.max(0,minV-onHand-Math.max(0,inb)-already):0;
     let qty=Math.max(needReq,needMin);
     const promoB=(f.b>1)?f.b:0;
     const beforePromo=qty;
@@ -4621,6 +4663,7 @@ function poBuild(date){
     if(cap&&qty>cap)qty=cap;
     const row={code:code,target:target,name:oname(code)||oname(target)||"",cat:prodCategory(code),
       reqCs:reqCs,reqRaw:r,lines:r.lines,onHand:onHand,inb:inb,pack:pack,minV:minV,
+      already:already,alreadyWhy:alreadyWhy,ffDate:ff.date||null,ffStatus:ff.status||null,
       needReq:needReq,needMin:needMin,promoB:promoB,promoF:(f.f||0),beforePromo:beforePromo,
       cap:cap,beforeCap:beforeCap,qty:qty,block:block,swapped:(target!==code)};
     if(block)cant.push(row);else if(qty>0)can.push(row);else cant.push(Object.assign({},row,{block:"zero"}));
@@ -5017,11 +5060,12 @@ function poCanTable(can,totCs){
     const sub=list.reduce((a,r)=>a+poQty(r),0);
     h+=`<div class="ps-cat"><h4>${CAT_ICON[cat]||"📦"} ${cat} <span>· ${list.length} รายการ · ${sub.toLocaleString()} ลัง</span></h4>
       <div class="tblwrap"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th>
-        <th>เซลล์ขอ</th><th>คงเหลือ</th><th>กำลังเข้า</th><th>ขั้นต่ำ</th><th>โปรฯ</th><th>โควต้า</th><th>สั่ง (ลัง)</th><th style="text-align:left">ที่มา</th></tr></thead><tbody>`+
+        <th>เซลล์ขอ</th><th>คงเหลือ</th><th>กำลังเข้า</th><th>สั่งไปแล้ว</th><th>ขั้นต่ำ</th><th>โปรฯ</th><th>โควต้า</th><th>สั่ง (ลัง)</th><th style="text-align:left">ที่มา</th></tr></thead><tbody>`+
       list.map(r=>{const q=poQty(r),ed=(PO.edit[r.code]!=null&&PO.edit[r.code]!==r.qty);
         return `<tr${ed?' style="background:#FDF3DB"':""}><td>${r.code}${r.swapped?`<div class="dci-sub">→ สั่ง ${r.target}</div>`:""}</td>
           <td style="text-align:left">${anaEsc(r.name)||'<span class="psub">-</span>'}</td>
           <td>${r.reqCs||"-"}</td><td class="${r.onHand<=0?"down":""}">${r.onHand}</td><td>${r.inb||"-"}</td>
+          <td>${r.already?`<b class="mid" title="${anaEsc(r.alreadyWhy)}${r.ffDate?" ("+fmtDayMon(r.ffDate)+")":""}">${r.already}</b>`:'<span class="psub">-</span>'}</td>
           <td>${r.minV==null?'<span class="psub">-</span>':r.minV}</td>
           <td>${r.promoB?`<span class="pill w">${r.promoB}F${r.promoF}</span>`:'<span class="psub">-</span>'}</td>
           <td>${r.cap?r.cap:'<span class="psub">-</span>'}</td>
@@ -5055,8 +5099,9 @@ function poMakeBox(can,totCs){
 /* อธิบายที่มาของจำนวนแบบอ่านรู้เรื่อง — ให้ตรวจได้ว่าระบบคิดมาจากอะไร */
 function poWhyQty(r){
   const p=[];
-  if(PO.basis.req&&r.reqCs)p.push(PO.sub?`เซลล์ขอ ${r.reqCs} − คงเหลือ ${Math.max(0,r.onHand)}${r.inb>0?` − กำลังเข้า ${r.inb}`:""} = ${r.needReq}`:`เซลล์ขอ ${r.reqCs}`);
-  if(PO.basis.min&&r.minV!=null)p.push(`ขั้นต่ำ ${r.minV} − คงเหลือ ${r.onHand}${r.inb>0?` − กำลังเข้า ${r.inb}`:""} = ${r.needMin}`);
+  const al=r.already>0?` − สั่งไปแล้ว ${r.already}${r.ffDate?" ("+fmtDayMon(r.ffDate)+")":""}`:"";
+  if(PO.basis.req&&r.reqCs)p.push(PO.sub?`เซลล์ขอ ${r.reqCs} − คงเหลือ ${Math.max(0,r.onHand)}${r.inb>0?` − กำลังเข้า ${r.inb}`:""}${al} = ${r.needReq}`:`เซลล์ขอ ${r.reqCs}`);
+  if(PO.basis.min&&r.minV!=null)p.push(`ขั้นต่ำ ${r.minV} − คงเหลือ ${r.onHand}${r.inb>0?` − กำลังเข้า ${r.inb}`:""}${al} = ${r.needMin}`);
   if(p.length>1)p.push(`เอาค่ามากสุด = ${r.beforePromo}`);
   if(PO.basis.promo&&r.promoB&&r.beforePromo!==r.beforeCap)p.push(`ปัดขึ้นให้หาร ${r.promoB} ลงตัว = ${r.beforeCap}`);
   if(r.cap&&r.beforeCap>r.cap)p.push(`ตัดตามโควต้า ${r.cap}`);
@@ -5068,7 +5113,8 @@ function poCantTable(cant){
   const order=["oos","closed","dropped","notin","noform","zero"].filter(k=>grp[k]);
   let h="";
   order.forEach(k=>{
-    const info=(k==="zero")?{icon:"✔️",lab:"ไม่ต้องสั่ง — ของในสต็อกพอแล้ว",why:"คำนวณแล้วได้ 0 ลัง"}:(PO_BLOCK[k]||{icon:"❔",lab:k,why:""});
+    const info=(k==="zero")?{icon:"✔️",lab:"ไม่ต้องสั่ง — ของพอแล้ว หรือสั่งไปแล้ว",
+      why:"คำนวณแล้วได้ 0 ลัง (นับของในสต็อก ของกำลังเข้า และของที่สั่งไปแล้วในรอบเดียวกันด้วย)"}:(PO_BLOCK[k]||{icon:"❔",lab:k,why:""});
     h+=`<div class="ps-cat"><h4>${info.icon} ${info.lab} <span>· ${grp[k].length} รายการ</span></h4>
       <div class="psub" style="margin-bottom:6px">${info.why}</div>
       <div class="tblwrap"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>เซลล์ขอ</th><th>คงเหลือ</th><th style="text-align:left">${k==="zero"?"ที่มา":"รอบนี้ให้สั่งรหัสไหน"}</th></tr></thead><tbody>`+
