@@ -226,6 +226,12 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .req-combined{background:#EAF7EE;border:1px solid #BEE6CD;border-radius:10px;padding:12px 14px;margin-bottom:12px}
 .req-combined h4{font-size:14px;margin-bottom:6px;color:#146c3f}
 .req-perwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+/* การ์ดรายเซลล์เรียงข้างกัน (และเรียงลงมาบนมือถือ) ถ้าปล่อยให้แต่ละตารางคิดความกว้างเอง
+   คอลัมน์จะไม่ตรงกันทุกใบ — บังคับสัดส่วนเท่ากันทุกใบ */
+.req-tbl{table-layout:fixed;width:100%}
+.req-tbl th:nth-child(1),.req-tbl td:nth-child(1){width:23%}
+.req-tbl th:nth-child(3),.req-tbl td:nth-child(3){width:26%}
+.req-tbl td:nth-child(2){white-space:normal;overflow-wrap:anywhere}
 .up-stock{background:#F1EFE8;border-color:#888780;color:#444441}
 /* uploaded-file management chips */
 .filechips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
@@ -267,10 +273,14 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .po-in{width:82px;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:13.5px;text-align:right;font-weight:700}
 .po-in:focus{outline:none;border-color:var(--blue)}
 .po-minbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.ps-cat{margin-top:14px}
-.ps-cat:first-child{margin-top:6px}
-.ps-cat h4{font-size:13.5px;margin:0 0 4px;padding-bottom:3px;border-bottom:2px solid var(--blue-soft)}
-.ps-cat h4 span{color:var(--muted);font-weight:400;font-size:12px}
+.grp-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.grp-tbl th,.grp-tbl td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.grp-tbl th{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+.grp-tbl tbody tr:hover{background:var(--bg)}
+.grp-tbl tbody tr.grp-row:hover{background:var(--blue-soft)}
+.grp-row td{background:var(--blue-soft);color:var(--blue-dark);font-weight:800;font-size:13px;
+  text-align:left!important;white-space:normal;border-bottom:1px solid var(--line)}
+.grp-row td span{font-weight:400;font-size:12px;color:var(--muted)}
 .plan-tbl th,.plan-tbl td{white-space:nowrap}
 .plan-tbl td:first-child{text-align:left}
 .kpi-card .v{font-size:24px}
@@ -2978,12 +2988,12 @@ function psSwapCell(code,dead){
   return `<span class="pill b">⚠️ รหัสอื่นก็สั่งไม่ได้</span> <span class="psub">${why}</span>`;
 }
 function psTable(sec,rows){
-  const head={p:`<th>แถม</th><th>ศูนย์สั่งวันนี้ (ลัง)</th><th style="text-align:left">เช็คจำนวนแถม</th>`,
-              q:`<th>โควต้าสูงสุด (ลัง)</th><th>ใส่ในช่อง Order Confirm</th><th style="text-align:left">สถานะ</th>`,
-              s:`<th>ศูนย์สั่งวันนี้ (ลัง)</th><th style="text-align:left">สถานะ</th>`,
-              x:`<th style="text-align:left">สถานะ</th><th style="text-align:left">รอบนี้ให้สั่งรหัสไหน</th>`,
-              xd:`<th style="text-align:left">สถานะ</th><th style="text-align:left">มีตัวแทนไหม</th>`,
-              k:`<th style="text-align:left">สถานะ</th><th style="text-align:left">รอบนี้ให้สั่งรหัสไหน</th>`}[sec.k];
+  const headCols={p:[{h:"แถม"},{h:"ศูนย์สั่งวันนี้ (ลัง)"},{h:"เช็คจำนวนแถม",a:"l"}],
+              q:[{h:"โควต้าสูงสุด (ลัง)"},{h:"ใส่ในช่อง Order Confirm"},{h:"สถานะ",a:"l"}],
+              s:[{h:"ศูนย์สั่งวันนี้ (ลัง)"},{h:"สถานะ",a:"l"}],
+              x:[{h:"สถานะ",a:"l"},{h:"รอบนี้ให้สั่งรหัสไหน",a:"l"}],
+              xd:[{h:"สถานะ",a:"l"},{h:"มีตัวแทนไหม",a:"l"}],
+              k:[{h:"สถานะ",a:"l"},{h:"รอบนี้ให้สั่งรหัสไหน",a:"l"}]}[sec.k]||[];
   const cell=r=>{
     const ord=psOrdered(PS2.date,r.code);
     if(sec.k==="p"){
@@ -3023,15 +3033,12 @@ function psTable(sec,rows){
       `<td style="text-align:left">${psSwapCell(r.code,false)}</td>`;
   };
   const line=r=>`<tr><td>${r.code}</td><td style="text-align:left">${psName(r.code)||'<span class="psub">(ไม่มีชื่อในระบบ)</span>'}</td>${cell(r)}</tr>`;
-  const tbl=list=>`<div style="overflow-x:auto"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th>${head}</tr></thead><tbody>`+
-    list.map(line).join("")+`</tbody></table></div>`;
-  /* แบ่งตามหมวดในใบสั่งซื้อ (Home_Care / PC_Hair / …) เรียงลำดับเดียวกับใบสั่ง
-     เพื่อให้ไล่เทียบทีละหน้ากับไฟล์ Confirm ได้ตรงๆ — หมวดจึงเป็นหัวข้อ ไม่ใช่คอลัมน์แล้ว */
-  const byCat={};rows.forEach(r=>{(byCat[prodCategory(r.code)]=byCat[prodCategory(r.code)]||[]).push(r);});
-  const cats=ORDER_CATS.concat(Object.keys(byCat).filter(k=>ORDER_CATS.indexOf(k)<0)).filter(k=>byCat[k]&&byCat[k].length);
-  if(cats.length<2)return `<div style="margin-top:8px">${tbl(rows)}</div>`;   /* หมวดเดียวก็ไม่ต้องมีหัวข้อให้รก */
-  return `<div style="margin-top:8px">`+cats.map(k=>
-    `<div class="ps-cat"><h4>${CAT_ICON[k]||"📦"} ${k} <span>· ${byCat[k].length} รายการ</span></h4>${tbl(byCat[k])}</div>`).join("")+`</div>`;
+  /* แบ่งตามหมวดในใบสั่งซื้อ เรียงลำดับเดียวกับใบสั่ง เพื่อไล่เทียบทีละหน้ากับไฟล์ Confirm ได้
+     ตารางเดียวไล่ลงมา คอลัมน์จึงตรงกันทุกหมวด (ดู grpTable) */
+  return `<div style="margin-top:8px">`+grpTable(
+    [{h:"รหัส"},{h:"สินค้า",a:"l"}].concat(headCols),
+    grpByCat(rows,r=>r.code).map(g=>({title:`${g.icon} ${g.cat}`,sub:`· ${g.list.length} รายการ`,
+      rows:g.list.map(line)})),{cls:"plan-tbl"})+`</div>`;
 }
 
 /* ============================================================================
@@ -4177,6 +4184,40 @@ function prodCategory(code){
   const nn=normProd(oname(code));if(nn&&catN[nn])return catN[nn];
   return "อื่นๆ";
 }
+/* ============================================================================
+ * ตารางแบ่งกลุ่มแบบ "ตารางเดียวไล่ลงมา"
+ *
+ * เดิมทำเป็นตารางแยก กลุ่มละหนึ่งตาราง เบราว์เซอร์คิดความกว้างคอลัมน์ของแต่ละตาราง
+ * แยกกันจากเนื้อหาในตารางนั้น คอลัมน์จึงไม่ตรงกันระหว่างกลุ่ม อ่านแล้วลายตา
+ * (เจ้าของแจ้ง 18 ก.ย. 69) แก้โดยรวมเป็นตารางเดียว หัวตารางครั้งเดียว
+ * แล้วคั่นกลุ่มด้วยแถวแถบสี — คอลัมน์จึงตรงกันทุกกลุ่มโดยธรรมชาติ
+ *
+ * head   = [{h:"หัวคอลัมน์", a:"l" ถ้าชิดซ้าย, t:"tooltip"}]
+ * groups = [{title:"🏠 Home_Care", sub:"· 2 รายการ", rows:["<tr>…</tr>", …]}]
+ *          ถ้ามีกลุ่มเดียวและไม่ได้บังคับ จะไม่ขึ้นแถบคั่นให้รกตา
+ * ==========================================================================*/
+function grpTable(head,groups,opt){
+  opt=opt||{};
+  const n=head.length;
+  const th=head.map(h=>`<th${h.a==="l"?' style="text-align:left"':""}${h.t?` title="${h.t}"`:""}>${h.h}</th>`).join("");
+  const live=(groups||[]).filter(g=>g&&g.rows&&g.rows.length);
+  if(!live.length)return opt.empty||'<div class="insight">ไม่มีรายการ</div>';
+  const band=(live.length>1||opt.alwaysBand);
+  let body="";
+  live.forEach(g=>{
+    if(band&&g.title)body+=`<tr class="grp-row"><td colspan="${n}">${g.title}${g.sub?` <span>${g.sub}</span>`:""}</td></tr>`;
+    body+=g.rows.join("");
+  });
+  return `<div class="tblwrap${opt.wrapCls?" "+opt.wrapCls:""}"><table class="grp-tbl${opt.cls?" "+opt.cls:""}">`+
+    `<thead><tr>${th}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+/* แบ่งรายการตามหมวดในใบสั่งซื้อ เรียงลำดับเดียวกับใบสั่ง (ไล่เทียบทีละหน้าได้) */
+function grpByCat(rows,codeOf){
+  const by={};
+  rows.forEach(r=>{const k=prodCategory(codeOf?codeOf(r):r);(by[k]=by[k]||[]).push(r);});
+  const cats=ORDER_CATS.concat(Object.keys(by).filter(k=>ORDER_CATS.indexOf(k)<0)).filter(k=>by[k]&&by[k].length);
+  return cats.map(k=>({cat:k,icon:CAT_ICON[k]||"📦",list:by[k]}));
+}
 /* สายไหนขอสินค้าตัวนี้บ้าง — เรียงตามลำดับสายหลัก ให้ manager อ่านง่าย */
 function reqLineTags(lines){
   if(!lines||!lines.length)return '<span class="psub">—</span>';
@@ -4195,20 +4236,23 @@ function renderSalesRequests(){
       if(combined[c].lines.indexOf(sc)<0)combined[c].lines.push(sc);
       return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0} / ${it.pc||0}</td></tr>`;}).join("");
     return `<div class="req-sales"><h4><span class="tag ct">${(DATA.lines[sc]&&DATA.lines[sc].display)||sc}</span> ${req.by||""} <small>· ${Object.keys(items).length} รายการ</small></h4>
-      <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ลัง/ชิ้น</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;}).join("");
+      <div class="tblwrap"><table class="req-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>ลัง/ชิ้น</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;}).join("");
   /* combined list grouped by order-form category (Home_Care ฯลฯ) so manager ไล่เทียบแต่ละหน้าได้ */
-  const byCat={};Object.keys(combined).forEach(c=>{const cat=prodCategory(c);(byCat[cat]=byCat[cat]||[]).push(c);});
-  const order=ORDER_CATS.concat(Object.keys(byCat).filter(k=>ORDER_CATS.indexOf(k)<0));
   const haveCat=Object.keys((ORDERS&&ORDERS.cat)||{}).length>0;
-  let combHtml="";
-  order.forEach(cat=>{const list=byCat[cat];if(!list||!list.length)return;list.sort((a,b)=>combined[b].cs-combined[a].cs);
-    const tot=list.reduce((s,c)=>s+(combined[c].cs||0),0);
-    combHtml+=`<div style="margin-top:12px"><h4 style="margin:0 0 4px;border-bottom:2px solid var(--blue-soft);padding-bottom:3px">${CAT_ICON[cat]||"📦"} ${cat} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${list.length} รายการ · ${tot} ลัง</span></h4>
-      <div class="tblwrap"><table><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>รวม ลัง/ชิ้น</th><th>สต็อกคงเหลือ</th><th>ศูนย์สั่ง</th><th>ได้ (ลัง)</th><th style="text-align:left">สถานะการสั่ง</th><th>สาย</th></tr></thead><tbody>`+
-      list.map(c=>{const R=reqStatusCell(d,c);
-        return `<tr${R.style}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td><b>${combined[c].cs} / ${combined[c].pc}</b></td>`+
-          `<td>${stkCell(c,combined[c].cs||0)}</td><td>${R.ord}</td><td>${R.got}</td><td style="text-align:left">${R.badge}</td>`+
-          `<td>${reqLineTags(combined[c].lines)}</td></tr>`;}).join("")+`</tbody></table></div></div>`;});
+  /* ตารางเดียวไล่ลงมา คั่นหมวดด้วยแถบ — คอลัมน์จึงตรงกันทุกหมวด (ดู grpTable) */
+  const combHtml=grpTable(
+    [{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"รวม ลัง/ชิ้น"},{h:"สต็อกคงเหลือ"},{h:"ศูนย์สั่ง"},
+     {h:"ได้ (ลัง)"},{h:"สถานะการสั่ง",a:"l"},{h:"สาย"}],
+    grpByCat(Object.keys(combined)).map(g=>{
+      const list=g.list.slice().sort((a,b)=>combined[b].cs-combined[a].cs);
+      const tot=list.reduce((s,c)=>s+(combined[c].cs||0),0);
+      return {title:`${g.icon} ${g.cat}`,sub:`· ${list.length} รายการ · ${tot} ลัง`,
+        rows:list.map(c=>{const R=reqStatusCell(d,c);
+          return `<tr${R.style}><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td>`+
+            `<td><b>${combined[c].cs} / ${combined[c].pc}</b></td>`+
+            `<td>${stkCell(c,combined[c].cs||0)}</td><td>${R.ord}</td><td>${R.got}</td>`+
+            `<td style="text-align:left">${R.badge}</td><td>${reqLineTags(combined[c].lines)}</td></tr>`;})};
+    }),{alwaysBand:true});
   el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${fmtDate(d)} <span style="font-size:13px;color:var(--muted);font-weight:400">(${codes.length} สาย)</span></h3>
     <div class="psub">รวมทุกสายเพื่อเปิดใบสั่ง (แบ่งตามหมวดในใบสั่งซื้อ ไล่เทียบทีละหน้าได้) + แยกรายเซลล์ให้ตรวจ · <b>กดที่รหัสหรือชื่อสินค้า = คัดลอกทันที</b>
       <br><b>สต็อกคงเหลือ</b> = คลังขาย จากไฟล์สต็อกที่อัพล่าสุด รูปแบบ ลัง/ชิ้น · <span class="down">แดง</span> = หมด/ติดลบ · <span class="mid">ส้ม</span> = มีน้อยกว่าที่เซลล์ขอ · <b>สถานะการสั่ง</b> = ไล่ตามไปข้างหน้าทุกรอบ ถ้ารหัสเปลี่ยนก็ตามให้</div>
@@ -5105,22 +5149,22 @@ function poCanTable(can,totCs){
   const byCat={};can.forEach(r=>{(byCat[r.cat]=byCat[r.cat]||[]).push(r);});
   const cats=ORDER_CATS.concat(Object.keys(byCat).filter(k=>ORDER_CATS.indexOf(k)<0)).filter(k=>byCat[k]);
   let h=`<div class="psub" style="margin-top:10px"><b>ที่มาของจำนวน</b> = มากที่สุดของฐานที่ติ๊กไว้ แล้วปัดตามโปรฯ และตัดด้วยโควต้า · กดที่ช่อง <b>สั่ง (ลัง)</b> เพื่อแก้เอง</div>`;
-  cats.forEach(cat=>{const list=byCat[cat];
-    const sub=list.reduce((a,r)=>a+poQty(r),0);
-    h+=`<div class="ps-cat"><h4>${CAT_ICON[cat]||"📦"} ${cat} <span>· ${list.length} รายการ · ${sub.toLocaleString()} ลัง</span></h4>
-      <div class="tblwrap"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th>
-        <th>เซลล์ขอ</th><th>คงเหลือ</th><th>กำลังเข้า</th><th>สั่งไปแล้ว</th><th>ขั้นต่ำ</th><th>โปรฯ</th><th>โควต้า</th><th>สั่ง (ลัง)</th><th style="text-align:left">ที่มา</th></tr></thead><tbody>`+
-      list.map(r=>{const q=poQty(r),ed=(PO.edit[r.code]!=null&&PO.edit[r.code]!==r.qty);
-        return `<tr${ed?' style="background:#FDF3DB"':""}><td>${r.code}${r.swapped?`<div class="dci-sub">→ สั่ง ${r.target}</div>`:""}</td>
-          <td style="text-align:left">${anaEsc(r.name)||'<span class="psub">-</span>'}</td>
-          <td>${r.reqCs||"-"}</td><td class="${r.onHand<=0?"down":""}">${r.onHand}</td><td>${r.inb||"-"}</td>
-          <td>${r.already?`<b class="mid" title="${anaEsc(r.alreadyWhy)}${r.ffDate?" ("+fmtDayMon(r.ffDate)+")":""}">${r.already}</b>`:'<span class="psub">-</span>'}</td>
-          <td>${r.minV==null?'<span class="psub">-</span>':r.minV}</td>
-          <td>${r.promoB?`<span class="pill w">${r.promoB}F${r.promoF}</span>`:'<span class="psub">-</span>'}</td>
-          <td>${r.cap?r.cap:'<span class="psub">-</span>'}</td>
-          <td><input class="po-in" type="number" min="0" value="${q}" onchange="poSetQty('${r.code}',this.value)"></td>
-          <td style="text-align:left"><span class="psub">${poWhyQty(r)}</span></td></tr>`;}).join("")+
-      `</tbody></table></div></div>`;});
+  h+=grpTable(
+    [{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"เซลล์ขอ"},{h:"คงเหลือ"},{h:"กำลังเข้า"},{h:"สั่งไปแล้ว"},
+     {h:"ขั้นต่ำ"},{h:"โปรฯ"},{h:"โควต้า"},{h:"สั่ง (ลัง)"},{h:"ที่มา",a:"l"}],
+    cats.map(cat=>{const list=byCat[cat];const sub=list.reduce((a,r)=>a+poQty(r),0);
+      return {title:`${CAT_ICON[cat]||"📦"} ${cat}`,sub:`· ${list.length} รายการ · ${sub.toLocaleString()} ลัง`,
+        rows:list.map(r=>{const q=poQty(r),ed=(PO.edit[r.code]!=null&&PO.edit[r.code]!==r.qty);
+          return `<tr${ed?' style="background:#FDF3DB"':""}><td>${r.code}${r.swapped?`<div class="dci-sub">→ สั่ง ${r.target}</div>`:""}</td>`+
+            `<td style="text-align:left">${anaEsc(r.name)||'<span class="psub">-</span>'}</td>`+
+            `<td>${r.reqCs||"-"}</td><td class="${r.onHand<=0?"down":""}">${r.onHand}</td><td>${r.inb||"-"}</td>`+
+            `<td>${r.already?`<b class="mid" title="${anaEsc(r.alreadyWhy)}${r.ffDate?" ("+fmtDayMon(r.ffDate)+")":""}">${r.already}</b>`:'<span class="psub">-</span>'}</td>`+
+            `<td>${r.minV==null?'<span class="psub">-</span>':r.minV}</td>`+
+            `<td>${r.promoB?`<span class="pill w">${r.promoB}F${r.promoF}</span>`:'<span class="psub">-</span>'}</td>`+
+            `<td>${r.cap?r.cap:'<span class="psub">-</span>'}</td>`+
+            `<td><input class="po-in" type="number" min="0" value="${q}" onchange="poSetQty('${r.code}',this.value)"></td>`+
+            `<td style="text-align:left"><span class="psub">${poWhyQty(r)}</span></td></tr>`;})};
+    }),{cls:"plan-tbl",alwaysBand:true});
   h+=poMakeBox(can,totCs);
   return h;
 }
@@ -5160,18 +5204,18 @@ function poCantTable(cant){
   if(!cant.length)return '<div class="insight">ทุกรายการสั่งได้หมด 🎉</div>';
   const grp={};cant.forEach(r=>{(grp[r.block]=grp[r.block]||[]).push(r);});
   const order=["oos","closed","dropped","notin","noform","zero"].filter(k=>grp[k]);
-  let h="";
-  order.forEach(k=>{
-    const info=(k==="zero")?{icon:"✔️",lab:"ไม่ต้องสั่ง — ของพอแล้ว หรือสั่งไปแล้ว",
-      why:"คำนวณแล้วได้ 0 ลัง (นับของในสต็อก ของกำลังเข้า และของที่สั่งไปแล้วในรอบเดียวกันด้วย)"}:(PO_BLOCK[k]||{icon:"❔",lab:k,why:""});
-    h+=`<div class="ps-cat"><h4>${info.icon} ${info.lab} <span>· ${grp[k].length} รายการ</span></h4>
-      <div class="psub" style="margin-bottom:6px">${info.why}</div>
-      <div class="tblwrap"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>เซลล์ขอ</th><th>คงเหลือ</th><th style="text-align:left">${k==="zero"?"ที่มา":"รอบนี้ให้สั่งรหัสไหน"}</th></tr></thead><tbody>`+
-      grp[k].map(r=>`<tr><td>${r.code}</td><td style="text-align:left">${anaEsc(r.name)||'<span class="psub">-</span>'}</td>
-        <td>${r.reqCs||"-"}</td><td class="${r.onHand<=0?"down":""}">${r.onHand}</td>
-        <td style="text-align:left">${k==="zero"?('<span class="psub">'+poWhyQty(r)+"</span>"):poSwapCell(r)}</td></tr>`).join("")+
-      `</tbody></table></div></div>`;});
-  return h;
+  /* ตารางเดียวไล่ลงมา คั่นด้วยเหตุผล — คอลัมน์ตรงกันทุกกลุ่ม */
+  return grpTable(
+    [{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"เซลล์ขอ"},{h:"คงเหลือ"},{h:"หมายเหตุ / รหัสที่สั่งได้",a:"l"}],
+    order.map(k=>{
+      const info=(k==="zero")?{icon:"✔️",lab:"ไม่ต้องสั่ง — ของพอแล้ว หรือสั่งไปแล้ว",
+        why:"คำนวณแล้วได้ 0 ลัง (นับของในสต็อก ของกำลังเข้า และของที่สั่งไปแล้วในรอบเดียวกันด้วย)"}
+        :(PO_BLOCK[k]||{icon:"❔",lab:k,why:""});
+      return {title:`${info.icon} ${info.lab}`,sub:`· ${grp[k].length} รายการ · ${info.why}`,
+        rows:grp[k].map(r=>`<tr><td>${r.code}</td><td style="text-align:left">${anaEsc(r.name)||'<span class="psub">-</span>'}</td>`+
+          `<td>${r.reqCs||"-"}</td><td class="${r.onHand<=0?"down":""}">${r.onHand}</td>`+
+          `<td style="text-align:left">${k==="zero"?('<span class="psub">'+poWhyQty(r)+"</span>"):poSwapCell(r)}</td></tr>`)};
+    }),{cls:"plan-tbl",alwaysBand:true});
 }
 function poSwapCell(r){
   if(r.swapped)return `<span class="pill g">✅ สั่งรหัส <b>${r.target}</b> แทน</span>`;
