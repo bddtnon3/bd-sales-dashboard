@@ -38,7 +38,7 @@ const server = {
     focus_order: ["209611", "209613"],
   },
   STORE: { months: ["2026-06", "2026-07"], stores: [1, 2, 3] },
-  KPI: { months: ["2026-06", "2026-07"], lines: { "209611": "CT11" }, data: { "2026-06": { z: 1 }, "2026-07": { z: 2 } }, meta: { "2026-07": { up: 500, file: "KPI 310726.xlsx", src: "month" } }, workdays: 26 },
+  KPI: { months: ["2026-06", "2026-07"], lines: { "209611": "CT11" }, data: { "2026-06": { z: 1 }, "2026-07": { z: 2 } }, meta: { "2026-07": { up: 500, file: "KPI 310726.xlsx", src: "month" } }, del: {}, workdays: 26 },
   ORDERS: { dates: ["2026-07-28", "2026-07-29"], data: { "2026-07-28": { r: 1 } }, names: { p1: "n1" }, cat: { c: 1 }, catN: { c: 2 } },
   STOCKD: { date: "2026-07-29", rows: [1, 2, 3], names: { s: "x" }, up: 5 },
   REQUESTS: { data: { "2026-07-29": { "209613": { items: { p: 1 }, at: 1000 } } } },
@@ -519,6 +519,61 @@ console.log("TEST 16 — KPI rounds keyed by date (weekly uploads) never overwri
   check("touching KPI disturbs no other section",
         Object.keys(k4.DATA.monthly).length === 2 && !!k4.PSTORE.rounds["2026-06-30"] &&
         k4.ORDERS.dates.length === 2 && Object.keys(k4.REQUESTS.data).length >= 1);
+}
+
+console.log("TEST 17 — deleting a KPI round whose date was read wrong needs a tombstone");
+{
+  // The manager uploaded a file whose header said "as of W4 Sep'26"; it was filed as
+  // 2026-09-04. Removing it client-side is not enough — the server unions the keys, so a stale
+  // tab would resurrect it. KPI.del is applied after the union, exactly like PSTORE.del.
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.KPI.data["2026-09-04"] = { z: 4 };
+  srv.KPI.data["2026-09-23"] = { z: 23 };
+  srv.KPI.months.push("2026-09-04", "2026-09-23");
+  srv.KPI.meta["2026-09-04"] = { up: 1000, file: "Incentive SEP.xlsx", src: "as of ในหัวรายงาน" };
+  srv.KPI.meta["2026-09-23"] = { up: 2000, file: "Incentive (as of 23 Sep'26).xlsx", src: "as of ในชื่อไฟล์" };
+
+  // just deleting the key does nothing — this is why the tombstone exists
+  const plain = JSON.parse(JSON.stringify(srv));
+  delete plain.KPI.data["2026-09-04"]; delete plain.KPI.meta["2026-09-04"];
+  plain.KPI.months = plain.KPI.months.filter((m) => m !== "2026-09-04");
+  check("deleting the key alone does NOT remove the round", !!mergeState(srv, plain).KPI.data["2026-09-04"]);
+
+  // the real delete: tombstone
+  const del = JSON.parse(JSON.stringify(plain));
+  del.KPI.del = { "2026-09-04": 3000 };
+  const d1 = mergeState(srv, del);
+  check("a tombstone DOES remove the round", !d1.KPI.data["2026-09-04"] && !d1.KPI.meta["2026-09-04"]);
+  check("...and drops it from months too, so the picker cannot offer it",
+        d1.KPI.months.indexOf("2026-09-04") < 0, d1.KPI.months.join(","));
+  check("...while the good round is untouched", d1.KPI.data["2026-09-23"].z === 23);
+  check("...and the legacy month keys are untouched", !!d1.KPI.data["2026-06"] && !!d1.KPI.data["2026-07"]);
+
+  // a stale tab that still holds the deleted round must not bring it back
+  const stale = JSON.parse(JSON.stringify(srv));
+  const d2 = mergeState(d1, stale);
+  check("a stale tab CANNOT resurrect a deleted round", !d2.KPI.data["2026-09-04"]);
+  check("...and the tombstone itself survives", d2.KPI.del["2026-09-04"] === 3000);
+
+  // re-uploading the same round after the delete wins (newer meta.up beats the tombstone)
+  const re = JSON.parse(JSON.stringify(d2));
+  re.KPI.data["2026-09-04"] = { z: 44 };
+  re.KPI.months.push("2026-09-04");
+  re.KPI.meta["2026-09-04"] = { up: 4000, file: "Incentive fixed.xlsx", src: "as of ในชื่อไฟล์" };
+  delete re.KPI.del["2026-09-04"];
+  const d3 = mergeState(d2, re);
+  check("re-uploading that round after the delete brings it back", d3.KPI.data["2026-09-04"].z === 44);
+  check("...and clears the tombstone, so it stops being deleted every save", !d3.KPI.del["2026-09-04"]);
+
+  // a tab from before the feature (no KPI.del at all) cannot erase the tombstones
+  const oldTab = JSON.parse(JSON.stringify(d2));
+  delete oldTab.KPI.del;
+  check("a tab with no KPI.del cannot erase it", mergeState(d2, oldTab).KPI.del["2026-09-04"] === 3000);
+
+  // no cross-section damage
+  check("deleting a KPI round disturbs no other section",
+        Object.keys(d2.DATA.monthly).length === 2 && !!d2.PSTORE.rounds["2026-06-30"] &&
+        d2.ORDERS.dates.length === 2 && Object.keys(d2.REQUESTS.data).length >= 1);
 }
 
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));

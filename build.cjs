@@ -19,7 +19,7 @@ s = must(s, "const DATA = __SALESDATA__;", "DATA decl")
     'let DATA = {lines:{},monthly:{},daily:{},focus_order:["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"]};');
 s = must(s, "let STORE = __STOREDATA__;", "STORE decl")
   .replace("let STORE = __STOREDATA__;", "let STORE = {months:[],stores:[]};\nlet TOKEN=null;");
-s = s.replace("let KPI = __KPIDATA__;", "let KPI = {months:[],lines:{},data:{},meta:{},workdays:26};")
+s = s.replace("let KPI = __KPIDATA__;", "let KPI = {months:[],lines:{},data:{},meta:{},del:{},workdays:26};")
      .replace("let ORDERS = __ORDERDATA__;", "let ORDERS = {dates:[],data:{},names:{}};")
      .replace("let STOCKD = __STOCKDATA__;", "let STOCKD = {date:null,rows:[],names:{}};")
      .replace("let REQUESTS = __REQDATA__;", "let REQUESTS = {data:{}};")
@@ -104,7 +104,7 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},meta:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};DCI=d.DCI||{periods:[],data:{}};MINSTOCK=d.MINSTOCK||{man:{}};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},meta:{},del:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};DCI=d.DCI||{periods:[],data:{}};MINSTOCK=d.MINSTOCK||{man:{}};}
     LEADSRAW=[];LEADSLOADED=false;   /* shop applications are re-fetched per session */
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();navReset();

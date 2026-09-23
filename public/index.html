@@ -669,6 +669,9 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
     <div id="kpiView" class="hidden">
       <div class="controls">
         <div class="ctl"><label>เลือกรอบข้อมูล (ณ วันที่)</label><select id="kpiMonth" onchange="onKpiMonth()"></select></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="ps-del" onclick="kpiDeleteRound()">🗑 ลบรอบนี้</button>
+        </div>
         <div class="ctl"><label>เลือกรายงาน (กดเปิด/ปิดได้)</label>
           <div class="seg multi" id="kpiToggle">
             <button data-k="active" class="on">Active on PJP</button>
@@ -1080,7 +1083,7 @@ let STORE = {months:[],stores:[]};
 let TOKEN=null;
 
 /* KPI (online-order adoption): {months, lines:{code:disp}, data:{month:{code:{stores,active,orders,self,ghost}}}, targets, workdays} */
-let KPI = {months:[],lines:{},data:{},meta:{},workdays:26};
+let KPI = {months:[],lines:{},data:{},meta:{},del:{},workdays:26};
 
 /* ORDERS (daily ordering to Unilever): {dates, data:{date:{rounds:{round:{code:qty}}, dropped:{code:qty}, hasResult}}, names} */
 let ORDERS = {dates:[],data:{},names:{}};
@@ -1203,7 +1206,7 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},meta:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};DCI=d.DCI||{periods:[],data:{}};MINSTOCK=d.MINSTOCK||{man:{}};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},meta:{},del:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};DCI=d.DCI||{periods:[],data:{}};MINSTOCK=d.MINSTOCK||{man:{}};}
     LEADSRAW=[];LEADSLOADED=false;   /* shop applications are re-fetched per session */
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();navReset();
@@ -1750,8 +1753,9 @@ const KPICFG={
 /* รวมคีย์จากทั้ง months และ data เผื่อสองอันไม่ตรงกัน (ข้อมูลเก่าบางชุดมีแต่ใน data)
    ใช้ที่เดียวกันทั้ง initKPI และ renderKPI ไม่ให้ตัวเลือกกับหน้าจอไม่ตรงกัน */
 function kpiKeys(){
-  const seen={},ms=[];
-  ((KPI&&KPI.months)||[]).concat(Object.keys((KPI&&KPI.data)||{})).forEach(k=>{if(k&&!seen[k]){seen[k]=1;ms.push(k);}});
+  const seen={},ms=[],del=(KPI&&KPI.del)||{};
+  ((KPI&&KPI.months)||[]).concat(Object.keys((KPI&&KPI.data)||{})).forEach(k=>{
+    if(k&&!seen[k]&&!del[k]){seen[k]=1;ms.push(k);}});
   return ms.sort();
 }
 function initKPI(){
@@ -1804,7 +1808,7 @@ function renderKPI(){
     const me=((KPI&&KPI.meta)||{})[KPIS.month]||{};
     const nDay=Object.keys((KPI&&KPI.data)||{}).filter(kpiIsDay).length;
     mb.innerHTML=`📊 eB2B & Self Ordering · ศูนย์ BD · กำลังแสดง <b>${kpiLabel(KPIS.month)}</b>`+
-      (me.src?` <span class="dci-src" style="display:inline;margin:0">· วันที่จาก${anaEsc(me.src)}${me.file?" · "+anaEsc(me.file):""}</span>`:"")+
+      (me.src?` <span class="dci-src" style="display:inline;margin:0">· ที่มาของวันที่: ${anaEsc(me.src)}${me.raw?` ("${anaEsc(me.raw)}")`:""}${me.file?" · "+anaEsc(me.file):""}</span>`:"")+
       (nDay?`<span class="dci-src">มี ${nDay} รอบรายวัน — เลือกดูย้อนหลังได้จากช่อง "เลือกรอบข้อมูล" ด้านบน</span>`
            :`<span class="dci-src">อัพไฟล์ Incentive รอบใหม่ แล้วระบบจะเก็บแยกเป็น "ณ วันที่" ให้เอง (ไม่ทับรอบเก่า)</span>`);
   }
@@ -1915,9 +1919,11 @@ function renderKpiPlan(rows,focusMe){
  * และดูย้อนหลังเป็น "ณ วันที่" ไม่ได้ (เจ้าของแจ้ง 23 ก.ย. 69)
  *
  * ลำดับการหาวัน (หยาบขึ้นเรื่อยๆ) — บันทึกไว้ด้วยว่าได้มาจากไหน ให้ตรวจได้:
- *   1. บรรทัด "as of …" ในหัวรายงาน  → แม่นที่สุด ไฟล์บอกเองว่าข้อมูล ณ วันไหน
- *   2. วันที่ในชื่อไฟล์
- *   3. วันที่อัพ (เจ้าของอนุญาตให้ใช้ได้)
+ *   1. "as of …" ใน **ชื่อไฟล์**  → เจ้าของสั่งให้เชื่อชื่อไฟล์ก่อน (23 ก.ย. 69)
+ *   2. ชื่อไฟล์บอกว่า "end of Sep" = รายงาน**รอบปิดเดือน**นั้น → คีย์เป็นวันสุดท้ายของเดือน
+ *   3. วันที่ล้วนๆ ในชื่อไฟล์ (…_230926.xlsx)
+ *   4. "as of …" ในหัวรายงานในไฟล์  → เป็นทางถอย เพราะเคยอ่านพลาด (ดู kpiAsOf)
+ *   5. วันที่อัพ (เจ้าของอนุญาตให้ใช้ได้) เมื่อรู้เดือนและวันที่อัพอยู่ในเดือนนั้น
  * ถ้าหาวันไม่ได้เลยจะยังเก็บเป็นคีย์รายเดือนแบบเดิม ไม่เดาวันให้
  *
  * ⚠️ คีย์เก่าที่เป็นรายเดือน (YYYY-MM) ต้องใช้งานได้ต่อไป ห้ามทิ้ง
@@ -1930,27 +1936,57 @@ function kpiYmd(y,m,d){
   if(!(m>=1&&m<=12)||!(d>=1&&d<=31))return null;
   return Y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
 }
-/* หา "ณ วันที่" จากข้อความในหัวรายงาน */
-function kpiAsOfText(hay){
+/* หา "ณ วันที่" จากข้อความที่มีคำว่า "as of" — ใช้ได้ทั้งชื่อไฟล์และหัวรายงาน
+   คืน {d, raw} เก็บข้อความที่จับได้ไว้ด้วย เวลาอ่านพลาดจะดูออกทันทีว่าไปจับอะไรมา */
+function kpiAsOf(hay){
   const s=String(hay||"").toLowerCase();
   const i=s.indexOf("as of");
   if(i<0)return null;
   const tail=s.slice(i,i+80);
-  let m;
+  /* ⚠️ "as of W4 Sep'26" / "as of week 4 Sep'26" ไม่ใช่วันที่ 4 — มันคือสัปดาห์ที่ 4
+     (เจ้าของเจอ 23 ก.ย. 69: ไฟล์รอบ 23 ก.ย. ขึ้นเป็น "ณ 4 ก.ย.") ห้ามอ่านเป็นวัน */
+  const weekish=at=>/(?:^|[^a-z])(?:w|wk|week|wks|weeks)[-_. ]*$/.test(tail.slice(0,at));
+  const take=(re,pick)=>{
+    const m=tail.match(re);if(!m)return null;
+    if(weekish(m.index))return null;
+    const d=pick(m);return d?{d:d,raw:m[0].trim()}:null;
+  };
+  let r;
   /* 15 Sep'26 · 15-Sep-2026 · 15 September 26 */
-  m=tail.match(new RegExp("(\\d{1,2})\\s*[-\\/. ]?\\s*("+KPI_MO+")[a-z]*['’]?\\s*[-\\/. ]?\\s*(\\d{2,4})"));
-  if(m)return kpiYmd(m[3],+KPI_MON[m[2]],+m[1]);
+  r=take(new RegExp("(\\d{1,2})\\s*[-\\/. ]?\\s*("+KPI_MO+")[a-z]*['’]?\\s*[-\\/. ]?\\s*(\\d{2,4})"),
+         m=>kpiYmd(m[3],+KPI_MON[m[2]],+m[1]));
+  if(r)return r;
   /* Sep 15'26 · Sep-15-2026 — ต้องมีตัวคั่นระหว่างวันกับปี ไม่งั้น "as of Sep 2026"
      จะถูกอ่านเป็นวันที่ 20 เดือน 9 ปี 26 (เลข 2026 ถูกหักเป็น 20 + 26) */
-  m=tail.match(new RegExp("("+KPI_MO+")[a-z]*\\s*[-\\/. ]?\\s*(\\d{1,2})\\s*(?:['’]|[-\\/. ])\\s*(\\d{2,4})"));
-  if(m)return kpiYmd(m[3],+KPI_MON[m[1]],+m[2]);
+  r=take(new RegExp("("+KPI_MO+")[a-z]*\\s*[-\\/. ]?\\s*(\\d{1,2})\\s*(?:['’]|[-\\/. ])\\s*(\\d{2,4})"),
+         m=>kpiYmd(m[3],+KPI_MON[m[1]],+m[2]));
+  if(r)return r;
   /* 2026-09-15 (ISO) — ต้องเช็คก่อนแบบข้างล่าง ไม่งั้นจะถูกอ่านเป็น 26-09-15 */
-  m=tail.match(/(20\d{2})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{1,2})(?!\d)/);
-  if(m)return kpiYmd(m[1],+m[2],+m[3]);
+  r=take(/(20\d{2})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{1,2})(?!\d)/,m=>kpiYmd(m[1],+m[2],+m[3]));
+  if(r)return r;
   /* 15/09/2026 · 15.09.26 */
-  m=tail.match(/(?<!\d)(\d{1,2})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{2,4})(?!\d)/);
-  if(m)return kpiYmd(m[3],+m[2],+m[1]);
-  return null;
+  r=take(/(?<!\d)(\d{1,2})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{2,4})(?!\d)/,m=>kpiYmd(m[3],+m[2],+m[1]));
+  return r;
+}
+function kpiAsOfText(hay){const r=kpiAsOf(hay);return r?r.d:null;}
+/* "end of Sep" · "end Sep'26" · "EOM Sep 2026" ในชื่อไฟล์ = รายงาน**รอบปิดเดือน**นั้น
+   (เจ้าของสั่งไว้ 23 ก.ย. 69: "พวกไฟล์ชื่อ end of Sep ก็ให้ระบบอ่านไว้เลย ว่าเป็นรอบปิดเดือนนั้นๆ")
+   `(?<![a-z])end(?![a-z])` กันคำที่มี end ติดอยู่ เช่น trend / weekend / calendar */
+function kpiEndMonth(name){
+  const s=String(name||"").toLowerCase();
+  const m=s.match(new RegExp("(?:(?<![a-z])(?:end|ending|eom)(?![a-z]))\\s*(?:of\\s*)?(?:the\\s*)?(?:month\\s*)?(?:of\\s*)?[-_ ]*("+KPI_MO+")[a-z]*['’]?\\s*[-_ ]*(\\d{2,4})?"));
+  if(!m)return null;
+  const mo=+KPI_MON[m[1]];
+  let y=m[2]?(+m[2]<100?2000+ +m[2]:+m[2]):0;
+  if(!y){const ys=s.match(/'(\d{2})/)||s.match(/(20\d{2})/);
+         y=ys?+("20"+String(ys[1]||ys[0]).slice(-2)):(new Date()).getFullYear();}
+  return y+"-"+String(mo).padStart(2,"0");
+}
+/* วันสุดท้ายของเดือน — new Date(y, m, 0) คือวันสุดท้ายของเดือน m (นับ 1-12) */
+function kpiMonthEndDay(mk){
+  const p=String(mk||"").split("-"),y=+p[0],m=+p[1];
+  if(!(y>=2000&&m>=1&&m<=12))return null;
+  return mk+"-"+String(new Date(y,m,0).getDate()).padStart(2,"0");
 }
 /* เดือนของรอบข้อมูล — ตรรกะเดิม เก็บไว้เป็นทางถอย ถ้าหาวันไม่ได้ */
 function kpiMonthOf(name,hay){
@@ -1963,35 +1999,72 @@ function kpiMonthOf(name,hay){
   if(c&&y){const yy=(y[1]||y[0]).slice(-2);return "20"+yy+"-"+KPI_MON[c[1]];}
   return null;
 }
-/* คืน {key, src} — key เป็น YYYY-MM-DD ถ้าหาวันได้ ไม่ได้ก็ YYYY-MM แบบเดิม */
+/* คืน {key, src, raw, close} — key เป็น YYYY-MM-DD ถ้าหาวันได้ ไม่ได้ก็ YYYY-MM แบบเดิม
+   ⚠️ ห้ามสลับลำดับ: ชื่อไฟล์มาก่อนหัวรายงาน เพราะหัวรายงานเคยทำให้อ่านวันผิด */
 function kpiKeyOf(name,hay,todayISO_){
-  const d1=kpiAsOfText(hay);
-  if(d1)return {key:d1,src:"ไฟล์บอก (as of)"};
+  /* 1) "as of …" ในชื่อไฟล์ */
+  const a1=kpiAsOf(name);
+  if(a1)return {key:a1.d,src:"as of ในชื่อไฟล์",raw:a1.raw};
+  /* 2) ชื่อไฟล์บอกว่าเป็นรอบปิดเดือน → วันสุดท้ายของเดือนนั้น */
+  const em=kpiEndMonth(name);
+  const emd=em&&kpiMonthEndDay(em);
+  if(emd)return {key:emd,src:"รอบปิดเดือน (ชื่อไฟล์)",raw:em,close:true};
+  /* 3) วันที่ล้วนๆ ในชื่อไฟล์ */
   const d2=poDate6(name)||fnameDate(name);
-  if(d2)return {key:d2,src:"วันที่ในชื่อไฟล์"};
+  if(d2)return {key:d2,src:"วันที่ในชื่อไฟล์",raw:d2};
+  /* 4) "as of …" ในหัวรายงานในไฟล์ */
+  const a2=kpiAsOf(hay);
+  if(a2)return {key:a2.d,src:"as of ในหัวรายงาน",raw:a2.raw};
+  /* 5) รู้แต่เดือน */
   const mk=kpiMonthOf(name,hay);
   const up=todayISO_||todayISO();
   if(mk){
     /* รู้เดือนแต่ไม่รู้วัน — ถ้าวันที่อัพอยู่ในเดือนนั้น ใช้วันที่อัพได้ (เจ้าของอนุญาต) */
-    if(up.slice(0,7)===mk)return {key:up,src:"วันที่อัพ"};
-    return {key:mk,src:"รายเดือน (ไฟล์ไม่บอกวัน)"};
+    if(up.slice(0,7)===mk)return {key:up,src:"วันที่อัพ",raw:""};
+    return {key:mk,src:"รายเดือน (ไฟล์ไม่บอกวัน)",raw:""};
   }
-  return {key:up,src:"วันที่อัพ"};
+  return {key:up,src:"วันที่อัพ",raw:""};
 }
 /* คีย์เป็นรายวันหรือรายเดือน */
 function kpiIsDay(k){return /^\d{4}-\d{2}-\d{2}$/.test(String(k||""));}
 function kpiMonthKey(k){return String(k||"").slice(0,7);}
-/* ป้ายที่แสดงให้ผู้ใช้ */
+/* ป้ายที่แสดงให้ผู้ใช้ — รอบปิดเดือนบอกให้ชัดว่าเป็นรอบปิด ไม่ใช่รอบรายสัปดาห์ */
 function kpiLabel(k){
   if(!k)return "-";
-  return kpiIsDay(k)?("ณ "+fmtDate(k)):(fmtMonth(k)+" (รายเดือน)");
+  if(!kpiIsDay(k))return fmtMonth(k)+" (รายเดือน)";
+  const me=((typeof KPI!=="undefined"&&KPI&&KPI.meta)||{})[k]||{};
+  if(me.close)return "ปิดเดือน "+fmtMonth(kpiMonthKey(k))+" ("+fmtDate(k)+")";
+  return "ณ "+fmtDate(k);
+}
+/* ลบรอบข้อมูลที่อ่านวันผิด/อัพไฟล์ผิด — ลบฝั่งเบราว์เซอร์อย่างเดียวไม่พอ เพราะเซิร์ฟเวอร์
+   รวมคีย์แบบ union แท็บเก่าจะพาคืนมา จึงต้องฝาก tombstone ไว้ใน KPI.del ให้ api/save.js
+   ใช้ทีหลังการ union (แบบเดียวกับ PSTORE.del) · อัพไฟล์รอบเดิมใหม่ชนะ tombstone เพราะ `up` ใหม่กว่า */
+function kpiDeleteRound(){
+  const k=KPIS.month;
+  if(!k||!KPI.data||!KPI.data[k]){alert("ยังไม่มีรอบข้อมูลให้ลบ");return;}
+  const me=(KPI.meta||{})[k]||{};
+  const left=kpiKeys().filter(x=>x!==k).length;
+  if(!confirm("ลบรอบข้อมูล eB2B & Self Ordering \""+kpiLabel(k)+"\" ออกจากระบบ?\n\n"+
+     (me.file?"• มาจากไฟล์: "+me.file+"\n":"")+
+     "• รอบอื่นที่เหลืออีก "+left+" รอบ จะไม่ถูกแตะต้อง\n"+
+     "• ข้อมูลส่วนอื่น (ยอดขาย สต็อก ใบสั่ง ฯลฯ) จะไม่ถูกแตะต้อง\n"+
+     "• ถ้าอัพไฟล์รอบเดิมใหม่ทีหลัง จะกลับมาแสดงตามปกติ"))return;
+  delete KPI.data[k];
+  if(KPI.meta)delete KPI.meta[k];
+  if(KPI.months)KPI.months=KPI.months.filter(x=>x!==k);
+  if(!KPI.del)KPI.del={};
+  KPI.del[k]=Date.now();
+  initKPI();renderKPI();
+  ulog("🗑 ลบรอบ eB2B & Self Ordering "+kpiLabel(k)+(me.file?" ("+me.file+")":"")+" แล้ว");
+  syncToServer();
+  alert("ลบแล้ว — กำลังบันทึกขึ้นเซิร์ฟเวอร์\nอีกสักครู่ให้รีเฟรชหน้าเว็บเพื่อยืนยันว่าหายไปจริง");
 }
 function parseKPI(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
   const sh=wb.SheetNames.find(s=>/route/i.test(s));
   if(!sh)throw new Error("ไม่พบชีต ByRoute ในไฟล์ (ไม่ใช่ไฟล์ Incentive?)");
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1});
-  /* หัวรายงาน 6 แถวแรก — "as of …" ในนี้แม่นกว่าชื่อไฟล์ (ชื่อไฟล์ตั้งผิดได้) */
+  /* หัวรายงาน 6 แถวแรก — ใช้เป็นทางถอยเท่านั้น ชื่อไฟล์มาก่อน (ดู kpiKeyOf) */
   let hay="";for(let i=0;i<Math.min(6,rows.length);i++){if(rows[i])hay+=" "+rows[i].join(" ");}
   const K=kpiKeyOf(name,hay);
   const mk=K.key;
@@ -2007,8 +2080,11 @@ function parseKPI(name,buf){
   if(!KPI.data)KPI.data={};KPI.data[mk]=md;
   if(!KPI.months)KPI.months=[];if(!KPI.months.includes(mk))KPI.months.push(mk);KPI.months.sort();
   if(!KPI.workdays)KPI.workdays=26;
-  /* จำไว้ว่ารอบนี้มาจากไฟล์ไหน และวันที่ได้มาจากไหน — ให้ตรวจย้อนได้ */
-  if(!KPI.meta)KPI.meta={};KPI.meta[mk]={up:Date.now(),file:name,src:K.src};
+  /* จำไว้ว่ารอบนี้มาจากไฟล์ไหน วันที่ได้มาจากไหน และไปจับข้อความอะไรมา — ให้ตรวจย้อนได้
+     `raw` สำคัญ: ตอนอ่านวันผิด จะเห็นทันทีว่าไปจับ "W4 Sep'26" มาเป็นวันที่ 4 */
+  if(!KPI.meta)KPI.meta={};KPI.meta[mk]={up:Date.now(),file:name,src:K.src,raw:K.raw||"",close:!!K.close};
+  /* อัพรอบเดิมใหม่ = ยกเลิก tombstone ของรอบนั้น (เหมือน parsePS) */
+  if(KPI.del)delete KPI.del[mk];
   const T=Object.values(md).reduce((a,v)=>({st:a.st+v.stores,ac:a.ac+v.active,or:a.or+v.orders,se:a.se+v.self,gh:a.gh+v.ghost}),{st:0,ac:0,or:0,se:0,gh:0});
   ulog("✅ "+name+" (KPI) → <b>"+kpiLabel(mk)+"</b> ("+K.src+") · "+n+" สาย · ศูนย์: Active "+T.ac+"/"+T.st+", Self "+T.se+"/"+T.or+", Ghost "+T.gh+"/"+T.or+" (เทียบ BySup ได้เลย)");
   initKPI();KPIS.month=mk;{const sl=document.getElementById("kpiMonth");if(sl)sl.value=mk;}

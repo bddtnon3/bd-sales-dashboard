@@ -90,7 +90,18 @@ function mergeState(server, c) {
   // in the same keyed maps, so union/keyMerge is still correct.
   // `meta` (upload stamp + filename + where the date came from) is keyed the same way and must
   // be carried through here, or every save would silently drop it.
-  const KPI = { months: unionArr(sK.months, cK.months), lines: keyMerge(sK.lines, cK.lines), data: keyMerge(sK.data, cK.data), meta: keyMerge(sK.meta, cK.meta), workdays: cK.workdays || sK.workdays || 26 };
+  // Deleting a round whose date was read wrong needs an explicit tombstone (KPI.del), applied
+  // AFTER the union so a stale tab cannot bring it back — same shape as PSTORE.del below.
+  // A later re-upload of the same round wins, because its meta.up is newer than the tombstone.
+  const kData = keyMerge(sK.data, cK.data);
+  const kMeta = keyMerge(sK.meta, cK.meta);
+  const kDel = keyMerge(sK.del, cK.del);
+  for (const k of Object.keys(kDel)) {
+    const up = (kMeta[k] && kMeta[k].up) || 0;
+    if (up > kDel[k]) delete kDel[k];                     // re-uploaded after the delete
+    else { delete kData[k]; delete kMeta[k]; }
+  }
+  const KPI = { months: unionArr(sK.months, cK.months).filter((m) => !kDel[m]), lines: keyMerge(sK.lines, cK.lines), data: kData, meta: kMeta, del: kDel, workdays: cK.workdays || sK.workdays || 26 };
   const sO = s.ORDERS || {}, cO = c.ORDERS || {};
   const ORDERS = { data: keyMerge(sO.data, cO.data), dates: unionArr(sO.dates, cO.dates), names: keyMerge(sO.names, cO.names), cat: keyMerge(sO.cat, cO.cat), catN: keyMerge(sO.catN, cO.catN) };
   const sA = s.ANALYTICS || {}, cA = c.ANALYTICS || {};

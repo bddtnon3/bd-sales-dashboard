@@ -53,11 +53,11 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (120 checks against the real `api/save.js` and the
+  running **`node test/merge-safety.test.mjs`** (131 checks against the real `api/save.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
-  status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta`, and the
-  seed-republish path). It must print `ALL PASS`. Add a case for every new section.
+  status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
+  tombstones, and the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
 
 ## The order form's colour grammar (analysed from the 01/09 confirm form)
 The order cell is filled with **two different colours that mean two different things** — do not
@@ -120,10 +120,12 @@ code, never printed.
   The **📈 DCI Score** tab (`parseDCI`/`dciExtract`/`renderDCI`) scores the depot against
   Unilever's DCI sheet. Everyone sees it; only the manager can upload. Its rules are in
   `HANDOFF.md` §5 — read them before touching it.
-  The **🎯 eB2B & Self Ordering** tab keys each round by the report's **"as of" date**
-  (`kpiKeyOf`/`kpiAsOfText`), not by month — the file is uploaded weekly, so month keys made the
-  second upload of a month erase the first. Old `YYYY-MM` keys must keep working, and
-  `KPI.meta` must survive `mergeState`. Rules: `HANDOFF.md` §5.
+  The **🎯 eB2B & Self Ordering** tab keys each round by the **"as of" date in the FILENAME**
+  (`kpiKeyOf`/`kpiAsOf`), not by month — the file is uploaded weekly, so month keys made the
+  second upload of a month erase the first. The filename wins over the sheet header, which once
+  read `as of W4 Sep'26` as the 4th. `end of Sep` in a filename means the month-closing round.
+  Old `YYYY-MM` keys must keep working; `KPI.meta` and the `KPI.del` tombstones must survive
+  `mergeState`. Rules: `HANDOFF.md` §5.
   **การสั่งของ** has four sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO.
   The auto-PO calculator (`poBuild`/`renderPoCalc`) and `MINSTOCK` (minimum stock per code) have
   rules that are easy to get wrong — read `HANDOFF.md` §5 before touching either. The calculator
