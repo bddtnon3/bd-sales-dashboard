@@ -334,8 +334,10 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .rb-money{text-align:right;font-size:22px;font-weight:800;color:var(--muted);white-space:nowrap;line-height:1.15}
 .rb-money.win{color:#1E9E5A}
 .rb-money span{display:block;font-size:11px;font-weight:700;color:var(--muted)}
-.reward-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-bottom:12px}
-.rw-line{display:flex;align-items:center;gap:8px;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#fff}
+/* 250px = ความกว้างที่เนื้อใน (สาย + 3 เหรียญ + เงิน) ต้องใช้จริง ถ้าน้อยกว่านี้ตัวเงินจะล้นออกนอกกรอบ
+   และ flex-wrap กันไว้อีกชั้น เผื่อจอแคบกว่านั้น — ให้ตกบรรทัดแทนที่จะทับขอบ */
+.reward-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-bottom:12px}
+.rw-line{display:flex;align-items:center;gap:8px;row-gap:6px;flex-wrap:wrap;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#fff}
 .rw-line.win{background:#F1FAF4;border-color:#BEE6CD}
 .rdots{display:flex;gap:4px}
 .rw-amt{font-weight:800;color:var(--muted);font-size:13px}
@@ -385,7 +387,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
   /* reward banner stacks on mobile */
   .reward-banner{flex-direction:column;align-items:stretch;gap:10px;padding:14px}
   .rb-money{text-align:left}
-  .reward-grid{grid-template-columns:1fr 1fr}
+  .reward-grid{grid-template-columns:1fr}
   .store-subtabs{padding:8px 12px 0}
   .ssub{padding:9px 12px;font-size:13.5px}
   /* --- ตารางใบสมัครร้านค้า: บนมือถือเปลี่ยนเป็นการ์ด ไม่ให้ตัวหนังสือทับกัน --- */
@@ -666,7 +668,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 
     <div id="kpiView" class="hidden">
       <div class="controls">
-        <div class="ctl"><label>เลือกเดือน</label><select id="kpiMonth" onchange="onKpiMonth()"></select></div>
+        <div class="ctl"><label>เลือกรอบข้อมูล (ณ วันที่)</label><select id="kpiMonth" onchange="onKpiMonth()"></select></div>
         <div class="ctl"><label>เลือกรายงาน (กดเปิด/ปิดได้)</label>
           <div class="seg multi" id="kpiToggle">
             <button data-k="active" class="on">Active on PJP</button>
@@ -949,7 +951,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <input id="fileStore" type="file" accept=".xls,.xlsx" multiple class="hidden">
       </div>
       <div class="up-row" data-group="kpi">
-        <label class="drop up-kpi" for="fileKPI">🎯 <b>eB2B & Self Ordering (Incentive)</b><small>อัพรายสัปดาห์ · ไฟล์ Salesman Incentive_DTT_...xlsx</small></label>
+        <label class="drop up-kpi" for="fileKPI">🎯 <b>eB2B & Self Ordering (Incentive)</b><small>อัพรายสัปดาห์ · ไฟล์ Salesman Incentive_DTT_...xlsx · เก็บแยกเป็น "ณ วันที่" ไม่ทับรอบเก่า</small></label>
         <input id="fileKPI" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="eb">
@@ -1078,7 +1080,7 @@ let STORE = {months:[],stores:[]};
 let TOKEN=null;
 
 /* KPI (online-order adoption): {months, lines:{code:disp}, data:{month:{code:{stores,active,orders,self,ghost}}}, targets, workdays} */
-let KPI = {months:[],lines:{},data:{},workdays:26};
+let KPI = {months:[],lines:{},data:{},meta:{},workdays:26};
 
 /* ORDERS (daily ordering to Unilever): {dates, data:{date:{rounds:{round:{code:qty}}, dropped:{code:qty}, hasResult}}, names} */
 let ORDERS = {dates:[],data:{},names:{}};
@@ -1201,7 +1203,7 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};DCI=d.DCI||{periods:[],data:{}};MINSTOCK=d.MINSTOCK||{man:{}};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},meta:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};DCI=d.DCI||{periods:[],data:{}};MINSTOCK=d.MINSTOCK||{man:{}};}
     LEADSRAW=[];LEADSLOADED=false;   /* shop applications are re-fetched per session */
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();navReset();
@@ -1745,10 +1747,26 @@ const KPICFG={
   self:{name:"Self-ordering",unit:"ออเดอร์",color:"#4EA72E",light:"#EAF6E2",get:r=>r.selfPct,val:r=>r.self,base:r=>r.orders,tiers:[40],pass:v=>v>=40,dir:"up",desc:"ออเดอร์ที่ลูกค้ากดสั่งเอง ÷ ออเดอร์ทั้งหมด"},
   ghost:{name:"Ghost order",unit:"ออเดอร์",color:"#E97132",light:"#FCEEE3",get:r=>r.ghostPct,val:r=>r.ghost,base:r=>r.orders,tiers:[15],pass:v=>v<=15,dir:"down",desc:"ออเดอร์ ghost ÷ ออเดอร์ทั้งหมด (ยิ่งน้อยยิ่งดี ไม่เกิน 15%)"},
 };
+/* รวมคีย์จากทั้ง months และ data เผื่อสองอันไม่ตรงกัน (ข้อมูลเก่าบางชุดมีแต่ใน data)
+   ใช้ที่เดียวกันทั้ง initKPI และ renderKPI ไม่ให้ตัวเลือกกับหน้าจอไม่ตรงกัน */
+function kpiKeys(){
+  const seen={},ms=[];
+  ((KPI&&KPI.months)||[]).concat(Object.keys((KPI&&KPI.data)||{})).forEach(k=>{if(k&&!seen[k]){seen[k]=1;ms.push(k);}});
+  return ms.sort();
+}
 function initKPI(){
   const sel=document.getElementById("kpiMonth");if(!sel)return;
-  const ms=(KPI&&KPI.months)?KPI.months.slice():[];
-  sel.innerHTML="";ms.slice().reverse().forEach(m=>{const o=document.createElement("option");o.value=m;o.textContent=fmtMonth(m);sel.appendChild(o);});
+  const ms=kpiKeys();
+  /* ใหม่สุดอยู่บนสุด · แยกกลุ่มรายวัน/รายเดือน เพราะคีย์เก่าเป็นรายเดือน */
+  sel.innerHTML="";
+  const add=(list,lab)=>{
+    if(!list.length)return;
+    const g=document.createElement("optgroup");g.label=lab;
+    list.slice().reverse().forEach(m=>{const o=document.createElement("option");o.value=m;o.textContent=kpiLabel(m);g.appendChild(o);});
+    sel.appendChild(g);
+  };
+  add(ms.filter(kpiIsDay),"ณ วันที่");
+  add(ms.filter(m=>!kpiIsDay(m)),"ข้อมูลเก่า (รายเดือน)");
   KPIS.month=ms.length?ms[ms.length-1]:null;sel.value=KPIS.month||"";
   if(S.user&&S.user.role==="sales"){KPIS.scope="me";setSeg("kpiScope","s","me");}
   const sc=document.getElementById("kpiScopeCtl");if(sc)sc.style.display=(S.user&&S.user.role==="manager")?"none":"";
@@ -1766,20 +1784,30 @@ function kpiRows(){
     return {code:c,disp:KPI.lines[c]||c,stores:v.stores,active:v.active,orders:v.orders,self:v.self,ghost:v.ghost,
       activePct:v.stores?v.active/v.stores*100:0,selfPct:o?v.self/o*100:0,ghostPct:o?v.ghost/o*100:0};});
 }
-function remainWorkdays(mk){
+function remainWorkdays(k){
+  /* รับได้ทั้งคีย์รายวัน (YYYY-MM-DD) และรายเดือน (YYYY-MM) — ต้องตัดเอาเฉพาะเดือน
+     ไม่งั้น "2026-09-15" > "2026-09" เป็นจริง แล้วตอบว่าเหลือทำงานเต็มเดือน */
+  const mk=kpiMonthKey(k);
   const now=new Date();const cur=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
   if(!mk)return 0;if(mk<cur)return 0;if(mk>cur)return KPI.workdays||26;
   const y=now.getFullYear(),mo=now.getMonth(),end=new Date(y,mo+1,0).getDate();let c=0;
   for(let d=now.getDate();d<=end;d++){if(new Date(y,mo,d).getDay()!==0)c++;}return c;
 }
 function renderKPI(){
-  if(!KPI||!KPI.months||!KPI.months.length){
+  if(!KPI||!kpiKeys().length){
     document.getElementById("kpiCards").innerHTML="";
     document.getElementById("kpiCharts").innerHTML='<div class="panel"><div class="insight">ยังไม่มีข้อมูล — แอดมินอัพไฟล์ Salesman Incentive ก่อน (ปุ่มอัพโหลด → 🎯 eB2B & Self Ordering)</div></div>';
     document.getElementById("kpiPlan").innerHTML="";return;
   }
   const mb=document.getElementById("kpiMonthBar");
-  if(mb)mb.innerHTML=`📊 eB2B & Self Ordering · ศูนย์ BD · กำลังแสดงเดือน <b>${fmtMonth(KPIS.month)}</b>`;
+  if(mb){
+    const me=((KPI&&KPI.meta)||{})[KPIS.month]||{};
+    const nDay=Object.keys((KPI&&KPI.data)||{}).filter(kpiIsDay).length;
+    mb.innerHTML=`📊 eB2B & Self Ordering · ศูนย์ BD · กำลังแสดง <b>${kpiLabel(KPIS.month)}</b>`+
+      (me.src?` <span class="dci-src" style="display:inline;margin:0">· วันที่จาก${anaEsc(me.src)}${me.file?" · "+anaEsc(me.file):""}</span>`:"")+
+      (nDay?`<span class="dci-src">มี ${nDay} รอบรายวัน — เลือกดูย้อนหลังได้จากช่อง "เลือกรอบข้อมูล" ด้านบน</span>`
+           :`<span class="dci-src">อัพไฟล์ Incentive รอบใหม่ แล้วระบบจะเก็บแยกเป็น "ณ วันที่" ให้เอง (ไม่ทับรอบเก่า)</span>`);
+  }
   const mine=(S.user&&S.user.role==="sales")?S.user.code:null;
   const focusMe=(mine&&KPIS.scope==="me");
   const team=kpiRows();
@@ -1831,7 +1859,7 @@ function renderKpiCards(team,rows,focusMe){
     mcard(C.active,aP,aP>=40,`${active} / ${stores} ร้าน · เป้า 40%`)+
     mcard(C.self,sP,sP>=40,`${self} / ${orders} ออเดอร์ · เป้า 40%`)+
     mcard(C.ghost,gP,gP<=15,`${ghost} / ${orders} ออเดอร์ · เพดาน 15%`)+
-    `<div class="card"><div class="k">${focusMe?"สายของฉัน":"เดือน / ขอบเขต"}</div><div class="v" style="font-size:18px">${focusMe?(rows[0]?rows[0].disp:"–"):fmtMonth(KPIS.month)}</div><div class="s">${focusMe?"เทียบเป้าทั้ง 3 ตัว":scope.length+" สาย CT"}</div></div>`;
+    `<div class="card"><div class="k">${focusMe?"สายของฉัน":"รอบข้อมูล / ขอบเขต"}</div><div class="v" style="font-size:18px">${focusMe?(rows[0]?rows[0].disp:"–"):kpiLabel(KPIS.month)}</div><div class="s">${focusMe?"เทียบเป้าทั้ง 3 ตัว":scope.length+" สาย CT"}</div></div>`;
 }
 function renderKpiCharts(rows,focusMe,mine){
   const wrap=document.getElementById("kpiCharts");
@@ -1840,7 +1868,7 @@ function renderKpiCharts(rows,focusMe,mine){
     const cfg=KPICFG[k];
     const panel=document.createElement("div");panel.className="panel kpi-panel";panel.style.borderTop="3px solid "+cfg.color;
     panel.innerHTML=`<h3><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${cfg.color};margin-right:7px;vertical-align:-1px"></span>${cfg.name} <span style="font-size:12px;color:var(--muted);font-weight:400">(${cfg.dir==="up"?"เป้า ≥ "+cfg.tiers[0]+"%":"เพดาน ≤ "+cfg.tiers[0]+"%"})</span></h3>
-      <div class="psub">${cfg.desc} · ${fmtMonth(KPIS.month)} · <b style="color:${cfg.color}">แท่งสีนี้ = ผ่าน</b>, <b style="color:#D64545">แดง = ยังไม่ผ่าน</b></div>
+      <div class="psub">${cfg.desc} · ${kpiLabel(KPIS.month)} · <b style="color:${cfg.color}">แท่งสีนี้ = ผ่าน</b>, <b style="color:#D64545">แดง = ยังไม่ผ่าน</b></div>
       <div class="chart-wrap" style="height:${Math.max(230,rows.length*34+64)}px"><canvas></canvas></div>`;
     wrap.appendChild(panel);
     const vals=rows.map(r=>+cfg.get(r).toFixed(1));
@@ -1864,8 +1892,8 @@ function renderKpiPlan(rows,focusMe){
     ghostCut:Math.max(0,r.ghost-Math.floor(0.15*r.orders))}));
   const nA=plan.filter(p=>p.activeNeed>0).length,nS=plan.filter(p=>p.selfNeed>0).length,nG=plan.filter(p=>p.ghostCut>0).length;
   const head=closed
-    ? `<div class="note">เดือน ${fmtMonth(KPIS.month)} ปิดแล้ว — แสดงส่วนที่ยังขาดไว้วางแผนเดือนถัดไป (บริษัททำงาน ${KPI.workdays||26} วัน/เดือน จ.–ส.)</div>`
-    : `<div class="an-summary">📅 เดือน ${fmtMonth(KPIS.month)} · เหลือ <b>${rd} วันทำงาน</b> (จ.–ส.) — คอลัมน์ "เพิ่ม/วัน" คือต้องเร่งต่อวันให้ทันสิ้นเดือน</div>`;
+    ? `<div class="note">เดือน ${fmtMonth(kpiMonthKey(KPIS.month))} ปิดแล้ว — แสดงส่วนที่ยังขาดไว้วางแผนเดือนถัดไป (บริษัททำงาน ${KPI.workdays||26} วัน/เดือน จ.–ส.)</div>`
+    : `<div class="an-summary">📅 เดือน ${fmtMonth(kpiMonthKey(KPIS.month))} · เหลือ <b>${rd} วันทำงาน</b> (จ.–ส.) — คอลัมน์ "เพิ่ม/วัน" คือต้องเร่งต่อวันให้ทันสิ้นเดือน</div>`;
   const rowsH=plan.map(p=>{const aOk=p.activeNeed<=0,sOk=p.selfNeed<=0,gOk=p.ghostCut<=0;
     return `<tr><td><span class="tag ct">${p.disp}</span></td>
       <td class="${aOk?'up':'down'}">${aOk?"✔ ผ่าน":"ขาด "+p.activeNeed+" ร้าน"}</td>
@@ -1879,24 +1907,95 @@ function renderKpiPlan(rows,focusMe){
     <div style="margin:10px 0;font-size:13px">ยังไม่ผ่าน: Active <b>${nA}</b> สาย · Self <b>${nS}</b> สาย · Ghost เกิน <b>${nG}</b> สาย</div>
     <div style="overflow-x:auto"><table class="plan-tbl"><thead><tr><th>สาย</th><th>Active on PJP</th><th>เพิ่ม/วัน</th><th>Self-ordering</th><th>เพิ่ม/วัน</th><th>Ghost</th></tr></thead><tbody>${rowsH}</tbody></table></div>`;
 }
+/* ============================================================================
+ * วันที่ของรอบข้อมูล KPI (eB2B & Self Ordering)
+ *
+ * ไฟล์นี้ "อัพรายสัปดาห์" แต่เดิมเก็บเป็นคีย์รายเดือนอย่างเดียว (YYYY-MM)
+ * รอบใหม่จึงทับรอบเก่าของเดือนนั้นทิ้งทุกครั้ง — ประวัติในเดือนเดียวกันหายไปหมด
+ * และดูย้อนหลังเป็น "ณ วันที่" ไม่ได้ (เจ้าของแจ้ง 23 ก.ย. 69)
+ *
+ * ลำดับการหาวัน (หยาบขึ้นเรื่อยๆ) — บันทึกไว้ด้วยว่าได้มาจากไหน ให้ตรวจได้:
+ *   1. บรรทัด "as of …" ในหัวรายงาน  → แม่นที่สุด ไฟล์บอกเองว่าข้อมูล ณ วันไหน
+ *   2. วันที่ในชื่อไฟล์
+ *   3. วันที่อัพ (เจ้าของอนุญาตให้ใช้ได้)
+ * ถ้าหาวันไม่ได้เลยจะยังเก็บเป็นคีย์รายเดือนแบบเดิม ไม่เดาวันให้
+ *
+ * ⚠️ คีย์เก่าที่เป็นรายเดือน (YYYY-MM) ต้องใช้งานได้ต่อไป ห้ามทิ้ง
+ * ==========================================================================*/
+const KPI_MON={jan:"01",feb:"02",mar:"03",apr:"04",may:"05",jun:"06",
+               jul:"07",aug:"08",sep:"09",oct:"10",nov:"11",dec:"12"};
+const KPI_MO="jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
+function kpiYmd(y,m,d){
+  const Y=+y<100?2000+ +y:+y;
+  if(!(m>=1&&m<=12)||!(d>=1&&d<=31))return null;
+  return Y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+}
+/* หา "ณ วันที่" จากข้อความในหัวรายงาน */
+function kpiAsOfText(hay){
+  const s=String(hay||"").toLowerCase();
+  const i=s.indexOf("as of");
+  if(i<0)return null;
+  const tail=s.slice(i,i+80);
+  let m;
+  /* 15 Sep'26 · 15-Sep-2026 · 15 September 26 */
+  m=tail.match(new RegExp("(\\d{1,2})\\s*[-\\/. ]?\\s*("+KPI_MO+")[a-z]*['’]?\\s*[-\\/. ]?\\s*(\\d{2,4})"));
+  if(m)return kpiYmd(m[3],+KPI_MON[m[2]],+m[1]);
+  /* Sep 15'26 · Sep-15-2026 — ต้องมีตัวคั่นระหว่างวันกับปี ไม่งั้น "as of Sep 2026"
+     จะถูกอ่านเป็นวันที่ 20 เดือน 9 ปี 26 (เลข 2026 ถูกหักเป็น 20 + 26) */
+  m=tail.match(new RegExp("("+KPI_MO+")[a-z]*\\s*[-\\/. ]?\\s*(\\d{1,2})\\s*(?:['’]|[-\\/. ])\\s*(\\d{2,4})"));
+  if(m)return kpiYmd(m[3],+KPI_MON[m[1]],+m[2]);
+  /* 2026-09-15 (ISO) — ต้องเช็คก่อนแบบข้างล่าง ไม่งั้นจะถูกอ่านเป็น 26-09-15 */
+  m=tail.match(/(20\d{2})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{1,2})(?!\d)/);
+  if(m)return kpiYmd(m[1],+m[2],+m[3]);
+  /* 15/09/2026 · 15.09.26 */
+  m=tail.match(/(?<!\d)(\d{1,2})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{2,4})(?!\d)/);
+  if(m)return kpiYmd(m[3],+m[2],+m[1]);
+  return null;
+}
+/* เดือนของรอบข้อมูล — ตรรกะเดิม เก็บไว้เป็นทางถอย ถ้าหาวันไม่ได้ */
+function kpiMonthOf(name,hay){
+  let a=String(hay||"").toLowerCase().match(new RegExp("as of[^a-z]*("+KPI_MO+")['’]?\\s*(\\d{2})"));
+  if(a)return "20"+a[2]+"-"+KPI_MON[a[1]];
+  const b=String(name||"").toLowerCase().match(new RegExp("end\\s+("+KPI_MO+")['’]?\\s*(\\d{2})"));
+  if(b)return "20"+b[2]+"-"+KPI_MON[b[1]];
+  const c=String(name||"").toLowerCase().match(new RegExp("("+KPI_MO+")"));
+  const y=String(name||"").match(/'(\d{2})/)||String(name||"").match(/(20\d{2})/);
+  if(c&&y){const yy=(y[1]||y[0]).slice(-2);return "20"+yy+"-"+KPI_MON[c[1]];}
+  return null;
+}
+/* คืน {key, src} — key เป็น YYYY-MM-DD ถ้าหาวันได้ ไม่ได้ก็ YYYY-MM แบบเดิม */
+function kpiKeyOf(name,hay,todayISO_){
+  const d1=kpiAsOfText(hay);
+  if(d1)return {key:d1,src:"ไฟล์บอก (as of)"};
+  const d2=poDate6(name)||fnameDate(name);
+  if(d2)return {key:d2,src:"วันที่ในชื่อไฟล์"};
+  const mk=kpiMonthOf(name,hay);
+  const up=todayISO_||todayISO();
+  if(mk){
+    /* รู้เดือนแต่ไม่รู้วัน — ถ้าวันที่อัพอยู่ในเดือนนั้น ใช้วันที่อัพได้ (เจ้าของอนุญาต) */
+    if(up.slice(0,7)===mk)return {key:up,src:"วันที่อัพ"};
+    return {key:mk,src:"รายเดือน (ไฟล์ไม่บอกวัน)"};
+  }
+  return {key:up,src:"วันที่อัพ"};
+}
+/* คีย์เป็นรายวันหรือรายเดือน */
+function kpiIsDay(k){return /^\d{4}-\d{2}-\d{2}$/.test(String(k||""));}
+function kpiMonthKey(k){return String(k||"").slice(0,7);}
+/* ป้ายที่แสดงให้ผู้ใช้ */
+function kpiLabel(k){
+  if(!k)return "-";
+  return kpiIsDay(k)?("ณ "+fmtDate(k)):(fmtMonth(k)+" (รายเดือน)");
+}
 function parseKPI(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
   const sh=wb.SheetNames.find(s=>/route/i.test(s));
   if(!sh)throw new Error("ไม่พบชีต ByRoute ในไฟล์ (ไม่ใช่ไฟล์ Incentive?)");
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1});
-  const MON={jan:"01",feb:"02",mar:"03",apr:"04",may:"05",jun:"06",jul:"07",aug:"08",sep:"09",oct:"10",nov:"11",dec:"12"};
-  const MO="jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
-  let mk=null;
-  // 1) AUTHORITATIVE: "as of ... <Mon>'YY" printed inside the report header (immune to wrong filenames)
+  /* หัวรายงาน 6 แถวแรก — "as of …" ในนี้แม่นกว่าชื่อไฟล์ (ชื่อไฟล์ตั้งผิดได้) */
   let hay="";for(let i=0;i<Math.min(6,rows.length);i++){if(rows[i])hay+=" "+rows[i].join(" ");}
-  let a=hay.toLowerCase().match(new RegExp("as of[^a-z]*("+MO+")['’]?\\s*(\\d{2})"));
-  if(a)mk="20"+a[2]+"-"+MON[a[1]];
-  // 2) fallback: filename "END <Mon>'YY" (the reporting period part of the name)
-  if(!mk){const b=name.toLowerCase().match(new RegExp("end\\s+("+MO+")['’]?\\s*(\\d{2})"));if(b)mk="20"+b[2]+"-"+MON[b[1]];}
-  // 3) last resort: first month word in filename + any year
-  if(!mk){const c=name.toLowerCase().match(new RegExp("("+MO+")"));const y=name.match(/'(\d{2})/)||name.match(/(20\d{2})/);
-    if(c&&y){const yy=(y[1]||y[0]).slice(-2);mk="20"+yy+"-"+MON[c[1]];}}
-  if(!mk)throw new Error("ระบุเดือนไม่ได้ (ไม่พบ 'as of ... <เดือน>' ในไฟล์ และชื่อไฟล์ไม่มีชื่อเดือน)");
+  const K=kpiKeyOf(name,hay);
+  const mk=K.key;
+  if(!mk)throw new Error("ระบุวันที่/เดือนของข้อมูลไม่ได้ — ตั้งชื่อไฟล์ให้มีวันที่ (เช่น ..._150926.xlsx)");
   const md={};let n=0;
   for(let i=2;i<rows.length;i++){const r=rows[i];if(!r)continue;
     if(String(r[0])!=="2096"||String(r[5]).toUpperCase()!=="CT")continue;
@@ -1908,9 +2007,12 @@ function parseKPI(name,buf){
   if(!KPI.data)KPI.data={};KPI.data[mk]=md;
   if(!KPI.months)KPI.months=[];if(!KPI.months.includes(mk))KPI.months.push(mk);KPI.months.sort();
   if(!KPI.workdays)KPI.workdays=26;
+  /* จำไว้ว่ารอบนี้มาจากไฟล์ไหน และวันที่ได้มาจากไหน — ให้ตรวจย้อนได้ */
+  if(!KPI.meta)KPI.meta={};KPI.meta[mk]={up:Date.now(),file:name,src:K.src};
   const T=Object.values(md).reduce((a,v)=>({st:a.st+v.stores,ac:a.ac+v.active,or:a.or+v.orders,se:a.se+v.self,gh:a.gh+v.ghost}),{st:0,ac:0,or:0,se:0,gh:0});
-  ulog("✅ "+name+" (KPI) → "+fmtMonth(mk)+" · "+n+" สาย · ศูนย์: Active "+T.ac+"/"+T.st+", Self "+T.se+"/"+T.or+", Ghost "+T.gh+"/"+T.or+" (เทียบ BySup ได้เลย)");
-  initKPI();if(!document.getElementById("kpiView").classList.contains("hidden"))renderKPI();
+  ulog("✅ "+name+" (KPI) → <b>"+kpiLabel(mk)+"</b> ("+K.src+") · "+n+" สาย · ศูนย์: Active "+T.ac+"/"+T.st+", Self "+T.se+"/"+T.or+", Ghost "+T.gh+"/"+T.or+" (เทียบ BySup ได้เลย)");
+  initKPI();KPIS.month=mk;{const sl=document.getElementById("kpiMonth");if(sl)sl.value=mk;}
+  if(!document.getElementById("kpiView").classList.contains("hidden"))renderKPI();
   syncToServer();
 }
 

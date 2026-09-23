@@ -84,7 +84,13 @@ function mergeState(server, c) {
     focus_order: (cD.focus_order && cD.focus_order.length) ? cD.focus_order : (sD.focus_order || []),
   };
   const sK = s.KPI || {}, cK = c.KPI || {};
-  const KPI = { months: unionArr(sK.months, cK.months), lines: keyMerge(sK.lines, cK.lines), data: keyMerge(sK.data, cK.data), workdays: cK.workdays || sK.workdays || 26 };
+  // KPI rounds used to be keyed by month only ("2026-09"); the file is uploaded weekly, so a
+  // second upload in the same month overwrote the first. Rounds are now keyed by the file's
+  // "as of" date ("2026-09-15") when one is known, and old month keys keep working — both live
+  // in the same keyed maps, so union/keyMerge is still correct.
+  // `meta` (upload stamp + filename + where the date came from) is keyed the same way and must
+  // be carried through here, or every save would silently drop it.
+  const KPI = { months: unionArr(sK.months, cK.months), lines: keyMerge(sK.lines, cK.lines), data: keyMerge(sK.data, cK.data), meta: keyMerge(sK.meta, cK.meta), workdays: cK.workdays || sK.workdays || 26 };
   const sO = s.ORDERS || {}, cO = c.ORDERS || {};
   const ORDERS = { data: keyMerge(sO.data, cO.data), dates: unionArr(sO.dates, cO.dates), names: keyMerge(sO.names, cO.names), cat: keyMerge(sO.cat, cO.cat), catN: keyMerge(sO.catN, cO.catN) };
   const sA = s.ANALYTICS || {}, cA = c.ANALYTICS || {};

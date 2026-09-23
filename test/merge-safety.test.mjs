@@ -38,7 +38,7 @@ const server = {
     focus_order: ["209611", "209613"],
   },
   STORE: { months: ["2026-06", "2026-07"], stores: [1, 2, 3] },
-  KPI: { months: ["2026-06", "2026-07"], lines: { "209611": "CT11" }, data: { "2026-06": { z: 1 }, "2026-07": { z: 2 } }, workdays: 26 },
+  KPI: { months: ["2026-06", "2026-07"], lines: { "209611": "CT11" }, data: { "2026-06": { z: 1 }, "2026-07": { z: 2 } }, meta: { "2026-07": { up: 500, file: "KPI 310726.xlsx", src: "month" } }, workdays: 26 },
   ORDERS: { dates: ["2026-07-28", "2026-07-29"], data: { "2026-07-28": { r: 1 } }, names: { p1: "n1" }, cat: { c: 1 }, catN: { c: 2 } },
   STOCKD: { date: "2026-07-29", rows: [1, 2, 3], names: { s: "x" }, up: 5 },
   REQUESTS: { data: { "2026-07-29": { "209613": { items: { p: 1 }, at: 1000 } } } },
@@ -465,6 +465,60 @@ console.log("TEST 15 — minimum stock typed in a few codes at a time never roll
         o6.ORDERS.dates.length === 2 && Object.keys(o6.REQUESTS.data).length >= 1);
   check("looksEmpty: MINSTOCK alone does NOT count as real data (same call as DCI)",
         looksEmpty({ DATA: {}, MINSTOCK: srv.MINSTOCK }) === true);
+}
+
+console.log("TEST 16 — KPI rounds keyed by date (weekly uploads) never overwrite each other");
+{
+  // Before: the KPI file was keyed by month, so two uploads in the same month collided.
+  // Now the round is keyed by the file's "as of" date, and KPI.meta says where that date
+  // came from. Old month keys must keep working side by side with the new date keys.
+  const srv = JSON.parse(JSON.stringify(server));
+
+  // week 1 of September arrives (as-of 08/09)
+  const w1 = JSON.parse(JSON.stringify(srv));
+  w1.KPI.data["2026-09-08"] = { z: 8 };
+  w1.KPI.months.push("2026-09-08");
+  w1.KPI.meta = { "2026-09-08": { up: 1000, file: "KPI 080926.xlsx", src: "asof" } };
+  const k1 = mergeState(srv, w1);
+  check("the old month-keyed rounds are still there", !!k1.KPI.data["2026-06"] && !!k1.KPI.data["2026-07"]);
+  check("the new date-keyed round is added", k1.KPI.data["2026-09-08"].z === 8);
+  check("KPI.meta is carried through mergeState (it used to be dropped)",
+        !!k1.KPI.meta && k1.KPI.meta["2026-09-08"].src === "asof");
+
+  // week 2 of the SAME month — this is the bug that date keys fix
+  const w2 = JSON.parse(JSON.stringify(k1));
+  w2.KPI.data["2026-09-15"] = { z: 15 };
+  w2.KPI.months.push("2026-09-15");
+  w2.KPI.meta["2026-09-15"] = { up: 2000, file: "KPI 150926.xlsx", src: "asof" };
+  const k2 = mergeState(k1, w2);
+  check("week 2 does NOT overwrite week 1 of the same month",
+        k2.KPI.data["2026-09-08"].z === 8 && k2.KPI.data["2026-09-15"].z === 15);
+  check("both rounds keep their own provenance",
+        k2.KPI.meta["2026-09-08"].file === "KPI 080926.xlsx" && k2.KPI.meta["2026-09-15"].file === "KPI 150926.xlsx");
+  check("months lists month keys and date keys together, sorted",
+        k2.KPI.months.join(",") === "2026-06,2026-07,2026-09-08,2026-09-15");
+
+  // an old browser tab from before this change: no meta at all, month keys only
+  const oldTab = JSON.parse(JSON.stringify(k2));
+  delete oldTab.KPI.meta;
+  const k3 = mergeState(k2, oldTab);
+  check("a tab with no KPI.meta cannot erase it", Object.keys(k3.KPI.meta).length === 3);
+  check("...and the legacy month-keyed round keeps its own meta", k3.KPI.meta["2026-07"].src === "month");
+  check("...and it cannot erase the date-keyed rounds either",
+        !!k3.KPI.data["2026-09-08"] && !!k3.KPI.data["2026-09-15"]);
+
+  // a tab that never saw September still keeps September
+  const older = JSON.parse(JSON.stringify(server));
+  const k4 = mergeState(k3, older);
+  check("a tab that predates every September round keeps them all",
+        Object.keys(k4.KPI.data).length === 4 && k4.KPI.meta["2026-09-15"].up === 2000);
+
+  // first save into an empty store, and no cross-section damage
+  const first = mergeState(null, { DATA: server.DATA, KPI: k2.KPI });
+  check("first save into an empty store keeps KPI.meta", first.KPI.meta["2026-09-08"].src === "asof");
+  check("touching KPI disturbs no other section",
+        Object.keys(k4.DATA.monthly).length === 2 && !!k4.PSTORE.rounds["2026-06-30"] &&
+        k4.ORDERS.dates.length === 2 && Object.keys(k4.REQUESTS.data).length >= 1);
 }
 
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
