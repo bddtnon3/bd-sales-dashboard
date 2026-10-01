@@ -2715,22 +2715,30 @@ function renderOrder(){
   else{
     const dv2=ORD.dropView==='excel'?'excel':'sum';
     const rawAll=d.dropLines||[];
-    /* มุมมองสรุป (รวมยอดตามรหัส) */
+    /* มุมมองสรุป (รวมยอดตามรหัส) — แบ่งตามหมวดในใบสั่งซื้อ เหมือนหน้าคำขอสินค้าจากเซลล์
+       ตารางเดียวไล่ลงมา คอลัมน์จึงตรงกันทุกหมวด (ดู grpTable) */
     const sumTable=()=>{
       const dl=dCodes.filter(match).sort((a,b)=>(dropQ(dropped[b])||ordered[b]||0)-(dropQ(dropped[a])||ordered[a]||0));
-      return `<div class="psub">รวมยอดตามรหัสสินค้า · <b>สั่ง</b> = สั่งไป (O) · <b>ได้</b> = ได้ของบางส่วน (P) · <b>ดรอป</b> = สั่งไม่ได้จริง (Q = O−P)</div>
-      <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>สั่ง (O)</th><th>ได้ (P)</th><th>ดรอป (Q)</th></tr></thead><tbody>${
-        dl.length?dl.map(c=>{const e=dropped[c];const o=dropO(e)||ordered[c]||0,dd2=dropD(e),qq=dropQ(e)||ordered[c]||0;return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"<span style='color:var(--muted)'>(รหัสใหม่ ยังไม่มีชื่อในสต็อก)</span>"}</td><td>${o||"-"}</td><td class="${dd2>0?'up':''}">${dd2||"-"}</td><td><b class="down">${qq}</b></td></tr>`;}).join(""):`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">ไม่พบรายการที่ค้นหา</td></tr>`
-      }</tbody></table></div>`;
+      const line=c=>{const e=dropped[c];const o=dropO(e)||ordered[c]||0,dd2=dropD(e),qq=dropQ(e)||ordered[c]||0;
+        return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"<span style='color:var(--muted)'>(รหัสใหม่ ยังไม่มีชื่อในสต็อก)</span>"}</td><td>${o||"-"}</td><td class="${dd2>0?'up':''}">${dd2||"-"}</td><td><b class="down">${qq}</b></td></tr>`;};
+      return `<div class="psub">รวมยอดตามรหัสสินค้า (แบ่งตามหมวดในใบสั่งซื้อ) · <b>สั่ง</b> = สั่งไป (O) · <b>ได้</b> = ได้ของบางส่วน (P) · <b>ดรอป</b> = สั่งไม่ได้จริง (Q = O−P)</div>`+
+      grpTable([{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"สั่ง (O)"},{h:"ได้ (P)"},{h:"ดรอป (Q)"}],
+        grpByCat(dl).map(g=>({title:`${g.icon} ${g.cat}`,
+          sub:`· ${g.list.length} รายการ · ดรอป ${g.list.reduce((s,c)=>s+(dropQ(dropped[c])||ordered[c]||0),0)} ลัง`,
+          rows:g.list.map(line)})),
+        {alwaysBand:true,empty:'<div class="insight">ไม่พบรายการที่ค้นหา</div>'});
     };
-    /* มุมมองแบบ Excel (ทุกบรรทัดดิบ) */
+    /* มุมมองแบบ Excel (ทุกบรรทัดดิบ) — แบ่งหมวดเหมือนกัน จะได้ไล่เทียบหน้าต่อหน้ากับไฟล์ได้ */
     const excelTable=()=>{
       if(!rawAll.length)return `<div class="note">ℹ️ วันนี้ยังไม่มีข้อมูลรายบรรทัด (ไฟล์ Drop ถูกอัพก่อนมีฟีเจอร์นี้) — อัพไฟล์ Drop ของวันนี้ซ้ำอีกครั้งเพื่อดูแบบ Excel · ด้านล่างแสดงแบบสรุปให้แทน</div>`+sumTable();
       const rl=rawAll.filter(l=>match(l.code)).slice().sort((a,b)=>b.q-a.q);
-      return `<div class="psub">ทุกบรรทัดตามไฟล์ Excel (สินค้ารหัสเดียวกันอาจมีหลายบรรทัด) · <b>สั่ง</b>=O · <b>ได้</b>=P · <b>ดรอป</b>=Q · มูลค่า=Drop Value</div>
-      <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>สั่ง (O)</th><th>ได้ (P)</th><th>ดรอป (Q)</th><th>มูลค่า Drop (฿)</th></tr></thead><tbody>${
-        rl.length?rl.map(l=>`<tr><td>${l.code}</td><td style="text-align:left">${l.name||oname(l.code)||"<span style='color:var(--muted)'>(รหัสใหม่)</span>"}</td><td>${l.o||"-"}</td><td class="${l.d>0?'up':''}">${l.d||"-"}</td><td><b class="down">${l.q}</b></td><td>${l.dv?Math.round(l.dv).toLocaleString():"-"}</td></tr>`).join(""):`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">ไม่พบรายการที่ค้นหา</td></tr>`
-      }</tbody></table></div>`;
+      const line=l=>`<tr><td>${l.code}</td><td style="text-align:left">${l.name||oname(l.code)||"<span style='color:var(--muted)'>(รหัสใหม่)</span>"}</td><td>${l.o||"-"}</td><td class="${l.d>0?'up':''}">${l.d||"-"}</td><td><b class="down">${l.q}</b></td><td>${l.dv?Math.round(l.dv).toLocaleString():"-"}</td></tr>`;
+      return `<div class="psub">ทุกบรรทัดตามไฟล์ Excel (สินค้ารหัสเดียวกันอาจมีหลายบรรทัด) แบ่งตามหมวดในใบสั่งซื้อ · <b>สั่ง</b>=O · <b>ได้</b>=P · <b>ดรอป</b>=Q · มูลค่า=Drop Value</div>`+
+      grpTable([{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"สั่ง (O)"},{h:"ได้ (P)"},{h:"ดรอป (Q)"},{h:"มูลค่า Drop (฿)"}],
+        grpByCat(rl,l=>l.code).map(g=>({title:`${g.icon} ${g.cat}`,
+          sub:`· ${g.list.length} บรรทัด · ดรอป ${g.list.reduce((s,l)=>s+(l.q||0),0)} ลัง`,
+          rows:g.list.map(line)})),
+        {alwaysBand:true,empty:'<div class="insight">ไม่พบรายการที่ค้นหา</div>'});
     };
     const seg=`<div class="seg" id="dropViewSeg" style="margin:2px 0 12px">
       <button onclick="setDropView('sum')" class="${dv2==='sum'?'on':''}">📊 สรุปยอดรวม (${dCodes.length})</button>
@@ -2743,11 +2751,16 @@ function renderOrder(){
   const recvRows=(st?recvCodes:oCodes).map(c=>({c,qty:ordered[c]||0,partial:false}))
     .concat(st?partialCodes.map(c=>({c,qty:dropD(dropped[c]),partial:true})):[])
     .filter(o=>match(o.c)).sort((a,b)=>b.qty-a.qty);
+  /* แบ่งตามหมวดในใบสั่งซื้อ เรียงลำดับเดียวกับใบสั่ง — เจ้าของแจ้ง 1 ต.ค. 69 ว่ารายการ
+     ที่สั่งไปกระจัดกระจายอ่านยาก ขอให้ทำเหมือนหน้าคำขอสินค้าจากเซลล์ */
+  const recvLine=o=>`<tr><td>${o.c}</td><td style="text-align:left">${oname(o.c)||"<span style='color:var(--muted)'>(รหัสใหม่)</span>"}${o.partial?' <span class="ana-idx" style="background:#FDF3DB;color:#9a7100">บางส่วน</span>':''}</td><td><b>${o.qty||0}</b></td></tr>`;
   recvEl.innerHTML=`<h3 style="color:var(--good)">✅ ${st?"ได้ของ (ครบ + บางส่วน)":"รายการที่สั่ง (รอผล)"} (${st?recvCount:oCodes.length})</h3>
-    <div class="psub">${st?"รายการที่ Unilever ยืนยัน — พร้อมขาย (บางส่วน = ได้ไม่ครบตามสั่ง)":"ยังไม่ทราบผล จนกว่าจะอัพไฟล์ Confirm"}</div>
-    <div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ได้ (ลัง)</th></tr></thead><tbody>${
-      recvRows.map(o=>`<tr><td>${o.c}</td><td style="text-align:left">${oname(o.c)||"<span style='color:var(--muted)'>(รหัสใหม่)</span>"}${o.partial?' <span class="ana-idx" style="background:#FDF3DB;color:#9a7100">บางส่วน</span>':''}</td><td><b>${o.qty||0}</b></td></tr>`).join("")||`<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">ไม่พบรายการ</td></tr>`
-    }</tbody></table></div>`;
+    <div class="psub">${st?"รายการที่ Unilever ยืนยัน — พร้อมขาย (บางส่วน = ได้ไม่ครบตามสั่ง)":"ยังไม่ทราบผล จนกว่าจะอัพไฟล์ Confirm"} · แบ่งตามหมวดในใบสั่งซื้อ ไล่เทียบทีละหน้าได้</div>`+
+    grpTable([{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"ได้ (ลัง)"}],
+      grpByCat(recvRows,o=>o.c).map(g=>({title:`${g.icon} ${g.cat}`,
+        sub:`· ${g.list.length} รายการ · ${g.list.reduce((s,o)=>s+(o.qty||0),0)} ลัง`,
+        rows:g.list.map(recvLine)})),
+      {alwaysBand:true,empty:'<div class="insight">ไม่พบรายการ</div>'});
   renderOrderSearch();
 }
 /* search a product across ALL order days → its status per day (สั่ง/ได้/ดรอป). For sales & manager. */
