@@ -330,6 +330,26 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
 /* ============================================================================
+ * ROW CURSOR — ไล่อ่านตารางทีละบรรทัด (หน้าการสั่งของ / วิเคราะห์การสั่งของ / สต็อก)
+ * เจ้าของแจ้ง 2 ต.ค. 69: ไล่สั่งของทีละรายการแล้ว "ลายตาไม่รู้อยู่บรรทัดไหนแล้ว"
+ *
+ * ⚠️ ไฮไลต์ด้วย background + box-shadow inset เท่านั้น **ห้ามใช้ border**
+ * การเพิ่ม border ทำให้ความสูง/ความกว้างของแถวขยับ ตารางจะกระตุกตอนเลื่อนบรรทัด
+ * ⚠️ ทาสีที่ `>td` ไม่ใช่ที่ `tr` เพราะบางแถวมี inline style พื้นหลังของตัวเองอยู่แล้ว
+ * (เช่นแถวสถานะคำขอใน renderOrderManage) ถ้าทาที่ tr สีเดิมจะบังไว้
+ * ==========================================================================*/
+#orderView tbody tr:hover>td,#posView tbody tr:hover>td,#stockView tbody tr:hover>td{background:#F5F8FD}
+#orderView tbody tr.grp-row:hover>td,#posView tbody tr.grp-row:hover>td,#stockView tbody tr.grp-row:hover>td{background:var(--blue-soft)}
+tr.rc-on>td{background:#E7EEFA!important;box-shadow:inset 0 1px 0 #C3D5F1,inset 0 -1px 0 #C3D5F1}
+tr.rc-on>td:first-child{box-shadow:inset 3px 0 0 var(--blue),inset 0 1px 0 #C3D5F1,inset 0 -1px 0 #C3D5F1}
+.rc-hint{display:none;font-size:12.5px;color:var(--muted);background:var(--bg);
+  border:1px dashed #CBD6E8;border-radius:9px;padding:8px 13px;margin-bottom:12px;line-height:1.7}
+.rc-hint b{color:var(--blue-dark)}
+.rc-hint #rcPos{font-weight:800;color:var(--blue)}
+/* โชว์คำใบ้เฉพาะเครื่องที่มีเมาส์+คีย์บอร์ด (เจ้าของใช้จากคอม) บนมือถือไม่ต้องรก */
+@media(hover:hover) and (pointer:fine){.rc-hint{display:block}}
+
+/* ============================================================================
  * PLANNER — ปฏิทินงานร่วมกันของทั้งบริษัท
  * ตั้งใจให้ "สบายตา" แบบปฏิทิน Google: ช่องวันสูงเท่ากัน เส้นบาง ๆ สีอ่อน
  * ตัวงานเป็นป้ายสีตามประเภท ไม่ใส่สีจัดเพราะดูทั้งเดือนทีเดียวจะลายตา
@@ -857,6 +877,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         </div>
       </div>
       <div class="kpi-monthbar" id="orderBar"></div>
+      <div class="rc-hint">⌨️ <b>ไล่ดูทีละรายการ</b> — คลิกที่บรรทัดไหนก็ได้ แล้วกดลูกศร <b>↑ ↓</b> เลื่อนทีละบรรทัด · <b>PgUp/PgDn</b> ทีละ 10 · <b>Home/End</b> บรรทัดแรก/สุดท้าย · <b>Esc</b> เลิกไฮไลต์<span id="rcPos"></span></div>
       <!-- ผลค้นหาต้องอยู่นอกทุกแท็บย่อย: renderOrderSearch คุม .hidden ของตัวมันเอง
            ถ้าเอาไปซ่อนในแท็บที่ปิดอยู่ ค้นหาแล้วจะไม่เห็นอะไรเลย -->
       <div class="panel hidden" id="orderSearchResult"></div>
@@ -902,6 +923,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         </div>
       </div>
       <div class="kpi-monthbar" id="stockBar"></div>
+      <div class="rc-hint">⌨️ <b>ไล่ดูทีละรายการ</b> — คลิกที่บรรทัดไหนก็ได้ แล้วกดลูกศร <b>↑ ↓</b> เลื่อนทีละบรรทัด · <b>PgUp/PgDn</b> ทีละ 10 · <b>Home/End</b> บรรทัดแรก/สุดท้าย · <b>Esc</b> เลิกไฮไลต์</div>
       <div class="cards" id="stockCards"></div>
       <div class="panel" id="stockTable"></div>
     </div>
@@ -925,6 +947,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div id="posProdWrap">
         <div class="kpi-monthbar" id="posBar"></div>
         <div class="cards" id="posCards"></div>
+        <div class="rc-hint">⌨️ <b>ไล่ดูทีละรายการ</b> — คลิกที่บรรทัดไหนก็ได้ แล้วกดลูกศร <b>↑ ↓</b> เลื่อนทีละบรรทัด · <b>Esc</b> เลิกไฮไลต์</div>
         <div class="pos-subtabs" id="posSubTabs"></div>
         <div id="posOverview"></div>
         <div id="posDiff"></div>
@@ -2639,6 +2662,115 @@ async function plPush(body,undo){
     alert("บันทึกไม่สำเร็จ: "+ex.message+"\n\nข้อมูลยังไม่ถูกเปลี่ยน กรุณาลองใหม่อีกครั้ง");
   }
 }
+
+/* ============================================================================
+ * ROW CURSOR — ไล่อ่านตารางทีละบรรทัดด้วยลูกศร ↑ ↓
+ *
+ * เจ้าของแจ้ง 2 ต.ค. 69: ไล่สั่งของทีละรายการแล้ว "ลายตาไม่รู้อยู่บรรทัดไหนแล้ว"
+ * ใช้กับหน้าที่ต้องไล่ทีละบรรทัดจริง ๆ: การสั่งของ · วิเคราะห์การสั่งของ · สต็อก
+ *
+ * เป็นตัวช่วยอ่านอย่างเดียว **ไม่แตะข้อมูลอะไรเลย** แค่เติม/ถอดคลาส rc-on บนแถว
+ *
+ * ข้อควรระวัง
+ *  - ไม่แย่งลูกศรจากช่องกรอก (input/textarea/select) ไม่งั้นช่องแก้จำนวนใน PO จะกดเพิ่ม/ลดไม่ได้
+ *  - ตารางพวกนี้ถูกวาดใหม่ทุกครั้งที่พิมพ์ค้นหา แถว <tr> เดิมจะหายไป จึงจำ "ลายเซ็นแถว"
+ *    (ตารางที่เท่าไหร่ + รหัส + ชื่อ) แล้วกลับไปไฮไลต์แถวเดิมให้เองผ่าน MutationObserver
+ *  - observe แค่ childList/subtree ห้าม observe attributes ไม่งั้นการเติมคลาสจะวนไม่จบ
+ * ==========================================================================*/
+const RC_VIEWS=["orderView","posView","stockView"];
+let RC={sig:null};
+function rcLive(){return RC_VIEWS.map(v=>document.getElementById(v)).filter(el=>el&&!el.classList.contains("hidden"));}
+function rcTables(){
+  const out=[];
+  rcLive().forEach(el=>el.querySelectorAll("table").forEach(tb=>{if(tb.offsetParent!==null)out.push(tb);}));
+  return out;
+}
+function rcRows(){
+  const out=[];
+  rcTables().forEach(tb=>tb.querySelectorAll("tbody tr").forEach(tr=>{
+    if(tr.classList.contains("grp-row"))return;                        /* แถบคั่นหมวด ไม่ใช่รายการ */
+    if(!tr.cells.length||tr.cells[0].colSpan>1)return;                 /* แถว "ไม่พบรายการ" */
+    if(tr.offsetParent===null)return;                                  /* แถวที่ซ่อนอยู่ */
+    out.push(tr);
+  }));
+  return out;
+}
+function rcSig(tr,tbs){
+  const tb=tr.parentNode&&tr.parentNode.parentNode;
+  const i=(tbs||rcTables()).indexOf(tb);
+  const c=k=>tr.cells[k]?String(tr.cells[k].textContent).trim().slice(0,40):"";
+  return i+"|"+c(0)+"|"+c(1);
+}
+function rcClear(){
+  const el=document.querySelector("tr.rc-on");
+  if(el)document.querySelectorAll("tr.rc-on").forEach(x=>x.classList.remove("rc-on"));
+}
+function rcHint(){
+  const el=document.getElementById("rcPos");if(!el)return;
+  const rows=rcRows();
+  let i=-1;for(let k=0;k<rows.length;k++)if(rows[k].classList.contains("rc-on")){i=k;break;}
+  el.textContent=(i>=0)?("  ·  กำลังดูบรรทัดที่ "+(i+1)+" / "+rows.length):"";
+}
+function rcSet(tr,scroll){
+  rcClear();
+  if(!tr){RC.sig=null;rcHint();return;}
+  tr.classList.add("rc-on");
+  RC.sig=rcSig(tr);
+  if(scroll&&tr.scrollIntoView)tr.scrollIntoView({block:"nearest"});
+  rcHint();
+}
+/* ตารางถูกวาดใหม่ — กลับไปไฮไลต์แถวเดิม (รหัสเดิม) ถ้ายังอยู่ */
+function rcApply(){
+  if(!RC.sig){rcHint();return;}
+  const rows=rcRows(),tbs=rcTables();
+  rcClear();
+  for(let i=0;i<rows.length;i++)if(rcSig(rows[i],tbs)===RC.sig){rows[i].classList.add("rc-on");break;}
+  rcHint();
+}
+function rcMove(n,abs){
+  const rows=rcRows();
+  if(!rows.length)return false;
+  let i=-1;for(let k=0;k<rows.length;k++)if(rows[k].classList.contains("rc-on")){i=k;break;}
+  if(abs==="first")i=0;
+  else if(abs==="last")i=rows.length-1;
+  else if(i<0)i=(n>0?0:rows.length-1);                 /* ยังไม่ได้เลือกบรรทัดไหน — เริ่มที่หัว/ท้าย */
+  else i=Math.min(rows.length-1,Math.max(0,i+n));
+  rcSet(rows[i],true);
+  return true;
+}
+document.addEventListener("keydown",e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const t=e.target;
+  if(t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable))return;   /* กำลังกรอกอยู่ */
+  if(document.querySelector(".pl-mask"))return;                                      /* กล่องกรอกงานเปิดอยู่ */
+  if(!rcLive().length)return;                                                        /* ไม่ได้อยู่หน้าพวกนี้ */
+  let n=0,abs=null;
+  if(e.key==="ArrowDown")n=1;
+  else if(e.key==="ArrowUp")n=-1;
+  else if(e.key==="PageDown")n=10;
+  else if(e.key==="PageUp")n=-10;
+  else if(e.key==="Home")abs="first";
+  else if(e.key==="End")abs="last";
+  else if(e.key==="Escape"){rcSet(null);return;}
+  else return;
+  if(rcMove(n,abs))e.preventDefault();      /* กันหน้าเลื่อนตามไปด้วย */
+});
+document.addEventListener("click",e=>{
+  if(!e.target||!e.target.closest)return;
+  const tr=e.target.closest("tbody tr");
+  if(!tr||tr.classList.contains("rc-on")||tr.classList.contains("grp-row"))return;
+  if(rcRows().indexOf(tr)<0)return;
+  rcSet(tr,false);          /* คลิกบรรทัดไหน = ย้ายเคอร์เซอร์ไปที่นั่น (ไม่ขัดการคัดลอก/ปุ่มในแถว) */
+/* ⚠️ ต้อง capture:true — ตัวคัดลอกเมื่อคลิก (cpFind) ก็ดักที่ document แบบ capture แล้วเรียก
+   stopPropagation() ถ้าตัวนี้เป็น bubble จะไม่ถูกเรียกเลยตอนคลิกช่องรหัส/ชื่อสินค้า
+   ตัวนี้ถูก register ก่อน จึงทำงานก่อน แล้วตัวคัดลอกทำงานต่อได้ปกติ — ได้ทั้งสองอย่าง */
+},true);
+(function rcWatch(){
+  if(typeof MutationObserver==="undefined")return;
+  let tmr=null;
+  const ob=new MutationObserver(()=>{clearTimeout(tmr);tmr=setTimeout(rcApply,30);});
+  RC_VIEWS.forEach(v=>{const el=document.getElementById(v);if(el)ob.observe(el,{childList:true,subtree:true});});
+})();
 
 /* ====================== eB2B OPENING CONTEST (ส.ค.–ก.ย. 2569) ====================== */
 /* Two-month contest. Counted from the Migration Report: distributor 2096, routes whose name

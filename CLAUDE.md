@@ -143,6 +143,11 @@ code, never printed.
   The form's totals/weight/volume/value are FORMULAS over the Order Confirm column, so the output
   sets `fullCalcOnLoad="1"` and the manager must open it in Excel once before emailing. Rules and
   the five assumptions to re-check if Unilever changes the form: `HANDOFF.md` §5.
+  The **row cursor** (`rc-on`/`RC_VIEWS`, `rcMove`/`rcApply`) lets the manager walk the order,
+  order-analysis and stock tables line by line with the arrow keys. It is a reading aid only —
+  it never touches data — but its four traps (no `border`, paint `>td` not `tr`, `capture:true`
+  so the click-to-copy handler still fires, and never steal arrows from an input) are easy to
+  undo by accident: read `HANDOFF.md` §5 first.
   The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 7 groups,
   each holding one or more pages, role-gated per page. Adding a page means adding it to that
   table — never add a hand-written `.tab` button back into the markup.
