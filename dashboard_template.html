@@ -255,6 +255,16 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .tab{background:none;border:none;padding:11px 18px;font-size:15px;font-weight:700;color:var(--muted);
   border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;flex:0 0 auto}
 .tab.on{color:var(--blue);border-bottom-color:var(--blue)}
+/* แถวแท็บย่อย — ทำเป็นปุ่มกลมบนพื้นอ่อน ไม่ให้ดูเหมือนแท็บหลักสองแถวซ้อนกัน
+   กลุ่มที่มีหน้าเดียวจะไม่ขึ้นแถวนี้เลย (ดู renderTabs) */
+.tabs2{display:flex;gap:4px;margin:-8px 0 16px;padding:5px;background:var(--bg);
+  border:1px solid var(--line);border-radius:11px;
+  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs2::-webkit-scrollbar{display:none}
+.tab2{background:none;border:none;padding:8px 15px;border-radius:8px;font-size:13.5px;font-weight:700;
+  color:var(--muted);white-space:nowrap;flex:0 0 auto}
+.tab2:hover{color:var(--blue)}
+.tab2.on{background:#fff;color:var(--blue);box-shadow:0 1px 3px rgba(16,42,93,.12)}
 .seg.multi button.on{background:var(--blue);color:#fff}
 
 /* KPI */
@@ -680,20 +690,8 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
     </div>
   </header>
   <main>
-    <div class="tabs">
-      <button class="tab on" data-tab="sales" onclick="switchTab('sales')">📊 ยอดขาย</button>
-      <button class="tab" data-tab="plan" onclick="switchTab('plan')">🗓 ปฏิทินงาน<span id="planBadge"></span></button>
-      <button class="tab" data-tab="kpi" onclick="switchTab('kpi')">🎯 eB2B & Self Ordering</button>
-      <button class="tab" data-tab="eb" onclick="switchTab('eb')">🏆 แข่งขันเปิด eB2B (ส.ค.–ก.ย.)</button>
-      <button class="tab" data-tab="ps" onclick="switchTab('ps')">⭐ Perfect Store</button>
-      <button class="tab" data-tab="order" onclick="switchTab('order')">🛒 การสั่งของ</button>
-      <button class="tab" data-tab="stock" onclick="switchTab('stock')">📦 สต็อก</button>
-      <button class="tab admin-upload" data-tab="pos" style="display:none" onclick="switchTab('pos')">📊 วิเคราะห์การสั่งของ</button>
-      <button class="tab" data-tab="dci" onclick="switchTab('dci')">📈 DCI Score ศูนย์</button>
-      <button class="tab admin-upload" data-tab="lead" style="display:none" onclick="switchTab('lead')">🏪 สมัครร้านค้าใหม่</button>
-      <button class="tab sales-only" data-tab="myshop" style="display:none" onclick="switchTab('myshop')">🏪 ร้านใหม่ของฉัน</button>
-      <button class="tab" data-tab="ana" onclick="switchTab('ana')">🔬 วิเคราะห์เชิงลึก</button>
-    </div>
+    <div class="tabs" id="tabTop"></div>
+    <div class="tabs2" id="tabSub" style="display:none"></div>
     <div id="salesView">
     <div class="controls">
       <div class="ctl">
@@ -1831,9 +1829,71 @@ function navUpd(){const b=document.getElementById("backBtn");if(b)b.style.displa
 function navReset(){NAV=[];navUpd();}
 function navBack(){if(!NAV.length)return;const s=NAV.pop();if(s.ana&&typeof ANA!=="undefined")Object.assign(ANA,s.ana);_switchTab(s.tab);if(s.tab==="ana"&&typeof syncAnaControls==="function")syncAnaControls();navUpd();}
 function switchTab(t){if(t!==CURTAB)navPush();_switchTab(t);}
+/* ============================================================================
+ * แถบแท็บ — 7 กลุ่มหลัก + แท็บย่อยในกลุ่ม
+ *
+ * เดิมมีแท็บเรียงกัน 12 อันในแถวเดียว เจ้าของแจ้ง 2 ต.ค. 69 ว่า "tab มันเยอะมาก"
+ * (ต้องเลื่อนซ้ายขวาหา) จึงรวมเป็นกลุ่มตามที่สั่งไว้
+ *
+ * ⚠️ คีย์ของแต่ละหน้า (CURTAB: sales/ana/kpi/ps/dci/order/pos/stock/plan/lead/myshop/eb)
+ * **ไม่เปลี่ยน** — _switchTab, ปุ่มย้อนกลับ (NAV), ปุ่มอัพโหลดที่ดู CURTAB และโค้ดอื่น
+ * ทั้งหมดจึงทำงานต่อได้เหมือนเดิม ที่เพิ่มเข้ามาคือชั้น "กลุ่ม" ทับไว้ด้านบนเท่านั้น
+ * `role` = หน้าที่เห็นได้เฉพาะบางสิทธิ์ (แทนคลาส .admin-upload / .sales-only ที่เคยใช้กับแท็บ)
+ * ==========================================================================*/
+const TAB_GROUPS=[
+  {k:"sales",nm:"📊 ยอดขาย",tabs:[
+    {t:"sales",nm:"ภาพรวมยอดขาย"},
+    {t:"ana",nm:"🔬 วิเคราะห์เชิงลึก"}]},
+  {k:"kpi",nm:"🎯 KPI",tabs:[
+    {t:"kpi",nm:"eB2B & Self Ordering"},
+    {t:"ps",nm:"⭐ Perfect Store"},
+    {t:"dci",nm:"📈 DCI Score ศูนย์"}]},
+  {k:"order",nm:"🛒 การสั่งของ",tabs:[
+    {t:"order",nm:"ภาพรวมสั่งของ"},
+    {t:"pos",nm:"📊 วิเคราะห์การสั่งของ",role:"manager"}]},
+  {k:"stock",nm:"📦 สต็อก",tabs:[{t:"stock",nm:"สต็อก"}]},
+  {k:"plan",nm:"🗓 ปฏิทินงาน",badge:true,tabs:[{t:"plan",nm:"ปฏิทินงาน"}]},
+  {k:"shop",nm:"🏪 สมัครร้านค้าใหม่",nmSales:"🏪 ร้านใหม่ของฉัน",tabs:[
+    {t:"lead",nm:"ใบสมัครร้านค้า",role:"manager"},
+    {t:"myshop",nm:"ร้านใหม่ของฉัน",role:"sales"}]},
+  {k:"eb",nm:"🏆 แข่งขันเปิด eB2B",tabs:[{t:"eb",nm:"แข่งขันเปิด eB2B (ส.ค.–ก.ย. 69)"}]},
+];
+function tabRole(){return (S.user&&S.user.role)||"";}
+function tabOk(x){return !x.role||x.role===tabRole();}
+function tabGroupOf(t){
+  for(let i=0;i<TAB_GROUPS.length;i++)if(TAB_GROUPS[i].tabs.some(x=>x.t===t))return TAB_GROUPS[i];
+  return TAB_GROUPS[0];
+}
+/* เฉพาะกลุ่มที่มีหน้าให้ดูจริงตามสิทธิ์ของคนที่ล็อกอินอยู่ */
+function tabVisible(){
+  return TAB_GROUPS.map(g=>({g:g,tabs:g.tabs.filter(tabOk)})).filter(x=>x.tabs.length);
+}
+function renderTabs(){
+  const top=document.getElementById("tabTop"),sub=document.getElementById("tabSub");
+  if(!top||!sub)return;
+  const cur=tabGroupOf(CURTAB),vis=tabVisible();
+  top.innerHTML=vis.map(x=>{
+    const nm=(tabRole()==="sales"&&x.g.nmSales)?x.g.nmSales:x.g.nm;
+    return `<button type="button" class="tab${x.g.k===cur.k?" on":""}" data-grp="${x.g.k}" onclick="switchGroup('${x.g.k}')">${nm}${x.g.badge?'<span id="planBadge"></span>':""}</button>`;
+  }).join("");
+  const mine=((vis.filter(x=>x.g.k===cur.k)[0])||{tabs:[]}).tabs;
+  if(mine.length<2){sub.innerHTML="";sub.style.display="none";}   /* กลุ่มหน้าเดียว ไม่ต้องมีแถวย่อย */
+  else{
+    sub.style.display="";
+    sub.innerHTML=mine.map(x=>`<button type="button" class="tab2${x.t===CURTAB?" on":""}" data-tab="${x.t}" onclick="switchTab('${x.t}')">${x.nm}</button>`).join("");
+  }
+  if(typeof plBadge==="function")plBadge();
+}
+/* กดกลุ่ม = ไปหน้าแรกของกลุ่มนั้น · ถ้าอยู่ในกลุ่มนั้นอยู่แล้ว ไม่ต้องเด้งกลับหน้าแรก */
+function switchGroup(k){
+  const g=TAB_GROUPS.filter(x=>x.k===k)[0];if(!g)return;
+  const tabs=g.tabs.filter(tabOk);if(!tabs.length)return;
+  if(tabs.some(x=>x.t===CURTAB))return;
+  switchTab(tabs[0].t);
+}
 function _switchTab(t){
   CURTAB=t;
-  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
+  renderTabs();
   document.getElementById("salesView").classList.toggle("hidden",t!=="sales");
   document.getElementById("planView").classList.toggle("hidden",t!=="plan");
   document.getElementById("kpiView").classList.toggle("hidden",t!=="kpi");

@@ -10,6 +10,9 @@ the app UI; the sales team sees everything live. Features (all are tabs in one p
 **การสั่งของ** (order status + Drop tracking, purchase-order recommendations by category),
 **สต็อก**, **คำขอสินค้า** (sales request → manager summary → got/dropped status), and
 **วิเคราะห์เชิงลึก** (product-mix analytics by line/group/brand/product + per-store).
+The pages sit in **7 top-level tab groups** (`TAB_GROUPS`/`renderTabs`), several of which open a
+row of sub-tabs. The per-page keys (`CURTAB`) did not change when the grouping was added — see
+`HANDOFF.md` §5 before touching the tab bar.
 
 ## The user
 Non-technical business owner. **Always respond in Thai**, keep it simple, avoid jargon.
@@ -140,6 +143,9 @@ code, never printed.
   The form's totals/weight/volume/value are FORMULAS over the Order Confirm column, so the output
   sets `fullCalcOnLoad="1"` and the manager must open it in Excel once before emailing. Rules and
   the five assumptions to re-check if Unilever changes the form: `HANDOFF.md` §5.
+  The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 7 groups,
+  each holding one or more pages, role-gated per page. Adding a page means adding it to that
+  table — never add a hand-written `.tab` button back into the markup.
 - `build.cjs` — regenerates `public/index.html` from the template (run after every edit).
 - `public/index.html` — generated output that Vercel serves. Do not edit by hand.
 - `public/join.html` + `public/img/*` — the public shop-application page (hand-written).
