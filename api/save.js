@@ -166,6 +166,34 @@ function mergeState(server, c) {
   // tombstone); deleting the key instead would simply be undone by this union.
   const sM = s.MINSTOCK || {}, cM = c.MINSTOCK || {};
   const MINSTOCK = { man: newestById(sM.man, cM.man) };
+  // Shared company planner. Three maps on purpose, all merged key by key so the manager and
+  // every salesperson can write at the same time without overwriting each other:
+  //   items — one record per task, newest `up` wins (a tab opened this morning cannot roll
+  //           back an edit someone made at noon; keyMerge WOULD allow that).
+  //   done  — one record per task AND per occurrence date ("id|2026-10-15"), so a repeating
+  //           task is ticked off round by round. Un-ticking writes {v:0}; deleting the key
+  //           would simply be undone by this union.
+  //   del   — tombstones, applied AFTER the union (same as PSTORE.del), so a stale tab cannot
+  //           bring a deleted task back. Re-saving that task later wins, because its `up` is
+  //           newer than the tombstone.
+  const sPl = s.PLAN || {}, cPl = c.PLAN || {};
+  const newestByUp = (a, b) => {
+    const out = Object.assign({}, a || {});
+    for (const k in (b || {})) {
+      const e = b[k], ex = out[k];
+      if (!ex || (e && (e.up || e.at || 0) >= (ex.up || ex.at || 0))) out[k] = e;
+    }
+    return out;
+  };
+  const plItems = newestByUp(sPl.items, cPl.items);
+  const plDone = newestById(sPl.done, cPl.done);
+  const plDel = keyMerge(sPl.del, cPl.del);
+  for (const k of Object.keys(plDel)) {
+    const it = plItems[k];
+    if (it && (it.up || it.at || 0) > plDel[k]) delete plDel[k];   // re-saved after the delete
+    else delete plItems[k];
+  }
+  const PLAN = { items: plItems, done: plDone, del: plDel };
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),
@@ -183,6 +211,7 @@ function mergeState(server, c) {
     LEADS,
     DCI,
     MINSTOCK,
+    PLAN,
     savedAt: Date.now(),
   };
 }

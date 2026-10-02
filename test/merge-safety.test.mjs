@@ -576,5 +576,84 @@ console.log("TEST 17 — deleting a KPI round whose date was read wrong needs a 
         d2.ORDERS.dates.length === 2 && Object.keys(d2.REQUESTS.data).length >= 1);
 }
 
+console.log("TEST 18 — the shared planner: manager and every salesperson write at once");
+{
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.PLAN = { items: {
+    pA: { t: "ส่ง PO รอบ 15", d: "2026-10-15", cat: "deadline", lines: [], by: "manager", byName: "ผู้จัดการ", at: 1000, up: 1000 },
+    pB: { t: "เก็บเงินร้านค้าง", d: "2026-10-08", cat: "task", lines: ["209611"], by: "209611", byName: "CT11", at: 1000, up: 1000 },
+  }, done: {}, del: {} };
+
+  // a tab from before the planner existed saves something else
+  const oldTab = JSON.parse(JSON.stringify(srv));
+  delete oldTab.PLAN;
+  const o1 = mergeState(srv, oldTab);
+  check("a tab with no PLAN at all cannot erase the planner",
+        !!o1.PLAN.items.pA && !!o1.PLAN.items.pB, Object.keys(o1.PLAN.items).join(","));
+
+  // CT12 adds a task of their own while the manager's tab still holds the old two
+  const ct12 = JSON.parse(JSON.stringify(o1));
+  ct12.PLAN.items.pC = { t: "นับสต็อกสิ้นเดือน", d: "2026-10-31", cat: "task", lines: ["209612"], by: "209612", byName: "CT12", at: 2000, up: 2000 };
+  const o2 = mergeState(o1, ct12);
+  check("a salesperson's new task is added alongside the others", Object.keys(o2.PLAN.items).length === 3);
+  const mgrStale = JSON.parse(JSON.stringify(o1));           // manager tab opened before pC existed
+  const o3 = mergeState(o2, mgrStale);
+  check("a manager save from a stale tab cannot erase a salesperson's task", !!o3.PLAN.items.pC);
+  check("...and the manager's own tasks are still there", !!o3.PLAN.items.pA && !!o3.PLAN.items.pB);
+
+  // THE case keyMerge would get wrong: a stale tab still holding the old wording
+  const noon = JSON.parse(JSON.stringify(o3));
+  noon.PLAN.items.pA = { ...noon.PLAN.items.pA, t: "ส่ง PO รอบ 15 (เลื่อนเป็น 16)", d: "2026-10-16", up: 3000 };
+  const o4 = mergeState(o3, noon);
+  check("the noon edit is taken", o4.PLAN.items.pA.d === "2026-10-16");
+  const o5 = mergeState(o4, JSON.parse(JSON.stringify(o3)));  // the morning tab saves again
+  check("a stale tab CANNOT roll an edited task back", o5.PLAN.items.pA.d === "2026-10-16",
+        o5.PLAN.items.pA.d);
+
+  // ticking a repeating task is per occurrence date, and un-ticking needs {v:0}
+  const tick = JSON.parse(JSON.stringify(o5));
+  tick.PLAN.done["pA|2026-10-16"] = { v: 1, by: "CT11", at: 4000 };
+  tick.PLAN.done["pA|2026-11-16"] = { v: 1, by: "CT11", at: 4000 };
+  const o6 = mergeState(o5, tick);
+  check("each occurrence of a repeating task is ticked on its own",
+        o6.PLAN.done["pA|2026-10-16"].v === 1 && o6.PLAN.done["pA|2026-11-16"].v === 1);
+  const untickByDelete = JSON.parse(JSON.stringify(o6));
+  delete untickByDelete.PLAN.done["pA|2026-10-16"];
+  check("deleting the done key does NOT untick (this is why we need {v:0})",
+        mergeState(o6, untickByDelete).PLAN.done["pA|2026-10-16"].v === 1);
+  const untick = JSON.parse(JSON.stringify(o6));
+  untick.PLAN.done["pA|2026-10-16"] = { v: 0, by: "CT11", at: 5000 };
+  const o7 = mergeState(o6, untick);
+  check("a {v:0} tombstone DOES untick it", o7.PLAN.done["pA|2026-10-16"].v === 0);
+  check("...and a stale tab cannot re-tick it", mergeState(o7, o6).PLAN.done["pA|2026-10-16"].v === 0);
+
+  // deleting a task needs a tombstone, and a re-save beats it
+  const plain = JSON.parse(JSON.stringify(o7));
+  delete plain.PLAN.items.pC;
+  check("deleting the key alone does NOT remove a task", !!mergeState(o7, plain).PLAN.items.pC);
+  const tomb = JSON.parse(JSON.stringify(plain));
+  tomb.PLAN.del = { pC: 6000 };
+  const o8 = mergeState(o7, tomb);
+  check("a tombstone DOES remove it", !o8.PLAN.items.pC);
+  check("...and a stale tab cannot bring it back", !mergeState(o8, o7).PLAN.items.pC);
+  check("...while every other task survives", Object.keys(o8.PLAN.items).sort().join(",") === "pA,pB");
+  const back = JSON.parse(JSON.stringify(o8));
+  back.PLAN.items.pC = { t: "นับสต็อกสิ้นเดือน", d: "2026-10-31", cat: "task", lines: [], by: "209612", byName: "CT12", at: 2000, up: 7000 };
+  delete back.PLAN.del.pC;
+  const o9 = mergeState(o8, back);
+  check("re-adding that task later wins over the tombstone", !!o9.PLAN.items.pC);
+  check("...and clears the tombstone so it stops being deleted every save", !o9.PLAN.del.pC);
+
+  // first save into an empty store, and no cross-section damage
+  const first = mergeState(null, { DATA: server.DATA, PLAN: srv.PLAN });
+  check("first save into an empty store keeps the planner", !!first.PLAN.items.pA);
+  check("the planner disturbs no other section",
+        Object.keys(o9.DATA.monthly).length === 2 && !!o9.PSTORE.rounds["2026-06-30"] &&
+        o9.ORDERS.dates.length === 2 && Object.keys(o9.REQUESTS.data).length >= 1 &&
+        Object.keys(o9.KPI.data).length === 2);
+  check("looksEmpty: a planner-only save does NOT count as real data (same as DCI/MINSTOCK)",
+        looksEmpty({ DATA: {}, PLAN: srv.PLAN }) === true);
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

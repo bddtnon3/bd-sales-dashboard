@@ -53,11 +53,11 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (131 checks against the real `api/save.js` and the
+  running **`node test/merge-safety.test.mjs`** (150 checks against the real `api/save.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
-  tombstones, and the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
+  tombstones, the shared planner (`PLAN.items`/`done`/`del`), and the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
 
 ## The order form's colour grammar (analysed from the 01/09 confirm form)
 The order cell is filled with **two different colours that mean two different things** — do not
@@ -126,6 +126,11 @@ code, never printed.
   read `as of W4 Sep'26` as the 4th. `end of Sep` in a filename means the month-closing round.
   Old `YYYY-MM` keys must keep working; `KPI.meta` and the `KPI.del` tombstones must survive
   `mergeState`. Rules: `HANDOFF.md` §5.
+  The **🗓 ปฏิทินงาน** tab (`renderPlan`/`plOccur`) is the shared company planner — everyone
+  sees the same calendar, the manager may edit any task, a salesperson may add tasks and
+  edit/delete only their own (`by` is set from the token, never the payload). Repeating tasks
+  are expanded at render time, never stored as copies; `PLAN.done` is keyed per occurrence
+  date. Rules: `HANDOFF.md` §5.
   **การสั่งของ** has four sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO.
   The auto-PO calculator (`poBuild`/`renderPoCalc`) and `MINSTOCK` (minimum stock per code) have
   rules that are easy to get wrong — read `HANDOFF.md` §5 before touching either. The calculator
@@ -142,6 +147,9 @@ code, never printed.
 - `api/*.js` — Vercel serverless functions (ESM): `login`, `data` (read newest non-empty blob),
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write),
   `apply` (PUBLIC shop application → its own `bd-lead-*` blob), `leads` (manager-only read).
+- `api/plan.js` — a salesperson adds / edits / ticks off one planner task. Like
+  `api/leadstatus.js` it writes exactly one key per call (`PLAN.items[id]`, `PLAN.done[id|date]`
+  or `PLAN.del[id]`), decides ownership from the token and never accepts a whole state.
 - `api/leadstatus.js` — a salesperson reports progress on a shop assigned to them.
   On that tab each shop also has copy / save-CSV / save-photo buttons so the rep can hand the
   shop straight to the admin who opens the customer account. Download filenames must stay

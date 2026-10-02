@@ -318,6 +318,98 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .dci-risk.w{background:#FDF3DB;border-color:var(--warn)}
 .dci-risk.b{background:#FBE9E9;border-color:var(--bad)}
 .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* ============================================================================
+ * PLANNER — ปฏิทินงานร่วมกันของทั้งบริษัท
+ * ตั้งใจให้ "สบายตา" แบบปฏิทิน Google: ช่องวันสูงเท่ากัน เส้นบาง ๆ สีอ่อน
+ * ตัวงานเป็นป้ายสีตามประเภท ไม่ใส่สีจัดเพราะดูทั้งเดือนทีเดียวจะลายตา
+ * ==========================================================================*/
+.pl-nav{display:flex;align-items:center;gap:4px}
+.pl-nav button{width:34px;height:34px;border:1.5px solid var(--line);background:#fff;border-radius:9px;
+  font-size:16px;font-weight:800;color:var(--blue);line-height:1}
+.pl-nav button:hover{background:var(--blue-soft)}
+.pl-mon{font-size:15.5px;font-weight:800;min-width:132px;text-align:center}
+.pl-today{border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:8px 13px;font-size:13px;font-weight:700;color:var(--blue)}
+.pl-today:hover{background:var(--blue-soft)}
+.pl-add{background:var(--blue);color:#fff;border:none;border-radius:9px;padding:10px 16px;font-size:13.5px;font-weight:800;white-space:nowrap}
+.pl-add:hover{background:var(--blue-dark)}
+/* ⚠️ minmax(0,1fr) ไม่ใช่ 1fr — "1fr" คือ minmax(auto,1fr) ป้ายงานที่ตั้ง white-space:nowrap
+   จะดันช่องให้กว้างเกินโควตา ตารางเบี้ยวและล้นออกนอกจอ (เจอตอนเทสต์ที่จอ 768px) */
+.pl-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.pl-dow{background:#F1F5FC;color:var(--muted);font-size:11.5px;font-weight:800;text-align:center;padding:7px 0}
+.pl-dow.we{color:#A3ADBC}
+.pl-cell{background:#fff;min-height:102px;padding:5px 5px 7px;text-align:left;border:none;
+  display:block;width:100%;font-family:inherit;cursor:pointer}
+.pl-cell:hover{background:#F9FBFF}
+.pl-cell.we{background:#FCFDFE}
+.pl-cell.out{background:#FAFBFD}
+.pl-cell.out .pl-dnum{color:#C7CEDA}
+.pl-cell.today{background:var(--blue-soft);box-shadow:inset 0 0 0 2px var(--blue)}
+.pl-dnum{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:3px;padding:0 2px}
+.pl-cell.today .pl-dnum{color:var(--blue-dark)}
+.pl-dnum i{font-style:normal;font-weight:700;font-size:10.5px;color:var(--blue);float:right}
+.pl-chip{display:block;width:100%;text-align:left;border:none;border-radius:6px;padding:3px 6px;margin-bottom:2px;
+  font-size:11.5px;font-weight:700;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-family:inherit;cursor:pointer}
+.pl-chip.done{opacity:.45;text-decoration:line-through}
+.pl-more{font-size:10.5px;color:var(--muted);font-weight:700;padding-left:4px}
+/* รายการแบบ agenda — อ่านง่ายที่สุดบนมือถือ */
+.pl-dayh{display:flex;align-items:baseline;gap:8px;background:var(--blue-soft);color:var(--blue-dark);
+  border-radius:8px;padding:7px 12px;margin:14px 0 8px;font-weight:800;font-size:13.5px}
+.pl-dayh span{font-weight:400;font-size:12px;color:var(--muted)}
+.pl-dayh.late{background:#FBE9E9;color:#B3322F}
+.pl-dayh.late span{color:#B3322F}
+.pl-item{display:flex;gap:10px;align-items:flex-start;background:#fff;border:1px solid var(--line);
+  border-left:4px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:7px}
+.pl-item.done{background:#FAFBFC}
+.pl-item.done .pl-t{text-decoration:line-through;color:var(--muted)}
+.pl-tick{width:24px;height:24px;flex:0 0 24px;border:2px solid var(--line);background:#fff;border-radius:7px;
+  font-size:13px;font-weight:800;color:transparent;line-height:1;padding:0}
+.pl-tick.on{background:var(--good);border-color:var(--good);color:#fff}
+.pl-tick:hover{border-color:var(--good)}
+.pl-ibody{flex:1;min-width:0}
+.pl-t{font-size:14px;font-weight:700;line-height:1.4;word-break:break-word}
+.pl-meta{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 8px}
+.pl-tag{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:20px;background:var(--bg);color:var(--muted)}
+.pl-note{font-size:12.5px;color:#4A5465;margin-top:5px;white-space:pre-wrap;word-break:break-word}
+.pl-edit{border:none;background:none;color:var(--blue);font-size:12px;font-weight:800;padding:2px 4px;flex:0 0 auto}
+/* กล่องกรอกงาน — กลางจอบนคอม เด้งจากล่างบนมือถือ */
+.pl-mask{position:fixed;inset:0;background:rgba(14,32,66,.45);z-index:70;display:flex;align-items:center;
+  justify-content:center;padding:16px}
+.pl-modal{background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;
+  box-shadow:0 24px 70px rgba(10,30,70,.32);padding:20px 22px 18px}
+.pl-mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.pl-mh h3{font-size:17px}
+.pl-x{border:none;background:var(--bg);width:32px;height:32px;border-radius:9px;font-size:16px;color:var(--muted);line-height:1}
+.pl-f{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.pl-f>label{font-size:12px;font-weight:700;color:var(--muted)}
+.pl-f input,.pl-f select,.pl-f textarea{padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;
+  font-size:14.5px;width:100%;background:#fff;font-family:inherit;color:var(--ink)}
+.pl-f textarea{min-height:68px;resize:vertical}
+.pl-f input:focus,.pl-f select:focus,.pl-f textarea:focus{outline:none;border-color:var(--blue)}
+.pl-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pl-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pl-cb{border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:7px 13px;font-size:12.5px;
+  font-weight:800;color:var(--muted);font-family:inherit}
+.pl-cb.on{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-dark)}
+.pl-mf{display:flex;gap:9px;align-items:center;margin-top:4px}
+.pl-save{flex:1;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:800}
+.pl-save:hover{background:var(--blue-dark)}
+.pl-hint{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.5}
+@media(max-width:900px){
+  .pl-chip{font-size:11px;padding:3px 4px}
+  .pl-mon{min-width:112px;font-size:14.5px}
+}
+@media(max-width:640px){
+  .pl-mask{align-items:flex-end;padding:0}
+  .pl-modal{border-radius:16px 16px 0 0;max-height:92vh;padding:18px 16px 22px}
+  .pl-cell{min-height:62px;padding:3px 2px 4px}
+  .pl-dnum{font-size:11px;margin-bottom:2px}
+  .pl-chip{font-size:0;padding:0;height:5px;border-radius:3px;margin-bottom:2px}
+  .pl-more{display:none}
+  .pl-2{grid-template-columns:1fr}
+}
 .kpi-monthbar{background:var(--blue-soft);border-left:4px solid var(--blue);border-radius:0 8px 8px 0;padding:9px 14px;margin-bottom:14px;font-size:14px;color:var(--blue-dark)}
 .kpi-monthbar b{font-size:15px}
 
@@ -590,6 +682,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
   <main>
     <div class="tabs">
       <button class="tab on" data-tab="sales" onclick="switchTab('sales')">📊 ยอดขาย</button>
+      <button class="tab" data-tab="plan" onclick="switchTab('plan')">🗓 ปฏิทินงาน<span id="planBadge"></span></button>
       <button class="tab" data-tab="kpi" onclick="switchTab('kpi')">🎯 eB2B & Self Ordering</button>
       <button class="tab" data-tab="eb" onclick="switchTab('eb')">🏆 แข่งขันเปิด eB2B (ส.ค.–ก.ย.)</button>
       <button class="tab" data-tab="ps" onclick="switchTab('ps')">⭐ Perfect Store</button>
@@ -882,6 +975,40 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="panel" id="ldTable"></div>
     </div>
 
+    <div id="planView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>เดือน</label>
+          <div class="pl-nav">
+            <button onclick="plMove(-1)" title="เดือนก่อน">‹</button>
+            <div class="pl-mon" id="plMon">-</div>
+            <button onclick="plMove(1)" title="เดือนถัดไป">›</button>
+            <button class="pl-today" style="width:auto" onclick="plToday()">วันนี้</button>
+          </div>
+        </div>
+        <div class="ctl"><label>มุมมอง</label>
+          <div class="seg" id="plViewSeg">
+            <button data-v="mon" class="on" onclick="plSetView('mon')">📅 ปฏิทินเดือน</button>
+            <button data-v="list" onclick="plSetView('list')">📋 รายการที่ต้องทำ</button>
+          </div>
+        </div>
+        <div class="ctl"><label>แสดงงานของ</label>
+          <div class="seg" id="plScopeSeg">
+            <button data-s="all" class="on" onclick="plSetScope('all')">ทุกสาย</button>
+            <button data-s="me" onclick="plSetScope('me')">สายของฉัน</button>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="ctl"><label>&nbsp;</label>
+          <button class="pl-add" onclick="plOpen(null,null)">＋ เพิ่มงาน</button>
+        </div>
+      </div>
+      <div class="kpi-monthbar" id="plBar"></div>
+      <div class="cards" id="plCards"></div>
+      <div class="panel" id="plMain"></div>
+      <div class="panel" id="plDay" style="display:none"></div>
+      <div id="plModal"></div>
+    </div>
+
     <div id="anaView" class="hidden">
       <div class="controls">
         <div class="ctl"><label>มุมมอง</label>
@@ -1131,6 +1258,16 @@ let LEADSRAW=[],LEADSLOADED=false;
    ค่าที่ระบบ "คำนวณให้" ไม่เก็บลงนี่ — คิดสดตอนแสดงผล ไม่งั้นการคำนวณรอบเดียวจะทับ
    ค่าที่กรอกมือไว้ทั้งหมดด้วยกติกา newest-wins */
 let MINSTOCK = __MINSTOCKDATA__;
+/* PLAN — ปฏิทินงานร่วมกันของทั้งบริษัท (ทุกคนเห็น · manager แก้ได้ทุกงาน · เซลล์แก้/ลบได้แต่งานที่ตัวเองสร้าง)
+   {items:{id:{t,d,d2,tm,cat,lines:[],note,rep,repTo,by,byName,at,up}},
+    done:{"id|YYYY-MM-DD":{v,by,at}},
+    del:{id:ts}}
+   d = วันเริ่ม · d2 = วันสิ้นสุด (ว่าง = วันเดียว) · tm = เวลา (ว่างได้) · cat = ประเภทงาน
+   lines = สายที่เกี่ยวข้อง ([] = ทุกคน) · rep = "" | "w" ทุกสัปดาห์ | "m" ทุกเดือนวันที่เดิม
+   repTo = ซ้ำถึงวันที่ (ว่าง = 1 ปีข้างหน้า)
+   ⚠️ done คีย์ด้วย "id|วันที่ที่เกิดขึ้นจริง" เพราะงานซ้ำต้องติ๊กเสร็จได้ทีละรอบ
+   ⚠️ ยกเลิกติ๊กต้องเขียน {v:0} ห้ามลบ key — merge ฝั่งเซิร์ฟเวอร์เป็นการรวม key ลบแล้วค่าเดิมกลับมา */
+let PLAN = __PLANDATA__;
 /* DCI Score ของศูนย์ (ไฟล์ DCI Score จาก Unilever) — ผู้จัดการเท่านั้น
    {up,file,periods:["BM1","Q1",…],data:{"BM5":{tot,totCov,cov,it:{"3":{s,pct:[],plan:[],comp:[],…}}}}} */
 let DCI = __DCIDATA__;
@@ -1200,7 +1337,7 @@ function doLogin(){
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
   document.querySelectorAll(".sales-only").forEach(e=>e.style.display=acc.role==="sales"?"":"none");
-  initKeys();render();initKPI();initOrder();initAnalytics();navReset();
+  initKeys();render();initKPI();initOrder();initAnalytics();initPlan();navReset();
   _switchTab("sales");   /* never leave the previous user's tab (incl. manager-only ones) open */
 }
 function logout(){S.user=null;_switchTab("sales");document.getElementById("app").classList.add("hidden");
@@ -1698,6 +1835,7 @@ function _switchTab(t){
   CURTAB=t;
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   document.getElementById("salesView").classList.toggle("hidden",t!=="sales");
+  document.getElementById("planView").classList.toggle("hidden",t!=="plan");
   document.getElementById("kpiView").classList.toggle("hidden",t!=="kpi");
   document.getElementById("ebView").classList.toggle("hidden",t!=="eb");
   document.getElementById("psView").classList.toggle("hidden",t!=="ps");
@@ -1709,6 +1847,7 @@ function _switchTab(t){
   document.getElementById("myshopView").classList.toggle("hidden",t!=="myshop");
   document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
   if(t==="kpi")renderKPI();
+  if(t==="plan")renderPlan();
   if(t==="eb")renderEB();
   if(t==="ps")renderPS();
   if(t==="order")renderOrder();
@@ -2066,6 +2205,379 @@ function parseKPI(name,buf){
   initKPI();KPIS.month=mk;{const sl=document.getElementById("kpiMonth");if(sl)sl.value=mk;}
   if(!document.getElementById("kpiView").classList.contains("hidden"))renderKPI();
   syncToServer();
+}
+
+/* ============================================================================
+ * PLANNER — ปฏิทินงานร่วมกันของทั้งบริษัท (แท็บ 🗓 ปฏิทินงาน)
+ *
+ * ใครเห็น/ทำอะไรได้:
+ *   - ทุกคน (manager + เซลล์ทุกสาย) เห็นปฏิทินเดียวกัน
+ *   - manager เพิ่ม/แก้/ลบได้ทุกงาน
+ *   - เซลล์เพิ่มงานได้ และแก้/ลบได้เฉพาะงานที่ตัวเองสร้าง (by == รหัสสายตัวเอง)
+ *   - "ติ๊กว่าเสร็จ" ทำได้ถ้างานนั้นเกี่ยวกับตัวเอง (ทุกคน หรือระบุสายตัวเอง)
+ *
+ * เส้นทางบันทึก: manager ใช้ syncToServer() (api/save.js + mergeState) เหมือนทุกแท็บ
+ * เซลล์ใช้ api/plan.js ที่เขียนเฉพาะคีย์ของตัวเอง — แบบเดียวกับ api/leadstatus.js
+ * จึงไม่มีทางที่ฝั่งเซลล์จะทับงานของ manager หรือของเซลล์คนอื่น
+ *
+ * งานซ้ำ (ทุกสัปดาห์ / ทุกเดือน) ไม่เก็บเป็นหลายเรคอร์ด — คิดสดตอนแสดงผล (plOccur)
+ * เก็บแค่ต้นฉบับ 1 อัน ลบ/แก้ทีเดียวได้ทั้งชุด และไม่ทำให้ข้อมูลบวม
+ * ==========================================================================*/
+const PL_CAT={
+  deadline:{ic:"⏰",nm:"เดดไลน์",bg:"#FDECEC",fg:"#B3322F",bd:"#E79A9A"},
+  task:{ic:"📌",nm:"งานที่ต้องทำ",bg:"#E7F6EE",fg:"#156F41",bd:"#9ED8B8"},
+  meet:{ic:"👥",nm:"ประชุม/อบรม",bg:"#E8F0FC",fg:"#0F3E93",bd:"#9FBBEA"},
+  promo:{ic:"🎉",nm:"โปรโมชั่น/กิจกรรม",bg:"#FDF0E3",fg:"#9B5B12",bd:"#EEC08A"},
+  holiday:{ic:"🌴",nm:"วันหยุด",bg:"#F1EEFB",fg:"#55459F",bd:"#BDB1EA"},
+};
+const PL_CATS=["deadline","task","meet","promo","holiday"];
+const PL_DOW=["จ","อ","พ","พฤ","ศ","ส","อา"];                     /* ปฏิทินงานเริ่มวันจันทร์ */
+const PL_DOWFULL=["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
+const PL_REP_MAX=600;        /* กันลูปไม่รู้จบถ้าข้อมูลเพี้ยน */
+let PL={ym:null,view:"mon",scope:"all",day:null,edit:null,cat:"task",lines:[],showDone:false};
+
+/* ---------- วันที่ ---------- */
+function plISO(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
+function plParse(s){const p=String(s||"").split("-");return new Date(+p[0]||2026,(+p[1]||1)-1,+p[2]||1);}
+function plShift(s,n){const dt=plParse(s);dt.setDate(dt.getDate()+n);return plISO(dt);}
+function plYm(d){return String(d||"").slice(0,7);}
+function plDays(ym){const p=String(ym).split("-");return new Date(+p[0],+p[1],0).getDate();}
+function plMonEnd(ym){return ym+"-"+String(plDays(ym)).padStart(2,"0");}
+function plAddMon(s){return plMonN(s,1);}
+/* เดือนที่ n นับจากวันเริ่ม — ยึด "วันที่" ของต้นฉบับไว้เสมอ แล้วหุบให้พอดีเดือนนั้น
+   ⚠️ ห้ามบวกเดือนทีละก้าวจากผลลัพธ์เดิม: 31 ม.ค. +1 เดือน = 28 ก.พ. แล้วจะติดอยู่ที่ 28
+   ตลอดไป งาน "นับสต็อกสิ้นเดือน" จะเพี้ยนทั้งปี (เจอตอนเทสต์ 2 ต.ค. 69) */
+function plMonN(start,n){
+  const p=String(start).split("-");const y0=+p[0],m0=+p[1],dd=+p[2];
+  const t=(m0-1)+(n||0);const y=y0+Math.floor(t/12),m=(t%12+12)%12+1;
+  const last=new Date(y,m,0).getDate();
+  return y+"-"+String(m).padStart(2,"0")+"-"+String(Math.min(dd,last)).padStart(2,"0");
+}
+function plMonDiff(a,b){
+  const x=String(a).split("-"),y=String(b).split("-");
+  return (+y[0]-+x[0])*12+(+y[1]-+x[1]);
+}
+function plOkDate(s){return /^\d{4}-\d{2}-\d{2}$/.test(String(s||""));}
+
+/* ---------- สิทธิ์ ---------- */
+function plIsMgr(){return !!(S.user&&S.user.role==="manager");}
+function plMyLine(){return (S.user&&S.user.code)||"";}
+function plOwner(){return plIsMgr()?"manager":plMyLine();}
+function plForMe(it){
+  if(!it.lines||!it.lines.length)return true;              /* [] = ทุกคน */
+  const me=plMyLine();return me?it.lines.indexOf(me)>=0:true;   /* manager เห็นเป็นของตัวเองหมด */
+}
+function plCanEdit(it){return plIsMgr()||(!!plMyLine()&&it.by===plMyLine());}
+function plCanTick(it){return plIsMgr()||plForMe(it);}
+
+/* ---------- อ่านรายการ ---------- */
+function plItems(){
+  if(!PLAN||typeof PLAN!=="object")PLAN={items:{},done:{},del:{}};
+  const it=PLAN.items||{},del=PLAN.del||{};
+  return Object.keys(it).filter(id=>it[id]&&it[id].t&&!del[id]).map(id=>Object.assign({id:id},it[id]));
+}
+function plVisible(){return PL.scope==="me"?plItems().filter(plForMe):plItems();}
+function plDoneKey(id,d){return id+"|"+d;}
+function plIsDone(id,d){const e=((PLAN&&PLAN.done)||{})[plDoneKey(id,d)];return !!(e&&e.v);}
+function plDoneBy(id,d){const e=((PLAN&&PLAN.done)||{})[plDoneKey(id,d)];return e&&e.by?" โดย "+anaEsc(e.by):"";}
+/* ขยายงาน (รวมงานซ้ำ) ออกเป็นรอบ ๆ ที่ตกอยู่ในช่วง from..to */
+function plOccur(it,from,to){
+  const out=[];
+  if(!plOkDate(it.d))return out;
+  const span=(plOkDate(it.d2)&&it.d2>it.d)?Math.round((plParse(it.d2)-plParse(it.d))/86400000):0;
+  const lim=plOkDate(it.repTo)?it.repTo:plShift(to,370);
+  const rep=(it.rep==="w"||it.rep==="m")?it.rep:"";
+  /* งานซ้ำที่เริ่มมานานแล้ว — กระโดดมาใกล้ ๆ ช่วงที่แสดง ไม่ต้องไล่ทีละรอบตั้งแต่ต้น */
+  let i=0;
+  if(rep==="w"){const k=Math.floor((plParse(from)-plParse(it.d))/604800000)-1;if(k>0)i=k;}
+  if(rep==="m"){const k=plMonDiff(it.d,from)-1;if(k>0)i=k;}
+  for(let n=0;n<PL_REP_MAX;n++){
+    const d=rep==="w"?plShift(it.d,i*7):rep==="m"?plMonN(it.d,i):it.d;
+    if(d>to)break;
+    if(i>0&&d>lim)break;
+    const end=span?plShift(d,span):d;
+    if(end>=from)out.push({date:d,end:end});
+    if(!rep)break;
+    i++;
+  }
+  return out;
+}
+/* "เลยกำหนด" นับแค่งานที่ไม่ซ้ำ — งานประจำที่ตกรอบไปเมื่อ 3 สัปดาห์ก่อนไม่ใช่สิ่งที่ต้องตามเก็บ
+   ถ้านับด้วย หน้าจอจะเต็มไปด้วยงานประจำย้อนหลังนับสิบรายการ (ตั้งใจให้ "ไม่ปวดหัว") */
+function plLate(occ,today){return occ.filter(o=>o.end<today&&!o.it.rep&&!plIsDone(o.it.id,o.d));}
+function plOcc(from,to){
+  const out=[];
+  plVisible().forEach(it=>plOccur(it,from,to).forEach(o=>out.push({it:it,d:o.date,end:o.end})));
+  const key=o=>o.d+" "+(o.it.tm||"99:99")+" "+PL_CATS.indexOf(o.it.cat)+" "+(o.it.t||"");
+  out.sort((a,b)=>key(a)<key(b)?-1:key(a)>key(b)?1:0);
+  return out;
+}
+function plLineTags(lines){
+  if(!lines||!lines.length)return `<span class="pl-tag" style="background:#E8F0FC;color:#0F3E93">👥 ทุกคน</span>`;
+  return lines.map(c=>`<span class="pl-tag">${anaEsc(((DATA.lines||{})[c]||{}).display||FOCUS_MAP[c]||c)}</span>`).join("");
+}
+
+/* ---------- ปุ่มควบคุม ---------- */
+function plMove(n){
+  const p=String(PL.ym||plYm(todayISO())).split("-");let y=+p[0],m=+p[1]+n;
+  while(m<1){m+=12;y--;}while(m>12){m-=12;y++;}
+  PL.ym=y+"-"+String(m).padStart(2,"0");PL.day=null;renderPlan();
+}
+function plToday(){PL.ym=plYm(todayISO());PL.day=todayISO();PL.view="mon";setSeg("plViewSeg","v","mon");renderPlan();}
+function plSetView(v){PL.view=v;setSeg("plViewSeg","v",v);renderPlan();}
+function plSetScope(s){PL.scope=s;setSeg("plScopeSeg","s",s);renderPlan();}
+function plPickDay(d){PL.day=(PL.day===d?null:d);renderPlan();}
+function plCloseDay(){PL.day=null;renderPlan();}
+function plToggleDone(){PL.showDone=!PL.showDone;renderPlan();}
+
+/* ---------- วาดหน้าจอ ---------- */
+function plBadge(){
+  const bd=document.getElementById("planBadge");if(!bd)return;
+  const today=todayISO();
+  const sc=PL.scope;PL.scope="all";
+  const occ=plOcc(plShift(today,-120),today);
+  PL.scope=sc;
+  const n=plLate(occ,today).length+occ.filter(o=>o.d<=today&&o.end>=today&&!plIsDone(o.it.id,o.d)).length;
+  bd.innerHTML=n?`<span style="background:var(--bad);color:#fff;border-radius:20px;font-size:10.5px;font-weight:800;padding:1px 6px;margin-left:6px">${n}</span>`:"";
+}
+function initPlan(){PL.ym=plYm(todayISO());PL.day=null;plBadge();}
+function renderPlan(){
+  if(!PLAN||typeof PLAN!=="object")PLAN={items:{},done:{},del:{}};
+  if(!PL.ym)PL.ym=plYm(todayISO());
+  const today=todayISO();
+  const from=PL.ym+"-01",to=plMonEnd(PL.ym);
+  const occM=plOcc(from,to);
+  /* การ์ดสรุปคิดจากวันนี้ ไม่ขึ้นกับเดือนที่กำลังเปิดดู — เปิดมาต้องรู้ทันทีว่ามีอะไรค้าง */
+  const w=plOcc(plShift(today,-120),plShift(today,31));
+  const open=o=>!plIsDone(o.it.id,o.d);
+  const late=plLate(w,today);
+  const now=w.filter(o=>o.d<=today&&o.end>=today&&open(o));
+  const soon=w.filter(o=>o.d>today&&o.d<=plShift(today,7)&&open(o));
+  const doneM=occM.filter(o=>plIsDone(o.it.id,o.d)).length;
+
+  document.getElementById("plMon").textContent=fmtMonth(PL.ym);
+  document.getElementById("plBar").innerHTML=
+    `🗓 ปฏิทินงานของทั้งบริษัท · <b>${fmtMonth(PL.ym)}</b> · ${occM.length} งาน`+
+    (doneM?` · เสร็จแล้ว ${doneM}`:"")+
+    (PL.scope==="me"?` · <b>เฉพาะสายของฉัน</b>`:"")+
+    `<span class="dci-src">ทุกคนเห็นตารางเดียวกัน · ${plIsMgr()?"คุณแก้ได้ทุกงาน":"คุณเพิ่มงานได้ และแก้/ลบได้เฉพาะงานที่คุณสร้าง"} · กดช่องวันในปฏิทินเพื่อดูงานของวันนั้น</span>`;
+  document.getElementById("plCards").innerHTML=
+    `<div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">⚠️ เลยกำหนดแล้ว</div><div class="v ${late.length?"down":""}">${late.length}</div><div class="s">${late.length?"ควรเคลียร์ก่อน":"ไม่มีงานค้าง 👍"}</div></div>`+
+    `<div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">📍 วันนี้</div><div class="v">${now.length}</div><div class="s">${fmtDate(today)}</div></div>`+
+    `<div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:var(--warn)">⏳ 7 วันข้างหน้า</div><div class="v">${soon.length}</div><div class="s">เตรียมตัวล่วงหน้า</div></div>`+
+    `<div class="card"><div class="k">งานในเดือนนี้</div><div class="v">${occM.length}</div><div class="s">${doneM} เสร็จแล้ว · ${occM.length-doneM} ยังไม่เสร็จ</div></div>`;
+
+  document.getElementById("plMain").innerHTML=PL.view==="list"?plListHtml():plMonthHtml();
+  const dayEl=document.getElementById("plDay");
+  if(PL.view==="mon"&&PL.day){dayEl.style.display="";dayEl.innerHTML=plDayHtml();}
+  else{dayEl.style.display="none";dayEl.innerHTML="";}
+  plBadge();
+}
+function plMonthHtml(){
+  const ym=PL.ym,today=todayISO();
+  const from=ym+"-01",to=plMonEnd(ym);
+  /* งานหลายวันต้องขึ้นทุกวันในช่วง ไม่ใช่แค่วันเริ่ม */
+  const byDay={};
+  plOcc(from,to).forEach(o=>{
+    let d=o.d<from?from:o.d,g=0;
+    while(d<=o.end&&d<=to&&g++<45){(byDay[d]=byDay[d]||[]).push(o);d=plShift(d,1);}
+  });
+  const lead=(plParse(from).getDay()+6)%7;                  /* จันทร์ = 0 */
+  const total=Math.ceil((lead+plDays(ym))/7)*7;
+  let cells="",d=plShift(from,-lead);
+  for(let i=0;i<total;i++){
+    const dow=plParse(d).getDay(),out=plYm(d)!==ym,list=byDay[d]||[];
+    cells+=`<button type="button" class="pl-cell${out?" out":""}${(dow===0||dow===6)?" we":""}${d===today?" today":""}${PL.day===d?" sel":""}" onclick="plPickDay('${d}')" title="${list.length?list.length+" งาน — กดเพื่อดู":"กดเพื่อเพิ่มงานวันนี้"}">`+
+      `<div class="pl-dnum">${+d.slice(8)}${d===today?"<i>วันนี้</i>":""}</div>`+
+      list.slice(0,3).map(o=>{const c=PL_CAT[o.it.cat]||PL_CAT.task;
+        return `<span class="pl-chip${plIsDone(o.it.id,o.d)?" done":""}" style="background:${c.bg};color:${c.fg}">${c.ic} ${anaEsc(o.it.t)}</span>`;}).join("")+
+      (list.length>3?`<div class="pl-more">+${list.length-3} งาน</div>`:"")+
+      `</button>`;
+    d=plShift(d,1);
+  }
+  return `<div class="pl-grid">`+PL_DOW.map((x,i)=>`<div class="pl-dow${i>=5?" we":""}">${x}</div>`).join("")+cells+`</div>`+
+    `<div class="psub" style="margin-top:10px">`+PL_CATS.map(k=>`<span class="pl-tag" style="background:${PL_CAT[k].bg};color:${PL_CAT[k].fg};margin-right:5px">${PL_CAT[k].ic} ${PL_CAT[k].nm}</span>`).join("")+`</div>`;
+}
+function plItemHtml(o){
+  const it=o.it,c=PL_CAT[it.cat]||PL_CAT.task,dn=plIsDone(it.id,o.d);
+  const tags=[];
+  if(it.tm)tags.push(`<span class="pl-tag">⏰ ${anaEsc(it.tm)}</span>`);
+  if(o.end!==o.d)tags.push(`<span class="pl-tag">📅 ${fmtDateShort(o.d)}–${fmtDateShort(o.end)}</span>`);
+  if(it.rep==="w"||it.rep==="m")tags.push(`<span class="pl-tag">🔁 ${it.rep==="w"?"ทุกสัปดาห์":"ทุกเดือน"}</span>`);
+  tags.push(`<span class="pl-tag" style="background:${c.bg};color:${c.fg}">${c.ic} ${c.nm}</span>`);
+  tags.push(plLineTags(it.lines));
+  if(it.byName)tags.push(`<span class="pl-tag">✍️ ${anaEsc(it.byName)}</span>`);
+  return `<div class="pl-item${dn?" done":""}" style="border-left-color:${c.bd}">`+
+    `<button type="button" class="pl-tick${dn?" on":""}" `+
+      (plCanTick(it)?`onclick="plTick('${it.id}','${o.d}')" title="${dn?"ยกเลิกเครื่องหมายเสร็จ":"ทำเสร็จแล้ว"}"`
+                    :`disabled style="opacity:.3" title="งานนี้ไม่ได้ระบุสายของคุณ"`)+`>✓</button>`+
+    `<div class="pl-ibody"><div class="pl-t">${anaEsc(it.t)}</div>`+
+    `<div class="pl-meta">${tags.join("")}</div>`+
+    (it.note?`<div class="pl-note">${anaEsc(it.note)}</div>`:"")+
+    (dn?`<div class="pl-meta">✅ เสร็จแล้ว${plDoneBy(it.id,o.d)}</div>`:"")+
+    `</div>`+
+    (plCanEdit(it)?`<button type="button" class="pl-edit" onclick="plOpen('${it.id}','${o.d}')">แก้ไข</button>`:"")+
+    `</div>`;
+}
+function plDayHtml(){
+  const d=PL.day;if(!d)return "";
+  const occ=plOcc(d,d);
+  return `<h3>🗓 วัน${PL_DOWFULL[plParse(d).getDay()]} ${fmtDate(d)}${d===todayISO()?' <span class="pill b">วันนี้</span>':""}</h3>`+
+    `<div class="psub">${occ.length?occ.length+" งานในวันนี้":"ยังไม่มีงานในวันนี้"} · กดช่องวันอื่นในปฏิทินเพื่อสลับวัน</div>`+
+    `<div style="margin-top:10px">`+(occ.length?occ.map(plItemHtml).join(""):`<div class="insight">ว่าง — กดปุ่มด้านล่างเพื่อใส่งานวันนี้</div>`)+`</div>`+
+    `<div class="pl-mf"><button type="button" class="pl-add" onclick="plOpen(null,'${d}')">＋ เพิ่มงานวันที่ ${fmtDateShort(d)}</button>`+
+    `<button type="button" class="pl-today" onclick="plCloseDay()">ปิด</button></div>`;
+}
+function plListHtml(){
+  const today=todayISO();
+  /* มองไปข้างหน้า 45 วัน (ราว 6 สัปดาห์) พอดีกับการเตรียมงาน ถ้าไกลกว่านั้นดูในปฏิทินเดือน
+     ถ้าเอายาวกว่านี้ งานซ้ำรายสัปดาห์จะขึ้นซ้ำกันเป็นสิบบรรทัดจนอ่านไม่รู้เรื่อง */
+  const occ=plOcc(plShift(today,-180),plShift(today,45));
+  const late=plLate(occ,today);
+  const rest=occ.filter(o=>o.end>=today&&(PL.showDone||!plIsDone(o.it.id,o.d)));
+  const by={};rest.forEach(o=>{(by[o.d]=by[o.d]||[]).push(o);});
+  const days=Object.keys(by).sort();
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">`+
+    `<div><h3>📋 งานที่ต้องทำ</h3><div class="psub">เรียงจากใกล้ถึงกำหนดที่สุด · 45 วันข้างหน้า (ไกลกว่านั้นดูที่ปฏิทินเดือน)</div></div>`+
+    `<button type="button" class="pl-cb${PL.showDone?" on":""}" onclick="plToggleDone()">${PL.showDone?"✓ ":""}แสดงงานที่เสร็จแล้ว</button></div>`;
+  if(late.length)h+=`<div class="pl-dayh late">⚠️ เลยกำหนดแล้ว <span>· ${late.length} งาน · ควรเคลียร์ก่อน</span></div>`+late.map(plItemHtml).join("");
+  if(!days.length&&!late.length)h+=`<div class="insight" style="margin-top:12px">ยังไม่มีงานในตาราง — กด <b>＋ เพิ่มงาน</b> ด้านบนเพื่อใส่งานแรก</div>`;
+  days.forEach(d=>{
+    const lab=d===today?"วันนี้":d===plShift(today,1)?"พรุ่งนี้":"วัน"+PL_DOWFULL[plParse(d).getDay()];
+    h+=`<div class="pl-dayh">${lab} <span>· ${fmtDate(d)} · ${by[d].length} งาน</span></div>`+by[d].map(plItemHtml).join("");
+  });
+  return h;
+}
+
+/* ---------- กล่องกรอกงาน ---------- */
+function plOpen(id,d){
+  const cur=id?((PLAN.items||{})[id]||null):null;
+  if(id&&!cur)return;
+  if(cur&&!plCanEdit(cur)){alert("งานนี้สร้างโดย "+(cur.byName||"คนอื่น")+"\n\nแก้/ลบได้เฉพาะคนที่สร้างงาน หรือผู้จัดการ — แต่คุณยังติ๊กว่าทำเสร็จแล้วได้");return;}
+  PL.edit=id||null;
+  const v=cur||{t:"",d:d||PL.day||todayISO(),d2:"",tm:"",cat:"task",lines:[],note:"",rep:"",repTo:""};
+  PL.cat=v.cat||"task";PL.lines=(v.lines||[]).slice();
+  const lineBtns=(DATA.focus_order||[]).map(c=>{
+    const nm=((DATA.lines||{})[c]||{}).display||FOCUS_MAP[c]||c;
+    return `<button type="button" class="pl-cb" data-l="${c}" onclick="plToggleLine('${c}')">${anaEsc(nm)}</button>`;
+  }).join("");
+  document.getElementById("plModal").innerHTML=
+  `<div class="pl-mask" onclick="plMaskClick(event)"><div class="pl-modal" onclick="event.stopPropagation()">
+    <div class="pl-mh"><h3>${id?"✏️ แก้ไขงาน":"＋ เพิ่มงานใหม่"}</h3><button type="button" class="pl-x" onclick="plClose()">✕</button></div>
+    <div class="pl-f"><label>ชื่องาน *</label>
+      <input id="plT" maxlength="120" placeholder="เช่น ส่ง PO รอบ 15 / ประชุมเซลล์ / นับสต็อกสิ้นเดือน" value="${anaEsc(v.t)}"></div>
+    <div class="pl-f"><label>ประเภทงาน</label><div class="pl-chips" id="plCatBox">${
+      PL_CATS.map(k=>`<button type="button" class="pl-cb" data-c="${k}" onclick="plSetCat('${k}')">${PL_CAT[k].ic} ${PL_CAT[k].nm}</button>`).join("")
+    }</div></div>
+    <div class="pl-2">
+      <div class="pl-f"><label>วันที่ *</label><input type="date" id="plD" value="${anaEsc(v.d)}"></div>
+      <div class="pl-f"><label>ถึงวันที่ (งานหลายวัน — ไม่ใส่ก็ได้)</label><input type="date" id="plD2" value="${anaEsc(v.d2||"")}"></div>
+    </div>
+    <div class="pl-2">
+      <div class="pl-f"><label>เวลา (ไม่ใส่ก็ได้)</label><input type="time" id="plTm" value="${anaEsc(v.tm||"")}"></div>
+      <div class="pl-f"><label>งานซ้ำ</label><select id="plRep" onchange="plRepChg()">
+        <option value=""${v.rep?"":" selected"}>ไม่ซ้ำ</option>
+        <option value="w"${v.rep==="w"?" selected":""}>ทุกสัปดาห์ (วันเดิม)</option>
+        <option value="m"${v.rep==="m"?" selected":""}>ทุกเดือน (วันที่เดิม)</option>
+      </select></div>
+    </div>
+    <div class="pl-f" id="plRepToBox" style="display:${v.rep?"":"none"}"><label>ซ้ำถึงวันที่ (ไม่ใส่ = ซ้ำไปเรื่อย ๆ)</label>
+      <input type="date" id="plRepTo" value="${anaEsc(v.repTo||"")}"></div>
+    <div class="pl-f"><label>ใครเกี่ยวข้อง — ไม่เลือกสายไหนเลย = ทุกคน</label>
+      <div class="pl-chips" id="plLineBox">${lineBtns}</div></div>
+    <div class="pl-f"><label>รายละเอียด / ต้องเตรียมอะไร (ไม่ใส่ก็ได้)</label>
+      <textarea id="plNote" maxlength="800" placeholder="เช่น เตรียมยอดขายรายสาย + สต็อกคงเหลือมาด้วย">${anaEsc(v.note||"")}</textarea></div>
+    <div class="pl-mf"><button type="button" class="pl-save" onclick="plSaveForm()">${id?"บันทึกการแก้ไข":"เพิ่มลงปฏิทิน"}</button>${
+      id?`<button type="button" class="ps-del" onclick="plDelete('${id}')">🗑 ลบ</button>`:""}</div>
+    <div class="pl-hint">บันทึกแล้วทุกคนเห็นทันทีที่รีเฟรชหน้าเว็บ · งานนี้${id&&cur&&cur.byName?" สร้างโดย "+anaEsc(cur.byName):" จะบันทึกในชื่อ "+anaEsc((S.user&&S.user.name)||"")}</div>
+  </div></div>`;
+  plSetCat(PL.cat);plPaintLines();
+  const t=document.getElementById("plT");if(t)t.focus();
+}
+function plClose(){PL.edit=null;document.getElementById("plModal").innerHTML="";}
+function plMaskClick(e){if(e.target&&e.target.classList&&e.target.classList.contains("pl-mask"))plClose();}
+function plSetCat(k){
+  PL.cat=k;
+  const box=document.getElementById("plCatBox");if(!box)return;
+  box.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.c===k));
+}
+function plToggleLine(c){
+  const i=PL.lines.indexOf(c);
+  if(i>=0)PL.lines.splice(i,1);else PL.lines.push(c);
+  plPaintLines();
+}
+function plPaintLines(){
+  const box=document.getElementById("plLineBox");if(!box)return;
+  box.querySelectorAll("button").forEach(b=>b.classList.toggle("on",PL.lines.indexOf(b.dataset.l)>=0));
+}
+function plRepChg(){
+  const r=document.getElementById("plRep").value;
+  const b=document.getElementById("plRepToBox");if(b)b.style.display=r?"":"none";
+}
+function plNewId(){return "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function plSaveForm(){
+  const t=(document.getElementById("plT").value||"").trim();
+  const d=document.getElementById("plD").value;
+  let d2=document.getElementById("plD2").value;
+  const tm=document.getElementById("plTm").value||"";
+  const rep=document.getElementById("plRep").value||"";
+  const repTo=(rep&&document.getElementById("plRepTo"))?(document.getElementById("plRepTo").value||""):"";
+  const note=(document.getElementById("plNote").value||"").trim();
+  if(!t){alert("ใส่ชื่องานก่อนนะครับ");document.getElementById("plT").focus();return;}
+  if(!plOkDate(d)){alert("เลือกวันที่ของงานก่อนนะครับ");document.getElementById("plD").focus();return;}
+  if(d2&&(!plOkDate(d2)||d2<d)){alert('"ถึงวันที่" ต้องไม่ก่อนวันที่เริ่ม');return;}
+  if(d2===d)d2="";
+  const id=PL.edit||plNewId();
+  const old=PL.edit?Object.assign({},(PLAN.items||{})[id]):null;
+  if(!PLAN.items)PLAN.items={};
+  const item={t:t.slice(0,120),d:d,d2:d2||"",tm:tm,cat:PL_CAT[PL.cat]?PL.cat:"task",
+    lines:PL.lines.slice(),note:note.slice(0,800),rep:(rep==="w"||rep==="m")?rep:"",repTo:repTo,
+    by:old?(old.by||plOwner()):plOwner(),byName:old?(old.byName||((S.user&&S.user.name)||"")):((S.user&&S.user.name)||""),
+    at:old?(old.at||Date.now()):Date.now(),up:Date.now()};
+  PLAN.items[id]=item;
+  if(PLAN.del)delete PLAN.del[id];
+  PL.edit=null;plClose();
+  if(!PL.day||PL.day<item.d||PL.day>(item.d2||item.d)){PL.ym=plYm(item.d);}
+  renderPlan();
+  plPush({act:"save",id:id,item:item},()=>{if(old)PLAN.items[id]=old;else delete PLAN.items[id];});
+}
+async function plDelete(id){
+  const it=(PLAN.items||{})[id];if(!it)return;
+  if(!plCanEdit(it)){alert("ลบได้เฉพาะงานที่คุณสร้าง หรือผู้จัดการ");return;}
+  if(!confirm('ลบงาน "'+it.t+'" ออกจากปฏิทิน?\n\n• งานอื่นในปฏิทินไม่ถูกแตะต้อง\n• ข้อมูลส่วนอื่นของระบบ (ยอดขาย สต็อก ใบสั่ง) ไม่ถูกแตะต้อง'))return;
+  const old=Object.assign({},it);
+  delete PLAN.items[id];
+  if(!PLAN.del)PLAN.del={};
+  PLAN.del[id]=Date.now();
+  plClose();renderPlan();
+  plPush({act:"del",id:id},()=>{PLAN.items[id]=old;delete PLAN.del[id];});
+}
+function plTick(id,d){
+  const it=(PLAN.items||{})[id];if(!it)return;
+  if(!plCanTick(it)){alert("งานนี้ไม่ได้ระบุสายของคุณ — ติ๊กได้เฉพาะงานที่เกี่ยวกับคุณ");return;}
+  if(!PLAN.done)PLAN.done={};
+  const k=plDoneKey(id,d),old=PLAN.done[k];
+  const v=plIsDone(id,d)?0:1;
+  /* ยกเลิกติ๊กต้องเขียน v:0 ไม่ใช่ลบ key — ไม่งั้น merge ฝั่งเซิร์ฟเวอร์จะพาค่าเดิมกลับมา */
+  PLAN.done[k]={v:v,by:(S.user&&S.user.name)||"",at:Date.now()};
+  renderPlan();
+  plPush({act:"done",id:id,date:d,v:v},()=>{if(old)PLAN.done[k]=old;else delete PLAN.done[k];});
+}
+/* manager บันทึกผ่าน api/save.js (mergeState) เหมือนทุกแท็บ · เซลล์ผ่าน api/plan.js
+   ที่เขียนเฉพาะคีย์ของตัวเอง ถ้าพลาดให้ย้อนหน้าจอกลับ ไม่ให้เห็นผิดจากของจริง */
+async function plPush(body,undo){
+  if(plIsMgr()){syncToServer();return;}
+  if(typeof TOKEN==="undefined"||!TOKEN)return;        /* โหมดไฟล์เดียว (ไม่มีเซิร์ฟเวอร์) */
+  try{
+    const r=await fetch("/api/plan",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},
+      body:JSON.stringify(body)});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||("HTTP "+r.status));}
+  }catch(ex){
+    if(undo)undo();
+    renderPlan();
+    alert("บันทึกไม่สำเร็จ: "+ex.message+"\n\nข้อมูลยังไม่ถูกเปลี่ยน กรุณาลองใหม่อีกครั้ง");
+  }
 }
 
 /* ====================== eB2B OPENING CONTEST (ส.ค.–ก.ย. 2569) ====================== */
