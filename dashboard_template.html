@@ -1102,6 +1102,10 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         </div>
         <div class="spacer"></div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <label class="pl-today" style="cursor:pointer;display:inline-block">📎 แนบสไลด์
+            <input type="file" accept="image/*" multiple style="display:none" onchange="pmAttach(this)"></label>
+        </div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
           <button class="pl-add" onclick="pmOpen(null)">＋ เพิ่มโปรโมชั่น</button>
         </div>
       </div>
@@ -2919,6 +2923,10 @@ const PRO_TYPE={
 };
 const PRO_ORDER=["combo","eco","extra","hit","flash","dflash","top30"];
 const PRO_GRP={HC:"HomeCare",BW:"Body Wash",PC:"Personal Care",BWPC:"Body Wash & Personal Care",Foods:"Foods",mixed:"หลายกลุ่ม"};
+/* โปรโมชั่นตุลาคม 2569 ที่อ่านมาจากสไลด์ที่ Unilever ส่งให้ศูนย์ (12 รูป อ่านแล้วตรวจทานตัวเลขซ้ำทุกตัว)
+   อ่านอย่างเดียว ไม่เคยถูกเขียนกลับ — ผู้จัดการกดปุ่มเดียวเพื่อใส่เข้าระบบ แล้วแก้/ลบได้ตามปกติ
+   `imgFile` คือชื่อไฟล์สไลด์ของโปรนั้น ใช้จับคู่ตอนแนบรูปทีละหลายไฟล์ (pmAttach) */
+const PROMO_SEED=[{"m":"2026-10","ch":"CT","grp":"mixed","tgtPct":35,"tgtStores":0,"tgtNote":"Target นับ MPM, MPL, RTD","supMoney":0,"pts":"","note":"","prod":[{"c":"65711451","n":"ของแถม HC1 — โอโมลิควิดซันชายน์ ลดอับ FO15"},{"c":"65545207","n":"ของแถม HC2 — โอโมคอตตอนบลูม FO39"},{"c":"64914983","n":"ของแถม BWPC1 — ซันซิลแชมพู สีเขียว"},{"c":"64931530","n":"ของแถม BWPC2 — ซันซิล สีชมพู แชมพู+ครีมนวด ปั๊มแพ็คคู่"}],"lines":[{"k":"HC1","mech":"ซื้อครบ 18 ชิ้น","free":"โอโมลิควิดซันชายน์ ลดอับ FO15 x2 ชิ้น (65711451)","tgtPct":35,"cap":"MPS / MPM / FD 4 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 12 เซ็ตต่อร้าน"},{"k":"HC2","mech":"ซื้อครบ 9 ชิ้น","free":"โอโมคอตตอนบลูม FO39 x1 ชิ้น (65545207)","tgtPct":30,"cap":"MPS / MPM / FD 3 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 6 เซ็ตต่อร้าน"},{"k":"BWPC1","mech":"ซื้อครบ 18 ชิ้น","free":"ซันซิลแชมพู สีเขียว x2 ชิ้น (64914983)","tgtPct":35,"cap":"MPS / MPM / FD 4 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 12 เซ็ตต่อร้าน"},{"k":"BWPC2","mech":"ซื้อครบ 9 ชิ้น","free":"ซันซิล สีชมพู แชมพู+ครีมนวด ปั๊มแพ็คคู่ x1 ชิ้น (64931530)","tgtPct":30,"cap":"MPS / MPM / FD 3 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 6 เซ็ตต่อร้าน"}],"pay":[],"cond":["Focus Items HC: โอโมซันชายน์ แบบผง FO20 (ยกเว้นสีส้ม) · โอโมลิควิด FO15 · คอมฟอร์ทบิวตี้เพอร์ฟูม/ออร่า/ยูวี FO15-20 · ซันไลต์พลัส FO20","Focus Items HC2 เพิ่ม: บรีสเอกเซล FO45 · บรีสเอกเซล L แพ็คคู่ · บรีสเอกเซลล์ 69 บาท · โอโมลิควิด L แพ็คคู่ · คอมฟอร์ท L เดี่ยว/แพ็คคู่ · ซันไลต์เลมอน/ยูซุ 500 มล.","Focus Items BWPC: เคลียร์ผู้หญิง FO25 · เคลียร์ผู้ชาย FO29 (ไม่รวม CXRB FO25) · โดฟแชมพู/ครีมนวด 60 มล (ติดราคา/ไม่ติดราคา) · วาสลีนกลูต้าไฮยา แบบซอง · พอนด์สไบรท์มิราเคิลครีมกลางวัน 5.5 ก. · ลักส์สบู่ก้อน 70 ก.","ขายเกิน CAP ของประเภทร้านนั้น จะไม่ขึ้นของแถมให้"],"detail":[],"imgFile":["Combo drive 1.jpg","Combo drive 2.jpg","Combo drive 3.jpg"],"name":"CT COMBO DRIVE ตุลาคม'26 : HPC","type":"combo"},{"m":"2026-10","ch":"CT","grp":"Foods","tgtPct":40,"tgtStores":0,"tgtNote":"Target นับ MPM, MPL, RTD · Actual นับ All M&P / WM","supMoney":0,"pts":"","note":"","prod":[{"c":"64852734","n":"ของแถม — โจ๊กซอง รสกุ้ง 28 ก."}],"lines":[{"k":"FOODS","mech":"ซื้อครบ 24 ชิ้น","free":"โจ๊กซอง รสกุ้ง 28 ก. x1 (64852734)","tgtPct":40,"cap":"2 เซ็ตต่อร้าน"}],"pay":[],"cond":["Focus Items: คนอร์ก้อน 10 บาท · โจ๊กซอง 28 กรัม · คนอร์ก้อนต้มยำ 24 กรัม · คนอร์ก้อน 20 กรัม","แคปเซ็ต 2 เซ็ตต่อร้าน"],"detail":[],"imgFile":["Combo drive 4.jpg"],"name":"CT COMBO DRIVE ตุลาคม'26 : FOODS","type":"combo"},{"m":"2026-10","ch":"KA","grp":"mixed","tgtPct":35,"tgtStores":0,"tgtNote":"Actual นับ WS / WSS / SPM (HCF) และ WS / WSS / SPM / PCRT (BWPC)","supMoney":0,"pts":"","note":"","prod":[{"c":"65677731","n":"ของแถม HCF — บรีส ลิควิด เขียว FO45"},{"c":"65692012","n":"ของแถม BWPC — ซิตร้า เพิร์ล 300 มล. แพ็คคู่ FO149"}],"lines":[{"k":"HCF","mech":"ซื้อครบ 10 ลัง","free":"บรีส ลิควิด เขียว FO45 x8 (65677731)","tgtPct":35,"cap":"WS / WSS / SPM 12 เซ็ตต่อร้าน"},{"k":"BWPC","mech":"ซื้อครบ 5 ลัง","free":"ซิตร้า เพิร์ล 300 มล. แพ็คคู่ FO149 x4 (65692012)","tgtPct":35,"cap":"WS / WSS / SPM / PCRT 12 เซ็ตต่อร้าน"}],"pay":[],"cond":["HCF กำไรเพิ่มขึ้น 360 บาท/เซ็ต · BWPC กำไรเพิ่มขึ้น 596 บาท/เซ็ต","ซันไลต์เลมอน FO25 / Non-FO: W% 122.16 ontop BBF 6F1","วาสลีนกลูต้าไฮยา แพ็คคู่: W% 222.84 ontop BBF 12F1","ขายเกิน CAP 12 เซ็ต/ร้าน จะไม่ขึ้นของแถมให้"],"detail":[],"imgFile":["KA Combo drive.jpg"],"name":"KA COMBO DRIVE OCT'26","type":"combo"},{"m":"2026-10","ch":"CT","grp":"HC","tgtPct":27,"tgtStores":40000,"tgtNote":"เป้ากระจายทั้งประเทศ 40,000 ร้าน · ศูนย์ได้รับแบ่งมาเป็น 27%","supMoney":0,"pts":"","note":"","prod":[{"c":"64333524","n":""},{"c":"64312782","n":""},{"c":"68875414","n":""},{"c":"64977014","n":""},{"c":"69593551","n":""},{"c":"69593549","n":""},{"c":"69651605","n":""},{"c":"69724339","n":""},{"c":"64315793","n":""},{"c":"64315810","n":""},{"c":"64894669","n":""},{"c":"64896030","n":""},{"c":"64931137","n":""},{"c":"65440053","n":""},{"c":"64931150","n":""}],"lines":[],"pay":[],"cond":["สินค้า: คอมฟอร์ท 110 มล. (อัลตร้า / น้ำเดียว / บิวตี้เพอร์ฟูม / UV)","Condition: ร้านต้องซื้อครบ 6 ชิ้น จึงนับเป็น 1 ร้านที่กระจายสำเร็จ","W% NTT 11.45"],"detail":[{"k":"Condition","v":"นับ 6 ชิ้น"},{"k":"W% NTT","v":"11.45"}],"imgFile":["Ecotrophy.jpg"],"name":"Eco Trophy ตุลาคม'26","type":"eco"},{"m":"2026-10","ch":"CT","grp":"HC","tgtPct":25,"tgtStores":0,"tgtNote":"Target และ Actual คำนวณจากร้านค้า M&P ทั้งหมด","supMoney":0,"pts":"","note":"","prod":[{"c":"64401555","n":""},{"c":"65542616","n":""},{"c":"64914232","n":""},{"c":"65649245","n":""},{"c":"65495409","n":""},{"c":"65597714","n":""},{"c":"64399473","n":""}],"lines":[],"pay":[{"label":"ขั้น 1","pcs":9,"colors":3,"growth":0,"sm":700,"sup":1000},{"label":"ขั้น 2","pcs":15,"colors":3,"growth":0,"sm":1500,"sup":2000}],"cond":["สินค้า: บรีสลิควิด FO20 (ยกเว้นสีเขียว / สีชมพู)","นับเป็นสี ไม่นับรหัส — เช่นสีแดงมี 2 รหัส ขายเข้าทั้ง 2 รหัส นับเป็น 1 สี","ต้องได้อย่างน้อย 3 สี/ร้าน ทั้งสองขั้น"],"detail":[{"k":"Invoice","v":"REBATE"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"W% เทียบเท่า 6 F 1"}],"imgFile":["Extra dist drive HC.jpg"],"name":"HC : EXTRA DIST. DRIVE ตุลาคม'26","type":"extra"},{"m":"2026-10","ch":"CT","grp":"BW","tgtPct":30,"tgtStores":0,"tgtNote":"Target และ Actual คำนวณจากร้านค้า M&P ทั้งหมด","supMoney":0,"pts":"","note":"","prod":[{"c":"65769637","n":""},{"c":"69975010","n":""},{"c":"64970305","n":""}],"lines":[],"pay":[{"label":"ขั้น 1","pcs":3,"colors":0,"growth":0,"sm":700,"sup":1000},{"label":"ขั้น 2","pcs":6,"colors":0,"growth":0,"sm":1500,"sup":2000}],"cond":["สินค้า: เคลียร์แชมพูไอซ์ 140 มล. + เมนคูล 50 มล. · เคลียร์ไอซ์คูลเมนทอล 140 มล.","จำนวนชิ้น/ร้าน/เดือน: ขั้น 1 = 3 ชิ้น · ขั้น 2 = 6 ชิ้น"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"W% PO"}],"imgFile":["Extra dist drive BW.jpg"],"name":"BW : EXTRA DIST. DRIVE ตุลาคม'26","type":"extra"},{"m":"2026-10","ch":"CT","grp":"PC","tgtPct":0,"tgtStores":15000,"tgtNote":"เป้ากระจายทั้งประเทศ 15,000 ร้าน — บริษัทจะแบ่งโควตาให้ศูนย์อีกที","supMoney":0,"pts":"5 คะแนน/ชิ้น · CAP 12 ชิ้น/ร้านค้า · คะแนนหารสองเป็นบาท · ต้องปิดที่ 95% จึงได้เงิน","note":"","prod":[{"c":"65714950","n":"พอนด์ส ไฮยาฟิลเลอร์ เซรั่ม X7 ก. (แบบซอง)"}],"lines":[],"pay":[],"cond":["ช่วงโปร: 1 ตุลาคม – 31 ตุลาคม","W% NTT ชิ้นละ 27.5 บาท"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"W% NTT 27.5/ชิ้น"}],"imgFile":["Hit of the month .jpg"],"name":"HIT OF THE MONTH – ตุลาคม'26","type":"hit"},{"m":"2026-10","ch":"CT","grp":"HC","tgtPct":0,"tgtStores":80000,"tgtNote":"เป้ากระจาย 80,000 ร้าน Total M&P (ระดับประเทศ)","supMoney":0,"pts":"","note":"","prod":[{"c":"65660382","n":"โอโม ซอฟท์ ทัช 250G FO20 (ตัวซื้อ)"},{"c":"64829046","n":"โอโมน้ำ พิงค์ ฟลอรัล FO15 (ของแถม)"}],"lines":[{"k":"","mech":"ซื้อโอโมซอฟท์ทัชผง FO20 3 ชิ้น","free":"ฟรี โอโมน้ำ พิงค์ ฟลอรัล FO15 4 ชิ้น (64829046)","tgtPct":0,"cap":"1 เซ็ต/ร้าน"}],"pay":[],"cond":["CAP โควต้า 1 เซ็ต/ร้าน","ทุนต่อเซ็ต NTT 49.61 บาท"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"ซื้อ 3 แถม 4 · ทุนต่อเซ็ต NTT 49.61/เซ็ต"}],"imgFile":["Flash deal.jpg"],"name":"FLASH DEAL ตุลาคม'26 : โอโมซอฟท์ทัช 3 ฟรี 4","type":"flash"},{"m":"2026-10","ch":"both","grp":"PC","tgtPct":0,"tgtStores":15000,"tgtNote":"เป้ากระจายทั้งประเทศ 15,000 ร้าน","supMoney":0,"pts":"","note":"","prod":[{"c":"65433869","n":"วีต้า เคราติน ซิลกี้ 10บ. 20 มล. (ตัวซื้อ)"},{"c":"65433871","n":"วีต้า เคราติน คัลเลอร์ ชายน์ 10บ. 20 มล. (ของแถม)"}],"lines":[{"k":"","mech":"ซื้อวีต้าเคราติน 20 มล. สีดำ 1 กล่อง","free":"ฟรี สีแดง 1 กล่อง (65433871)","tgtPct":0,"cap":"2 เซ็ต/ร้านค้า"}],"pay":[],"cond":["ลูกค้าต้องสั่งผ่านแอป UShopPlus / eB2B เท่านั้น","แคปโควต้า 2 เซ็ต/ร้านค้า","ทุนต่อเซ็ต 76.64 บาท"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"All Shoptypes eB2B"},{"k":"Mechanic","v":"BBF 10F10 · ทุนต่อเซ็ต 76.64 บาท"}],"imgFile":["digital flashdeal.jpg"],"name":"DIGITAL FLASH DEAL : ตุลาคม'26","type":"dflash"},{"m":"2026-10","ch":"CT","grp":"","tgtPct":0,"tgtStores":0,"tgtNote":"ร้าน M&P 30 ร้านที่ยอดสูงสุดของสาย ที่ Unilever เลือกให้","supMoney":0,"pts":"","note":"เป็นกติกาของทั้งไตรมาส วางไว้ที่เดือนตุลาคมเพื่อให้ทีมเห็น","prod":[],"lines":[],"pay":[{"label":"TOP 30 โต 1%","pcs":0,"colors":0,"growth":1,"sm":1500,"sup":2000},{"label":"TOP 30 โต 3%","pcs":0,"colors":0,"growth":3,"sm":2500,"sup":3500},{"label":"ECO ทำได้ 92%","pcs":0,"colors":0,"growth":92,"sm":500,"sup":1000}],"cond":["เงินก้อน ECO (92%) เป็นคนละก้อนกับเงิน TOP 30","สไลด์นี้เป็นการปรับเงื่อนไขเงินรางวัลของไตรมาส 1 ปี 2026 ไม่ใช่โปรประจำเดือน"],"detail":[{"k":"ขอบเขต Salesman","v":"TOP 30 M&P by Route"},{"k":"ขอบเขต Supervisor","v":"TOP 30 M&P Total DT (ภาพรวมศูนย์)"},{"k":"การนับสาย CT","v":"DT/PP นับตัวเลขรวมกัน"}],"imgFile":["Top30.png"],"name":"TOP 30 — เงินรางวัลทีมขาย ไตรมาส 1 ปี 2026","type":"top30"}];
 let PM={m:null,scope:"all",open:null,edit:null,form:null,busy:false};
 let PR={m:null,scope:"all",paste:null};
 
@@ -2955,6 +2963,12 @@ function pmOfMonth(m){
 }
 /* เส้นย่อยของโปร (เซ็ต HC1/BWPC1 ฯลฯ) — โปรที่ไม่มีเซ็ตคิดเป็นเส้นเดียวคีย์ว่าง */
 function pmLines(it){return (it.lines&&it.lines.length)?it.lines:[{k:"",label:""}];}
+/* โปรหนึ่งตัวมักกินหลายสไลด์ (Combo Drive ตุลาคมมี 3 หน้า) จึงเก็บเป็น array
+   `img` เดี่ยวยังอ่านได้ เพื่อไม่ให้ข้อมูลที่บันทึกไว้ก่อนหน้าหาย */
+function pmImgs(it){
+  if(it&&it.imgs&&it.imgs.length)return it.imgs;
+  return (it&&it.img)?[it.img]:[];
+}
 function pmResKey(id,route,line){return id+"|"+route+"|"+(line||"");}
 function pmResOf(id,route,line){return pmOk().res[pmResKey(id,route,line)]||null;}
 /* % ที่จะโชว์: ใช้ค่าที่รีพอร์ทบอกมาก่อนเสมอ (แต่ละโปรคิด % คนละฐาน) ไม่มีค่อยคำนวณเอง */
@@ -3051,8 +3065,13 @@ function renderPromo(){
 
   const el=document.getElementById("pmList");
   if(!list.length){
+    const seedLeft=mgr?pmSeedLeft().length:0;
     el.innerHTML=`<div class="panel"><div class="insight">${PM.m?("ยังไม่มีโปรโมชั่นของ "+fmtMonth(PM.m)):"ยังไม่มีโปรโมชั่นในระบบ"} — ${
-      mgr?'กดปุ่ม <b>＋ เพิ่มโปรโมชั่น</b> ด้านบนเพื่อใส่โปรของเดือนนี้':'รอผู้จัดการใส่โปรของเดือนนี้'}</div></div>`;
+      mgr?'กดปุ่ม <b>＋ เพิ่มโปรโมชั่น</b> ด้านบนเพื่อใส่โปรของเดือนนี้':'รอผู้จัดการใส่โปรของเดือนนี้'}</div>`+
+      (seedLeft?`<div class="pl-mf" style="margin-top:14px"><button type="button" class="pl-save" style="flex:0 0 auto;padding:13px 22px" onclick="pmSeedLoad()">`+
+        `📥 ใส่โปร ${fmtMonth(PROMO_SEED[0].m)} ให้เลย (${seedLeft} โปร)</button></div>`+
+        `<div class="psub" style="margin-top:8px">อ่านมาจากสไลด์ ${PROMO_SEED.length} โปรที่ Unilever ส่งให้ศูนย์ — เป้า กติกา CAP รหัสสินค้า และขั้นเงินรางวัล ใส่ไว้ให้ครบแล้ว แก้หรือลบทีหลังได้ตามปกติ</div>`:"")+
+      `</div>`;
   }else{
     el.innerHTML=PRO_ORDER.filter(k=>byType[k]).map(k=>{
       const T=PRO_TYPE[k];
@@ -3091,7 +3110,7 @@ function pmCardHtml(it,me){
     `<div class="pm-name">${anaEsc(it.name)}</div>`+
     (it.tgtNote?`<div class="pm-sub">${anaEsc(it.tgtNote)}</div>`:"")+`</div>`+
     `<div class="pm-tgt">${tgt}</div>`+
-    (it.img?`<img class="pm-thumb" src="${anaEsc(it.img)}" alt="" loading="lazy">`:"")+
+    (pmImgs(it).length?`<img class="pm-thumb" src="${anaEsc(pmImgs(it)[0])}" alt="" loading="lazy">`:"")+
     `<div class="pm-body">`+
       (nSet?`<div class="pm-row"><span>เซ็ต/สเต็ป</span><b>${nSet}</b></div>`:"")+
       (nProd?`<div class="pm-row"><span>สินค้าในโปร</span><b>${nProd} รายการ</b></div>`:"")+
@@ -3169,8 +3188,13 @@ function pmDetailHtml(it,me){
       [{title:"",rows:rows}],{alwaysBand:false})
      :`<div class="insight">ยังไม่ได้ใส่ผลงานของโปรนี้ — ${mgr?'ไปที่แท็บ <b>💰 ผลงาน & เงินรางวัล</b> แล้วกด "วางผลจาก Excel"':"รอผู้จัดการใส่ผล"}</div>`);
   /* สไลด์ */
-  if(it.img)h+=`<h4>🖼 สไลด์จาก Unilever</h4><img class="pm-slide" src="${anaEsc(it.img)}" alt="${anaEsc(it.name)}">`+
-    `<div class="psub"><a href="${anaEsc(it.img)}" target="_blank" rel="noopener">เปิดรูปเต็มในแท็บใหม่</a></div>`;
+  const imgs=pmImgs(it);
+  if(imgs.length)h+=`<h4>🖼 สไลด์จาก Unilever${imgs.length>1?" ("+imgs.length+" หน้า)":""}</h4>`+
+    imgs.map(u=>`<img class="pm-slide" src="${anaEsc(u)}" alt="${anaEsc(it.name)}">`+
+      `<div class="psub" style="margin-bottom:12px"><a href="${anaEsc(u)}" target="_blank" rel="noopener">เปิดรูปเต็มในแท็บใหม่</a></div>`).join("");
+  else if((it.imgFile||[]).length)h+=`<h4>🖼 สไลด์จาก Unilever</h4>`+
+    `<div class="note">ยังไม่ได้แนบรูปสไลด์ — ไฟล์ที่ตรงกับโปรนี้คือ <b>${(it.imgFile||[]).map(anaEsc).join(" · ")}</b>`+
+    `<br>ผู้จัดการแนบได้ที่ปุ่ม <b>📎 แนบสไลด์</b> ด้านบน (เลือกหลายไฟล์พร้อมกันได้ ระบบจับคู่ชื่อไฟล์ให้เอง)</div>`;
   h+=`</div>`;
   return h;
 }
@@ -3400,10 +3424,66 @@ function prApply(){
   alert("บันทึกผลของ \""+it.name+"\" แล้ว "+n+" สาย\n\nกำลังบันทึกขึ้นเซิร์ฟเวอร์ — อีกสักครู่ให้รีเฟรชหน้าเว็บเพื่อยืนยัน");
 }
 
+/* ---------- ใส่โปรชุดที่อ่านมาจากสไลด์ + แนบรูปสไลด์ทีละหลายไฟล์ ---------- */
+function pmSeedLeft(){
+  pmOk();
+  const have={};pmAll().forEach(it=>{have[it.m+"|"+it.name]=1;});
+  return PROMO_SEED.filter(x=>!have[x.m+"|"+x.name]);
+}
+function pmSeedLoad(){
+  if(!(S.user&&S.user.role==="manager")){alert("เฉพาะผู้จัดการเท่านั้น");return;}
+  const add=pmSeedLeft();
+  if(!add.length){alert("โปรชุดนี้อยู่ในระบบแล้ว");return;}
+  if(!confirm("ใส่โปรโมชั่น "+fmtMonth(PROMO_SEED[0].m)+" จำนวน "+add.length+" โปร ที่อ่านมาจากสไลด์ของ Unilever?\n\n"+
+     "• แก้หรือลบทีหลังได้ตามปกติ\n"+
+     "• โปรและข้อมูลเดิมในระบบไม่ถูกแตะต้อง\n"+
+     "• รูปสไลด์ยังไม่ได้แนบ — แนบทีหลังได้ด้วยปุ่ม 📎 แนบสไลด์"))return;
+  const now=Date.now(),nm=(S.user&&S.user.name)||"";
+  add.forEach((x,i)=>{
+    const id="sd"+String(x.m).replace("-","")+(now.toString(36))+i;
+    PROMO.items[id]=Object.assign({},JSON.parse(JSON.stringify(x)),{by:"manager",byName:nm,at:now,up:now+i});
+  });
+  PM.m=PROMO_SEED[0].m;PM.open=null;
+  renderPromo();syncToServer();
+  alert("ใส่ให้แล้ว "+add.length+" โปร\n\nขั้นต่อไป: กด 📎 แนบสไลด์ ด้านบน แล้วเลือกรูปสไลด์ทั้งโฟลเดอร์พร้อมกันได้เลย ระบบจับคู่ชื่อไฟล์ให้เอง");
+}
+/* แนบสไลด์ทีละหลายไฟล์ — จับคู่จากชื่อไฟล์ที่เก็บไว้ใน imgFile ของแต่ละโปร
+   (เจ้าของได้ไฟล์มาเป็นโฟลเดอร์ชื่อเดิมจาก Unilever จึงเลือกทั้งโฟลเดอร์ทีเดียวได้) */
+async function pmAttach(inp){
+  if(!(S.user&&S.user.role==="manager")){alert("เฉพาะผู้จัดการเท่านั้น");return;}
+  const files=(inp&&inp.files)?[].slice.call(inp.files):[];
+  if(!files.length)return;
+  pmOk();
+  const norm=x=>String(x||"").toLowerCase().replace(/\s+/g," ").trim();
+  const byFile={};
+  pmAll().forEach(it=>(it.imgFile||[]).forEach(f=>{const k=norm(f);(byFile[k]=byFile[k]||[]).push(it.id);}));
+  const bar=document.getElementById("pmBar");
+  let ok=0;const miss=[];
+  for(let i=0;i<files.length;i++){
+    const ids=byFile[norm(files[i].name)];
+    if(!ids||!ids.length){miss.push(files[i].name);continue;}
+    if(bar)bar.innerHTML="⏳ กำลังอัพสไลด์ "+(i+1)+" / "+files.length+" — "+anaEsc(files[i].name);
+    const u=await pmUpOne(files[i]);
+    if(!u){miss.push(files[i].name+" (อัพไม่สำเร็จ)");continue;}
+    ids.forEach(id=>{
+      const it=PROMO.items[id];if(!it)return;
+      if(!it.imgs)it.imgs=[];
+      if(it.imgs.indexOf(u)<0)it.imgs.push(u);
+      it.up=Date.now();
+    });
+    ok++;
+  }
+  if(inp)inp.value="";
+  renderPromo();
+  if(ok)syncToServer();
+  alert("แนบสไลด์แล้ว "+ok+" รูป"+(miss.length?"\n\nจับคู่ไม่ได้ "+miss.length+" ไฟล์:\n"+miss.slice(0,8).join("\n")+
+    "\n\n(ระบบจับคู่จากชื่อไฟล์ — ถ้าเปลี่ยนชื่อไฟล์ไปแล้ว ให้แนบทีละโปรที่ปุ่มแก้ไขแทน)":""));
+}
+
 /* ---------- ฝั่งผู้จัดการ: เพิ่ม / แก้ไข / ลบโปรโมชั่น ---------- */
 function pmBlank(){
   return {name:"",type:"combo",m:PM.m||plYm(todayISO()),ch:"CT",grp:"",img:"",
-    tgtPct:"",tgtStores:"",tgtNote:"",supMoney:"",pts:"",note:"",
+    tgtPct:"",tgtStores:"",tgtNote:"",supMoney:"",pts:"",note:"",imgs:[],
     prodText:"",condText:"",dInvoice:"",dShop:"",dMech:"",
     lines:[],pay:[]};
 }
@@ -3430,7 +3510,7 @@ function pmOpen(id){
   if(id&&!cur)return;
   PM.edit=id||null;
   PM.form=cur?{
-    name:cur.name||"",type:cur.type||"combo",m:cur.m||PM.m,ch:cur.ch||"CT",grp:cur.grp||"",img:cur.img||"",
+    name:cur.name||"",type:cur.type||"combo",m:cur.m||PM.m,ch:cur.ch||"CT",grp:cur.grp||"",img:"",imgs:pmImgs(cur).slice(),
     tgtPct:cur.tgtPct||"",tgtStores:cur.tgtStores||"",tgtNote:cur.tgtNote||"",supMoney:cur.supMoney||"",pts:cur.pts||"",note:cur.note||"",
     prodText:pmProdText(cur.prod),condText:(cur.cond||[]).join("\n"),
     dInvoice:((cur.detail||[]).filter(d=>d.k==="Invoice")[0]||{}).v||"",
@@ -3500,11 +3580,12 @@ function pmDraw(){
       <input id="pmf_tgtNote" maxlength="200" value="${anaEsc(F.tgtNote)}" placeholder="Target และ Actual คำนวณจากร้านค้า M&amp;P ทั้งหมด"></div>
     <div class="pl-f"><label>💼 เงินรางวัลหัวหน้าเซลล์ (Supervisor) ที่ศูนย์ได้จากโปรนี้ — ใส่เมื่อรู้ผลแล้ว</label>
       <input id="pmf_supMoney" value="${anaEsc(F.supMoney)}" placeholder="2000"></div>
-    <div class="pl-f"><label>🖼 สไลด์จาก Unilever</label>
-      ${F.img?`<img src="${anaEsc(F.img)}" style="width:100%;max-width:420px;border:1px solid var(--line);border-radius:10px;display:block;margin-bottom:8px">`:""}
-      <div class="pl-mf"><input type="file" accept="image/*" id="pmf_file" style="flex:1" onchange="pmUpImg(this)">
-        ${F.img?`<button type="button" class="ps-del" onclick="pmGrab();pmFset('img','');pmDraw()">ลบรูป</button>`:""}</div>
-      <div class="psub" id="pmUpMsg">ย่อรูปให้อัตโนมัติก่อนอัพ · รูปเก็บแยกจากข้อมูลหลัก ไม่ทำให้ข้อมูลเดิมหนักขึ้น</div></div>
+    <div class="pl-f"><label>🖼 สไลด์จาก Unilever (แนบได้หลายหน้า)</label>
+      ${(F.imgs||[]).length?`<div class="pm-chips" style="margin-bottom:8px">`+(F.imgs||[]).map((u,i)=>
+        `<span style="position:relative;display:inline-block"><img src="${anaEsc(u)}" style="height:92px;border:1px solid var(--line);border-radius:9px;display:block">`+
+        `<button type="button" class="pl-x" style="position:absolute;top:3px;right:3px;width:24px;height:24px;font-size:12px" onclick="pmDelImg(${i})">✕</button></span>`).join("")+`</div>`:""}
+      <input type="file" accept="image/*" multiple id="pmf_file" onchange="pmUpImg(this)">
+      <div class="psub" id="pmUpMsg">เลือกได้หลายไฟล์พร้อมกัน · ย่อรูปให้อัตโนมัติก่อนอัพ · รูปเก็บแยกจากข้อมูลหลัก ไม่ทำให้ข้อมูลเดิมหนักขึ้น</div></div>
     ${showSets?`<div class="pl-f"><label>เซ็ต / เส้นของโปร (Combo Drive ใส่ทีละเซ็ต)</label>
       <div class="tblwrap"><table class="grp-tbl"><thead><tr><th>เซ็ต</th><th>กติกา</th><th>ของแถม</th><th>เป้า %</th><th>CAP ต่อร้าน</th><th></th></tr></thead>
       <tbody>${F.lines.map((L,i)=>row(i,L)).join("")||`<tr><td colspan="6" class="psub">ยังไม่มีเซ็ต</td></tr>`}</tbody></table></div>
@@ -3552,25 +3633,36 @@ function pmShrink(file,maxW,cb){
     fr.readAsDataURL(file);
   }catch(e){cb(null);}
 }
-function pmUpImg(inp){
-  const f=inp&&inp.files&&inp.files[0];if(!f)return;
-  const msg=document.getElementById("pmUpMsg");
-  if(msg)msg.innerHTML="⏳ กำลังย่อรูปและอัพขึ้นเซิร์ฟเวอร์...";
-  pmGrab();
-  pmShrink(f,1600,async(data)=>{
-    if(!data){if(msg)msg.innerHTML="⚠️ อ่านไฟล์รูปไม่สำเร็จ — ลองไฟล์อื่น";return;}
-    if(typeof TOKEN==="undefined"||!TOKEN){      /* โหมดไฟล์เดียว ไม่มีเซิร์ฟเวอร์ */
-      PM.form.img=data;pmDraw();return;
-    }
-    try{
-      const r=await fetch("/api/promoimg",{method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},
-        body:JSON.stringify({img:data})});
-      const j=await r.json().catch(()=>({}));
-      if(!r.ok||!j.url)throw new Error(j.error||("HTTP "+r.status));
-      PM.form.img=j.url;pmDraw();
-    }catch(ex){if(msg)msg.innerHTML="⚠️ อัพรูปไม่สำเร็จ: "+anaEsc(ex.message);}
+function pmDelImg(i){pmGrab();PM.form.imgs.splice(i,1);pmDraw();}
+/* ย่อ + อัพทีละไฟล์ แล้วคืน URL (null ถ้าไม่สำเร็จ) */
+function pmUpOne(file){
+  return new Promise(res=>{
+    pmShrink(file,1600,async(data)=>{
+      if(!data)return res(null);
+      if(typeof TOKEN==="undefined"||!TOKEN)return res(data);   /* โหมดไฟล์เดียว ไม่มีเซิร์ฟเวอร์ */
+      try{
+        const r=await fetch("/api/promoimg",{method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},
+          body:JSON.stringify({img:data})});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.url)throw new Error(j.error||("HTTP "+r.status));
+        res(j.url);
+      }catch(ex){res(null);}
+    });
   });
+}
+async function pmUpImg(inp){
+  const files=(inp&&inp.files)?[].slice.call(inp.files):[];
+  if(!files.length)return;
+  const msg=document.getElementById("pmUpMsg");
+  pmGrab();
+  for(let i=0;i<files.length;i++){
+    if(msg)msg.innerHTML="⏳ กำลังย่อและอัพรูป "+(i+1)+" / "+files.length+" ...";
+    const u=await pmUpOne(files[i]);
+    if(u)PM.form.imgs.push(u);
+    else if(msg)msg.innerHTML="⚠️ อัพรูป \""+anaEsc(files[i].name)+"\" ไม่สำเร็จ";
+  }
+  pmDraw();
 }
 function pmNum(v){const n=parseFloat(String(v==null?"":v).replace(/[,\s%฿]/g,""));return isFinite(n)?n:"";}
 function pmSaveForm(){
@@ -3589,7 +3681,7 @@ function pmSaveForm(){
   const it={
     name:name.slice(0,120),type:PRO_TYPE[F.type]?F.type:"combo",m:F.m,
     ch:["CT","KA","both"].indexOf(F.ch)>=0?F.ch:"CT",grp:PRO_GRP[F.grp]?F.grp:"",
-    img:String(F.img||""),tgtPct:pmNum(F.tgtPct),tgtStores:pmNum(F.tgtStores),
+    imgs:(F.imgs||[]).slice(0,12),img:"",imgFile:(old&&old.imgFile)||[],tgtPct:pmNum(F.tgtPct),tgtStores:pmNum(F.tgtStores),
     tgtNote:String(F.tgtNote||"").slice(0,200),supMoney:pmNum(F.supMoney),pts:String(F.pts||"").slice(0,160),
     note:String(F.note||"").slice(0,1000),
     prod:pmParseProd(F.prodText).slice(0,400),
