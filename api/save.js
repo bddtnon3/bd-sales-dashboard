@@ -194,6 +194,26 @@ function mergeState(server, c) {
     else delete plItems[k];
   }
   const PLAN = { items: plItems, done: plDone, del: plDel };
+  // Monthly Unilever promotions + the per-route results and prize money. Same three-map shape
+  // as PLAN and for the same reason: the definition of a promotion, the results typed in for it,
+  // and the tombstones are written at different times and must not overwrite one another.
+  // `res` is keyed "promoId|routeCode|lineKey" so pasting one month's report for one promotion
+  // only touches that promotion's rows. Slide images live in their own bd-promoimg-* blobs
+  // (api/promoimg.js) — only the URL is kept here, never the image itself.
+  const sPr = s.PROMO || {}, cPr = c.PROMO || {};
+  const prItems = newestByUp(sPr.items, cPr.items);
+  const prRes = newestByUp(sPr.res, cPr.res);
+  const prDel = keyMerge(sPr.del, cPr.del);
+  for (const k of Object.keys(prDel)) {
+    const it = prItems[k];
+    if (it && (it.up || it.at || 0) > prDel[k]) delete prDel[k];     // re-saved after the delete
+    else {
+      delete prItems[k];
+      // a deleted promotion takes its own results with it, but nothing else's
+      for (const rk of Object.keys(prRes)) if (rk.slice(0, k.length + 1) === k + "|") delete prRes[rk];
+    }
+  }
+  const PROMO = { items: prItems, res: prRes, del: prDel };
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),
@@ -212,6 +232,7 @@ function mergeState(server, c) {
     DCI,
     MINSTOCK,
     PLAN,
+    PROMO,
     savedAt: Date.now(),
   };
 }

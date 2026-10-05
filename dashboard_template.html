@@ -330,6 +330,66 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
 /* ============================================================================
+ * PROMOTIONS & PRIZE MONEY — โปรโมชั่น & เงินรางวัล
+ * การ์ดหนึ่งใบ = หนึ่งโปรโมชั่น · สีประจำชนิดโปรเป็นแถบบนการ์ด ไม่ทาทั้งใบ
+ * (ดูทั้งหน้าพร้อมกัน 11 ใบ ถ้าทาสีเต็มใบจะลายตา)
+ * ==========================================================================*/
+.pm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.pm-card{background:#fff;border:1px solid var(--line);border-top:4px solid var(--line);border-radius:14px;
+  padding:0;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;text-align:left;
+  width:100%;font-family:inherit;cursor:pointer}
+.pm-card:hover{box-shadow:0 2px 6px rgba(16,42,93,.12),0 10px 30px rgba(16,42,93,.1)}
+.pm-head{padding:13px 16px 11px}
+.pm-kind{font-size:11.5px;font-weight:800;letter-spacing:.2px;display:flex;align-items:center;gap:5px;margin-bottom:5px}
+.pm-name{font-size:15px;font-weight:800;line-height:1.4;word-break:break-word}
+.pm-sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.6}
+.pm-tgt{display:flex;align-items:baseline;gap:7px;padding:9px 16px;background:var(--bg);border-top:1px solid var(--line)}
+.pm-tgt b{font-size:22px;font-weight:800;line-height:1}
+.pm-tgt span{font-size:12px;color:var(--muted)}
+.pm-body{padding:11px 16px 13px;flex:1;display:flex;flex-direction:column;gap:7px}
+.pm-row{display:flex;justify-content:space-between;gap:10px;font-size:12.5px}
+.pm-row b{font-weight:800}
+.pm-chips{display:flex;flex-wrap:wrap;gap:5px}
+.pm-chip{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--muted)}
+.pm-thumb{width:100%;height:118px;object-fit:cover;object-position:top;background:#F2F5FA;display:block;border-top:1px solid var(--line)}
+/* แถบความคืบหน้าของสายตัวเอง — ให้เซลล์เห็นทันทีว่าทำได้แค่ไหน */
+.pm-me{border-top:1px solid var(--line);padding:10px 16px 12px;background:#FAFCFF}
+.pm-bar{height:9px;border-radius:20px;background:#E7ECF4;overflow:hidden;margin:6px 0 5px}
+.pm-bar i{display:block;height:100%;border-radius:20px;background:var(--blue)}
+.pm-bar i.ok{background:var(--good)}
+.pm-bar i.mid{background:var(--warn)}
+.pm-bar i.no{background:var(--bad)}
+.pm-melab{display:flex;justify-content:space-between;font-size:12px;font-weight:700}
+.pm-money{font-size:13px;font-weight:800;color:var(--good)}
+/* รายละเอียดโปรแบบเต็ม */
+.pm-det h4{font-size:14px;margin:16px 0 7px;color:var(--blue-dark)}
+.pm-det h4:first-child{margin-top:0}
+.pm-slide{width:100%;max-width:980px;border:1px solid var(--line);border-radius:12px;display:block;margin-bottom:6px}
+.pm-items{display:flex;flex-wrap:wrap;gap:6px}
+.pm-item{font-size:12px;font-weight:700;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+.pm-item span{font-weight:400;color:var(--muted)}
+.pm-cond{font-size:13px;line-height:1.8;padding-left:18px}
+/* ตารางผลงานรวม route × promo */
+.pm-cell{font-weight:800;border-radius:7px;padding:4px 7px;display:inline-block;min-width:52px;text-align:center}
+.pm-c0{background:#FBE9E9;color:#B3322F}
+.pm-c1{background:#FDF3DB;color:#8A6200}
+.pm-c2{background:#E7F6EE;color:#15794A}
+.pm-c3{background:#D6F0E2;color:#0E5C38}
+.pm-cx{color:var(--muted);font-weight:400}
+/* วางตารางจาก Excel */
+.pm-paste{width:100%;min-height:150px;border:1.5px dashed var(--blue);border-radius:11px;padding:12px 14px;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.6;background:#FAFCFF;resize:vertical}
+.pm-paste:focus{outline:none;border-style:solid}
+.pm-map{display:flex;gap:6px;align-items:center;font-size:12px}
+.pm-map select{padding:5px 7px;border:1.5px solid var(--line);border-radius:7px;font-size:12px;background:#fff}
+.pm-prev td,.pm-prev th{white-space:nowrap}
+.pm-badge{font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;background:var(--blue-soft);color:var(--blue-dark)}
+@media(max-width:640px){
+  .pm-grid{grid-template-columns:1fr}
+  .pm-thumb{height:150px}
+}
+
+/* ============================================================================
  * ROW CURSOR — ไล่อ่านตารางทีละบรรทัด (หน้าการสั่งของ / วิเคราะห์การสั่งของ / สต็อก)
  * เจ้าของแจ้ง 2 ต.ค. 69: ไล่สั่งของทีละรายการแล้ว "ลายตาไม่รู้อยู่บรรทัดไหนแล้ว"
  *
@@ -1030,6 +1090,48 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div id="plModal"></div>
     </div>
 
+    <div id="promoView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>เดือนของโปรโมชั่น</label><select id="pmMonth" onchange="pmSetMonth(this.value)"></select></div>
+        <div class="ctl"><label>แสดง</label>
+          <div class="seg" id="pmScopeSeg">
+            <button data-s="all" class="on" onclick="pmSetScope('all')">ทุกสาย</button>
+            <button data-s="ct" onclick="pmSetScope('ct')">เฉพาะ CT</button>
+            <button data-s="ka" onclick="pmSetScope('ka')">เฉพาะ KA</button>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="pl-add" onclick="pmOpen(null)">＋ เพิ่มโปรโมชั่น</button>
+        </div>
+      </div>
+      <div class="kpi-monthbar" id="pmBar"></div>
+      <div class="cards" id="pmCards"></div>
+      <div id="pmList"></div>
+      <div class="panel" id="pmDetail" style="display:none"></div>
+      <div id="pmModal"></div>
+    </div>
+
+    <div id="promoresView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>เดือน</label><select id="prMonth" onchange="prSetMonth(this.value)"></select></div>
+        <div class="ctl"><label>มุมมอง</label>
+          <div class="seg" id="prScopeSeg">
+            <button data-s="me" onclick="prSetScope('me')">สายของฉัน</button>
+            <button data-s="all" class="on" onclick="prSetScope('all')">ทุกสาย</button>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="pl-add" onclick="prPasteOpen('')">📋 วางผลจาก Excel</button>
+        </div>
+      </div>
+      <div class="kpi-monthbar" id="prBar"></div>
+      <div class="cards" id="prCards"></div>
+      <div id="prBody"></div>
+      <div id="prModal"></div>
+    </div>
+
     <div id="anaView" class="hidden">
       <div class="controls">
         <div class="ctl"><label>มุมมอง</label>
@@ -1289,6 +1391,19 @@ let MINSTOCK = __MINSTOCKDATA__;
    ⚠️ done คีย์ด้วย "id|วันที่ที่เกิดขึ้นจริง" เพราะงานซ้ำต้องติ๊กเสร็จได้ทีละรอบ
    ⚠️ ยกเลิกติ๊กต้องเขียน {v:0} ห้ามลบ key — merge ฝั่งเซิร์ฟเวอร์เป็นการรวม key ลบแล้วค่าเดิมกลับมา */
 let PLAN = __PLANDATA__;
+/* PROMO — โปรโมชั่นรายเดือนจาก Unilever + ผลงาน/เงินรางวัลรายสาย
+   {items:{id:{m,type,name,ch,grp,img,tgtPct,tgtStores,tgtNote,note,prod:[{c,n}],
+               lines:[{k,label,mech,free,freeC,tgtPct,caps:[{st,n}]}],
+               pay:[{label,pcs,colors,growth,sm,sup}],cond:[],detail:[{k,v}],pts,
+               by,byName,at,up}},
+    res:{"promoId|routeCode|lineKey":{pjp,tgt,act,money,up,by}},
+    del:{id:ts}}
+   m = เดือนของโปร (YYYY-MM) · type = ชนิดโปร 7 แบบ (ดู PRO_TYPE)
+   lineKey = "" สำหรับโปรที่มีเส้นเดียว หรือรหัสเซ็ต/สเต็ป (HC1, BWPC1, …)
+   ⚠️ รูปสไลด์เก็บเป็น blob แยก (bd-promoimg-*) เก็บแค่ URL ที่นี่ — ห้ามยัดรูปลง state
+      ก้อน state ใหญ่หลาย MB อยู่แล้ว ใส่รูปเข้าไปจะชน request cap ของ Vercel (~4.5MB)
+   ⚠️ ลบต้องเป็น tombstone ใน del เหมือน PLAN/PSTORE ไม่ใช่ลบ key */
+let PROMO = __PROMODATA__;
 /* DCI Score ของศูนย์ (ไฟล์ DCI Score จาก Unilever) — ผู้จัดการเท่านั้น
    {up,file,periods:["BM1","Q1",…],data:{"BM5":{tot,totCov,cov,it:{"3":{s,pct:[],plan:[],comp:[],…}}}}} */
 let DCI = __DCIDATA__;
@@ -1358,7 +1473,7 @@ function doLogin(){
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
   document.querySelectorAll(".sales-only").forEach(e=>e.style.display=acc.role==="sales"?"":"none");
-  initKeys();render();initKPI();initOrder();initAnalytics();initPlan();navReset();
+  initKeys();render();initKPI();initOrder();initAnalytics();initPlan();initPromo();navReset();
   _switchTab("sales");   /* never leave the previous user's tab (incl. manager-only ones) open */
 }
 function logout(){S.user=null;_switchTab("sales");document.getElementById("app").classList.add("hidden");
@@ -1871,6 +1986,9 @@ const TAB_GROUPS=[
     {t:"kpi",nm:"eB2B & Self Ordering"},
     {t:"ps",nm:"⭐ Perfect Store"},
     {t:"dci",nm:"📈 DCI Score ศูนย์"}]},
+  {k:"promo",nm:"🎁 โปรโมชั่น & เงินรางวัล",tabs:[
+    {t:"promo",nm:"โปรเดือนนี้"},
+    {t:"promores",nm:"💰 ผลงาน & เงินรางวัล"}]},
   {k:"order",nm:"🛒 การสั่งของ",tabs:[
     {t:"order",nm:"ภาพรวมสั่งของ"},
     {t:"pos",nm:"📊 วิเคราะห์การสั่งของ",role:"manager"}]},
@@ -1919,6 +2037,8 @@ function _switchTab(t){
   renderTabs();
   document.getElementById("salesView").classList.toggle("hidden",t!=="sales");
   document.getElementById("planView").classList.toggle("hidden",t!=="plan");
+  document.getElementById("promoView").classList.toggle("hidden",t!=="promo");
+  document.getElementById("promoresView").classList.toggle("hidden",t!=="promores");
   document.getElementById("kpiView").classList.toggle("hidden",t!=="kpi");
   document.getElementById("ebView").classList.toggle("hidden",t!=="eb");
   document.getElementById("psView").classList.toggle("hidden",t!=="ps");
@@ -1931,6 +2051,8 @@ function _switchTab(t){
   document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
   if(t==="kpi")renderKPI();
   if(t==="plan")renderPlan();
+  if(t==="promo")renderPromo();
+  if(t==="promores")renderPromoRes();
   if(t==="eb")renderEB();
   if(t==="ps")renderPS();
   if(t==="order")renderOrder();
@@ -2771,6 +2893,732 @@ document.addEventListener("click",e=>{
   const ob=new MutationObserver(()=>{clearTimeout(tmr);tmr=setTimeout(rcApply,30);});
   RC_VIEWS.forEach(v=>{const el=document.getElementById(v);if(el)ob.observe(el,{childList:true,subtree:true});});
 })();
+
+/* ============================================================================
+ * PROMOTIONS & PRIZE MONEY — โปรโมชั่น & เงินรางวัล (แท็บ 🎁)
+ *
+ * ทุกเดือน Unilever ส่งสไลด์โปรโมชั่นมาให้ศูนย์ โครงสร้างเหมือนกันทุกโปร:
+ * "ขายกระจายเข้าร้านในเขตให้ถึงเป้า" เป้าเป็น % ของร้านในเขต หรือเป็นจำนวนร้าน
+ * ต่างกันที่ของแถม / เงินรางวัล / เงื่อนไข — จึงเก็บเป็นโครงเดียวแล้วแยกด้วย `type`
+ *
+ * รีพอร์ทผลงานทุกใบ (Power BI / Excel ที่ส่งกันในไลน์) ย่อลงมาเป็นแถวเดียวกันหมด:
+ *     สายวิ่ง → PJP/Base · Target · Actual · %Achieve · เงินรางวัล
+ * จึงเก็บผลเป็น PROMO.res["promoId|routeCode|lineKey"] = {pjp,tgt,act,pct,money}
+ * `pct` เก็บค่าที่รีพอร์ทบอกมาตรง ๆ (แต่ละโปรคิด % คนละฐาน) ถ้าไม่มีค่อยคำนวณ act/tgt
+ *
+ * ⚠️ READ-ONLY ต่อข้อมูลส่วนอื่น — โมดูลนี้ไม่แตะ DATA/ORDERS/STOCKD/KPI เลย
+ * ==========================================================================*/
+const PRO_TYPE={
+  combo :{ic:"🎁",nm:"Combo Drive",      c:"#6C4BD1",bg:"#F1EDFC",d:"ซื้อครบตามกำหนด แถมของให้ · มีเป้า % ร้าน และ CAP จำนวนเซ็ตต่อร้าน"},
+  eco   :{ic:"🏆",nm:"Eco Trophy",        c:"#157F6B",bg:"#E6F5F1",d:"ไม่มีของแถม — กระจายสินค้าให้ถึงเป้า ตามเงื่อนไขจำนวนชิ้นที่กำหนด"},
+  extra :{ic:"💰",nm:"Extra Dist. Drive", c:"#B86A00",bg:"#FDF2E3",d:"มีเงินพิเศษให้เซลล์และหัวหน้า แบ่งเป็นสเต็ปตามจำนวนชิ้น/ร้าน"},
+  hit   :{ic:"⭐",nm:"Hit of the Month",  c:"#C0392B",bg:"#FCECEA",d:"ได้คะแนน U-Bonus (คะแนนหารสองเป็นบาท) ต้องปิดที่ 95% ขึ้นไปจึงได้เงิน"},
+  flash :{ic:"⚡",nm:"Flash Deal",        c:"#1652B8",bg:"#E8F0FC",d:"ราคาพิเศษ ไม่มีเงินพิเศษให้เซลล์ — ขายเอายอด"},
+  dflash:{ic:"📱",nm:"Digital Flash Deal",c:"#0F7FA8",bg:"#E4F4FB",d:"ราคาพิเศษ แต่ลูกค้าต้องสั่งผ่านแอป UShopPlus เท่านั้น"},
+  top30 :{ic:"🥇",nm:"TOP 30",            c:"#8A6D00",bg:"#FBF3D8",d:"30 ร้านยอดสูงสุดของสายที่ Unilever เลือก — โตตามขั้นแล้วได้เงินรางวัล"},
+};
+const PRO_ORDER=["combo","eco","extra","hit","flash","dflash","top30"];
+const PRO_GRP={HC:"HomeCare",BW:"Body Wash",PC:"Personal Care",BWPC:"Body Wash & Personal Care",Foods:"Foods",mixed:"หลายกลุ่ม"};
+let PM={m:null,scope:"all",open:null,edit:null,form:null,busy:false};
+let PR={m:null,scope:"all",paste:null};
+
+/* ---------- อ่านข้อมูล ---------- */
+function pmOk(){if(!PROMO||typeof PROMO!=="object")PROMO={items:{},res:{},del:{}};
+  if(!PROMO.items)PROMO.items={};if(!PROMO.res)PROMO.res={};if(!PROMO.del)PROMO.del={};return PROMO;}
+function pmAll(){
+  const P=pmOk();
+  return Object.keys(P.items).filter(id=>P.items[id]&&P.items[id].name&&!P.del[id])
+    .map(id=>Object.assign({id:id},P.items[id]));
+}
+function pmMonths(){
+  const s={};pmAll().forEach(it=>{if(it.m)s[it.m]=1;});
+  return Object.keys(s).sort();
+}
+function pmSort(a,b){
+  const d=PRO_ORDER.indexOf(a.type)-PRO_ORDER.indexOf(b.type);
+  if(d)return d;
+  return String(a.name||"").localeCompare(String(b.name||""),"th");
+}
+function pmCh(code){const d=((DATA.lines||{})[code]||{}).display||FOCUS_MAP[code]||"";return /^KA/i.test(d)?"KA":"CT";}
+function pmLineName(code){return ((DATA.lines||{})[code]||{}).display||FOCUS_MAP[code]||code;}
+function pmRoutes(ch){
+  const all=(DATA.focus_order||[]).slice();
+  if(ch==="CT"||ch==="ct")return all.filter(c=>pmCh(c)==="CT");
+  if(ch==="KA"||ch==="ka")return all.filter(c=>pmCh(c)==="KA");
+  return all;
+}
+function pmOfMonth(m){
+  let list=pmAll().filter(it=>it.m===m);
+  if(PM.scope==="ct")list=list.filter(it=>it.ch!=="KA");
+  if(PM.scope==="ka")list=list.filter(it=>it.ch!=="CT");
+  return list.sort(pmSort);
+}
+/* เส้นย่อยของโปร (เซ็ต HC1/BWPC1 ฯลฯ) — โปรที่ไม่มีเซ็ตคิดเป็นเส้นเดียวคีย์ว่าง */
+function pmLines(it){return (it.lines&&it.lines.length)?it.lines:[{k:"",label:""}];}
+function pmResKey(id,route,line){return id+"|"+route+"|"+(line||"");}
+function pmResOf(id,route,line){return pmOk().res[pmResKey(id,route,line)]||null;}
+/* % ที่จะโชว์: ใช้ค่าที่รีพอร์ทบอกมาก่อนเสมอ (แต่ละโปรคิด % คนละฐาน) ไม่มีค่อยคำนวณเอง */
+function pmPct(r){
+  if(!r)return null;
+  if(r.pct!==undefined&&r.pct!==null&&r.pct!=="")return +r.pct;
+  if(r.tgt>0&&r.act!==undefined&&r.act!==null)return r.act/r.tgt*100;
+  return null;
+}
+function pmPctCls(p){
+  if(p===null||p===undefined)return "pm-cx";
+  if(p>=100)return "pm-c3";if(p>=90)return "pm-c2";if(p>=60)return "pm-c1";return "pm-c0";
+}
+function pmBarCls(p){
+  if(p===null||p===undefined)return "";
+  if(p>=100)return "ok";if(p>=60)return "mid";return "no";
+}
+function pmPctTxt(p){return (p===null||p===undefined)?"—":(Math.round(p*10)/10).toLocaleString()+"%";}
+function pmBaht(n){return "฿"+Math.round(+n||0).toLocaleString();}
+/* รวมผลของหนึ่งโปร สำหรับหนึ่งสาย (รวมทุกเซ็ต) */
+function pmSumRoute(it,route){
+  let tgt=0,act=0,money=0,n=0,pjp=0,pcts=[];
+  pmLines(it).forEach(L=>{
+    const r=pmResOf(it.id,route,L.k);
+    if(!r)return;
+    n++;tgt+=+r.tgt||0;act+=+r.act||0;money+=+r.money||0;pjp=Math.max(pjp,+r.pjp||0);
+    const p=pmPct(r);if(p!==null)pcts.push(p);
+  });
+  if(!n)return null;
+  const pct=pcts.length?pcts.reduce((a,b)=>a+b,0)/pcts.length:(tgt>0?act/tgt*100:null);
+  return {tgt:tgt,act:act,money:money,pjp:pjp,pct:pct,n:n};
+}
+/* เงินรางวัลรวมของหนึ่งสายในเดือนนั้น */
+function pmMoneyMonth(m,route){
+  let sum=0;pmAll().filter(it=>it.m===m).forEach(it=>{const s=pmSumRoute(it,route);if(s)sum+=s.money;});
+  return sum;
+}
+function pmHasRes(m){
+  const P=pmOk(),pre={};pmAll().filter(it=>it.m===m).forEach(it=>pre[it.id]=1);
+  return Object.keys(P.res).some(k=>pre[k.split("|")[0]]);
+}
+
+/* ---------- ปุ่มควบคุม ---------- */
+function pmSetMonth(m){PM.m=m;PM.open=null;renderPromo();}
+function pmSetScope(s){PM.scope=s;setSeg("pmScopeSeg","s",s);PM.open=null;renderPromo();}
+function pmToggle(id){PM.open=(PM.open===id?null:id);renderPromo();
+  if(PM.open){const el=document.getElementById("pmDetail");if(el&&el.scrollIntoView)el.scrollIntoView({behavior:"smooth",block:"nearest"});}}
+function prSetMonth(m){PR.m=m;renderPromoRes();}
+function prSetScope(s){PR.scope=s;setSeg("prScopeSeg","s",s);renderPromoRes();}
+function initPromo(){
+  pmOk();
+  const ms=pmMonths();
+  PM.m=ms.length?ms[ms.length-1]:plYm(todayISO());
+  PR.m=PM.m;PM.open=null;
+  if(S.user&&S.user.role==="sales"){PR.scope="me";}
+}
+function pmFillMonths(selId,cur,fn){
+  const sel=document.getElementById(selId);if(!sel)return;
+  const ms=pmMonths();
+  if(!ms.length){sel.innerHTML=`<option value="">— ยังไม่มีโปรโมชั่น —</option>`;return;}
+  sel.innerHTML=ms.slice().reverse().map(m=>`<option value="${m}"${m===cur?" selected":""}>${fmtMonth(m)}</option>`).join("");
+}
+
+/* ---------- หน้า "โปรเดือนนี้" ---------- */
+function renderPromo(){
+  pmOk();
+  const ms=pmMonths();
+  if(!PM.m||ms.indexOf(PM.m)<0)PM.m=ms.length?ms[ms.length-1]:PM.m;
+  pmFillMonths("pmMonth",PM.m);
+  const mgr=!!(S.user&&S.user.role==="manager");
+  const me=(S.user&&S.user.code)||"";
+  const list=PM.m?pmOfMonth(PM.m):[];
+  const byType={};list.forEach(it=>{(byType[it.type]=byType[it.type]||[]).push(it);});
+
+  document.getElementById("pmBar").innerHTML=
+    `🎁 โปรโมชั่น & เงินรางวัล · <b>${PM.m?fmtMonth(PM.m):"-"}</b> · ${list.length} โปรโมชั่น`+
+    (PM.scope!=="all"?` · เฉพาะสาย ${PM.scope.toUpperCase()}`:"")+
+    `<span class="dci-src">${mgr?"กด ＋ เพิ่มโปรโมชั่น เพื่อใส่โปรของเดือนใหม่ · แนบรูปสไลด์จาก Unilever ได้เลย":
+      "กดการ์ดใบไหนก็ได้เพื่อดูรายละเอียดเต็ม พร้อมรูปสไลด์จาก Unilever"} · กดชื่อโปรเพื่อดูเป้าและผลงานของสายคุณ</span>`;
+
+  /* การ์ดสรุปหัวหน้า */
+  const nMoney=list.filter(it=>it.type==="extra"||it.type==="top30"||it.type==="hit").length;
+  const myMoney=me?pmMoneyMonth(PM.m,me):(pmRoutes("all").reduce((s,c)=>s+pmMoneyMonth(PM.m,c),0));
+  document.getElementById("pmCards").innerHTML=
+    `<div class="card"><div class="k">โปรโมชั่นเดือนนี้</div><div class="v">${list.length}</div><div class="s">${
+      PRO_ORDER.filter(k=>byType[k]).map(k=>PRO_TYPE[k].ic+" "+byType[k].length).join(" · ")||"—"}</div></div>`+
+    `<div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:var(--warn)">มีเงินรางวัล</div><div class="v">${nMoney}</div><div class="s">Extra Dist / Hit / TOP 30</div></div>`+
+    `<div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">${me?"เงินรางวัลสายคุณ":"เงินรางวัลรวมทั้งศูนย์"}</div><div class="v up">${pmBaht(myMoney)}</div><div class="s">${pmHasRes(PM.m)?"จากผลที่บันทึกไว้":"ยังไม่ได้ใส่ผลงานของเดือนนี้"}</div></div>`+
+    `<div class="card"><div class="k">สินค้าที่อยู่ในโปร</div><div class="v">${
+      (()=>{const s={};list.forEach(it=>(it.prod||[]).forEach(p=>{if(p.c)s[p.c]=1;}));return Object.keys(s).length;})()
+    }</div><div class="s">นับตามรหัสสินค้าที่ไม่ซ้ำกัน</div></div>`;
+
+  const el=document.getElementById("pmList");
+  if(!list.length){
+    el.innerHTML=`<div class="panel"><div class="insight">${PM.m?("ยังไม่มีโปรโมชั่นของ "+fmtMonth(PM.m)):"ยังไม่มีโปรโมชั่นในระบบ"} — ${
+      mgr?'กดปุ่ม <b>＋ เพิ่มโปรโมชั่น</b> ด้านบนเพื่อใส่โปรของเดือนนี้':'รอผู้จัดการใส่โปรของเดือนนี้'}</div></div>`;
+  }else{
+    el.innerHTML=PRO_ORDER.filter(k=>byType[k]).map(k=>{
+      const T=PRO_TYPE[k];
+      return `<div class="panel" style="margin-bottom:14px">`+
+        `<h3 style="color:${T.c}">${T.ic} ${T.nm} <span style="font-size:13px;color:var(--muted);font-weight:400">· ${byType[k].length} โปร</span></h3>`+
+        `<div class="psub" style="margin-bottom:12px">${T.d}</div>`+
+        `<div class="pm-grid">`+byType[k].map(it=>pmCardHtml(it,me)).join("")+`</div></div>`;
+    }).join("");
+  }
+  const det=document.getElementById("pmDetail");
+  const cur=PM.open?pmAll().filter(x=>x.id===PM.open)[0]:null;
+  if(cur){det.style.display="";det.innerHTML=pmDetailHtml(cur,me);}
+  else{det.style.display="none";det.innerHTML="";}
+}
+function pmCardHtml(it,me){
+  const T=PRO_TYPE[it.type]||PRO_TYPE.flash;
+  const tgt=(+it.tgtPct>0)?`<b style="color:${T.c}">${it.tgtPct}%</b><span>ของร้านในเขต</span>`
+    :(+it.tgtStores>0?`<b style="color:${T.c}">${(+it.tgtStores).toLocaleString()}</b><span>ร้าน (เป้าทั้งประเทศ)</span>`
+    :`<span>ไม่ได้กำหนดเป้าเป็นตัวเลข</span>`);
+  const nSet=(it.lines||[]).length;
+  const nProd=(it.prod||[]).length;
+  let mine="";
+  if(me){
+    const s=pmSumRoute(it,me);
+    if(s){
+      const p=s.pct,w=Math.max(0,Math.min(100,p===null?0:p));
+      mine=`<div class="pm-me"><div class="pm-melab"><span>สายคุณ (${anaEsc(pmLineName(me))})</span><span class="${pmPctCls(p)}" style="background:none;padding:0">${pmPctTxt(p)}</span></div>`+
+        `<div class="pm-bar"><i class="${pmBarCls(p)}" style="width:${w}%"></i></div>`+
+        `<div class="pm-melab"><span style="font-weight:400;color:var(--muted)">ทำได้ ${(+s.act||0).toLocaleString()} จากเป้า ${(+s.tgt||0).toLocaleString()}</span>`+
+        (s.money>0?`<span class="pm-money">${pmBaht(s.money)}</span>`:"<span></span>")+`</div></div>`;
+    }else mine=`<div class="pm-me"><div class="pm-melab" style="font-weight:400;color:var(--muted)">ยังไม่มีผลงานของสายคุณในโปรนี้</div></div>`;
+  }
+  return `<button type="button" class="pm-card" style="border-top-color:${T.c}" onclick="pmToggle('${it.id}')">`+
+    `<div class="pm-head"><div class="pm-kind" style="color:${T.c}">${T.ic} ${T.nm}${it.ch&&it.ch!=="both"?' <span class="pm-chip">'+anaEsc(it.ch)+'</span>':""}${
+      it.grp?' <span class="pm-chip">'+anaEsc(it.grp)+'</span>':""}</div>`+
+    `<div class="pm-name">${anaEsc(it.name)}</div>`+
+    (it.tgtNote?`<div class="pm-sub">${anaEsc(it.tgtNote)}</div>`:"")+`</div>`+
+    `<div class="pm-tgt">${tgt}</div>`+
+    (it.img?`<img class="pm-thumb" src="${anaEsc(it.img)}" alt="" loading="lazy">`:"")+
+    `<div class="pm-body">`+
+      (nSet?`<div class="pm-row"><span>เซ็ต/สเต็ป</span><b>${nSet}</b></div>`:"")+
+      (nProd?`<div class="pm-row"><span>สินค้าในโปร</span><b>${nProd} รายการ</b></div>`:"")+
+      ((it.pay||[]).length?`<div class="pm-row"><span>เงินรางวัลสูงสุด (เซลล์)</span><b class="up">${
+        pmBaht(Math.max.apply(null,[0].concat((it.pay||[]).map(x=>+x.sm||0))))}</b></div>`:"")+
+      (it.pts?`<div class="pm-row"><span>คะแนน</span><b>${anaEsc(it.pts)}</b></div>`:"")+
+    `</div>`+mine+`</button>`;
+}
+function pmDetailHtml(it,me){
+  const T=PRO_TYPE[it.type]||PRO_TYPE.flash;
+  const mgr=!!(S.user&&S.user.role==="manager");
+  let h=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">`+
+    `<div><h3 style="color:${T.c}">${T.ic} ${anaEsc(it.name)}</h3>`+
+    `<div class="psub">${T.nm} · ${fmtMonth(it.m)}${it.ch&&it.ch!=="both"?" · สาย "+anaEsc(it.ch):""}${
+      it.grp?" · "+anaEsc(PRO_GRP[it.grp]||it.grp):""}</div></div>`+
+    `<div style="display:flex;gap:8px">`+
+      (mgr?`<button type="button" class="pl-today" onclick="pmOpen('${it.id}')">✏️ แก้ไข</button>`:"")+
+      `<button type="button" class="pl-today" onclick="pmToggle('${it.id}')">ปิด</button></div></div>`;
+  h+=`<div class="pm-det" style="margin-top:14px">`;
+  /* เป้าหมาย */
+  h+=`<h4>🎯 เป้าหมาย</h4><div class="pm-chips">`+
+    (+it.tgtPct>0?`<span class="pm-item"><b>${it.tgtPct}%</b> <span>ของร้านในเขต</span></span>`:"")+
+    (+it.tgtStores>0?`<span class="pm-item"><b>${(+it.tgtStores).toLocaleString()}</b> <span>ร้าน (เป้าทั้งประเทศ — ศูนย์จะได้รับแบ่งมาอีกที)</span></span>`:"")+
+    (it.tgtNote?`<span class="pm-item"><span>${anaEsc(it.tgtNote)}</span></span>`:"")+`</div>`;
+  /* เซ็ต / สเต็ป */
+  if((it.lines||[]).length){
+    h+=`<h4>${it.type==="combo"?"📦 เซ็ตและกติกาการแถม":"📦 เส้นของโปรนี้"}</h4>`+
+      grpTable([{h:"เซ็ต"},{h:"กติกา (Mechanic)",a:"l"},{h:"ของแถม",a:"l"},{h:"เป้า"},{h:"CAP ต่อร้าน",a:"l"}],
+        [{title:"",rows:it.lines.map(L=>`<tr><td><b>${anaEsc(L.k||L.label||"-")}</b></td>`+
+          `<td style="text-align:left">${anaEsc(L.mech||"-")}</td>`+
+          `<td style="text-align:left">${anaEsc(L.free||"-")}</td>`+
+          `<td>${L.tgtPct?L.tgtPct+"%":(it.tgtPct?it.tgtPct+"%":"-")}</td>`+
+          `<td style="text-align:left">${anaEsc(L.cap||"-")}</td></tr>`)}],{alwaysBand:false});
+  }
+  /* เงินรางวัล */
+  if((it.pay||[]).length){
+    h+=`<h4>💰 เงินรางวัล</h4>`+
+      grpTable([{h:"ขั้น",a:"l"},{h:"ชิ้น/ร้าน"},{h:"สี/สูตร ขั้นต่ำ"},{h:"โต %"},{h:"Salesman"},{h:"Supervisor"}],
+        [{title:"",rows:it.pay.map(p=>`<tr><td style="text-align:left"><b>${anaEsc(p.label||"-")}</b></td>`+
+          `<td>${p.pcs?p.pcs:"-"}</td><td>${p.colors?p.colors+" สี":"-"}</td><td>${p.growth?p.growth+"%":"-"}</td>`+
+          `<td><b class="up">${p.sm?pmBaht(p.sm):"-"}</b></td><td>${p.sup?pmBaht(p.sup):"-"}</td></tr>`)}],{alwaysBand:false});
+  }
+  if(it.pts)h+=`<h4>🎫 คะแนน U-Bonus</h4><div class="insight">${anaEsc(it.pts)}</div>`;
+  /* สินค้า */
+  if((it.prod||[]).length){
+    h+=`<h4>🛒 สินค้าในโปรโมชั่น (${it.prod.length} รายการ)</h4><div class="pm-items">`+
+      it.prod.map(p=>`<span class="pm-item">${anaEsc(p.c||"")}${p.n?` <span>${anaEsc(p.n)}</span>`:""}</span>`).join("")+`</div>`;
+  }
+  /* รายละเอียดโปร */
+  if((it.detail||[]).length){
+    h+=`<h4>📄 รายละเอียดโปรโมชัน</h4><div class="pm-items">`+
+      it.detail.map(d=>`<span class="pm-item">${anaEsc(d.k)}: <span>${anaEsc(d.v)}</span></span>`).join("")+`</div>`;
+  }
+  if((it.cond||[]).length){
+    h+=`<h4>⚠️ เงื่อนไข</h4><ul class="pm-cond">`+it.cond.map(c=>`<li>${anaEsc(c)}</li>`).join("")+`</ul>`;
+  }
+  if(it.note)h+=`<h4>📝 หมายเหตุ</h4><div class="pm-sub" style="font-size:13.5px">${anaEsc(it.note)}</div>`;
+  /* ผลงานรายสาย */
+  const routes=pmRoutes(it.ch||"both");
+  const rows=[];
+  routes.forEach(c=>{
+    const s=pmSumRoute(it,c);
+    if(!s&&me&&c!==me)return;
+    const p=s?s.pct:null;
+    rows.push(`<tr${c===me?' style="background:#F2F7FF"':""}><td><b>${anaEsc(pmLineName(c))}</b></td>`+
+      `<td>${s&&s.pjp?s.pjp.toLocaleString():"-"}</td><td>${s?(+s.tgt).toLocaleString():"-"}</td>`+
+      `<td><b>${s?(+s.act).toLocaleString():"-"}</b></td>`+
+      `<td><span class="pm-cell ${pmPctCls(p)}">${pmPctTxt(p)}</span></td>`+
+      `<td>${s&&s.money>0?`<b class="up">${pmBaht(s.money)}</b>`:"-"}</td></tr>`);
+  });
+  h+=`<h4>📊 ผลงานรายสาย</h4>`+
+    (rows.length?grpTable([{h:"สาย"},{h:"PJP / ร้านในเขต"},{h:"เป้า"},{h:"ทำได้"},{h:"% ทำได้"},{h:"เงินรางวัล"}],
+      [{title:"",rows:rows}],{alwaysBand:false})
+     :`<div class="insight">ยังไม่ได้ใส่ผลงานของโปรนี้ — ${mgr?'ไปที่แท็บ <b>💰 ผลงาน & เงินรางวัล</b> แล้วกด "วางผลจาก Excel"':"รอผู้จัดการใส่ผล"}</div>`);
+  /* สไลด์ */
+  if(it.img)h+=`<h4>🖼 สไลด์จาก Unilever</h4><img class="pm-slide" src="${anaEsc(it.img)}" alt="${anaEsc(it.name)}">`+
+    `<div class="psub"><a href="${anaEsc(it.img)}" target="_blank" rel="noopener">เปิดรูปเต็มในแท็บใหม่</a></div>`;
+  h+=`</div>`;
+  return h;
+}
+
+/* ---------- หน้า "ผลงาน & เงินรางวัล" ---------- */
+function renderPromoRes(){
+  pmOk();
+  const ms=pmMonths();
+  if(!PR.m||ms.indexOf(PR.m)<0)PR.m=ms.length?ms[ms.length-1]:PR.m;
+  pmFillMonths("prMonth",PR.m);
+  setSeg("prScopeSeg","s",PR.scope);
+  const mgr=!!(S.user&&S.user.role==="manager");
+  const me=(S.user&&S.user.code)||"";
+  const list=PR.m?pmAll().filter(it=>it.m===PR.m).sort(pmSort):[];
+  const routes=pmRoutes("all");
+  const show=(PR.scope==="me"&&me)?[me]:routes;
+
+  const tot=routes.reduce((s,c)=>s+pmMoneyMonth(PR.m,c),0);
+  const myTot=me?pmMoneyMonth(PR.m,me):0;
+  let nHit=0,nAll=0;
+  list.forEach(it=>show.forEach(c=>{const s=pmSumRoute(it,c);if(s){nAll++;if(s.pct>=100)nHit++;}}));
+
+  document.getElementById("prBar").innerHTML=
+    `💰 ผลงาน & เงินรางวัล · <b>${PR.m?fmtMonth(PR.m):"-"}</b> · ${list.length} โปรโมชั่น`+
+    `<span class="dci-src">${mgr?'กด "📋 วางผลจาก Excel" แล้ว<b>คัดลอกตารางรีพอร์ทจาก Excel/Power BI มาวาง</b>ได้เลย ระบบจับสายวิ่งให้เอง':
+      "ตัวเลขมาจากรีพอร์ทที่ผู้จัดการบันทึกไว้"}</span>`;
+  document.getElementById("prCards").innerHTML=
+    `<div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">${me?"เงินรางวัลของคุณ":"เงินรางวัลรวมทั้งศูนย์"}</div>`+
+      `<div class="v up">${pmBaht(me?myTot:tot)}</div><div class="s">${fmtMonth(PR.m||todayISO().slice(0,7))}</div></div>`+
+    `<div class="card"><div class="k">ถึงเป้าแล้ว</div><div class="v">${nHit}<span style="font-size:14px;color:var(--muted)"> / ${nAll}</span></div><div class="s">นับเป็นรายโปร × รายสาย</div></div>`+
+    `<div class="card"><div class="k">โปรที่มีผลแล้ว</div><div class="v">${
+      list.filter(it=>show.some(c=>pmSumRoute(it,c))).length}<span style="font-size:14px;color:var(--muted)"> / ${list.length}</span></div><div class="s">ที่เหลือยังไม่ได้ใส่ผล</div></div>`+
+    (me?`<div class="card"><div class="k">เงินรางวัลรวมทั้งศูนย์</div><div class="v">${pmBaht(tot)}</div><div class="s">ทุกสายรวมกัน</div></div>`
+       :`<div class="card"><div class="k">สายที่ได้เงินรางวัล</div><div class="v">${routes.filter(c=>pmMoneyMonth(PR.m,c)>0).length}</div><div class="s">จาก ${routes.length} สาย</div></div>`);
+
+  const el=document.getElementById("prBody");
+  if(!list.length){
+    el.innerHTML=`<div class="panel"><div class="insight">ยังไม่มีโปรโมชั่นของเดือนนี้ — ใส่โปรที่แท็บ <b>โปรเดือนนี้</b> ก่อน แล้วค่อยกลับมาใส่ผล</div></div>`;return;
+  }
+  /* ตารางรวม: แถว = สาย · คอลัมน์ = โปร · ปิดท้ายด้วยเงินรางวัลรวม */
+  const head=[{h:"สาย",a:"l"}].concat(list.map(it=>({h:(PRO_TYPE[it.type]||{}).ic+" "+anaEsc(pmShort(it)),t:it.name}))).concat([{h:"รวมเงินรางวัล"}]);
+  const rows=show.map(c=>{
+    const cells=list.map(it=>{
+      const s=pmSumRoute(it,c);
+      if(!s)return `<td><span class="pm-cell pm-cx">—</span></td>`;
+      return `<td><span class="pm-cell ${pmPctCls(s.pct)}" title="เป้า ${(+s.tgt).toLocaleString()} · ทำได้ ${(+s.act).toLocaleString()}">${pmPctTxt(s.pct)}</span>`+
+        (s.money>0?`<div class="pm-money" style="font-size:11px">${pmBaht(s.money)}</div>`:"")+`</td>`;
+    }).join("");
+    const mm=pmMoneyMonth(PR.m,c);
+    return `<tr${c===me?' style="background:#F2F7FF"':""}><td style="text-align:left"><b>${anaEsc(pmLineName(c))}</b></td>${cells}`+
+      `<td><b class="${mm>0?"up":""}">${mm>0?pmBaht(mm):"—"}</b></td></tr>`;
+  });
+  let h=`<div class="panel"><h3>📊 ภาพรวมทุกโปรโมชั่น · ${fmtMonth(PR.m)}</h3>`+
+    `<div class="psub">ตัวเลขในช่องคือ <b>% ที่ทำได้</b> · เอาเมาส์ชี้เพื่อดูเป้าและยอดที่ทำได้ · <span class="pm-cell pm-c3">เขียวเข้ม</span> = ถึงเป้าแล้ว</div>`+
+    `<div style="margin-top:10px">`+grpTable(head,[{title:"",rows:rows}],{alwaysBand:false})+`</div></div>`;
+
+  /* รายโปร */
+  h+=list.map(it=>{
+    const T=PRO_TYPE[it.type]||PRO_TYPE.flash;
+    const rs=show.map(c=>{
+      const s=pmSumRoute(it,c);
+      if(!s&&PR.scope==="me")return "";
+      return `<tr${c===me?' style="background:#F2F7FF"':""}><td style="text-align:left"><b>${anaEsc(pmLineName(c))}</b></td>`+
+        `<td>${s&&s.pjp?s.pjp.toLocaleString():"-"}</td><td>${s?(+s.tgt).toLocaleString():"-"}</td>`+
+        `<td><b>${s?(+s.act).toLocaleString():"-"}</b></td>`+
+        `<td><span class="pm-cell ${pmPctCls(s?s.pct:null)}">${pmPctTxt(s?s.pct:null)}</span></td>`+
+        `<td>${s&&s.money>0?`<b class="up">${pmBaht(s.money)}</b>`:"-"}</td></tr>`;
+    }).filter(Boolean);
+    return `<div class="panel" style="margin-top:14px">`+
+      `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">`+
+      `<div><h3 style="color:${T.c}">${T.ic} ${anaEsc(it.name)}</h3>`+
+      `<div class="psub">${T.nm}${+it.tgtPct>0?" · เป้า "+it.tgtPct+"% ของร้านในเขต":""}${
+        (it.lines||[]).length>1?" · "+it.lines.length+" เซ็ต (ตัวเลขด้านล่างรวมทุกเซ็ตแล้ว)":""}</div></div>`+
+      (mgr?`<button type="button" class="pl-today" onclick="prPasteOpen('${it.id}')">📋 วางผลจาก Excel</button>`:"")+
+      `</div>`+
+      (rs.length?`<div style="margin-top:10px">`+grpTable(
+        [{h:"สาย",a:"l"},{h:"PJP / ร้านในเขต"},{h:"เป้า"},{h:"ทำได้"},{h:"% ทำได้"},{h:"เงินรางวัล"}],
+        [{title:"",rows:rs}],{alwaysBand:false})+`</div>`
+       :`<div class="insight" style="margin-top:10px">ยังไม่ได้ใส่ผลของโปรนี้</div>`)+`</div>`;
+  }).join("");
+  el.innerHTML=h;
+}
+function pmShort(it){
+  let s=String(it.name||"").replace(/\s*(ตุลาคม|กันยายน|พฤศจิกายน|ธันวาคม|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม)[’'`]?\s*\d{0,4}/g,"");
+  s=s.replace(/COMBO DRIVE|Combo Drive|EXTRA DIST\.? DRIVE|Extra Dist\.? Drive|Eco Trophy|HIT OF THE MONTH|Flash Deal|FLASH DEAL/gi,"").trim();
+  s=s.replace(/^[:\-–\s]+|[:\-–\s]+$/g,"");
+  return s||(PRO_TYPE[it.type]||{}).nm||it.name;
+}
+
+/* ---------- วางผลจาก Excel / Power BI ---------- */
+/* รีพอร์ทมาจาก Excel หรือ Power BI เสมอ — ทางที่เร็วและพลาดยากที่สุดคือ "คัดลอกทั้งตารางมาวาง"
+   แล้วให้ระบบจับสายวิ่งเอง ส่วนคอลัมน์ไหนคืออะไรให้เดาให้ก่อน แล้วผู้จัดการกดยืนยัน/แก้ได้ */
+const PR_COLS=[["skip","— ข้าม —"],["pjp","PJP / ร้านในเขต"],["tgt","เป้า (Target)"],
+               ["act","ทำได้ (Actual)"],["pct","% ทำได้"],["money","เงินรางวัล (฿)"]];
+function prNum(v){
+  const s=String(v==null?"":v).replace(/[,\s฿%]/g,"");
+  if(!s)return null;
+  const neg=/^\(.*\)$/.test(s)||/^-/.test(s);
+  const m=s.replace(/[()]/g,"").match(/\d+(\.\d+)?/);
+  if(!m)return null;
+  const n=parseFloat(m[0]);
+  return neg?-n:n;
+}
+function prSplit(text){
+  return String(text||"").replace(/\r/g,"").split("\n")
+    .filter(l=>l.trim()!=="")
+    .map(l=>l.indexOf("\t")>=0?l.split("\t"):l.split(/\s{2,}/));
+}
+/* จับสายวิ่งจากเซลล์ — รองรับ 209611 · 2096_97 · 2096/209611 · CT_HPC_211 · เลขสายล้วน 11/97 */
+function prRoute(v){
+  const s=String(v==null?"":v).trim();
+  if(!s)return null;
+  const known=(DATA.focus_order||[]);
+  for(let i=0;i<known.length;i++)if(s.indexOf(known[i])>=0)return known[i];
+  let two=null;
+  const m=s.match(/_(\d{2,3})\s*$/);
+  if(m)two=m[1].slice(-2);
+  else if(/^\d{1,2}$/.test(s))two=s.length===1?("0"+s):s;
+  if(two)for(let i=0;i<known.length;i++){
+    const d=known[i].replace(/[^0-9]/g,"");
+    if(d.slice(-2)===two)return known[i];
+  }
+  return null;
+}
+function prGuess(h){
+  const s=String(h||"").toLowerCase();
+  if(/diff|to.?do|คงเหลือ|ขาดอีก/.test(s))return "skip";
+  if(/incentive|รางวัล|เงิน|บาท/.test(s))return "money";
+  if(/target|เป้า/.test(s)&&!/ach/.test(s))return "tgt";
+  if(/actual|ขายได้|ทำได้|^sale|ยอดขาย/.test(s))return "act";
+  if(/%|achieve|คิดเป็น|ach\./.test(s))return "pct";
+  if(/pjp|ร้านในเขต|base|ฐาน/.test(s))return "pjp";
+  return "skip";
+}
+function prPasteOpen(id){
+  const list=PR.m?pmAll().filter(it=>it.m===PR.m).sort(pmSort):[];
+  if(!list.length){alert("ยังไม่มีโปรโมชั่นของเดือนนี้ — ใส่โปรที่แท็บ \"โปรเดือนนี้\" ก่อน");return;}
+  PR.paste={id:id||list[0].id,line:"",text:"",cols:null,rows:null};
+  prPasteDraw();
+}
+function prPasteClose(){PR.paste=null;document.getElementById("prModal").innerHTML="";}
+function prPasteDraw(){
+  const P=PR.paste;if(!P){document.getElementById("prModal").innerHTML="";return;}
+  const list=pmAll().filter(it=>it.m===PR.m).sort(pmSort);
+  const it=list.filter(x=>x.id===P.id)[0]||list[0];
+  const lines=pmLines(it);
+  let prev="";
+  if(P.rows){
+    const nOk=P.rows.filter(r=>r.route).length;
+    prev=`<div class="psub" style="margin:14px 0 8px">อ่านได้ <b>${P.rows.length}</b> แถว · จับคู่สายวิ่งได้ <b class="${nOk?"up":"down"}">${nOk}</b> แถว`+
+      (nOk<P.rows.length?` · อีก ${P.rows.length-nOk} แถวไม่ใช่สายวิ่ง (แถวหัวตาราง/แถวรวม) จะถูกข้าม`:"")+`</div>`+
+      `<div class="tblwrap"><table class="grp-tbl pm-prev"><thead><tr><th>สายวิ่ง</th>`+
+      P.cols.map((c,i)=>`<th><select class="pm-map" onchange="prSetCol(${i},this.value)">`+
+        PR_COLS.map(o=>`<option value="${o[0]}"${o[0]===c?" selected":""}>${o[1]}</option>`).join("")+
+        `</select></th>`).join("")+`</tr></thead><tbody>`+
+      P.rows.slice(0,14).map(r=>`<tr${r.route?"":' style="opacity:.42"'}>`+
+        `<td>${r.route?`<b>${anaEsc(pmLineName(r.route))}</b>`:'<span class="psub">ข้าม</span>'}</td>`+
+        r.cells.map(c=>`<td>${anaEsc(String(c).slice(0,18))}</td>`).join("")+`</tr>`).join("")+
+      `</tbody></table></div>`+
+      (P.rows.length>14?`<div class="psub">แสดง 14 แถวแรก จากทั้งหมด ${P.rows.length} แถว</div>`:"");
+  }
+  document.getElementById("prModal").innerHTML=
+  `<div class="pl-mask" onclick="if(event.target===this)prPasteClose()"><div class="pl-modal" style="max-width:860px" onclick="event.stopPropagation()">
+    <div class="pl-mh"><h3>📋 วางผลจาก Excel / Power BI</h3><button type="button" class="pl-x" onclick="prPasteClose()">✕</button></div>
+    <div class="pl-2">
+      <div class="pl-f"><label>โปรโมชั่น</label><select id="prPId" onchange="prSetPromo(this.value)">${
+        list.map(x=>`<option value="${x.id}"${x.id===it.id?" selected":""}>${(PRO_TYPE[x.type]||{}).ic} ${anaEsc(x.name)}</option>`).join("")}</select></div>
+      <div class="pl-f"><label>เซ็ต / เส้นของโปร</label><select id="prPLine" onchange="prSetLine(this.value)"${lines.length<2?" disabled":""}>${
+        lines.map(L=>`<option value="${anaEsc(L.k||"")}"${(L.k||"")===P.line?" selected":""}>${anaEsc(L.k||L.label||"ทั้งโปร (เส้นเดียว)")}</option>`).join("")}</select></div>
+    </div>
+    <div class="pl-f"><label>คัดลอกตารางจากรีพอร์ท แล้ววางลงช่องนี้ (ลากคลุมทั้งตารางใน Excel → Ctrl+C → คลิกในช่องนี้ → Ctrl+V)</label>
+      <textarea class="pm-paste" id="prText" placeholder="ตัวอย่าง:&#10;RouteCode&#9;Target&#9;Actual&#9;To do&#9;%Achieve&#10;209611&#9;129&#9;40&#9;6&#9;31%&#10;209612&#9;89&#9;50&#9;-18&#9;56%">${anaEsc(P.text||"")}</textarea></div>
+    <div class="pl-mf"><button type="button" class="pl-today" onclick="prRead()">🔍 อ่านตาราง</button>
+      ${P.rows?`<button type="button" class="pl-save" style="flex:0 0 auto;padding:13px 22px" onclick="prApply()">บันทึกผล ${P.rows.filter(r=>r.route).length} สาย</button>`:""}</div>
+    ${prev}
+    <div class="pl-hint">ระบบจับ "สายวิ่ง" ได้ทั้งแบบ <b>209611</b>, <b>2096_97</b>, <b>CT_HPC_211</b> และเลขสายล้วน ๆ เช่น <b>11</b> / <b>97</b><br>
+      แถวหัวตารางและแถวรวม (Total) จะถูกข้ามให้เอง · ค่า % ที่รีพอร์ทให้มาจะถูกเก็บตามนั้น ไม่คำนวณใหม่<br>
+      บันทึกแล้ว<b>ทับเฉพาะโปรและเซ็ตที่เลือก</b>เท่านั้น โปรอื่นและเดือนอื่นไม่ถูกแตะ</div>
+  </div></div>`;
+}
+function prSetPromo(id){PR.paste.id=id;PR.paste.line="";PR.paste.rows=null;prPasteDraw();}
+function prSetLine(k){PR.paste.line=k;prPasteDraw();}
+function prSetCol(i,v){PR.paste.cols[i]=v;prPasteDraw();}
+function prRead(){
+  const P=PR.paste;if(!P)return;
+  P.text=document.getElementById("prText").value||"";
+  const raw=prSplit(P.text);
+  if(!raw.length){alert("ยังไม่ได้วางตาราง — คัดลอกตารางจาก Excel มาวางในช่องก่อน");return;}
+  /* หาคอลัมน์ที่เป็นสายวิ่ง: คอลัมน์ที่จับสายได้มากที่สุด */
+  const w=Math.max.apply(null,raw.map(r=>r.length));
+  let best=-1,bestN=0;
+  for(let c=0;c<w;c++){
+    let n=0;raw.forEach(r=>{if(prRoute(r[c]))n++;});
+    if(n>bestN){bestN=n;best=c;}
+  }
+  if(bestN===0){alert("หาคอลัมน์สายวิ่งไม่เจอ\n\nตารางต้องมีคอลัมน์ที่เป็นรหัสสาย เช่น 209611 / 2096_97 / CT_HPC_211 หรือเลขสาย 11, 97");return;}
+  /* แถวหัวตาราง = แถวแรกที่จับสายไม่ได้ ใช้เดาชื่อคอลัมน์ */
+  let hdr=null;
+  for(let i=0;i<raw.length;i++){if(!prRoute(raw[i][best])){hdr=raw[i];break;}}
+  const other=[];for(let c=0;c<w;c++)if(c!==best)other.push(c);
+  P.src=other;P.routeCol=best;
+  P.cols=other.map(c=>prGuess(hdr?hdr[c]:""));
+  /* ถ้าเดาไม่ได้เลย ให้เดาจากลำดับที่พบบ่อยในรีพอร์ท: เป้า → ทำได้ */
+  if(P.cols.every(x=>x==="skip")&&other.length>=2){P.cols[0]="tgt";P.cols[1]="act";}
+  P.rows=raw.map(r=>({route:prRoute(r[best]),cells:other.map(c=>r[c]===undefined?"":r[c])}))
+            .filter(r=>r.route||r.cells.some(c=>String(c).trim()!==""));
+  prPasteDraw();
+}
+function prApply(){
+  const P=PR.paste;if(!P||!P.rows)return;
+  const it=pmAll().filter(x=>x.id===P.id)[0];
+  if(!it){alert("ไม่พบโปรโมชั่นนี้แล้ว");return;}
+  const use=P.rows.filter(r=>r.route);
+  if(!use.length){alert("ไม่มีแถวที่จับคู่สายวิ่งได้");return;}
+  const mapped=P.cols.filter(c=>c!=="skip");
+  if(!mapped.length){alert("ยังไม่ได้บอกว่าคอลัมน์ไหนคืออะไร — เลือกอย่างน้อย 1 คอลัมน์ (เช่น เป้า / ทำได้)");return;}
+  pmOk();
+  const now=Date.now(),by=(S.user&&S.user.name)||"";
+  let n=0;
+  use.forEach(r=>{
+    const o={up:now,by:by};
+    P.cols.forEach((c,i)=>{if(c==="skip")return;const v=prNum(r.cells[i]);if(v!==null)o[c]=v;});
+    if(Object.keys(o).length<=2)return;              /* ไม่มีตัวเลขเลย ข้าม */
+    PROMO.res[pmResKey(it.id,r.route,P.line)]=o;n++;
+  });
+  prPasteClose();renderPromoRes();syncToServer();
+  alert("บันทึกผลของ \""+it.name+"\" แล้ว "+n+" สาย\n\nกำลังบันทึกขึ้นเซิร์ฟเวอร์ — อีกสักครู่ให้รีเฟรชหน้าเว็บเพื่อยืนยัน");
+}
+
+/* ---------- ฝั่งผู้จัดการ: เพิ่ม / แก้ไข / ลบโปรโมชั่น ---------- */
+function pmBlank(){
+  return {name:"",type:"combo",m:PM.m||plYm(todayISO()),ch:"CT",grp:"",img:"",
+    tgtPct:"",tgtStores:"",tgtNote:"",pts:"",note:"",
+    prodText:"",condText:"",dInvoice:"",dShop:"",dMech:"",
+    lines:[],pay:[]};
+}
+function pmProdText(prod){return (prod||[]).map(p=>(p.c||"")+(p.n?" "+p.n:"")).join("\n");}
+/* รับได้ทั้ง "รหัส ชื่อสินค้า" บรรทัดละตัว และบรรทัดที่เป็นรหัสคั่นด้วยจุลภาค (สไลด์ Unilever เขียนแบบนี้) */
+function pmParseProd(txt){
+  const out=[],seen={};
+  String(txt||"").split("\n").forEach(line=>{
+    const l=line.trim();if(!l)return;
+    const only=l.replace(/[,\s]+/g," ").trim();
+    if(/^(\d{6,9}[\s,]+)*\d{6,9}$/.test(only)){
+      only.split(/[\s,]+/).forEach(c=>{if(c&&!seen[c]){seen[c]=1;out.push({c:c,n:""});}});
+      return;
+    }
+    const m=l.match(/^(\d{6,9})[\s:.\-]*(.*)$/);
+    if(m){if(!seen[m[1]]){seen[m[1]]=1;out.push({c:m[1],n:m[2].trim()});}}
+    else out.push({c:"",n:l});
+  });
+  return out;
+}
+function pmOpen(id){
+  if(!(S.user&&S.user.role==="manager")){alert("เฉพาะผู้จัดการเท่านั้น");return;}
+  const cur=id?(pmOk().items[id]||null):null;
+  if(id&&!cur)return;
+  PM.edit=id||null;
+  PM.form=cur?{
+    name:cur.name||"",type:cur.type||"combo",m:cur.m||PM.m,ch:cur.ch||"CT",grp:cur.grp||"",img:cur.img||"",
+    tgtPct:cur.tgtPct||"",tgtStores:cur.tgtStores||"",tgtNote:cur.tgtNote||"",pts:cur.pts||"",note:cur.note||"",
+    prodText:pmProdText(cur.prod),condText:(cur.cond||[]).join("\n"),
+    dInvoice:((cur.detail||[]).filter(d=>d.k==="Invoice")[0]||{}).v||"",
+    dShop:((cur.detail||[]).filter(d=>d.k==="Shoptype")[0]||{}).v||"",
+    dMech:((cur.detail||[]).filter(d=>d.k==="Mechanic")[0]||{}).v||"",
+    lines:JSON.parse(JSON.stringify(cur.lines||[])),pay:JSON.parse(JSON.stringify(cur.pay||[])),
+  }:pmBlank();
+  pmDraw();
+}
+function pmClose(){PM.edit=null;PM.form=null;PM.busy=false;document.getElementById("pmModal").innerHTML="";}
+function pmFset(k,v){if(PM.form)PM.form[k]=v;}
+function pmFtype(t){PM.form.type=t;pmDraw();}
+function pmFch(c){PM.form.ch=c;pmDraw();}
+function pmFgrp(g){PM.form.grp=(PM.form.grp===g?"":g);pmDraw();}
+function pmGrab(){                      /* เก็บค่าที่พิมพ์ค้างไว้ก่อนวาดใหม่ ไม่ให้หายตอนกดปุ่ม */
+  const F=PM.form;if(!F)return;
+  ["name","tgtPct","tgtStores","tgtNote","pts","note","prodText","condText","dInvoice","dShop","dMech","m"].forEach(k=>{
+    const el=document.getElementById("pmf_"+k);if(el)F[k]=el.value;
+  });
+  F.lines.forEach((L,i)=>["k","mech","free","tgtPct","cap"].forEach(k=>{
+    const el=document.getElementById("pml_"+i+"_"+k);if(el)L[k]=el.value;}));
+  F.pay.forEach((p,i)=>["label","pcs","colors","growth","sm","sup"].forEach(k=>{
+    const el=document.getElementById("pmp_"+i+"_"+k);if(el)p[k]=el.value;}));
+}
+function pmAddLine(){pmGrab();PM.form.lines.push({k:"",mech:"",free:"",tgtPct:"",cap:""});pmDraw();}
+function pmDelLine(i){pmGrab();PM.form.lines.splice(i,1);pmDraw();}
+function pmAddPay(){pmGrab();PM.form.pay.push({label:"",pcs:"",colors:"",growth:"",sm:"",sup:""});pmDraw();}
+function pmDelPay(i){pmGrab();PM.form.pay.splice(i,1);pmDraw();}
+function pmDraw(){
+  const F=PM.form;if(!F){document.getElementById("pmModal").innerHTML="";return;}
+  const T=PRO_TYPE[F.type]||PRO_TYPE.combo;
+  const showSets=(F.type==="combo"||F.lines.length>0);
+  const showPay=(F.type==="extra"||F.type==="top30"||F.type==="hit"||F.pay.length>0);
+  const row=(i,L)=>`<tr><td><input id="pml_${i}_k" value="${anaEsc(L.k||"")}" placeholder="HC1" style="width:76px"></td>`+
+    `<td><input id="pml_${i}_mech" value="${anaEsc(L.mech||"")}" placeholder="ซื้อครบ 18 ชิ้น"></td>`+
+    `<td><input id="pml_${i}_free" value="${anaEsc(L.free||"")}" placeholder="โอโมลิควิด x2 (65711451)"></td>`+
+    `<td><input id="pml_${i}_tgtPct" value="${anaEsc(L.tgtPct||"")}" placeholder="35" style="width:64px"></td>`+
+    `<td><input id="pml_${i}_cap" value="${anaEsc(L.cap||"")}" placeholder="MPS/MPM/FD 4 เซ็ต · MPL 12 เซ็ต"></td>`+
+    `<td><button type="button" class="pl-x" onclick="pmDelLine(${i})">✕</button></td></tr>`;
+  const prow=(i,p)=>`<tr><td><input id="pmp_${i}_label" value="${anaEsc(p.label||"")}" placeholder="ขั้น 1" style="width:88px"></td>`+
+    `<td><input id="pmp_${i}_pcs" value="${anaEsc(p.pcs||"")}" placeholder="9" style="width:64px"></td>`+
+    `<td><input id="pmp_${i}_colors" value="${anaEsc(p.colors||"")}" placeholder="3" style="width:64px"></td>`+
+    `<td><input id="pmp_${i}_growth" value="${anaEsc(p.growth||"")}" placeholder="1" style="width:64px"></td>`+
+    `<td><input id="pmp_${i}_sm" value="${anaEsc(p.sm||"")}" placeholder="700" style="width:84px"></td>`+
+    `<td><input id="pmp_${i}_sup" value="${anaEsc(p.sup||"")}" placeholder="1000" style="width:84px"></td>`+
+    `<td><button type="button" class="pl-x" onclick="pmDelPay(${i})">✕</button></td></tr>`;
+  document.getElementById("pmModal").innerHTML=
+  `<div class="pl-mask" onclick="if(event.target===this)pmClose()"><div class="pl-modal" style="max-width:900px" onclick="event.stopPropagation()">
+    <div class="pl-mh"><h3>${PM.edit?"✏️ แก้ไขโปรโมชั่น":"＋ เพิ่มโปรโมชั่น"}</h3><button type="button" class="pl-x" onclick="pmClose()">✕</button></div>
+    <div class="pl-f"><label>ชนิดโปรโมชั่น</label><div class="pl-chips">${
+      PRO_ORDER.map(k=>`<button type="button" class="pl-cb${k===F.type?" on":""}" onclick="pmGrab();pmFtype('${k}')">${PRO_TYPE[k].ic} ${PRO_TYPE[k].nm}</button>`).join("")}</div>
+      <div class="psub">${T.d}</div></div>
+    <div class="pl-f"><label>ชื่อโปรโมชั่น * (ลอกจากหัวสไลด์ได้เลย)</label>
+      <input id="pmf_name" maxlength="120" value="${anaEsc(F.name)}" placeholder="เช่น CT COMBO DRIVE : HPC"></div>
+    <div class="pl-2">
+      <div class="pl-f"><label>เดือนของโปร *</label><input type="month" id="pmf_m" value="${anaEsc(F.m||"")}"></div>
+      <div class="pl-f"><label>สายที่เกี่ยวข้อง</label><div class="pl-chips">${
+        [["CT","CT"],["KA","KA"],["both","ทั้ง CT และ KA"]].map(x=>`<button type="button" class="pl-cb${F.ch===x[0]?" on":""}" onclick="pmGrab();pmFch('${x[0]}')">${x[1]}</button>`).join("")}</div></div>
+    </div>
+    <div class="pl-f"><label>กลุ่มสินค้า (กดซ้ำเพื่อยกเลิก)</label><div class="pl-chips">${
+      Object.keys(PRO_GRP).map(g=>`<button type="button" class="pl-cb${F.grp===g?" on":""}" onclick="pmGrab();pmFgrp('${g}')">${g} · ${PRO_GRP[g]}</button>`).join("")}</div></div>
+    <div class="pl-2">
+      <div class="pl-f"><label>เป้า % ของร้านในเขต</label><input id="pmf_tgtPct" value="${anaEsc(F.tgtPct)}" placeholder="35"></div>
+      <div class="pl-f"><label>เป้าจำนวนร้าน (ทั้งประเทศ)</label><input id="pmf_tgtStores" value="${anaEsc(F.tgtStores)}" placeholder="15000"></div>
+    </div>
+    <div class="pl-f"><label>หมายเหตุเป้า (เช่น Target นับ MPM, MPL, RTD)</label>
+      <input id="pmf_tgtNote" maxlength="200" value="${anaEsc(F.tgtNote)}" placeholder="Target และ Actual คำนวณจากร้านค้า M&amp;P ทั้งหมด"></div>
+    <div class="pl-f"><label>🖼 สไลด์จาก Unilever</label>
+      ${F.img?`<img src="${anaEsc(F.img)}" style="width:100%;max-width:420px;border:1px solid var(--line);border-radius:10px;display:block;margin-bottom:8px">`:""}
+      <div class="pl-mf"><input type="file" accept="image/*" id="pmf_file" style="flex:1" onchange="pmUpImg(this)">
+        ${F.img?`<button type="button" class="ps-del" onclick="pmGrab();pmFset('img','');pmDraw()">ลบรูป</button>`:""}</div>
+      <div class="psub" id="pmUpMsg">ย่อรูปให้อัตโนมัติก่อนอัพ · รูปเก็บแยกจากข้อมูลหลัก ไม่ทำให้ข้อมูลเดิมหนักขึ้น</div></div>
+    ${showSets?`<div class="pl-f"><label>เซ็ต / เส้นของโปร (Combo Drive ใส่ทีละเซ็ต)</label>
+      <div class="tblwrap"><table class="grp-tbl"><thead><tr><th>เซ็ต</th><th>กติกา</th><th>ของแถม</th><th>เป้า %</th><th>CAP ต่อร้าน</th><th></th></tr></thead>
+      <tbody>${F.lines.map((L,i)=>row(i,L)).join("")||`<tr><td colspan="6" class="psub">ยังไม่มีเซ็ต</td></tr>`}</tbody></table></div>
+      <button type="button" class="pl-cb" style="margin-top:8px" onclick="pmAddLine()">＋ เพิ่มเซ็ต</button></div>`:""}
+    ${showPay?`<div class="pl-f"><label>เงินรางวัล (ใส่เท่าที่โปรนี้มี)</label>
+      <div class="tblwrap"><table class="grp-tbl"><thead><tr><th>ขั้น</th><th>ชิ้น/ร้าน</th><th>สี/สูตร</th><th>โต %</th><th>Salesman ฿</th><th>Supervisor ฿</th><th></th></tr></thead>
+      <tbody>${F.pay.map((p,i)=>prow(i,p)).join("")||`<tr><td colspan="7" class="psub">ยังไม่มีขั้นเงินรางวัล</td></tr>`}</tbody></table></div>
+      <button type="button" class="pl-cb" style="margin-top:8px" onclick="pmAddPay()">＋ เพิ่มขั้น</button></div>`:""}
+    ${F.type==="hit"?`<div class="pl-f"><label>คะแนน U-Bonus</label>
+      <input id="pmf_pts" maxlength="120" value="${anaEsc(F.pts)}" placeholder="5 คะแนน/ชิ้น · CAP 12 ชิ้น/ร้านค้า · ปิด 95% จึงได้เงิน"></div>`:""}
+    <div class="pl-f"><label>สินค้าในโปรโมชั่น — บรรทัดละ "รหัส ชื่อสินค้า" หรือวางรหัสคั่นด้วยจุลภาคก็ได้</label>
+      <textarea id="pmf_prodText" style="min-height:92px" placeholder="65711451 โอโมลิควิดซันซายน์ ลดอับ FO15&#10;64333524, 64312782, 68875414">${anaEsc(F.prodText)}</textarea></div>
+    <div class="pl-2">
+      <div class="pl-f"><label>Invoice</label><input id="pmf_dInvoice" value="${anaEsc(F.dInvoice)}" placeholder="REBATE"></div>
+      <div class="pl-f"><label>Shoptype</label><input id="pmf_dShop" value="${anaEsc(F.dShop)}" placeholder="M&amp;P"></div>
+    </div>
+    <div class="pl-f"><label>Mechanic (รายละเอียดโปรโมชัน)</label><input id="pmf_dMech" value="${anaEsc(F.dMech)}" placeholder="W% เทียบเท่า 6 F 1"></div>
+    <div class="pl-f"><label>เงื่อนไข (บรรทัดละข้อ)</label>
+      <textarea id="pmf_condText" style="min-height:76px" placeholder="นับเป็นสี ไม่นับรหัส เช่นถ้าสีแดงมี 2 รหัส ขายเข้าทั้ง 2 รหัสนับ 1 สี">${anaEsc(F.condText)}</textarea></div>
+    <div class="pl-f"><label>หมายเหตุ</label><textarea id="pmf_note" style="min-height:60px">${anaEsc(F.note)}</textarea></div>
+    <div class="pl-mf"><button type="button" class="pl-save" onclick="pmSaveForm()">${PM.edit?"บันทึกการแก้ไข":"เพิ่มโปรโมชั่น"}</button>
+      ${PM.edit?`<button type="button" class="ps-del" onclick="pmDelete('${PM.edit}')">🗑 ลบ</button>`:""}</div>
+    <div class="pl-hint">บันทึกแล้วทุกคนเห็นทันทีที่รีเฟรชหน้าเว็บ · ผลงานรายสายใส่ทีหลังได้ที่แท็บ <b>💰 ผลงาน & เงินรางวัล</b></div>
+  </div></div>`;
+}
+/* ย่อรูปในเครื่องก่อนส่ง แล้วเก็บเป็น blob แยก (bd-promoimg-*) — state เก็บแค่ URL */
+function pmShrink(file,maxW,cb){
+  try{
+    const fr=new FileReader();
+    fr.onerror=()=>cb(null);
+    fr.onload=()=>{
+      const im=new Image();
+      im.onerror=()=>cb(null);
+      im.onload=()=>{
+        try{
+          const sc=Math.min(1,maxW/(im.width||maxW));
+          const w=Math.max(1,Math.round((im.width||maxW)*sc)),h=Math.max(1,Math.round((im.height||maxW)*sc));
+          const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+          cv.getContext("2d").drawImage(im,0,0,w,h);
+          cb(cv.toDataURL("image/jpeg",0.82));
+        }catch(e){cb(null);}
+      };
+      im.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  }catch(e){cb(null);}
+}
+function pmUpImg(inp){
+  const f=inp&&inp.files&&inp.files[0];if(!f)return;
+  const msg=document.getElementById("pmUpMsg");
+  if(msg)msg.innerHTML="⏳ กำลังย่อรูปและอัพขึ้นเซิร์ฟเวอร์...";
+  pmGrab();
+  pmShrink(f,1600,async(data)=>{
+    if(!data){if(msg)msg.innerHTML="⚠️ อ่านไฟล์รูปไม่สำเร็จ — ลองไฟล์อื่น";return;}
+    if(typeof TOKEN==="undefined"||!TOKEN){      /* โหมดไฟล์เดียว ไม่มีเซิร์ฟเวอร์ */
+      PM.form.img=data;pmDraw();return;
+    }
+    try{
+      const r=await fetch("/api/promoimg",{method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},
+        body:JSON.stringify({img:data})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||!j.url)throw new Error(j.error||("HTTP "+r.status));
+      PM.form.img=j.url;pmDraw();
+    }catch(ex){if(msg)msg.innerHTML="⚠️ อัพรูปไม่สำเร็จ: "+anaEsc(ex.message);}
+  });
+}
+function pmNum(v){const n=parseFloat(String(v==null?"":v).replace(/[,\s%฿]/g,""));return isFinite(n)?n:"";}
+function pmSaveForm(){
+  pmGrab();
+  const F=PM.form;if(!F)return;
+  const name=String(F.name||"").trim();
+  if(!name){alert("ใส่ชื่อโปรโมชั่นก่อนนะครับ");return;}
+  if(!/^\d{4}-\d{2}$/.test(String(F.m||""))){alert("เลือกเดือนของโปรโมชั่นก่อนนะครับ");return;}
+  pmOk();
+  const id=PM.edit||("m"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+  const old=PM.edit?Object.assign({},PROMO.items[id]):null;
+  const detail=[];
+  if(F.dInvoice)detail.push({k:"Invoice",v:String(F.dInvoice).trim()});
+  if(F.dShop)detail.push({k:"Shoptype",v:String(F.dShop).trim()});
+  if(F.dMech)detail.push({k:"Mechanic",v:String(F.dMech).trim()});
+  const it={
+    name:name.slice(0,120),type:PRO_TYPE[F.type]?F.type:"combo",m:F.m,
+    ch:["CT","KA","both"].indexOf(F.ch)>=0?F.ch:"CT",grp:PRO_GRP[F.grp]?F.grp:"",
+    img:String(F.img||""),tgtPct:pmNum(F.tgtPct),tgtStores:pmNum(F.tgtStores),
+    tgtNote:String(F.tgtNote||"").slice(0,200),pts:String(F.pts||"").slice(0,160),
+    note:String(F.note||"").slice(0,1000),
+    prod:pmParseProd(F.prodText).slice(0,400),
+    cond:String(F.condText||"").split("\n").map(x=>x.trim()).filter(Boolean).slice(0,30),
+    detail:detail,
+    lines:(F.lines||[]).map(L=>({k:String(L.k||"").trim(),mech:String(L.mech||"").trim(),
+      free:String(L.free||"").trim(),tgtPct:pmNum(L.tgtPct),cap:String(L.cap||"").trim()}))
+      .filter(L=>L.k||L.mech||L.free||L.cap),
+    pay:(F.pay||[]).map(p=>({label:String(p.label||"").trim(),pcs:pmNum(p.pcs),colors:pmNum(p.colors),
+      growth:pmNum(p.growth),sm:pmNum(p.sm),sup:pmNum(p.sup)}))
+      .filter(p=>p.label||p.sm||p.sup||p.pcs),
+    by:old?(old.by||"manager"):"manager",byName:(S.user&&S.user.name)||"",
+    at:old&&old.at?old.at:Date.now(),up:Date.now(),
+  };
+  PROMO.items[id]=it;
+  if(PROMO.del)delete PROMO.del[id];
+  PM.m=it.m;PM.open=id;pmClose();
+  renderPromo();syncToServer();
+}
+function pmDelete(id){
+  if(!(S.user&&S.user.role==="manager")){alert("เฉพาะผู้จัดการเท่านั้น");return;}
+  const it=pmOk().items[id];if(!it)return;
+  const nRes=Object.keys(PROMO.res).filter(k=>k.slice(0,id.length+1)===id+"|").length;
+  if(!confirm('ลบโปรโมชั่น "'+it.name+'" ออกจากระบบ?\n\n'+
+    (nRes?"• ผลงานที่บันทึกไว้ของโปรนี้ "+nRes+" รายการจะถูกลบไปด้วย\n":"")+
+    "• โปรโมชั่นอื่นและเดือนอื่นจะไม่ถูกแตะต้อง\n"+
+    "• ข้อมูลส่วนอื่นของระบบ (ยอดขาย สต็อก ใบสั่ง) จะไม่ถูกแตะต้อง"))return;
+  delete PROMO.items[id];
+  Object.keys(PROMO.res).forEach(k=>{if(k.slice(0,id.length+1)===id+"|")delete PROMO.res[k];});
+  if(!PROMO.del)PROMO.del={};
+  PROMO.del[id]=Date.now();
+  if(PM.open===id)PM.open=null;
+  pmClose();renderPromo();syncToServer();
+  alert("ลบแล้ว — กำลังบันทึกขึ้นเซิร์ฟเวอร์\nอีกสักครู่ให้รีเฟรชหน้าเว็บเพื่อยืนยันว่าหายไปจริง");
+}
 
 /* ====================== eB2B OPENING CONTEST (ส.ค.–ก.ย. 2569) ====================== */
 /* Two-month contest. Counted from the Migration Report: distributor 2096, routes whose name

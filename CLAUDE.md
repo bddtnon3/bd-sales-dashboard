@@ -10,7 +10,9 @@ the app UI; the sales team sees everything live. Features (all are tabs in one p
 **การสั่งของ** (order status + Drop tracking, purchase-order recommendations by category),
 **สต็อก**, **คำขอสินค้า** (sales request → manager summary → got/dropped status), and
 **วิเคราะห์เชิงลึก** (product-mix analytics by line/group/brand/product + per-store).
-The pages sit in **7 top-level tab groups** (`TAB_GROUPS`/`renderTabs`), several of which open a
+**โปรโมชั่น & เงินรางวัล** (the monthly Unilever promotions and the prize money each sales line
+earns from them).
+The pages sit in **8 top-level tab groups** (`TAB_GROUPS`/`renderTabs`), several of which open a
 row of sub-tabs. The per-page keys (`CURTAB`) did not change when the grouping was added — see
 `HANDOFF.md` §5 before touching the tab bar.
 
@@ -56,11 +58,12 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (150 checks against the real `api/save.js` and the
+  running **`node test/merge-safety.test.mjs`** (169 checks against the real `api/save.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
-  tombstones, the shared planner (`PLAN.items`/`done`/`del`), and the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
+  tombstones, the shared planner (`PLAN.items`/`done`/`del`), the monthly promotions and their prize
+  money (`PROMO.items`/`res`/`del`), and the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
 
 ## The order form's colour grammar (analysed from the 01/09 confirm form)
 The order cell is filled with **two different colours that mean two different things** — do not
@@ -148,6 +151,14 @@ code, never printed.
   it never touches data — but its four traps (no `border`, paint `>td` not `tr`, `capture:true`
   so the click-to-copy handler still fires, and never steal arrows from an input) are easy to
   undo by accident: read `HANDOFF.md` §5 first.
+  The **🎁 โปรโมชั่น & เงินรางวัล** tab group (`renderPromo`/`renderPromoRes`) holds the monthly
+  Unilever promotions and the per-route results. Seven promotion types share one record shape
+  (`PRO_TYPE`); every monthly report, whatever the promotion, reduces to the same row —
+  route → PJP/Base · Target · Actual · %Achieve · money — so results are stored once as
+  `PROMO.res["promoId|routeCode|lineKey"]`. The manager ingests a report by **pasting the table
+  straight out of Excel or Power BI** (`prRead`/`prApply`): the route column is detected, the
+  other columns are guessed and confirmed. Slide images go to their own `bd-promoimg-*` blobs
+  via `api/promoimg.js` — never into the state. Rules: `HANDOFF.md` §5.
   The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 7 groups,
   each holding one or more pages, role-gated per page. Adding a page means adding it to that
   table — never add a hand-written `.tab` button back into the markup.
@@ -158,6 +169,9 @@ code, never printed.
 - `api/*.js` — Vercel serverless functions (ESM): `login`, `data` (read newest non-empty blob),
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write),
   `apply` (PUBLIC shop application → its own `bd-lead-*` blob), `leads` (manager-only read).
+- `api/promoimg.js` — manager-only upload of one promotion slide to its own `bd-promoimg-*`
+  blob (prefix in `lib/snapshot.js`). It never reads, merges or writes `bd-data-*`; only the URL
+  it returns is saved into the state, by an ordinary manager save.
 - `api/plan.js` — a salesperson adds / edits / ticks off one planner task. Like
   `api/leadstatus.js` it writes exactly one key per call (`PLAN.items[id]`, `PLAN.done[id|date]`
   or `PLAN.del[id]`), decides ownership from the token and never accepts a whole state.

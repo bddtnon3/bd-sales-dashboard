@@ -655,5 +655,105 @@ console.log("TEST 18 — the shared planner: manager and every salesperson write
         looksEmpty({ DATA: {}, PLAN: srv.PLAN }) === true);
 }
 
+console.log("TEST 19 — monthly promotions and the prize money typed in against them");
+{
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.PROMO = {
+    items: {
+      pCombo: { m: "2026-10", type: "combo", name: "CT COMBO DRIVE : HPC", tgtPct: 35, by: "manager", at: 1000, up: 1000 },
+      pEco: { m: "2026-10", type: "eco", name: "Eco Trophy ต.ค.", tgtPct: 27, by: "manager", at: 1000, up: 1000 },
+    },
+    res: {
+      "pCombo|209611|HC1": { pjp: 129, tgt: 129, act: 40, up: 1000 },
+      "pCombo|209612|HC1": { pjp: 89, tgt: 89, act: 50, up: 1000 },
+      "pEco|209611|": { pjp: 247, tgt: 87, act: 100, money: 0, up: 1000 },
+    },
+    del: {},
+  };
+
+  // a tab from before the feature saves something else
+  const oldTab = JSON.parse(JSON.stringify(srv));
+  delete oldTab.PROMO;
+  const o1 = mergeState(srv, oldTab);
+  check("a tab with no PROMO at all cannot erase the promotions",
+        Object.keys(o1.PROMO.items).length === 2 && Object.keys(o1.PROMO.res).length === 3);
+
+  // last month's promotions must survive adding this month's
+  const nov = JSON.parse(JSON.stringify(o1));
+  nov.PROMO.items.pNov = { m: "2026-11", type: "extra", name: "HC Extra Dist พ.ย.", tgtPct: 25, by: "manager", at: 2000, up: 2000 };
+  const o2 = mergeState(o1, nov);
+  check("adding next month's promotion keeps the previous month's",
+        !!o2.PROMO.items.pCombo && !!o2.PROMO.items.pEco && !!o2.PROMO.items.pNov,
+        Object.keys(o2.PROMO.items).join(","));
+  check("...and keeps every result row already typed in", Object.keys(o2.PROMO.res).length === 3);
+
+  // pasting one promotion's report must not disturb another's rows
+  const paste = JSON.parse(JSON.stringify(o2));
+  paste.PROMO.res["pEco|209612|"] = { pjp: 221, tgt: 78, act: 102, up: 3000 };
+  paste.PROMO.res["pEco|209613|"] = { pjp: 266, tgt: 94, act: 104, up: 3000 };
+  const o3 = mergeState(o2, paste);
+  check("pasting one promotion's report only adds its own rows",
+        Object.keys(o3.PROMO.res).length === 5 && o3.PROMO.res["pCombo|209611|HC1"].act === 40,
+        Object.keys(o3.PROMO.res).join(" "));
+
+  // THE case keyMerge would get wrong: a stale tab holding the pre-correction number
+  const fix = JSON.parse(JSON.stringify(o3));
+  fix.PROMO.res["pCombo|209611|HC1"] = { pjp: 129, tgt: 129, act: 61, up: 4000 };   // corrected at noon
+  const o4 = mergeState(o3, fix);
+  check("a corrected result is taken", o4.PROMO.res["pCombo|209611|HC1"].act === 61);
+  const o5 = mergeState(o4, JSON.parse(JSON.stringify(o3)));                        // morning tab saves again
+  check("a stale tab CANNOT roll a corrected result back", o5.PROMO.res["pCombo|209611|HC1"].act === 61,
+        o5.PROMO.res["pCombo|209611|HC1"].act);
+  const edit = JSON.parse(JSON.stringify(o5));
+  edit.PROMO.items.pCombo = { ...edit.PROMO.items.pCombo, tgtPct: 40, up: 5000 };
+  const o6 = mergeState(o5, edit);
+  check("an edited promotion is taken", o6.PROMO.items.pCombo.tgtPct === 40);
+  check("...and a stale tab cannot undo the edit", mergeState(o6, o5).PROMO.items.pCombo.tgtPct === 40);
+
+  // deleting a promotion: tombstone, and it takes its OWN results with it — nobody else's
+  const plain = JSON.parse(JSON.stringify(o6));
+  delete plain.PROMO.items.pEco;
+  check("deleting the key alone does NOT remove a promotion", !!mergeState(o6, plain).PROMO.items.pEco);
+  const tomb = JSON.parse(JSON.stringify(plain));
+  tomb.PROMO.del = { pEco: 6000 };
+  const o7 = mergeState(o6, tomb);
+  check("a tombstone DOES remove it", !o7.PROMO.items.pEco);
+  check("...and removes that promotion's result rows too",
+        !o7.PROMO.res["pEco|209611|"] && !o7.PROMO.res["pEco|209612|"], Object.keys(o7.PROMO.res).join(" "));
+  check("...while every OTHER promotion's results are untouched",
+        o7.PROMO.res["pCombo|209611|HC1"].act === 61 && !!o7.PROMO.res["pCombo|209612|HC1"],
+        Object.keys(o7.PROMO.res).join(" "));
+  check("...and a stale tab cannot bring the deleted promotion back", !mergeState(o7, o6).PROMO.items.pEco);
+  const back = JSON.parse(JSON.stringify(o7));
+  back.PROMO.items.pEco = { m: "2026-10", type: "eco", name: "Eco Trophy ต.ค. (แก้ใหม่)", tgtPct: 27, by: "manager", at: 1000, up: 7000 };
+  delete back.PROMO.del.pEco;
+  const o8 = mergeState(o7, back);
+  check("re-adding that promotion later wins over the tombstone", !!o8.PROMO.items.pEco);
+  check("...and clears the tombstone so it stops being deleted every save", !o8.PROMO.del.pEco);
+
+  // a promotion id that is a prefix of another must not lose its rows to the other's delete
+  const pfx = JSON.parse(JSON.stringify(o8));
+  pfx.PROMO.items.p = { m: "2026-10", type: "flash", name: "สั้นจนเป็น prefix", by: "manager", at: 1000, up: 1000 };
+  pfx.PROMO.res["p|209611|"] = { pjp: 10, tgt: 5, act: 7, up: 1000 };
+  pfx.PROMO.res["pCombo|209614|HC1"] = { pjp: 1, tgt: 1, act: 1, up: 1000 };
+  const o9 = mergeState(o8, pfx);
+  const killP = JSON.parse(JSON.stringify(o9));
+  delete killP.PROMO.items.p; killP.PROMO.del = { p: 8000 };
+  const o10 = mergeState(o9, killP);
+  check("deleting promotion \"p\" does not take \"pCombo\"'s rows with it",
+        !o10.PROMO.res["p|209611|"] && !!o10.PROMO.res["pCombo|209611|HC1"] && !!o10.PROMO.res["pCombo|209614|HC1"],
+        Object.keys(o10.PROMO.res).join(" "));
+
+  // first save into an empty store, and no cross-section damage
+  const first = mergeState(null, { DATA: server.DATA, PROMO: srv.PROMO });
+  check("first save into an empty store keeps the promotions", !!first.PROMO.items.pCombo);
+  check("promotions disturb no other section",
+        Object.keys(o10.DATA.monthly).length === 2 && !!o10.PSTORE.rounds["2026-06-30"] &&
+        o10.ORDERS.dates.length === 2 && Object.keys(o10.REQUESTS.data).length >= 1 &&
+        Object.keys(o10.KPI.data).length === 2 && !!o10.PLAN);
+  check("looksEmpty: a promotions-only save does NOT count as real data (same as DCI/MINSTOCK/PLAN)",
+        looksEmpty({ DATA: {}, PROMO: srv.PROMO }) === true);
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);
