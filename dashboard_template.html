@@ -2992,6 +2992,8 @@ function pmMoneyMonth(m,route){
   let sum=0;pmAll().filter(it=>it.m===m).forEach(it=>{const s=pmSumRoute(it,route);if(s)sum+=s.money;});
   return sum;
 }
+/* เงินของหัวหน้าเซลล์เป็นก้อนเดียวต่อโปร คิดจากภาพรวมทั้งศูนย์ ไม่ได้แยกรายสาย จึงเก็บไว้ที่ตัวโปร */
+function pmSupMonth(m){let s=0;pmAll().filter(it=>it.m===m).forEach(it=>{s+=+it.supMoney||0;});return s;}
 function pmHasRes(m){
   const P=pmOk(),pre={};pmAll().filter(it=>it.m===m).forEach(it=>pre[it.id]=1);
   return Object.keys(P.res).some(k=>pre[k.split("|")[0]]);
@@ -3132,6 +3134,8 @@ function pmDetailHtml(it,me){
           `<td>${p.pcs?p.pcs:"-"}</td><td>${p.colors?p.colors+" สี":"-"}</td><td>${p.growth?p.growth+"%":"-"}</td>`+
           `<td><b class="up">${p.sm?pmBaht(p.sm):"-"}</b></td><td>${p.sup?pmBaht(p.sup):"-"}</td></tr>`)}],{alwaysBand:false});
   }
+  if(+it.supMoney>0)h+=`<h4>💼 เงินรางวัลหัวหน้าเซลล์ (Supervisor)</h4>`+
+    `<div class="insight">ศูนย์ได้จากโปรนี้ <b class="up">${pmBaht(it.supMoney)}</b> — เป็นเงินของหัวหน้าเซลล์ คิดจากภาพรวมทั้งศูนย์ ไม่ได้แยกรายสาย</div>`;
   if(it.pts)h+=`<h4>🎫 คะแนน U-Bonus</h4><div class="insight">${anaEsc(it.pts)}</div>`;
   /* สินค้า */
   if((it.prod||[]).length){
@@ -3199,8 +3203,8 @@ function renderPromoRes(){
     `<div class="card"><div class="k">ถึงเป้าแล้ว</div><div class="v">${nHit}<span style="font-size:14px;color:var(--muted)"> / ${nAll}</span></div><div class="s">นับเป็นรายโปร × รายสาย</div></div>`+
     `<div class="card"><div class="k">โปรที่มีผลแล้ว</div><div class="v">${
       list.filter(it=>show.some(c=>pmSumRoute(it,c))).length}<span style="font-size:14px;color:var(--muted)"> / ${list.length}</span></div><div class="s">ที่เหลือยังไม่ได้ใส่ผล</div></div>`+
-    (me?`<div class="card"><div class="k">เงินรางวัลรวมทั้งศูนย์</div><div class="v">${pmBaht(tot)}</div><div class="s">ทุกสายรวมกัน</div></div>`
-       :`<div class="card"><div class="k">สายที่ได้เงินรางวัล</div><div class="v">${routes.filter(c=>pmMoneyMonth(PR.m,c)>0).length}</div><div class="s">จาก ${routes.length} สาย</div></div>`);
+    (me?`<div class="card"><div class="k">เงินรางวัลรวมทั้งศูนย์</div><div class="v">${pmBaht(tot)}</div><div class="s">ทุกสายรวมกัน · หัวหน้าอีก ${pmBaht(pmSupMonth(PR.m))}</div></div>`
+       :`<div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">💼 เงินหัวหน้าเซลล์</div><div class="v">${pmBaht(pmSupMonth(PR.m))}</div><div class="s">คิดจากภาพรวมทั้งศูนย์ · ${routes.filter(c=>pmMoneyMonth(PR.m,c)>0).length} สายได้เงินรางวัล</div></div>`);
 
   const el=document.getElementById("prBody");
   if(!list.length){
@@ -3399,7 +3403,7 @@ function prApply(){
 /* ---------- ฝั่งผู้จัดการ: เพิ่ม / แก้ไข / ลบโปรโมชั่น ---------- */
 function pmBlank(){
   return {name:"",type:"combo",m:PM.m||plYm(todayISO()),ch:"CT",grp:"",img:"",
-    tgtPct:"",tgtStores:"",tgtNote:"",pts:"",note:"",
+    tgtPct:"",tgtStores:"",tgtNote:"",supMoney:"",pts:"",note:"",
     prodText:"",condText:"",dInvoice:"",dShop:"",dMech:"",
     lines:[],pay:[]};
 }
@@ -3427,7 +3431,7 @@ function pmOpen(id){
   PM.edit=id||null;
   PM.form=cur?{
     name:cur.name||"",type:cur.type||"combo",m:cur.m||PM.m,ch:cur.ch||"CT",grp:cur.grp||"",img:cur.img||"",
-    tgtPct:cur.tgtPct||"",tgtStores:cur.tgtStores||"",tgtNote:cur.tgtNote||"",pts:cur.pts||"",note:cur.note||"",
+    tgtPct:cur.tgtPct||"",tgtStores:cur.tgtStores||"",tgtNote:cur.tgtNote||"",supMoney:cur.supMoney||"",pts:cur.pts||"",note:cur.note||"",
     prodText:pmProdText(cur.prod),condText:(cur.cond||[]).join("\n"),
     dInvoice:((cur.detail||[]).filter(d=>d.k==="Invoice")[0]||{}).v||"",
     dShop:((cur.detail||[]).filter(d=>d.k==="Shoptype")[0]||{}).v||"",
@@ -3443,7 +3447,7 @@ function pmFch(c){PM.form.ch=c;pmDraw();}
 function pmFgrp(g){PM.form.grp=(PM.form.grp===g?"":g);pmDraw();}
 function pmGrab(){                      /* เก็บค่าที่พิมพ์ค้างไว้ก่อนวาดใหม่ ไม่ให้หายตอนกดปุ่ม */
   const F=PM.form;if(!F)return;
-  ["name","tgtPct","tgtStores","tgtNote","pts","note","prodText","condText","dInvoice","dShop","dMech","m"].forEach(k=>{
+  ["name","tgtPct","tgtStores","tgtNote","supMoney","pts","note","prodText","condText","dInvoice","dShop","dMech","m"].forEach(k=>{
     const el=document.getElementById("pmf_"+k);if(el)F[k]=el.value;
   });
   F.lines.forEach((L,i)=>["k","mech","free","tgtPct","cap"].forEach(k=>{
@@ -3494,6 +3498,8 @@ function pmDraw(){
     </div>
     <div class="pl-f"><label>หมายเหตุเป้า (เช่น Target นับ MPM, MPL, RTD)</label>
       <input id="pmf_tgtNote" maxlength="200" value="${anaEsc(F.tgtNote)}" placeholder="Target และ Actual คำนวณจากร้านค้า M&amp;P ทั้งหมด"></div>
+    <div class="pl-f"><label>💼 เงินรางวัลหัวหน้าเซลล์ (Supervisor) ที่ศูนย์ได้จากโปรนี้ — ใส่เมื่อรู้ผลแล้ว</label>
+      <input id="pmf_supMoney" value="${anaEsc(F.supMoney)}" placeholder="2000"></div>
     <div class="pl-f"><label>🖼 สไลด์จาก Unilever</label>
       ${F.img?`<img src="${anaEsc(F.img)}" style="width:100%;max-width:420px;border:1px solid var(--line);border-radius:10px;display:block;margin-bottom:8px">`:""}
       <div class="pl-mf"><input type="file" accept="image/*" id="pmf_file" style="flex:1" onchange="pmUpImg(this)">
@@ -3584,7 +3590,7 @@ function pmSaveForm(){
     name:name.slice(0,120),type:PRO_TYPE[F.type]?F.type:"combo",m:F.m,
     ch:["CT","KA","both"].indexOf(F.ch)>=0?F.ch:"CT",grp:PRO_GRP[F.grp]?F.grp:"",
     img:String(F.img||""),tgtPct:pmNum(F.tgtPct),tgtStores:pmNum(F.tgtStores),
-    tgtNote:String(F.tgtNote||"").slice(0,200),pts:String(F.pts||"").slice(0,160),
+    tgtNote:String(F.tgtNote||"").slice(0,200),supMoney:pmNum(F.supMoney),pts:String(F.pts||"").slice(0,160),
     note:String(F.note||"").slice(0,1000),
     prod:pmParseProd(F.prodText).slice(0,400),
     cond:String(F.condText||"").split("\n").map(x=>x.trim()).filter(Boolean).slice(0,30),
