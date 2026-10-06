@@ -400,8 +400,12 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
  * ==========================================================================*/
 #orderView tbody tr:hover>td,#posView tbody tr:hover>td,#stockView tbody tr:hover>td{background:#F5F8FD}
 #orderView tbody tr.grp-row:hover>td,#posView tbody tr.grp-row:hover>td,#stockView tbody tr.grp-row:hover>td{background:var(--blue-soft)}
-tr.rc-on>td{background:#E7EEFA!important;box-shadow:inset 0 1px 0 #C3D5F1,inset 0 -1px 0 #C3D5F1}
-tr.rc-on>td:first-child{box-shadow:inset 3px 0 0 var(--blue),inset 0 1px 0 #C3D5F1,inset 0 -1px 0 #C3D5F1}
+/* ⚠️ สีของเคอร์เซอร์ต้อง **ไม่ใช่โทนน้ำเงิน** — แถบคั่นหมวด (.grp-row) ใช้ var(--blue-soft)
+   ตอนแรกเคอร์เซอร์เป็น #E7EEFA ซึ่งแทบจะสีเดียวกัน เจ้าของแจ้ง 6 ต.ค. 69 ว่า "ลายตา
+   แยกไม่ออกว่าอันไหนแถบหมวด อันไหนบรรทัดที่กำลังดู" จึงเปลี่ยนเป็นโทนแดง
+   แถวในตารางคำขอมีพื้นเขียว/เหลืองของสถานะอยู่แล้วด้วย โทนแดงจึงเป็นสีเดียวที่ไม่ชนใคร */
+tr.rc-on>td{background:#FFE4E4!important;box-shadow:inset 0 1px 0 #E58E8E,inset 0 -1px 0 #E58E8E}
+tr.rc-on>td:first-child{box-shadow:inset 5px 0 0 #D64545,inset 0 1px 0 #E58E8E,inset 0 -1px 0 #E58E8E}
 .rc-hint{display:none;font-size:12.5px;color:var(--muted);background:var(--bg);
   border:1px dashed #CBD6E8;border-radius:9px;padding:8px 13px;margin-bottom:12px;line-height:1.7}
 .rc-hint b{color:var(--blue-dark)}
@@ -2001,7 +2005,11 @@ const TAB_GROUPS=[
   {k:"shop",nm:"🏪 สมัครร้านค้าใหม่",nmSales:"🏪 ร้านใหม่ของฉัน",tabs:[
     {t:"lead",nm:"ใบสมัครร้านค้า",role:"manager"},
     {t:"myshop",nm:"ร้านใหม่ของฉัน",role:"sales"}]},
-  {k:"eb",nm:"🏆 แข่งขันเปิด eB2B",tabs:[{t:"eb",nm:"แข่งขันเปิด eB2B (ส.ค.–ก.ย. 69)"}]},
+  /* 🏆 แข่งขันเปิด eB2B (ส.ค.–ก.ย. 69) จบไปแล้ว เจ้าของสั่งเอาออกจากระบบ 6 ต.ค. 69
+     เอาออกเฉพาะ "ทางเข้า" เท่านั้น — ตัวหน้าจอ (ebView/renderEB) ตัวอ่านไฟล์ (parseEB)
+     และ **ข้อมูล EB2B ที่บันทึกไว้แล้ว** ยังอยู่ครบและยัง merge ตามปกติใน api/save.js
+     ถ้าปีหน้ามีแข่งอีก เอากลับมาได้ด้วยการใส่บรรทัดนี้คืน ไม่ต้องอัพไฟล์เก่าใหม่:
+     {k:"eb",nm:"🏆 แข่งขันเปิด eB2B",tabs:[{t:"eb",nm:"แข่งขันเปิด eB2B"}]}, */
 ];
 function tabRole(){return (S.user&&S.user.role)||"";}
 function tabOk(x){return !x.role||x.role===tabRole();}

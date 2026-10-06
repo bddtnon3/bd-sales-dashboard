@@ -12,7 +12,7 @@ the app UI; the sales team sees everything live. Features (all are tabs in one p
 **วิเคราะห์เชิงลึก** (product-mix analytics by line/group/brand/product + per-store).
 **โปรโมชั่น & เงินรางวัล** (the monthly Unilever promotions and the prize money each sales line
 earns from them).
-The pages sit in **8 top-level tab groups** (`TAB_GROUPS`/`renderTabs`), several of which open a
+The pages sit in **7 top-level tab groups** (`TAB_GROUPS`/`renderTabs`), several of which open a
 row of sub-tabs. The per-page keys (`CURTAB`) did not change when the grouping was added — see
 `HANDOFF.md` §5 before touching the tab bar.
 
@@ -161,7 +161,10 @@ code, never printed.
   via `api/promoimg.js` — never into the state. Rules: `HANDOFF.md` §5.
   The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 7 groups,
   each holding one or more pages, role-gated per page. Adding a page means adding it to that
-  table — never add a hand-written `.tab` button back into the markup.
+  table — never add a hand-written `.tab` button back into the markup. Retiring a finished
+  feature means removing its entry there and nothing else: the eB2B opening contest ended in
+  Sep 26, so its group is commented out, while `ebView`, `renderEB`, `parseEB` and the stored
+  `EB2B` data all stay and keep merging — put the line back and it returns with its history.
 - `build.cjs` — regenerates `public/index.html` from the template (run after every edit).
 - `public/index.html` — generated output that Vercel serves. Do not edit by hand.
 - `public/join.html` + `public/img/*` — the public shop-application page (hand-written).
