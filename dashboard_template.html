@@ -4540,6 +4540,21 @@ function poSeqMap(){
 }
 function poSeqHas(){const m=poSeqMap();for(const k in m)return true;return false;}
 function poSeqOf(code){const v=poSeqMap()[String(code)];return v===undefined?Infinity:v;}
+/* ลำดับ "หมวด" ตามหน้าใบสั่งซื้อจริง — อ่านจากลำดับรหัสที่เก็บไว้แล้ว ไม่ต้องเก็บข้อมูลใหม่เพิ่ม
+   (รหัสตัวแรกของหมวดไหนอยู่ก่อนในใบ หมวดนั้นมาก่อน) · ยังไม่มีข้อมูลลำดับ = ใช้ ORDER_CATS เดิม
+   แคชผูกกับตัว map ของ poSeqMap() — อัพใบใหม่ map เปลี่ยน แคชก็ตกเอง */
+let PO_SEQC=null;
+function poSeqCats(){
+  const m=poSeqMap();
+  if(PO_SEQC&&PO_SEQC.map===m)return PO_SEQC.list;
+  const seen={},list=[];
+  Object.keys(m).sort((a,b)=>m[a]-m[b]).forEach(c=>{
+    const k=prodCategory(c);
+    if(!k||k==="อื่นๆ"||seen[k])return;
+    seen[k]=1;list.push(k);});
+  PO_SEQC={map:m,list:list};
+  return list;
+}
 /* เรียง arr ตามลำดับใบสั่ง · รหัสที่ไม่มีในใบสั่งรอบล่าสุดไปอยู่ท้ายสุด แล้วเรียงด้วย fallback
    ถ้ายังไม่มีข้อมูลลำดับเลย คืนผลของ fallback ตามเดิมทั้งก้อน */
 function poSeqSort(arr,codeOf,fallback){
@@ -4554,8 +4569,8 @@ function poSeqSort(arr,codeOf,fallback){
 /* ข้อความบอกผู้ใช้ว่าตอนนี้เรียงด้วยอะไร — ให้รู้ว่าต้องอัพใบสั่งก่อนถึงจะเรียงตามใบ */
 function poSeqNote(){
   return poSeqHas()
-    ? `เรียงตามลำดับในใบสั่งซื้อ (ไล่คอลัมน์ซ้ายจากบนลงล่าง แล้วไปคอลัมน์ขวา)`
-    : `<span class="mid">ยังเรียงตามจำนวน — อัพไฟล์ใบสั่ง (BD_…xlsx / ใบ Confirm) สักครั้ง แล้วระบบจะเรียงตามลำดับในใบสั่งให้เอง</span>`;
+    ? `แบ่งตามหมวด และเรียงตามลำดับในใบสั่งซื้อ (ไล่คอลัมน์ซ้ายจากบนลงล่าง แล้วไปคอลัมน์ขวา)`
+    : `<span class="mid">ยังเรียงตามลำดับเดิม — อัพไฟล์ใบสั่ง (BD_…xlsx / ใบ Confirm) สักครั้ง แล้วระบบจะเรียงตามลำดับในใบสั่งให้เอง</span>`;
 }
 
 function parseOrderForm(name,buf,kind){
@@ -4827,8 +4842,11 @@ function psShowDiff(k,dir){
   const LAB={p:["เริ่มมีโปรแถม","หมดโปรแถม"],q:["เปิดโควต้าใหม่","ปิดโควต้า"],s:["ของขาดเพิ่ม","กลับมามีของ"],
     x:["ปิดช่องสั่งเพิ่ม","เปิดให้สั่งได้แล้ว"],xd:["เลิกขายเพิ่ม","กลับมาขายอีกครั้ง"],k:["ขึ้นรหัสใหม่","ไม่ใช่รหัสใหม่แล้ว"]};
   document.getElementById("psDiffList").innerHTML=`<div style="margin-top:10px"><b>${sec.icon} ${LAB[k][dir==="on"?0:1]} (${list.length})</b>
-    <div style="overflow-x:auto;margin-top:6px"><table class="plan-tbl"><thead><tr><th>รหัส</th><th style="text-align:left">สินค้า</th><th>หมวด</th></tr></thead><tbody>`+
-    list.map(c=>`<tr><td>${c}</td><td style="text-align:left">${psName(c)||"-"}</td><td>${psCat(c)||"-"}</td></tr>`).join("")+`</tbody></table></div></div>`;
+    <div style="margin-top:6px">`+grpTable([{h:"รหัส"},{h:"สินค้า",a:"l"}],
+      grpByCat(poSeqSort(list,c=>c,(a,b)=>(psName(a)||a).localeCompare(psName(b)||b,"th")))
+        .map(g=>({title:`${g.icon} ${g.cat}`,sub:`· ${g.list.length} รายการ`,
+          rows:g.list.map(c=>`<tr><td>${c}</td><td style="text-align:left">${psName(c)||"-"}</td></tr>`)})),
+      {cls:"plan-tbl",alwaysBand:true})+`</div></div>`;
 }
 function psMatch(c){const q=(PS2.q||"").trim().toLowerCase();if(!q)return true;
   return String(c).includes(q)||String(psName(c)).toLowerCase().includes(q);}
@@ -4841,6 +4859,7 @@ function renderPOSBody(){
     `<div class="panel" style="border-left:5px solid ${sec.color}">
       <h3 style="color:${sec.color}">${sec.icon} ${sec.title} <span style="color:var(--muted);font-weight:600;font-size:14px">(${rows.length===total?total:rows.length+" จาก "+total})</span></h3>
       <div class="psub">${sec.sub}</div>
+      <div class="psub" style="margin-top:4px">↕️ ${poSeqNote()}</div>
       ${Object.keys((ORDERS&&ORDERS.cat)||{}).length?"":'<div class="note">ℹ️ ยังไม่มีข้อมูลหมวด — อัพไฟล์ใบสั่ง (BD_...xlsx) สักครั้ง เพื่อให้ระบบแบ่งหมวดจากชีต Home_Care/PC_Hair/... ให้อัตโนมัติ</div>'}
       ${rows.length?psTable(sec,rows):'<div class="psub" style="margin-top:8px">'+(total?"ไม่พบรายการที่ค้นหา":"ไม่มีรายการในกลุ่มนี้")+'</div>'}</div>`;
 }
@@ -4927,11 +4946,13 @@ function psTable(sec,rows){
   };
   const line=r=>`<tr><td>${r.code}</td><td style="text-align:left">${psName(r.code)||'<span class="psub">(ไม่มีชื่อในระบบ)</span>'}</td>${cell(r)}</tr>`;
   /* แบ่งตามหมวดในใบสั่งซื้อ เรียงลำดับเดียวกับใบสั่ง เพื่อไล่เทียบทีละหน้ากับไฟล์ Confirm ได้
-     ตารางเดียวไล่ลงมา คอลัมน์จึงตรงกันทุกหมวด (ดู grpTable) */
+     ตารางเดียวไล่ลงมา คอลัมน์จึงตรงกันทุกหมวด (ดู grpTable)
+     alwaysBand = ต้องขึ้นแถบหมวดแม้มีหมวดเดียว — หน้านี้กรองมาแล้ว (แถม/โควต้า/ของขาด…) บางรอบ
+     เหลือหมวดเดียวจริง ๆ ถ้าไม่ขึ้นแถบ เจ้าของจะอ่านเป็น "ลิสต์แบนไม่แบ่งหมวด" (แจ้ง 7 ต.ค. 69) */
   return `<div style="margin-top:8px">`+grpTable(
     [{h:"รหัส"},{h:"สินค้า",a:"l"}].concat(headCols),
     grpByCat(rows,r=>r.code).map(g=>({title:`${g.icon} ${g.cat}`,sub:`· ${g.list.length} รายการ`,
-      rows:g.list.map(line)})),{cls:"plan-tbl"})+`</div>`;
+      rows:g.list.map(line)})),{cls:"plan-tbl",alwaysBand:true})+`</div>`;
 }
 
 /* ============================================================================
@@ -4961,7 +4982,7 @@ function poClosedKind(x){return String(x||"").toUpperCase()===PO_CLOSED_DEAD?"dr
 const _pgEmpty={};
 let _pgIdx=null,_pgS=null,_pgM=null,_pgO=null;
 /* ล้าง cache หลังพาร์สไฟล์ที่เพิ่มชื่อสินค้า (พาร์สเซอร์แก้ ORDERS.names ในที่เดิม) */
-function pgBust(){_pgIdx=null;}
+function pgBust(){_pgIdx=null;PO_SEQC=null;}
 /* name -> [codes] across stock, master and the order form, so a renumbered product stays one thing.
    The cache guard is an O(1) identity check — building an Object.keys() count key here cost
    ~0.5ms on EVERY call, which dominated the whole "why wasn't it ordered" pass. */
@@ -6104,11 +6125,20 @@ function grpTable(head,groups,opt){
   return `<div class="tblwrap${opt.wrapCls?" "+opt.wrapCls:""}"><table class="grp-tbl${opt.cls?" "+opt.cls:""}">`+
     `<thead><tr>${th}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
-/* แบ่งรายการตามหมวดในใบสั่งซื้อ เรียงลำดับเดียวกับใบสั่ง (ไล่เทียบทีละหน้าได้) */
+/* แบ่งรายการตามหมวดในใบสั่งซื้อ เรียงลำดับเดียวกับใบสั่ง (ไล่เทียบทีละหน้าได้)
+   ⚠️ ลำดับหมวดต้องมาจากใบสั่งจริง (poSeqCats) ไม่ใช่ ORDER_CATS ที่เขียนตายไว้ — ถ้าชีตในไฟล์
+   เรียงคนละแบบ เจ้าของจะไล่เทียบกับใบกระดาษไม่ได้ · "อื่นๆ" (ยังไม่รู้หมวด) ไว้ท้ายสุดเสมอ
+   ลำดับรายการ "ภายใน" แต่ละหมวดคงไว้ตามที่ผู้เรียกส่งมา (ปกติผ่าน poSeqSort มาแล้ว) */
 function grpByCat(rows,codeOf){
   const by={};
   rows.forEach(r=>{const k=prodCategory(codeOf?codeOf(r):r);(by[k]=by[k]||[]).push(r);});
-  const cats=ORDER_CATS.concat(Object.keys(by).filter(k=>ORDER_CATS.indexOf(k)<0)).filter(k=>by[k]&&by[k].length);
+  const pref=poSeqCats();
+  const cats=pref
+    .concat(ORDER_CATS)
+    .concat(Object.keys(by).filter(k=>k!=="อื่นๆ"))
+    .concat(["อื่นๆ"])
+    .filter((k,i,a)=>a.indexOf(k)===i)
+    .filter(k=>by[k]&&by[k].length);
   return cats.map(k=>({cat:k,icon:CAT_ICON[k]||"📦",list:by[k]}));
 }
 /* สายไหนขอสินค้าตัวนี้บ้าง — เรียงตามลำดับสายหลัก ให้ manager อ่านง่าย */

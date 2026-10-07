@@ -141,7 +141,12 @@ code, never printed.
   form** — down the left column block, then the next block to the right (`poSeqSort`). That
   order is captured from the uploaded order form itself and kept in `POSTATUS.data[d].all`
   behind an `allSeq` flag; a day without the flag holds the old code-sorted list and must never
-  be used for sorting. Rules: `HANDOFF.md` §5.
+  be used for sorting. The same lists are banded by category (`grpByCat`), and the **order of the
+  bands comes from the form too** (`poSeqCats` — first appearance of each category in `all`), never
+  from the hard-coded `ORDER_CATS`, which is only the fallback before the first upload; `อื่นๆ`
+  always sinks to the bottom. The product-status tables (`psTable`, `psShowDiff`) pass
+  `alwaysBand:true`, because those lists are pre-filtered and a round with one category would
+  otherwise read as a flat list. Rules: `HANDOFF.md` §5.
   **การสั่งของ** has four sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO.
   The auto-PO calculator (`poBuild`/`renderPoCalc`) and `MINSTOCK` (minimum stock per code) have
   rules that are easy to get wrong — read `HANDOFF.md` §5 before touching either. The calculator
