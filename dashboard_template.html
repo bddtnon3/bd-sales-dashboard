@@ -4352,7 +4352,8 @@ function renderOrder(){
     /* มุมมองสรุป (รวมยอดตามรหัส) — แบ่งตามหมวดในใบสั่งซื้อ เหมือนหน้าคำขอสินค้าจากเซลล์
        ตารางเดียวไล่ลงมา คอลัมน์จึงตรงกันทุกหมวด (ดู grpTable) */
     const sumTable=()=>{
-      const dl=dCodes.filter(match).sort((a,b)=>(dropQ(dropped[b])||ordered[b]||0)-(dropQ(dropped[a])||ordered[a]||0));
+      const dl=poSeqSort(dCodes.filter(match),null,
+        (a,b)=>(dropQ(dropped[b])||ordered[b]||0)-(dropQ(dropped[a])||ordered[a]||0));
       const line=c=>{const e=dropped[c];const o=dropO(e)||ordered[c]||0,dd2=dropD(e),qq=dropQ(e)||ordered[c]||0;
         return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"<span style='color:var(--muted)'>(รหัสใหม่ ยังไม่มีชื่อในสต็อก)</span>"}</td><td>${o||"-"}</td><td class="${dd2>0?'up':''}">${dd2||"-"}</td><td><b class="down">${qq}</b></td></tr>`;};
       return `<div class="psub">รวมยอดตามรหัสสินค้า (แบ่งตามหมวดในใบสั่งซื้อ) · <b>สั่ง</b> = สั่งไป (O) · <b>ได้</b> = ได้ของบางส่วน (P) · <b>ดรอป</b> = สั่งไม่ได้จริง (Q = O−P)</div>`+
@@ -4365,7 +4366,7 @@ function renderOrder(){
     /* มุมมองแบบ Excel (ทุกบรรทัดดิบ) — แบ่งหมวดเหมือนกัน จะได้ไล่เทียบหน้าต่อหน้ากับไฟล์ได้ */
     const excelTable=()=>{
       if(!rawAll.length)return `<div class="note">ℹ️ วันนี้ยังไม่มีข้อมูลรายบรรทัด (ไฟล์ Drop ถูกอัพก่อนมีฟีเจอร์นี้) — อัพไฟล์ Drop ของวันนี้ซ้ำอีกครั้งเพื่อดูแบบ Excel · ด้านล่างแสดงแบบสรุปให้แทน</div>`+sumTable();
-      const rl=rawAll.filter(l=>match(l.code)).slice().sort((a,b)=>b.q-a.q);
+      const rl=poSeqSort(rawAll.filter(l=>match(l.code)),l=>l.code,(a,b)=>b.q-a.q);
       const line=l=>`<tr><td>${l.code}</td><td style="text-align:left">${l.name||oname(l.code)||"<span style='color:var(--muted)'>(รหัสใหม่)</span>"}</td><td>${l.o||"-"}</td><td class="${l.d>0?'up':''}">${l.d||"-"}</td><td><b class="down">${l.q}</b></td><td>${l.dv?Math.round(l.dv).toLocaleString():"-"}</td></tr>`;
       return `<div class="psub">ทุกบรรทัดตามไฟล์ Excel (สินค้ารหัสเดียวกันอาจมีหลายบรรทัด) แบ่งตามหมวดในใบสั่งซื้อ · <b>สั่ง</b>=O · <b>ได้</b>=P · <b>ดรอป</b>=Q · มูลค่า=Drop Value</div>`+
       grpTable([{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"สั่ง (O)"},{h:"ได้ (P)"},{h:"ดรอป (Q)"},{h:"มูลค่า Drop (฿)"}],
@@ -4382,9 +4383,10 @@ function renderOrder(){
   }
   const recvEl=document.getElementById("orderRecv");
   /* fully received + partially received (from drop file P>0) */
-  const recvRows=(st?recvCodes:oCodes).map(c=>({c,qty:ordered[c]||0,partial:false}))
+  const recvRaw=(st?recvCodes:oCodes).map(c=>({c,qty:ordered[c]||0,partial:false}))
     .concat(st?partialCodes.map(c=>({c,qty:dropD(dropped[c]),partial:true})):[])
-    .filter(o=>match(o.c)).sort((a,b)=>b.qty-a.qty);
+    .filter(o=>match(o.c));
+  const recvRows=poSeqSort(recvRaw,o=>o.c,(a,b)=>b.qty-a.qty);
   /* แบ่งตามหมวดในใบสั่งซื้อ เรียงลำดับเดียวกับใบสั่ง — เจ้าของแจ้ง 1 ต.ค. 69 ว่ารายการ
      ที่สั่งไปกระจัดกระจายอ่านยาก ขอให้ทำเหมือนหน้าคำขอสินค้าจากเซลล์ */
   const recvLine=o=>`<tr><td>${o.c}</td><td style="text-align:left">${oname(o.c)||"<span style='color:var(--muted)'>(รหัสใหม่)</span>"}${o.partial?' <span class="ana-idx" style="background:#FDF3DB;color:#9a7100">บางส่วน</span>':''}</td><td><b>${o.qty||0}</b></td></tr>`;
@@ -4510,6 +4512,52 @@ function poDate6(name){
 }
 /* kind:"blank" = the empty confirm form the owner uploads BEFORE ordering, just to see what
    is on promo today. It carries no quantities, so it must never touch ORDERS — only POSTATUS. */
+/* ============================================================================
+ * เรียงสินค้าตามลำดับในใบสั่งซื้อ (เจ้าของแจ้ง 7 ต.ค. 69)
+ *
+ * เวลาสั่งของ เจ้าของเปิดใบสั่งแล้วไล่ **คอลัมน์ซ้ายสุดจากบนลงล่างจนจบบล็อก แล้วขยับไป
+ * บล็อกถัดไปทางขวา** หน้าจอจึงต้องเรียงแบบเดียวกัน ไม่ใช่เรียงตามจำนวนลังหรือเลขรหัส
+ *
+ * ลำดับมาจากไฟล์ใบสั่งที่อัพเข้ามาเอง (`parseOrderForm` เก็บไว้ที่ `POSTATUS.data[date].all`
+ * พร้อมป้าย `allSeq:1`) — ไม่ได้ฝังตายตัวไว้ในโค้ด เดือนหน้า Unilever สลับหน้าใบสั่ง
+ * ลำดับก็ขยับตามเองเมื่ออัพไฟล์รอบใหม่
+ *
+ * ⚠️ วันเก่าที่บันทึกไว้ก่อนฟีเจอร์นี้ `all` ยังเรียงตามเลขรหัส จึง **ห้ามเอามาใช้เรียง**
+ * ต้องมี `allSeq` เท่านั้น ไม่งั้นหน้าจอจะเรียงตามเลขรหัสแบบเงียบ ๆ โดยที่ดูเหมือนถูก
+ * ⚠️ ถ้ายังไม่มีวันไหนมีลำดับเลย ให้ถอยไปใช้การเรียงเดิม (ตามจำนวน/ชื่อ) ไม่ใช่เรียงมั่ว
+ * ==========================================================================*/
+let PO_SEQ=null;                    /* แคช {key, map:{code:index}} */
+function poSeqMap(){
+  const P=(typeof POSTATUS!=="undefined"&&POSTATUS)?POSTATUS:null;
+  const dates=((P&&P.dates)||[]).filter(d=>P.data&&P.data[d]&&P.data[d].allSeq&&P.data[d].all).sort();
+  const d=dates.length?dates[dates.length-1]:null;          /* ใบสั่งรอบล่าสุดที่มีลำดับ */
+  const key=d?(d+"|"+((P.data[d].up)||0)):"";
+  if(PO_SEQ&&PO_SEQ.key===key)return PO_SEQ.map;
+  const map={};
+  if(d)String(P.data[d].all).split(",").forEach((c,i)=>{if(c&&map[c]===undefined)map[c]=i;});
+  PO_SEQ={key:key,map:map};
+  return map;
+}
+function poSeqHas(){const m=poSeqMap();for(const k in m)return true;return false;}
+function poSeqOf(code){const v=poSeqMap()[String(code)];return v===undefined?Infinity:v;}
+/* เรียง arr ตามลำดับใบสั่ง · รหัสที่ไม่มีในใบสั่งรอบล่าสุดไปอยู่ท้ายสุด แล้วเรียงด้วย fallback
+   ถ้ายังไม่มีข้อมูลลำดับเลย คืนผลของ fallback ตามเดิมทั้งก้อน */
+function poSeqSort(arr,codeOf,fallback){
+  const list=(arr||[]).slice();
+  if(!poSeqHas())return fallback?list.sort(fallback):list;
+  return list.sort((a,b)=>{
+    const x=poSeqOf(codeOf?codeOf(a):a),y=poSeqOf(codeOf?codeOf(b):b);
+    if(x!==y)return x<y?-1:1;
+    return fallback?fallback(a,b):0;
+  });
+}
+/* ข้อความบอกผู้ใช้ว่าตอนนี้เรียงด้วยอะไร — ให้รู้ว่าต้องอัพใบสั่งก่อนถึงจะเรียงตามใบ */
+function poSeqNote(){
+  return poSeqHas()
+    ? `เรียงตามลำดับในใบสั่งซื้อ (ไล่คอลัมน์ซ้ายจากบนลงล่าง แล้วไปคอลัมน์ขวา)`
+    : `<span class="mid">ยังเรียงตามจำนวน — อัพไฟล์ใบสั่ง (BD_…xlsx / ใบ Confirm) สักครั้ง แล้วระบบจะเรียงตามลำดับในใบสั่งให้เอง</span>`;
+}
+
 function parseOrderForm(name,buf,kind){
   const blank=(kind==="blank");
   const wb=XLSX.read(buf,{type:"array",cellStyles:true});
@@ -4517,8 +4565,13 @@ function parseOrderForm(name,buf,kind){
   const flags={};   /* code -> {p,b,f,q,x,s,k} for the product-status tab */
   const allCodes={}; /* every code the form offered that round — lets us tell "not on the form"
                         apart from "on the form, open, but the office chose not to order it" */
+  /* ลำดับที่เจ้าของไล่อ่านใบสั่งจริง (แจ้ง 7 ต.ค. 69): ไล่คอลัมน์ซ้ายสุดจากบนลงล่างจนจบบล็อก
+     แล้วค่อยขยับไปบล็อกถัดไปทางขวา — ไม่ใช่ไล่ทีละแถวข้ามบล็อก (ซึ่งเป็นลำดับที่ลูปนี้วิ่ง)
+     คีย์เรียง = ชีต → บล็อกคอลัมน์ "รหัส" → แถว · รหัสซ้ำยึดตำแหน่งแรกที่เจอ */
+  const seqPos={};let shIdx=0;
   const firstNum=(row,a,b)=>{row=row||[];for(let k=a;k<Math.min(b,row.length);k++){const v=parseFloat(String(row[k]||"").replace(/,/g,""));if(!isNaN(v)&&v!==0)return v;}return 0;};
   wb.SheetNames.forEach(sn=>{
+    const si=shIdx++;
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
     let hdr=-1;
     for(let i=0;i<rows.length;i++){const r=rows[i]||[];
@@ -4533,10 +4586,13 @@ function parseOrderForm(name,buf,kind){
     const fam={};ccs.forEach(cc=>fam[cc]="");
     const ws=wb.Sheets[sn],rng=XLSX.utils.decode_range(ws["!ref"]||"A1"),R0=rng.s.r,C0=rng.s.c;
     for(let i=hdr+2;i<rows.length;i++){const r=rows[i]||[];
-      ccs.forEach(cc=>{
+      ccs.forEach((cc,ci)=>{
         const c0=ordClean(cc>=3?r[cc-3]:"");if(ordThai(c0))fam[cc]=c0;
         const code=String(r[cc]==null?"":r[cc]).trim();if(!/^\d+$/.test(code))return;
-        if(kind!=="drop")allCodes[code]=1;
+        if(kind!=="drop"){
+          allCodes[code]=1;
+          if(seqPos[code]===undefined)seqPos[code]=si*1e8+ci*1e6+i;   /* ชีต → บล็อก → แถว */
+        }
         if(kind!=="drop"){
           /* sheet_to_json(header:1) shifts BOTH axes by the sheet's used-range origin,
              so a style lookup has to add R0/C0 back to reach the real cell. */
@@ -4571,10 +4627,22 @@ function parseOrderForm(name,buf,kind){
   if(!blank&&!Object.keys(items).length)throw new Error("ไม่พบรายการสินค้าในไฟล์ (ตรวจว่าเป็นไฟล์ใบสั่ง/Drop)");
   if(blank&&!Object.keys(flags).length)throw new Error("อ่านสถานะสินค้าจากไฟล์ไม่ได้ (ไม่พบแถบสีในใบสั่ง) — ตรวจว่าอัพไฟล์ถูกตัวไหม");
   const saveFlags=()=>{
-    if(!Object.keys(flags).length)return 0;
+    /* เขียนเมื่อมีแถบสี **หรือ** เมื่ออ่านรหัสในใบได้ — ลำดับการอ่านใบสั่งมีค่าในตัวมันเอง
+       ถึงใบรอบนั้นจะไม่มีแถบสีสักอัน ก็ยังต้องเก็บลำดับและรายชื่อรหัสที่ใบเสนอไว้ */
+    if(!Object.keys(flags).length&&!Object.keys(allCodes).length)return 0;
     if(!POSTATUS||typeof POSTATUS!=="object")POSTATUS={dates:[],data:{}};
     if(!POSTATUS.data)POSTATUS.data={};if(!POSTATUS.dates)POSTATUS.dates=[];
-    POSTATUS.data[date]={up:Date.now(),file:name,items:flags,all:Object.keys(allCodes).sort().join(",")};
+    /* `all` เก็บ "ตามลำดับที่อ่านใบสั่ง" แล้ว (เดิมเรียงตามเลขรหัส) · `allSeq:1` คือป้ายบอกว่า
+       วันนี้เป็นลำดับใบสั่งจริง — วันเก่าที่ไม่มีป้ายนี้ยังเป็นลำดับเลขรหัส ห้ามเอาไปใช้เรียง */
+    const ordered=Object.keys(allCodes).sort((a,b)=>{
+      const x=seqPos[a],y=seqPos[b];
+      if(x===undefined&&y===undefined)return a.localeCompare(b);
+      if(x===undefined)return 1;
+      if(y===undefined)return -1;
+      return x-y;
+    });
+    POSTATUS.data[date]={up:Date.now(),file:name,items:flags,all:ordered.join(","),allSeq:1};
+    PO_SEQ=null;                                  /* ลำดับเปลี่ยนแล้ว ล้างแคช */
     if(!POSTATUS.dates.includes(date))POSTATUS.dates.push(date);POSTATUS.dates.sort();
     const cnt=k=>Object.keys(flags).filter(c=>flags[c][k]).length;
     ulog("&nbsp;&nbsp;↳ 📋 สถานะสินค้า: 🎁 แถม "+cnt("p")+" · 🎫 โควต้า "+cnt("q")+" · ⚠️ ของขาด "+cnt("s")+" · ⛔ ปิดช่อง "+cnt("x")+" · 🔄 รหัสใหม่ "+cnt("k"));
@@ -4651,9 +4719,9 @@ function psRows(day,key){
     /* rows we can actually answer ("order this code instead") come first — that is the
        only part of the list the manager can act on today */
     const pick={};out.forEach(r=>{const sw=psSwap(r.code);pick[r.code]=(sw&&sw.pick)?1:0;});
-    out.sort((a,b)=>(pick[b.code]-pick[a.code])||byName(a,b));
-  }else out.sort(byName);
-  return out;
+    return poSeqSort(out,r=>r.code,(a,b)=>(pick[b.code]-pick[a.code])||byName(a,b));
+  }
+  return poSeqSort(out,r=>r.code,byName);
 }
 function posSetMain(m){
   PS2.main=m;setSeg("posMain","m",m);
@@ -6057,7 +6125,7 @@ function renderSalesRequests(){
   if(!codes.length){el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${d?fmtDate(d):"-"}</h3><div class="psub">ยังไม่มีคำขอของเซลล์ในวันนี้ (เซลล์ส่งคำขอผ่านแอปแล้วจะเด้งมาที่นี่)</div>`;return;}
   const combined={};
   const perSales=codes.map(sc=>{const req=dayReq[sc],items=req.items||{};
-    const rows=Object.keys(items).map(c=>{const it=items[c];combined[c]=combined[c]||{cs:0,pc:0,lines:[]};combined[c].cs+=it.cs||0;combined[c].pc+=it.pc||0;
+    const rows=poSeqSort(Object.keys(items),null,null).map(c=>{const it=items[c];combined[c]=combined[c]||{cs:0,pc:0,lines:[]};combined[c].cs+=it.cs||0;combined[c].pc+=it.pc||0;
       if(combined[c].lines.indexOf(sc)<0)combined[c].lines.push(sc);
       return `<tr><td>${c}</td><td style="text-align:left">${oname(c)||"-"}</td><td>${it.cs||0} / ${it.pc||0}</td></tr>`;}).join("");
     return `<div class="req-sales"><h4><span class="tag ct">${(DATA.lines[sc]&&DATA.lines[sc].display)||sc}</span> ${req.by||""} <small>· ${Object.keys(items).length} รายการ</small></h4>
@@ -6069,7 +6137,7 @@ function renderSalesRequests(){
     [{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"รวม ลัง/ชิ้น"},{h:"สต็อกคงเหลือ"},{h:"ศูนย์สั่ง"},
      {h:"ได้ (ลัง)"},{h:"สถานะการสั่ง",a:"l"},{h:"สาย"}],
     grpByCat(Object.keys(combined)).map(g=>{
-      const list=g.list.slice().sort((a,b)=>combined[b].cs-combined[a].cs);
+      const list=poSeqSort(g.list,null,(a,b)=>combined[b].cs-combined[a].cs);
       const tot=list.reduce((s,c)=>s+(combined[c].cs||0),0);
       return {title:`${g.icon} ${g.cat}`,sub:`· ${list.length} รายการ · ${tot} ลัง`,
         rows:list.map(c=>{const R=reqStatusCell(d,c);
@@ -6081,7 +6149,8 @@ function renderSalesRequests(){
   el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${fmtDate(d)} <span style="font-size:13px;color:var(--muted);font-weight:400">(${codes.length} สาย)</span></h3>
     <div class="psub">รวมทุกสายเพื่อเปิดใบสั่ง (แบ่งตามหมวดในใบสั่งซื้อ ไล่เทียบทีละหน้าได้) + แยกรายเซลล์ให้ตรวจ · <b>กดที่รหัสหรือชื่อสินค้า = คัดลอกทันที</b>
       <br><b>สต็อกคงเหลือ</b> = คลังขาย จากไฟล์สต็อกที่อัพล่าสุด รูปแบบ ลัง/ชิ้น · <span class="down">แดง</span> = หมด/ติดลบ · <span class="mid">ส้ม</span> = มีน้อยกว่าที่เซลล์ขอ · <b>สถานะการสั่ง</b> = ไล่ตามไปข้างหน้าทุกรอบ ถ้ารหัสเปลี่ยนก็ตามให้</div>
-    <div class="req-combined"><h4>📋 รวมทั้งหมด (สำหรับเปิดใบสั่ง) — แบ่งตามหมวด</h4>${haveCat?"":'<div class="note">ℹ️ ยังไม่มีข้อมูลหมวด — อัพไฟล์ใบสั่ง (BD_...xlsx) สักครั้งเพื่อให้ระบบจับหมวดจากชีต Home_Care/PC_Hair/... ให้อัตโนมัติ</div>'}${combHtml}</div>
+    <div class="req-combined"><h4>📋 รวมทั้งหมด (สำหรับเปิดใบสั่ง) — แบ่งตามหมวด</h4>
+      <div class="psub" style="margin-bottom:8px">↕️ ${poSeqNote()}</div>${haveCat?"":'<div class="note">ℹ️ ยังไม่มีข้อมูลหมวด — อัพไฟล์ใบสั่ง (BD_...xlsx) สักครั้งเพื่อให้ระบบจับหมวดจากชีต Home_Care/PC_Hair/... ให้อัตโนมัติ</div>'}${combHtml}</div>
     <div class="req-perwrap">${perSales}</div>`;
 }
 
@@ -6977,7 +7046,7 @@ function poCanTable(can,totCs){
   h+=grpTable(
     [{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"เซลล์ขอ"},{h:"คงเหลือ"},{h:"กำลังเข้า"},{h:"สั่งไปแล้ว"},
      {h:"ขั้นต่ำ"},{h:"โปรฯ"},{h:"โควต้า"},{h:"สั่ง (ลัง)"},{h:"ที่มา",a:"l"}],
-    cats.map(cat=>{const list=byCat[cat];const sub=list.reduce((a,r)=>a+poQty(r),0);
+    cats.map(cat=>{const list=poSeqSort(byCat[cat],r=>r.code,null);const sub=list.reduce((a,r)=>a+poQty(r),0);
       return {title:`${CAT_ICON[cat]||"📦"} ${cat}`,sub:`· ${list.length} รายการ · ${sub.toLocaleString()} ลัง`,
         rows:list.map(r=>{const q=poQty(r),ed=(PO.edit[r.code]!=null&&PO.edit[r.code]!==r.qty);
           return `<tr${ed?' style="background:#FDF3DB"':""}><td>${r.code}${r.swapped?`<div class="dci-sub">→ สั่ง ${r.target}</div>`:""}</td>`+
@@ -7028,6 +7097,7 @@ function poWhyQty(r){
 function poCantTable(cant){
   if(!cant.length)return '<div class="insight">ทุกรายการสั่งได้หมด 🎉</div>';
   const grp={};cant.forEach(r=>{(grp[r.block]=grp[r.block]||[]).push(r);});
+  Object.keys(grp).forEach(k=>{grp[k]=poSeqSort(grp[k],r=>r.code,null);});
   const order=["oos","closed","dropped","notin","noform","zero"].filter(k=>grp[k]);
   /* ตารางเดียวไล่ลงมา คั่นด้วยเหตุผล — คอลัมน์ตรงกันทุกกลุ่ม */
   return grpTable(

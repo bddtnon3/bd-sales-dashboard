@@ -137,6 +137,11 @@ code, never printed.
   edit/delete only their own (`by` is set from the token, never the payload). Repeating tasks
   are expanded at render time, never stored as copies; `PLAN.done` is keyed per occurrence
   date. Rules: `HANDOFF.md` §5.
+  Every product list under **การสั่งของ** is sorted into **the order the owner reads the paper
+  form** — down the left column block, then the next block to the right (`poSeqSort`). That
+  order is captured from the uploaded order form itself and kept in `POSTATUS.data[d].all`
+  behind an `allSeq` flag; a day without the flag holds the old code-sorted list and must never
+  be used for sorting. Rules: `HANDOFF.md` §5.
   **การสั่งของ** has four sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO.
   The auto-PO calculator (`poBuild`/`renderPoCalc`) and `MINSTOCK` (minimum stock per code) have
   rules that are easy to get wrong — read `HANDOFF.md` §5 before touching either. The calculator
