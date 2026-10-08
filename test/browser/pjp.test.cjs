@@ -73,6 +73,37 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
    return vis;
  });
  t('เซลล์ไม่เห็นแถบอัพโหลด',upS===false);
+ const key0=await ev(()=>{
+   renderPjp();
+   const box=document.getElementById('pjKeyIn');
+   const txt=document.getElementById('pjpView').innerText;
+   return {box:!!box,warn:/Application restrictions/.test(txt)};
+ });
+ t('⚠️ ยังไม่มีข้อมูลเลย ก็ต้องตั้งค่า Google Maps key ได้ (ไม่งั้นตั้งไม่ได้จนกว่าจะอัพไฟล์เสร็จ)',key0.box);
+ t('...พร้อมเตือนให้ล็อกโดเมนของ key',key0.warn);
+ const keySet=await ev(()=>{
+   const r={};
+   window.alert=m=>{r.msg=String(m)};
+   document.getElementById('pjKeyIn').value='ไม่ใช่คีย์';
+   pjSaveKey();r.rejected=!pjKey()&&/AIza/.test(r.msg||'');
+   document.getElementById('pjKeyIn').value='AIzaSyA1234567890abcdefghijklmnopqrstu';
+   pjSaveKey();r.saved=pjKey();
+   r.shown=/ตั้งค่าแล้ว/.test(document.getElementById('pjpView').innerText);
+   document.getElementById('pjKeyIn').value='';
+   pjSaveKey();r.cleared=pjKey()==='';
+   window.alert=m=>(window.__alerts=window.__alerts||[]).push(String(m));
+   return r;
+ });
+ t('ใส่ key มั่ว ๆ ระบบไม่รับ และบอกว่าต้องขึ้นต้นด้วย AIza',keySet.rejected,keySet.msg);
+ t('ใส่ key ที่หน้าตาถูก บันทึกได้',keySet.saved==='AIzaSyA1234567890abcdefghijklmnopqrstu',keySet.saved);
+ t('...แล้วหน้าจอบอกว่าตั้งค่าแล้ว (โชว์แค่หัว-ท้ายของ key)',keySet.shown);
+ t('ลบ key ออกได้ (ปล่อยว่างแล้วกดบันทึก)',keySet.cleared);
+ const sales2=await ev(()=>{
+   S.user={id:'ka',role:'sales',code:'209613',name:'ปฐมภพ'};renderPjp();
+   const r=!document.getElementById('pjKeyIn');
+   S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};renderPjp();return r;
+ });
+ t('เซลล์ไม่เห็นช่อง key แม้ยังไม่มีข้อมูล',sales2);
 
  /* ---------- 1) อ่านไฟล์ Master ---------- */
  const outRes=await ev(a=>{

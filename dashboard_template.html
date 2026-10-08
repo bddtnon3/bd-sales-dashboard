@@ -3330,10 +3330,17 @@ function pjMapDraw(){
 }
 function pjSaveKey(){
   if(!pjIsMgr()){alert("เฉพาะผู้จัดการเท่านั้น");return;}
-  const v=String((document.getElementById("pjKeyIn")||{}).value||"").trim();
+  const el=document.getElementById("pjKeyIn");
+  const v=String((el||{}).value||"").trim();
+  if(v&&!/^AIza[0-9A-Za-z_-]{20,}$/.test(v)){
+    alert("key นี้หน้าตาไม่เหมือน Google Maps API key\n\nของจริงขึ้นต้นด้วย AIza แล้วตามด้วยตัวอักษร/ตัวเลขยาว ๆ\nลองก๊อปใหม่จาก Google Cloud → Credentials อีกครั้ง");
+    return;
+  }
   pjOk().cfg.gmap=v;pjOk().cfg.up=Date.now();
   PJMAP.state="off";PJMAP.map=null;PJMAP.marks=[];
   syncToServer();renderPjp();
+  alert(v?"บันทึก key แล้ว — แผนที่จะขึ้นในอีกสักครู่\n\nถ้ายังไม่ขึ้น ให้รอ 1-5 นาที (Google ใช้เวลาให้การตั้งค่ามีผล) แล้วรีเฟรชหน้าเว็บ"
+         :"เอา key ออกแล้ว — กลับไปใช้ปุ่มนำทางอย่างเดียว");
 }
 /* ---------- หน้าจอ ---------- */
 function pjChip(t){
@@ -3404,6 +3411,21 @@ function pjCalHtml(rt){
           <div class="pj-dm">${done?`<span class="up">✓${done}</span>`:""}${hot?` <span class="down">!${hot}</span>`:""}</div>`:""}
       </div>`;}).join("")+`</div>`;
 }
+/* กล่องตั้งค่า Google Maps key — ต้องโผล่ได้ "ก่อน" มีข้อมูลด้วย
+   ไม่งั้นผู้จัดการตั้งแผนที่ไม่ได้จนกว่าจะอัพไฟล์เสร็จ (บั๊กแบบเดียวกับปุ่มอัพโหลด 8 ต.ค. 69) */
+function pjKeyPanel(){
+  if(!pjIsMgr())return "";
+  const k=pjKey();
+  return `<div class="panel"><h3>🗺 แผนที่ ${k?"(ตั้งค่าแล้ว)":"(ยังไม่ได้ตั้งค่า)"}</h3>
+    <div class="psub">${k?`ใช้ Google Maps key ที่บันทึกไว้แล้ว (<b>${anaEsc(k.slice(0,8))}…${anaEsc(k.slice(-4))}</b>) · ถ้าจะเปลี่ยน ให้วาง key ใหม่ทับแล้วกดบันทึก · ปล่อยว่างแล้วกดบันทึก = เลิกใช้แผนที่`
+      :`ใส่ <b>Google Maps API key</b> แล้วหมุดร้านจะขึ้นบนแผนที่ในเว็บเลย · ระหว่างนี้ปุ่ม <b>🧭 นำทาง</b> ในแต่ละร้านใช้ได้ตามปกติอยู่แล้ว
+      <br>วิธีเอา key: Google Cloud Console → สร้างโปรเจกต์ → เปิด <b>Maps JavaScript API</b> → Credentials → Create API key`}
+    <br><b class="down">สำคัญ:</b> key แบบนี้ฝังอยู่ในหน้าเว็บ ใครก็เห็นได้ — ต้องไปตั้ง <b>Application restrictions → Websites</b> ให้เหลือเฉพาะ <b>bd-sales-dashboard.vercel.app/*</b> และ <b>API restrictions</b> ให้เหลือเฉพาะ Maps JavaScript API ไม่งั้นมีคนเอาไปใช้แล้วเราโดนเรียกเก็บเงิน</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <input id="pjKeyIn" placeholder="วาง API key ตรงนี้ (ขึ้นต้นด้วย AIza...)" value="" style="flex:1 1 320px;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px">
+      <button class="pl-save" style="flex:0 0 auto;padding:10px 20px" onclick="pjSaveKey()">บันทึก key</button>
+    </div></div>`;
+}
 function renderPjp(){
   const bar=document.getElementById("pjpBar");if(!bar)return;
   const P=pjOk();
@@ -3413,7 +3435,9 @@ function renderPjp(){
     bar.innerHTML="🗺 แผนเยี่ยมร้าน (PJP)";
     document.getElementById("pjpCtl").innerHTML="";
     document.getElementById("pjpCards").innerHTML="";
-    document.getElementById("pjpBody").innerHTML=`<div class="panel"><div class="insight">ยังไม่มีแผน PJP — ${pjIsMgr()?"อัพ 2 ไฟล์ก่อน: <b>Master Outlet Data</b> และ <b>PJP ประจำเดือน</b> (ปุ่มอัพโหลด → 🗺)":"รอผู้จัดการอัพไฟล์ PJP ของเดือนนี้"}</div></div>`;
+    document.getElementById("pjpBody").innerHTML=
+      `<div class="panel"><div class="insight">ยังไม่มีแผน PJP — ${pjIsMgr()?"อัพ 2 ไฟล์ก่อน: <b>Master Outlet Data</b> และ <b>PJP ประจำเดือน</b> (ปุ่มอัพโหลด → 🗺)":"รอผู้จัดการอัพไฟล์ PJP ของเดือนนี้"}</div></div>`+
+      pjKeyPanel();      /* ตั้งค่าแผนที่ได้ตั้งแต่ยังไม่มีข้อมูล */
     return;
   }
   if(!PJ.d||ds.indexOf(PJ.d)<0)PJ.d=pjDefDate();
@@ -3468,14 +3492,7 @@ function renderPjp(){
       ${PJMAP.state==="error"?`<div class="note" style="border-color:var(--bad);color:var(--bad)">⚠️ โหลดแผนที่ไม่สำเร็จ — เช็คอินเทอร์เน็ต</div>`:""}
     </div>`;
   }else if(pjIsMgr()){
-    map=`<div class="panel"><h3>🗺 แผนที่ (ยังไม่ได้ตั้งค่า)</h3>
-      <div class="psub">ใส่ <b>Google Maps API key</b> แล้วหมุดร้านจะขึ้นบนแผนที่ในเว็บเลย · ระหว่างนี้ปุ่ม <b>🧭 นำทาง</b> ในแต่ละร้านใช้ได้ตามปกติ
-      <br>วิธีเอา key: Google Cloud Console → สร้างโปรเจกต์ → เปิด <b>Maps JavaScript API</b> → Credentials → Create API key
-      <br><b class="down">สำคัญ:</b> key แบบนี้ฝังอยู่ในหน้าเว็บ ใครก็เห็นได้ — ต้องไปตั้ง <b>Application restrictions → Websites</b> ให้เหลือเฉพาะ <b>bd-sales-dashboard.vercel.app/*</b> และ <b>API restrictions</b> ให้เหลือเฉพาะ Maps JavaScript API ไม่งั้นมีคนเอาไปใช้แล้วเราโดนเรียกเก็บเงิน</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        <input id="pjKeyIn" placeholder="วาง API key ตรงนี้" style="flex:1 1 320px;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px">
-        <button class="pl-save" style="flex:0 0 auto;padding:10px 20px" onclick="pjSaveKey()">บันทึก key</button>
-      </div></div>`;
+    map=pjKeyPanel();
   }
   const body=document.getElementById("pjpBody");
   body.innerHTML=map+
