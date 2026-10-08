@@ -655,6 +655,80 @@ console.log("TEST 18 — the shared planner: manager and every salesperson write
         looksEmpty({ DATA: {}, PLAN: srv.PLAN }) === true);
 }
 
+console.log("TEST 20 — PJP: the monthly visit plan, the outlet book and the visit ticks");
+{
+  const srv = JSON.parse(JSON.stringify(server));
+  srv.PJP = {
+    out: { "2493638": { n: "ธงฟ้าสารภี", la: 13.9, lo: 100.48, up: 1000 },
+           "4887526": { n: "Washmax", la: 13.93, lo: 100.48, up: 1000 } },
+    plan: { "2026-09-14": { "209611": "2493638:1,4887526:2" },
+            "2026-10-05": { "209611": "2493638:1,4887526:2", "209612": "2491545:1" } },
+    done: { "2493638|2026-09-14": { v: 1, by: "ชลศิต", at: 1000 } },
+    cfg: { gmap: "AIza-OLD", up: 1000, planMon: "2026-10" },
+  };
+
+  // a tab that predates the whole feature
+  const oldTab = JSON.parse(JSON.stringify(srv));
+  delete oldTab.PJP;
+  const p1 = mergeState(srv, oldTab);
+  check("a tab with no PJP at all cannot erase the visit plan",
+        Object.keys(p1.PJP.plan).length === 2 && Object.keys(p1.PJP.out).length === 2);
+  check("...and the visit ticks survive it too", !!p1.PJP.done["2493638|2026-09-14"]);
+
+  // uploading NEXT month must not touch this month
+  const nov = JSON.parse(JSON.stringify(srv));
+  nov.PJP.plan = { "2026-11-02": { "209611": "2493638:1" } };
+  const p2 = mergeState(srv, nov);
+  check("uploading November keeps September and October",
+        !!p2.PJP.plan["2026-09-14"] && !!p2.PJP.plan["2026-10-05"] && !!p2.PJP.plan["2026-11-02"],
+        Object.keys(p2.PJP.plan).join(","));
+
+  // re-uploading the SAME month replaces that day whole (routes come as one unit)
+  const reup = JSON.parse(JSON.stringify(p2));
+  reup.PJP.plan["2026-10-05"] = { "209611": "2493638:1,9999999:2" };
+  const p3 = mergeState(p2, reup);
+  check("re-uploading a day replaces that day's routes", p3.PJP.plan["2026-10-05"]["209611"] === "2493638:1,9999999:2");
+  check("...and leaves every other day alone", !!p3.PJP.plan["2026-09-14"] && !!p3.PJP.plan["2026-11-02"]);
+
+  // a Master file that no longer lists a shop must NOT delete it
+  const master = JSON.parse(JSON.stringify(p3));
+  master.PJP.out = { "2493638": { n: "ธงฟ้าสารภี (ชื่อใหม่)", la: 13.9, lo: 100.48, up: 2000 } };
+  const p4 = mergeState(p3, master);
+  check("a new Master updates a shop it lists", p4.PJP.out["2493638"].n === "ธงฟ้าสารภี (ชื่อใหม่)");
+  check("...and does NOT delete a shop it no longer lists", !!p4.PJP.out["4887526"]);
+  check("...and a stale tab cannot undo the rename",
+        mergeState(p4, p3).PJP.out["2493638"].n === "ธงฟ้าสารภี (ชื่อใหม่)");
+
+  // visit ticks: newest `at` wins, and unticking is a value not a deleted key
+  const tick = JSON.parse(JSON.stringify(p4));
+  tick.PJP.done["2493638|2026-10-05"] = { v: 1, by: "ชลศิต", at: 3000 };
+  const p5 = mergeState(p4, tick);
+  check("a salesperson's tick is kept", p5.PJP.done["2493638|2026-10-05"].v === 1);
+  const stale = JSON.parse(JSON.stringify(p4));
+  check("a stale tab that never saw the tick cannot remove it",
+        mergeState(p5, stale).PJP.done["2493638|2026-10-05"].v === 1);
+  const untick = JSON.parse(JSON.stringify(p5));
+  untick.PJP.done["2493638|2026-10-05"] = { v: 0, by: "ชลศิต", at: 4000 };
+  const p6 = mergeState(p5, untick);
+  check("unticking later wins", p6.PJP.done["2493638|2026-10-05"].v === 0);
+  check("...and the older tick cannot come back", mergeState(p6, p5).PJP.done["2493638|2026-10-05"].v === 0);
+
+  // the Maps key: newest `up` wins, and an old tab cannot blank it
+  const key = JSON.parse(JSON.stringify(p6));
+  key.PJP.cfg = { gmap: "AIza-NEW", up: 5000, planMon: "2026-11" };
+  const p7 = mergeState(p6, key);
+  check("the Google Maps key can be changed", p7.PJP.cfg.gmap === "AIza-NEW");
+  check("...and a stale tab cannot roll it back", mergeState(p7, p6).PJP.cfg.gmap === "AIza-NEW");
+
+  // uploading PJP must disturb nothing else
+  check("the visit plan disturbs no other section",
+        Object.keys(p7.ORDERS.data).length === Object.keys(srv.ORDERS.data).length &&
+        Object.keys(p7.REQUESTS.data).length === Object.keys(srv.REQUESTS.data).length &&
+        p7.STORE.stores.length === srv.STORE.stores.length);
+  check("looksEmpty: a PJP-only save does NOT count as real data (same as PLAN/PROMO)",
+        looksEmpty({ DATA: {}, PJP: srv.PJP }) === true);
+}
+
 console.log("TEST 19 — monthly promotions and the prize money typed in against them");
 {
   const srv = JSON.parse(JSON.stringify(server));

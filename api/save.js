@@ -50,6 +50,11 @@ function mergeRequests(a, b) {
  * Result: uploading/editing one section can never erase another section, and an
  * out-of-date browser can never wipe newer data uploaded by someone else.
  * ==========================================================================*/
+function newestByAt(server, client) {
+  const out = Object.assign({}, server || {}), c = client || {};
+  for (const k in c) { const a = out[k], b = c[k]; if (!a || ((b && b.at) || 0) >= ((a && a.at) || 0)) out[k] = b; }
+  return out;
+}
 function keyMerge(server, client) { const out = Object.assign({}, server || {}); const c = client || {}; for (const k in c) out[k] = c[k]; return out; }
 function unionArr(a, b) { const o = [], seen = {}; [...(a || []), ...(b || [])].forEach((x) => { if (!seen[x]) { seen[x] = 1; o.push(x); } }); return o.sort(); }
 function stockScore(x) { if (!x) return -1; const up = x.up || 0; const d = x.date ? Number(String(x.date).replace(/-/g, "")) : 0; return up * 1e9 + d; }
@@ -214,6 +219,24 @@ function mergeState(server, c) {
     }
   }
   const PROMO = { items: prItems, res: prRes, del: prDel };
+
+  // PJP — the monthly visit plan.
+  //   out  : one record per outlet, newest upload of THAT outlet wins. A Master file that no
+  //          longer lists a shop must not delete it (the shop may still be on an older plan).
+  //   plan : keyed by the real visit DATE, so re-uploading October cannot touch September.
+  //          A date the client has is replaced whole — it holds every route for that day.
+  //   done : a visit tick, keyed "outlet|date", newest `at` wins. Unticking is stored as
+  //          v:0, never a deleted key, so a stale tab cannot resurrect an old tick.
+  //   cfg  : the Google Maps browser key + upload stamps, newest `up` wins.
+  const sPj = s.PJP || {}, cPj = c.PJP || {};
+  const PJP = {
+    out: newestByUp(sPj.out, cPj.out),
+    plan: keyMerge(sPj.plan, cPj.plan),
+    done: newestByAt(sPj.done, cPj.done),
+    cfg: ((cPj.cfg && cPj.cfg.up) || 0) >= ((sPj.cfg && sPj.cfg.up) || 0)
+      ? Object.assign({}, sPj.cfg || {}, cPj.cfg || {})
+      : Object.assign({}, cPj.cfg || {}, sPj.cfg || {}),
+  };
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),
@@ -233,6 +256,7 @@ function mergeState(server, c) {
     MINSTOCK,
     PLAN,
     PROMO,
+    PJP,
     savedAt: Date.now(),
   };
 }

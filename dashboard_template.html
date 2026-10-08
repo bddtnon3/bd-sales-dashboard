@@ -315,6 +315,37 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   padding:4px 9px 4px 4px;background:#fff;text-decoration:none;color:var(--ink);font-size:12px;font-weight:700}
 .pm-rep:hover{border-color:var(--blue);background:var(--blue-soft)}
 .pm-rep img{width:44px;height:30px;object-fit:cover;border-radius:5px;display:block;background:var(--bg)}
+/* ---------- 🗺 PJP แผนเยี่ยมร้าน ---------- */
+.pj-list{display:grid;gap:10px;margin-top:10px}
+.pj-card{display:flex;gap:10px;border:1px solid var(--line);border-left:5px solid var(--blue);
+  border-radius:11px;padding:10px 12px;background:#fff}
+.pj-card.hot{border-left-color:var(--bad);background:#FDFAFA}
+.pj-card.done{border-left-color:var(--good);background:#F6FBF8;opacity:.78}
+.pj-no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--blue-soft);color:var(--blue);
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.pj-card.done .pj-no{background:#E7F6EE;color:var(--good)}
+.pj-card.hot .pj-no{background:#FDECEA;color:var(--bad)}
+.pj-main{flex:1 1 auto;min-width:0}
+.pj-h{font-size:14.5px;line-height:1.5}
+.pj-tags{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}
+.pj-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.pj-b,.pj-tick{font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:9px;border:1.5px solid var(--line);
+  background:#fff;color:var(--ink);text-decoration:none;cursor:pointer;font-family:inherit}
+.pj-b:hover,.pj-tick:hover{border-color:var(--blue);background:var(--blue-soft)}
+.pj-tick.on{background:#E7F6EE;border-color:var(--good);color:#1E9E5A}
+.pj-map{width:100%;height:420px;border-radius:11px;margin-top:10px;background:var(--bg)}
+.pj-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-top:10px}
+.pj-dh{text-align:center;font-size:11.5px;font-weight:800;color:var(--muted);padding:3px 0}
+.pj-dc{border:1px solid var(--line);border-radius:9px;min-height:62px;padding:5px 6px;cursor:pointer;background:#fff}
+.pj-dc.empty{border:none;background:transparent;cursor:default}
+.pj-dc.off{background:var(--bg);color:var(--muted);cursor:default}
+.pj-dc.sel{border:2px solid var(--blue);background:var(--blue-soft)}
+.pj-dc.today .pj-dn{color:var(--blue);font-weight:900}
+.pj-dc:hover:not(.empty):not(.off){border-color:var(--blue)}
+.pj-dn{font-size:11.5px;font-weight:700;color:var(--muted)}
+.pj-dv{font-size:19px;font-weight:800;line-height:1.15}
+.pj-dm{font-size:11px;font-weight:700}
+@media(max-width:600px){.pj-map{height:300px}.pj-dc{min-height:54px}.pj-dv{font-size:16px}}
 .kpi-card .v{font-size:24px}
 /* ---------- DCI SCORE ---------- */
 .dci-pb{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:8px;padding:4px 10px;
@@ -995,6 +1026,13 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       </div>
     </div>
 
+    <div id="pjpView" class="hidden">
+      <div class="kpi-monthbar" id="pjpBar"></div>
+      <div id="pjpCtl"></div>
+      <div class="cards" id="pjpCards"></div>
+      <div id="pjpBody"></div>
+    </div>
+
     <div id="stockView" class="hidden">
       <div class="controls">
         <div class="ctl"><label>ค้นหาสินค้า (พิมพ์คีย์เวิร์ด เช่น บรีส / 110 / อ)</label><input id="stockSearch" placeholder="🔍 พิมพ์ชื่อ/รหัส/ตัวเลข — เว้นวรรคเพื่อกรองหลายคำ" oninput="renderStock()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:230px"></div>
@@ -1276,6 +1314,12 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <label class="drop up-ana" for="fileAna">🧪 <b>ยอดขายรายกลุ่ม/แบรนด์/สินค้า</b><small>อัพเดือนละครั้ง · ไฟล์ Sales 1-2 2026.xls ฯลฯ · <b>อัพทีละไฟล์</b> (ไฟล์ใหญ่ ~60MB ใช้เวลา 20-40 วิ) ระบบรวมเดือนให้เอง</small></label>
         <input id="fileAna" type="file" accept=".xls,.xlsx" multiple class="hidden">
       </div>
+      <div class="up-row" data-group="pjp">
+        <label class="drop" for="filePjpOut">🏪 <b>Master Outlet Data</b><small>ข้อมูลร้านค้าทั้งหมดของศูนย์ (ชื่อ · ที่อยู่ · พิกัด · Perfect Store) · อัพเดือนละครั้ง · ร้านเก่าไม่หาย ทับเฉพาะร้านที่มีในไฟล์</small></label>
+        <input id="filePjpOut" type="file" accept=".xls,.xlsx" multiple class="hidden">
+        <label class="drop" for="filePjpPlan">🗺 <b>แผน PJP ประจำเดือน</b><small>ไฟล์ PJP_OCT2026.xlsx ฯลฯ · ไฟล์มี 12 วัน (2 อาทิตย์) ระบบสร้างรอบสอง (+14 วัน) ให้เอง · แผนเดือนอื่นไม่หาย</small></label>
+        <input id="filePjpPlan" type="file" accept=".xls,.xlsx" multiple class="hidden">
+      </div>
       <div class="log" id="uplog"></div>
     </div>
     <div class="modal-actions">
@@ -1446,6 +1490,21 @@ let PLAN = __PLANDATA__;
       ก้อน state ใหญ่หลาย MB อยู่แล้ว ใส่รูปเข้าไปจะชน request cap ของ Vercel (~4.5MB)
    ⚠️ ลบต้องเป็น tombstone ใน del เหมือน PLAN/PSTORE ไม่ใช่ลบ key */
 let PROMO = __PROMODATA__;
+/* ============================================================================
+ * PJP — แผนการเข้าเยี่ยมร้านของเซลล์ (อัพเดือนละครั้ง 2 ไฟล์)
+ *
+ *   out  {รหัสร้าน:{n,la,lo,a,ph,t,ps,psd,e,rt,up}}  จาก Master Outlet Data
+ *        n=ชื่อ la/lo=พิกัด a=ที่อยู่ ph=โทร t=ประเภทย่อย(MPS/MPM/…)
+ *        ps=Perfect Store psd=คำอธิบาย PS  e=eRTM  rt=สายที่ดูแล
+ *   plan {"YYYY-MM-DD":{สาย:"รหัสร้าน:ลำดับ,รหัสร้าน:ลำดับ,…"}}  จากไฟล์ PJP
+ *        ⚠️ คีย์ด้วย "วันจริง" (คอลัมน์ วันที่เข้าเยี่ยม) ไม่ใช่คอลัมน์ "วันที่กำหนด"
+ *           ซึ่งเชื่อไม่ได้ (เลข 1 โผล่ได้ทั้ง 12 วัน) — ดู HANDOFF.md §5
+ *   done {"รหัสร้าน|YYYY-MM-DD":{at,by,v}}  เซลล์ติ๊กว่าเข้าร้านแล้ว (v=1 เข้า, 0 ยกเลิก)
+ *        เก็บเป็นค่า ไม่ใช่ลบ key — จะได้ merge แบบ "at ใหม่ชนะ" ได้ตรงไปตรงมา
+ *   cfg  {gmap,up}  Google Maps API key (คีย์ฝั่งเบราว์เซอร์ เป็นของสาธารณะโดยธรรมชาติ
+ *        ความปลอดภัยอยู่ที่การล็อกโดเมนใน Google Cloud ไม่ใช่การซ่อน)
+ * ⚠️ อัพไฟล์เดือนใหม่ต้องไม่ลบแผนเดือนเก่า — plan merge ทีละ "วัน" out merge ทีละ "ร้าน" */
+let PJP = __PJPDATA__;
 /* DCI Score ของศูนย์ (ไฟล์ DCI Score จาก Unilever) — ผู้จัดการเท่านั้น
    {up,file,periods:["BM1","Q1",…],data:{"BM5":{tot,totCov,cov,it:{"3":{s,pct:[],plan:[],comp:[],…}}}}} */
 let DCI = __DCIDATA__;
@@ -1515,7 +1574,7 @@ function doLogin(){
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
   document.querySelectorAll(".sales-only").forEach(e=>e.style.display=acc.role==="sales"?"":"none");
-  initKeys();render();initKPI();initOrder();initAnalytics();initPlan();initPromo();navReset();
+  initKeys();render();initKPI();initOrder();initAnalytics();initPlan();initPromo();initPjp();navReset();
   _switchTab("sales");   /* never leave the previous user's tab (incl. manager-only ones) open */
 }
 function logout(){S.user=null;_switchTab("sales");document.getElementById("app").classList.add("hidden");
@@ -2024,6 +2083,8 @@ const TAB_GROUPS=[
   {k:"sales",nm:"📊 ยอดขาย",tabs:[
     {t:"sales",nm:"ภาพรวมยอดขาย"},
     {t:"ana",nm:"🔬 วิเคราะห์เชิงลึก"}]},
+  {k:"pjp",nm:"🗺 PJP",tabs:[
+    {t:"pjp",nm:"แผนเยี่ยมร้าน"}]},
   {k:"kpi",nm:"🎯 KPI",tabs:[
     {t:"kpi",nm:"eB2B & Self Ordering"},
     {t:"ps",nm:"⭐ Perfect Store"},
@@ -2095,6 +2156,7 @@ function _switchTab(t){
   document.getElementById("leadView").classList.toggle("hidden",t!=="lead");
   document.getElementById("myshopView").classList.toggle("hidden",t!=="myshop");
   document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
+  document.getElementById("pjpView").classList.toggle("hidden",t!=="pjp");
   if(t==="kpi")renderKPI();
   if(t==="plan")renderPlan();
   if(t==="promo")renderPromo();
@@ -2108,6 +2170,7 @@ function _switchTab(t){
   if(t==="lead")ldRefresh();
   if(t==="myshop")msRefresh();
   if(t==="ana")renderAnalytics();
+  if(t==="pjp")renderPjp();
 }
 let KPIS={month:null,show:{active:true,self:true,ghost:true},scope:"team"};
 let kpiCharts=[];
@@ -3062,6 +3125,368 @@ function pmToggle(id){PM.open=(PM.open===id?null:id);renderPromo();
   if(PM.open){const el=document.getElementById("pmDetail");if(el&&el.scrollIntoView)el.scrollIntoView({behavior:"smooth",block:"nearest"});}}
 function prSetMonth(m){PR.m=m;renderPromoRes();}
 function prSetScope(s){PR.scope=s;setSeg("prScopeSeg","s",s);renderPromoRes();}
+/* ====================== 🗺 PJP — แผนเยี่ยมร้านรายวัน ====================== */
+let PJ={d:null,line:null,view:"day",ym:null,only:"all",dt:false,map:false,sel:null};
+function initPjp(){PJ.d=null;PJ.line=null;PJ.ym=null;PJ.sel=null;}
+/* ทุกวันที่มีแผน (เรียงแล้ว) */
+function pjDates(){return Object.keys(pjOk().plan).sort();}
+/* สายของผู้ใช้คนนี้ — เซลล์เห็นเฉพาะสายตัวเอง · ผู้จัดการเลือกได้ทุกสาย */
+function pjLines(){
+  const P=pjOk(),s=new Set();
+  Object.keys(P.plan).forEach(d=>Object.keys(P.plan[d]||{}).forEach(rt=>s.add(rt)));
+  const ord=(DATA.focus_order||[]);
+  return [...s].sort((a,b)=>{
+    const ia=ord.indexOf(a),ib=ord.indexOf(b);
+    return (ia<0?99:ia)-(ib<0?99:ib)||(a<b?-1:1);});
+}
+function pjIsMgr(){return !!(S.user&&S.user.role==="manager");}
+function pjMyLine(){return (S.user&&S.user.code)||null;}
+function pjLineName(rt){return rt===PJP_DT?"Digital Coverage":(((DATA.lines||{})[rt]||{}).display||FOCUS_MAP[rt]||rt);}
+/* สายที่กำลังดูอยู่ */
+function pjCur(){
+  const ls=pjLines();
+  if(!pjIsMgr()){const me=pjMyLine();return (me&&ls.indexOf(me)>=0)?me:(ls[0]||null);}
+  if(PJ.line&&ls.indexOf(PJ.line)>=0)return PJ.line;
+  return ls.filter(x=>x!==PJP_DT)[0]||ls[0]||null;
+}
+/* วันที่ที่จะเปิดให้ดูเป็นค่าเริ่มต้น: วันนี้ถ้ามีแผน ไม่งั้นวันถัดไปที่ใกล้ที่สุด */
+function pjDefDate(){
+  const ds=pjDates();if(!ds.length)return null;
+  const t=todayISO();
+  if(ds.indexOf(t)>=0)return t;
+  const nx=ds.filter(d=>d>=t);
+  return nx.length?nx[0]:ds[ds.length-1];
+}
+/* รายการร้านของวัน+สาย → [{code,ord}] เรียงตามลำดับการเยี่ยม */
+function pjStops(ymd,rt){
+  const row=((pjOk().plan[ymd])||{})[rt];
+  if(!row)return [];
+  return String(row).split(",").filter(Boolean).map(x=>{
+    const p=x.split(":");return {code:p[0],ord:+p[1]||0};
+  }).sort((a,b)=>a.ord-b.ord);
+}
+function pjOut(code){return pjOk().out[code]||null;}
+function pjName(code){const o=pjOut(code);return (o&&o.n)||((STOREPROD&&STOREPROD.stores&&STOREPROD.stores[code]||{}).n)||"";}
+/* ---- ข้อมูลที่ผูกเข้ามาเพื่อบอกว่า "ร้านนี้ต้องทำอะไร" ---- */
+let _pjStore=null,_pjStoreSrc=null;
+function pjStoreIdx(){
+  const src=(STORE&&STORE.stores)||null;
+  if(_pjStore&&_pjStoreSrc===src)return _pjStore;
+  const idx={};(src||[]).forEach(s=>{idx[String(s[1])]=s;});
+  _pjStoreSrc=src;_pjStore=idx;return idx;
+}
+/* ยอดขายรายร้าน: เดือนล่าสุดที่จบแล้ว เทียบเดือนก่อนหน้า + ไม่ซื้อมากี่เดือน */
+function pjSales(code){
+  const s=pjStoreIdx()[code];if(!s)return null;
+  const ms=(STORE&&STORE.months)||[],m=s[3]||[];
+  const idx=completeMonthIdx();if(!idx.length)return null;
+  const i1=idx[idx.length-1],i0=idx.length>1?idx[idx.length-2]:-1;
+  const niv=k=>(k>=0&&m[k])?(+m[k][2]||0):0;
+  const cur=niv(i1),prv=i0>=0?niv(i0):0;
+  let zero=0;for(let k=idx.length-1;k>=0;k--){if(niv(idx[k])>0)break;zero++;}
+  return {m:ms[i1]||"",cur:cur,prv:prv,
+    pct:prv>0?((cur-prv)/prv*100):(cur>0?100:0),zero:zero};
+}
+/* Perfect Store รอบล่าสุดของร้านนี้ */
+let _pjPs=null,_pjPsSrc=null;
+function pjPsIdx(){
+  const rs=psRounds();const rk=rs.length?rs[rs.length-1]:null;
+  const src=rk?(PSTORE.rounds[rk].rows):null;
+  if(_pjPs&&_pjPsSrc===src)return _pjPs;
+  const idx={};(src||[]).forEach(r=>{idx[String(r[PSF.code])]=r;});
+  idx.__rk=rk;_pjPsSrc=src;_pjPs=idx;return idx;
+}
+function pjPS(code){const i=pjPsIdx(),r=i[code];return r?{r:r,rk:i.__rk}:null;}
+/* eB2B: เปิดแล้วหรือยัง (จากไฟล์แข่งขัน) + ธง eRTM ใน Master */
+let _pjEb=null,_pjEbSrc=null;
+function pjEbIdx(){
+  const src=(EB2B&&EB2B.data)||null;
+  if(_pjEb&&_pjEbSrc===src)return _pjEb;
+  const idx={};
+  Object.keys(src||{}).forEach(ln=>((src[ln].stores)||[]).forEach(s=>{idx[String(s[0])]=s[2]||1;}));
+  _pjEbSrc=src;_pjEb=idx;return idx;
+}
+function pjDoneKey(code,ymd){return code+"|"+ymd;}
+function pjIsDone(code,ymd){const e=pjOk().done[pjDoneKey(code,ymd)];return !!(e&&e.v);}
+/* สรุปงานที่ต้องทำของร้านหนึ่งในวันหนึ่ง → ป้ายสั้น ๆ เรียงตามความสำคัญ */
+function pjTasks(code){
+  const t=[];
+  const sa=pjSales(code);
+  if(sa){
+    if(sa.zero>=2)t.push({k:"dead",ic:"🛑",s:"ไม่ซื้อ "+sa.zero+" เดือน",cls:"b"});
+    else if(sa.zero===1)t.push({k:"zero",ic:"⚠️",s:"เดือนที่แล้วไม่ซื้อ",cls:"b"});
+    else if(sa.pct<=-20)t.push({k:"down",ic:"🔻",s:"ยอดตก "+Math.abs(Math.round(sa.pct))+"%",cls:"b"});
+    else if(sa.pct>=20)t.push({k:"up",ic:"🔺",s:"ยอดโต "+Math.round(sa.pct)+"%",cls:"g"});
+  }
+  const ps=pjPS(code);
+  if(ps){
+    const r=ps.r;
+    if(!r[PSF.yes]){
+      const miss=[];if(r[PSF.a]==="R")miss.push("A");if(r[PSF.v]==="R")miss.push("V");if(r[PSF.d]==="R")miss.push("D");
+      t.push({k:"ps",ic:"⭐",s:"PS ยังไม่ผ่าน"+(miss.length?" (ขาด "+miss.join("/")+")":""),cls:"w",
+        tip:r[PSF.cta]||""});
+    }else t.push({k:"psok",ic:"⭐",s:"PS ผ่านแล้ว",cls:"g"});
+  }
+  const o=pjOut(code);
+  if(!pjEbIdx()[code]&&o&&o.e)t.push({k:"eb",ic:"🎯",s:"ยังไม่เปิด eB2B",cls:"w"});
+  return t;
+}
+function pjSetDate(d){PJ.d=d;PJ.sel=null;renderPjp();}
+function pjSetLine(c){PJ.line=c;PJ.sel=null;renderPjp();}
+function pjSetView(v){PJ.view=v;renderPjp();}
+function pjSetOnly(v){PJ.only=v;renderPjp();}
+function pjToggleDT(){PJ.dt=!PJ.dt;PJ.line=null;renderPjp();}
+function pjStep(n){
+  const ds=pjDates();if(!ds.length)return;
+  let i=ds.indexOf(PJ.d||pjDefDate());
+  if(i<0)i=0;
+  i=Math.max(0,Math.min(ds.length-1,i+n));
+  pjSetDate(ds[i]);
+}
+/* ---- ติ๊กว่าเข้าร้านแล้ว ----
+   เซลล์เขียนผ่าน api/pjpvisit (คีย์เดียวต่อครั้ง · เจ้าของคีย์มาจาก token)
+   ผู้จัดการบันทึกรวมไปกับ state ปกติ · ยกเลิกเก็บเป็นค่า v:0 ไม่ใช่ลบคีย์ merge จะได้ตรงไปตรงมา */
+async function pjTick(code,ymd){
+  const P=pjOk(),k=pjDoneKey(code,ymd);
+  const before=P.done[k]?JSON.parse(JSON.stringify(P.done[k])):null;
+  const v=pjIsDone(code,ymd)?0:1;
+  P.done[k]={at:Date.now(),by:(S.user&&S.user.name)||"",v:v};
+  renderPjp();
+  const undo=()=>{if(before)P.done[k]=before;else delete P.done[k];};
+  if(pjIsMgr()){syncToServer();return;}
+  if(typeof TOKEN==="undefined"||!TOKEN)return;
+  try{
+    const r=await fetch("/api/pjpvisit",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},
+      body:JSON.stringify({code:code,date:ymd,v:v})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||("HTTP "+r.status));}
+  }catch(ex){
+    undo();renderPjp();
+    alert("บันทึกไม่สำเร็จ: "+ex.message+"\n\nข้อมูลยังไม่ถูกเปลี่ยน ลองใหม่อีกครั้ง");
+  }
+}
+/* ---- Google Maps ----
+   ⚠️ key ของ Maps ฝั่งเบราว์เซอร์เป็นของ "สาธารณะโดยธรรมชาติ" (อยู่ใน URL ของสคริปต์)
+   ความปลอดภัยมาจากการล็อก HTTP referrer + จำกัด API ใน Google Cloud ไม่ใช่การซ่อน
+   จึงเก็บใน state ได้ ต่างจาก BLOB_READ_WRITE_TOKEN ที่ห้ามหลุดเด็ดขาด */
+function pjKey(){return String((pjOk().cfg||{}).gmap||"").trim();}
+let PJMAP={state:"off",map:null,marks:[],info:null};
+function pjMapReady(){PJMAP.state="ready";pjMapDraw();}
+function pjMapLoad(){
+  if(PJMAP.state==="ready"||PJMAP.state==="loading")return;
+  const k=pjKey();if(!k)return;
+  PJMAP.state="loading";
+  const s=document.createElement("script");
+  s.src="https://maps.googleapis.com/maps/api/js?key="+encodeURIComponent(k)+"&callback=pjMapReady&language=th&region=TH";
+  s.async=true;
+  s.onerror=()=>{PJMAP.state="error";renderPjp();};
+  window.gm_authFailure=()=>{PJMAP.state="auth";renderPjp();};
+  document.head.appendChild(s);
+}
+function pjStopsGeo(ymd,rt){
+  return pjStops(ymd,rt).map((s,i)=>{const o=pjOut(s.code);
+    return (o&&o.la!=null&&o.lo!=null)?{i:i+1,code:s.code,la:o.la,lo:o.lo,n:o.n||s.code}:null;}).filter(Boolean);
+}
+function pjMapDraw(){
+  const el=document.getElementById("pjMap");
+  if(!el||PJMAP.state!=="ready"||typeof google==="undefined"||!google.maps)return;
+  const pts=pjStopsGeo(PJ.d||pjDefDate(),pjCur());
+  if(!PJMAP.map){
+    PJMAP.map=new google.maps.Map(el,{zoom:12,center:{lat:13.86,lng:100.45},
+      mapTypeControl:false,streetViewControl:false,fullscreenControl:true});
+    PJMAP.info=new google.maps.InfoWindow();
+  }
+  PJMAP.marks.forEach(m=>m.setMap(null));PJMAP.marks=[];
+  if(!pts.length)return;
+  const b=new google.maps.LatLngBounds();
+  pts.forEach(p=>{
+    const done=pjIsDone(p.code,PJ.d||pjDefDate());
+    const t=pjTasks(p.code);
+    const hot=t.some(x=>x.k==="dead"||x.k==="zero"||x.k==="down");
+    const col=done?"#1E9E5A":hot?"#D64545":t.some(x=>x.k==="ps"||x.k==="eb")?"#C79A00":"#2B6CB0";
+    const mk=new google.maps.Marker({position:{lat:p.la,lng:p.lo},map:PJMAP.map,
+      label:{text:String(p.i),color:"#fff",fontSize:"11px",fontWeight:"700"},
+      title:p.i+". "+p.n,
+      icon:{path:google.maps.SymbolPath.CIRCLE,scale:13,fillColor:col,fillOpacity:1,
+        strokeColor:"#fff",strokeWeight:2}});
+    mk.addListener("click",()=>{
+      PJMAP.info.setContent('<div style="font-size:13px;max-width:220px"><b>'+p.i+". "+anaEsc(p.n)+
+        '</b><br>'+anaEsc(p.code)+'<br>'+t.map(x=>x.ic+" "+anaEsc(x.s)).join("<br>")+
+        '<br><a href="https://www.google.com/maps/dir/?api=1&destination='+p.la+","+p.lo+
+        '" target="_blank" rel="noopener">🧭 นำทางไปร้านนี้</a></div>');
+      PJMAP.info.open(PJMAP.map,mk);});
+    PJMAP.marks.push(mk);b.extend({lat:p.la,lng:p.lo});
+  });
+  PJMAP.map.fitBounds(b,40);
+}
+function pjSaveKey(){
+  if(!pjIsMgr()){alert("เฉพาะผู้จัดการเท่านั้น");return;}
+  const v=String((document.getElementById("pjKeyIn")||{}).value||"").trim();
+  pjOk().cfg.gmap=v;pjOk().cfg.up=Date.now();
+  PJMAP.state="off";PJMAP.map=null;PJMAP.marks=[];
+  syncToServer();renderPjp();
+}
+/* ---------- หน้าจอ ---------- */
+function pjChip(t){
+  return `<span class="pill ${t.cls||""}" ${t.tip?`title="${anaEsc(t.tip)}"`:""}>${t.ic} ${anaEsc(t.s)}</span>`;
+}
+function pjCardHtml(s,i,ymd){
+  const o=pjOut(s.code)||{};
+  const done=pjIsDone(s.code,ymd);
+  const t=pjTasks(s.code);
+  const sa=pjSales(s.code);
+  const ps=pjPS(s.code);
+  const cta=(ps&&!ps.r[PSF.yes]&&ps.r[PSF.cta])?ps.r[PSF.cta]:"";
+  const nav=(o.la!=null&&o.lo!=null)?`https://www.google.com/maps/dir/?api=1&destination=${o.la},${o.lo}`:"";
+  return `<div class="pj-card${done?" done":""}${t.some(x=>x.k==="dead"||x.k==="down"||x.k==="zero")?" hot":""}">
+    <div class="pj-no">${i}</div>
+    <div class="pj-main">
+      <div class="pj-h"><b>${anaEsc(o.n||pjName(s.code)||s.code)}</b>${o.t?` <span class="tag ct">${anaEsc(o.t)}</span>`:""}</div>
+      <div class="psub">${s.code}${o.a?" · "+anaEsc(o.a):""}${o.sd?" · "+anaEsc(o.sd):""}</div>
+      ${t.length?`<div class="pj-tags">${t.map(pjChip).join("")}</div>`:""}
+      ${sa?`<div class="psub">ยอดเดือน ${fmtMonth(sa.m)}: <b>${THB(sa.cur)}</b> · เดือนก่อน ${THB(sa.prv)}</div>`:
+        `<div class="psub">ยังไม่มีข้อมูลยอดขายรายร้านของร้านนี้</div>`}
+      ${cta?`<div class="note" style="margin:6px 0 0">⭐ <b>สิ่งที่ Unilever แนะนำ:</b> ${anaEsc(cta)}</div>`:""}
+      <div class="pj-btns">
+        <button type="button" class="pj-tick${done?" on":""}" onclick="pjTick('${s.code}','${ymd}')">${done?"✅ เข้าแล้ว":"☐ ติ๊กว่าเข้าแล้ว"}</button>
+        ${nav?`<a class="pj-b" href="${nav}" target="_blank" rel="noopener">🧭 นำทาง</a>`:`<span class="psub">ไม่มีพิกัด</span>`}
+        ${o.ph?`<a class="pj-b" href="tel:${anaEsc(String(o.ph).replace(/[^0-9+]/g,""))}">📞 โทร</a>`:""}
+      </div>
+    </div></div>`;
+}
+function pjDayHtml(ymd,rt){
+  const stops=pjStops(ymd,rt);
+  if(!stops.length)return `<div class="insight">วันนี้ไม่มีร้านในแผนของสายนี้ — ลองเลือกวันอื่น หรือดูปฏิทินทั้งเดือน</div>`;
+  let list=stops;
+  if(PJ.only==="todo")list=stops.filter(s=>!pjIsDone(s.code,ymd));
+  if(PJ.only==="hot")list=stops.filter(s=>pjTasks(s.code).some(x=>x.k==="dead"||x.k==="zero"||x.k==="down"||x.k==="ps"));
+  if(!list.length)return `<div class="insight">${PJ.only==="todo"?"✅ เข้าครบทุกร้านแล้ววันนี้":"ไม่มีร้านที่เข้าเกณฑ์ที่เลือก"}</div>`;
+  const pos={};stops.forEach((s,i)=>pos[s.code]=i+1);
+  return `<div class="pj-list">`+list.map(s=>pjCardHtml(s,pos[s.code],ymd)).join("")+`</div>`;
+}
+/* ปฏิทิน: อาทิตย์/เดือน — ช่องละวัน บอกจำนวนร้านและที่เข้าแล้ว */
+function pjCalHtml(rt){
+  const ds=pjDates();if(!ds.length)return "";
+  const base=PJ.d||pjDefDate();
+  let from,to;
+  if(PJ.view==="week"){
+    const d=new Date(base+"T00:00:00");const dow=(d.getDay()+6)%7;   /* จันทร์=0 */
+    from=dayShift(base,-dow);to=dayShift(from,6);
+  }else{
+    const ym=base.slice(0,7);from=ym+"-01";
+    const d=new Date(+ym.slice(0,4),+ym.slice(5,7),0);to=ym+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  const cells=[];
+  const start=new Date(from+"T00:00:00");
+  const lead=(start.getDay()+6)%7;
+  for(let i=0;i<lead;i++)cells.push(null);
+  for(let d=from;d<=to;d=dayShift(d,1))cells.push(d);
+  const DOW=["จ","อ","พ","พฤ","ศ","ส","อา"];
+  return `<div class="pj-cal">`+DOW.map(x=>`<div class="pj-dh">${x}</div>`).join("")+
+    cells.map(d=>{
+      if(!d)return `<div class="pj-dc empty"></div>`;
+      const st=pjStops(d,rt);
+      const done=st.filter(s=>pjIsDone(s.code,d)).length;
+      const hot=st.filter(s=>pjTasks(s.code).some(x=>x.k==="dead"||x.k==="zero"||x.k==="down")).length;
+      const isT=d===todayISO();
+      return `<div class="pj-dc${st.length?"":" off"}${d===base?" sel":""}${isT?" today":""}" onclick="pjSetDate('${d}')">
+        <div class="pj-dn">${+d.slice(8,10)}</div>
+        ${st.length?`<div class="pj-dv">${st.length}</div>
+          <div class="pj-dm">${done?`<span class="up">✓${done}</span>`:""}${hot?` <span class="down">!${hot}</span>`:""}</div>`:""}
+      </div>`;}).join("")+`</div>`;
+}
+function renderPjp(){
+  const bar=document.getElementById("pjpBar");if(!bar)return;
+  const P=pjOk();
+  const ds=pjDates();
+  if(!ds.length){
+    bar.innerHTML="🗺 แผนเยี่ยมร้าน (PJP)";
+    document.getElementById("pjpCtl").innerHTML="";
+    document.getElementById("pjpCards").innerHTML="";
+    document.getElementById("pjpBody").innerHTML=`<div class="panel"><div class="insight">ยังไม่มีแผน PJP — ${pjIsMgr()?"อัพ 2 ไฟล์ก่อน: <b>Master Outlet Data</b> และ <b>PJP ประจำเดือน</b> (ปุ่มอัพโหลด → 🗺)":"รอผู้จัดการอัพไฟล์ PJP ของเดือนนี้"}</div></div>`;
+    return;
+  }
+  if(!PJ.d||ds.indexOf(PJ.d)<0)PJ.d=pjDefDate();
+  const rt=pjCur(),ymd=PJ.d;
+  const stops=pjStops(ymd,rt);
+  const done=stops.filter(s=>pjIsDone(s.code,ymd)).length;
+  const hot=stops.filter(s=>pjTasks(s.code).some(x=>x.k==="dead"||x.k==="zero"||x.k==="down")).length;
+  const psNo=stops.filter(s=>pjTasks(s.code).some(x=>x.k==="ps")).length;
+  const dt=new Date(ymd+"T00:00:00");
+  const DOWF=["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
+  bar.innerHTML=`🗺 แผนเยี่ยมร้าน · <b>${pjLineName(rt)}</b> · วัน${DOWF[dt.getDay()]}ที่ <b>${fmtDate(ymd)}</b>`+
+    (ymd===todayISO()?` <span class="pill g">วันนี้</span>`:"")+
+    `<span class="dci-src">${P.cfg.planMon?"แผนเดือน "+fmtMonth(P.cfg.planMon):""}${P.cfg.planUp?" · อัพเดต "+fmtDateTime(P.cfg.planUp):""}</span>`;
+  const lines=pjLines().filter(x=>PJ.dt||x!==PJP_DT);
+  document.getElementById("pjpCtl").innerHTML=`<div class="controls">
+    <div class="ctl"><label>วันที่</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="pl-today" style="padding:8px 11px" onclick="pjStep(-1)">◀</button>
+        <button class="datebtn" onclick="openCal(pjDates(),PJ.d,pjSetDate)"><span>${fmtDate(ymd)}</span><span>📅</span></button>
+        <button class="pl-today" style="padding:8px 11px" onclick="pjStep(1)">▶</button>
+      </div></div>
+    ${pjIsMgr()?`<div class="ctl"><label>สาย</label><select onchange="pjSetLine(this.value)">${
+      lines.map(c=>`<option value="${c}"${c===rt?" selected":""}>${anaEsc(pjLineName(c))}</option>`).join("")}</select></div>`:""}
+    <div class="ctl"><label>มุมมอง</label><div class="seg">
+      <button class="${PJ.view==="day"?"on":""}" onclick="pjSetView('day')">📋 รายวัน</button>
+      <button class="${PJ.view==="week"?"on":""}" onclick="pjSetView('week')">🗓 อาทิตย์</button>
+      <button class="${PJ.view==="month"?"on":""}" onclick="pjSetView('month')">📆 เดือน</button>
+    </div></div>
+    <div class="ctl"><label>กรอง</label><div class="seg">
+      <button class="${PJ.only==="all"?"on":""}" onclick="pjSetOnly('all')">ทั้งหมด</button>
+      <button class="${PJ.only==="todo"?"on":""}" onclick="pjSetOnly('todo')">ยังไม่เข้า</button>
+      <button class="${PJ.only==="hot"?"on":""}" onclick="pjSetOnly('hot')">ต้องดูเป็นพิเศษ</button>
+    </div></div>
+    ${pjIsMgr()?`<div class="spacer"></div><div class="ctl"><label>&nbsp;</label><label class="chk"><input type="checkbox"${PJ.dt?" checked":""} onchange="pjToggleDT()"> แสดงสาย Digital Coverage</label></div>`:""}
+  </div>`;
+  document.getElementById("pjpCards").innerHTML=
+    `<div class="card"><div class="k">ร้านที่ต้องเข้าวันนี้</div><div class="v">${stops.length}</div><div class="s">${pjLineName(rt)}</div></div>`+
+    `<div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">เข้าแล้ว</div><div class="v up">${done}</div><div class="s">${stops.length?Math.round(done/stops.length*100):0}% ของวันนี้</div></div>`+
+    `<div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">ยอดตก / ไม่ซื้อ</div><div class="v down">${hot}</div><div class="s">ร้านที่ต้องคุยเป็นพิเศษ</div></div>`+
+    `<div class="card" style="border-top:3px solid #C79A00"><div class="k" style="color:#C79A00">⭐ PS ยังไม่ผ่าน</div><div class="v">${psNo}</div><div class="s">ในร้านของวันนี้</div></div>`;
+  /* แผนที่ */
+  const key=pjKey();
+  let map="";
+  if(key){
+    const dir=pjDirAll(ymd,rt);
+    map=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h3>🗺 แผนที่ร้านวันนี้</h3>
+      ${dir?`<a class="pl-today" style="flex:0 0 auto;text-decoration:none;text-align:center" href="${dir.url}" target="_blank" rel="noopener">🧭 เปิดเส้นทาง ${dir.n} ร้านแรกใน Google Maps</a>`:""}</div>
+      <div class="psub">หมุดเรียงตามลำดับการเข้าเยี่ยม · <span class="down">แดง</span> = ยอดตก/ไม่ซื้อ · <span class="mid">เหลือง</span> = PS/eB2B ค้าง · <span class="up">เขียว</span> = เข้าแล้ว${dir&&dir.all>dir.n?` · Google Maps รับจุดแวะได้จำกัด จึงใส่ให้ ${dir.n} จาก ${dir.all} ร้าน`:""}</div>
+      <div id="pjMap" class="pj-map"></div>
+      ${PJMAP.state==="auth"?`<div class="note" style="border-color:var(--bad);color:var(--bad)">⚠️ Google ปฏิเสธ API key นี้ — เช็คว่าเปิด "Maps JavaScript API" แล้ว และโดเมน <b>bd-sales-dashboard.vercel.app</b> อยู่ในรายการที่อนุญาต</div>`:""}
+      ${PJMAP.state==="error"?`<div class="note" style="border-color:var(--bad);color:var(--bad)">⚠️ โหลดแผนที่ไม่สำเร็จ — เช็คอินเทอร์เน็ต</div>`:""}
+    </div>`;
+  }else if(pjIsMgr()){
+    map=`<div class="panel"><h3>🗺 แผนที่ (ยังไม่ได้ตั้งค่า)</h3>
+      <div class="psub">ใส่ <b>Google Maps API key</b> แล้วหมุดร้านจะขึ้นบนแผนที่ในเว็บเลย · ระหว่างนี้ปุ่ม <b>🧭 นำทาง</b> ในแต่ละร้านใช้ได้ตามปกติ
+      <br>วิธีเอา key: Google Cloud Console → สร้างโปรเจกต์ → เปิด <b>Maps JavaScript API</b> → Credentials → Create API key
+      <br><b class="down">สำคัญ:</b> key แบบนี้ฝังอยู่ในหน้าเว็บ ใครก็เห็นได้ — ต้องไปตั้ง <b>Application restrictions → Websites</b> ให้เหลือเฉพาะ <b>bd-sales-dashboard.vercel.app/*</b> และ <b>API restrictions</b> ให้เหลือเฉพาะ Maps JavaScript API ไม่งั้นมีคนเอาไปใช้แล้วเราโดนเรียกเก็บเงิน</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <input id="pjKeyIn" placeholder="วาง API key ตรงนี้" style="flex:1 1 320px;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px">
+        <button class="pl-save" style="flex:0 0 auto;padding:10px 20px" onclick="pjSaveKey()">บันทึก key</button>
+      </div></div>`;
+  }
+  const body=document.getElementById("pjpBody");
+  body.innerHTML=map+
+    (PJ.view==="day"?`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <h3>📋 ร้านที่ต้องเข้า ${stops.length} ร้าน</h3><div class="psub">เรียงตามลำดับการเยี่ยมในไฟล์ PJP — วิ่งตามเส้นทางจริงของตัวเองได้ ไม่ต้องเรียงตามนี้</div></div>
+      ${pjDayHtml(ymd,rt)}</div>`
+     :`<div class="panel"><h3>${PJ.view==="week"?"🗓 ทั้งอาทิตย์":"📆 ทั้งเดือน"} · ${pjLineName(rt)}</h3>
+       <div class="psub">ตัวเลขใหญ่ = จำนวนร้านที่ต้องเข้า · <span class="up">✓</span> เข้าแล้ว · <span class="down">!</span> ร้านยอดตก/ไม่ซื้อ · กดที่วันเพื่อดูรายชื่อร้าน</div>
+       ${pjCalHtml(rt)}</div>
+      <div class="panel" style="margin-top:14px"><h3>📋 ร้านของวันที่ ${fmtDate(ymd)} (${stops.length} ร้าน)</h3>${pjDayHtml(ymd,rt)}</div>`);
+  if(key){if(PJMAP.state==="ready")pjMapDraw();else pjMapLoad();}
+}
+/* ลิงก์เปิดเส้นทางทั้งวันใน Google Maps — URL API รับจุดแวะได้จำกัด จึงตัดที่ 10 จุด */
+function pjDirAll(ymd,rt){
+  const p=pjStopsGeo(ymd,rt);if(p.length<2)return null;
+  const use=p.slice(0,10);
+  const ll=x=>x.la+","+x.lo;
+  const mid=use.slice(1,-1).map(ll).join("|");
+  return {url:"https://www.google.com/maps/dir/?api=1&origin="+ll(use[0])+"&destination="+ll(use[use.length-1])+
+    (mid?"&waypoints="+encodeURIComponent(mid):"")+"&travelmode=driving",n:use.length,all:p.length};
+}
 function initPromo(){
   pmOk();
   const ms=pmMonths();
@@ -6946,6 +7371,163 @@ function dciExtract(rows){
 }
 /* DCI-EXTRACT-END */
 
+/* ============================================================================
+ * PJP — อ่านไฟล์ Master Outlet Data + ไฟล์ PJP ประจำเดือน
+ *
+ * สิ่งที่แกะได้จากไฟล์จริงของศูนย์ (ต.ค. 69) — อย่าเดาใหม่ ดู HANDOFF.md §5:
+ *  • ไฟล์ PJP หนึ่งไฟล์ = **12 วันทำการ (จ.–ส. สองอาทิตย์)** ไม่ใช่ทั้งเดือน
+ *    อีกสองอาทิตย์ที่เหลือ "วิ่งซ้ำเดิม" → ระบบสร้างให้เองโดย **บวก 14 วัน**
+ *  • คอลัมน์ "วันที่กำหนด" เชื่อไม่ได้ (เลข 1 โผล่ได้ทั้ง 12 วัน) ใช้ "วันที่เข้าเยี่ยม" เท่านั้น
+ *  • F2 = ร้านโผล่ 1 ครั้งใน 12 วัน (2 ครั้ง/เดือน) · F4 = โผล่ 2 ครั้ง · 2096DT โผล่ทุกวัน
+ *  • 2096DT 100 ร้าน เป็นร้านเสมือน (Digital Coverage) ไม่มีใน Master — ซ่อนไว้ก่อน
+ *  • รหัสร้าน 7 หลักตรงกับ STORE / STOREDAILY / PSTORE ที่อัพอยู่แล้ว ไม่ต้องแปลง
+ * ==========================================================================*/
+const PJP_DT="2096DT";                 /* สาย Digital Coverage — ร้านเสมือน */
+const PJP_CYCLE=14;                    /* รอบซ้ำ: บวก 14 วัน */
+function pjOk(){
+  if(!PJP||typeof PJP!=="object")PJP={out:{},plan:{},done:{},cfg:{}};
+  if(!PJP.out)PJP.out={};if(!PJP.plan)PJP.plan={};if(!PJP.done)PJP.done={};if(!PJP.cfg)PJP.cfg={};
+  return PJP;
+}
+function pjYmd(v){
+  if(v instanceof Date&&!isNaN(v)){
+    const t=new Date(v.getTime()-v.getTimezoneOffset()*60000);
+    return t.toISOString().slice(0,10);
+  }
+  const s=String(v==null?"":v).trim();
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[1]+"-"+m[2]+"-"+m[3];
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return m[3]+"-"+String(m[2]).padStart(2,"0")+"-"+String(m[1]).padStart(2,"0");
+  const d=new Date(s);if(!isNaN(d))return pjYmd(d);
+  return null;
+}
+function pjNum(v){const n=parseFloat(String(v==null?"":v).replace(/,/g,""));return isFinite(n)?n:null;}
+/* พิกัดในไทย — กันค่าที่สลับ lat/lng หรือเป็น 0 */
+function pjLatLng(la,lo){
+  const a=pjNum(la),o=pjNum(lo);
+  if(a===null||o===null)return null;
+  if(a>5&&a<25&&o>95&&o<110)return {la:a,lo:o};
+  if(o>5&&o<25&&a>95&&a<110)return {la:o,lo:a};     /* สลับคอลัมน์กันมา */
+  return null;
+}
+/* หาหัวตารางแบบยืดหยุ่น: คืน index ของคอลัมน์แรกที่ชื่อ "ตรง" กับคำใดคำหนึ่ง */
+function pjCol(hdr,names){
+  const h=hdr.map(x=>String(x==null?"":x).replace(/\s+/g," ").trim().toLowerCase());
+  for(const n of names){const i=h.indexOf(String(n).toLowerCase());if(i>=0)return i;}
+  for(const n of names){const i=h.findIndex(x=>x.indexOf(String(n).toLowerCase())>=0);if(i>=0)return i;}
+  return -1;
+}
+function pjSheet(buf){
+  const wb=XLSX.read(buf,{type:"array",cellDates:true});
+  let best=null,bestN=0;
+  wb.SheetNames.forEach(sn=>{
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:"",raw:false,cellDates:true});
+    if(rows.length>bestN){bestN=rows.length;best=rows;}
+  });
+  return best||[];
+}
+function parseOutlet(name,buf){
+  const rows=pjSheet(buf);
+  if(rows.length<2)throw new Error("ไฟล์ว่าง");
+  const H=rows[0]||[];
+  const c={code:pjCol(H,["ลูกค้า","outlet code","customer"]),n:pjCol(H,["ชื่อ","outlet name"]),
+    a:pjCol(H,["ถนน","ที่อยู่","street"]),lo:pjCol(H,["longitude"]),la:pjCol(H,["latitude"]),
+    ph:pjCol(H,["โทรศั","มือถือ","phone"]),t:pjCol(H,["ชื่อประเภทย่อยของลูกค้า"]),
+    ps:pjCol(H,["perfect store"]),psd:pjCol(H,["perfect store description"]),
+    e:pjCol(H,["ertm"]),st:pjCol(H,["สถานะ"]),dis:pjCol(H,["อำเภอทางภูมิศ","อำเภอ"]),
+    sub:pjCol(H,["geo district name"]),sal:pjCol(H,["ชื่อพนักงานขาย"])};
+  if(c.code<0||c.la<0||c.lo<0)
+    throw new Error("ไม่ใช่ไฟล์ Master Outlet (ต้องมีคอลัมน์ ลูกค้า / Latitude / Longitude)");
+  const P=pjOk();const now=Date.now();let n=0,geo=0,skip=0,dup=0;
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i]||[];
+    const code=String(r[c.code]==null?"":r[c.code]).trim();
+    if(!/^\d{4,}$/.test(code)){skip++;continue;}
+    const g=pjLatLng(r[c.la],r[c.lo]);
+    const o={n:String(r[c.n]||"").trim(),up:now};
+    if(g){o.la=Math.round(g.la*1e6)/1e6;o.lo=Math.round(g.lo*1e6)/1e6;geo++;}
+    const put=(k,i2)=>{if(i2>=0){const v=String(r[i2]||"").trim();if(v)o[k]=v;}};
+    put("a",c.a);put("ph",c.ph);put("t",c.t);put("ps",c.ps);put("psd",c.psd);
+    put("e",c.e);put("st",c.st);put("d",c.dis);put("sd",c.sub);
+    if(c.sal>=0){const v=String(r[c.sal]||"").replace(/\//g," ").trim();if(v)o.sal=v;}
+    /* ⚠️ ไฟล์จริงมีรหัสร้านซ้ำ ~91 รหัส (สาขาของเชนเดียวกัน) บางแถวพิกัดเป็น 0
+       และบางแถวไม่มีชื่อเซลล์ — ถ้าเอา "แถวสุดท้าย" ดื้อ ๆ ร้านจะเสียพิกัดไปเฉย ๆ
+       จึงให้คะแนนแล้วเก็บแถวที่สมบูรณ์ที่สุด (เสมอกัน = แถวแรกชนะ) */
+    const sc=x=>(x.la!=null?4:0)+(x.sal?2:0)+(x.ps?1:0)+(x.a?1:0);
+    const old=P.out[code];
+    if(!old||sc(o)>sc(old)){P.out[code]=o;if(!old)n++;}
+    else dup++;
+  }
+  if(!n)throw new Error("ไม่พบรหัสร้านในไฟล์");
+  P.cfg.outUp=now;P.cfg.outFile=name;
+  const withGeo=Object.keys(P.out).filter(k=>P.out[k].la!=null).length;
+  ulog("✅ "+name+" (Master ร้านค้า) → "+n.toLocaleString()+" ร้าน · มีพิกัด "+withGeo.toLocaleString()+
+    " ("+(withGeo/n*100).toFixed(1)+"%)"+(dup?" · รหัสซ้ำในไฟล์ "+dup+" แถว (เก็บแถวที่ข้อมูลครบกว่า)":"")+
+    (skip?" · ข้ามแถวที่ไม่ใช่ร้าน "+skip:""));
+  if(!document.getElementById("pjpView").classList.contains("hidden"))renderPjp();
+  syncToServer();
+}
+function parsePJP(name,buf){
+  const rows=pjSheet(buf);
+  if(rows.length<2)throw new Error("ไฟล์ว่าง");
+  const H=rows[0]||[];
+  const c={code:pjCol(H,["เลขที่ลูกค้า"]),d:pjCol(H,["วันที่เข้าเยี่ยม"]),ord:pjCol(H,["ลำดับการเยี่ยม"]),
+    rt:pjCol(H,["เส้นทางการขาย"]),f:pjCol(H,["ความถี่"]),n:pjCol(H,["ชื่อร้านค้า"]),
+    la:pjCol(H,["latitude"]),lo:pjCol(H,["longitude"]),emp:pjCol(H,["พนักงานขาย"])};
+  if(c.code<0||c.d<0||c.rt<0)
+    throw new Error("ไม่ใช่ไฟล์ PJP (ต้องมีคอลัมน์ เลขที่ลูกค้า / วันที่เข้าเยี่ยม / เส้นทางการขาย)");
+  const P=pjOk();
+  const day={};                 /* ymd -> route -> [[code,order]] */
+  const freq={},seen={};let bad=0;
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i]||[];
+    const code=String(r[c.code]==null?"":r[c.code]).trim();
+    const ymd=pjYmd(r[c.d]);
+    const rt=String(r[c.rt]==null?"":r[c.rt]).trim();
+    if(!/^\d{4,}$/.test(code)||!ymd||!rt){bad++;continue;}
+    const ord=Math.round(pjNum(r[c.ord])||0);
+    ((day[ymd]=day[ymd]||{})[rt]=day[ymd][rt]||[]).push([code,ord]);
+    if(c.f>=0)freq[code]=String(r[c.f]||"").trim();
+    if(!seen[code]){
+      seen[code]=1;
+      /* ไฟล์ PJP มีพิกัดด้วยแต่ขาดไป ~26% — เติมเฉพาะร้านที่ Master ยังไม่มีพิกัด */
+      const o=P.out[code];
+      const g=(c.la>=0&&c.lo>=0)?pjLatLng(r[c.la],r[c.lo]):null;
+      if(!o){P.out[code]={n:String(c.n>=0?(r[c.n]||""):"").replace(/-\s*$/,"").trim(),up:Date.now(),rt:rt,
+        la:g?Math.round(g.la*1e6)/1e6:undefined,lo:g?Math.round(g.lo*1e6)/1e6:undefined};}
+      else{o.rt=rt;if(g&&o.la===undefined){o.la=Math.round(g.la*1e6)/1e6;o.lo=Math.round(g.lo*1e6)/1e6;}}
+    }
+  }
+  const dates=Object.keys(day).sort();
+  if(!dates.length)throw new Error("อ่านวันที่เข้าเยี่ยมไม่ได้เลย — ตรวจคอลัมน์ \"วันที่เข้าเยี่ยม\"");
+  /* รอบที่สองของเดือน: ทำซ้ำทุกวัน +14 วัน แต่ไม่ข้ามเดือนของรอบแรก */
+  const mon=dates[0].slice(0,7);
+  let made=0;
+  dates.slice().forEach(d0=>{
+    const d2=dayShift(d0,PJP_CYCLE);
+    if(d2.slice(0,7)!==mon||day[d2])return;
+    day[d2]={};Object.keys(day[d0]).forEach(rt=>{day[d2][rt]=day[d0][rt].slice();});
+    made++;
+  });
+  Object.keys(day).forEach(d=>{
+    const o={};
+    Object.keys(day[d]).forEach(rt=>{
+      const seen2={};
+      o[rt]=day[d][rt].slice().sort((a,b)=>(a[1]-b[1])||(a[0]<b[0]?-1:1))
+        .filter(x=>{if(seen2[x[0]])return false;seen2[x[0]]=1;return true;})
+        .map(x=>x[0]+":"+x[1]).join(",");
+    });
+    P.plan[d]=o;
+  });
+  P.cfg.planUp=Date.now();P.cfg.planFile=name;P.cfg.planMon=mon;
+  const all=Object.keys(day).sort();
+  const nShop=Object.keys(seen).length;
+  ulog("✅ "+name+" (แผน PJP) → "+fmtMonth(mon)+" · จากไฟล์ "+dates.length+" วัน ("+fmtDate(dates[0])+"–"+fmtDate(dates[dates.length-1])+")"+
+    (made?" + สร้างรอบสอง (+14 วัน) อีก "+made+" วัน":"")+" · รวม "+all.length+" วัน · "+nShop.toLocaleString()+" ร้าน"+
+    (bad?" · ข้ามแถวที่อ่านไม่ได้ "+bad:""));
+  PJ.d=null;
+  if(!document.getElementById("pjpView").classList.contains("hidden"))renderPjp();
+  syncToServer();
+}
 function parseDCI(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
   let best=null;
@@ -7743,8 +8325,8 @@ function poMinSave(){
 }
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){
-  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",ana:"ana",dci:"dci"}[CURTAB]||"sales";
-  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์",dci:"📈 อัพไฟล์ DCI Score ของศูนย์"}[g];
+  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",ana:"ana",dci:"dci",pjp:"pjp"}[CURTAB]||"sales";
+  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์",dci:"📈 อัพไฟล์ DCI Score ของศูนย์",pjp:"🗺 อัพไฟล์ PJP & ร้านค้า"}[g];
   document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
   document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=el.dataset.group===g?"":"none";});
   document.getElementById("modal").classList.remove("hidden");
@@ -7771,10 +8353,14 @@ function handleTyped(e,kind){
     else if(kind==="master")parseMaster(f.name,ev.target.result);
     else if(kind==="ana")parseAnalytics(f.name,ev.target.result);
     else if(kind==="dci")parseDCI(f.name,ev.target.result);
+    else if(kind==="pjpout")parseOutlet(f.name,ev.target.result);
+    else if(kind==="pjpplan")parsePJP(f.name,ev.target.result);
     else parseStore(f.name,ev.target.result);
   }catch(err){ulog("❌ "+f.name+": "+err.message);console.error(err);}};rd.readAsArrayBuffer(f);});
   e.target.value="";
 }
+document.getElementById("filePjpOut").addEventListener("change",e=>handleTyped(e,"pjpout"));
+document.getElementById("filePjpPlan").addEventListener("change",e=>handleTyped(e,"pjpplan"));
 document.getElementById("fileDaily").addEventListener("change",e=>handleTyped(e,"daily"));
 document.getElementById("fileMonth").addEventListener("change",e=>handleTyped(e,"month"));
 document.getElementById("fileStore").addEventListener("change",e=>handleTyped(e,"store"));
