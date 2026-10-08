@@ -251,6 +251,29 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
  t('⚠️ ประวัติการติ๊กเข้าร้านไม่หาย',keep.done);
  t('อัพซ้ำแล้ววันของเดือนนี้ยังเป็น 24 วัน ไม่บวกเพิ่ม',keep.oct===24,keep.oct);
 
+ /* ---------- 9b) แผนที่ต้องโหลดครั้งเดียวต่อการเปิดหน้า ไม่ใช่ทุกครั้งที่กดอะไร ----------
+    ถ้า div แผนที่ถูกสร้างใหม่ทุก render จะต้องสร้าง Map ใหม่ = เสียโควต้า Google ทุกคลิก
+    (และแผนที่หายไปจากจอด้วย) */
+ const mapKeep=await ev(()=>{
+   PJP.cfg.gmap='AIzaSyA1234567890abcdefghijklmnopqrstu';
+   PJ.d='2026-10-05';PJ.line='209611';renderPjp();
+   const el1=document.getElementById('pjMap');
+   const vis1=document.getElementById('pjMapWrap').style.display!=='none';
+   pjStep(1);pjSetOnly('hot');pjSetOnly('all');pjTick('2493638','2026-10-06');
+   PJ.d='2026-10-05';renderPjp();
+   const el2=document.getElementById('pjMap');
+   const same=el1===el2&&!!el1;
+   const inBody=!!document.getElementById('pjpBody').querySelector('#pjMap');
+   PJP.cfg.gmap='';renderPjp();
+   const hid=document.getElementById('pjMapWrap').style.display==='none';
+   return {vis1,same,inBody,hid};
+ });
+ t('ใส่ key แล้วกล่องแผนที่โผล่',mapKeep.vis1);
+ t('⚠️ กดเปลี่ยนวัน/กรอง/ติ๊กร้าน แล้ว div แผนที่ยังเป็นตัวเดิม (โหลด Google Maps ครั้งเดียว)',
+   mapKeep.same,JSON.stringify(mapKeep));
+ t('...เพราะกล่องแผนที่ไม่ได้อยู่ในส่วนที่ถูกเขียนทับ',!mapKeep.inBody);
+ t('เอา key ออก กล่องแผนที่ก็ซ่อนไป',mapKeep.hid);
+
  /* ---------- 10) ไม่แตะข้อมูลก้อนอื่น ---------- */
  const other=await ev(()=>JSON.stringify({O:ORDERS,P:POSTATUS,R:REQUESTS,PL:PLAN,PR:PROMO,S:STOCKD}));
  const before=other;

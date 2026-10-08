@@ -1039,6 +1039,15 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="kpi-monthbar" id="pjpBar"></div>
       <div id="pjpCtl"></div>
       <div class="cards" id="pjpCards"></div>
+      <!-- ⚠️ กล่องแผนที่ต้องอยู่ใน markup คงที่ ห้ามให้ renderPjp เขียนทับ
+           ถ้า div #pjMap ถูกสร้างใหม่ทุกครั้งที่ render (เปลี่ยนวัน/ติ๊กร้าน/กรอง)
+           แผนที่จะหลุดจากจอ และต้องสร้าง Map ใหม่ = เสียโควต้า Google ทุกคลิก
+           แบบนี้โหลดแผนที่ครั้งเดียวต่อการเปิดหน้า แล้วแค่ย้ายหมุด -->
+      <div class="panel" id="pjMapWrap" style="display:none">
+        <div id="pjMapHead"></div>
+        <div id="pjMap" class="pj-map"></div>
+        <div id="pjMapMsg"></div>
+      </div>
       <div id="pjpBody"></div>
     </div>
 
@@ -3435,6 +3444,7 @@ function renderPjp(){
     bar.innerHTML="🗺 แผนเยี่ยมร้าน (PJP)";
     document.getElementById("pjpCtl").innerHTML="";
     document.getElementById("pjpCards").innerHTML="";
+    {const w=document.getElementById("pjMapWrap");if(w)w.style.display="none";}
     document.getElementById("pjpBody").innerHTML=
       `<div class="panel"><div class="insight">ยังไม่มีแผน PJP — ${pjIsMgr()?"อัพ 2 ไฟล์ก่อน: <b>Master Outlet Data</b> และ <b>PJP ประจำเดือน</b> (ปุ่มอัพโหลด → 🗺)":"รอผู้จัดการอัพไฟล์ PJP ของเดือนนี้"}</div></div>`+
       pjKeyPanel();      /* ตั้งค่าแผนที่ได้ตั้งแต่ยังไม่มีข้อมูล */
@@ -3480,22 +3490,23 @@ function renderPjp(){
     `<div class="card" style="border-top:3px solid #C79A00"><div class="k" style="color:#C79A00">⭐ PS ยังไม่ผ่าน</div><div class="v">${psNo}</div><div class="s">ในร้านของวันนี้</div></div>`;
   /* แผนที่ */
   const key=pjKey();
-  let map="";
-  if(key){
-    const dir=pjDirAll(ymd,rt);
-    map=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-      <h3>🗺 แผนที่ร้านวันนี้</h3>
-      ${dir?`<a class="pl-today" style="flex:0 0 auto;text-decoration:none;text-align:center" href="${dir.url}" target="_blank" rel="noopener">🧭 เปิดเส้นทาง ${dir.n} ร้านแรกใน Google Maps</a>`:""}</div>
-      <div class="psub">หมุดเรียงตามลำดับการเข้าเยี่ยม · <span class="down">แดง</span> = ยอดตก/ไม่ซื้อ · <span class="mid">เหลือง</span> = PS/eB2B ค้าง · <span class="up">เขียว</span> = เข้าแล้ว${dir&&dir.all>dir.n?` · Google Maps รับจุดแวะได้จำกัด จึงใส่ให้ ${dir.n} จาก ${dir.all} ร้าน`:""}</div>
-      <div id="pjMap" class="pj-map"></div>
-      ${PJMAP.state==="auth"?`<div class="note" style="border-color:var(--bad);color:var(--bad)">⚠️ Google ปฏิเสธ API key นี้ — เช็คว่าเปิด "Maps JavaScript API" แล้ว และโดเมน <b>bd-sales-dashboard.vercel.app</b> อยู่ในรายการที่อนุญาต</div>`:""}
-      ${PJMAP.state==="error"?`<div class="note" style="border-color:var(--bad);color:var(--bad)">⚠️ โหลดแผนที่ไม่สำเร็จ — เช็คอินเทอร์เน็ต</div>`:""}
-    </div>`;
-  }else if(pjIsMgr()){
-    map=pjKeyPanel();
+  const wrap=document.getElementById("pjMapWrap");
+  if(wrap){
+    wrap.style.display=key?"":"none";
+    if(key){
+      const dir=pjDirAll(ymd,rt);
+      document.getElementById("pjMapHead").innerHTML=
+        `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <h3>🗺 แผนที่ร้านวันนี้</h3>
+          ${dir?`<a class="pl-today" style="flex:0 0 auto;text-decoration:none;text-align:center" href="${dir.url}" target="_blank" rel="noopener">🧭 เปิดเส้นทาง ${dir.n} ร้านแรกใน Google Maps</a>`:""}</div>
+        <div class="psub">หมุดเรียงตามลำดับการเข้าเยี่ยม · <span class="down">แดง</span> = ยอดตก/ไม่ซื้อ · <span class="mid">เหลือง</span> = PS/eB2B ค้าง · <span class="up">เขียว</span> = เข้าแล้ว${dir&&dir.all>dir.n?` · Google Maps รับจุดแวะได้จำกัด จึงใส่ให้ ${dir.n} จาก ${dir.all} ร้าน`:""}</div>`;
+      document.getElementById("pjMapMsg").innerHTML=
+        (PJMAP.state==="auth"?`<div class="note" style="border-color:var(--bad);color:var(--bad)">⚠️ Google ปฏิเสธ API key นี้ — เช็คว่าเปิด "Maps JavaScript API" แล้ว และโดเมน <b>bd-sales-dashboard.vercel.app</b> อยู่ในรายการที่อนุญาต (แก้แล้วรอ 5 นาที)</div>`:"")+
+        (PJMAP.state==="error"?`<div class="note" style="border-color:var(--bad);color:var(--bad)">⚠️ โหลดแผนที่ไม่สำเร็จ — เช็คอินเทอร์เน็ต</div>`:"");
+    }
   }
   const body=document.getElementById("pjpBody");
-  body.innerHTML=map+
+  body.innerHTML=(key?"":pjKeyPanel())+
     (PJ.view==="day"?`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
         <h3>📋 ร้านที่ต้องเข้า ${stops.length} ร้าน</h3><div class="psub">เรียงตามลำดับการเยี่ยมในไฟล์ PJP — วิ่งตามเส้นทางจริงของตัวเองได้ ไม่ต้องเรียงตามนี้</div></div>
       ${pjDayHtml(ymd,rt)}</div>`
