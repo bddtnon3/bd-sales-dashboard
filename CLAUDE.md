@@ -154,7 +154,10 @@ code, never printed.
   calculator) and its two settings live on the non-synced `ORD` object. Four rules are easy to get
   wrong — the chase window must start *strictly after* the drop day, status is *last round wins*,
   "ยังค้าง" is the last round's Q and never a sum, and the "สั่งซ้ำแล้ว" fact must never be hidden
-  behind a colour-block label. Rules: `HANDOFF.md` §5.
+  behind a colour-block label. Prove it still holds with
+  **`node test/browser/dropback.test.cjs`** (45 checks, needs `npm i --no-save playwright-core`);
+  it asserts among other things that the four order-data blobs are byte-identical before and after
+  every control is exercised. Rules: `HANDOFF.md` §5.
   The auto-PO calculator (`poBuild`/`renderPoCalc`) and `MINSTOCK` (minimum stock per code) have
   rules that are easy to get wrong — read `HANDOFF.md` §5 before touching either. The calculator
   is strictly READ-ONLY over ORDERS/POSTATUS/STOCKD/REQUESTS.

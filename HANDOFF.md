@@ -189,7 +189,18 @@
 (มีเทสต์เทียบ JSON ก่อน/หลังเรียกทุกทาง) · ตัวเลือกช่วงวันอยู่ใน `ORD.dbWin` / `ORD.dbGot`
 ซึ่ง **ไม่อยู่ใน payload** ที่ `_doSync` ส่งขึ้นเซิร์ฟเวอร์ (build.cjs) · ทุก `.sort()` ต้อง `.slice()` ก่อน
 ไม่งั้นจะไปเรียง `ORDERS.dates` ตัวจริงทิ้ง · `dbSetWin`/`dbSetGot` เรียก `dbBlur()` คืนโฟกัส
-ไม่งั้นลูกศรไล่บรรทัดจะใช้ไม่ได้หลังกดปุ่ม · เทสต์: `scratchpad/dropback_test.cjs` (45 ข้อ)
+ไม่งั้นลูกศรไล่บรรทัดจะใช้ไม่ได้หลังกดปุ่ม
+
+**เทสต์อยู่ในรีโป** (ไม่ใช่ scratchpad — ชุดนี้พิสูจน์เรื่องข้อมูลไม่หาย จึงต้องไม่หายไปกับ container):
+```
+npm i --no-save playwright-core          # ครั้งเดียว ไม่ได้อยู่ใน package.json
+node build.cjs && node test/browser/dropback.test.cjs     # ต้องขึ้น ALL PASS (45 checks)
+```
+มันเทียบ JSON ของ `ORDERS`/`POSTATUS`/`STOCKD`/`REQUESTS` ก่อน-หลังกดทุกปุ่ม ต้องเท่ากันเป๊ะ
+และเช็คว่าไม่มีการเรียก `syncToServer` · ตั้ง `CHROME=` ถ้า Chromium อยู่คนละที่
+
+⚠️ `parseDrop` ตั้ง `ORD.date=date` ทุกครั้งที่อัพใบ Drop — อัพใบเก่าย้อนหลัง หน้าจอทั้งหน้า
+(รวมกล่องนี้) จะเด้งไปวันนั้น ไม่ใช่บั๊ก แต่ทำให้งงได้ ถ้าไม่รู้
 
 `renderDropBack()` ถูกเรียก **ก่อน** early-return ของ `renderOrder` — ห้ามย้ายลงไปข้างล่าง
 (กติกา "เติมทุกกล่องทุกครั้ง" ด้านบน) · ใช้ `poSwapFor(fday,code)` ไม่ใช่ `psSwap` ซึ่งอ่าน `PS2.date`
