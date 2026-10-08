@@ -148,6 +148,13 @@ code, never printed.
   `alwaysBand:true`, because those lists are pre-filtered and a round with one category would
   otherwise read as a flat list. Rules: `HANDOFF.md` §5.
   **การสั่งของ** has four sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO.
+  The first one opens with **🔁 Drop ค้าง** (`renderDropBack`/`dbScan`/`dbChase`/`dbBlock`): everything
+  Unilever dropped in the last 3/5/7/14 days that has still not arrived, with a re-order prompt. It
+  is **strictly read-only** over ORDERS/POSTATUS/STOCKD/REQUESTS (same rule as the auto-PO
+  calculator) and its two settings live on the non-synced `ORD` object. Four rules are easy to get
+  wrong — the chase window must start *strictly after* the drop day, status is *last round wins*,
+  "ยังค้าง" is the last round's Q and never a sum, and the "สั่งซ้ำแล้ว" fact must never be hidden
+  behind a colour-block label. Rules: `HANDOFF.md` §5.
   The auto-PO calculator (`poBuild`/`renderPoCalc`) and `MINSTOCK` (minimum stock per code) have
   rules that are easy to get wrong — read `HANDOFF.md` §5 before touching either. The calculator
   is strictly READ-ONLY over ORDERS/POSTATUS/STOCKD/REQUESTS.

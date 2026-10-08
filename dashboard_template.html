@@ -293,6 +293,11 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .grp-row td span{font-weight:400;font-size:12px;color:var(--muted)}
 .plan-tbl th,.plan-tbl td{white-space:nowrap}
 .plan-tbl td:first-child{text-align:left}
+/* ตาราง "Drop ค้าง": สองคอลัมน์ท้ายเป็นประโยคยาว ถ้า nowrap จะหลุดขอบจอแล้วต้องเลื่อนไปหา
+   ซึ่งเป็นคอลัมน์ที่สำคัญที่สุด (บอกว่าต้องสั่งเพิ่มไหม) — ปล่อยให้ตัดบรรทัดได้ */
+.db-tbl td:nth-last-child(2),.db-tbl td:last-child{white-space:normal}
+.db-tbl td:nth-last-child(2){min-width:150px}
+.db-tbl td:last-child{min-width:215px}
 .kpi-card .v{font-size:24px}
 /* ---------- DCI SCORE ---------- */
 .dci-pb{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:8px;padding:4px 10px;
@@ -952,6 +957,9 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <button class="pos-st" data-k="po" onclick="ordSetSec('po')">🧮 คำนวณ PO อัตโนมัติ</button>
       </div>
       <div id="ordSecReq">
+        <!-- Drop ค้างย้อนหลัง: ต้องอยู่บนสุด เพราะเจ้าของไล่สั่งของจากบนลงล่าง
+             ถ้าอยู่ท้ายหน้าจะเลยตามเคย (เหตุผลที่ขอฟีเจอร์นี้คือ "ลืม") -->
+        <div class="panel" id="dropBack" style="display:none"></div>
         <div id="myRequest" style="display:none"></div>
         <div class="panel" id="salesRequests" style="display:none"></div>
       </div>
@@ -4251,7 +4259,7 @@ function parsePS(name,buf){
 }
 
 /* ====================== ORDERING (สั่งของ) ====================== */
-let ORD={date:null,dropView:'sum',sec:'req'};
+let ORD={date:null,dropView:'sum',sec:'req',dbWin:5,dbGot:false};
 function setDropView(m){ORD.dropView=m;renderOrder();}
 function oname(c){return (STOCKD&&STOCKD.names&&STOCKD.names[c])||(MASTER&&MASTER.items&&MASTER.items[c])||(ORDERS.names&&ORDERS.names[c])||"";}
 function fnameDate(name){
@@ -4298,6 +4306,8 @@ function renderOrder(){
   document.getElementById("myRequest").style.display=isSales?"":"none";
   document.getElementById("salesRequests").style.display=isSales?"none":"";
   if(isSales)renderMyRequest();else renderSalesRequests();
+  /* ต้องอยู่ก่อน early-return ข้างล่าง — ไม่งั้นวันที่ยังไม่มีข้อมูล กล่องนี้จะค้างของเก่าไว้ */
+  renderDropBack();
   if(!ORDERS||!ORDERS.dates||!ORDERS.dates.length){
     bar.innerHTML="🛒 การสั่งของ · ศูนย์ BD";
     const none='<div class="insight">ยังไม่มีข้อมูลการสั่งของ — แอดมินอัพไฟล์ใบสั่ง / ไฟล์ Confirm ก่อน (ปุ่มอัพโหลด → 🛒)</div>';
@@ -4398,6 +4408,196 @@ function renderOrder(){
         rows:g.list.map(recvLine)})),
       {alwaysBand:true,empty:'<div class="insight">ไม่พบรายการ</div>'});
   renderOrderSearch();
+}
+/* ============================================================================
+ * 🔁 DROP ค้าง — ของที่โดนดรอปรอบก่อน ๆ แล้ว "ยังไม่ได้ของ"
+ *
+ * เจ้าของแจ้ง 8 ต.ค. 69: เดิมทำบนกระดาษ ทุกเช้าจะเปิดใบ Drop ย้อนหลัง 1-3 วัน
+ * แล้วไล่สั่งตัวที่ยังไม่ได้ซ้ำเข้าไป "จนกว่าจะได้ของ" · พอย้ายมาใช้เว็บแล้วลืม
+ * เพราะไม่มีหน้าไหนรวมให้ดู จึงต้องอยู่ **บนสุดของแท็บคำขอสินค้า** ซึ่งเป็นหน้าที่
+ * เจ้าของเปิดไล่สั่งของทุกเช้า
+ *
+ * ⚠️ อ่านอย่างเดียวล้วน ๆ ห้ามเขียน ORDERS / POSTATUS / STOCKD / REQUESTS เด็ดขาด
+ *    (กติกาเดียวกับเครื่องคำนวณ PO · HANDOFF.md §5) ตัวเลือกช่วงวันเก็บใน `ORD`
+ *    ซึ่งเป็นตัวแปรหน้าจอล้วน ๆ ไม่ได้อยู่ใน payload ที่ sync ขึ้นเซิร์ฟเวอร์
+ * ==========================================================================*/
+const DB_WINS=[{d:3,t:"3 วัน"},{d:5,t:"5 วัน"},{d:7,t:"1 อาทิตย์"},{d:14,t:"2 อาทิตย์"}];
+/* คืนโฟกัสหลังกดปุ่ม/ติ๊ก — ไม่งั้นโฟกัสค้างอยู่ที่ control แล้วลูกศรไล่บรรทัดจะไม่ทำงาน
+   (ตัวจับคีย์ของ row cursor จงใจไม่แย่งลูกศรจาก input — ดู HANDOFF.md §5) */
+function dbBlur(){try{const a=document.activeElement;if(a&&a.blur)a.blur();}catch(e){}}
+function dbSetWin(n){ORD.dbWin=n;dbBlur();renderDropBack();}
+function dbSetGot(v){ORD.dbGot=!!v;dbBlur();renderDropBack();}
+/* ไล่ไปข้างหน้า "หลัง" วันที่ดรอป ว่ารหัสนี้ได้ของหรือยัง (รหัสเดียว ไม่ตามรหัสพี่น้อง)
+   ⚠️ เรียก reqFulfillmentExact ตรง ๆ ไม่ได้ เพราะช่วงของมันยึดกับ "วันที่เซลล์ขอ"
+   (reqFrom = ขอ − REQ_BACK_DAYS) จึงนับรอบ *ก่อน* วันดรอปเข้ามาด้วย แล้วจะอ่านผิดว่า
+   "ได้ของแล้ว" ทั้งที่ของที่ได้นั้นมาถึงก่อนรอบที่ดรอป */
+function dbChaseOne(after,code){
+  const D=(ORDERS&&ORDERS.data)||{};
+  const out={state:"none",got:0,gotDate:null,pendDate:null,redrop:0,lastDate:null};
+  ((ORDERS&&ORDERS.dates)||[]).filter(d=>d>after&&D[d]).slice().sort().forEach(d=>{
+    const day=D[d],om=orderedMerged(day),dp=day.dropped||{};
+    const inOrd=(code in om);
+    if(day.hasResult){
+      if(code in dp){
+        const g=dropD(dp[code]),q=dropQ(dp[code])||om[code]||0;
+        if(g>0){out.got+=g;if(!out.gotDate)out.gotDate=d;}
+        if(q>0){out.state="redrop";out.redrop++;}
+        else{out.state="got";if(!out.gotDate)out.gotDate=d;}
+        out.lastDate=d;
+      }else if(inOrd){
+        out.state="got";out.got+=om[code]||0;if(!out.gotDate)out.gotDate=d;out.lastDate=d;}
+      /* hasResult แต่รหัสนี้ไม่อยู่ทั้งในใบสั่งและใบ Drop = ไม่มีหลักฐาน ห้ามเดาว่าได้ของ
+         (วันที่อัพแต่ใบ Drop ไม่ได้อัพใบสั่ง จะเข้าเคสนี้ — ปล่อยสถานะเดิมไว้) */
+    }else if(inOrd){out.state="wait";out.pendDate=d;out.lastDate=d;}
+  });
+  return out;
+}
+/* เหมือนด้านบน แต่ถ้ารหัสเดิมเงียบสนิท ลองตามรหัสอื่นของ "สินค้าตัวเดียวกัน" (รหัสเปลี่ยนบ่อย)
+   ⚠️ การจับคู่ด้วยชื่อ (normProd) ไม่ได้แม่น 100% — ถ้าชื่อสองไซส์ normalize แล้วชนกัน
+   ของไซส์หนึ่งมาถึงจะทำให้อีกไซส์หลุดจากลิสต์เงียบ ๆ ซึ่งคือสิ่งที่ฟีเจอร์นี้มีไว้กัน
+   จึงใช้ได้ "เพื่อบอกข้อมูล" เท่านั้น: แถวที่ปิดด้วยรหัสพี่น้องจะติดธง alt แล้ว
+   renderDropBack จะ **ไม่ซ่อนแถวนั้น** ให้เจ้าของตรวจด้วยตาอีกที */
+function dbChase(after,code){
+  const self=dbChaseOne(after,code);
+  if(self.state!=="none"||self.got>0)return self;
+  for(const a of codeAliases(code)){
+    if(a===String(code))continue;
+    const alt=dbChaseOne(after,a);
+    if(alt.state!=="none"||alt.got>0){alt.alt=a;return alt;}
+  }
+  return self;
+}
+/* สแกนใบ Drop ย้อนหลัง days วัน นับถึงวันที่เลือก (ref) → แถวละรหัส
+   "ค้าง" คิดจาก Q ของ **ดรอปครั้งล่าสุด** ไม่ใช่ผลรวมทุกรอบ — ไม่งั้นของชิ้นเดิมที่สั่งซ้ำ
+   แล้วโดนดรอปอีกจะถูกนับซ้ำ กลายเป็นค้างมากกว่าความจริงเท่าตัว */
+function dbScan(ref,days){
+  const D=(ORDERS&&ORDERS.data)||{};
+  if(!ref)return {rounds:[],rows:[]};
+  const from=dayShift(ref,-(days-1));
+  const omC={};
+  const ordOf=d=>omC[d]||(omC[d]=orderedMerged(D[d]));
+  const hit={},rounds=[];
+  ((ORDERS&&ORDERS.dates)||[]).filter(d=>d>=from&&d<=ref&&D[d]).slice().sort().forEach(d=>{
+    const day=D[d];if(!day||!day.hasResult)return;
+    const dp=day.dropped||{};
+    const codes=Object.keys(dp);if(!codes.length)return;
+    rounds.push(d);
+    codes.forEach(c=>{
+      /* ใบ Drop รุ่นเก่าเก็บเป็นตัวเลขล้วน และบางวันเป็น 0 (ไม่รู้จำนวนจริง)
+         ยังต้องขึ้นในลิสต์ เพราะ "โดนดรอป" เป็นข้อเท็จจริงอยู่ดี แค่โชว์จำนวนไม่ได้ */
+      const q=dropQ(dp[c])||ordOf(d)[c]||0;
+      const r=hit[c]||(hit[c]={code:c,rounds:0,first:d});
+      r.rounds++;r.last=d;r.q=q;r.p=dropD(dp[c]);r.o=dropO(dp[c])||ordOf(d)[c]||0;
+    });
+  });
+  const rows=Object.keys(hit).map(c=>{
+    const r=hit[c],f=dbChase(r.last,c);
+    const unk=!(r.q>0);                                /* ใบรุ่นเก่า: ไม่รู้จำนวนที่ดรอป */
+    const gotAfter=f.got||0;
+    const left=unk?0:Math.max(0,r.q-gotAfter);
+    let st;
+    if(f.state==="got"&&(unk||left===0))st="got";
+    else if(gotAfter>0||(r.p||0)>0)st="part";
+    else st="none";
+    const act=(st==="got")?"done":(f.state==="wait"?"wait":(f.state==="redrop"?"redrop":"never"));
+    return {code:c,last:r.last,first:r.first,rounds:r.rounds,q:r.q,p:r.p||0,o:r.o,unk:unk,
+            left:left,st:st,act:act,again:f.state!=="none",got:gotAfter,gotDate:f.gotDate,
+            pendDate:f.pendDate,redrop:f.redrop,alt:f.alt||null};
+  });
+  return {rounds:rounds,rows:rows};
+}
+/* รอบนี้สั่งตัวนี้ได้ไหม — อ่านจากสีในใบสั่งรอบที่ใกล้ที่สุด (null = สั่งได้ตามปกติ)
+   ใช้ poSwapFor ไม่ใช่ psSwap: psSwap อ่าน PS2.date ของอีกแท็บ (HANDOFF.md §5) */
+function dbBlock(fday,code){
+  if(!fday)return {k:"noform"};
+  const fl=(fday.items||{})[code]||{};
+  if(fl.s)return {k:"oos"};
+  if(fl.x)return {k:poClosedKind(fl.x)};
+  if(poInForm(fday,code)===false)return {k:"notin"};
+  return null;
+}
+function renderDropBack(){
+  const el=document.getElementById("dropBack");if(!el)return;
+  const isMgr=S.user&&S.user.role==="manager";
+  el.style.display=isMgr?"":"none";
+  if(!isMgr){el.innerHTML="";return;}
+  if(DB_WINS.every(w=>w.d!==ORD.dbWin))ORD.dbWin=5;
+  const head=`<h3 style="color:var(--bad)">🔁 Drop ค้าง — ยังไม่ได้ของ ต้องสั่งซ้ำ</h3>`;
+  const ref=ORD.date;
+  if(!ref||!((ORDERS&&ORDERS.dates)||[]).length){
+    el.innerHTML=head+'<div class="psub">ยังไม่มีข้อมูลการสั่งของ — อัพใบสั่งของ + ใบ Drop ก่อน แล้วรายการที่ค้างจะขึ้นที่นี่เอง</div>';return;}
+  const from=dayShift(ref,-(ORD.dbWin-1));
+  const scan=dbScan(ref,ORD.dbWin),rows=scan.rows;
+  /* ใบสั่ง (สี) ที่ใช้ตอบว่า "รอบนี้สั่งได้ไหม" — poRoundFor อาจหยิบใบของอีกวันมาตอบ
+     (ไล่ถึง ±PO_NEAR_DAYS) จึงต้องบอกวันของใบที่อ้างอิงไว้บนหน้าจอ ไม่งั้นอ่านผิดเป็น "ของวันนี้" */
+  const fd=poRoundFor(ref),fday=fd?psDay(fd):null;
+  const nNone=rows.filter(r=>r.st==="none").length;
+  const nPart=rows.filter(r=>r.st==="part").length;
+  const nGot=rows.filter(r=>r.st==="got").length;
+  const leftCs=rows.filter(r=>r.st!=="got").reduce((s,r)=>s+(r.left||0),0);
+  const seg=`<div class="seg">`+DB_WINS.map(w=>`<button class="${ORD.dbWin===w.d?"on":""}" onclick="dbSetWin(${w.d})">${w.t}</button>`).join("")+`</div>`;
+  const chk=`<label class="chk"><input type="checkbox"${ORD.dbGot?" checked":""} onchange="dbSetGot(this.checked)"> แสดงตัวที่ได้ของแล้วด้วย</label>`;
+  const bar=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:10px 0 4px"><span class="psub">ย้อนหลัง</span>${seg}${chk}</div>`;
+  /* บอกไปเลยว่านับจาก "ใบ Drop รอบไหนบ้าง" — ศูนย์ไม่ได้สั่งทุกวัน ช่วง 5 วันอาจมี 2 รอบหรือ 6 รอบ */
+  const info=`<div class="psub">ของที่ Unilever <b>ดรอป</b> ในช่วง <b>${fmtDate(from)} – ${fmtDate(ref)}</b> แล้วระบบไล่ตามรอบถัด ๆ ไปให้แล้วว่า<b>ได้ของหรือยัง</b> — เอาไว้สั่งซ้ำจนกว่าจะได้ครบ`+
+    `<br>นับจากใบ Drop <b>${scan.rounds.length}</b> รอบ: ${scan.rounds.length?scan.rounds.map(fmtDayMon).join(" · "):"<span class=\"mid\">ไม่มีใบ Drop ในช่วงนี้</span>"}`+
+    (rows.length?`<br>พบที่ถูกดรอป <b>${rows.length}</b> รายการ · 🔴 ยังไม่ได้เลย <b class="down">${nNone}</b> · 🟡 ได้บางส่วน <b class="mid">${nPart}</b> · ✅ ได้แล้ว <b class="up">${nGot}</b> · <b>ยังค้างรวม ${leftCs.toLocaleString()} ลัง</b>`:"")+
+    `<br>ช่อง “ต้องทำอะไร” เช็คกับ${fd?` <b>ใบสั่งวันที่ ${fmtDate(fd)}</b>`:'<span class="mid">ใบสั่ง — ยังไม่ได้อัพใบไหนเลย ระบบจึงยังบอกไม่ได้ว่ารอบนี้สั่งได้ไหม</span>'}`+`</div>`;
+  if(!rows.length){
+    el.innerHTML=head+info+bar+'<div class="insight">ไม่มีรายการที่ถูกดรอปในช่วงนี้ — ถ้าคิดว่าควรมี ให้เช็คว่าอัพไฟล์ Drop ของวันนั้น ๆ แล้วหรือยัง (แท็บ ❌ ใบ Drop)</div>';return;}
+  const q=((document.getElementById("orderSearch")||{}).value||"").trim().toLowerCase();
+  const match=c=>!q||String(c).includes(q)||oname(c).toLowerCase().includes(q);
+  /* แถวที่ปิดด้วย "รหัสพี่น้อง" (alt) จะไม่ถูกซ่อน แม้จะติ๊กซ่อนตัวที่ได้แล้ว —
+     การจับคู่ด้วยชื่อไม่แม่น 100% ถ้าซ่อนไปเลยอาจพลาดของที่ยังค้างจริง */
+  const show=rows.filter(r=>(ORD.dbGot||r.st!=="got"||r.alt)&&match(r.code));
+  const stCell=r=>{
+    if(r.st==="got")return `<span class="pill g">✅ ได้ของแล้ว${r.gotDate?" · "+fmtDayMon(r.gotDate):""}</span>`+
+      (r.alt?` <b class="mid">(มาเป็นรหัส ${r.alt} — เช็กว่าตัวเดียวกันไหม)</b>`:"");
+    if(r.st==="part")return `<span class="pill w">🟡 ได้บางส่วน</span> <span class="psub">ได้ ${(r.got+r.p).toLocaleString()}${r.unk?"":" · ค้าง "+r.left.toLocaleString()} ลัง</span>`+
+      (r.alt?` <b class="mid">(รหัส ${r.alt})</b>`:"");
+    return `<b class="down">🔴 ยังไม่ได้เลย</b>`;
+  };
+  /* ⚠️ "สั่งซ้ำไปแล้วหรือยัง" ต้องมาก่อนเหตุผลเรื่องสีเสมอ ห้ามให้ป้ายสีมาบัง —
+     ไม่งั้นของที่สั่งซ้ำไปเมื่อวานแล้วรอผลอยู่ จะขึ้นแค่ "ยังไม่เปิดให้สั่ง"
+     แล้วเจ้าของสั่งซ้ำเป็นรอบที่สาม ซึ่งคือสิ่งที่ฟีเจอร์นี้มีไว้กันพอดี */
+  const actCell=r=>{
+    if(r.st==="got")return '<span class="psub">—</span>';
+    const b=dbBlock(fday,r.code);
+    let blk="";
+    if(b&&(b.k==="oos"||b.k==="closed"||b.k==="dropped")){
+      const L=PO_BLOCK[b.k];
+      let swap="";
+      if(b.k!=="dropped"){const sw=poSwapFor(fday,r.code);if(sw&&sw.pick)swap=` <span class="pill g">→ รอบนี้สั่งรหัส <b>${sw.pick}</b> แทน</span>`;}
+      blk=`<span class="pill b">${L.icon} ${L.lab}</span> <span class="psub">${L.why}</span>${swap}`;
+    }else if(b&&b.k==="notin"){
+      blk='<span class="pill b">📭 ไม่มีในใบสั่งรอบนี้</span> <span class="psub">รอรอบที่ใบมีรหัสนี้</span>';
+    }
+    if(r.act==="wait")return `<span class="pill w">🕓 สั่งซ้ำแล้ว รอผล${r.pendDate?" · "+fmtDayMon(r.pendDate):""}</span>`+
+      (r.alt?` <span class="psub">(สั่งเป็นรหัส ${r.alt})</span>`:"")+(blk?"<br>"+blk:"");
+    if(r.act==="redrop")return `<b class="down">🔁 สั่งซ้ำแล้ว โดนดรอปอีก ${r.redrop} รอบ</b>`+
+      (blk?"<br>"+blk:' <span class="psub">สั่งต่อ หรือถาม Unilever ว่าของจะมาเมื่อไหร่</span>');
+    if(blk)return blk;                       /* ยังไม่ได้สั่งซ้ำ และรอบนี้ก็สั่งไม่ได้อยู่ดี */
+    const lead=r.again?"❗ ต้องสั่งเพิ่มรอบนี้":"❗ ยังไม่ได้สั่งซ้ำ — สั่งเพิ่มรอบนี้เลย";
+    if(b&&b.k==="noform")return `<b class="down">${lead}</b> <span class="psub">(ยังไม่ได้อัพใบสั่งรอบนี้ ระบบจึงยังไม่รู้ว่าเปิดให้สั่งไหม)</span>`;
+    return `<b class="down">${lead}</b>`;
+  };
+  const line=r=>`<tr><td>${r.code}</td><td style="text-align:left">${oname(r.code)||'<span class="psub">(ไม่มีชื่อในระบบ)</span>'}</td>`+
+    `<td>${fmtDayMon(r.last)}${r.rounds>1?` <span class="psub">· ${r.rounds} รอบ</span>`:""}</td>`+
+    `<td>${r.unk?"—":(r.q||0).toLocaleString()}</td><td>${r.left?`<b class="down">${r.left.toLocaleString()}</b>`:"-"}</td>`+
+    `<td>${stkCell(r.code,r.left||0)}</td>`+
+    `<td style="text-align:left">${stCell(r)}</td><td style="text-align:left">${actCell(r)}</td></tr>`;
+  /* เรียงเหมือนทุกตารางในหน้านี้: แบ่งหมวด + ไล่ตามลำดับหน้าใบสั่งซื้อ */
+  const sorted=poSeqSort(show,r=>r.code,(a,b)=>(b.last<a.last?-1:b.last>a.last?1:0)||(b.left-a.left));
+  const tbl=grpTable(
+    [{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"ดรอปล่าสุด"},{h:"ดรอป (ลัง)",t:"Q = จำนวนที่สั่งไม่ได้จริงของรอบที่ดรอปล่าสุด (ไม่ใช่ผลรวมทุกรอบ — ของชิ้นเดิมที่สั่งซ้ำแล้วโดนดรอปอีกจะได้ไม่นับซ้ำ)"},
+     {h:"ยังค้าง (ลัง)"},{h:"สต็อกคงเหลือ",t:"คลังขาย จากไฟล์สต็อกล่าสุด — ถ้ายังมีของอยู่ ก็ยังไม่ด่วนมาก"},
+     {h:"สถานะ",a:"l"},{h:"ต้องทำอะไร",a:"l"}],
+    grpByCat(sorted,r=>r.code).map(g=>({title:`${g.icon} ${g.cat}`,
+      sub:`· ${g.list.length} รายการ · ค้าง ${g.list.reduce((s,r)=>s+(r.left||0),0).toLocaleString()} ลัง`,
+      rows:g.list.map(line)})),
+    {cls:"plan-tbl db-tbl",alwaysBand:true,
+     empty:`<div class="insight">${q?"ไม่พบรายการที่ค้นหา":"✅ ของที่ดรอปในช่วงนี้ได้ครบหมดแล้ว — ติ๊ก “แสดงตัวที่ได้ของแล้วด้วย” เพื่อดูย้อนหลัง"}</div>`});
+  el.innerHTML=head+info+bar+`<div class="psub" style="margin-bottom:6px">↕️ ${poSeqNote()}</div>`+tbl;
 }
 /* search a product across ALL order days → its status per day (สั่ง/ได้/ดรอป). For sales & manager. */
 function renderOrderSearch(){
