@@ -151,6 +151,42 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
  t('ร้านยอดตกขึ้น PS ยังไม่ผ่าน พร้อมบอกว่าขาด A/D',
    tk.a.some(x=>/^ps:.*A\/D/.test(x)),tk.a.join(' | '));
  t('ดึง Call to action ของ Unilever มาได้',/Skin/.test(tk.cta||''),tk.cta);
+
+ /* Call to action ของ Unilever เขียนว่า "AO & SO" ซึ่งเซลล์ไม่รู้จัก — ต้องโชว์เป็น B2B
+    (เจ้าของสั่ง 8 ต.ค. 69) แต่ของที่เก็บไว้ต้องเป็นข้อความเดิมของ Unilever */
+ const ctaT=await ev(()=>{
+   const raw='Drive IQ | Drive AO & SO';
+   const rows=PSTORE.rounds['2026-09-30'].rows;
+   const was=rows[0][10];
+   rows[0][10]=raw;_pjPs=null;                        /* ล้างแคช PS */
+   PJ.d='2026-10-05';PJ.line='209611';PJ.view='day';PJ.only='all';
+   renderPjp();
+   const card=[...document.querySelectorAll('#pjpView .pj-card')].find(c=>/2493638/.test(c.innerText));
+   const r={
+     one:psCtaText('Drive IQ | Drive AO & SO'),
+     sep:psCtaText('Drive AO | Drive SO'),            /* แยกคนละท่อน ต้องไม่ได้ B2B สองรอบ */
+     alone:psCtaText('Drive SO'),
+     and:psCtaText('Drive AO and SO'),
+     vis:psCtaText('Drive Visibility'),               /* ท่อนอื่นห้ามถูกแตะ */
+     empty:psCtaText(''),
+     noFalse:psCtaText('Drive Assortment'),           /* ห้ามไปโดนคำที่บังเอิญมี so/ao อยู่ข้างใน */
+     card:card?card.innerText.replace(/\s+/g,' '):'',
+     stored:rows[0][10],
+   };
+   rows[0][10]=was;_pjPs=null;renderPjp();
+   return r;
+ });
+ t('"Drive AO & SO" แสดงเป็น "Drive B2B"',ctaT.one==='Drive IQ · Drive B2B',ctaT.one);
+ t('AO กับ SO มาคนละท่อน ไม่ขึ้น B2B ซ้ำสองรอบ',ctaT.sep==='Drive B2B',ctaT.sep);
+ t('มาตัวเดียวก็แปลง',ctaT.alone==='Drive B2B',ctaT.alone);
+ t('เขียนว่า "AO and SO" ก็แปลง',ctaT.and==='Drive B2B',ctaT.and);
+ t('ท่อน Visibility ไม่ถูกแตะ',ctaT.vis==='Drive Visibility',ctaT.vis);
+ t('ว่างก็ว่าง ไม่โผล่ขีดเปล่า ๆ',ctaT.empty==='',JSON.stringify(ctaT.empty));
+ t('ไม่ไปโดนคำที่บังเอิญมีตัวอักษร so/ao อยู่ข้างใน',ctaT.noFalse==='Drive Assortment',ctaT.noFalse);
+ t('⚠️ บนการ์ดร้านเห็น "Drive B2B" ไม่เห็น "AO & SO" แล้ว',
+   /Drive IQ · Drive B2B/.test(ctaT.card)&&!/AO/.test(ctaT.card),ctaT.card.slice(0,200));
+ t('⚠️ ข้อความต้นฉบับของ Unilever ที่เก็บไว้ไม่ถูกแก้ (แปลงตอนแสดงผลเท่านั้น)',
+   ctaT.stored==='Drive IQ | Drive AO & SO',ctaT.stored);
  t('ร้านไม่ซื้อ 2 เดือนขึ้นป้ายแดง',tk.b.some(x=>/^dead:ไม่ซื้อ 2 เดือน/.test(x)),tk.b.join(' | '));
  t('ร้านที่ยังไม่เปิด eB2B ขึ้นเตือน (และร้านที่เปิดแล้วไม่ขึ้น)',
    tk.b.some(x=>/^eb:/.test(x))&&!tk.c.some(x=>/^eb:/.test(x)),tk.b.join(' | ')+'  ||  '+tk.c.join(' | '));

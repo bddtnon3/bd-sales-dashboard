@@ -149,8 +149,13 @@ code, never printed.
   (`plShopOcc`) — derived at render time, never stored as `PLAN.items`. Google Maps is optional:
   with no key the shop cards still have 🧭 navigate buttons; when there is a key the map element
   is static, its markers are reused and `fitBounds` only runs when the set of shops changes,
-  because Google bills per Map creation. Prove it with
-  **`node test/browser/pjp.test.cjs`** (107 checks on the owner's real October files).
+  because Google bills per Map creation.
+  Unilever's own Call to action is shown through **`psCtaText`**, which rewrites `Drive AO & SO`
+  (Assisted / Self Ordering) as `Drive B2B`, the words the reps use. It rewrites **on display
+  only** — the stored `PSF.cta` keeps Unilever's wording. Note the three pillars are
+  A = Availability, V = Visibility and **D = Digital** (the column header starts `digit`), not
+  Display. Prove all of it with
+  **`node test/browser/pjp.test.cjs`** (116 checks on the owner's real October files).
   The **🎯 eB2B & Self Ordering** tab keys each round by the **"as of" date in the FILENAME**
   (`kpiKeyOf`/`kpiAsOf`), not by month — the file is uploaded weekly, so month keys made the
   second upload of a month erase the first. The filename wins over the sheet header, which once

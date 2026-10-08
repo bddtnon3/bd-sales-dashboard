@@ -3483,7 +3483,7 @@ function pjTasks(code,ymd){
     if(!r[PSF.yes]){
       const miss=[];if(r[PSF.a]==="R")miss.push("A");if(r[PSF.v]==="R")miss.push("V");if(r[PSF.d]==="R")miss.push("D");
       t.push({k:"ps",ic:"⭐",s:"PS ยังไม่ผ่าน"+(miss.length?" (ขาด "+miss.join("/")+")":""),cls:"w",
-        tip:r[PSF.cta]||""});
+        tip:psCtaText(r[PSF.cta])});
     }else t.push({k:"psok",ic:"⭐",s:"PS ผ่านแล้ว",cls:"g"});
   }
   const o=pjOut(code);
@@ -3717,7 +3717,7 @@ function pjCardHtml(s,i,ymd){
   const t=pjTasks(s.code,ymd);
   const sa=pjSales(s.code);
   const ps=pjPS(s.code);
-  const cta=(ps&&!ps.r[PSF.yes]&&ps.r[PSF.cta])?ps.r[PSF.cta]:"";
+  const cta=(ps&&!ps.r[PSF.yes])?psCtaText(ps.r[PSF.cta]):"";
   const nav=(o.la!=null&&o.lo!=null)?`https://www.google.com/maps/dir/?api=1&destination=${o.la},${o.lo}`:"";
   const fu=pjFollow(s.code,ymd);                 /* เรื่องค้างจากการเยี่ยมครั้งก่อน */
   const mine=pjNote(s.code,ymd);                 /* โน้ตที่บันทึกของวันนี้ */
@@ -5220,6 +5220,26 @@ function psAVD(r){
   if(t==="F"||t==="AV")out.push(psPill("V",r[PSF.v]==="G"?"g":"r"));
   if(t==="F"||t==="AD")out.push(psPill("D",r[PSF.d]==="G"?"g":r[PSF.d]==="A"?"a":"r"));
   return out.join("");
+}
+/* ⚠️ ข้อความ Call to action มาจากไฟล์ของ Unilever ตรง ๆ — ที่ "เก็บ" ไว้ห้ามแก้
+   แปลงเฉพาะตอนแสดงผล: เซลล์ไม่รู้ว่า AO/SO คืออะไร แต่รู้จัก B2B ดี
+   (AO = Assisted Ordering เซลล์กดสั่งให้ · SO = Self Ordering ร้านกดสั่งเอง
+    ทั้งคู่คือออเดอร์ที่วิ่งผ่านแอพ eB2B = เสาต้น D ของ Perfect Store)
+   เจ้าของสั่งเปลี่ยน 8 ต.ค. 69: "Drive AO & SO" → "Drive B2B" */
+function psCtaText(t){
+  const s=String(t||"").trim();
+  if(!s)return "";
+  const seen={},out=[];
+  s.replace(/\bAO\s*(?:&|and|\+|\/)\s*SO\b/gi,"B2B")
+   .replace(/\bSO\s*(?:&|and|\+|\/)\s*AO\b/gi,"B2B")
+   .replace(/\b(?:AO|SO)\b/gi,"B2B")
+   .split(/\s*[|;,]\s*/).forEach(p=>{
+     const k=p.trim();if(!k)return;
+     /* AO กับ SO มาคนละท่อนจะกลายเป็น "Drive B2B | Drive B2B" — เหลือตัวเดียวพอ */
+     const n=k.toLowerCase().replace(/\s+/g," ");
+     if(seen[n])return;seen[n]=1;out.push(k);
+   });
+  return out.join(" · ");
 }
 /* Unilever's call-to-action in the three words the team actually uses:
    A = IQ (ขายสินค้าแนะนำ) · V = สื่อ (ตั้งโชว์) · D = B2B (ร้านกดสั่งเอง) */
