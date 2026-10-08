@@ -3,13 +3,19 @@ import { verify, bearer } from "../lib/auth.js";
 import { newestReal, looksEmpty } from "../lib/snapshot.js";
 
 /* ============================================================================
- * PJP VISIT TICK — a salesperson marks one shop on one day as visited.
+ * PJP VISIT RECORD — a salesperson records one visit to one shop on one day.
  *
  * The manager saves PJP through api/save.js like every other section. A
  * salesperson must NOT be able to send a whole state, so this endpoint exists:
  * it writes exactly ONE key per call —
  *
- *   PJP.done["<outlet>|<YYYY-MM-DD>"] = { v, by, at }
+ *   PJP.done["<outlet>|<YYYY-MM-DD>"] = { v, by, at, tx?, f? }
+ *
+ * tx is the rep's note for that visit and f the things to chase next time
+ * (keys of PJ_FLAG in the client). They live on the SAME record as the tick
+ * on purpose: PJP.done already merges newest-wins per key in api/save.js, so
+ * adding fields cannot drop anything, and an old browser tab that knows
+ * nothing about tx/f still reads .v exactly as before.
  *
  * and only for a shop that is on THAT salesperson's own route on THAT day,
  * which is checked against the stored plan, not against anything in the body.
@@ -26,6 +32,17 @@ import { newestReal, looksEmpty } from "../lib/snapshot.js";
 const S = (v, max) => String(v == null ? "" : v).replace(/[\u0000-\u001F\u007F]/g, " ").trim().slice(0, max);
 const ISO = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? String(v) : "");
 const CODE = (v) => (/^\d{4,12}$/.test(String(v || "")) ? String(v) : "");
+/* เรื่องที่ต้องตามต่อ — ยอมรับแค่คีย์ที่รู้จัก ไม่ใช่ข้อความอิสระ (ตรงกับ PJ_FLAG ฝั่งหน้าเว็บ) */
+const FLAGS = ["sell", "eb", "ps", "pay", "stock", "fix"];
+const NOTE = (v) => String(v == null ? "" : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ").trim().slice(0, 500);
+const FLAGSOF = (v) => {
+  const out = [], seen = {};
+  (Array.isArray(v) ? v : []).forEach((k) => {
+    const s = String(k || "");
+    if (FLAGS.indexOf(s) >= 0 && !seen[s]) { seen[s] = 1; out.push(s); }
+  });
+  return out;
+};
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method not allowed" });
@@ -67,7 +84,11 @@ export default async function handler(req, res) {
       if (!on) return res.status(403).json({ error: "ร้านนี้ไม่ได้อยู่ในแผนของสายคุณในวันนั้น" });
     }
 
-    P.done[code + "|" + date] = { v: body.v ? 1 : 0, by: S(claims.name, 60), at: Date.now() };
+    const rec = { v: body.v ? 1 : 0, by: S(claims.name, 60), at: Date.now() };
+    const tx = NOTE(body.tx), f = FLAGSOF(body.f);
+    if (tx) rec.tx = tx;
+    if (f.length) rec.f = f;
+    P.done[code + "|" + date] = rec;
 
     if (looksEmpty(data)) return res.status(409).json({ error: "ข้อมูลว่างเปล่า — ยกเลิกการบันทึกเพื่อป้องกันข้อมูลเดิมหาย" });
 

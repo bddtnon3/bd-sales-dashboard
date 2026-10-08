@@ -320,7 +320,34 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .pj-card{display:flex;gap:10px;border:1px solid var(--line);border-left:5px solid var(--blue);
   border-radius:11px;padding:10px 12px;background:#fff}
 .pj-card.hot{border-left-color:var(--bad);background:#FDFAFA}
+.pj-card.fu{border-left-color:#7A5AF8;background:#FBFAFF}
 .pj-card.done{border-left-color:var(--good);background:#F6FBF8;opacity:.78}
+.pj-card.done.fu{border-left-color:#7A5AF8;opacity:.9}
+/* 📌 เรื่องค้างจากการเยี่ยมครั้งก่อน — ต้องเด่นกว่าป้ายอื่น เพราะเป็นสิ่งที่เซลล์สั่งตัวเองไว้ */
+.pj-fu{background:#F0ECFE;border:1px solid #D6CCFA;border-radius:9px;padding:7px 10px;margin:6px 0 2px;
+  font-size:12.5px;color:#3B2A8C;line-height:1.55}
+.pj-fut{color:#4C35B0;font-style:italic;margin-top:3px;white-space:pre-wrap;word-break:break-word}
+.pj-mynote{background:var(--bg);border-radius:8px;padding:6px 10px;margin-top:6px;font-size:12.5px;
+  color:#4A5465;white-space:pre-wrap;word-break:break-word}
+.pj-nh{background:var(--bg);border-radius:10px;padding:9px 12px}
+.pj-quick{width:100%;margin-top:14px;background:#E7F6EE;border:1.5px solid var(--good);color:#15713F;
+  border-radius:11px;padding:13px;font-size:14.5px;font-weight:800;font-family:inherit;cursor:pointer}
+.pj-quick:hover{background:#D8F0E3}
+.pj-or{display:flex;align-items:center;gap:10px;margin:14px 0 12px;color:var(--muted);font-size:11.5px;font-weight:700}
+.pj-or:before,.pj-or:after{content:"";flex:1;height:1px;background:var(--line)}
+.pj-dfu{color:#7A5AF8}
+/* PJP มีการ์ดสรุป 5 ใบ (เพิ่ม "ค้างจากครั้งก่อน") — .cards ปกติเป็น 4 คอลัมน์
+   ปล่อยไว้ใบที่ 5 จะตกลงไปอยู่บรรทัดใหม่ตัวเดียวเหงา ๆ */
+#pjpCards{grid-template-columns:repeat(5,1fr)}
+@media(max-width:1150px){#pjpCards{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){#pjpCards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){#pjpCards{grid-template-columns:1fr}}
+.pl-item.pl-shop{background:#FBFAFF}
+/* ⚠️ อย่าใช้คลาส .pl-tick กับปุ่มนี้ — .pl-tick ตั้ง color:transparent ไว้ (ช่องติ๊กเปล่า)
+   แล้วมันอยู่ท้ายไฟล์กว่า จึงชนะเสมอ ไอคอน 🏪 จะกลายเป็นช่องว่าง */
+.pj-go{flex:0 0 auto;width:28px;height:28px;border:1.5px solid #BFB0F5;background:#F0ECFE;
+  border-radius:8px;font-size:14px;line-height:1;padding:0;cursor:pointer;font-family:inherit}
+.pj-go:hover{border-color:#7A5AF8;background:#E4DCFC}
 .pj-no{flex:0 0 30px;height:30px;border-radius:50%;background:var(--blue-soft);color:var(--blue);
   display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
 .pj-card.done .pj-no{background:#E7F6EE;color:var(--good)}
@@ -1049,6 +1076,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <div id="pjMapMsg"></div>
       </div>
       <div id="pjpBody"></div>
+      <div id="pjNoteModal"></div>
     </div>
 
     <div id="stockView" class="hidden">
@@ -1157,11 +1185,16 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
             <button data-v="list" onclick="plSetView('list')">📋 รายการที่ต้องทำ</button>
           </div>
         </div>
-        <div class="ctl"><label>แสดงงานของ</label>
+        <div class="ctl"><label>แสดงงาน</label>
           <div class="seg" id="plScopeSeg">
-            <button data-s="all" class="on" onclick="plSetScope('all')">ทุกสาย</button>
-            <button data-s="me" onclick="plSetScope('me')">สายของฉัน</button>
+            <button data-s="all" class="on" onclick="plSetScope('all')">ทั้งหมด</button>
+            <button data-s="shop" onclick="plSetScope('shop')">🏪 งานร้านค้า</button>
+            <button data-s="depot" onclick="plSetScope('depot')">🏢 งานของศูนย์</button>
+            <button data-s="me" onclick="plSetScope('me')">👤 สายของฉัน</button>
           </div>
+        </div>
+        <div class="ctl" id="plLineCtl" style="display:none"><label>สาย</label>
+          <select id="plLineSel" onchange="plSetPjLine(this.value)"></select>
         </div>
         <div class="spacer"></div>
         <div class="ctl"><label>&nbsp;</label>
@@ -2563,10 +2596,14 @@ const PL_CAT={
   holiday:{ic:"🌴",nm:"วันหยุด",bg:"#F1EEFB",fg:"#55459F",bd:"#BDB1EA"},
 };
 const PL_CATS=["deadline","task","meet","promo","holiday"];
+/* ⚠️ "visit" ไม่อยู่ใน PL_CATS เพราะไม่ใช่หมวดที่ผู้ใช้เลือกได้เอง — มันเกิดจากโน้ตการเยี่ยม
+   ใน PJP แล้วถูกคิดสดตอนแสดงผล (ไม่ได้เก็บเป็นงานในปฏิทิน) ถ้าใส่ลง PL_CATS
+   มันจะไปโผล่ในช่องเลือกหมวดของฟอร์มเพิ่มงาน และผู้ใช้จะสร้างงานผีที่แก้ไม่ได้ */
+PL_CAT.visit={ic:"🏪",nm:"งานร้านค้า",bg:"#F0ECFE",fg:"#4C35B0",bd:"#BFB0F5"};
 const PL_DOW=["จ","อ","พ","พฤ","ศ","ส","อา"];                     /* ปฏิทินงานเริ่มวันจันทร์ */
 const PL_DOWFULL=["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
 const PL_REP_MAX=600;        /* กันลูปไม่รู้จบถ้าข้อมูลเพี้ยน */
-let PL={ym:null,view:"mon",scope:"all",day:null,edit:null,cat:"task",lines:[],showDone:false};
+let PL={ym:null,view:"mon",scope:"all",day:null,edit:null,cat:"task",lines:[],showDone:false,pjLine:""};
 
 /* ---------- วันที่ ---------- */
 function plISO(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
@@ -2608,7 +2645,53 @@ function plItems(){
   const it=PLAN.items||{},del=PLAN.del||{};
   return Object.keys(it).filter(id=>it[id]&&it[id].t&&!del[id]).map(id=>Object.assign({id:id},it[id]));
 }
-function plVisible(){return PL.scope==="me"?plItems().filter(plForMe):plItems();}
+function plVisible(){
+  if(PL.scope==="shop")return [];                /* ดูแต่งานร้านค้า — ซ่อนงานของศูนย์ */
+  return PL.scope==="me"?plItems().filter(plForMe):plItems();
+}
+
+/* ============================================================================
+ * งานร้านค้าในปฏิทิน — มาจากโน้ตการเยี่ยมใน PJP ไม่ใช่งานที่ใครพิมพ์เข้ามา
+ *
+ * ⚠️ คิดสดตอนแสดงผล "ไม่เก็บเป็นงานในปฏิทิน" (หลักเดียวกับงานซ้ำใน plOccur)
+ *    ถ้าเก็บเป็นเรคอร์ด PLAN.items จะเกิดงานผี 2 ชุด: เซลล์เคลียร์เรื่องใน PJP แล้ว
+ *    แต่งานในปฏิทินยังค้าง และผู้จัดการจะลบไม่ได้เพราะไม่ใช่เจ้าของ
+ *
+ * วางลงวันไหน: วันเยี่ยมรอบถัดไปของร้านนั้นตามแผน PJP ถ้าแผนไม่มีวันถัดไปแล้ว
+ *    (เช่นสิ้นเดือน ยังไม่อัพแผนเดือนใหม่) ให้คาไว้ที่วันที่โน้ต เพื่อให้มันขึ้นเป็น
+ *    "เลยกำหนดแล้ว" ไม่ใช่หายไปเงียบ ๆ
+ * ==========================================================================*/
+function plShopOcc(from,to){
+  if(PL.scope==="depot")return [];
+  const out=[],mgr=plIsMgr();
+  /* ⚠️ สายของเซลล์ต้องเอามาจาก pjCur() ไม่ใช่ S.user.code ตรง ๆ — pjCur มี fallback
+     เผื่อรหัสของคนนั้นไม่ตรงกับรหัสสายในไฟล์ PJP ถ้าเทียบกับ code ดิบ ๆ ปฏิทินจะว่าง
+     ทั้งที่แท็บ PJP โชว์ร้านให้เขาอยู่ */
+  const me=mgr?"":(pjCur()||plMyLine());
+  const idx=pjNoteIdx();
+  Object.keys(idx).forEach(code=>{
+    const fu=pjFollow(code,null);                 /* โน้ตล่าสุดของร้าน — รอบล่าสุดชนะ */
+    if(!fu)return;
+    const line=pjOutLine(code);
+    if(me&&line&&line!==me)return;                /* เซลล์เห็นแต่ร้านในสายตัวเอง */
+    if(mgr&&PL.pjLine&&line!==PL.pjLine)return;   /* ผู้จัดการเลือกดูทีละสายได้ */
+    const d=pjNextVisit(code,fu.d)||fu.d;
+    if(d<from||d>to)return;
+    const nm=pjName(code)||code;
+    out.push({d:d,end:d,it:{
+      id:"pjp:"+code+"|"+fu.d,cat:"visit",
+      t:nm+" — "+fu.f.map(k=>PJ_FLAG[k].nm).join(" · "),
+      note:fu.tx||"",lines:line?[line]:[],by:line||"",byName:fu.by||"",
+      pj:{code:code,d:d,from:fu.d,f:fu.f},
+    }});
+  });
+  return out;
+}
+function plGoShop(code,d){
+  PJ.d=d;PJ.view="day";PJ.only="all";PJ.sel=code;
+  if(plIsMgr()){const ln=pjOutLine(code);if(ln)PJ.line=ln;if(ln===PJP_DT)PJ.dt=true;}
+  switchTab("pjp");
+}
 function plDoneKey(id,d){return id+"|"+d;}
 function plIsDone(id,d){const e=((PLAN&&PLAN.done)||{})[plDoneKey(id,d)];return !!(e&&e.v);}
 function plDoneBy(id,d){const e=((PLAN&&PLAN.done)||{})[plDoneKey(id,d)];return e&&e.by?" โดย "+anaEsc(e.by):"";}
@@ -2640,6 +2723,7 @@ function plLate(occ,today){return occ.filter(o=>o.end<today&&!o.it.rep&&!plIsDon
 function plOcc(from,to){
   const out=[];
   plVisible().forEach(it=>plOccur(it,from,to).forEach(o=>out.push({it:it,d:o.date,end:o.end})));
+  plShopOcc(from,to).forEach(o=>out.push(o));
   const key=o=>o.d+" "+(o.it.tm||"99:99")+" "+PL_CATS.indexOf(o.it.cat)+" "+(o.it.t||"");
   out.sort((a,b)=>key(a)<key(b)?-1:key(a)>key(b)?1:0);
   return out;
@@ -2658,6 +2742,19 @@ function plMove(n){
 function plToday(){PL.ym=plYm(todayISO());PL.day=todayISO();PL.view="mon";setSeg("plViewSeg","v","mon");renderPlan();}
 function plSetView(v){PL.view=v;setSeg("plViewSeg","v",v);renderPlan();}
 function plSetScope(s){PL.scope=s;setSeg("plScopeSeg","s",s);renderPlan();}
+function plSetPjLine(v){PL.pjLine=v||"";renderPlan();}
+/* ช่องเลือกสาย — เฉพาะผู้จัดการ และเฉพาะตอนที่กำลังเห็นงานร้านค้าอยู่
+   เจ้าของอยากไล่ดูทีละสายว่า "เกิดอะไรขึ้นบ้าง" โดยไม่ต้องเข้าแท็บ PJP */
+function plLineBox(){
+  const box=document.getElementById("plLineCtl"),sel=document.getElementById("plLineSel");
+  if(!box||!sel)return;
+  const show=plIsMgr()&&PL.scope!=="depot";
+  box.style.display=show?"":"none";
+  if(!show)return;
+  const ls=(typeof pjLines==="function")?pjLines():[];
+  sel.innerHTML=`<option value="">ทุกสาย</option>`+
+    ls.map(c=>`<option value="${c}"${c===PL.pjLine?" selected":""}>${anaEsc(pjLineName(c))}</option>`).join("");
+}
 function plPickDay(d){PL.day=(PL.day===d?null:d);renderPlan();}
 function plCloseDay(){PL.day=null;renderPlan();}
 function plToggleDone(){PL.showDone=!PL.showDone;renderPlan();}
@@ -2666,9 +2763,11 @@ function plToggleDone(){PL.showDone=!PL.showDone;renderPlan();}
 function plBadge(){
   const bd=document.getElementById("planBadge");if(!bd)return;
   const today=todayISO();
-  const sc=PL.scope;PL.scope="all";
+  /* ป้ายตัวเลขต้องนับงานค้าง "ทั้งหมด" เสมอ ไม่ขึ้นกับตัวกรองที่ค้างอยู่บนหน้าจอ
+     รวมถึงช่องเลือกสายของผู้จัดการด้วย ไม่งั้นกรองสายเดียวแล้วป้ายจะบอกน้อยกว่าความจริง */
+  const sc=PL.scope,pl=PL.pjLine;PL.scope="all";PL.pjLine="";
   const occ=plOcc(plShift(today,-120),today);
-  PL.scope=sc;
+  PL.scope=sc;PL.pjLine=pl;
   const n=plLate(occ,today).length+occ.filter(o=>o.d<=today&&o.end>=today&&!plIsDone(o.it.id,o.d)).length;
   bd.innerHTML=n?`<span style="background:var(--bad);color:#fff;border-radius:20px;font-size:10.5px;font-weight:800;padding:1px 6px;margin-left:6px">${n}</span>`:"";
 }
@@ -2687,18 +2786,23 @@ function renderPlan(){
   const soon=w.filter(o=>o.d>today&&o.d<=plShift(today,7)&&open(o));
   const doneM=occM.filter(o=>plIsDone(o.it.id,o.d)).length;
 
+  const shopM=occM.filter(o=>o.it.pj).length;
+  const SCN={all:"",shop:" · <b>เฉพาะงานร้านค้า</b>",depot:" · <b>เฉพาะงานของศูนย์</b>",me:" · <b>เฉพาะสายของฉัน</b>"};
   document.getElementById("plMon").textContent=fmtMonth(PL.ym);
   document.getElementById("plBar").innerHTML=
     `🗓 ปฏิทินงานของทั้งบริษัท · <b>${fmtMonth(PL.ym)}</b> · ${occM.length} งาน`+
+    (shopM?` <span class="pill" style="background:#F0ECFE;color:#4C35B0">🏪 งานร้าน ${shopM}</span>`:"")+
     (doneM?` · เสร็จแล้ว ${doneM}`:"")+
-    (PL.scope==="me"?` · <b>เฉพาะสายของฉัน</b>`:"")+
-    `<span class="dci-src">ทุกคนเห็นตารางเดียวกัน · ${plIsMgr()?"คุณแก้ได้ทุกงาน":"คุณเพิ่มงานได้ และแก้/ลบได้เฉพาะงานที่คุณสร้าง"} · กดช่องวันในปฏิทินเพื่อดูงานของวันนั้น</span>`;
+    (SCN[PL.scope]||"")+
+    (plIsMgr()&&PL.pjLine&&PL.scope!=="depot"?` · สาย ${anaEsc(pjLineName(PL.pjLine))}`:"")+
+    `<span class="dci-src">ทุกคนเห็นตารางเดียวกัน · <b>🏪 งานร้านค้า</b> มาจากโน้ตการเยี่ยมในแท็บ PJP โดยอัตโนมัติ — ไปเคลียร์ที่ร้านแล้วมันหายจากที่นี่เอง · ${plIsMgr()?"คุณแก้ได้ทุกงานของศูนย์":"คุณเพิ่มงานได้ และแก้/ลบได้เฉพาะงานที่คุณสร้าง"}</span>`;
   document.getElementById("plCards").innerHTML=
     `<div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">⚠️ เลยกำหนดแล้ว</div><div class="v ${late.length?"down":""}">${late.length}</div><div class="s">${late.length?"ควรเคลียร์ก่อน":"ไม่มีงานค้าง 👍"}</div></div>`+
     `<div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">📍 วันนี้</div><div class="v">${now.length}</div><div class="s">${fmtDate(today)}</div></div>`+
     `<div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:var(--warn)">⏳ 7 วันข้างหน้า</div><div class="v">${soon.length}</div><div class="s">เตรียมตัวล่วงหน้า</div></div>`+
-    `<div class="card"><div class="k">งานในเดือนนี้</div><div class="v">${occM.length}</div><div class="s">${doneM} เสร็จแล้ว · ${occM.length-doneM} ยังไม่เสร็จ</div></div>`;
+    `<div class="card" style="border-top:3px solid #7A5AF8"><div class="k" style="color:#7A5AF8">🏪 งานร้านค้าเดือนนี้</div><div class="v"${shopM?' style="color:#7A5AF8"':""}>${shopM}</div><div class="s">${shopM?"จากโน้ตการเยี่ยมของเซลล์":"ยังไม่มีเรื่องค้างจากร้าน"}</div></div>`;
 
+  plLineBox();
   document.getElementById("plMain").innerHTML=PL.view==="list"?plListHtml():plMonthHtml();
   const dayEl=document.getElementById("plDay");
   if(PL.view==="mon"&&PL.day){dayEl.style.display="";dayEl.innerHTML=plDayHtml();}
@@ -2728,10 +2832,28 @@ function plMonthHtml(){
     d=plShift(d,1);
   }
   return `<div class="pl-grid">`+PL_DOW.map((x,i)=>`<div class="pl-dow${i>=5?" we":""}">${x}</div>`).join("")+cells+`</div>`+
-    `<div class="psub" style="margin-top:10px">`+PL_CATS.map(k=>`<span class="pl-tag" style="background:${PL_CAT[k].bg};color:${PL_CAT[k].fg};margin-right:5px">${PL_CAT[k].ic} ${PL_CAT[k].nm}</span>`).join("")+`</div>`;
+    `<div class="psub" style="margin-top:10px">`+PL_CATS.concat(["visit"]).map(k=>`<span class="pl-tag" style="background:${PL_CAT[k].bg};color:${PL_CAT[k].fg};margin-right:5px">${PL_CAT[k].ic} ${PL_CAT[k].nm}</span>`).join("")+`</div>`;
 }
 function plItemHtml(o){
   const it=o.it,c=PL_CAT[it.cat]||PL_CAT.task,dn=plIsDone(it.id,o.d);
+  /* งานร้านค้าเป็นงานที่คิดสดจากโน้ตใน PJP — แก้/ติ๊กที่นี่ไม่ได้ ต้องไปเคลียร์ที่ร้าน
+     ปุ่มจึงเป็น "ไปที่ร้าน" ไม่ใช่ติ๊กเสร็จ ไม่งั้นกดแล้วเงียบ (plTick หาไอดีไม่เจอ) */
+  if(it.pj){
+    const late=o.d<todayISO();
+    return `<div class="pl-item pl-shop" style="border-left-color:${c.bd}">`+
+      `<button type="button" class="pj-go" onclick="plGoShop('${it.pj.code}','${it.pj.d}')" title="เปิดร้านนี้ในแผนเยี่ยม">🏪</button>`+
+      `<div class="pl-ibody"><div class="pl-t">${anaEsc(it.t)}</div>`+
+      `<div class="pl-meta"><span class="pl-tag" style="background:${c.bg};color:${c.fg}">${c.ic} ${c.nm}</span>`+
+      `<span class="pl-tag">🏪 ${anaEsc(it.pj.code)}</span>`+
+      `<span class="pl-tag" title="โน้ตจากการเยี่ยมวันที่นี้">📝 ${fmtDateShort(it.pj.from)}</span>`+
+      (late?`<span class="pl-tag" style="background:#FDECEC;color:#B3322F">⚠️ ควรตามแล้ว</span>`:"")+
+      plLineTags(it.lines)+
+      (it.byName?`<span class="pl-tag">✍️ ${anaEsc(it.byName)}</span>`:"")+`</div>`+
+      (it.note?`<div class="pl-note">“${anaEsc(it.note)}”</div>`:"")+
+      `</div>`+
+      `<button type="button" class="pl-edit" onclick="plGoShop('${it.pj.code}','${it.pj.d}')">ไปที่ร้าน</button>`+
+      `</div>`;
+  }
   const tags=[];
   if(it.tm)tags.push(`<span class="pl-tag">⏰ ${anaEsc(it.tm)}</span>`);
   if(o.end!==o.d)tags.push(`<span class="pl-tag">📅 ${fmtDateShort(o.d)}–${fmtDateShort(o.end)}</span>`);
@@ -3226,9 +3348,104 @@ function pjEbIdx(){
 }
 function pjDoneKey(code,ymd){return code+"|"+ymd;}
 function pjIsDone(code,ymd){const e=pjOk().done[pjDoneKey(code,ymd)];return !!(e&&e.v);}
+
+/* ============================================================================
+ * โน้ตการเข้าเยี่ยม + เรื่องค้างถึงรอบหน้า
+ *
+ * ⚠️ เก็บไว้ใน "เรคอร์ดเดิม" PJP.done["รหัสร้าน|วันที่"] โดยเพิ่มฟิลด์ tx (โน้ต) และ
+ *    f (เรื่องที่ต้องตามต่อ) — ไม่ได้สร้าง section ใหม่ เพราะ mergeState มี
+ *    newestByAt คุม PJP.done อยู่แล้ว การเพิ่มฟิลด์จึงไม่เพิ่มความเสี่ยงข้อมูลเก่าหาย
+ *    แท็บเก่าที่ไม่รู้จัก tx/f ก็ยังอ่าน .v ได้เหมือนเดิม
+ *
+ * กฎ "เรื่องค้าง" — รอบล่าสุดชนะ (กฎเดียวกับ Drop ค้าง):
+ *    ดูโน้ตของร้านนั้นที่ "ก่อนวันที่กำลังดู" แล้วเอาอันใหม่สุด ถ้าอันใหม่สุดยังมีธง f
+ *    = ยังค้าง · ถ้าเซลล์ไปอีกรอบแล้วบันทึกโดยไม่ติ๊กธง = เคลียร์แล้ว
+ *    ห้ามรวมธงจากทุกรอบมาบวกกัน ไม่งั้นเรื่องที่เคลียร์ไปแล้วจะไม่หายไปตลอดกาล
+ * ==========================================================================*/
+const PJ_FLAG={
+  sell:{ic:"💰",nm:"ต้องขายเพิ่ม / เสนอสินค้าใหม่"},
+  eb:{ic:"📱",nm:"ต้องช่วยเปิดแอพ eB2B"},
+  ps:{ic:"⭐",nm:"ต้องทำ Perfect Store ให้ครบ"},
+  pay:{ic:"💵",nm:"ต้องเก็บเงิน / ตามบิล"},
+  stock:{ic:"📦",nm:"ของค้าง / ของไม่ครบ"},
+  fix:{ic:"🔧",nm:"ปัญหาอื่นที่ต้องตามต่อ"},
+};
+const PJ_FLAGS=["sell","eb","ps","pay","stock","fix"];
+function pjFlagOk(a){
+  const out=[],seen={};
+  (Array.isArray(a)?a:[]).forEach(k=>{const s=String(k||"");if(PJ_FLAG[s]&&!seen[s]){seen[s]=1;out.push(s);}});
+  return out;
+}
+function pjNote(code,ymd){
+  const e=pjOk().done[pjDoneKey(code,ymd)];
+  if(!e)return null;
+  const f=pjFlagOk(e.f);
+  const tx=String(e.tx||"");
+  return (tx||f.length)?{tx:tx,f:f,by:e.by||"",at:e.at||0,v:!!e.v}:null;
+}
+/* ดัชนี "ร้าน → วันที่ที่มีโน้ต (เรียงแล้ว)" — สร้างใหม่เฉพาะเมื่อข้อมูลเปลี่ยนจริง */
+let _pjNI=null,_pjNISrc=null,_pjNIV=0;
+function pjBustNotes(){_pjNIV++;_pjNI=null;}
+function pjNoteIdx(){
+  const src=pjOk().done;
+  if(_pjNI&&_pjNISrc===src&&_pjNI.v===_pjNIV)return _pjNI.idx;
+  const idx={};
+  Object.keys(src||{}).forEach(k=>{
+    const p=k.split("|");if(p.length!==2)return;
+    const e=src[k];if(!e)return;
+    if(!String(e.tx||"")&&!pjFlagOk(e.f).length)return;
+    (idx[p[0]]=idx[p[0]]||[]).push(p[1]);
+  });
+  Object.keys(idx).forEach(c=>idx[c].sort());
+  _pjNISrc=src;_pjNI={v:_pjNIV,idx:idx};
+  return idx;
+}
+/* โน้ตล่าสุดของร้านนี้ที่ "ก่อน" วันที่ให้มา (ไม่ให้วันที่ = เอาล่าสุดทั้งหมด) */
+function pjLastNote(code,beforeYmd){
+  const ds=pjNoteIdx()[code];if(!ds||!ds.length)return null;
+  for(let i=ds.length-1;i>=0;i--){
+    if(beforeYmd&&ds[i]>=beforeYmd)continue;
+    const n=pjNote(code,ds[i]);
+    if(n)return Object.assign({d:ds[i]},n);
+  }
+  return null;
+}
+/* เรื่องที่ยังค้างอยู่ของร้านนี้ (รอบล่าสุดชนะ) */
+function pjFollow(code,beforeYmd){
+  const n=pjLastNote(code,beforeYmd);
+  return (n&&n.f.length)?n:null;
+}
+/* ดัชนีกลับทาง "ร้าน → วันที่ถูกวางแผนให้เข้า (เรียงแล้ว)" + "ร้าน → สาย"
+   ทำครั้งเดียวต่อแผนหนึ่งชุด ไม่งั้นการหาวันเยี่ยมรอบหน้าของทุกร้านจะต้องไล่
+   แผนทั้งเดือน × ทุกสาย ซ้ำ ๆ ทีละร้าน (ปฏิทินจะหนืดทันทีที่โน้ตเริ่มเยอะ) */
+let _pjVI=null,_pjVISrc=null;
+function pjVisitIdx(){
+  const src=pjOk().plan;
+  if(_pjVI&&_pjVISrc===src)return _pjVI;
+  const days={},line={};
+  Object.keys(src||{}).sort().forEach(d=>{const day=src[d]||{};
+    Object.keys(day).forEach(rt=>String(day[rt]||"").split(",").forEach(x=>{
+      const c=x.split(":")[0];if(!c)return;
+      (days[c]=days[c]||[]).push(d);
+      if(!line[c])line[c]=rt;}));});
+  _pjVISrc=src;_pjVI={days:days,line:line};
+  return _pjVI;
+}
+/* วันเยี่ยมรอบถัดไปของร้านนี้ตามแผน PJP — ใช้วางงานลงปฏิทิน */
+function pjNextVisit(code,afterYmd){
+  const ds=pjVisitIdx().days[code];if(!ds)return null;
+  for(let i=0;i<ds.length;i++)if(!afterYmd||ds[i]>afterYmd)return ds[i];
+  return null;
+}
+/* ร้าน → สายที่รับผิดชอบ (จากแผน PJP) */
+function pjOutLine(code){return pjVisitIdx().line[code]||"";}
+
 /* สรุปงานที่ต้องทำของร้านหนึ่งในวันหนึ่ง → ป้ายสั้น ๆ เรียงตามความสำคัญ */
-function pjTasks(code){
+function pjTasks(code,ymd){
   const t=[];
+  const fu=pjFollow(code,ymd||null);
+  if(fu)t.push({k:"fu",ic:"📌",s:"ค้างจากครั้งก่อน: "+fu.f.map(k=>PJ_FLAG[k].nm).join(" · "),cls:"fu",
+    tip:fu.tx||""});
   const sa=pjSales(code);
   if(sa){
     if(sa.zero>=2)t.push({k:"dead",ic:"🛑",s:"ไม่ซื้อ "+sa.zero+" เดือน",cls:"b"});
@@ -3261,43 +3478,121 @@ function pjStep(n){
   i=Math.max(0,Math.min(ds.length-1,i+n));
   pjSetDate(ds[i]);
 }
-/* ---- ติ๊กว่าเข้าร้านแล้ว ----
-   เซลล์เขียนผ่าน api/pjpvisit (คีย์เดียวต่อครั้ง · เจ้าของคีย์มาจาก token)
+/* ---- บันทึกการเข้าเยี่ยม (เข้าแล้ว + โน้ต + เรื่องที่ต้องตามรอบหน้า) ----
+   เซลล์เขียนผ่าน api/pjpvisit (เรคอร์ดเดียวต่อครั้ง · เจ้าของคีย์มาจาก token)
    ผู้จัดการบันทึกรวมไปกับ state ปกติ · ยกเลิกเก็บเป็นค่า v:0 ไม่ใช่ลบคีย์ merge จะได้ตรงไปตรงมา */
-async function pjTick(code,ymd){
+async function pjSaveVisit(code,ymd,v,tx,f){
   const P=pjOk(),k=pjDoneKey(code,ymd);
   const before=P.done[k]?JSON.parse(JSON.stringify(P.done[k])):null;
-  const v=pjIsDone(code,ymd)?0:1;
-  P.done[k]={at:Date.now(),by:(S.user&&S.user.name)||"",v:v};
-  renderPjp();
-  const undo=()=>{if(before)P.done[k]=before;else delete P.done[k];};
-  if(pjIsMgr()){syncToServer();return;}
-  if(typeof TOKEN==="undefined"||!TOKEN)return;
+  const note=String(tx||"").trim().slice(0,500);
+  const flags=pjFlagOk(f);
+  const rec={at:Date.now(),by:(S.user&&S.user.name)||"",v:v?1:0};
+  if(note)rec.tx=note;
+  if(flags.length)rec.f=flags;
+  P.done[k]=rec;pjBustNotes();
+  renderPjp();if(typeof plBadge==="function")plBadge();
+  const undo=()=>{if(before)P.done[k]=before;else delete P.done[k];pjBustNotes();};
+  if(pjIsMgr()){syncToServer();return true;}
+  if(typeof TOKEN==="undefined"||!TOKEN)return true;
   try{
     const r=await fetch("/api/pjpvisit",{method:"POST",
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},
-      body:JSON.stringify({code:code,date:ymd,v:v})});
+      body:JSON.stringify({code:code,date:ymd,v:v?1:0,tx:note,f:flags})});
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||("HTTP "+r.status));}
+    return true;
   }catch(ex){
-    undo();renderPjp();
+    undo();renderPjp();if(typeof plBadge==="function")plBadge();
     alert("บันทึกไม่สำเร็จ: "+ex.message+"\n\nข้อมูลยังไม่ถูกเปลี่ยน ลองใหม่อีกครั้ง");
+    return false;
   }
+}
+/* ---- กล่องบันทึกการเยี่ยม ----
+   เดิมเป็นแค่ปุ่มติ๊ก "เข้าแล้ว" ซึ่งไม่ได้ให้ข้อมูลอะไรเลย (เจ้าของบอกว่าซ้ำซ้อน 8 ต.ค. 69)
+   ตอนนี้ปุ่มเดียวเปิดกล่องนี้: ไม่มีอะไรก็กดปุ่มเขียวปุ่มเดียวจบ · มีเรื่องก็พิมพ์โน้ต
+   แล้วติ๊กธงไว้ ระบบจะเอาไปเตือนที่การเยี่ยมรอบหน้า และขึ้นในปฏิทินงานให้เอง */
+let PJN={code:null,ymd:null,f:[]};
+function pjNoteOpen(code,ymd){
+  const n=pjNote(code,ymd);
+  PJN={code:code,ymd:ymd,f:n?n.f.slice():[]};
+  /* ยังไม่มีโน้ตของวันนี้ → ตั้งธงตั้งต้นจากเรื่องที่ค้างมาจากครั้งก่อน ให้ไม่ต้องติ๊กซ้ำ */
+  if(!n){const fu=pjFollow(code,ymd);if(fu)PJN.f=fu.f.slice();}
+  pjNoteDraw();
+}
+function pjNoteClose(){PJN={code:null,ymd:null,f:[]};pjNoteDraw();}
+function pjNoteFlag(k){
+  if(!PJ_FLAG[k])return;
+  const i=PJN.f.indexOf(k);
+  if(i<0)PJN.f.push(k);else PJN.f.splice(i,1);
+  pjNoteDraw(true);
+}
+function pjNoteDraw(keepText){
+  const el=document.getElementById("pjNoteModal");if(!el)return;
+  if(!PJN.code){el.innerHTML="";return;}
+  const code=PJN.code,ymd=PJN.ymd;
+  const n=pjNote(code,ymd);
+  const done=pjIsDone(code,ymd);
+  const fu=pjFollow(code,ymd);
+  let tx=n?n.tx:"";
+  if(keepText){const t=document.getElementById("pjNoteTx");if(t)tx=t.value;}
+  const o=pjOut(code)||{};
+  const nx=pjNextVisit(code,ymd);
+  el.innerHTML=`<div class="pl-mask" onclick="pjMaskClick(event)"><div class="pl-modal" onclick="event.stopPropagation()">
+    <div class="pl-mh"><h3>📝 บันทึกการเยี่ยม</h3><button type="button" class="pl-x" onclick="pjNoteClose()">✕</button></div>
+    <div class="pj-nh"><b>${anaEsc(o.n||pjName(code)||code)}</b>
+      <div class="psub">${anaEsc(code)} · ${fmtDate(ymd)}${done?` · <span class="pill g">บันทึกไว้แล้ว</span>`:""}</div></div>
+    ${fu?`<div class="pj-fu" style="margin:12px 0 0">📌 <b>ค้างจากครั้งก่อน (${fmtDateShort(fu.d)}):</b> ${fu.f.map(k=>PJ_FLAG[k].ic+" "+anaEsc(PJ_FLAG[k].nm)).join(" · ")}${fu.tx?`<div class="pj-fut">“${anaEsc(fu.tx)}”</div>`:""}</div>`:""}
+    <button type="button" class="pj-quick" onclick="pjNoteQuick()">✅ เข้าแล้ว — ไม่มีอะไรต้องตามต่อ</button>
+    <div class="pj-or"><span>หรือบันทึกรายละเอียด</span></div>
+    <div class="pl-f"><label>โน้ตการเยี่ยมครั้งนี้</label>
+      <textarea id="pjNoteTx" maxlength="500" placeholder="เช่น เจ้าของไม่อยู่ ให้กลับมาอีกทีต้นเดือน / ขอราคาซันไลต์ถุงใหญ่">${anaEsc(tx)}</textarea></div>
+    <div class="pl-f"><label>เรื่องที่ต้องตามต่อรอบหน้า — ติ๊กได้หลายข้อ</label>
+      <div class="pl-chips">${PJ_FLAGS.map(k=>`<button type="button" class="pl-cb${PJN.f.indexOf(k)>=0?" on":""}" onclick="pjNoteFlag('${k}')">${PJ_FLAG[k].ic} ${PJ_FLAG[k].nm}</button>`).join("")}</div></div>
+    <div class="pl-mf"><button type="button" class="pl-save" onclick="pjNoteSave()">บันทึก</button>${
+      n||done?`<button type="button" class="ps-del" onclick="pjNoteErase()">🗑 ลบบันทึก</button>`:""}</div>
+    <div class="pl-hint">ติ๊กเรื่องที่ต้องตามต่อไว้ ระบบจะเด้งเตือนให้อีกครั้งตอนไปร้านนี้${nx?" รอบหน้า <b>"+fmtDate(nx)+"</b>":"รอบหน้า"}
+      และขึ้นเป็นงาน <b>🏪 งานร้านค้า</b> ในปฏิทินงานให้เลย · ไปรอบหน้าแล้วบันทึกโดยไม่ติ๊กอะไร = เรื่องนั้นถือว่าเคลียร์แล้ว</div>
+  </div></div>`;
+  if(!keepText){const t=document.getElementById("pjNoteTx");if(t)t.focus();}
+}
+function pjMaskClick(e){if(e.target&&e.target.classList&&e.target.classList.contains("pl-mask"))pjNoteClose();}
+async function pjNoteQuick(){
+  const code=PJN.code,ymd=PJN.ymd;if(!code)return;
+  pjNoteClose();
+  await pjSaveVisit(code,ymd,1,"",[]);
+}
+async function pjNoteSave(){
+  const code=PJN.code,ymd=PJN.ymd;if(!code)return;
+  const t=document.getElementById("pjNoteTx");
+  const tx=String((t||{}).value||"").trim();
+  const f=PJN.f.slice();
+  pjNoteClose();
+  await pjSaveVisit(code,ymd,1,tx,f);
+}
+async function pjNoteErase(){
+  const code=PJN.code,ymd=PJN.ymd;if(!code)return;
+  if(!confirm("ลบบันทึกการเยี่ยมของวันนี้?\n\nร้านนี้จะกลับไปเป็น “ยังไม่เข้า” และโน้ตที่พิมพ์ไว้จะหายไป"))return;
+  pjNoteClose();
+  await pjSaveVisit(code,ymd,0,"",[]);
 }
 /* ---- Google Maps ----
    ⚠️ key ของ Maps ฝั่งเบราว์เซอร์เป็นของ "สาธารณะโดยธรรมชาติ" (อยู่ใน URL ของสคริปต์)
    ความปลอดภัยมาจากการล็อก HTTP referrer + จำกัด API ใน Google Cloud ไม่ใช่การซ่อน
    จึงเก็บใน state ได้ ต่างจาก BLOB_READ_WRITE_TOKEN ที่ห้ามหลุดเด็ดขาด */
 function pjKey(){return String((pjOk().cfg||{}).gmap||"").trim();}
-let PJMAP={state:"off",map:null,marks:[],info:null};
+let PJMAP={state:"off",map:null,marks:{},info:null,sig:"",script:false,wait:0};
 function pjMapReady(){PJMAP.state="ready";pjMapDraw();}
 function pjMapLoad(){
   if(PJMAP.state==="ready"||PJMAP.state==="loading")return;
   const k=pjKey();if(!k)return;
-  PJMAP.state="loading";
+  /* ⚠️ สคริปต์ของ Google โหลดซ้ำไม่ได้ — ใส่ <script> ตัวที่สองแล้ว API จะโวยและพัง
+     ถ้าโหลดไว้แล้ว (เช่นเพิ่งเปลี่ยน key หรือ pjSaveKey รีเซ็ต state) ให้วาดต่อเลย */
+  if(typeof google!=="undefined"&&google.maps){PJMAP.state="ready";pjMapDraw();return;}
+  if(PJMAP.script)return;
+  PJMAP.script=true;PJMAP.state="loading";
   const s=document.createElement("script");
   s.src="https://maps.googleapis.com/maps/api/js?key="+encodeURIComponent(k)+"&callback=pjMapReady&language=th&region=TH";
   s.async=true;
-  s.onerror=()=>{PJMAP.state="error";renderPjp();};
+  s.onerror=()=>{PJMAP.state="error";PJMAP.script=false;renderPjp();};
   window.gm_authFailure=()=>{PJMAP.state="auth";renderPjp();};
   document.head.appendChild(s);
 }
@@ -3305,36 +3600,73 @@ function pjStopsGeo(ymd,rt){
   return pjStops(ymd,rt).map((s,i)=>{const o=pjOut(s.code);
     return (o&&o.la!=null&&o.lo!=null)?{i:i+1,code:s.code,la:o.la,lo:o.lo,n:o.n||s.code}:null;}).filter(Boolean);
 }
+/* สีหมุด: เข้าแล้ว = เขียว · ยอดตก/ไม่ซื้อ = แดง · มีเรื่องค้างจากครั้งก่อน = ม่วง · PS/eB2B = เหลือง */
+function pjPinCol(code,ymd,t){
+  if(pjIsDone(code,ymd))return "#1E9E5A";
+  if(t.some(x=>x.k==="dead"||x.k==="zero"||x.k==="down"))return "#D64545";
+  if(t.some(x=>x.k==="fu"))return "#7A5AF8";
+  if(t.some(x=>x.k==="ps"||x.k==="eb"))return "#C79A00";
+  return "#2B6CB0";
+}
+/* ⚠️ วาดแผนที่ด้วยการ "แก้หมุดเดิม" ไม่ใช่ล้างแล้วสร้างใหม่
+   เดิมทุกครั้งที่เปลี่ยนวัน/เปลี่ยนสาย/กรอง จะ setMap(null) ทั้งแถวแล้ว new Marker ใหม่หมด —
+   แผนที่กระพริบ ช้า และ fitBounds เด้งกลับทุกครั้งจนซูมที่ผู้ใช้ตั้งเองหาย
+   ตอนนี้: หมุดที่ยังอยู่แค่เปลี่ยนสี/เลขลำดับ · ที่หายไปจึงถอดออก · ที่เพิ่มมาจึงสร้าง
+   และ fitBounds เฉพาะเมื่อ "ชุดร้าน" เปลี่ยนจริง (เจ้าของแจ้ง 8 ต.ค. 69 ว่าเปลี่ยนวันแล้วแผนที่ไม่มา) */
 function pjMapDraw(){
   const el=document.getElementById("pjMap");
   if(!el||PJMAP.state!=="ready"||typeof google==="undefined"||!google.maps)return;
-  const pts=pjStopsGeo(PJ.d||pjDefDate(),pjCur());
+  /* ถ้ากล่องยังถูกซ่อนอยู่ (กว้าง 0) Google จะวาดเป็นสีเทาเปล่าค้างไว้ — รอให้โผล่ก่อน */
+  if(!el.offsetWidth){
+    if(!PJMAP.wait){PJMAP.wait=1;setTimeout(()=>{PJMAP.wait=0;pjMapDraw();},150);}
+    return;
+  }
+  const ymd=PJ.d||pjDefDate(),rt=pjCur();
+  const pts=pjStopsGeo(ymd,rt);
   if(!PJMAP.map){
     PJMAP.map=new google.maps.Map(el,{zoom:12,center:{lat:13.86,lng:100.45},
       mapTypeControl:false,streetViewControl:false,fullscreenControl:true});
     PJMAP.info=new google.maps.InfoWindow();
   }
-  PJMAP.marks.forEach(m=>m.setMap(null));PJMAP.marks=[];
-  if(!pts.length)return;
-  const b=new google.maps.LatLngBounds();
+  const keep={};
   pts.forEach(p=>{
-    const done=pjIsDone(p.code,PJ.d||pjDefDate());
-    const t=pjTasks(p.code);
-    const hot=t.some(x=>x.k==="dead"||x.k==="zero"||x.k==="down");
-    const col=done?"#1E9E5A":hot?"#D64545":t.some(x=>x.k==="ps"||x.k==="eb")?"#C79A00":"#2B6CB0";
-    const mk=new google.maps.Marker({position:{lat:p.la,lng:p.lo},map:PJMAP.map,
-      label:{text:String(p.i),color:"#fff",fontSize:"11px",fontWeight:"700"},
-      title:p.i+". "+p.n,
-      icon:{path:google.maps.SymbolPath.CIRCLE,scale:13,fillColor:col,fillOpacity:1,
-        strokeColor:"#fff",strokeWeight:2}});
+    keep[p.code]=1;
+    const t=pjTasks(p.code,ymd);
+    const col=pjPinCol(p.code,ymd,t);
+    const lab={text:String(p.i),color:"#fff",fontSize:"11px",fontWeight:"700"};
+    const icon={path:google.maps.SymbolPath.CIRCLE,scale:13,fillColor:col,fillOpacity:1,
+      strokeColor:"#fff",strokeWeight:2};
+    let mk=PJMAP.marks[p.code];
+    if(mk){
+      if(mk.__col!==col){mk.setIcon(icon);mk.__col=col;}
+      if(mk.__i!==p.i){mk.setLabel(lab);mk.setTitle(p.i+". "+p.n);mk.__i=p.i;}
+      if(mk.__la!==p.la||mk.__lo!==p.lo){mk.setPosition({lat:p.la,lng:p.lo});mk.__la=p.la;mk.__lo=p.lo;}
+      mk.__t=t;
+      return;
+    }
+    mk=new google.maps.Marker({position:{lat:p.la,lng:p.lo},map:PJMAP.map,
+      label:lab,title:p.i+". "+p.n,icon:icon});
+    mk.__col=col;mk.__i=p.i;mk.__la=p.la;mk.__lo=p.lo;mk.__t=t;mk.__p=p;
+    /* ตัวฟังคลิกผูกครั้งเดียว แล้วอ่านค่าสด ๆ จาก mk.__t ตอนกด — ไม่ต้องผูกใหม่ทุกรอบ */
     mk.addListener("click",()=>{
-      PJMAP.info.setContent('<div style="font-size:13px;max-width:220px"><b>'+p.i+". "+anaEsc(p.n)+
-        '</b><br>'+anaEsc(p.code)+'<br>'+t.map(x=>x.ic+" "+anaEsc(x.s)).join("<br>")+
-        '<br><a href="https://www.google.com/maps/dir/?api=1&destination='+p.la+","+p.lo+
+      const q=mk.__p;
+      PJMAP.info.setContent('<div style="font-size:13px;max-width:240px"><b>'+mk.__i+". "+anaEsc(q.n)+
+        '</b><br>'+anaEsc(q.code)+'<br>'+(mk.__t||[]).map(x=>x.ic+" "+anaEsc(x.s)).join("<br>")+
+        '<br><a href="https://www.google.com/maps/dir/?api=1&destination='+q.la+","+q.lo+
         '" target="_blank" rel="noopener">🧭 นำทางไปร้านนี้</a></div>');
       PJMAP.info.open(PJMAP.map,mk);});
-    PJMAP.marks.push(mk);b.extend({lat:p.la,lng:p.lo});
+    PJMAP.marks[p.code]=mk;
   });
+  Object.keys(PJMAP.marks).forEach(c=>{
+    if(keep[c])return;
+    PJMAP.marks[c].setMap(null);delete PJMAP.marks[c];
+  });
+  const sig=ymd+"|"+rt+"|"+pts.map(p=>p.code).join(",");
+  if(sig===PJMAP.sig||!pts.length)return;
+  PJMAP.sig=sig;
+  if(pts.length===1){PJMAP.map.setCenter({lat:pts[0].la,lng:pts[0].lo});PJMAP.map.setZoom(16);return;}
+  const b=new google.maps.LatLngBounds();
+  pts.forEach(p=>b.extend({lat:p.la,lng:p.lo}));
   PJMAP.map.fitBounds(b,40);
 }
 function pjSaveKey(){
@@ -3346,7 +3678,7 @@ function pjSaveKey(){
     return;
   }
   pjOk().cfg.gmap=v;pjOk().cfg.up=Date.now();
-  PJMAP.state="off";PJMAP.map=null;PJMAP.marks=[];
+  PJMAP.state="off";PJMAP.map=null;PJMAP.marks={};PJMAP.sig="";
   syncToServer();renderPjp();
   alert(v?"บันทึก key แล้ว — แผนที่จะขึ้นในอีกสักครู่\n\nถ้ายังไม่ขึ้น ให้รอ 1-5 นาที (Google ใช้เวลาให้การตั้งค่ามีผล) แล้วรีเฟรชหน้าเว็บ"
          :"เอา key ออกแล้ว — กลับไปใช้ปุ่มนำทางอย่างเดียว");
@@ -3358,22 +3690,27 @@ function pjChip(t){
 function pjCardHtml(s,i,ymd){
   const o=pjOut(s.code)||{};
   const done=pjIsDone(s.code,ymd);
-  const t=pjTasks(s.code);
+  const t=pjTasks(s.code,ymd);
   const sa=pjSales(s.code);
   const ps=pjPS(s.code);
   const cta=(ps&&!ps.r[PSF.yes]&&ps.r[PSF.cta])?ps.r[PSF.cta]:"";
   const nav=(o.la!=null&&o.lo!=null)?`https://www.google.com/maps/dir/?api=1&destination=${o.la},${o.lo}`:"";
-  return `<div class="pj-card${done?" done":""}${t.some(x=>x.k==="dead"||x.k==="down"||x.k==="zero")?" hot":""}">
+  const fu=pjFollow(s.code,ymd);                 /* เรื่องค้างจากการเยี่ยมครั้งก่อน */
+  const mine=pjNote(s.code,ymd);                 /* โน้ตที่บันทึกของวันนี้ */
+  return `<div class="pj-card${done?" done":""}${fu?" fu":""}${t.some(x=>x.k==="dead"||x.k==="down"||x.k==="zero")?" hot":""}">
     <div class="pj-no">${i}</div>
     <div class="pj-main">
       <div class="pj-h"><b>${anaEsc(o.n||pjName(s.code)||s.code)}</b>${o.t?` <span class="tag ct">${anaEsc(o.t)}</span>`:""}</div>
       <div class="psub">${s.code}${o.a?" · "+anaEsc(o.a):""}${o.sd?" · "+anaEsc(o.sd):""}</div>
-      ${t.length?`<div class="pj-tags">${t.map(pjChip).join("")}</div>`:""}
+      ${fu?`<div class="pj-fu">📌 <b>ค้างจากครั้งก่อน (${fmtDateShort(fu.d)}):</b> ${fu.f.map(k=>PJ_FLAG[k].ic+" "+anaEsc(PJ_FLAG[k].nm)).join(" · ")}${fu.tx?`<div class="pj-fut">“${anaEsc(fu.tx)}”</div>`:""}</div>`:""}
+      ${t.length?`<div class="pj-tags">${t.filter(x=>x.k!=="fu").map(pjChip).join("")}</div>`:""}
       ${sa?`<div class="psub">ยอดเดือน ${fmtMonth(sa.m)}: <b>${THB(sa.cur)}</b> · เดือนก่อน ${THB(sa.prv)}</div>`:
         `<div class="psub">ยังไม่มีข้อมูลยอดขายรายร้านของร้านนี้</div>`}
       ${cta?`<div class="note" style="margin:6px 0 0">⭐ <b>สิ่งที่ Unilever แนะนำ:</b> ${anaEsc(cta)}</div>`:""}
+      ${mine&&mine.tx?`<div class="pj-mynote">📝 ${anaEsc(mine.tx)}${mine.by?` <span class="psub">— ${anaEsc(mine.by)}</span>`:""}</div>`:""}
+      ${mine&&mine.f.length?`<div class="psub" style="margin-top:4px">ตามต่อรอบหน้า: ${mine.f.map(k=>PJ_FLAG[k].ic+" "+anaEsc(PJ_FLAG[k].nm)).join(" · ")}</div>`:""}
       <div class="pj-btns">
-        <button type="button" class="pj-tick${done?" on":""}" onclick="pjTick('${s.code}','${ymd}')">${done?"✅ เข้าแล้ว":"☐ ติ๊กว่าเข้าแล้ว"}</button>
+        <button type="button" class="pj-tick${done?" on":""}" onclick="pjNoteOpen('${s.code}','${ymd}')">${done?(mine&&(mine.tx||mine.f.length)?"✅ เข้าแล้ว · มีโน้ต":"✅ เข้าแล้ว"):"📝 บันทึกการเยี่ยม"}</button>
         ${nav?`<a class="pj-b" href="${nav}" target="_blank" rel="noopener">🧭 นำทาง</a>`:`<span class="psub">ไม่มีพิกัด</span>`}
         ${o.ph?`<a class="pj-b" href="tel:${anaEsc(String(o.ph).replace(/[^0-9+]/g,""))}">📞 โทร</a>`:""}
       </div>
@@ -3384,8 +3721,9 @@ function pjDayHtml(ymd,rt){
   if(!stops.length)return `<div class="insight">วันนี้ไม่มีร้านในแผนของสายนี้ — ลองเลือกวันอื่น หรือดูปฏิทินทั้งเดือน</div>`;
   let list=stops;
   if(PJ.only==="todo")list=stops.filter(s=>!pjIsDone(s.code,ymd));
-  if(PJ.only==="hot")list=stops.filter(s=>pjTasks(s.code).some(x=>x.k==="dead"||x.k==="zero"||x.k==="down"||x.k==="ps"));
-  if(!list.length)return `<div class="insight">${PJ.only==="todo"?"✅ เข้าครบทุกร้านแล้ววันนี้":"ไม่มีร้านที่เข้าเกณฑ์ที่เลือก"}</div>`;
+  if(PJ.only==="fu")list=stops.filter(s=>!!pjFollow(s.code,ymd));
+  if(PJ.only==="hot")list=stops.filter(s=>pjTasks(s.code,ymd).some(x=>x.k==="dead"||x.k==="zero"||x.k==="down"||x.k==="ps"));
+  if(!list.length)return `<div class="insight">${PJ.only==="todo"?"✅ บันทึกครบทุกร้านแล้ววันนี้":PJ.only==="fu"?"ไม่มีร้านที่มีเรื่องค้างจากครั้งก่อนในวันนี้ 👍":"ไม่มีร้านที่เข้าเกณฑ์ที่เลือก"}</div>`;
   const pos={};stops.forEach((s,i)=>pos[s.code]=i+1);
   return `<div class="pj-list">`+list.map(s=>pjCardHtml(s,pos[s.code],ymd)).join("")+`</div>`;
 }
@@ -3412,12 +3750,13 @@ function pjCalHtml(rt){
       if(!d)return `<div class="pj-dc empty"></div>`;
       const st=pjStops(d,rt);
       const done=st.filter(s=>pjIsDone(s.code,d)).length;
-      const hot=st.filter(s=>pjTasks(s.code).some(x=>x.k==="dead"||x.k==="zero"||x.k==="down")).length;
+      const hot=st.filter(s=>pjTasks(s.code,d).some(x=>x.k==="dead"||x.k==="zero"||x.k==="down")).length;
+      const fu=st.filter(s=>!!pjFollow(s.code,d)).length;
       const isT=d===todayISO();
       return `<div class="pj-dc${st.length?"":" off"}${d===base?" sel":""}${isT?" today":""}" onclick="pjSetDate('${d}')">
         <div class="pj-dn">${+d.slice(8,10)}</div>
         ${st.length?`<div class="pj-dv">${st.length}</div>
-          <div class="pj-dm">${done?`<span class="up">✓${done}</span>`:""}${hot?` <span class="down">!${hot}</span>`:""}</div>`:""}
+          <div class="pj-dm">${done?`<span class="up">✓${done}</span>`:""}${hot?` <span class="down">!${hot}</span>`:""}${fu?` <span class="pj-dfu">📌${fu}</span>`:""}</div>`:""}
       </div>`;}).join("")+`</div>`;
 }
 /* กล่องตั้งค่า Google Maps key — ต้องโผล่ได้ "ก่อน" มีข้อมูลด้วย
@@ -3454,8 +3793,9 @@ function renderPjp(){
   const rt=pjCur(),ymd=PJ.d;
   const stops=pjStops(ymd,rt);
   const done=stops.filter(s=>pjIsDone(s.code,ymd)).length;
-  const hot=stops.filter(s=>pjTasks(s.code).some(x=>x.k==="dead"||x.k==="zero"||x.k==="down")).length;
-  const psNo=stops.filter(s=>pjTasks(s.code).some(x=>x.k==="ps")).length;
+  const hot=stops.filter(s=>pjTasks(s.code,ymd).some(x=>x.k==="dead"||x.k==="zero"||x.k==="down")).length;
+  const psNo=stops.filter(s=>pjTasks(s.code,ymd).some(x=>x.k==="ps")).length;
+  const fuN=stops.filter(s=>!!pjFollow(s.code,ymd)).length;
   const dt=new Date(ymd+"T00:00:00");
   const DOWF=["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
   bar.innerHTML=`🗺 แผนเยี่ยมร้าน · <b>${pjLineName(rt)}</b> · วัน${DOWF[dt.getDay()]}ที่ <b>${fmtDate(ymd)}</b>`+
@@ -3478,14 +3818,16 @@ function renderPjp(){
     </div></div>
     <div class="ctl"><label>กรอง</label><div class="seg">
       <button class="${PJ.only==="all"?"on":""}" onclick="pjSetOnly('all')">ทั้งหมด</button>
-      <button class="${PJ.only==="todo"?"on":""}" onclick="pjSetOnly('todo')">ยังไม่เข้า</button>
+      <button class="${PJ.only==="todo"?"on":""}" onclick="pjSetOnly('todo')">ยังไม่บันทึก</button>
+      <button class="${PJ.only==="fu"?"on":""}" onclick="pjSetOnly('fu')">📌 มีเรื่องค้าง${fuN?" ("+fuN+")":""}</button>
       <button class="${PJ.only==="hot"?"on":""}" onclick="pjSetOnly('hot')">ต้องดูเป็นพิเศษ</button>
     </div></div>
     ${pjIsMgr()?`<div class="spacer"></div><div class="ctl"><label>&nbsp;</label><label class="chk"><input type="checkbox"${PJ.dt?" checked":""} onchange="pjToggleDT()"> แสดงสาย Digital Coverage</label></div>`:""}
   </div>`;
   document.getElementById("pjpCards").innerHTML=
     `<div class="card"><div class="k">ร้านที่ต้องเข้าวันนี้</div><div class="v">${stops.length}</div><div class="s">${pjLineName(rt)}</div></div>`+
-    `<div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">เข้าแล้ว</div><div class="v up">${done}</div><div class="s">${stops.length?Math.round(done/stops.length*100):0}% ของวันนี้</div></div>`+
+    `<div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">บันทึกแล้ว</div><div class="v up">${done}</div><div class="s">${stops.length?Math.round(done/stops.length*100):0}% ของวันนี้</div></div>`+
+    `<div class="card" style="border-top:3px solid #7A5AF8"><div class="k" style="color:#7A5AF8">📌 ค้างจากครั้งก่อน</div><div class="v"${fuN?' style="color:#7A5AF8"':""}>${fuN}</div><div class="s">${fuN?"ร้านที่ต้องตามเรื่องต่อ":"เคลียร์หมดแล้ว 👍"}</div></div>`+
     `<div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">ยอดตก / ไม่ซื้อ</div><div class="v down">${hot}</div><div class="s">ร้านที่ต้องคุยเป็นพิเศษ</div></div>`+
     `<div class="card" style="border-top:3px solid #C79A00"><div class="k" style="color:#C79A00">⭐ PS ยังไม่ผ่าน</div><div class="v">${psNo}</div><div class="s">ในร้านของวันนี้</div></div>`;
   /* แผนที่ */
@@ -3499,7 +3841,7 @@ function renderPjp(){
         `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
           <h3>🗺 แผนที่ร้านวันนี้</h3>
           ${dir?`<a class="pl-today" style="flex:0 0 auto;text-decoration:none;text-align:center" href="${dir.url}" target="_blank" rel="noopener">🧭 เปิดเส้นทาง ${dir.n} ร้านแรกใน Google Maps</a>`:""}</div>
-        <div class="psub">หมุดเรียงตามลำดับการเข้าเยี่ยม · <span class="down">แดง</span> = ยอดตก/ไม่ซื้อ · <span class="mid">เหลือง</span> = PS/eB2B ค้าง · <span class="up">เขียว</span> = เข้าแล้ว${dir&&dir.all>dir.n?` · Google Maps รับจุดแวะได้จำกัด จึงใส่ให้ ${dir.n} จาก ${dir.all} ร้าน`:""}</div>`;
+        <div class="psub">หมุดเรียงตามลำดับการเข้าเยี่ยม · <span class="down">แดง</span> = ยอดตก/ไม่ซื้อ · <b style="color:#7A5AF8">ม่วง</b> = มีเรื่องค้างจากครั้งก่อน · <span class="mid">เหลือง</span> = PS/eB2B ค้าง · <span class="up">เขียว</span> = บันทึกแล้ว${dir&&dir.all>dir.n?` · Google Maps รับจุดแวะได้จำกัด จึงใส่ให้ ${dir.n} จาก ${dir.all} ร้าน`:""}</div>`;
       document.getElementById("pjMapMsg").innerHTML=
         (PJMAP.state==="auth"?`<div class="note" style="border-color:var(--bad);color:var(--bad)">⚠️ Google ปฏิเสธ API key นี้ — เช็คว่าเปิด "Maps JavaScript API" แล้ว และโดเมน <b>bd-sales-dashboard.vercel.app</b> อยู่ในรายการที่อนุญาต (แก้แล้วรอ 5 นาที)</div>`:"")+
         (PJMAP.state==="error"?`<div class="note" style="border-color:var(--bad);color:var(--bad)">⚠️ โหลดแผนที่ไม่สำเร็จ — เช็คอินเทอร์เน็ต</div>`:"");

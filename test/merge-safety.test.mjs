@@ -720,11 +720,52 @@ console.log("TEST 20 — PJP: the monthly visit plan, the outlet book and the vi
   check("the Google Maps key can be changed", p7.PJP.cfg.gmap === "AIza-NEW");
   check("...and a stale tab cannot roll it back", mergeState(p7, p6).PJP.cfg.gmap === "AIza-NEW");
 
+  // the visit NOTE and the things to chase next time live on the same record as
+  // the tick (PJP.done[code|date].tx / .f) — adding fields must not drop any
+  const note = JSON.parse(JSON.stringify(p7));
+  note.PJP.done["4887526|2026-10-05"] =
+    { v: 1, by: "ชลศิต", at: 6000, tx: "เจ้าของไม่อยู่ ให้กลับมาต้นเดือน", f: ["sell", "eb"] };
+  const p8 = mergeState(p7, note);
+  check("a visit note is saved on the visit record",
+        p8.PJP.done["4887526|2026-10-05"].tx === "เจ้าของไม่อยู่ ให้กลับมาต้นเดือน");
+  check("...together with the things to chase next time",
+        (p8.PJP.done["4887526|2026-10-05"].f || []).join(",") === "sell,eb");
+  check("...and it does not touch another day's record",
+        p8.PJP.done["2493638|2026-09-14"].v === 1 && !p8.PJP.done["2493638|2026-09-14"].tx);
+
+  // ⚠️ a tab opened BEFORE notes existed saves the same key with only {v,by,at}.
+  // It is older, so it must not wipe the note the rep just typed.
+  const preNote = JSON.parse(JSON.stringify(p7));
+  preNote.PJP.done["4887526|2026-10-05"] = { v: 1, by: "ชลศิต", at: 5500 };
+  check("an older tab that knows nothing about notes cannot erase one",
+        mergeState(p8, preNote).PJP.done["4887526|2026-10-05"].tx === "เจ้าของไม่อยู่ ให้กลับมาต้นเดือน");
+
+  // the next visit clears the chase list: newer record, no f → nothing is left open
+  const cleared = JSON.parse(JSON.stringify(p8));
+  cleared.PJP.done["4887526|2026-10-19"] = { v: 1, by: "ชลศิต", at: 7000, tx: "ขายเพิ่มได้ 2 ลัง" };
+  const p9 = mergeState(p8, cleared);
+  check("a later visit with no chase flags is stored as the newer record",
+        !!p9.PJP.done["4887526|2026-10-19"] && !p9.PJP.done["4887526|2026-10-19"].f);
+  check("...and the older note it supersedes is still on file (history is kept)",
+        (p9.PJP.done["4887526|2026-10-05"].f || []).join(",") === "sell,eb");
+  check("...and a stale tab cannot resurrect the chase list as the newest word",
+        mergeState(p9, p8).PJP.done["4887526|2026-10-19"].tx === "ขายเพิ่มได้ 2 ลัง");
+
+  // erasing today's record is v:0 with the note gone — and it must stick
+  const erase = JSON.parse(JSON.stringify(p9));
+  erase.PJP.done["4887526|2026-10-05"] = { v: 0, by: "ชลศิต", at: 8000 };
+  const p10 = mergeState(p9, erase);
+  check("deleting a visit note keeps the key as v:0 rather than dropping it",
+        p10.PJP.done["4887526|2026-10-05"].v === 0 && !p10.PJP.done["4887526|2026-10-05"].tx);
+  check("...and the older note cannot come back", !mergeState(p10, p9).PJP.done["4887526|2026-10-05"].tx);
+
   // uploading PJP must disturb nothing else
   check("the visit plan disturbs no other section",
-        Object.keys(p7.ORDERS.data).length === Object.keys(srv.ORDERS.data).length &&
-        Object.keys(p7.REQUESTS.data).length === Object.keys(srv.REQUESTS.data).length &&
-        p7.STORE.stores.length === srv.STORE.stores.length);
+        Object.keys(p10.ORDERS.data).length === Object.keys(srv.ORDERS.data).length &&
+        Object.keys(p10.REQUESTS.data).length === Object.keys(srv.REQUESTS.data).length &&
+        p10.STORE.stores.length === srv.STORE.stores.length);
+  check("a new month's plan upload never touches the visit notes",
+        Object.keys(p10.PJP.done).length === 4, Object.keys(p10.PJP.done).join(" "));
   check("looksEmpty: a PJP-only save does NOT count as real data (same as PLAN/PROMO)",
         looksEmpty({ DATA: {}, PJP: srv.PJP }) === true);
 }

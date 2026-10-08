@@ -177,18 +177,81 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
  t('เตือนเรื่องล็อกโดเมนของ key',/Application restrictions/.test(ui.txt));
  t('ไม่มี NaN / undefined บนหน้าจอ',!/NaN|undefined/.test(ui.txt));
 
- /* ---------- 5) ติ๊กว่าเข้าร้านแล้ว ---------- */
- const tick=await ev(()=>{
-   pjTick('2493638','2026-10-05');
-   const a={done:PJP.done['2493638|2026-10-05'],cards:[...document.querySelectorAll('#pjpCards .card .v')].map(x=>x.innerText.trim())};
-   pjTick('2493638','2026-10-05');
+ /* ---------- 5) บันทึกการเข้าเยี่ยม (ปุ่มเดียวเปิดกล่องโน้ต) ---------- */
+ const tick=await ev(async()=>{
+   const card=[...document.querySelectorAll('#pjpView .pj-card')][0];
+   const btn=[...card.querySelectorAll('button')].find(x=>/บันทึกการเยี่ยม/.test(x.innerText));
+   const lbl0=btn?btn.innerText.trim():'';
+   btn.click();
+   const sheet=!!document.querySelector('#pjNoteModal .pl-mask');
+   const quick=[...document.querySelectorAll('#pjNoteModal button')].find(x=>/ไม่มีอะไรต้องตามต่อ/.test(x.innerText));
+   await pjNoteQuick();
+   const a={lbl0,sheet,quick:!!quick,closed:!document.querySelector('#pjNoteModal .pl-mask'),
+     done:PJP.done['2493638|2026-10-05'],
+     cards:[...document.querySelectorAll('#pjpCards .card .v')].map(x=>x.innerText.trim())};
+   /* ลบบันทึกแล้วต้องเหลือ v:0 ไม่ใช่ลบคีย์ */
+   pjNoteOpen('2493638','2026-10-05');
+   await pjNoteErase();
    a.off=PJP.done['2493638|2026-10-05'];
-   pjTick('2493638','2026-10-05');
    return a;
  });
- t('ติ๊กแล้วบันทึกเป็น v:1 พร้อมชื่อคนติ๊ก',tick.done&&tick.done.v===1&&tick.done.by==='ผู้จัดการ',JSON.stringify(tick.done));
- t('การ์ด "เข้าแล้ว" ขยับเป็น 1',tick.cards[1]==='1',JSON.stringify(tick.cards));
- t('ยกเลิกติ๊กเก็บเป็น v:0 ไม่ใช่ลบคีย์ (กัน merge ย้อนกลับ)',tick.off&&tick.off.v===0,JSON.stringify(tick.off));
+ t('ปุ่มบนการ์ดเป็น "บันทึกการเยี่ยม" ไม่ใช่ช่องติ๊กเปล่า ๆ',/บันทึกการเยี่ยม/.test(tick.lbl0),tick.lbl0);
+ t('กดแล้วกล่องโน้ตเปิด',tick.sheet);
+ t('ในกล่องมีปุ่มทางด่วน "เข้าแล้ว ไม่มีอะไรต้องตามต่อ" (ไม่มีอะไรก็กดทีเดียวจบ)',tick.quick);
+ t('กดทางด่วนแล้วกล่องปิดเอง',tick.closed);
+ t('บันทึกเป็น v:1 พร้อมชื่อคนบันทึก',tick.done&&tick.done.v===1&&tick.done.by==='ผู้จัดการ',JSON.stringify(tick.done));
+ t('ทางด่วนไม่ใส่โน้ตและไม่ใส่ธงค้าง',tick.done&&!tick.done.tx&&!tick.done.f,JSON.stringify(tick.done));
+ t('การ์ด "บันทึกแล้ว" ขยับเป็น 1',tick.cards[1]==='1',JSON.stringify(tick.cards));
+ t('ลบบันทึกเก็บเป็น v:0 ไม่ใช่ลบคีย์ (กัน merge ย้อนกลับ)',tick.off&&tick.off.v===0,JSON.stringify(tick.off));
+
+ /* ---------- 5b) โน้ต + เรื่องที่ต้องตามต่อรอบหน้า ----------
+    เจ้าของบอก 8 ต.ค. 69 ว่าการติ๊กเฉย ๆ ซ้ำซ้อน — ต้องโน้ตได้ และต้องเตือนรอบหน้า */
+ const note=await ev(async()=>{
+   pjNoteOpen('2493638','2026-10-05');
+   document.getElementById('pjNoteTx').value='เจ้าของไม่อยู่ ให้กลับมาอีกทีต้นเดือน';
+   pjNoteFlag('sell');pjNoteFlag('eb');pjNoteFlag('eb');pjNoteFlag('eb');   /* ติ๊ก/ปลด/ติ๊ก */
+   const keptText=document.getElementById('pjNoteTx').value;               /* ติ๊กธงแล้วข้อความต้องไม่หาย */
+   await pjNoteSave();
+   const rec=PJP.done['2493638|2026-10-05'];
+   /* รอบหน้าของร้านนี้ตามแผน PJP */
+   const next=pjNextVisit('2493638','2026-10-05');
+   PJ.d=next;renderPjp();
+   const card=[...document.querySelectorAll('#pjpView .pj-card')].find(c=>/2493638/.test(c.innerText));
+   const fuBox=card?card.querySelector('.pj-fu'):null;
+   return {rec:rec,keptText:keptText,next:next,
+     fuTxt:fuBox?fuBox.innerText.replace(/\s+/g,' ').trim():'',
+     purple:card?card.className:'',
+     fuCard:(document.querySelectorAll('#pjpCards .card .v')[2]||{}).innerText,
+     fuBtn:!!([...document.querySelectorAll('#pjpCtl button')].find(x=>/มีเรื่องค้าง/.test(x.innerText)))};
+ });
+ t('โน้ตถูกเก็บในเรคอร์ดเดิม (PJP.done[...].tx) ไม่ใช่ section ใหม่',
+   note.rec&&note.rec.tx==='เจ้าของไม่อยู่ ให้กลับมาอีกทีต้นเดือน',JSON.stringify(note.rec));
+ t('ธงเรื่องที่ต้องตามต่อเก็บเป็น .f',note.rec&&(note.rec.f||[]).join(',')==='sell,eb',JSON.stringify(note.rec&&note.rec.f));
+ t('ติ๊กธงแล้วข้อความที่พิมพ์ไว้ไม่หาย',note.keptText==='เจ้าของไม่อยู่ ให้กลับมาอีกทีต้นเดือน',note.keptText);
+ t('หาวันเยี่ยมรอบหน้าของร้านนี้จากแผน PJP ได้',/^2026-10-\d\d$/.test(note.next||'')&&note.next>'2026-10-05',note.next);
+ t('⚠️ รอบหน้าการ์ดร้านเด้งเตือนเรื่องที่ค้าง',/ค้างจากครั้งก่อน/.test(note.fuTxt)&&/ต้องขายเพิ่ม/.test(note.fuTxt),note.fuTxt.slice(0,110));
+ t('...พร้อมโน้ตเดิมที่เซลล์เขียนไว้',/กลับมาอีกทีต้นเดือน/.test(note.fuTxt));
+ t('...และการ์ดมีแถบสีม่วงให้เห็นจากไกล ๆ',/\bfu\b/.test(note.purple),note.purple);
+ t('การ์ดสรุป "ค้างจากครั้งก่อน" นับได้',note.fuCard==='1',note.fuCard);
+ t('มีปุ่มกรอง "มีเรื่องค้าง"',note.fuBtn);
+
+ /* เรื่องค้างต้องเคลียร์เมื่อไปรอบหน้าแล้วไม่ติ๊กอะไร — "รอบล่าสุดชนะ" ไม่ใช่สะสม */
+ const clr=await ev(async()=>{
+   const next=pjNextVisit('2493638','2026-10-05');
+   const after=pjNextVisit('2493638',next);
+   await pjSaveVisit('2493638',next,1,'ขายเพิ่มได้ 2 ลัง',[]);
+   const a={stillOpenAtNext:!!pjFollow('2493638',next),openAfter:!!pjFollow('2493638',after),
+     histKept:!!(PJP.done['2493638|2026-10-05']||{}).tx};
+   /* แล้วถ้ารอบล่าสุดติ๊กธงใหม่ ก็ต้องกลับมาค้างอีก */
+   await pjSaveVisit('2493638',next,1,'ขอโปรใหม่',['pay']);
+   a.reopen=(pjFollow('2493638',after)||{}).f;
+   return a;
+ });
+ t('⚠️ โน้ตเดิมยังอยู่ ไม่ถูกเขียนทับ (ประวัติการเยี่ยมเก็บทุกวัน)',clr.histKept);
+ t('ไปรอบหน้าแล้วบันทึกโดยไม่ติ๊กอะไร = เรื่องค้างถือว่าเคลียร์',!clr.openAfter,JSON.stringify(clr));
+ t('...แต่ตัวมันเองยังเห็นเรื่องค้างของ "ก่อนหน้านั้น" อยู่ (ไม่ย้อนเวลา)',clr.stillOpenAtNext);
+ t('รอบล่าสุดติ๊กธงใหม่ = กลับมาค้างอีก (รอบล่าสุดชนะ ไม่ใช่สะสมทุกรอบ)',
+   (clr.reopen||[]).join(',')==='pay',JSON.stringify(clr.reopen));
 
  /* ---------- 6) กรอง + ปฏิทิน ---------- */
  const filt=await ev(()=>{
@@ -254,12 +317,12 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
  /* ---------- 9b) แผนที่ต้องโหลดครั้งเดียวต่อการเปิดหน้า ไม่ใช่ทุกครั้งที่กดอะไร ----------
     ถ้า div แผนที่ถูกสร้างใหม่ทุก render จะต้องสร้าง Map ใหม่ = เสียโควต้า Google ทุกคลิก
     (และแผนที่หายไปจากจอด้วย) */
- const mapKeep=await ev(()=>{
+ const mapKeep=await ev(async()=>{
    PJP.cfg.gmap='AIzaSyA1234567890abcdefghijklmnopqrstu';
    PJ.d='2026-10-05';PJ.line='209611';renderPjp();
    const el1=document.getElementById('pjMap');
    const vis1=document.getElementById('pjMapWrap').style.display!=='none';
-   pjStep(1);pjSetOnly('hot');pjSetOnly('all');pjTick('2493638','2026-10-06');
+   pjStep(1);pjSetOnly('hot');pjSetOnly('all');await pjSaveVisit('2493638','2026-10-06',1,'',[]);
    PJ.d='2026-10-05';renderPjp();
    const el2=document.getElementById('pjMap');
    const same=el1===el2&&!!el1;
@@ -269,10 +332,145 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
    return {vis1,same,inBody,hid};
  });
  t('ใส่ key แล้วกล่องแผนที่โผล่',mapKeep.vis1);
- t('⚠️ กดเปลี่ยนวัน/กรอง/ติ๊กร้าน แล้ว div แผนที่ยังเป็นตัวเดิม (โหลด Google Maps ครั้งเดียว)',
+ t('⚠️ กดเปลี่ยนวัน/กรอง/บันทึกร้าน แล้ว div แผนที่ยังเป็นตัวเดิม (โหลด Google Maps ครั้งเดียว)',
    mapKeep.same,JSON.stringify(mapKeep));
  t('...เพราะกล่องแผนที่ไม่ได้อยู่ในส่วนที่ถูกเขียนทับ',!mapKeep.inBody);
  t('เอา key ออก กล่องแผนที่ก็ซ่อนไป',mapKeep.hid);
+
+ /* ---------- 9c) หมุดต้องถูก "แก้" ไม่ใช่สร้างใหม่ทั้งแถวทุกครั้ง ----------
+    เจ้าของแจ้ง 8 ต.ค. 69 ว่าเปลี่ยนวัน/เปลี่ยนสายแล้วแผนที่ไม่โหลด
+    ปลอม google.maps ขึ้นมาเพื่อนับว่าเราเรียกของจริงกี่ครั้ง */
+ const gm=await ev(async()=>{
+   const C={map:0,mark:0,fit:0,icon:0,pos:0};
+   window.google={maps:{
+     Map:function(el,o){C.map++;this.el=el;this.fitBounds=()=>C.fit++;this.setCenter=()=>{};this.setZoom=()=>{};},
+     Marker:function(o){C.mark++;this.o=o;this.setMap=()=>{};this.setIcon=()=>C.icon++;
+       this.setLabel=()=>{};this.setTitle=()=>{};this.setPosition=()=>C.pos++;this.addListener=()=>{};},
+     InfoWindow:function(){this.setContent=()=>{};this.open=()=>{};},
+     LatLngBounds:function(){this.extend=()=>{};},
+     SymbolPath:{CIRCLE:0},
+   }};
+   PJP.cfg.gmap='AIzaSyA1234567890abcdefghijklmnopqrstu';
+   PJMAP={state:'ready',map:null,marks:{},info:null,sig:'',script:true,wait:0};
+   PJP.done={};pjBustNotes();          /* เริ่มจากยังไม่บันทึกร้านไหน หมุดจะยังไม่เขียว */
+   PJ.d='2026-10-05';PJ.line='209611';PJ.only='all';PJ.view='day';
+   renderPjp();
+   const first={...C},pins=Object.keys(PJMAP.marks).length;
+   /* กดอะไรที่ไม่ได้เปลี่ยนชุดร้าน — ต้องไม่สร้าง Map ใหม่ และไม่ fitBounds ใหม่ */
+   pjSetOnly('hot');pjSetOnly('all');
+   await pjSaveVisit('2493638','2026-10-05',1,'',[]);
+   const same={...C};
+   /* เปลี่ยนวัน = ชุดร้านเปลี่ยน → หมุดต้องขยับ/เพิ่ม/ลด แต่ยังห้ามสร้าง Map ใหม่ */
+   const d2=pjDates().filter(d=>d>'2026-10-05')[0];
+   PJ.d=d2;renderPjp();
+   const day2={...C},pins2=Object.keys(PJMAP.marks).length;
+   /* เปลี่ยนสาย */
+   const other=pjLines().filter(x=>x!=='209611'&&x!=='2096DT')[0];
+   pjSetLine(other);
+   const line2={...C},pins3=Object.keys(PJMAP.marks).length;
+   const stale=Object.keys(PJMAP.marks).filter(c=>!pjStops(PJ.d,pjCur()).some(s=>s.code===c)).length;
+   return {first,pins,same,day2,pins2,line2,pins3,stale,other};
+ });
+ t('วาดแผนที่ครั้งแรก: สร้าง Map 1 ตัว + หมุดครบทุกร้านที่มีพิกัด',
+   gm.first.map===1&&gm.first.mark===gm.pins&&gm.pins>10,JSON.stringify({m:gm.first.map,mark:gm.first.mark,pins:gm.pins}));
+ t('⚠️ กดกรอง/บันทึกร้าน (ชุดร้านไม่เปลี่ยน) → ไม่สร้าง Map ใหม่เลย',gm.same.map===1,gm.same.map);
+ t('...และไม่สร้างหมุดใหม่ซ้ำ (ใช้หมุดเดิม แค่เปลี่ยนสี)',gm.same.mark===gm.first.mark,JSON.stringify(gm.same));
+ t('...และไม่ fitBounds ซ้ำ จึงไม่กระตุกกลับทุกครั้งที่กด',gm.same.fit===gm.first.fit,gm.same.fit);
+ t('...แต่สีหมุดถูกอัพเดตจริง (บันทึกร้านแล้วหมุดเปลี่ยนเป็นเขียว)',gm.same.icon>gm.first.icon,JSON.stringify({a:gm.first.icon,b:gm.same.icon}));
+ t('⚠️ เปลี่ยนวันแล้วแผนที่ต้องวาดใหม่จริง (ไม่ใช่ค้างของเดิม)',gm.day2.fit>gm.same.fit&&gm.pins2>0,JSON.stringify({fit:gm.day2.fit,pins:gm.pins2}));
+ t('...โดยไม่สร้าง Map ใหม่ (ไม่เสียโควต้า Google เพิ่ม)',gm.day2.map===1,gm.day2.map);
+ t('⚠️ เปลี่ยนสายแล้วแผนที่ก็วาดใหม่',gm.line2.fit>gm.day2.fit&&gm.pins3>0,JSON.stringify({fit:gm.line2.fit,pins:gm.pins3,line:gm.other}));
+ t('...และยังไม่สร้าง Map ใหม่',gm.line2.map===1,gm.line2.map);
+ t('ไม่มีหมุดค้างของวัน/สายก่อนหน้าหลงอยู่บนแผนที่',gm.stale===0,gm.stale);
+
+ /* ---------- 9d) เรื่องค้างต้องไปขึ้นในปฏิทินงาน + กรองได้ ---------- */
+ const cal=await ev(()=>{
+   PJ.line='209611';PJ.d='2026-10-05';
+   PJP.done={};pjBustNotes();
+   PJP.done['2493638|2026-10-05']={v:1,by:'ชลศิต',at:1000,tx:'ขอราคาซันไลต์ถุงใหญ่',f:['sell','eb']};
+   pjBustNotes();
+   PLAN={items:{dep1:{t:'ประชุมเซลล์ต้นเดือน',d:'2026-10-06',cat:'meet',lines:[],by:'manager',byName:'ผู้จัดการ',at:1}},done:{},del:{}};
+   PL.ym='2026-10';PL.scope='all';PL.pjLine='';PL.view='list';
+   _switchTab('plan');
+   const txt=()=>document.getElementById('plMain').innerText.replace(/\s+/g,' ');
+   const a={all:txt(),shops:document.querySelectorAll('#plMain .pl-shop').length,
+     cards:[...document.querySelectorAll('#plCards .card .v')].map(x=>x.innerText.trim()),
+     lineBox:document.getElementById('plLineCtl').style.display!=='none'};
+   plSetScope('shop');a.shopOnly=txt();a.shopN=document.querySelectorAll('#plMain .pl-shop').length;
+   plSetScope('depot');a.depotOnly=txt();a.depotShopN=document.querySelectorAll('#plMain .pl-shop').length;
+   a.lineBoxDepot=document.getElementById('plLineCtl').style.display!=='none';
+   plSetScope('all');
+   /* ปฏิทินเดือนก็ต้องมีชิพงานร้าน */
+   plSetView('mon');a.mon=document.getElementById('plMain').innerText.replace(/\s+/g,' ');
+   /* ผู้จัดการเลือกดูทีละสายได้ — สายของร้านนี้อ่านจากแผนจริง ไม่ใช่เดาเอง */
+   plSetView('list');plSetScope('shop');
+   a.ln=pjOutLine('2493638');
+   const otherLn=pjLines().filter(x=>x!==a.ln)[0];
+   plSetPjLine(otherLn);a.otherLine=document.querySelectorAll('#plMain .pl-shop').length;
+   plSetPjLine(a.ln);a.myLine=document.querySelectorAll('#plMain .pl-shop').length;
+   plSetPjLine('');
+   /* กดแล้วเด้งกลับไปที่ร้านในแท็บ PJP */
+   const go=[...document.querySelectorAll('#plMain .pl-shop .pl-edit')].find(x=>/ไปที่ร้าน/.test(x.innerText));
+   if(go)go.click();
+   a.jumped=CURTAB;a.jumpDate=PJ.d;
+   /* เคลียร์เรื่องที่ร้านแล้ว งานในปฏิทินต้องหายเอง (ไม่ได้เก็บเป็นงานจริง) */
+   PJP.done['2493638|2026-10-19']={v:1,by:'ชลศิต',at:2000,tx:'ซื้อเพิ่มแล้ว'};
+   pjBustNotes();_switchTab('plan');plSetView('list');
+   a.after=document.querySelectorAll('#plMain .pl-shop').length;
+   a.notStored=Object.keys(PLAN.items).length;
+   return a;
+ });
+ t('⚠️ เรื่องค้างจากการเยี่ยมไปขึ้นในปฏิทินงาน',cal.shops===1,JSON.stringify({n:cal.shops,txt:cal.all.slice(0,150)}));
+ t('...ขึ้นเป็นชื่อร้าน + เรื่องที่ต้องตาม',/ธงฟ้าสารภี/.test(cal.all)&&/ต้องขายเพิ่ม/.test(cal.all));
+ t('...พร้อมโน้ตของเซลล์',/ขอราคาซันไลต์ถุงใหญ่/.test(cal.all));
+ t('...และอยู่ร่วมตารางกับงานของศูนย์',/ประชุมเซลล์ต้นเดือน/.test(cal.all));
+ t('การ์ด "งานร้านค้าเดือนนี้" นับได้',cal.cards[3]==='1',JSON.stringify(cal.cards));
+ t('filter 🏪 งานร้านค้า = เห็นแต่งานร้าน',cal.shopN===1&&!/ประชุมเซลล์/.test(cal.shopOnly),cal.shopOnly.slice(0,120));
+ t('filter 🏢 งานของศูนย์ = เห็นแต่งานศูนย์',cal.depotShopN===0&&/ประชุมเซลล์/.test(cal.depotOnly),cal.depotOnly.slice(0,120));
+ t('ผู้จัดการมีช่องเลือกสายให้ไล่ดูทีละสาย',cal.lineBox);
+ t('...และช่องนั้นหายไปตอนดูแต่งานของศูนย์',!cal.lineBoxDepot);
+ t('รู้ว่าร้านนี้อยู่สายไหนจากแผน PJP',!!cal.ln,cal.ln);
+ t('เลือกสายอื่นแล้วไม่เห็นงานร้านของสายนี้',cal.otherLine===0,cal.otherLine);
+ t('เลือกสายของร้านนั้นแล้วเห็น',cal.myLine===1,cal.myLine);
+ t('งานร้านโผล่ในปฏิทินเดือนด้วย',/ธงฟ้าสารภี/.test(cal.mon),cal.mon.slice(0,120));
+ t('กด "ไปที่ร้าน" เด้งไปแท็บ PJP ที่วันนั้น',cal.jumped==='pjp'&&/^2026-10-\d\d$/.test(cal.jumpDate||''),cal.jumped+' '+cal.jumpDate);
+ t('⚠️ เคลียร์เรื่องที่ร้านแล้ว งานในปฏิทินหายเอง',cal.after===0,cal.after);
+ t('⚠️ งานร้านไม่ถูกเขียนลง PLAN.items (คิดสดตอนแสดงผล ไม่มีงานผี)',cal.notStored===1,cal.notStored);
+
+ /* ---------- 9e) ฝั่งเซลล์: เห็นงานร้านของสายตัวเองเท่านั้น ---------- */
+ const salesCal=await ev(()=>{
+   PJP.done={};pjBustNotes();
+   const ln=pjOutLine('2493638');
+   const otherLn=pjLines().filter(x=>x!==ln&&x!=='2096DT')[0];
+   /* หาร้านของสายอื่นมาใส่โน้ตด้วย 1 ร้าน */
+   let oc='';
+   pjDates().some(d=>{const row=String((PJP.plan[d]||{})[otherLn]||'');
+     const c=row.split(',')[0].split(':')[0];if(c){oc=c;return true;}return false;});
+   PJP.done['2493638|2026-10-05']={v:1,by:'ชลศิต',at:1000,tx:'ของสายแรก',f:['sell']};
+   if(oc)PJP.done[oc+'|2026-10-05']={v:1,by:'ปฐมภพ',at:1000,tx:'ของสายอื่น',f:['pay']};
+   pjBustNotes();
+   PL.ym='2026-10';PL.view='list';PL.scope='all';PL.pjLine='';
+   const look=(role,code)=>{
+     S.user=role==='sales'?{id:'s',role:'sales',code:code,name:'เซลล์'}:{id:'manager',role:'manager',name:'ผู้จัดการ'};
+     renderPlan();
+     return {n:document.querySelectorAll('#plMain .pl-shop').length,
+       txt:document.getElementById('plMain').innerText.replace(/\s+/g,' '),
+       lineBox:document.getElementById('plLineCtl').style.display!=='none'};
+   };
+   const a={ln:ln,otherLn:otherLn,oc:oc,mgr:look('manager'),s1:look('sales',ln),s2:look('sales',otherLn)};
+   S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};PJ.line=ln;
+   return a;
+ });
+ t('หาร้านของอีกสายมาทดสอบได้',!!salesCal.oc,salesCal.otherLn+' → '+salesCal.oc);
+ t('ผู้จัดการเห็นงานร้านของทุกสาย (monitor ได้)',salesCal.mgr.n===2,salesCal.mgr.n);
+ t('⚠️ เซลล์สายแรกเห็นแต่ร้านของตัวเอง',
+   salesCal.s1.n===1&&/ของสายแรก/.test(salesCal.s1.txt)&&!/ของสายอื่น/.test(salesCal.s1.txt),
+   salesCal.s1.n+' | '+salesCal.s1.txt.slice(0,110));
+ t('⚠️ เซลล์สายที่สองก็เห็นแต่ร้านของตัวเอง',
+   salesCal.s2.n===1&&/ของสายอื่น/.test(salesCal.s2.txt)&&!/ของสายแรก/.test(salesCal.s2.txt),
+   salesCal.s2.n+' | '+salesCal.s2.txt.slice(0,110));
+ t('เซลล์ไม่มีช่องเลือกสายในปฏิทิน',!salesCal.s1.lineBox&&!salesCal.s2.lineBox);
+ t('ผู้จัดการมี',salesCal.mgr.lineBox);
 
  /* ---------- 10) ไม่แตะข้อมูลก้อนอื่น ---------- */
  const other=await ev(()=>JSON.stringify({O:ORDERS,P:POSTATUS,R:REQUESTS,PL:PLAN,PR:PROMO,S:STOCKD}));
