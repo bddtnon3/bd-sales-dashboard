@@ -1027,6 +1027,15 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
     </div>
 
     <div id="pjpView" class="hidden">
+      <!-- ปุ่มอัพโหลดต้องอยู่ใน markup คงที่ ไม่ใช่ใน #pjpCtl ที่ renderPjp เขียนทับ —
+           ตอนยังไม่มีข้อมูล #pjpCtl ถูกล้างเป็นค่าว่าง ปุ่มจะหายไปพร้อมกัน (เจ้าของแจ้ง 8 ต.ค. 69) -->
+      <div class="controls" id="pjpUpBar" style="display:none">
+        <div class="ctl"><label>&nbsp;</label><span class="psub">อัพไฟล์ PJP & ร้านค้า (เดือนละครั้ง)</span></div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+        </div>
+      </div>
       <div class="kpi-monthbar" id="pjpBar"></div>
       <div id="pjpCtl"></div>
       <div class="cards" id="pjpCards"></div>
@@ -3422,6 +3431,7 @@ function pjCalHtml(rt){
 function renderPjp(){
   const bar=document.getElementById("pjpBar");if(!bar)return;
   const P=pjOk();
+  {const ub=document.getElementById("pjpUpBar");if(ub)ub.style.display=pjIsMgr()?"":"none";}
   const ds=pjDates();
   if(!ds.length){
     bar.innerHTML="🗺 แผนเยี่ยมร้าน (PJP)";

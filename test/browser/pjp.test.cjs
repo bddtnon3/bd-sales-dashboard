@@ -45,6 +45,35 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
   EB2B={asof:null,up:0,lines:{},data:{'209611':{n:1,stores:[['2492217','สิริแมนชั่น','2026-09-10']]}}};
  `);
 
+ /* ---------- 0) ปุ่มอัพโหลดต้องอยู่แม้ยังไม่มีข้อมูลเลย ---------- */
+ const up0=await ev(()=>{
+   document.querySelectorAll('.admin-upload').forEach(e=>e.style.display='');
+   _switchTab('pjp');
+   const v=document.getElementById('pjpView');
+   const btn=[...v.querySelectorAll('button')].find(x=>/อัพโหลดไฟล์/.test(x.innerText));
+   if(btn)btn.click();
+   const rows=[...document.querySelectorAll('#modal .up-row')].filter(x=>x.style.display!=='none');
+   const labels=rows.length?[...rows[0].querySelectorAll('label.drop')].map(l=>l.innerText.replace(/\s+/g,' ').trim()):[];
+   const open=!document.getElementById('modal').classList.contains('hidden');
+   closeUpload();
+   return {btn:!!btn,open:open,title:(document.getElementById('upTitle')||{}).textContent,labels:labels};
+ });
+ t('⚠️ ยังไม่มีข้อมูลเลย ก็ต้องเห็นปุ่มอัพโหลด (เจอ 8 ต.ค. 69 — ปุ่มหายเพราะอยู่ในกล่องที่ถูกล้าง)',up0.btn);
+ t('กดแล้วเปิดกล่องอัพของ PJP',up0.open&&/PJP/.test(up0.title||''),up0.title);
+ t('มีให้เลือก 2 ไฟล์: Master Outlet + แผน PJP',
+   up0.labels.length===2&&/Master Outlet/.test(up0.labels[0])&&/PJP/.test(up0.labels[1]),JSON.stringify(up0.labels));
+ const upS=await ev(()=>{
+   S.user={id:'ka',role:'sales',code:'209613',name:'ปฐมภพ'};
+   document.querySelectorAll('.admin-upload').forEach(e=>e.style.display='none');
+   renderPjp();
+   const vis=document.getElementById('pjpUpBar').style.display!=='none';
+   S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};
+   document.querySelectorAll('.admin-upload').forEach(e=>e.style.display='');
+   renderPjp();
+   return vis;
+ });
+ t('เซลล์ไม่เห็นแถบอัพโหลด',upS===false);
+
  /* ---------- 1) อ่านไฟล์ Master ---------- */
  const outRes=await ev(a=>{
    const u8=new Uint8Array(a.buf);

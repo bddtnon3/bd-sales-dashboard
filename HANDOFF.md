@@ -190,7 +190,7 @@
 - `PJP.done["รหัส|วัน"]={v,by,at}` — `newestByAt` · **ยกเลิกติ๊กเก็บเป็น `v:0` ห้ามลบ key**
   เพราะ merge เป็น union ลบไปเดี๋ยวแท็บอื่นก็พากลับมา
 - `PJP.cfg` — Google Maps key + สแตมป์การอัพ · `up` ใหม่ชนะ
-- เทสต์: `test/merge-safety.test.mjs` TEST 20 (16 ข้อ) + `test/browser/pjp.test.cjs` (42 ข้อ ใช้ไฟล์จริง)
+- เทสต์: `test/merge-safety.test.mjs` TEST 20 (16 ข้อ) + `test/browser/pjp.test.cjs` (46 ข้อ ใช้ไฟล์จริง)
 
 **Google Maps**
 - ⚠️ key ของ Maps ฝั่งเบราว์เซอร์ **เป็นของสาธารณะโดยธรรมชาติ** (อยู่ใน URL ของสคริปต์)
