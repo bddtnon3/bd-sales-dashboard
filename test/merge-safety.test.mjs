@@ -710,6 +710,27 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
   check("an edited promotion is taken", o6.PROMO.items.pCombo.tgtPct === 40);
   check("...and a stale tab cannot undo the edit", mergeState(o6, o5).PROMO.items.pCombo.tgtPct === 40);
 
+  // the screenshot of the report the numbers were typed from (PROMO.items[id].reps)
+  const rep = JSON.parse(JSON.stringify(o6));
+  rep.PROMO.items.pCombo = { ...rep.PROMO.items.pCombo,
+    reps: [{ u: "https://blob/bd-promoimg-1.jpg", line: "HC1", at: 5500, by: "ผู้จัดการ" }], up: 5500 };
+  const r1 = mergeState(o6, rep);
+  check("the report screenshot attached to a promotion survives a save",
+        (r1.PROMO.items.pCombo.reps || []).length === 1, JSON.stringify(r1.PROMO.items.pCombo.reps));
+  check("...and attaching it changed no result row",
+        r1.PROMO.res["pCombo|209611|HC1"].act === 61 && Object.keys(r1.PROMO.res).length === Object.keys(o6.PROMO.res).length);
+  check("...a stale tab that never saw it cannot strip it off",
+        (mergeState(r1, o6).PROMO.items.pCombo.reps || []).length === 1);
+  const rep2 = JSON.parse(JSON.stringify(r1));
+  rep2.PROMO.items.pCombo = { ...rep2.PROMO.items.pCombo,
+    reps: rep2.PROMO.items.pCombo.reps.concat([{ u: "https://blob/bd-promoimg-2.jpg", line: "BWPC1", at: 5600 }]), up: 5600 };
+  const r2 = mergeState(r1, rep2);
+  check("...a second report screenshot is added, the first is kept",
+        r2.PROMO.items.pCombo.reps.length === 2 &&
+        r2.PROMO.items.pCombo.reps[0].u === "https://blob/bd-promoimg-1.jpg");
+  check("...and the slide images (imgs) are a separate list, untouched by reps",
+        !r2.PROMO.items.pCombo.imgs || !r2.PROMO.items.pCombo.imgs.length);
+
   // deleting a promotion: tombstone, and it takes its OWN results with it — nobody else's
   const plain = JSON.parse(JSON.stringify(o6));
   delete plain.PROMO.items.pEco;

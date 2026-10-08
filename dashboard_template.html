@@ -298,6 +298,23 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .db-tbl td:nth-last-child(2),.db-tbl td:last-child{white-space:normal}
 .db-tbl td:nth-last-child(2){min-width:150px}
 .db-tbl td:last-child{min-width:215px}
+/* อ่านรีพอร์ทจากรูป (OCR) — กล่องลากรูป · กรอบครอบตาราง · ช่องแก้ตัวเลขในตารางพรีวิว */
+.ocr-drop{border:2px dashed var(--line);border-radius:12px;padding:20px 14px;text-align:center;
+  cursor:pointer;background:var(--bg);display:grid;gap:5px;justify-items:center}
+.ocr-drop:hover,.ocr-drop.on{border-color:var(--blue);background:var(--blue-soft)}
+.ocr-wrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#F3F5F9}
+.ocr-cv{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
+.ocr-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;background:#fff;border-top:1px solid var(--line)}
+.ocr-bar .psub{flex:1 1 170px;min-width:0}
+.pr-in{width:100%;min-width:58px;box-sizing:border-box;padding:5px 6px;border:1px solid var(--line);
+  border-radius:6px;font-size:13px;text-align:right;font-family:inherit;background:#fff}
+.pr-in:focus{outline:2px solid var(--blue);border-color:var(--blue)}
+.ocr-low{background:#FDF3DB;border-color:#E3B341}
+.pm-reps{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pm-rep{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:9px;
+  padding:4px 9px 4px 4px;background:#fff;text-decoration:none;color:var(--ink);font-size:12px;font-weight:700}
+.pm-rep:hover{border-color:var(--blue);background:var(--blue-soft)}
+.pm-rep img{width:44px;height:30px;object-fit:cover;border-radius:5px;display:block;background:var(--bg)}
 .kpi-card .v{font-size:24px}
 /* ---------- DCI SCORE ---------- */
 .dci-pb{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:8px;padding:4px 10px;
@@ -3293,8 +3310,14 @@ function renderPromoRes(){
       `<div><h3 style="color:${T.c}">${T.ic} ${anaEsc(it.name)}</h3>`+
       `<div class="psub">${T.nm}${+it.tgtPct>0?" · เป้า "+it.tgtPct+"% ของร้านในเขต":""}${
         (it.lines||[]).length>1?" · "+it.lines.length+" เซ็ต (ตัวเลขด้านล่างรวมทุกเซ็ตแล้ว)":""}</div></div>`+
-      (mgr?`<button type="button" class="pl-today" onclick="prPasteOpen('${it.id}')">📋 วางผลจาก Excel</button>`:"")+
+      (mgr?`<button type="button" class="pl-today" onclick="prPasteOpen('${it.id}')">📋 ใส่ผล (วางตาราง / อ่านจากรูป)</button>`:"")+
       `</div>`+
+      /* รูปรีพอร์ทต้นฉบับที่ใช้บันทึกผล — ทุกคนเปิดดูได้ว่าตัวเลขมาจากไหน (เจ้าของขอ 8 ต.ค. 69) */
+      ((it.reps||[]).length?`<div class="pm-reps"><span class="psub">📎 รูปรีพอร์ทต้นฉบับ:</span>`+
+        it.reps.map((R,i)=>`<a class="pm-rep" href="${anaEsc(R.u)}" target="_blank" rel="noopener"
+            title="${anaEsc((R.line?R.line+" · ":"")+(R.at?fmtDate(new Date(R.at).toISOString().slice(0,10)):""))}">
+            <img src="${anaEsc(R.u)}" alt="รีพอร์ท ${i+1}" loading="lazy">
+            <span>${anaEsc(R.line||("รูปที่ "+(i+1)))}</span></a>`).join("")+`</div>`:"")+
       (rs.length?`<div style="margin-top:10px">`+grpTable(
         [{h:"สาย",a:"l"},{h:"PJP / ร้านในเขต"},{h:"เป้า"},{h:"ทำได้"},{h:"% ทำได้"},{h:"เงินรางวัล"}],
         [{title:"",rows:rs}],{alwaysBand:false})+`</div>`
@@ -3346,6 +3369,9 @@ function prRoute(v){
 }
 function prGuess(h){
   const s=String(h||"").toLowerCase();
+  /* คอลัมน์ "ชื่อ/รหัส" ต้องตัดทิ้งก่อนเสมอ — ไม่งั้น "Sales_Desc" โดน /^sale/ จับเป็น
+     "ทำได้ (Actual)" แล้วรหัสโปรฯ (CT_HPC_211) กลายเป็นยอดขาย (เจอ 8 ต.ค. 69) */
+  if(/desc|name|code|รหัส|ชื่อ|route|สาย|region|เขต/.test(s))return "skip";
   if(/diff|to.?do|คงเหลือ|ขาดอีก/.test(s))return "skip";
   if(/incentive|รางวัล|เงิน|บาท/.test(s))return "money";
   if(/target|เป้า/.test(s)&&!/ach/.test(s))return "tgt";
@@ -3354,12 +3380,152 @@ function prGuess(h){
   if(/pjp|ร้านในเขต|base|ฐาน/.test(s))return "pjp";
   return "skip";
 }
+/* ============================================================================
+ * 🖼 อ่านตัวเลขจาก "รูป" รีพอร์ท  (เจ้าของแจ้ง 8 ต.ค. 69)
+ *
+ * บางเดือน Unilever/ทีมส่งรีพอร์ทมาเป็น "ภาพหน้าจอ Power BI" ไม่มีไฟล์ Excel ให้ก๊อป
+ * ระบบจึงอ่านตัวเลขจากรูปให้ก่อน (Tesseract ฝังไว้ใน public/vendor/ocr — โหลดเฉพาะตอนใช้
+ * เหมือน jszip) แล้วส่งต่อเข้าท่อเดิม prRead/prApply ซึ่งมีขั้นตรวจก่อนบันทึกอยู่แล้ว
+ *
+ * ⚠️ OCR ผิดได้ ห้ามบันทึกตรงจากผลอ่าน — ตารางพรีวิวจึง "แก้ได้ทุกช่อง"
+ *    และช่องที่ตัวอ่านไม่มั่นใจจะถูกทาสีส้มไว้ให้ตาไปหาก่อน
+ *
+ * ค่าที่ใช้เตรียมรูป วัดจากสกรีนช็อตจริง 3 ใบของเจ้าของ (ตาราง Combo Drive 64 ตัวเลข):
+ *   • ขยายให้กว้างราว 2,800 px — เล็กกว่านี้อ่านไม่ออก ใหญ่กว่านี้ก็แย่ลง
+ *   • แปลงเป็น "เทา" เฉย ๆ **ห้ามทำขาว-ดำ (threshold)** ฟอนต์ Power BI บางมาก
+ *     พอตัดเป็นขาวดำแล้วเลขขาดเป็นช่วง — วัดได้ 24/64 เทียบกับ 64/64 ตอนไม่ตัด
+ *   • PSM 6 (มองเป็นบล็อกข้อความเดียว) + ประกอบตารางจาก "พิกัดคำ" ไม่ใช่บรรทัดข้อความ
+ *     ถ้าช่องไหนอ่านไม่ออก ช่องที่เหลือจะยังอยู่คอลัมน์เดิม ไม่เลื่อนยกแถว
+ *   • รูปที่มี **สองตารางวางข้างกัน** อ่านมั่วแน่นอน — จึงต้องมีกรอบให้ครอบเฉพาะตารางเดียว
+ * ==========================================================================*/
+const OCR_W=2800, OCR_MAXW=4200;
+let OCR={load:null,worker:null};
+function ocrLoadLib(){
+  if(typeof Tesseract!=="undefined")return Promise.resolve();
+  if(OCR.load)return OCR.load;
+  OCR.load=new Promise((res,rej)=>{
+    const s=document.createElement("script");
+    s.src="vendor/ocr/tesseract.min.js";
+    s.onload=()=>res();
+    s.onerror=()=>{OCR.load=null;rej(new Error("โหลดตัวอ่านรูปไม่สำเร็จ — เช็คเน็ตแล้วลองใหม่"));};
+    document.head.appendChild(s);
+  });
+  return OCR.load;
+}
+async function ocrWorker(){
+  if(OCR.worker)return OCR.worker;
+  await ocrLoadLib();
+  OCR.worker=await Tesseract.createWorker("eng",1,{
+    workerPath:"vendor/ocr/worker.min.js",
+    corePath:"vendor/ocr/tesseract-core-lstm.wasm.js",
+    langPath:"vendor/ocr",gzip:false,logger:()=>{}});
+  await OCR.worker.setParameters({tessedit_pageseg_mode:"6",preserve_interword_spaces:"1"});
+  return OCR.worker;
+}
+function ocrPrep(img,crop){
+  const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;
+  const cr=crop||{x:0,y:0,w:iw,h:ih};
+  const sc=Math.max(1,Math.min(4,OCR_W/Math.max(1,cr.w),OCR_MAXW/Math.max(1,cr.h)));
+  const c=document.createElement("canvas");
+  c.width=Math.max(1,Math.round(cr.w*sc));c.height=Math.max(1,Math.round(cr.h*sc));
+  const x=c.getContext("2d");
+  x.imageSmoothingEnabled=true;x.imageSmoothingQuality="high";
+  x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);
+  x.drawImage(img,cr.x,cr.y,cr.w,cr.h,0,0,c.width,c.height);
+  try{
+    const d=x.getImageData(0,0,c.width,c.height),p=d.data;
+    for(let i=0;i<p.length;i+=4){const g=0.299*p[i]+0.587*p[i+1]+0.114*p[i+2];p[i]=p[i+1]=p[i+2]=g;}
+    x.putImageData(d,0,0);
+  }catch(e){}
+  return c;
+}
+/* คำทั้งหมด (พร้อมพิกัด) → ตาราง · คืน [[{t,c}]] โดย c = ความมั่นใจ 0-100 */
+function ocrToGrid(words){
+  const ws=(words||[]).filter(w=>String(w.t).trim()!=="");
+  if(!ws.length)return [];
+  const hs=ws.map(w=>w.y1-w.y0).sort((a,b)=>a-b);
+  const mh=hs[Math.floor(hs.length/2)]||10;
+  ws.sort((a,b)=>((a.y0+a.y1)/2)-((b.y0+b.y1)/2));
+  const rows=[];let cur=[],cy=null;
+  ws.forEach(w=>{
+    const y=(w.y0+w.y1)/2;
+    if(cy===null||Math.abs(y-cy)<=mh*0.6){cur.push(w);cy=(cy===null)?y:(cy*0.7+y*0.3);}
+    else{rows.push(cur);cur=[w];cy=y;}
+  });
+  if(cur.length)rows.push(cur);
+  rows.forEach(r=>r.sort((a,b)=>a.x0-b.x0));
+  /* ขอบคอลัมน์ = "ช่องว่างแนวตั้ง" ที่ไม่มีคำไหนพาดผ่านเลยตลอดความสูงรูป (projection profile)
+     ⚠️ ห้ามใช้ระยะห่างระหว่าง "จุดกึ่งกลาง" ของคำ — ในตาราง Power BI ตัวเลขชิดขวา
+     จุดกึ่งกลางของ 6 กับ 129 จึงอยู่คนละที่ทั้งที่อยู่คอลัมน์เดียวกัน ทำให้ตัดคอลัมน์พลาด
+     แล้วสองช่องเชื่อมเป็นช่องเดียว ("2 44") ซึ่งอ่านเป็นตัวเลขไม่ได้ ค่าก็หายไปทั้งคู่ */
+  let maxX=0;ws.forEach(w=>{if(w.x1>maxX)maxX=w.x1;});
+  const W=Math.ceil(maxX)+2;
+  const cov=new Uint8Array(W);
+  /* ⚠️ ต้องคิดจาก "แถวข้อมูล" เท่านั้น — หัวเรื่องของ visual ("CT Combo Drive Performance
+     by Route") เป็นข้อความยาวพาดเต็มความกว้าง ถ้าเอามานับด้วย ช่องว่างระหว่างคอลัมน์จะถูก
+     ถมจนหมด แล้วทั้งตารางจะกลายเป็นคอลัมน์เดียว (วัดจากรูปจริง: 6/64 → 43/64) */
+  const isNum=t=>/^[-(]?\d[\d,.]*[%)]?$/.test(String(t).trim());
+  const dataRows=rows.filter(r=>r.length>=4&&r.filter(w=>isNum(w.t)).length>=2);
+  const src=dataRows.length?[].concat.apply([],dataRows):ws;
+  src.forEach(w=>{const a=Math.max(0,Math.floor(w.x0)),b=Math.min(W,Math.ceil(w.x1));
+    for(let x=a;x<b;x++)cov[x]=1;});
+  /* ค่านี้ไม่ไว (วัดแล้วได้ผลเท่ากันตั้งแต่ 0.25 ถึง 1.1 เท่าของความสูงตัวอักษร) */
+  const minGap=Math.max(6,Math.round(mh*0.5));
+  const bd=[];let run=0;
+  for(let x=0;x<W;x++){
+    if(!cov[x])run++;
+    else{if(run>=minGap&&x-run>0)bd.push(x-run/2);run=0;}
+  }
+  const colOf=x=>{let i=0;while(i<bd.length&&x>bd[i])i++;return i;};
+  const n=bd.length+1;
+  const grid=rows.map(r=>{
+    const cells=[];for(let i=0;i<n;i++)cells[i]={t:"",c:100};
+    r.forEach(w=>{const i=colOf((w.x0+w.x1)/2);
+      cells[i].t=(cells[i].t?cells[i].t+" ":"")+w.t;
+      cells[i].c=Math.min(cells[i].c,w.c);});
+    return cells;
+  });
+  /* ทิ้งคอลัมน์ที่ว่างทุกแถว (การตัดคอลัมน์มักได้ช่องว่างแทรกมาเยอะ) */
+  const keep=[];for(let i=0;i<n;i++)if(grid.some(r=>String(r[i].t).trim()!==""))keep.push(i);
+  return grid.map(r=>keep.map(i=>r[i]));
+}
+/* ตัดคอลัมน์ "ขยะ" ของรีพอร์ท Power BI ทิ้งก่อนส่งต่อ
+   Region / DTCode / DTName เป็น merge cell จึงมีค่าแค่แถวเดียว แต่กินความกว้างไปครึ่งตาราง
+   จนตัวเลขจริงหลุดออกนอกจอตอนตรวจ — เก็บเฉพาะคอลัมน์ที่ "เป็นตัวเลขตั้งแต่ 2 แถวขึ้นไป"
+   หรือ "มีค่าเกิน 1 ใน 3 ของแถว" (= คอลัมน์จริงของตาราง ไม่ใช่หัวที่ merge ไว้) */
+function ocrTrim(grid){
+  if(grid.length<4)return grid;
+  const isNum=t=>/^[-(]?\d[\d,.]*[%)]?$/.test(String(t).trim());
+  const n=Math.max.apply(null,grid.map(r=>r.length));
+  const keep=[];
+  for(let i=0;i<n;i++){
+    const v=grid.map(r=>String(((r[i]||{}).t)||"").trim()).filter(x=>x!=="");
+    if(v.filter(isNum).length>=2||v.length>grid.length/3)keep.push(i);
+  }
+  return keep.length>=2?grid.map(r=>keep.map(i=>r[i]||{t:"",c:100})):grid;
+}
+async function ocrRead(src,crop){
+  const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("เปิดไฟล์รูปไม่ได้"));i.src=src;});
+  const cv=ocrPrep(img,crop);
+  const w=await ocrWorker();
+  const r=await w.recognize(cv,{},{text:true,blocks:true});
+  const words=[];
+  ((r.data&&r.data.blocks)||[]).forEach(b=>(b.paragraphs||[]).forEach(p=>(p.lines||[]).forEach(l=>(l.words||[]).forEach(d=>{
+    words.push({t:d.text,c:Math.round(d.confidence),x0:d.bbox.x0,x1:d.bbox.x1,y0:d.bbox.y0,y1:d.bbox.y1});}))));
+  return ocrTrim(ocrToGrid(words));
+}
 function prPasteOpen(id){
   const list=PR.m?pmAll().filter(it=>it.m===PR.m).sort(pmSort):[];
   if(!list.length){alert("ยังไม่มีโปรโมชั่นของเดือนนี้ — ใส่โปรที่แท็บ \"โปรเดือนนี้\" ก่อน");return;}
-  PR.paste={id:id||list[0].id,line:"",text:"",cols:null,rows:null};
+  /* ⚠️ ต้องตั้งเซ็ตเริ่มต้นเป็น "เซ็ตแรก" ไม่ใช่ค่าว่าง — ช่องเลือกโชว์เซ็ตแรกอยู่แล้ว
+     ถ้า line เป็น "" ผลจะถูกบันทึกลงคีย์ id|route| ซึ่ง renderPromoRes ไม่เคยอ่าน
+     (มันอ่านด้วย L.k) ผลที่บันทึกไปก็เลยหายไปเฉย ๆ — เจอตอนทำโหมดอ่านจากรูป 8 ต.ค. 69 */
+  const it0=list.filter(x=>x.id===id)[0]||list[0];
+  PR.paste={id:it0.id,line:(pmLines(it0)[0]||{}).k||"",text:"",cols:null,rows:null,
+            mode:"text",img:null,file:null,crop:null,sel:null,busy:"",err:""};
   prPasteDraw();
 }
+function prSetMode(m){const P=PR.paste;if(!P)return;P.mode=m;P.rows=null;prPasteDraw();}
 function prPasteClose(){PR.paste=null;document.getElementById("prModal").innerHTML="";}
 function prPasteDraw(){
   const P=PR.paste;if(!P){document.getElementById("prModal").innerHTML="";return;}
@@ -3369,20 +3535,26 @@ function prPasteDraw(){
   let prev="";
   if(P.rows){
     const nOk=P.rows.filter(r=>r.route).length;
+    const nLow=P.ocr?P.rows.reduce((s,r)=>s+r.cells.filter((c,i)=>prCellBad(P,r,i)).length,0):0;
+    /* มาจากรูป = ต้องเห็นทุกแถวเพื่อตรวจ · มาจากการวาง = 14 แถวพอให้ดูว่าจับคอลัมน์ถูก */
+    const show=P.ocr?P.rows:P.rows.slice(0,14);
     prev=`<div class="psub" style="margin:14px 0 8px">อ่านได้ <b>${P.rows.length}</b> แถว · จับคู่สายวิ่งได้ <b class="${nOk?"up":"down"}">${nOk}</b> แถว`+
-      (nOk<P.rows.length?` · อีก ${P.rows.length-nOk} แถวไม่ใช่สายวิ่ง (แถวหัวตาราง/แถวรวม) จะถูกข้าม`:"")+`</div>`+
+      (nOk<P.rows.length?` · อีก ${P.rows.length-nOk} แถวไม่ใช่สายวิ่ง (แถวหัวตาราง/แถวรวม) จะถูกข้าม`:"")+
+      (P.ocr?`<br><b class="mid">⚠️ อ่านจากรูป — ตรวจตัวเลขให้ครบก่อนบันทึก แก้ในช่องได้เลย</b>`+
+        (nLow?` · ช่องที่<span class="ocr-low" style="padding:1px 5px;border-radius:4px">ไฮไลต์ส้ม</span>คือที่ตัวอ่านไม่มั่นใจ (${nLow} ช่อง) ดูก่อนเป็นอันดับแรก`:" · ตัวอ่านมั่นใจทุกช่อง แต่ก็ยังควรกวาดตาอีกรอบ"):"")+`</div>`+
       `<div class="tblwrap"><table class="grp-tbl pm-prev"><thead><tr><th>สายวิ่ง</th>`+
       P.cols.map((c,i)=>`<th><select class="pm-map" onchange="prSetCol(${i},this.value)">`+
         PR_COLS.map(o=>`<option value="${o[0]}"${o[0]===c?" selected":""}>${o[1]}</option>`).join("")+
         `</select></th>`).join("")+`</tr></thead><tbody>`+
-      P.rows.slice(0,14).map(r=>`<tr${r.route?"":' style="opacity:.42"'}>`+
+      show.map((r,ri)=>`<tr${r.route?"":' style="opacity:.42"'}>`+
         `<td>${r.route?`<b>${anaEsc(pmLineName(r.route))}</b>`:'<span class="psub">ข้าม</span>'}</td>`+
-        r.cells.map(c=>`<td>${anaEsc(String(c).slice(0,18))}</td>`).join("")+`</tr>`).join("")+
+        r.cells.map((c,ci)=>`<td><input class="pr-in${prCellBad(P,r,ci)?" ocr-low":""}" value="${anaEsc(String(c))}" oninput="prSetCell(${ri},${ci},this.value)"></td>`).join("")+
+        `</tr>`).join("")+
       `</tbody></table></div>`+
-      (P.rows.length>14?`<div class="psub">แสดง 14 แถวแรก จากทั้งหมด ${P.rows.length} แถว</div>`:"");
+      (show.length<P.rows.length?`<div class="psub">แสดง 14 แถวแรก จากทั้งหมด ${P.rows.length} แถว</div>`:"");
   }
   document.getElementById("prModal").innerHTML=
-  `<div class="pl-mask" onclick="if(event.target===this)prPasteClose()"><div class="pl-modal" style="max-width:860px" onclick="event.stopPropagation()">
+  `<div class="pl-mask" onclick="if(event.target===this)prPasteClose()"><div class="pl-modal" style="max-width:${P.mode==="img"?1120:860}px" onclick="event.stopPropagation()">
     <div class="pl-mh"><h3>📋 วางผลจาก Excel / Power BI</h3><button type="button" class="pl-x" onclick="prPasteClose()">✕</button></div>
     <div class="pl-2">
       <div class="pl-f"><label>โปรโมชั่น</label><select id="prPId" onchange="prSetPromo(this.value)">${
@@ -3390,22 +3562,138 @@ function prPasteDraw(){
       <div class="pl-f"><label>เซ็ต / เส้นของโปร</label><select id="prPLine" onchange="prSetLine(this.value)"${lines.length<2?" disabled":""}>${
         lines.map(L=>`<option value="${anaEsc(L.k||"")}"${(L.k||"")===P.line?" selected":""}>${anaEsc(L.k||L.label||"ทั้งโปร (เส้นเดียว)")}</option>`).join("")}</select></div>
     </div>
+    <div class="seg" style="margin:2px 0 12px">
+      <button type="button" class="${P.mode!=="img"?"on":""}" onclick="prSetMode('text')">📋 วางตาราง (Excel / Power BI)</button>
+      <button type="button" class="${P.mode==="img"?"on":""}" onclick="prSetMode('img')">🖼 อ่านจากรูป</button>
+    </div>
+    ${P.mode==="img"?`
+    <div class="pl-f"><label>รูปรีพอร์ท — สกรีนช็อตจาก Power BI หรือรูปที่ส่งมาในไลน์</label>
+      ${P.img?`<div class="ocr-wrap"><canvas id="prImgCv" class="ocr-cv"></canvas>
+        <div class="ocr-bar"><span class="psub" id="prCropTxt"></span>
+          <button type="button" class="pl-today" style="flex:0 0 auto;padding:7px 12px" onclick="prCropAll()">ใช้ทั้งรูป</button>
+          <button type="button" class="pl-today" style="flex:0 0 auto;padding:7px 12px" onclick="prImgClear()">เปลี่ยนรูป</button>
+        </div></div>`
+      :`<div class="ocr-drop" id="prDrop" onclick="document.getElementById('prImgFile').click()">
+          <div style="font-size:30px">🖼</div>
+          <div><b>ลากรูปมาวางตรงนี้</b> · หรือกดเพื่อเลือกไฟล์ · หรือกด <b>Ctrl+V</b> วางรูปที่เพิ่งแคปมา</div>
+          <div class="psub">jpg / png · รูปยิ่งใหญ่ยิ่งอ่านแม่น — ใน Power BI กดขยายตาราง (Focus mode) ก่อนแคปจะดีที่สุด</div>
+        </div>`}
+      <input type="file" id="prImgFile" accept="image/*" style="display:none" onchange="prImgPick(this.files&&this.files[0])">
+    </div>
+    ${P.err?`<div class="note" style="border-color:var(--bad);color:var(--bad)">⚠️ ${anaEsc(P.err)}</div>`:""}
+    <div class="pl-mf"><button type="button" class="pl-today" ${(!P.img||P.busy)?"disabled":""} onclick="prImgRead()">${P.busy||"🔍 อ่านตัวเลขจากรูป"}</button>
+      ${P.rows?`<button type="button" class="pl-save" style="flex:0 0 auto;padding:13px 22px" ${P.busy?"disabled":""} onclick="prApply()">${P.busy2||("บันทึกผล "+P.rows.filter(r=>r.route).length+" สาย")}</button>`:""}</div>`
+    :`
     <div class="pl-f"><label>คัดลอกตารางจากรีพอร์ท แล้ววางลงช่องนี้ (ลากคลุมทั้งตารางใน Excel → Ctrl+C → คลิกในช่องนี้ → Ctrl+V)</label>
       <textarea class="pm-paste" id="prText" placeholder="ตัวอย่าง:&#10;RouteCode&#9;Target&#9;Actual&#9;To do&#9;%Achieve&#10;209611&#9;129&#9;40&#9;6&#9;31%&#10;209612&#9;89&#9;50&#9;-18&#9;56%">${anaEsc(P.text||"")}</textarea></div>
     <div class="pl-mf"><button type="button" class="pl-today" onclick="prRead()">🔍 อ่านตาราง</button>
-      ${P.rows?`<button type="button" class="pl-save" style="flex:0 0 auto;padding:13px 22px" onclick="prApply()">บันทึกผล ${P.rows.filter(r=>r.route).length} สาย</button>`:""}</div>
+      ${P.rows?`<button type="button" class="pl-save" style="flex:0 0 auto;padding:13px 22px" onclick="prApply()">${P.busy2||("บันทึกผล "+P.rows.filter(r=>r.route).length+" สาย")}</button>`:""}</div>`}
     ${prev}
     <div class="pl-hint">ระบบจับ "สายวิ่ง" ได้ทั้งแบบ <b>209611</b>, <b>2096_97</b>, <b>CT_HPC_211</b> และเลขสายล้วน ๆ เช่น <b>11</b> / <b>97</b><br>
       แถวหัวตารางและแถวรวม (Total) จะถูกข้ามให้เอง · ค่า % ที่รีพอร์ทให้มาจะถูกเก็บตามนั้น ไม่คำนวณใหม่<br>
+      ${P.mode==="img"?`<b>รูปที่มีสองตารางวางข้างกัน ต้องครอบเอาทีละตาราง</b> ไม่งั้นตัวเลขจะปนกันมั่ว · รูปต้นฉบับจะถูกเก็บไว้ให้เปิดดูย้อนหลังได้<br>`:""}
       บันทึกแล้ว<b>ทับเฉพาะโปรและเซ็ตที่เลือก</b>เท่านั้น โปรอื่นและเดือนอื่นไม่ถูกแตะ</div>
   </div></div>`;
+  if(P.mode==="img"){
+    if(P.img)prImgDraw();
+    const dz=document.getElementById("prDrop");
+    if(dz){
+      dz.ondragover=e=>{e.preventDefault();dz.classList.add("on");};
+      dz.ondragleave=()=>dz.classList.remove("on");
+      dz.ondrop=e=>{e.preventDefault();dz.classList.remove("on");
+        const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];if(f)prImgPick(f);};
+    }
+  }
 }
-function prSetPromo(id){PR.paste.id=id;PR.paste.line="";PR.paste.rows=null;prPasteDraw();}
+/* ---- รูป: เลือก / วาง / ครอบ ---- */
+function prImgPick(file){
+  const P=PR.paste;if(!P||!file)return;
+  if(!/^image\//.test(file.type||"")){P.err="ไฟล์นี้ไม่ใช่รูป — ใช้ jpg หรือ png";prPasteDraw();return;}
+  const fr=new FileReader();
+  fr.onerror=()=>{P.err="อ่านไฟล์รูปไม่สำเร็จ";prPasteDraw();};
+  fr.onload=()=>{
+    const im=new Image();
+    im.onerror=()=>{P.err="เปิดรูปนี้ไม่ได้ — ลองบันทึกเป็น jpg แล้วอัพใหม่";prPasteDraw();};
+    im.onload=()=>{P.img=fr.result;P._im=im;P.file=file;P.crop=null;P.rows=null;P.err="";prPasteDraw();};
+    im.src=fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+function prImgClear(){const P=PR.paste;if(!P)return;P.img=null;P._im=null;P.file=null;P.crop=null;P.rows=null;P.err="";prPasteDraw();}
+function prCropAll(){const P=PR.paste;if(!P)return;P.crop=null;prImgDraw();}
+function prClampRect(a,b,im){
+  const x0=Math.max(0,Math.min(a.x,b.x)),y0=Math.max(0,Math.min(a.y,b.y));
+  const x1=Math.min(im.width,Math.max(a.x,b.x)),y1=Math.min(im.height,Math.max(a.y,b.y));
+  return {x:x0,y:y0,w:Math.max(0,x1-x0),h:Math.max(0,y1-y0)};
+}
+function prImgDraw(){
+  const P=PR.paste;if(!P||!P.img||!P._im)return;
+  const cv=document.getElementById("prImgCv");if(!cv)return;
+  const im=P._im;
+  const box=(cv.parentNode&&cv.parentNode.clientWidth)||640;
+  const sc=Math.min(1,box/Math.max(1,im.width));
+  cv.width=Math.max(1,Math.round(im.width*sc));cv.height=Math.max(1,Math.round(im.height*sc));
+  P._sc=sc;
+  const x=cv.getContext("2d");
+  x.drawImage(im,0,0,cv.width,cv.height);
+  const cr=P.crop;
+  if(cr&&cr.w>2&&cr.h>2){
+    x.fillStyle="rgba(16,24,40,.5)";x.fillRect(0,0,cv.width,cv.height);
+    x.save();x.beginPath();x.rect(cr.x*sc,cr.y*sc,cr.w*sc,cr.h*sc);x.clip();
+    x.drawImage(im,0,0,cv.width,cv.height);x.restore();
+    x.strokeStyle="#D64545";x.lineWidth=2;x.setLineDash([6,4]);
+    x.strokeRect(cr.x*sc,cr.y*sc,cr.w*sc,cr.h*sc);x.setLineDash([]);
+  }
+  const t=document.getElementById("prCropTxt");
+  if(t)t.innerHTML=(cr&&cr.w>2)?`ครอบไว้ <b>${Math.round(cr.w)}×${Math.round(cr.h)}</b> px — ลากใหม่เพื่อเปลี่ยนกรอบ`
+    :`<b>ลากคลุมเฉพาะตารางที่ต้องการ</b> — รูปที่มีสองตารางข้างกันต้องครอบทีละอัน`;
+  const pt=e=>{const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/P._sc,y:(e.clientY-r.top)/P._sc};};
+  cv.onpointerdown=e=>{e.preventDefault();P._a=pt(e);try{cv.setPointerCapture(e.pointerId);}catch(_){}};
+  cv.onpointermove=e=>{if(!P._a)return;P.crop=prClampRect(P._a,pt(e),im);prImgDraw();};
+  cv.onpointerup=e=>{if(!P._a)return;P._a=null;
+    if(P.crop&&(P.crop.w<24||P.crop.h<24))P.crop=null;   /* ปัดโดนเฉย ๆ ไม่ใช่การครอบ */
+    prImgDraw();};
+  cv.onpointercancel=cv.onpointerup;
+}
+/* วางรูปจากคลิปบอร์ด (Ctrl+V) — เจ้าของแคปจอแล้ววางเลย ไม่ต้องเซฟไฟล์ก่อน */
+document.addEventListener("paste",e=>{
+  const P=PR.paste;if(!P||P.mode!=="img")return;
+  const it=(e.clipboardData&&e.clipboardData.items)||[];
+  for(let i=0;i<it.length;i++){
+    if(it[i].kind==="file"&&/^image\//.test(it[i].type||"")){
+      const f=it[i].getAsFile();if(f){e.preventDefault();prImgPick(f);return;}
+    }
+  }
+});
+async function prImgRead(){
+  const P=PR.paste;if(!P||!P.img||P.busy)return;
+  P.err="";P.busy="⏳ กำลังเตรียมตัวอ่าน...";prPasteDraw();
+  try{
+    await ocrWorker();
+    P.busy="🔍 กำลังอ่านตัวเลข...";prPasteDraw();
+    const grid=(await ocrRead(P.img,P.crop)).filter(r=>r.some(c=>String(c.t).trim()!==""));
+    if(!grid.length)throw new Error("อ่านตัวหนังสือในรูปไม่เจอเลย — ลองแคปรูปให้ใหญ่ขึ้น (ขยายตารางใน Power BI ก่อนแคป)");
+    P.text=grid.map(r=>r.map(c=>String(c.t).replace(/[\t\n]/g," ")).join("\t")).join("\n");
+    P.ocrConf=grid.map(r=>r.map(c=>c.c));
+    P.busy="";
+    prRead(true);
+  }catch(e){P.busy="";P.err=String((e&&e.message)||e);prPasteDraw();}
+}
+function prSetCell(ri,ci,v){
+  const P=PR.paste;if(!P||!P.rows||!P.rows[ri])return;
+  P.rows[ri].cells[ci]=v;
+  if(P.rows[ri].conf)P.rows[ri].conf[ci]=100;          /* แก้เองแล้ว = มั่นใจ ไม่ต้องไฮไลต์อีก */
+}
+function prSetPromo(id){
+  const it=pmAll().filter(x=>x.id===id)[0];
+  PR.paste.id=id;PR.paste.line=it?((pmLines(it)[0]||{}).k||""):"";PR.paste.rows=null;prPasteDraw();}
 function prSetLine(k){PR.paste.line=k;prPasteDraw();}
 function prSetCol(i,v){PR.paste.cols[i]=v;prPasteDraw();}
-function prRead(){
+function prRead(fromOcr){
   const P=PR.paste;if(!P)return;
-  P.text=document.getElementById("prText").value||"";
+  /* มาจากรูป: P.text ถูกเติมไว้แล้วโดย prImgRead (ไม่มี textarea ให้อ่าน) */
+  if(!fromOcr){P.text=(document.getElementById("prText")||{}).value||"";P.ocrConf=null;}
+  P.ocr=!!fromOcr;
   const raw=prSplit(P.text);
   if(!raw.length){alert("ยังไม่ได้วางตาราง — คัดลอกตารางจาก Excel มาวางในช่องก่อน");return;}
   /* หาคอลัมน์ที่เป็นสายวิ่ง: คอลัมน์ที่จับสายได้มากที่สุด */
@@ -3416,20 +3704,49 @@ function prRead(){
     if(n>bestN){bestN=n;best=c;}
   }
   if(bestN===0){alert("หาคอลัมน์สายวิ่งไม่เจอ\n\nตารางต้องมีคอลัมน์ที่เป็นรหัสสาย เช่น 209611 / 2096_97 / CT_HPC_211 หรือเลขสาย 11, 97");return;}
-  /* แถวหัวตาราง = แถวแรกที่จับสายไม่ได้ ใช้เดาชื่อคอลัมน์ */
-  let hdr=null;
-  for(let i=0;i<raw.length;i++){if(!prRoute(raw[i][best])){hdr=raw[i];break;}}
   const other=[];for(let c=0;c<w;c++)if(c!==best)other.push(c);
+  /* แถวหัวตาราง: เลือกแถวที่ "เดาชื่อคอลัมน์ได้มากที่สุด" ไม่ใช่แถวแรกที่ไม่ใช่สายวิ่ง
+     ⚠️ รีพอร์ท Power BI มีชื่อ visual อยู่บนสุด ("CT Combo Drive Performance by Route")
+     และหัวตารางจริงซ้อนสองชั้น ("CT HCF1" / "Target Actual To do %Achieve")
+     ถ้าหยิบแถวแรกมาใช้ จะเดาคอลัมน์ผิดหมด แล้วเป้า/ทำได้ไปลงคอลัมน์ Region */
+  let hdr=null,hdrSc=-1;
+  raw.forEach(r=>{
+    if(prRoute(r[best]))return;
+    const sc=other.reduce((a,c)=>a+(prGuess(r[c])!=="skip"?1:0),0);
+    if(sc>hdrSc){hdrSc=sc;hdr=r;}
+  });
   P.src=other;P.routeCol=best;
   P.cols=other.map(c=>prGuess(hdr?hdr[c]:""));
   /* ถ้าเดาไม่ได้เลย ให้เดาจากลำดับที่พบบ่อยในรีพอร์ท: เป้า → ทำได้ */
   if(P.cols.every(x=>x==="skip")&&other.length>=2){P.cols[0]="tgt";P.cols[1]="act";}
-  P.rows=raw.map(r=>({route:prRoute(r[best]),cells:other.map(c=>r[c]===undefined?"":r[c])}))
+  const cf=P.ocrConf||null;
+  P.rows=raw.map((r,ri)=>({route:prRoute(r[best]),
+      cells:other.map(c=>r[c]===undefined?"":r[c]),
+      conf:other.map(c=>(cf&&cf[ri]&&cf[ri][c]!==undefined)?cf[ri][c]:100)}))
             .filter(r=>r.route||r.cells.some(c=>String(c).trim()!==""));
+  /* คอลัมน์ไหน "เป็นคอลัมน์ตัวเลข" — ดูจากแถวสายวิ่งจริงว่าส่วนใหญ่เป็นเลขสะอาดไหม
+     ใช้จับช่องที่ OCR อ่านเป็นขยะ (44 → "de", 41 → "4)") ซึ่งบางช่องตัวอ่าน "มั่นใจ" เสียด้วย
+     ถ้าดูแต่ค่าความมั่นใจอย่างเดียวจะหลุด แล้วเจ้าของจะมองข้ามไป */
+  const rr=P.rows.filter(r=>r.route);
+  P.numCol=other.map((_,i)=>{
+    const v=rr.map(r=>String(r.cells[i]||"").trim()).filter(s=>s!=="");
+    if(!v.length)return 0;
+    return v.filter(prIsNum).length/v.length;
+  });
   prPasteDraw();
 }
-function prApply(){
-  const P=PR.paste;if(!P||!P.rows)return;
+/* "เลขสะอาด" เท่านั้น — 1,006 / -12 / 5% ผ่าน · "4)" "de" "=" ไม่ผ่าน
+   (prNum ใจดีเกินไปสำหรับงานนี้: "4)" มันอ่านได้เป็น 4 ซึ่งคือค่าที่ผิดแบบดูดี) */
+function prIsNum(s){return /^-?[\d,]+(\.\d+)?%?$/.test(String(s).trim());}
+function prCellBad(P,r,ci){
+  if(!P.ocr||!r.route)return false;
+  const v=String(r.cells[ci]==null?"":r.cells[ci]).trim();
+  if(v==="")return false;
+  if((r.conf||[])[ci]<75)return true;
+  return ((P.numCol||[])[ci]>=0.6)&&!prIsNum(v);
+}
+async function prApply(){
+  const P=PR.paste;if(!P||!P.rows||P.busy2)return;
   const it=pmAll().filter(x=>x.id===P.id)[0];
   if(!it){alert("ไม่พบโปรโมชั่นนี้แล้ว");return;}
   const use=P.rows.filter(r=>r.route);
@@ -3445,8 +3762,20 @@ function prApply(){
     if(Object.keys(o).length<=2)return;              /* ไม่มีตัวเลขเลย ข้าม */
     PROMO.res[pmResKey(it.id,r.route,P.line)]=o;n++;
   });
+  /* เก็บ "รูปต้นฉบับ" ไว้ให้เปิดดูย้อนหลังได้ว่าตัวเลขมาจากไหน
+     ⚠️ รูปไปอยู่ blob แยก (bd-promoimg-*) เก็บแค่ URL ใน state — ห้ามยัดรูปลง state */
+  let imgWarn="";
+  if(P.file){
+    P.busy2="⏳ กำลังเก็บรูป...";prPasteDraw();
+    const u=await pmUpOne(P.file);
+    P.busy2="";
+    const cur=PROMO.items[it.id];
+    if(u&&cur){cur.reps=(cur.reps||[]).concat([{u:u,line:P.line||"",at:now,by:by}]);cur.up=Date.now();}
+    else if(!u)imgWarn="\n\n(เก็บรูปต้นฉบับไม่สำเร็จ แต่ตัวเลขบันทึกแล้ว)";
+  }
   prPasteClose();renderPromoRes();syncToServer();
-  alert("บันทึกผลของ \""+it.name+"\" แล้ว "+n+" สาย\n\nกำลังบันทึกขึ้นเซิร์ฟเวอร์ — อีกสักครู่ให้รีเฟรชหน้าเว็บเพื่อยืนยัน");
+  alert("บันทึกผลของ \""+it.name+"\" แล้ว "+n+" สาย"+imgWarn+
+    "\n\nกำลังบันทึกขึ้นเซิร์ฟเวอร์ — อีกสักครู่ให้รีเฟรชหน้าเว็บเพื่อยืนยัน");
 }
 
 /* ---------- ใส่โปรชุดที่อ่านมาจากสไลด์ + แนบรูปสไลด์ทีละหลายไฟล์ ---------- */

@@ -177,8 +177,19 @@ code, never printed.
   route → PJP/Base · Target · Actual · %Achieve · money — so results are stored once as
   `PROMO.res["promoId|routeCode|lineKey"]`. The manager ingests a report by **pasting the table
   straight out of Excel or Power BI** (`prRead`/`prApply`): the route column is detected, the
-  other columns are guessed and confirmed. Slide images go to their own `bd-promoimg-*` blobs
-  via `api/promoimg.js` — never into the state. Rules: `HANDOFF.md` §5.
+  other columns are guessed and confirmed. When there is no table to copy, only a **screenshot**,
+  the same dialog reads the numbers out of the image (`ocrRead`/`ocrToGrid`/`ocrTrim`, Tesseract
+  vendored in `public/vendor/ocr/`, ~8 MB, lazy-loaded only when used like jszip). OCR can be
+  wrong, so nothing is ever saved straight from it: every preview cell is editable and the cells
+  it got wrong are highlighted (`prCellBad`). Its four measured rules — upscale to ~2800px,
+  **never** threshold to black and white, rebuild the table from word *coordinates*, and take the
+  column boundaries from the *data rows only* — are in `HANDOFF.md` §5 with the numbers behind
+  them. Prove it still reads the owner's real reports with
+  **`node test/browser/ocr-promo.test.cjs`** (36 checks, needs `npm i --no-save playwright-core`).
+  Slide images and report screenshots both go to their own `bd-promoimg-*` blobs
+  via `api/promoimg.js` — never into the state; the state keeps only the URL
+  (`PROMO.items[id].imgs` for slides, `.reps` for the report a result was typed from).
+  Rules: `HANDOFF.md` §5.
   The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 7 groups,
   each holding one or more pages, role-gated per page. Adding a page means adding it to that
   table — never add a hand-written `.tab` button back into the markup. Retiring a finished
@@ -189,6 +200,9 @@ code, never printed.
 - `public/index.html` — generated output that Vercel serves. Do not edit by hand.
 - `public/join.html` + `public/img/*` — the public shop-application page (hand-written).
 - `public/vendor/jszip.min.js` — vendored (MIT), lazy-loaded only when a PO file is generated.
+- `public/vendor/ocr/*` — Tesseract.js + its wasm core + the English model (Apache-2.0), ~8 MB,
+  vendored on purpose and lazy-loaded **only** when the manager reads a report screenshot, so a
+  blocked CDN can never break his monthly routine. Nobody else ever downloads it.
 - `api/*.js` — Vercel serverless functions (ESM): `login`, `data` (read newest non-empty blob),
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write),
   `apply` (PUBLIC shop application → its own `bd-lead-*` blob), `leads` (manager-only read).
