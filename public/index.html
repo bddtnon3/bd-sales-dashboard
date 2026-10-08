@@ -1351,7 +1351,16 @@ let TOKEN=null;
 /* KPI (online-order adoption): {months, lines:{code:disp}, data:{month:{code:{stores,active,orders,self,ghost}}}, targets, workdays} */
 let KPI = {months:[],lines:{},data:{},meta:{},del:{},workdays:26};
 
-/* ORDERS (daily ordering to Unilever): {dates, data:{date:{rounds:{round:{code:qty}}, dropped:{code:qty}, hasResult}}, names} */
+/* ORDERS (daily ordering to Unilever):
+   {dates:[YYYY-MM-DD], names:{code:ชื่อ}, cat:{code:ชีต}, catN:{ชื่อย่อ:ชีต},
+    data:{date:{
+      rounds:{main|addN:{code:ลัง}},   อ่านทั้งก้อนด้วย orderedMerged(day) · อาจไม่มีคีย์นี้เลย
+      dropped:{code:…}|null,           ⚠️ สองรูปแบบ: {o,d,q} (parseDrop ปัจจุบัน) และ "ตัวเลขล้วน"
+                                       ของรุ่นเก่า ซึ่งบางวันเป็น 0 = ไม่รู้จำนวน
+                                       อ่านด้วย dropO/dropD/dropQ เท่านั้น ห้ามอ่าน .q ตรง ๆ
+      hasResult:bool,                  = "อัพใบ Drop ของวันนี้แล้ว" เท่านั้น · true ได้ทั้งที่ rounds ว่าง
+      dropVal:number, dropLines:[…],   เฉพาะวันที่อัพหลังมีฟีเจอร์นี้ · วันเก่าไม่มี
+      vals:{round:{ov,cv}}}}}          มูลค่าใบสั่ง / CON Confirm                               */
 let ORDERS = {dates:[],data:{},names:{}};
 
 /* STOCKD (daily stock snapshot): {date, rows:[...], names} */
