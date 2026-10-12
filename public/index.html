@@ -158,6 +158,14 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 /* date button + calendar picker */
 .datebtn{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:9px 14px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;min-width:150px;justify-content:space-between}
 .datebtn:hover{border-color:var(--blue)}
+/* ◀ ▶ เลื่อนวัน/รอบ — เจ้าของชอบของในหน้า PJP เลยเอามาใช้ทุกหน้าที่เลือกวัน/เดือน/รอบ (12 ต.ค. 69)
+   ◀ = ย้อนไปอันที่เก่ากว่าเสมอ · ▶ = ไปอันที่ใหม่กว่าเสมอ ไม่ว่ารายการจะเรียงทางไหน */
+.dstep{display:inline-flex;gap:6px;align-items:center}
+.dstep-b{flex:0 0 auto;border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:0 12px;
+  height:40px;font-size:13px;font-weight:800;color:var(--blue);cursor:pointer;font-family:inherit;line-height:1}
+.dstep-b:hover{border-color:var(--blue);background:var(--blue-soft)}
+.dstep>select{min-width:150px}
+@media(max-width:560px){.dstep>select{min-width:0}.dstep .datebtn{min-width:0;flex:1 1 auto}}
 #copyModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:140;display:flex;align-items:center;justify-content:center;padding:18px}
 .copy-card{background:#fff;border-radius:16px;padding:16px 18px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .copy-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
@@ -870,8 +878,12 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       </div>
       <div class="ctl">
         <label id="keyLabel">เลือกเดือน</label>
-        <select id="keySel" onchange="render()"></select>
-        <button class="datebtn hidden" id="calBtn" onclick="openCal(dailyDates(),S.key,pickDailyDate)"><span>-</span><span>📅</span></button>
+        <div class="dstep">
+          <button type="button" class="dstep-b" onclick="keyStep(-1)" title="ย้อนกลับ">◀</button>
+          <select id="keySel" onchange="render()"></select>
+          <button class="datebtn hidden" id="calBtn" onclick="openCal(dailyDates(),S.key,pickDailyDate)"><span>-</span><span>📅</span></button>
+          <button type="button" class="dstep-b" onclick="keyStep(1)" title="ถัดไป">▶</button>
+        </div>
       </div>
       <div class="ctl" id="scopeCtl">
         <label>มุมมอง</label>
@@ -923,7 +935,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 
     <div id="kpiView" class="hidden">
       <div class="controls">
-        <div class="ctl"><label>เลือกรอบข้อมูล (ณ วันที่)</label><select id="kpiMonth" onchange="onKpiMonth()"></select></div>
+        <div class="ctl"><label>เลือกรอบข้อมูล (ณ วันที่)</label><div class="dstep"><button type="button" class="dstep-b" onclick="selStep('kpiMonth',-1)" title="รอบก่อนหน้า">◀</button><select id="kpiMonth" data-rev="1" onchange="onKpiMonth()"></select><button type="button" class="dstep-b" onclick="selStep('kpiMonth',1)" title="รอบถัดไป">▶</button></div></div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
           <button class="ps-del" onclick="kpiDeleteRound()">🗑 ลบรอบนี้</button>
         </div>
@@ -972,7 +984,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 
     <div id="psView" class="hidden">
       <div class="controls">
-        <div class="ctl"><label>รอบข้อมูล</label><select id="psRound" onchange="onPsRound()"></select></div>
+        <div class="ctl"><label>รอบข้อมูล</label><div class="dstep"><button type="button" class="dstep-b" onclick="selStep('psRound',-1)" title="รอบก่อนหน้า">◀</button><select id="psRound" data-rev="1" onchange="onPsRound()"></select><button type="button" class="dstep-b" onclick="selStep('psRound',1)" title="รอบถัดไป">▶</button></div></div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
           <button class="ps-del" onclick="psDeleteRound()">🗑 ลบรอบนี้</button>
         </div>
@@ -1013,7 +1025,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 
     <div id="orderView" class="hidden">
       <div class="controls">
-        <div class="ctl"><label>เลือกวันสั่ง</label><button class="datebtn" onclick="openCal(allOrderDates(),ORD.date,pickOrderDate)"><span id="orderDateTxt">-</span><span>📅</span></button></div>
+        <div class="ctl"><label>เลือกวันสั่ง</label><div class="dstep"><button type="button" class="dstep-b" onclick="ordStep(-1)" title="วันก่อนหน้า">◀</button><button class="datebtn" onclick="openCal(allOrderDates(),ORD.date,pickOrderDate)"><span id="orderDateTxt">-</span><span>📅</span></button><button type="button" class="dstep-b" onclick="ordStep(1)" title="วันถัดไป">▶</button></div></div>
         <div class="ctl"><label>🔍 ค้นหาสถานะสินค้า (ทุกวันที่สั่ง)</label><input id="orderSearch" placeholder="พิมพ์รหัส / ชื่อสินค้า เพื่อดูสถานะ" oninput="renderOrder()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:230px"></div>
         <div class="spacer"></div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
@@ -1109,8 +1121,8 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
             <button data-m="sales" onclick="posSetMain('sales')">🧑‍💼 การสั่งของของเซลล์</button>
           </div>
         </div>
-        <div class="ctl" id="posDateCtl"><label>รอบใบสั่ง</label><select id="posDate" onchange="PS2.date=this.value;renderPOS()"></select></div>
-        <div class="ctl" id="posMonthCtl" style="display:none"><label>ช่วงเวลา</label><select id="posMonth" onchange="PS2.month=this.value;renderSalesOrd()"></select></div>
+        <div class="ctl" id="posDateCtl"><label>รอบใบสั่ง</label><div class="dstep"><button type="button" class="dstep-b" onclick="selStep('posDate',-1)" title="รอบก่อนหน้า">◀</button><select id="posDate" data-rev="1" onchange="PS2.date=this.value;renderPOS()"></select><button type="button" class="dstep-b" onclick="selStep('posDate',1)" title="รอบถัดไป">▶</button></div></div>
+        <div class="ctl" id="posMonthCtl" style="display:none"><label>ช่วงเวลา</label><div class="dstep"><button type="button" class="dstep-b" onclick="selStep('posMonth',-1)" title="เดือนก่อนหน้า">◀</button><select id="posMonth" data-rev="1" onchange="PS2.month=this.value;renderSalesOrd()"></select><button type="button" class="dstep-b" onclick="selStep('posMonth',1)" title="เดือนถัดไป">▶</button></div></div>
         <div class="ctl" id="posQCtl"><label>🔍 ค้นหาสินค้า</label><input id="posQ" placeholder="พิมพ์รหัส / ชื่อสินค้า" oninput="PS2.q=this.value;renderPOSBody()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:200px"></div>
         <div class="spacer"></div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
@@ -1210,7 +1222,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 
     <div id="promoView" class="hidden">
       <div class="controls">
-        <div class="ctl"><label>เดือนของโปรโมชั่น</label><select id="pmMonth" onchange="pmSetMonth(this.value)"></select></div>
+        <div class="ctl"><label>เดือนของโปรโมชั่น</label><div class="dstep"><button type="button" class="dstep-b" onclick="selStep('pmMonth',-1)" title="เดือนก่อนหน้า">◀</button><select id="pmMonth" data-rev="1" onchange="pmSetMonth(this.value)"></select><button type="button" class="dstep-b" onclick="selStep('pmMonth',1)" title="เดือนถัดไป">▶</button></div></div>
         <div class="ctl"><label>แสดง</label>
           <div class="seg" id="pmScopeSeg">
             <button data-s="all" class="on" onclick="pmSetScope('all')">ทุกสาย</button>
@@ -1236,7 +1248,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 
     <div id="promoresView" class="hidden">
       <div class="controls">
-        <div class="ctl"><label>เดือน</label><select id="prMonth" onchange="prSetMonth(this.value)"></select></div>
+        <div class="ctl"><label>เดือน</label><div class="dstep"><button type="button" class="dstep-b" onclick="selStep('prMonth',-1)" title="เดือนก่อนหน้า">◀</button><select id="prMonth" data-rev="1" onchange="prSetMonth(this.value)"></select><button type="button" class="dstep-b" onclick="selStep('prMonth',1)" title="เดือนถัดไป">▶</button></div></div>
         <div class="ctl"><label>มุมมอง</label>
           <div class="seg" id="prScopeSeg">
             <button data-s="me" onclick="prSetScope('me')">สายของฉัน</button>
@@ -1276,7 +1288,11 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
           </div>
         </div>
         <div class="ctl"><label>ช่วงเวลา</label>
-          <select id="anaPeriod" onchange="onAnaPeriod()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px"></select>
+          <div class="dstep">
+            <button type="button" class="dstep-b" onclick="selStep('anaPeriod',-1)" title="เดือนก่อนหน้า">◀</button>
+            <select id="anaPeriod" data-rev="1" onchange="onAnaPeriod()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px"></select>
+            <button type="button" class="dstep-b" onclick="selStep('anaPeriod',1)" title="เดือนถัดไป">▶</button>
+          </div>
         </div>
         <div class="ctl" id="anaStoreSearchCtl" style="display:none"><label>ค้นหาร้าน</label>
           <input id="anaStoreSearch" placeholder="🔍 ชื่อ/รหัสร้าน" oninput="onAnaStoreSearch()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:180px">
@@ -1730,6 +1746,8 @@ function initKeys(){
   else if(S.period==="quarter"){lbl.textContent="เลือกไตรมาส";opts=quarters().map(q=>[q.id,q.label]);}
   else{lbl.textContent="ปี";opts=[["2026","ปี 2569 (2026)"]];}
   opts.forEach(([v,t])=>{const o=document.createElement("option");o.value=v;o.textContent=t;sel.appendChild(o);});
+  /* ไตรมาสเรียงเก่า→ใหม่ ส่วนวัน/สัปดาห์/เดือนเรียงใหม่→เก่า — บอก ◀ ▶ ให้รู้ทาง */
+  if(S.period==="quarter"||S.period==="year")delete sel.dataset.rev;else sel.dataset.rev="1";
   S.key=opts.length?opts[0][0]:null;sel.value=S.key;
   /* daily period uses the calendar button; other periods use the dropdown */
   const isDaily=S.period==="daily";
@@ -1742,6 +1760,42 @@ function quarters(){
   ms.forEach(m=>{const mo=+m.split("-")[1];const q=Math.ceil(mo/3);(qs[q]=qs[q]||[]).push(m);});
   return Object.keys(qs).sort().map(q=>({id:"Q"+q,label:"ไตรมาส "+q+" / 2569",months:qs[q]}));
 }
+
+/* ====================== ◀ ▶ เลื่อนวัน / รอบ / เดือน ======================
+ * ปุ่มคู่นี้ "ไม่แตะข้อมูลเลย" — มันแค่เลือกค่าใน <select> หรือเรียกฟังก์ชันเลือกวัน
+ * ตัวเดียวกับที่ผู้ใช้กดเองอยู่แล้ว ผลลัพธ์จึงเหมือนกดเลือกจาก dropdown ทุกประการ
+ *
+ * ⚠️ รายการส่วนใหญ่ในแอพนี้เรียง "ใหม่สุดอยู่บนสุด" (ฟังก์ชันที่เติม option ใช้ .reverse())
+ *    ตัว <select> พวกนั้นจึงต้องมี data-rev="1" กำกับไว้ ไม่งั้น ◀ จะกลายเป็นเดินหน้า
+ *    อันไหนเรียงเก่า→ใหม่ (เช่น ไตรมาส) ห้ามใส่ data-rev
+ */
+function selStep(id,dir){
+  const s=document.getElementById(id);
+  if(!s||s.options.length<2)return;
+  const step=(s.dataset.rev?-1:1)*dir;
+  let i=s.selectedIndex;if(i<0)i=0;
+  const j=Math.max(0,Math.min(s.options.length-1,i+step));
+  if(j===i)return;
+  s.selectedIndex=j;
+  /* ยิง change เองเพื่อให้ onchange เดิมทำงาน — ไม่ได้เขียนตรรกะซ้ำ จะได้ไม่มีวันหลุดกัน */
+  s.dispatchEvent(new Event("change",{bubbles:true}));
+}
+/* เลื่อนไปตามรายการวันที่ (เรียงเก่า→ใหม่) แล้วเรียกฟังก์ชันเลือกวันตัวเดิม */
+function dateStep(list,cur,n,pick){
+  const ds=list||[];
+  if(!ds.length)return;
+  let i=ds.indexOf(cur);
+  if(i<0)i=ds.length-1;
+  const j=Math.max(0,Math.min(ds.length-1,i+n));
+  if(ds[j]===cur)return;
+  pick(ds[j]);
+}
+/* ภาพรวมยอดขาย: รายวันใช้ปุ่มปฏิทิน · ช่วงอื่นใช้ dropdown — ปุ่ม ◀ ▶ คู่เดียวคุมทั้งสองแบบ */
+function keyStep(n){
+  if(S.period==="daily"){dateStep(dailyDates(),S.key,n,pickDailyDate);return;}
+  selStep("keySel",n);
+}
+function ordStep(n){dateStep(allOrderDates(),ORD.date,n,pickOrderDate);}
 
 /* ====================== SEGMENT CONTROLS ====================== */
 function setSeg(id,attr,val){document.getElementById(id).querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset[attr]===val));}
@@ -3828,10 +3882,10 @@ function renderPjp(){
   const lines=pjLines().filter(x=>PJ.dt||x!==PJP_DT);
   document.getElementById("pjpCtl").innerHTML=`<div class="controls">
     <div class="ctl"><label>วันที่</label>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button class="pl-today" style="padding:8px 11px" onclick="pjStep(-1)">◀</button>
+      <div class="dstep">
+        <button type="button" class="dstep-b" onclick="pjStep(-1)" title="วันก่อนหน้า">◀</button>
         <button class="datebtn" onclick="openCal(pjDates(),PJ.d,pjSetDate)"><span>${fmtDate(ymd)}</span><span>📅</span></button>
-        <button class="pl-today" style="padding:8px 11px" onclick="pjStep(1)">▶</button>
+        <button type="button" class="dstep-b" onclick="pjStep(1)" title="วันถัดไป">▶</button>
       </div></div>
     ${pjIsMgr()?`<div class="ctl"><label>สาย</label><select onchange="pjSetLine(this.value)">${
       lines.map(c=>`<option value="${c}"${c===rt?" selected":""}>${anaEsc(pjLineName(c))}</option>`).join("")}</select></div>`:""}

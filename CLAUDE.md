@@ -229,6 +229,14 @@ code, never printed.
   feature means removing its entry there and nothing else: the eB2B opening contest ended in
   Sep 26, so its group is commented out, while `ebView`, `renderEB`, `parseEB` and the stored
   `EB2B` data all stay and keep merging — put the line back and it returns with its history.
+  **Every date / round / month picker carries ◀ ▶ step buttons** (`.dstep`, `selStep`/`dateStep`/
+  `keyStep`/`ordStep`/`pjStep`) — the owner asked for the PJP one everywhere. ◀ always means
+  *older* and ▶ *newer*, so a `<select>` whose options are filled newest-first (most of them, they
+  use `.reverse()`) must carry **`data-rev="1"`**; one filled oldest-first (quarters) must not, and
+  `#keySel` sets the flag per period in `initKeys`. `selStep` never reimplements a handler: it
+  moves `selectedIndex` and dispatches `change`, so it is exactly a dropdown pick and **cannot
+  touch data**. Prove both with **`node test/browser/datestep.test.cjs`** (72 checks, including a
+  byte-for-byte comparison of every stored blob before and after every button on every page).
 - `build.cjs` — regenerates `public/index.html` from the template (run after every edit).
 - `public/index.html` — generated output that Vercel serves. Do not edit by hand.
 - `public/join.html` + `public/img/*` — the public shop-application page (hand-written).
