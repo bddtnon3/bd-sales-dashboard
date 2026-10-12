@@ -169,7 +169,12 @@ code, never printed.
   date. It also shows **🏪 งานร้านค้า** — the open follow-ups from the PJP visit notes,
   likewise derived at render time and never written to `PLAN.items`, so clearing one at the shop
   clears it here. `PL.scope` filters all / shop work / depot work / my line, and the manager gets
-  a line picker (`PL.pjLine`) to monitor one route at a time. Rules: `HANDOFF.md` §5.
+  a line picker (`PL.pjLine`) to monitor one route at a time.
+  **A 🌴 holiday is not work** (`plIsWork`): nobody completes a day off, so `cat==="holiday"` is
+  excluded from overdue, from the today / next-7-days cards and from the tab's red badge, and its
+  row shows the icon instead of a tick. It must still be listed and drawn on the calendar, so
+  never filter it out in `plOcc`. Prove it with **`node test/browser/plan.test.cjs`** (87 checks).
+  Rules: `HANDOFF.md` §5.
   Every product list under **การสั่งของ** is sorted into **the order the owner reads the paper
   form** — down the left column block, then the next block to the right (`poSeqSort`). That
   order is captured from the uploaded order form itself and kept in `POSTATUS.data[d].all`

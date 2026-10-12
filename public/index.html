@@ -351,6 +351,9 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 @media(max-width:900px){#pjpCards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){#pjpCards{grid-template-columns:1fr}}
 .pl-item.pl-shop{background:#FBFAFF}
+/* 🌴 วันหยุด — ไม่มีช่องติ๊ก เพราะไม่ใช่งานที่ต้องทำให้เสร็จ */
+.pl-item.pl-holi{background:#FBFAFE}
+.pl-holi-ic{flex:0 0 24px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
 /* ⚠️ อย่าใช้คลาส .pl-tick กับปุ่มนี้ — .pl-tick ตั้ง color:transparent ไว้ (ช่องติ๊กเปล่า)
    แล้วมันอยู่ท้ายไฟล์กว่า จึงชนะเสมอ ไอคอน 🏪 จะกลายเป็นช่องว่าง */
 .pj-go{flex:0 0 auto;width:28px;height:28px;border:1.5px solid #BFB0F5;background:#F0ECFE;
@@ -2797,7 +2800,12 @@ function plOccur(it,from,to){
 }
 /* "เลยกำหนด" นับแค่งานที่ไม่ซ้ำ — งานประจำที่ตกรอบไปเมื่อ 3 สัปดาห์ก่อนไม่ใช่สิ่งที่ต้องตามเก็บ
    ถ้านับด้วย หน้าจอจะเต็มไปด้วยงานประจำย้อนหลังนับสิบรายการ (ตั้งใจให้ "ไม่ปวดหัว") */
-function plLate(occ,today){return occ.filter(o=>o.end<today&&!o.it.rep&&!plIsDone(o.it.id,o.d));}
+/* 🌴 วันหยุดไม่ใช่ "งาน" — ไม่มีใครต้องทำให้เสร็จ จึงต้องไม่ถูกนับเป็นงานค้าง
+   ไม่ขึ้นเตือนล่วงหน้า และไม่ขึ้นเลขแดงบนแท็บ
+   (เจ้าของแจ้ง 12 ต.ค. 69: วันหยุดวันที่ 10 ขึ้นทั้ง "เลยกำหนดแล้ว" และ "7 วันข้างหน้า")
+   ⚠️ ยังขึ้นบนปฏิทินตามปกติ เพราะใส่ไว้เพื่อให้ทุกคนเห็นว่าวันนั้นหยุด — ห้ามกรองทิ้งที่ plOcc */
+function plIsWork(o){return ((o&&o.it?o.it.cat:(o||{}).cat)||"task")!=="holiday";}
+function plLate(occ,today){return occ.filter(o=>plIsWork(o)&&o.end<today&&!o.it.rep&&!plIsDone(o.it.id,o.d));}
 function plOcc(from,to){
   const out=[];
   plVisible().forEach(it=>plOccur(it,from,to).forEach(o=>out.push({it:it,d:o.date,end:o.end})));
@@ -2846,7 +2854,8 @@ function plBadge(){
   const sc=PL.scope,pl=PL.pjLine;PL.scope="all";PL.pjLine="";
   const occ=plOcc(plShift(today,-120),today);
   PL.scope=sc;PL.pjLine=pl;
-  const n=plLate(occ,today).length+occ.filter(o=>o.d<=today&&o.end>=today&&!plIsDone(o.it.id,o.d)).length;
+  const n=plLate(occ,today).length+
+    occ.filter(o=>plIsWork(o)&&o.d<=today&&o.end>=today&&!plIsDone(o.it.id,o.d)).length;
   bd.innerHTML=n?`<span style="background:var(--bad);color:#fff;border-radius:20px;font-size:10.5px;font-weight:800;padding:1px 6px;margin-left:6px">${n}</span>`:"";
 }
 function initPlan(){PL.ym=plYm(todayISO());PL.day=null;plBadge();}
@@ -2858,10 +2867,12 @@ function renderPlan(){
   const occM=plOcc(from,to);
   /* การ์ดสรุปคิดจากวันนี้ ไม่ขึ้นกับเดือนที่กำลังเปิดดู — เปิดมาต้องรู้ทันทีว่ามีอะไรค้าง */
   const w=plOcc(plShift(today,-120),plShift(today,31));
-  const open=o=>!plIsDone(o.it.id,o.d);
+  /* การ์ดเตือนทั้งสามใบนับเฉพาะ "งาน" — วันหยุดไม่ใช่งาน (plIsWork) */
+  const open=o=>plIsWork(o)&&!plIsDone(o.it.id,o.d);
   const late=plLate(w,today);
   const now=w.filter(o=>o.d<=today&&o.end>=today&&open(o));
   const soon=w.filter(o=>o.d>today&&o.d<=plShift(today,7)&&open(o));
+  const holi=w.filter(o=>!plIsWork(o)&&o.d>=today&&o.d<=plShift(today,31));
   const doneM=occM.filter(o=>plIsDone(o.it.id,o.d)).length;
 
   const shopM=occM.filter(o=>o.it.pj).length;
@@ -2877,7 +2888,8 @@ function renderPlan(){
   document.getElementById("plCards").innerHTML=
     `<div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">⚠️ เลยกำหนดแล้ว</div><div class="v ${late.length?"down":""}">${late.length}</div><div class="s">${late.length?"ควรเคลียร์ก่อน":"ไม่มีงานค้าง 👍"}</div></div>`+
     `<div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">📍 วันนี้</div><div class="v">${now.length}</div><div class="s">${fmtDate(today)}</div></div>`+
-    `<div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:var(--warn)">⏳ 7 วันข้างหน้า</div><div class="v">${soon.length}</div><div class="s">เตรียมตัวล่วงหน้า</div></div>`+
+    `<div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:var(--warn)">⏳ 7 วันข้างหน้า</div><div class="v">${soon.length}</div><div class="s">${
+      holi.length?`🌴 วันหยุดถัดไป ${fmtDateShort(holi[0].d)}`:"เตรียมตัวล่วงหน้า"}</div></div>`+
     `<div class="card" style="border-top:3px solid #7A5AF8"><div class="k" style="color:#7A5AF8">🏪 งานร้านค้าเดือนนี้</div><div class="v"${shopM?' style="color:#7A5AF8"':""}>${shopM}</div><div class="s">${shopM?"จากโน้ตการเยี่ยมของเซลล์":"ยังไม่มีเรื่องค้างจากร้าน"}</div></div>`;
 
   plLineBox();
@@ -2939,10 +2951,14 @@ function plItemHtml(o){
   tags.push(`<span class="pl-tag" style="background:${c.bg};color:${c.fg}">${c.ic} ${c.nm}</span>`);
   tags.push(plLineTags(it.lines));
   if(it.byName)tags.push(`<span class="pl-tag">✍️ ${anaEsc(it.byName)}</span>`);
-  return `<div class="pl-item${dn?" done":""}" style="border-left-color:${c.bd}">`+
-    `<button type="button" class="pl-tick${dn?" on":""}" `+
-      (plCanTick(it)?`onclick="plTick('${it.id}','${o.d}')" title="${dn?"ยกเลิกเครื่องหมายเสร็จ":"ทำเสร็จแล้ว"}"`
-                    :`disabled style="opacity:.3" title="งานนี้ไม่ได้ระบุสายของคุณ"`)+`>✓</button>`+
+  /* 🌴 วันหยุดไม่มีช่องติ๊ก — ไม่มีอะไรให้ "ทำเสร็จ" ช่องติ๊กเปล่า ๆ ทำให้ดูเหมือนงานค้าง */
+  const work=plIsWork(it);
+  return `<div class="pl-item${dn?" done":""}${work?"":" pl-holi"}" style="border-left-color:${c.bd}">`+
+    (work
+      ? `<button type="button" class="pl-tick${dn?" on":""}" `+
+        (plCanTick(it)?`onclick="plTick('${it.id}','${o.d}')" title="${dn?"ยกเลิกเครื่องหมายเสร็จ":"ทำเสร็จแล้ว"}"`
+                      :`disabled style="opacity:.3" title="งานนี้ไม่ได้ระบุสายของคุณ"`)+`>✓</button>`
+      : `<span class="pl-holi-ic" title="วันหยุด — ไม่ต้องติ๊ก ไม่นับเป็นงานค้าง">${c.ic}</span>`)+
     `<div class="pl-ibody"><div class="pl-t">${anaEsc(it.t)}</div>`+
     `<div class="pl-meta">${tags.join("")}</div>`+
     (it.note?`<div class="pl-note">${anaEsc(it.note)}</div>`:"")+
