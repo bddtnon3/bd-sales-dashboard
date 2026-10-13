@@ -205,7 +205,7 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
      txt:v.innerText};
  });
  t('หัวข้อบอกสาย + วัน + วันในสัปดาห์',/CT11/.test(ui.bar)&&/5 ต\.ค\. 2569/.test(ui.bar)&&/จันทร์/.test(ui.bar),ui.bar.split('\n')[0]);
- t('การ์ดสรุป: 26 ร้าน / เข้าแล้ว 0',ui.cards[0]==='26'&&ui.cards[1]==='0',JSON.stringify(ui.cards));
+ t('การ์ดสรุป: 26 ร้าน / ยังไม่มีงานค้าง',ui.cards[0]==='26'&&ui.cards[1]==='0',JSON.stringify(ui.cards));
  t('ขึ้นครบ 26 ร้าน',ui.rows===26,ui.rows);
  t('ร้านแรกคือลำดับ 1 และมีป้ายงานที่ต้องทำ',/ธงฟ้าสารภี/.test(ui.first)&&/ยอดตก/.test(ui.first),ui.first.replace(/\n/g,' · ').slice(0,120));
  t('ทุกร้านที่มีพิกัดมีปุ่มนำทาง Google Maps',ui.nav>=20,ui.nav);
@@ -213,85 +213,97 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
  t('เตือนเรื่องล็อกโดเมนของ key',/Application restrictions/.test(ui.txt));
  t('ไม่มี NaN / undefined บนหน้าจอ',!/NaN|undefined/.test(ui.txt));
 
- /* ---------- 5) บันทึกการเข้าเยี่ยม (ปุ่มเดียวเปิดกล่องโน้ต) ---------- */
+ /* ---------- 5) ปุ่ม "บันทึกงานค้าง" (เดิมคือบันทึกการเยี่ยม — เจ้าของสั่งเปลี่ยน 13 ต.ค. 69) --------- */
  const tick=await ev(async()=>{
    const card=[...document.querySelectorAll('#pjpView .pj-card')][0];
-   const btn=[...card.querySelectorAll('button')].find(x=>/บันทึกการเยี่ยม/.test(x.innerText));
+   const btn=[...card.querySelectorAll('button')].find(x=>/บันทึกงานค้าง/.test(x.innerText));
    const lbl0=btn?btn.innerText.trim():'';
+   const gone=!card.innerText.match(/บันทึกการเยี่ยม|ติ๊กว่าเข้าแล้ว|เข้าแล้ว/);
    btn.click();
    const sheet=!!document.querySelector('#pjNoteModal .pl-mask');
+   const mtxt=(document.getElementById('pjNoteModal')||{}).innerText||'';
    const quick=[...document.querySelectorAll('#pjNoteModal button')].find(x=>/ไม่มีอะไรต้องตามต่อ/.test(x.innerText));
-   await pjNoteQuick();
-   const a={lbl0,sheet,quick:!!quick,closed:!document.querySelector('#pjNoteModal .pl-mask'),
-     done:PJP.done['2493638|2026-10-05'],
-     cards:[...document.querySelectorAll('#pjpCards .card .v')].map(x=>x.innerText.trim())};
-   /* ลบบันทึกแล้วต้องเหลือ v:0 ไม่ใช่ลบคีย์ */
-   pjNoteOpen('2493638','2026-10-05');
-   await pjNoteErase();
-   a.off=PJP.done['2493638|2026-10-05'];
-   return a;
+   /* กดบันทึกทั้งที่ยังไม่ได้ใส่อะไร ต้องเตือน ไม่ใช่บันทึกเรคอร์ดเปล่า */
+   window.__alerts=[];
+   await pjNoteSave();
+   const blocked=(window.__alerts||[]).length>0&&!PJP.done['2493638|2026-10-05'];
+   pjNoteClose();
+   return {lbl0,gone,sheet,quick:!!quick,blocked,hasNx:/เตือนซ้ำตอนไปร้านนี้รอบหน้า/.test(mtxt)};
  });
- t('ปุ่มบนการ์ดเป็น "บันทึกการเยี่ยม" ไม่ใช่ช่องติ๊กเปล่า ๆ',/บันทึกการเยี่ยม/.test(tick.lbl0),tick.lbl0);
- t('กดแล้วกล่องโน้ตเปิด',tick.sheet);
- t('ในกล่องมีปุ่มทางด่วน "เข้าแล้ว ไม่มีอะไรต้องตามต่อ" (ไม่มีอะไรก็กดทีเดียวจบ)',tick.quick);
- t('กดทางด่วนแล้วกล่องปิดเอง',tick.closed);
- t('บันทึกเป็น v:1 พร้อมชื่อคนบันทึก',tick.done&&tick.done.v===1&&tick.done.by==='ผู้จัดการ',JSON.stringify(tick.done));
- t('ทางด่วนไม่ใส่โน้ตและไม่ใส่ธงค้าง',tick.done&&!tick.done.tx&&!tick.done.f,JSON.stringify(tick.done));
- t('การ์ด "บันทึกแล้ว" ขยับเป็น 1',tick.cards[1]==='1',JSON.stringify(tick.cards));
- t('ลบบันทึกเก็บเป็น v:0 ไม่ใช่ลบคีย์ (กัน merge ย้อนกลับ)',tick.off&&tick.off.v===0,JSON.stringify(tick.off));
+ t('ปุ่มบนการ์ดเป็น "บันทึกงานค้าง"',/บันทึกงานค้าง/.test(tick.lbl0),tick.lbl0);
+ t('⚠️ ไม่มีปุ่ม/คำว่า "บันทึกการเยี่ยม" หรือ "เข้าแล้ว" เหลืออยู่บนการ์ดแล้ว',tick.gone);
+ t('กดแล้วกล่องเปิด',tick.sheet);
+ t('⚠️ ปุ่มทางด่วน "เข้าแล้ว ไม่มีอะไรต้องตามต่อ" ถูกเอาออกแล้ว (ทีมงานสับสน)',!tick.quick);
+ t('มีกล่องติ๊ก 🔔 เตือนซ้ำรอบหน้า',tick.hasNx);
+ t('กดบันทึกโดยยังไม่ใส่อะไร ระบบเตือนและไม่บันทึกเรคอร์ดเปล่า',tick.blocked);
 
- /* ---------- 5b) โน้ต + เรื่องที่ต้องตามต่อรอบหน้า ----------
-    เจ้าของบอก 8 ต.ค. 69 ว่าการติ๊กเฉย ๆ ซ้ำซ้อน — ต้องโน้ตได้ และต้องเตือนรอบหน้า */
+ /* ---------- 5b) ⚠️ บั๊กที่เจ้าของเจอ: โน้ตอย่างเดียว (ไม่ติ๊กธง) ต้องขึ้นปฏิทิน ---------- */
  const note=await ev(async()=>{
    pjNoteOpen('2493638','2026-10-05');
    document.getElementById('pjNoteTx').value='เจ้าของไม่อยู่ ให้กลับมาอีกทีต้นเดือน';
-   pjNoteFlag('sell');pjNoteFlag('eb');pjNoteFlag('eb');pjNoteFlag('eb');   /* ติ๊ก/ปลด/ติ๊ก */
-   const keptText=document.getElementById('pjNoteTx').value;               /* ติ๊กธงแล้วข้อความต้องไม่หาย */
-   await pjNoteSave();
+   await pjNoteSave();                       /* ไม่ติ๊กธงเลยสักอัน */
    const rec=PJP.done['2493638|2026-10-05'];
-   /* รอบหน้าของร้านนี้ตามแผน PJP */
-   const next=pjNextVisit('2493638','2026-10-05');
-   PJ.d=next;renderPjp();
+   const openNoFlag=!!pjFollow('2493638',null);
+   PJ.d='2026-10-05';renderPjp();
    const card=[...document.querySelectorAll('#pjpView .pj-card')].find(c=>/2493638/.test(c.innerText));
    const fuBox=card?card.querySelector('.pj-fu'):null;
-   return {rec:rec,keptText:keptText,next:next,
+   return {rec,openNoFlag,
      fuTxt:fuBox?fuBox.innerText.replace(/\s+/g,' ').trim():'',
      purple:card?card.className:'',
-     fuCard:(document.querySelectorAll('#pjpCards .card .v')[2]||{}).innerText,
-     fuBtn:!!([...document.querySelectorAll('#pjpCtl button')].find(x=>/มีเรื่องค้าง/.test(x.innerText)))};
+     btn:card?[...card.querySelectorAll('button')].map(x=>x.innerText.trim()).join(' | '):'',
+     fuCard:(document.querySelectorAll('#pjpCards .card .v')[1]||{}).innerText,
+     fuBtn:!!([...document.querySelectorAll('#pjpCtl button')].find(x=>/มีงานค้าง/.test(x.innerText)))};
  });
+ t('⚠️ พิมพ์โน้ตอย่างเดียว ไม่ติ๊กธง ก็ต้องนับเป็นงานค้าง (บั๊กที่เจ้าของเจอ 12 ต.ค. 69)',
+   note.openNoFlag,JSON.stringify(note.rec));
  t('โน้ตถูกเก็บในเรคอร์ดเดิม (PJP.done[...].tx) ไม่ใช่ section ใหม่',
    note.rec&&note.rec.tx==='เจ้าของไม่อยู่ ให้กลับมาอีกทีต้นเดือน',JSON.stringify(note.rec));
- t('ธงเรื่องที่ต้องตามต่อเก็บเป็น .f',note.rec&&(note.rec.f||[]).join(',')==='sell,eb',JSON.stringify(note.rec&&note.rec.f));
- t('ติ๊กธงแล้วข้อความที่พิมพ์ไว้ไม่หาย',note.keptText==='เจ้าของไม่อยู่ ให้กลับมาอีกทีต้นเดือน',note.keptText);
- t('หาวันเยี่ยมรอบหน้าของร้านนี้จากแผน PJP ได้',/^2026-10-\d\d$/.test(note.next||'')&&note.next>'2026-10-05',note.next);
- t('⚠️ รอบหน้าการ์ดร้านเด้งเตือนเรื่องที่ค้าง',/ค้างจากครั้งก่อน/.test(note.fuTxt)&&/ต้องขายเพิ่ม/.test(note.fuTxt),note.fuTxt.slice(0,110));
- t('...พร้อมโน้ตเดิมที่เซลล์เขียนไว้',/กลับมาอีกทีต้นเดือน/.test(note.fuTxt));
+ t('การ์ดร้านขึ้นกล่องงานค้างทันทีในวันที่บันทึก',/งานค้าง/.test(note.fuTxt)&&/กลับมาอีกทีต้นเดือน/.test(note.fuTxt),note.fuTxt.slice(0,110));
  t('...และการ์ดมีแถบสีม่วงให้เห็นจากไกล ๆ',/\bfu\b/.test(note.purple),note.purple);
- t('การ์ดสรุป "ค้างจากครั้งก่อน" นับได้',note.fuCard==='1',note.fuCard);
- t('มีปุ่มกรอง "มีเรื่องค้าง"',note.fuBtn);
+ t('...พร้อมปุ่ม "เคลียร์แล้ว"',/เคลียร์แล้ว/.test(note.btn),note.btn);
+ t('การ์ดสรุป "งานค้างในร้านวันนี้" นับได้',note.fuCard==='1',note.fuCard);
+ t('มีปุ่มกรอง "มีงานค้าง"',note.fuBtn);
 
- /* เรื่องค้างต้องเคลียร์เมื่อไปรอบหน้าแล้วไม่ติ๊กอะไร — "รอบล่าสุดชนะ" ไม่ใช่สะสม */
+ /* ---------- 5c) กล่องติ๊ก 🔔 เตือนซ้ำรอบหน้า ---------- */
+ const nxT=await ev(async()=>{
+   pjNoteOpen('2493638','2026-10-05');
+   document.getElementById('pjNoteTx').value='ขอราคาซันไลต์';
+   pjNoteFlag('sell');
+   const before=!!PJN.nx;
+   pjNoteNext();                               /* ติ๊กกล่อง 🔔 */
+   const on=!!PJN.nx;
+   const keptText=document.getElementById('pjNoteTx').value;
+   await pjNoteSave();
+   return {before,on,keptText,rec:PJP.done['2493638|2026-10-05'],
+     next:pjNextVisit('2493638','2026-10-05')};
+ });
+ t('ค่าเริ่มต้นของกล่อง 🔔 คือไม่ติ๊ก',nxT.before===false);
+ t('ติ๊กแล้วบันทึกเป็น nx:1 ในเรคอร์ดเดิม',nxT.rec&&nxT.rec.nx===1,JSON.stringify(nxT.rec));
+ t('ติ๊กกล่อง 🔔 แล้วข้อความที่พิมพ์ไว้ไม่หาย',nxT.keptText==='ขอราคาซันไลต์',nxT.keptText);
+ t('ธงที่ติ๊กไว้ก็ถูกบันทึกด้วย',nxT.rec&&(nxT.rec.f||[]).join(',')==='sell',JSON.stringify(nxT.rec&&nxT.rec.f));
+
+ /* ---------- 5d) เคลียร์งานค้าง — เขียนเรคอร์ดใหม่ ไม่ลบของเดิม ---------- */
  const clr=await ev(async()=>{
-   const next=pjNextVisit('2493638','2026-10-05');
-   const after=pjNextVisit('2493638',next);
-   await pjSaveVisit('2493638',next,1,'ขายเพิ่มได้ 2 ลัง',[]);
-   const a={stillOpenAtNext:!!pjFollow('2493638',next),openAfter:!!pjFollow('2493638',after),
-     histKept:!!(PJP.done['2493638|2026-10-05']||{}).tx};
-   /* แล้วถ้ารอบล่าสุดติ๊กธงใหม่ ก็ต้องกลับมาค้างอีก */
-   await pjSaveVisit('2493638',next,1,'ขอโปรใหม่',['pay']);
-   a.reopen=(pjFollow('2493638',after)||{}).f;
+   const openBefore=!!pjFollow('2493638',null);
+   await pjClearWork('2493638','2026-10-09');
+   const a={openBefore,openAfter:!!pjFollow('2493638',null),
+     clRec:PJP.done['2493638|2026-10-09'],
+     histKept:(PJP.done['2493638|2026-10-05']||{}).tx};
+   /* บันทึกงานค้างใหม่ทีหลัง ต้องชนะเครื่องหมายเคลียร์ */
+   await pjSaveVisit('2493638','2026-10-12',1,'ค้างรอบใหม่',[],0,0);
+   a.reopen=(pjFollow('2493638',null)||{}).tx;
    return a;
  });
- t('⚠️ โน้ตเดิมยังอยู่ ไม่ถูกเขียนทับ (ประวัติการเยี่ยมเก็บทุกวัน)',clr.histKept);
- t('ไปรอบหน้าแล้วบันทึกโดยไม่ติ๊กอะไร = เรื่องค้างถือว่าเคลียร์',!clr.openAfter,JSON.stringify(clr));
- t('...แต่ตัวมันเองยังเห็นเรื่องค้างของ "ก่อนหน้านั้น" อยู่ (ไม่ย้อนเวลา)',clr.stillOpenAtNext);
- t('รอบล่าสุดติ๊กธงใหม่ = กลับมาค้างอีก (รอบล่าสุดชนะ ไม่ใช่สะสมทุกรอบ)',
-   (clr.reopen||[]).join(',')==='pay',JSON.stringify(clr.reopen));
+ t('ก่อนเคลียร์ยังค้างอยู่',clr.openBefore);
+ t('⚠️ กดเคลียร์แล้วงานค้างหายไป',!clr.openAfter,JSON.stringify(clr.clRec));
+ t('...โดยเขียนเรคอร์ดใหม่ติดธง cl ไม่ได้ไปลบของเดิม',clr.clRec&&clr.clRec.cl===1,JSON.stringify(clr.clRec));
+ t('⚠️ โน้ตเดิมยังอยู่ครบ เป็นประวัติ (ไม่ทำข้อมูลหาย)',clr.histKept==='ขอราคาซันไลต์',String(clr.histKept));
+ t('บันทึกงานค้างใหม่ทีหลังชนะเครื่องหมายเคลียร์ (รอบล่าสุดชนะ)',clr.reopen==='ค้างรอบใหม่',String(clr.reopen));
 
  /* ---------- 6) กรอง + ปฏิทิน ---------- */
  const filt=await ev(()=>{
-   pjSetOnly('todo');const todo=document.querySelectorAll('#pjpView .pj-card').length;
+   pjSetOnly('fu');const todo=document.querySelectorAll('#pjpView .pj-card').length;
+   const noTodo=![...document.querySelectorAll('#pjpCtl button')].some(x=>/ยังไม่บันทึก|ยังไม่เข้า/.test(x.innerText));
    pjSetOnly('hot');const hot=document.querySelectorAll('#pjpView .pj-card').length;
    pjSetOnly('all');
    pjSetView('month');
@@ -300,9 +312,10 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
    const sel=document.querySelectorAll('#pjpView .pj-dc.sel').length;
    const today=document.querySelectorAll('#pjpView .pj-dc.today').length;
    pjSetView('day');
-   return {todo,hot,cal,withPlan,sel,today};
+   return {todo,noTodo,hot,cal,withPlan,sel,today};
  });
- t('กรอง "ยังไม่เข้า" ตัดร้านที่ติ๊กแล้วออก',filt.todo===25,filt.todo);
+ t('⚠️ ปุ่มกรอง "ยังไม่เข้า/ยังไม่บันทึก" ถูกเอาออกแล้ว',filt.noTodo);
+ t('กรอง "มีงานค้าง" เหลือเฉพาะร้านที่ค้างจริง',filt.todo===1,filt.todo);
  t('กรอง "ต้องดูเป็นพิเศษ" เหลือเฉพาะร้านที่มีปัญหา',filt.hot>0&&filt.hot<26,filt.hot);
  t('ปฏิทินเดือนมี 31 ช่อง',filt.cal===31,filt.cal);
  t('ปฏิทินไฮไลต์วันที่เลือก และวันนี้',filt.sel===1&&filt.today===1,JSON.stringify(filt));
@@ -358,7 +371,7 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
    PJ.d='2026-10-05';PJ.line='209611';renderPjp();
    const el1=document.getElementById('pjMap');
    const vis1=document.getElementById('pjMapWrap').style.display!=='none';
-   pjStep(1);pjSetOnly('hot');pjSetOnly('all');await pjSaveVisit('2493638','2026-10-06',1,'',[]);
+   pjStep(1);pjSetOnly('hot');pjSetOnly('all');await pjSaveVisit('2493638','2026-10-06',1,'จดงานค้าง',[]);
    PJ.d='2026-10-05';renderPjp();
    const el2=document.getElementById('pjMap');
    const same=el1===el2&&!!el1;
@@ -394,7 +407,7 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
    const first={...C},pins=Object.keys(PJMAP.marks).length;
    /* กดอะไรที่ไม่ได้เปลี่ยนชุดร้าน — ต้องไม่สร้าง Map ใหม่ และไม่ fitBounds ใหม่ */
    pjSetOnly('hot');pjSetOnly('all');
-   await pjSaveVisit('2493638','2026-10-05',1,'',[]);
+   await pjSaveVisit('2493638','2026-10-05',1,'จดงานค้าง',[]);
    const same={...C};
    /* เปลี่ยนวัน = ชุดร้านเปลี่ยน → หมุดต้องขยับ/เพิ่ม/ลด แต่ยังห้ามสร้าง Map ใหม่ */
    const d2=pjDates().filter(d=>d>'2026-10-05')[0];
@@ -449,8 +462,8 @@ const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
    const go=[...document.querySelectorAll('#plMain .pl-shop .pl-edit')].find(x=>/ไปที่ร้าน/.test(x.innerText));
    if(go)go.click();
    a.jumped=CURTAB;a.jumpDate=PJ.d;
-   /* เคลียร์เรื่องที่ร้านแล้ว งานในปฏิทินต้องหายเอง (ไม่ได้เก็บเป็นงานจริง) */
-   PJP.done['2493638|2026-10-19']={v:1,by:'ชลศิต',at:2000,tx:'ซื้อเพิ่มแล้ว'};
+   /* กด "เคลียร์" แล้วงานในปฏิทินต้องหายเอง (ไม่ได้เก็บเป็นงานจริง) */
+   PJP.done['2493638|2026-10-19']={v:1,by:'ชลศิต',at:2000,cl:1};
    pjBustNotes();_switchTab('plan');plSetView('list');
    a.after=document.querySelectorAll('#plMain .pl-shop').length;
    a.notStored=Object.keys(PLAN.items).length;

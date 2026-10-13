@@ -759,13 +759,35 @@ console.log("TEST 20 — PJP: the monthly visit plan, the outlet book and the vi
         p10.PJP.done["4887526|2026-10-05"].v === 0 && !p10.PJP.done["4887526|2026-10-05"].tx);
   check("...and the older note cannot come back", !mergeState(p10, p9).PJP.done["4887526|2026-10-05"].tx);
 
+  // the "remind me again next round" flag and the explicit clear marker ride on the
+  // same record (nx / cl) — new fields must not cost anything that was there before
+  const nx = JSON.parse(JSON.stringify(p10));
+  nx.PJP.done["2493638|2026-10-20"] =
+    { v: 1, by: "ชลศิต", at: 9000, tx: "ขอโปรใหม่", f: ["pay"], nx: 1 };
+  const p11 = mergeState(p10, nx);
+  check("the remind-next-round flag is saved", p11.PJP.done["2493638|2026-10-20"].nx === 1);
+  check("...and a tab that predates the flag cannot strip it",
+        mergeState(p11, p10).PJP.done["2493638|2026-10-20"].nx === 1);
+
+  const cl = JSON.parse(JSON.stringify(p11));
+  cl.PJP.done["2493638|2026-10-26"] = { v: 1, by: "ชลศิต", at: 10000, cl: 1 };
+  const p12 = mergeState(p11, cl);
+  check("clearing writes a NEW dated record rather than editing the old one",
+        p12.PJP.done["2493638|2026-10-26"].cl === 1 &&
+        p12.PJP.done["2493638|2026-10-20"].tx === "ขอโปรใหม่");
+  check("...so the history of what was outstanding is still on file",
+        Object.keys(p12.PJP.done).filter((k) => k.startsWith("2493638|")).length === 4,
+        Object.keys(p12.PJP.done).join(" "));
+  check("...and a stale tab cannot un-clear it",
+        mergeState(p12, p11).PJP.done["2493638|2026-10-26"].cl === 1);
+
   // uploading PJP must disturb nothing else
   check("the visit plan disturbs no other section",
-        Object.keys(p10.ORDERS.data).length === Object.keys(srv.ORDERS.data).length &&
-        Object.keys(p10.REQUESTS.data).length === Object.keys(srv.REQUESTS.data).length &&
-        p10.STORE.stores.length === srv.STORE.stores.length);
+        Object.keys(p12.ORDERS.data).length === Object.keys(srv.ORDERS.data).length &&
+        Object.keys(p12.REQUESTS.data).length === Object.keys(srv.REQUESTS.data).length &&
+        p12.STORE.stores.length === srv.STORE.stores.length);
   check("a new month's plan upload never touches the visit notes",
-        Object.keys(p10.PJP.done).length === 4, Object.keys(p10.PJP.done).join(" "));
+        Object.keys(p12.PJP.done).length === 6, Object.keys(p12.PJP.done).join(" "));
   check("looksEmpty: a PJP-only save does NOT count as real data (same as PLAN/PROMO)",
         looksEmpty({ DATA: {}, PJP: srv.PJP }) === true);
 }

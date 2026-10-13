@@ -345,13 +345,82 @@ const ct11=`S.user={id:'ct11',role:'sales',code:'209611',name:'CT11 · ก'};
  t('...แต่ยังบอกว่าวันหยุดถัดไปวันไหน',/วันหยุดถัดไป/.test((holi.cards.find(c=>c.k.includes('7 วัน'))||{}).s||''),
    (holi.cards.find(c=>c.k.includes('7 วัน'))||{}).s);
  t('⚠️ วันหยุดหลายวัน (ช่วงคร่อมวันนี้) ก็ไม่ถูกนับ',card('เลยกำหนด')==='1'&&card('วันนี้')==='0');
- t('⚠️ เลขแดงบนแท็บไม่นับวันหยุด',holi.badge.trim()==='1',JSON.stringify(holi.badge));
+ /* เลขแดง = เลยกำหนด + วันนี้ + อีก 2 วัน (ชุดเดียวกับแท็บ 🔔 แจ้งเตือน)
+    ที่นี่คือ "ส่งรายงานค้าง" (10/10 เลยกำหนด) + "ประชุมเซลล์" (14/10 = อีก 2 วัน) = 2
+    ถ้าวันหยุดถูกนับด้วยจะกลายเป็น 5 (hPast/hToday/hSpan) */
+ t('⚠️ เลขแดงบนแท็บไม่นับวันหยุด',holi.badge.trim()==='2',JSON.stringify(holi.badge));
  t('วันหยุดที่ยังมาไม่ถึงยังขึ้นในรายการให้เห็นอยู่ (แค่ไม่เตือน)',/สงกรานต์/.test(holi.main));
  t('วันหยุดที่ผ่านไปแล้วไม่ค้างอยู่ในรายการที่ต้องทำ',!/วันหยุดชดเชย/.test(holi.main),holi.main.slice(0,120));
  t('วันหยุดยังขึ้นบนปฏิทินเดือน',/วันปิยมหาราช/.test(holi.mon),holi.mon.slice(0,120));
  t('วันหยุดไม่มีช่องติ๊ก (ไม่มีอะไรให้ทำเสร็จ)',holi.holiHasTick===false,String(holi.holiHasTick));
  t('...ขึ้นเป็นไอคอน 🌴 แทน',holi.holiHasIcon===true,String(holi.holiHasIcon));
  t('งานจริงยังมีช่องติ๊กเหมือนเดิม',holi.workHasTick===true,String(holi.workHasTick));
+
+ /* ---------- 🔔 แท็บแจ้งเตือน + ตัวกรอง 3 แบบ (เจ้าของสั่ง 13 ต.ค. 69) ---------- */
+ const noti=await pg.evaluate(()=>{
+   window.todayISO=()=>'2026-10-13';
+   PLAN={items:{
+     nLate:{t:'ส่งรายงานค้าง',d:'2026-10-09',cat:'deadline',lines:[],by:'manager',byName:'ผู้จัดการ',at:1,up:1},
+     nToday:{t:'ประชุมเช้า',d:'2026-10-13',tm:'08:30',cat:'meet',lines:[],by:'manager',byName:'ผู้จัดการ',at:1,up:1},
+     nTom:{t:'ส่ง PO รอบ 15',d:'2026-10-14',cat:'deadline',lines:[],by:'manager',byName:'ผู้จัดการ',at:1,up:1},
+     nD2:{t:'อบรมสินค้าใหม่',d:'2026-10-15',cat:'meet',lines:[],by:'manager',byName:'ผู้จัดการ',at:1,up:1},
+     nFar:{t:'งานไกลเกินสองวัน',d:'2026-10-20',cat:'task',lines:[],by:'manager',byName:'ผู้จัดการ',at:1,up:1},
+     nHol:{t:'วันหยุดพรุ่งนี้',d:'2026-10-14',cat:'holiday',lines:[],by:'manager',byName:'ผู้จัดการ',at:1,up:1},
+   },done:{},del:{}};
+   /* งานค้างของเซลล์ 1 ร้าน บันทึกวันนี้ + ติ๊กเตือนรอบหน้า */
+   PJP={out:{'2493638':{n:'ธงฟ้าสารภี',up:1}},cfg:{},
+     plan:{'2026-10-13':{'209611':'2493638:1'},'2026-10-20':{'209611':'2493638:1'}},
+     done:{'2493638|2026-10-13':{v:1,by:'ชลศิต',at:1,tx:'ขอราคาซันไลต์',f:['sell'],nx:1}}};
+   pjBustNotes();
+   PL.ym='2026-10';PL.scope='all';PL.pjLine='';PL.day=null;PL.showDone=false;
+   PL.view='noti';_switchTab('plan');renderPlan();
+   const main=()=>document.getElementById('plMain').innerText.replace(/\s+/g,' ');
+   const heads=()=>[...document.querySelectorAll('#plMain .pl-dayh')].map(x=>x.innerText.replace(/\s+/g,' ').trim());
+   const a={txt:main(),heads:heads(),
+     viewBtns:[...document.querySelectorAll('#plViewSeg button')].map(x=>x.innerText.replace(/\s+/g,' ').trim()),
+     scopeBtns:[...document.querySelectorAll('#plScopeSeg button')].map(x=>x.innerText.trim()),
+     notiN:(document.getElementById('plNotiN')||{}).innerText||'',
+     badge:(document.getElementById('planBadge')||{}).innerText||'',
+     shops:document.querySelectorAll('#plMain .pl-shop').length};
+   /* กรอง 3 แบบ */
+   plSetScope('shop');a.shopOnly=main();a.shopN=document.querySelectorAll('#plMain .pl-shop').length;
+   plSetScope('depot');a.depotOnly=main();a.depotShopN=document.querySelectorAll('#plMain .pl-shop').length;
+   plSetScope('all');
+   /* งานค้างต้องขึ้นที่ "วันที่บันทึก" ในปฏิทินเดือน และซ้ำที่รอบหน้าเพราะติ๊ก 🔔 */
+   PL.view='mon';renderPlan();
+   const cell=d=>{const b=[...document.querySelectorAll('#plMain .pl-cell')]
+     .find(x=>x.getAttribute('onclick')==="plPickDay('"+d+"')");return b?b.innerText.replace(/\s+/g,' '):'';};
+   a.c13=cell('2026-10-13');a.c20=cell('2026-10-20');
+   /* ปลดติ๊ก 🔔 แล้วรอบหน้าต้องหายไป แต่วันที่บันทึกยังอยู่ */
+   delete PJP.done['2493638|2026-10-13'].nx;pjBustNotes();renderPlan();
+   a.c13b=cell('2026-10-13');a.c20b=cell('2026-10-20');
+   PL.view='noti';renderPlan();
+   return a;
+ });
+ t('🔔 มีแท็บแจ้งเตือนในแถบมุมมอง',noti.viewBtns.length===3&&/แจ้งเตือน/.test(noti.viewBtns[2]),noti.viewBtns.join(' | '));
+ t('⚠️ ตัวกรองเหลือ 3 แบบ: ทั้งหมด / งานร้านค้า / งานของศูนย์',
+   noti.scopeBtns.length===3&&/งานร้านค้า/.test(noti.scopeBtns[1])&&/งานของศูนย์/.test(noti.scopeBtns[2]),
+   noti.scopeBtns.join(' | '));
+ t('แจ้งเตือนมีหัวข้อครบ เลยกำหนด/วันนี้/พรุ่งนี้/มะรืนนี้',
+   noti.heads.filter(h=>/เลยกำหนด|วันนี้|พรุ่งนี้|มะรืนนี้/.test(h)).length===4,noti.heads.join(' | '));
+ t('...เลยกำหนดคือรายงานค้าง',/ส่งรายงานค้าง/.test(noti.txt));
+ t('...วันนี้คือประชุมเช้า',/ประชุมเช้า/.test(noti.txt));
+ t('...พรุ่งนี้คือส่ง PO',/ส่ง PO รอบ 15/.test(noti.txt));
+ t('...มะรืนนี้คืออบรมสินค้าใหม่',/อบรมสินค้าใหม่/.test(noti.txt));
+ t('⚠️ งานที่ไกลเกิน 2 วันไม่มาอยู่ในแจ้งเตือน',!/งานไกลเกินสองวัน/.test(noti.txt),noti.txt.slice(0,160));
+ t('⚠️ แจ้งเตือนรวมงานร้านค้าของเซลล์ด้วย ไม่ใช่แค่งานศูนย์',noti.shops>=1&&/ธงฟ้าสารภี/.test(noti.txt),noti.shops);
+ t('...พร้อมโน้ตที่เซลล์เขียนไว้',/ขอราคาซันไลต์/.test(noti.txt));
+ t('🌴 วันหยุดขึ้นเป็นข้อมูล แยกหัวข้อ ไม่ปนกับงานที่ต้องตาม',
+   noti.heads.some(h=>/วันหยุดในช่วงนี้/.test(h))&&/วันหยุดพรุ่งนี้/.test(noti.txt),noti.heads.join(' | '));
+ t('เลขแจ้งเตือนขึ้นบนปุ่มแท็บ',/\d/.test(noti.notiN),JSON.stringify(noti.notiN));
+ t('...และตรงกับเลขแดงบนแท็บปฏิทินงาน',noti.notiN.trim()===noti.badge.trim(),noti.notiN+' vs '+noti.badge);
+ t('เลขนี้ไม่นับวันหยุด (4 งาน + 1 งานร้าน = 5)',noti.badge.trim()==='5',noti.badge);
+ t('filter 🏪 งานร้านค้า = เห็นแต่งานร้าน',noti.shopN>=1&&!/ประชุมเช้า/.test(noti.shopOnly),noti.shopOnly.slice(0,120));
+ t('filter 🏢 งานของศูนย์ = เห็นแต่งานศูนย์',noti.depotShopN===0&&/ประชุมเช้า/.test(noti.depotOnly),noti.depotOnly.slice(0,120));
+ t('⚠️ งานค้างขึ้นปฏิทิน "วันที่บันทึก" ทันที',/ธงฟ้าสารภี/.test(noti.c13),noti.c13);
+ t('⚠️ ติ๊ก 🔔 ไว้ จึงขึ้นซ้ำที่วันเยี่ยมรอบหน้าด้วย',/ธงฟ้าสารภี/.test(noti.c20),noti.c20);
+ t('ไม่ติ๊ก 🔔 แล้วรอบหน้าไม่ขึ้น',!/ธงฟ้าสารภี/.test(noti.c20b),noti.c20b);
+ t('...แต่วันที่บันทึกยังขึ้นเหมือนเดิม',/ธงฟ้าสารภี/.test(noti.c13b),noti.c13b);
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n+(x&&!c?' → '+x:''));});
  const real=errs.filter(e=>!/localStorage/.test(e));

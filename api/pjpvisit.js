@@ -9,13 +9,16 @@ import { newestReal, looksEmpty } from "../lib/snapshot.js";
  * salesperson must NOT be able to send a whole state, so this endpoint exists:
  * it writes exactly ONE key per call —
  *
- *   PJP.done["<outlet>|<YYYY-MM-DD>"] = { v, by, at, tx?, f? }
+ *   PJP.done["<outlet>|<YYYY-MM-DD>"] = { v, by, at, tx?, f?, nx?, cl? }
  *
- * tx is the rep's note for that visit and f the things to chase next time
- * (keys of PJ_FLAG in the client). They live on the SAME record as the tick
- * on purpose: PJP.done already merges newest-wins per key in api/save.js, so
- * adding fields cannot drop anything, and an old browser tab that knows
- * nothing about tx/f still reads .v exactly as before.
+ * tx is what the rep left outstanding at that shop, f its categories (keys of
+ * PJ_FLAG in the client), nx asks for a second reminder at the next planned
+ * visit, and cl marks everything older for this shop as cleared. They all live
+ * on the SAME record as the tick on purpose: PJP.done already merges
+ * newest-wins per key in api/save.js, so adding fields cannot drop anything,
+ * and an old browser tab that knows none of them still reads .v as before.
+ * Clearing writes a NEW dated record rather than editing an old one, so the
+ * history of what was outstanding stays intact.
  *
  * and only for a shop that is on THAT salesperson's own route on THAT day,
  * which is checked against the stored plan, not against anything in the body.
@@ -75,19 +78,28 @@ export default async function handler(req, res) {
     if (!P.done) P.done = {};
     if (!P.cfg) P.cfg = {};
 
-    // The shop must actually be on this salesperson's plan for this day.
-    // A manager may tick anything, so they can fix a rep's list for them.
+    // The shop must be one of THIS salesperson's shops — checked against the STORED
+    // plan, never the payload. A manager may write for anyone, so they can fix a
+    // rep's list for them.
+    //
+    // ⚠️ This used to require the shop to be on their route on THAT EXACT DATE.
+    // Since 13 Oct 26 the record is outstanding work, not a visit tick: a rep logs
+    // it the day they find it and clears it the day they finish, neither of which
+    // has to be a scheduled visit day for that shop. Pinning it to the date made
+    // every clear fail with 403. Ownership (whose route the shop is on) is the
+    // real check and is kept; the date is not.
     if (!isMgr) {
-      const day = P.plan[date] || {};
-      const row = String(day[mine] || "");
-      const on = row.split(",").some((x) => x.split(":")[0] === code);
-      if (!on) return res.status(403).json({ error: "ร้านนี้ไม่ได้อยู่ในแผนของสายคุณในวันนั้น" });
+      const on = Object.keys(P.plan).some((d) =>
+        String((P.plan[d] || {})[mine] || "").split(",").some((x) => x.split(":")[0] === code));
+      if (!on) return res.status(403).json({ error: "ร้านนี้ไม่ได้อยู่ในแผนของสายคุณ" });
     }
 
     const rec = { v: body.v ? 1 : 0, by: S(claims.name, 60), at: Date.now() };
     const tx = NOTE(body.tx), f = FLAGSOF(body.f);
     if (tx) rec.tx = tx;
     if (f.length) rec.f = f;
+    if (body.nx) rec.nx = 1;   // remind again at the next planned visit
+    if (body.cl) rec.cl = 1;   // "cleared" marker — beats every older open item for this shop
     P.done[code + "|" + date] = rec;
 
     if (looksEmpty(data)) return res.status(409).json({ error: "ข้อมูลว่างเปล่า — ยกเลิกการบันทึกเพื่อป้องกันข้อมูลเดิมหาย" });
