@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ราคาสินค้ายูนิลีเวอร์ · บริษัท บีดี ดิสทริบิวชั่น จำกัด</title>
+<meta name="description" content="ราคาสินค้ายูนิลีเวอร์สำหรับร้านค้าในพื้นที่นนทบุรี — ราคาที่ศูนย์เสนอขาย ราคาแนะนำขายปลีก และราคาช่วงโปรโมชั่น พร้อมกำไรที่ร้านได้">
+<meta property="og:title" content="ราคาสินค้ายูนิลีเวอร์ · BD Distribution">
+<meta property="og:description" content="ราคาที่ศูนย์เสนอขาย · ราคาแนะนำขาย · ราคาช่วงโปร พร้อมกำไรที่ร้านได้">
+<meta property="og:image" content="/img/products.jpg">
+<link rel="icon" href="/img/bd-mark.png">
+<!--
+  ============================================================================
+  แคตาลอคราคาสาธารณะ — ลูกค้าเปิดดูได้โดยไม่ต้องล็อกอิน
+
+  ⚠️⚠️ หน้านี้อ่านข้อมูลจาก /api/pricelist เท่านั้น ⚠️⚠️
+  /api/pricelist อ่าน blob ที่ขึ้นต้นด้วย bd-pricehs-* (ไฟล์หัวเสือ) อย่างเดียว
+  ต้นทุนของศูนย์ (ไฟล์ BUM) อยู่ใน bd-pricebum-* ซึ่ง endpoint นั้น "เอื้อมไม่ถึง"
+  ไม่ใช่แค่ซ่อน — เจ้าของย้ำสองครั้ง:
+     "ชีทที่ลูกค้าเห็นจะมีแค่หัวเสือเท่านั้น ชีท Bum จะไม่ให้ลูกค้าเห็นเด็ดขาด สำคัญมาก ห้ามลืม"
+  ห้ามเพิ่ม fetch ไปที่ /api/price, /api/data หรือ endpoint อื่นในไฟล์นี้เด็ดขาด
+
+  ไฟล์นี้เขียนด้วยมือ (เหมือน public/join.html) — build.cjs ไม่ได้สร้างให้
+  ============================================================================
+-->
+<style>
+:root{
+  --uni:#1F36C7; --uni-dark:#101C86; --uni-soft:#EEF1FF; --uni-line:#D8DEFB;
+  --ink:#141A2E; --muted:#666F85; --line:#E4E8F2; --bg:#F7F9FE; --white:#fff;
+  --good:#1E9E5A; --good-soft:#EAF7EF; --gold:#C8901A; --gold-soft:#FFF8E8; --bad:#D64545;
+  --shadow:0 1px 3px rgba(16,28,134,.07),0 10px 34px rgba(16,28,134,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun','Segoe UI',system-ui,sans-serif;color:var(--ink);background:var(--bg);
+  -webkit-font-smoothing:antialiased;line-height:1.55}
+img{max-width:100%;display:block}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px}
+
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
+.hd{max-width:980px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px}
+.hd img{width:44px;height:44px;object-fit:contain;flex:none}
+.hd .nm{font-weight:800;font-size:15.5px;letter-spacing:-.2px;line-height:1.25}
+.hd .sb{font-size:11.5px;color:var(--muted);line-height:1.3}
+.hd a.join{margin-left:auto;background:var(--uni);color:#fff;text-decoration:none;border-radius:999px;
+  padding:9px 17px;font-size:13.5px;font-weight:700;white-space:nowrap}
+.hd a.join:hover{background:var(--uni-dark)}
+
+/* ---------- แถบหัวเรื่อง + รอบราคา ---------- */
+.top{padding:22px 0 4px}
+.top h1{font-size:25px;line-height:1.3;letter-spacing:-.4px;font-weight:800}
+.top h1 b{color:var(--uni)}
+.top p{color:var(--muted);font-size:14px;margin-top:6px}
+.rnd{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.rnd .lb{font-size:12.5px;font-weight:800;color:var(--muted);margin-right:2px}
+.rnd button{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 15px;
+  font:700 13.5px/1.2 inherit;color:var(--muted);cursor:pointer}
+.rnd button.on{background:var(--uni);border-color:var(--uni);color:#fff}
+.win{margin-top:10px;background:var(--uni-soft);border:1px solid var(--uni-line);border-radius:12px;
+  padding:10px 14px;font-size:13px;color:var(--uni-dark);font-weight:600}
+.win b{font-weight:800}
+
+/* ---------- ตัวกรอง ---------- */
+.filt{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 0;position:sticky;top:65px;z-index:30;
+  background:var(--bg);padding:10px 0 11px;border-bottom:1px solid var(--line)}
+.filt input,.filt select{border:1.5px solid var(--line);border-radius:11px;padding:11px 14px;
+  font:600 14.5px/1 inherit;color:var(--ink);background:#fff;min-width:0}
+.filt input{flex:1 1 230px}
+.filt input:focus,.filt select:focus{outline:none;border-color:var(--uni)}
+.cnt{font-size:12.5px;color:var(--muted);padding:12px 2px 0;font-weight:600}
+
+/* ---------- รายการสินค้า ---------- */
+.cat{margin:20px 0 8px;font-size:13px;font-weight:800;color:var(--uni);
+  display:flex;align-items:center;gap:9px}
+.cat:after{content:"";flex:1;height:1px;background:var(--uni-line)}
+.row{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:9px;
+  display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;box-shadow:0 1px 2px rgba(16,28,134,.04)}
+.row .nm{flex:1 1 210px;min-width:0}
+.row .nm b{font-size:14.5px;font-weight:800;display:block;line-height:1.35}
+.row .nm .sz{font-size:12.5px;color:var(--muted);margin-top:2px}
+.row .nm .br{display:inline-block;font-size:10.5px;font-weight:800;background:var(--bg);color:var(--muted);
+  border-radius:999px;padding:2px 8px;margin-top:5px}
+.px{display:flex;gap:7px;flex-wrap:wrap;align-items:stretch}
+.p{background:var(--bg);border-radius:11px;padding:8px 13px;min-width:104px;text-align:right}
+.p span{display:block;font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.2px}
+.p b{display:block;font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.3}
+.p.cost{background:var(--uni-soft)}.p.cost b{color:var(--uni-dark)}
+.p.rsp b{color:var(--ink)}
+.p.pro{background:var(--gold-soft)}.p.pro b{color:var(--gold)}
+.p.gain{background:var(--good-soft)}.p.gain b{color:var(--good)}
+.p.gain em{display:block;font-size:11px;font-style:normal;color:var(--good);font-weight:700}
+.p.na b{color:var(--muted);font-weight:700;font-size:15px}
+.pk{flex:1 1 100%;font-size:11.5px;color:var(--gold);font-weight:700;background:var(--gold-soft);
+  border-radius:9px;padding:6px 10px}
+.rem{flex:1 1 100%;font-size:11.5px;color:var(--muted);border-top:1px dashed var(--line);
+  margin-top:3px;padding-top:7px}
+.more{display:block;width:100%;margin:18px 0 0;background:#fff;border:1.5px solid var(--uni-line);
+  border-radius:12px;padding:14px;font:800 14.5px/1 inherit;color:var(--uni);cursor:pointer}
+.more:hover{background:var(--uni-soft)}
+.empty{background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px 18px;text-align:center;
+  color:var(--muted);font-size:14px}
+.note{background:var(--gold-soft);border:1px solid #F0DFB4;border-radius:12px;padding:12px 15px;
+  font-size:12.5px;color:#7A5A10;margin-top:18px;line-height:1.6}
+
+footer{background:#fff;border-top:1px solid var(--line);margin-top:36px;padding:26px 0 32px}
+.fgrid{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.fgrid img{width:92px;object-fit:contain}
+.fgrid .co{flex:1 1 260px;font-size:12.5px;color:var(--muted);line-height:1.65}
+.fgrid .co b{color:var(--ink);font-size:14px;display:block}
+.fgrid .co .en{font-size:11px;letter-spacing:.3px;margin-bottom:4px}
+.fhrs{font-size:12.5px;color:var(--muted);line-height:1.65}
+.fhrs b{color:var(--ink);display:block;font-size:13px}
+.fnote{border-top:1px solid var(--line);margin-top:20px;padding-top:16px;display:flex;
+  justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+
+@media(max-width:620px){
+  .top h1{font-size:21px}
+  .filt{top:62px}
+  .p{min-width:88px;padding:7px 11px;flex:1 1 auto}
+  .p b{font-size:15.5px}
+  .px{width:100%}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd">
+    <img src="/img/bd-mark.png" alt="BD">
+    <div>
+      <div class="nm">บริษัท บีดี ดิสทริบิวชั่น จำกัด</div>
+      <div class="sb">ผู้จัดจำหน่ายสินค้ายูนิลีเวอร์ · พื้นที่นนทบุรี</div>
+    </div>
+    <a class="join" href="/join.html">สมัครเป็นร้านค้า</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="top">
+    <h1>ราคาสินค้า<b>ยูนิลีเวอร์</b> สำหรับร้านค้า</h1>
+    <p>ราคาที่ศูนย์เสนอขาย (รวม VAT แล้ว) · ราคาแนะนำให้ร้านตั้งขาย · และกำไรที่ร้านจะได้</p>
+    <div class="rnd" id="rnd"></div>
+    <div class="win" id="win" style="display:none"></div>
+  </div>
+
+  <div class="filt">
+    <input id="q" type="search" placeholder="🔍 ค้นหาชื่อสินค้า / แบรนด์ / รหัส" autocomplete="off">
+    <select id="cat"><option value="all">ทุกหมวดสินค้า</option></select>
+  </div>
+  <div class="cnt" id="cnt"></div>
+  <div id="list"></div>
+
+  <div class="note" id="foot" style="display:none">
+    📌 <b>ราคานี้เป็นราคาแนะนำ</b> อาจเปลี่ยนตามรอบของบริษัทยูนิลีเวอร์ · ราคาที่ศูนย์เสนอขายรวม VAT แล้ว ·
+    สินค้าบางรายการมีจำนวนจำกัดหรือสั่งขั้นต่ำเป็นหีบ · สั่งซื้อหรือสอบถามเพิ่มเติม ติดต่อเซลล์ประจำสายของร้านท่าน
+    หรือติดต่อศูนย์ในเวลาทำการ
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="fgrid">
+      <img src="/img/bd-logo.png" alt="BD Distribution">
+      <div class="co">
+        <b>บริษัท บีดี ดิสทริบิวชั่น จำกัด</b>
+        <div class="en">BD DISTRIBUTION COMPANY LIMITED</div>
+        เลขทะเบียนนิติบุคคล 0105536070028<br>
+        39/12-13 หมู่ที่ 4 ถนน 345 ตำบลละหาร<br>
+        อำเภอบางบัวทอง จังหวัดนนทบุรี 11110
+      </div>
+      <div class="fhrs">
+        <b>เวลาทำการ</b>
+        08.00 – 17.00 น.<br>
+        จันทร์ – เสาร์<br>
+        <span style="color:var(--bad)">หยุดทุกวันอาทิตย์</span>
+      </div>
+    </div>
+    <div class="fnote">
+      <span>© บริษัท บีดี ดิสทริบิวชั่น จำกัด · ผู้จัดจำหน่ายสินค้ายูนิลีเวอร์ พื้นที่นนทบุรี</span>
+      <span>เครื่องหมายการค้าทั้งหมดเป็นของยูนิลีเวอร์</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================================
+ * สูตรคิดราคา — **คัดลอกมาจาก dashboard_template.html แบบคำต่อคำ**
+ *
+ * ทำไมต้องคัดลอก: หน้านี้เป็นไฟล์เดี่ยว เปิดได้โดยไม่ต้องล็อกอิน จะ import
+ * จากแอปหลักไม่ได้ (และไม่ควร — ยิ่งเชื่อมกันยิ่งมีโอกาสหลุดต้นทุนออกมา)
+ *
+ * ⚠️ ถ้าแก้สูตรตรงนี้ ต้องแก้ใน dashboard_template.html ให้เหมือนกันด้วย
+ *    test/browser/price.test.cjs เทียบผลลัพธ์ของสองฝั่งทุกรายการ ถ้าคลาดกันเทสต์จะฟ้อง
+ * ==========================================================================*/
+var PR_MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function prRoundOf(lab){
+  var m=String(lab||"").match(/([A-Za-z]{3})[A-Za-z]*'?\s*(\d{2,4})/);
+  if(!m)return null;
+  var mo=PR_MON[m[1].toLowerCase()];if(!mo)return null;
+  var y=+m[2];if(y<100)y+=2000;
+  return {y:y,m:mo};
+}
+/* ช่วงวันที่จริงของรอบ: วันที่ 25 ของเดือนก่อน → วันที่ 24 ของเดือนที่ตั้งชื่อ
+   (โปรโมชั่น on-invoice ของยูนิลีเวอร์ตัดรอบวันที่ 25 ไม่ใช่วันที่ 1) */
+function prWindow(lab){
+  var r=prRoundOf(lab);if(!r)return null;
+  var p=function(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+  return {from:p(new Date(r.y,r.m-2,25)),to:p(new Date(r.y,r.m-1,24)),lab:lab};
+}
+var PR_F=["ws","rt","tpr","w","ntt","fl","rspN","rspP","rem"];
+function prM(it,i){
+  var a=(it&&it.m&&it.m[i])||null;if(!a)return null;
+  var o={};PR_F.forEach(function(k,j){o[k]=a[j];});
+  o.tot=Math.round((o.tpr+o.w)*100)/100;
+  return o;
+}
+/* RSP บางรายการเป็น "ราคายกแพ็ค" ไม่ใช่ราคาชิ้น — โชว์ RSP ตามไฟล์ แต่คูณทุนด้วย Inner Pack
+   และต้องดูทีละราคา: มี 31 รายการที่ RSP ปกติเป็นราคาชิ้น แต่ RSP ช่วงโปรเป็นแพ็ค 3 ชิ้น */
+function prPackBuy(it,m,promo){
+  if(!it||!m||!m.ntt)return 1;
+  var rsp=promo?m.rspP:m.rspN;
+  if(!rsp)return 1;
+  return (it.ip>1&&rsp/m.ntt>2.5)?it.ip:1;
+}
+function prMargin(it,m,promo){
+  if(!it||!m)return null;
+  var rsp=promo?m.rspP:m.rspN;
+  if(!rsp||!m.ntt)return null;
+  var k=prPackBuy(it,m,promo);
+  var cost=m.ntt*k;
+  var o={rsp:rsp,cost:cost,k:k,baht:rsp-cost,pct:(rsp-cost)/rsp*100};
+  /* คูณ Inner Pack แล้วยังสูงกว่าทุนเกิน 2.5 เท่า = เทียบหน่วยไม่ลง ไม่ใช่กำไรจริง
+     → ไม่ประกาศตัวเลขกำไรให้ลูกค้า ดีกว่าประกาศผิด */
+  if(cost>0&&rsp/cost>2.5)o.unsure=true;
+  return o;
+}
+function prHide(it,m){
+  if(!it||!m)return "no-data";
+  if(!m.ws||!m.ntt)return "no-price";
+  if(/เลิกขาย/.test(it.nt||""))return "stopped";
+  var g=prMargin(it,m,false);
+  if(g&&g.pct<0)return "loss";
+  return "";
+}
+/* ======================= จบส่วนที่คัดลอก ======================= */
+
+var MON_TH=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+function fmtDate(s){var d=new Date(s+"T00:00:00");return d.getDate()+" "+MON_TH[d.getMonth()]+" "+(d.getFullYear()+543);}
+function baht(v){return Number(v).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function $(id){return document.getElementById(id);}
+function todayISO(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+
+var P={items:{},rounds:[],up:0};
+var V={i:0,q:"",cat:"all",show:300};
+var PAGE=300;
+
+function nowIdx(){
+  var t=todayISO(),i;
+  for(i=0;i<P.rounds.length;i++){var w=prWindow(P.rounds[i]);if(w&&t>=w.from&&t<=w.to)return i;}
+  var best=-1;
+  P.rounds.forEach(function(l,k){var w=prWindow(l);if(w&&w.to<t)best=k;});
+  return best>=0?best:(P.rounds.length?P.rounds.length-1:0);
+}
+function rows(){
+  var q=V.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  var out=[];
+  Object.keys(P.items).forEach(function(code){
+    var it=P.items[code],m=prM(it,V.i);
+    if(!m)return;
+    if(prHide(it,m))return;                       /* ไม่พร้อมขาย / ขาดทุน → ไม่โชว์ให้ลูกค้า */
+    if(V.cat!=="all"&&it.c!==V.cat)return;
+    if(q.length){
+      var hay=(code+" "+it.n+" "+it.v+" "+it.b+" "+it.s+" "+it.c).toLowerCase();
+      for(var j=0;j<q.length;j++)if(hay.indexOf(q[j])<0)return;
+    }
+    out.push({code:code,it:it,m:m,g:prMargin(it,m,false),gp:prMargin(it,m,true)});
+  });
+  out.sort(function(a,b){
+    var ka=(a.it.c||"zz")+"|"+(a.it.b||"")+"|"+(a.it.n||"")+"|"+(a.it.s||"");
+    var kb=(b.it.c||"zz")+"|"+(b.it.b||"")+"|"+(b.it.n||"")+"|"+(b.it.s||"");
+    return ka<kb?-1:ka>kb?1:0;
+  });
+  return out;
+}
+function priceBox(lab,v,cls){
+  return '<div class="p '+cls+'"><span>'+lab+'</span><b>'+(v?baht(v):"—")+'</b></div>';
+}
+function rowHtml(r){
+  var h='<div class="row"><div class="nm"><b>'+esc(r.it.v||r.it.n)+'</b>'+
+    '<div class="sz">'+esc(r.it.s)+(r.it.p>1?' · '+r.it.p+' ชิ้น/หีบ':'')+'</div>'+
+    (r.it.b?'<span class="br">'+esc(r.it.b)+'</span>':'')+'</div><div class="px">'+
+    priceBox("ศูนย์เสนอขาย",r.m.ntt,"cost")+
+    priceBox("แนะนำขาย",r.m.rspN,"rsp");
+  if(r.g&&!r.g.unsure)h+='<div class="p gain"><span>ร้านได้กำไร</span><b>'+r.g.pct.toFixed(0)+'%</b><em>'+baht(r.g.baht)+' บ.</em></div>';
+  else h+='<div class="p na"><span>ร้านได้กำไร</span><b>'+(r.g&&r.g.unsure?'สอบถาม':'—')+'</b></div>';
+  if(r.m.rspP){
+    h+='<div class="p pro"><span>🎉 ช่วงโปร</span><b>'+baht(r.m.rspP)+'</b>'+
+      (r.gp&&!r.gp.unsure?'<em style="color:var(--gold)">กำไร '+r.gp.pct.toFixed(0)+'%</em>':'')+'</div>';
+  }
+  h+='</div>';
+  if(r.g&&r.g.k>1)h+='<div class="pk">📦 ราคาแนะนำขาย '+baht(r.m.rspN)+' บาท เป็นราคา<b>ยกแพ็ค '+r.g.k+' ชิ้น</b> (ตามที่บริษัทกำหนด)</div>';
+  if(r.gp&&r.gp.k>1)h+='<div class="pk">🎉 ราคาช่วงโปร '+baht(r.m.rspP)+' บาท เป็นราคา<b>ยกแพ็ค '+r.gp.k+' ชิ้น</b></div>';
+  if((r.g&&r.g.unsure)||(r.gp&&r.gp.unsure))
+    h+='<div class="rem">ℹ️ รายการนี้บริษัทไม่ได้ระบุจำนวนชิ้นต่อแพ็คมาในไฟล์ จึงยังคิดกำไรต่อหน่วยให้ไม่ได้ — สอบถามเซลล์ประจำสายได้เลย</div>';
+  /* ⚠️ ห้ามโชว์ช่อง Remark ของไฟล์ให้ลูกค้า — เป็นกลไกโปรฝั่ง "ศูนย์ซื้อจากบริษัท"
+     (Rebate, CCN TPR, 1F1, FO 40, ช่วงวันที่เคลม) ลูกค้าอ่านแล้วไม่ได้ประโยชน์
+     และเป็นคำในบ้านของเรา · ของที่ลูกค้าใช้ได้จริงคือช่อง Note ว่าเป็นแพ็คพิเศษหรือไม่ */
+  if(/special\s*pack/i.test(r.it.nt||''))h+='<div class="rem">🎁 สินค้าแพ็คพิเศษของบริษัท</div>';
+  return h+'</div>';
+}
+function draw(){
+  var R=rows(),host=$("list");
+  $("cnt").textContent=R.length?("พบ "+R.length.toLocaleString("th-TH")+" รายการ"):"";
+  if(!R.length){host.innerHTML='<div class="empty">ไม่พบสินค้าที่ค้นหา — ลองพิมพ์สั้นลง หรือเลือก "ทุกหมวดสินค้า"</div>';return;}
+  var show=R.slice(0,V.show),h="",lastCat=null;
+  show.forEach(function(r){
+    if(r.it.c!==lastCat){lastCat=r.it.c;h+='<div class="cat">'+esc(lastCat||"อื่นๆ")+'</div>';}
+    h+=rowHtml(r);
+  });
+  if(R.length>V.show)h+='<button class="more" id="moreB">ดูเพิ่ม (เหลืออีก '+(R.length-V.show).toLocaleString("th-TH")+' รายการ)</button>';
+  host.innerHTML=h;
+  var mb=$("moreB");
+  if(mb)mb.onclick=function(){V.show+=PAGE;draw();};
+}
+function drawRounds(){
+  var now=nowIdx();
+  $("rnd").innerHTML='<span class="lb">รอบราคา</span>'+P.rounds.map(function(l,k){
+    return '<button data-i="'+k+'" class="'+(k===V.i?"on":"")+'">'+esc(l)+(k===now?" · รอบนี้":"")+'</button>';
+  }).join("");
+  Array.prototype.forEach.call($("rnd").querySelectorAll("button"),function(b){
+    b.onclick=function(){V.i=+b.dataset.i;V.show=PAGE;drawRounds();draw();window.scrollTo(0,0);};
+  });
+  var w=prWindow(P.rounds[V.i]);
+  if(w){
+    $("win").style.display="";
+    $("win").innerHTML='ราคาชุดนี้ใช้ช่วง <b>'+fmtDate(w.from)+' – '+fmtDate(w.to)+'</b>'+
+      (V.i===now?' (รอบปัจจุบัน)':'')+' · รอบของบริษัทยูนิลีเวอร์ตัดวันที่ 25 ของเดือนก่อน ไม่ใช่วันที่ 1';
+  }else $("win").style.display="none";
+}
+function drawCats(){
+  var s={};
+  Object.keys(P.items).forEach(function(code){
+    var it=P.items[code],m=prM(it,V.i);
+    if(!m||prHide(it,m))return;
+    if(it.c)s[it.c]=(s[it.c]||0)+1;
+  });
+  var sel=$("cat"),cur=V.cat;
+  sel.innerHTML='<option value="all">ทุกหมวดสินค้า</option>'+Object.keys(s).sort().map(function(c){
+    return '<option value="'+esc(c)+'">'+esc(c)+' ('+s[c]+')</option>';}).join("");
+  sel.value=(cur!=="all"&&s[cur])?cur:"all";V.cat=sel.value;
+}
+$("q").oninput=function(){V.q=this.value;V.show=PAGE;draw();};
+$("cat").onchange=function(){V.cat=this.value;V.show=PAGE;draw();};
+
+(async function(){
+  try{
+    /* ⚠️ endpoint เดียวที่หน้านี้เรียก — อ่านได้แค่ไฟล์หัวเสือ ห้ามเพิ่มที่อื่น */
+    var r=await fetch("/api/pricelist");
+    var d=await r.json().catch(function(){return {};});
+    if(!r.ok)throw new Error(d.error||("โหลดราคาไม่สำเร็จ (HTTP "+r.status+")"));
+    P.items=d.items||{};P.rounds=d.rounds||[];P.up=d.up||0;
+    if(!P.rounds.length||!Object.keys(P.items).length){
+      $("list").innerHTML='<div class="empty">ยังไม่มีราคาในระบบ — กรุณาติดต่อเซลล์ประจำสายของร้านท่าน</div>';
+      return;
+    }
+    V.i=nowIdx();
+    drawRounds();drawCats();draw();
+    $("foot").style.display="";
+  }catch(ex){
+    $("list").innerHTML='<div class="empty">⚠️ '+esc(ex.message)+
+      '<br><br>กรุณาลองรีเฟรชหน้านี้อีกครั้ง หรือติดต่อเซลล์ประจำสายของร้านท่าน</div>';
+  }
+})();
+</script>
+</body>
+</html>

@@ -299,6 +299,18 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .grp-row td{background:var(--blue-soft);color:var(--blue-dark);font-weight:800;font-size:13px;
   text-align:left!important;white-space:normal;border-bottom:1px solid var(--line)}
 .grp-row td span{font-weight:400;font-size:12px;color:var(--muted)}
+/* 💰 ราคา & ทุน — ตารางแคตาลอคราคาและตารางเทียบรอบ
+   คอลัมน์ราคาต้องอ่านเป็นตัวเลขเรียงหลัก และคอลัมน์ชื่อสินค้ายาวกว่าช่องอื่นมาก
+   จึงปล่อยให้ตัดบรรทัดได้เฉพาะช่องแรก ส่วนช่องตัวเลขคง nowrap ไว้ */
+.pr-tbl td{font-variant-numeric:tabular-nums}
+.pr-tbl td:first-child{white-space:normal;min-width:190px}
+.pr-tbl tr.pr-off td{opacity:.55}
+.pr-tbl tr.pr-rem td{white-space:normal;padding:2px 12px 9px;border-bottom:1px solid var(--line);
+  font-size:11.5px;color:var(--muted);text-align:left}
+.pr-tbl tr.pr-rem:hover{background:none}
+.pr-link{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
+.pr-link code{background:var(--bg);border:1px solid var(--line);border-radius:9px;
+  padding:9px 12px;font-size:13px;font-weight:700;color:var(--blue-dark);word-break:break-all}
 .plan-tbl th,.plan-tbl td{white-space:nowrap}
 .plan-tbl td:first-child{text-align:left}
 /* ตาราง "Drop ค้าง": สองคอลัมน์ท้ายเป็นประโยคยาว ถ้า nowrap จะหลุดขอบจอแล้วต้องเลื่อนไปหา
@@ -1084,6 +1096,40 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       </div>
     </div>
 
+    <!-- 💰 แคตาลอคราคาขายลูกค้า (ไฟล์หัวเสือ) — ทุกคนในศูนย์ดูได้ -->
+    <div id="priceView" class="hidden">
+      <!-- ปุ่มอัพโหลดอยู่ใน markup คงที่ ไม่ใช่ใน #prCtl ที่ renderPrice เขียนทับ
+           (เหตุผลเดียวกับ #pjpUpBar) -->
+      <div class="controls" id="prUpBar" style="display:none">
+        <div class="ctl"><label>&nbsp;</label><span class="psub">อัพไฟล์ราคาหัวเสือ / BUM (เดือนละครั้ง)</span></div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+        </div>
+      </div>
+      <div class="kpi-monthbar" id="prBar"></div>
+      <div id="prCtl"></div>
+      <div class="cards" id="prCards"></div>
+      <div id="prBody"></div>
+    </div>
+
+    <!-- 📉 ต้นทุนศูนย์ & เทียบรอบ (ไฟล์ BUM) — ผู้จัดการเท่านั้น (role ใน TAB_GROUPS)
+         ข้อมูลมาจาก /api/price ซึ่งส่ง bum ให้เฉพาะ token ที่ role==="manager"
+         ไม่ใช่แค่ซ่อนปุ่ม: ถึงเปิด URL ตรงๆ ก็ไม่ได้ข้อมูล -->
+    <div id="costView" class="hidden">
+      <div class="controls" id="pcUpBar" style="display:none">
+        <div class="ctl"><label>&nbsp;</label><span class="psub">อัพไฟล์ BUM (เดือนละครั้ง)</span></div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+        </div>
+      </div>
+      <div class="kpi-monthbar" id="pcBar"></div>
+      <div id="pcCtl"></div>
+      <div class="cards" id="pcCards"></div>
+      <div id="pcBody"></div>
+    </div>
+
     <div id="pjpView" class="hidden">
       <!-- ปุ่มอัพโหลดต้องอยู่ใน markup คงที่ ไม่ใช่ใน #pjpCtl ที่ renderPjp เขียนทับ —
            ตอนยังไม่มีข้อมูล #pjpCtl ถูกล้างเป็นค่าว่าง ปุ่มจะหายไปพร้อมกัน (เจ้าของแจ้ง 8 ต.ค. 69) -->
@@ -1405,6 +1451,16 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <input id="filePjpOut" type="file" accept=".xls,.xlsx" multiple class="hidden">
         <label class="drop" for="filePjpPlan">🗺 <b>แผน PJP ประจำเดือน</b><small>ไฟล์ PJP_OCT2026.xlsx ฯลฯ · ไฟล์มี 12 วัน (2 อาทิตย์) ระบบสร้างรอบสอง (+14 วัน) ให้เอง · แผนเดือนอื่นไม่หาย</small></label>
         <input id="filePjpPlan" type="file" accept=".xls,.xlsx" multiple class="hidden">
+      </div>
+      <!-- 💰 สองไฟล์ราคาที่ Unilever ส่งมาทุกเดือน
+           ⚠️ สองไฟล์นี้ **ไม่ได้เก็บใน bd-data-*** (ข้อมูลยอดขาย/สั่งของ) แต่เก็บเป็นบล็อบของตัวเอง
+           คนละที่เก็บกัน (bd-pricehs-* / bd-pricebum-*) ผ่าน /api/price
+           เหตุผล: ลูกค้าต้องเห็นได้แค่ไฟล์หัวเสือ · และการอัพราคาต้องไม่มีทางไปแตะข้อมูลยอดขาย -->
+      <div class="up-row" data-group="price">
+        <label class="drop" for="filePriceHS">🏷 <b>ไฟล์หัวเสือ (Huasuer)</b><small>ราคาที่ศูนย์เสนอขายลูกค้า — NTT · Floor · RSP ปกติ/โปร · มีหลายรอบในไฟล์เดียว · <b>ลูกค้าเห็นไฟล์นี้</b> ผ่านลิงก์แคตาลอค</small></label>
+        <input id="filePriceHS" type="file" accept=".xls,.xlsx" class="hidden">
+        <label class="drop" for="filePriceBUM">🔒 <b>ไฟล์ BUM</b><small>ต้นทุนที่ศูนย์ได้จากบริษัท (Cat Fee · S% · รีเบท) — ใช้เทียบว่าควรสั่งตุนรอบนี้หรือรอรอบหน้า · <b>เฉพาะผู้จัดการ ลูกค้าไม่เห็นเด็ดขาด</b></small></label>
+        <input id="filePriceBUM" type="file" accept=".xls,.xlsx" class="hidden">
       </div>
       <div class="log" id="uplog"></div>
     </div>
@@ -2220,6 +2276,14 @@ const TAB_GROUPS=[
     {t:"order",nm:"ภาพรวมสั่งของ"},
     {t:"pos",nm:"📊 วิเคราะห์การสั่งของ",role:"manager"}]},
   {k:"stock",nm:"📦 สต็อก",tabs:[{t:"stock",nm:"สต็อก"}]},
+  /* 💰 ราคา & ทุน — สองไฟล์ที่ Unilever ส่งมาทุกเดือน
+     "price" = ไฟล์หัวเสือ (ราคาที่ศูนย์เสนอขายลูกค้า) ทุกคนในศูนย์ดูได้ และลูกค้าดูได้จาก
+               ลิงก์สาธารณะ /pricelist.html
+     "cost"  = ไฟล์ BUM (ต้นทุนที่ศูนย์ได้จากบริษัท) **เฉพาะผู้จัดการ** และเก็บคนละที่เก็บ
+               กับไฟล์หัวเสือ ลูกค้าจึงไม่มีทางเห็น — กฎข้อนี้เจ้าของย้ำสองครั้ง ห้ามรวมสองไฟล์ */
+  {k:"price",nm:"💰 ราคา & ทุน",tabs:[
+    {t:"price",nm:"แคตาลอคราคาขาย"},
+    {t:"cost",nm:"📉 ต้นทุน & เทียบรอบ",role:"manager"}]},
   {k:"plan",nm:"🗓 ปฏิทินงาน",badge:true,tabs:[{t:"plan",nm:"ปฏิทินงาน"}]},
   {k:"shop",nm:"🏪 สมัครร้านค้าใหม่",nmSales:"🏪 ร้านใหม่ของฉัน",tabs:[
     {t:"lead",nm:"ใบสมัครร้านค้า",role:"manager"},
@@ -2281,6 +2345,8 @@ function _switchTab(t){
   document.getElementById("myshopView").classList.toggle("hidden",t!=="myshop");
   document.getElementById("anaView").classList.toggle("hidden",t!=="ana");
   document.getElementById("pjpView").classList.toggle("hidden",t!=="pjp");
+  document.getElementById("priceView").classList.toggle("hidden",t!=="price");
+  document.getElementById("costView").classList.toggle("hidden",t!=="cost");
   if(t==="kpi")renderKPI();
   if(t==="plan")renderPlan();
   if(t==="promo")renderPromo();
@@ -2295,6 +2361,8 @@ function _switchTab(t){
   if(t==="myshop")msRefresh();
   if(t==="ana")renderAnalytics();
   if(t==="pjp")renderPjp();
+  if(t==="price")renderPrice();
+  if(t==="cost")renderCost();
 }
 let KPIS={month:null,show:{active:true,self:true,ghost:true},scope:"team"};
 let kpiCharts=[];
@@ -8910,10 +8978,634 @@ function poMinSave(){
   renderPoCalc();syncToServer();
   bdToast("บันทึกสต็อกขั้นต่ำ "+codes.length+" รายการแล้ว ✓");
 }
+/* ============================================================================
+ * 💰 ราคา & ทุน — ไฟล์ราคา 2 ไฟล์ที่ Unilever ส่งมาทุกเดือน
+ *
+ *  หัวเสือ (hs)  = ราคาที่ศูนย์เสนอขายลูกค้า  → ลูกค้าเห็นได้ (แคตาลอคสาธารณะ)
+ *  BUM    (bum) = ต้นทุนที่ศูนย์จ่ายให้บริษัท → ผู้จัดการเท่านั้น
+ *
+ * ⚠️⚠️ กฎเหล็กของเจ้าของ (ย้ำ 2 ครั้ง): *"ชีท Bum จะไม่ให้ลูกค้าเห็นเด็ดขาด สำคัญมาก ห้ามลืม"*
+ *   สองไฟล์นี้จึงอยู่ **คนละ blob คนละ endpoint** (bd-pricehs-* / bd-pricebum-*)
+ *   หน้าแคตาลอคสาธารณะยิงไป api/pricelist.js ซึ่งอ่านได้แค่ prefix ของหัวเสือ
+ *   → ต้นทุนไม่ใช่ "ถูกซ่อน" แต่ **เข้าถึงไม่ได้เลย** ห้ามรวมสองไฟล์เป็นก้อนเดียวเด็ดขาด
+ *
+ * ⚠️ PRICE ไม่ได้อยู่ใน state ที่ sync (ไม่แตะ mergeState / ไม่แตะ bd-data-*)
+ *   โหลดเองตอนเปิดแท็บผ่าน api/price.js แบบเดียวกับใบสมัครร้านค้า (api/leads.js)
+ *   → อัพไฟล์ราคาไม่มีทางทำข้อมูลยอดขาย/สต็อก/การสั่งของหายได้เลย
+ *
+ * ---- สูตรที่พิสูจน์แล้วจากไฟล์จริง (ห้ามเดาใหม่ ดู HANDOFF.md) ----
+ *   หัวเสือ: Total TPR = TPR + W%
+ *            NTT = (WS LP − Total TPR) ÷ Pack/CS × 1.07      ← WS ไม่รวม VAT, NTT รวมแล้ว
+ *            Floor = ปัดขึ้นจาก NTT ขั้นละ 0.25 (ถ้า RSP<50) หรือ 1 บาท (ถ้า RSP≥50)
+ *   BUM:     S%/หีบ = WS × S%
+ *            Cat Fee/หีบ = (WS − TPR − W%On − S%/หีบ) × CatFee%
+ *            ต้นทุน/หีบ = WS − TPR − W%On − Cat Fee      (ยังไม่หัก S%)
+ *            ที่ศูนย์ชำระ/หีบ = ต้นทุน − S%  →  ×1.07 = รวม VAT
+ *            ⚠️ สูตรต้นทุนหัก **W% On-invoice อย่างเดียว ไม่หัก Rebate**
+ *               เพราะศูนย์จ่ายเงินเต็มก่อนแล้วเคลมรีเบททีหลัง
+ *   ใช้ชีต **Cust Finance Print DTCON** เป็นต้นทุนจริง (Cat Fee สูงกว่า Non Cust 0.5%
+ *   ทุกหมวด = ส่วนลดเงินสด/เครดิตสั้นของศูนย์นี้ — เจ้าของยืนยัน 13 ต.ค. 69)
+ *
+ * ---- ⚠️ "เดือน" ในไฟล์หัวเสือไม่ใช่เดือนปฏิทิน ----
+ *   โปรโมชั่น on-invoice ของ Unilever **ตัดรอบวันที่ 25** (เจ้าของยืนยัน และข้อมูลตรง:
+ *   remark ที่ไม่มีคำว่า Rebate จบวันที่ 24 ถึง 21/26 ครั้ง · ที่มีคำว่า Rebate จบสิ้นเดือน
+ *   30/32 ครั้ง · และมี remark เขียนตรง ๆ ว่า "Relaunch 25/08/26-24/09/26" อยู่ในช่อง Sep'26)
+ *   → ช่อง "Oct'26" = **25 ก.ย. – 24 ต.ค.**  ไม่ใช่ 1–31 ต.ค.
+ *   ห้ามคีย์ข้อมูลด้วยเดือนปฏิทินเฉย ๆ ไม่งั้นแยมเบสท์ฟู้ดส์วันที่ 28 ต.ค. จะโชว์ราคาเก่าผิด 5%
+ * ==========================================================================*/
+let PRICE={hs:null,bum:null,loaded:false,err:""};
+const PR_MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+/* "Oct'26" → {y:2026,m:10} */
+function prRoundOf(lab){
+  const m=String(lab||"").match(/([A-Za-z]{3})[A-Za-z]*'?\s*(\d{2,4})/);
+  if(!m)return null;
+  const mo=PR_MON[m[1].toLowerCase()];if(!mo)return null;
+  let y=+m[2];if(y<100)y+=2000;
+  return {y:y,m:mo};
+}
+/* ช่วงวันที่จริงของรอบ: วันที่ 25 ของเดือนก่อน → วันที่ 24 ของเดือนที่ตั้งชื่อ */
+function prWindow(lab){
+  const r=prRoundOf(lab);if(!r)return null;
+  const p=(d)=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  return {from:p(new Date(r.y,r.m-2,25)),to:p(new Date(r.y,r.m-1,24)),lab:lab};
+}
+function prRounds(){return ((PRICE.hs&&PRICE.hs.rounds)||[]).slice();}
+/* รอบที่ครอบวันนี้ — ถ้าวันนี้ไม่อยู่ในรอบไหนเลย ใช้รอบสุดท้ายที่ไม่เกินวันนี้ */
+function prNowIdx(){
+  const rs=prRounds(),t=todayISO();
+  for(let i=0;i<rs.length;i++){const w=prWindow(rs[i]);if(w&&t>=w.from&&t<=w.to)return i;}
+  let best=-1;
+  rs.forEach((l,i)=>{const w=prWindow(l);if(w&&w.to<t)best=i;});
+  return best>=0?best:(rs.length?rs.length-1:0);
+}
+/* อ่านค่าของรอบ i ออกมาเป็นชื่อฟิลด์ (เก็บเป็น array เพื่อให้ไฟล์เล็ก) */
+const PR_F=["ws","rt","tpr","w","ntt","fl","rspN","rspP","rem"];
+function prM(it,i){
+  const a=(it&&it.m&&it.m[i])||null;if(!a)return null;
+  const o={};PR_F.forEach((k,j)=>o[k]=a[j]);
+  o.tot=Math.round((o.tpr+o.w)*100)/100;
+  return o;
+}
+/* ---- กำไรของลูกค้า ----
+   ⚠️ บางรายการ RSP เป็น "ราคายกแพ็ค" ไม่ใช่ราคาชิ้น (เช่น คอมฟอร์ท 18ML RSP 62 = แพ็ค 24 ชิ้น)
+   เจ้าของสั่ง 13 ต.ค. 69 ว่า **แสดง RSP ตามไฟล์ไปเลย** เพราะบางทีขายยกแพ็คไม่แตก
+   → จึงไม่หาร RSP แต่ไป **คูณ NTT ด้วย Inner Pack** ให้เทียบหน่วยเดียวกัน
+     กำไรจึงถูกต้อง (27% ไม่ใช่ 97%) และ RSP ที่โชว์ยังตรงไฟล์เป๊ะ
+
+   ⚠️⚠️ และต้องดูทีละราคา ไม่ใช่ตัดสินครั้งเดียวจาก RSP ปกติ — ตรวจไฟล์จริงเจอ
+   **31 รายการที่ RSP ปกติเป็นราคาชิ้น แต่ RSP ช่วงโปรเป็นราคาแพ็ค 3 ชิ้น**
+   (เช่น 64312782 ชิ้นละ 20 บ. · ช่วงโปรแพ็ค 3 = 51 บ. ทุน 12.23)
+   ถ้าตัดสินจาก RSP ปกติอันเดียว กำไรช่วงโปรจะโชว์ 76% แทนที่จะเป็น 28%
+   คือโฆษณาเกินจริงให้ลูกค้า — จึงส่ง promo เข้าไปด้วยทุกครั้ง */
+function prPackBuy(it,m,promo){
+  if(!it||!m||!m.ntt)return 1;
+  const rsp=promo?m.rspP:m.rspN;
+  if(!rsp)return 1;
+  return (it.ip>1&&rsp/m.ntt>2.5)?it.ip:1;
+}
+function prMargin(it,m,promo){
+  if(!it||!m)return null;
+  const rsp=promo?m.rspP:m.rspN;
+  if(!rsp||!m.ntt)return null;
+  const k=prPackBuy(it,m,promo);
+  const cost=m.ntt*k;
+  const o={rsp:rsp,cost:cost,k:k,baht:rsp-cost,pct:(rsp-cost)/rsp*100};
+  /* ⚠️ ถ้าคูณ Inner Pack แล้ว RSP ยังสูงกว่าทุนเกิน 2.5 เท่า แปลว่า **เทียบหน่วยไม่ลง**
+     ไม่ใช่กำไรจริง — เจอ 1 รายการ (69623799 บรีสเมติก 4.5KG, U-Pro) ที่ไฟล์ไม่ได้ใส่
+     Inner Pack มาเลย จึงไม่มีตัวหารให้ใช้ ถ้าโชว์ไปจะบอกลูกค้าว่าได้กำไร 81%
+     ดีกว่าคือ **ไม่ประกาศตัวเลข** แล้วให้ไปถามเซลล์ ส่วน RSP ยังโชว์ตามไฟล์เหมือนเดิม
+     (เกณฑ์ 2.5 เท่าเดียวกับ prPackBuy เพื่อไม่ให้มีช่องว่างระหว่าง "เป็นราคาแพ็ค" กับ "อธิบายไม่ได้"
+      ไฟล์จริงกำไรค่ากลาง 27% ควอไทล์บน 35% สูงสุดที่อธิบายได้ 52%) */
+  if(cost>0&&rsp/cost>2.5)o.unsure=true;
+  return o;
+}
+/* สินค้าที่ไม่ควรโชว์ให้ลูกค้าเห็น */
+function prHide(it,m){
+  if(!it||!m)return "no-data";
+  if(!m.ws||!m.ntt)return "no-price";
+  if(/เลิกขาย/.test(it.nt||""))return "stopped";
+  const g=prMargin(it,m,false);
+  /* ⚠️ 2 รายการที่ RSP ต่ำกว่าทุน = ลูกค้าขายขาดทุน เจ้าของสั่งซ่อนไว้ก่อน (น่าจะไฟล์ผิด) */
+  if(g&&g.pct<0)return "loss";
+  return "";
+}
+function prCats(){
+  const s={};Object.keys((PRICE.hs&&PRICE.hs.items)||{}).forEach(c=>{
+    const it=PRICE.hs.items[c];if(it.c)s[it.c]=(s[it.c]||0)+1;});
+  return s;
+}
+/* ---- ต้นทุนศูนย์จากไฟล์ BUM (ผู้จัดการเท่านั้น) ---- */
+const PB_F=["ws","pack","tpr","on","rb","cf","sp","x","y","rspN","rspP","rem","bbf","p9tpr","p9on","p9rb"];
+function prB(code){
+  const a=((PRICE.bum&&PRICE.bum.items)||{})[code];if(!a)return null;
+  const o={};PB_F.forEach((k,j)=>o[k]=a[j]);
+  return o;
+}
+/* อัตราที่ถอดจากแถวเอง — ไม่พึ่งข้อความหัวไฟล์ ใช้ได้กับหมวด U-Pro ที่หัวไฟล์ไม่ได้ระบุด้วย */
+function prRate(b){
+  if(!b||!b.ws)return null;
+  const sp=b.sp/b.ws;
+  const base=b.ws-b.tpr-b.on-b.sp;
+  return {sp:sp,cf:base>0?b.cf/base:0};
+}
+/* ต้นทุนที่ศูนย์ชำระ/หีบ (ยังไม่รวม VAT) ของชุดส่วนลดที่ให้มา */
+function prCost(b,ws,tpr,on){
+  const r=prRate(b);if(!r)return null;
+  const s=ws*r.sp;
+  return ws-tpr-on-(ws-tpr-on-s)*r.cf-s;
+}
+/* ---------- คอลัมน์ส่วนลดสองชุดในไฟล์ BUM ตรงกับรอบไหนของไฟล์หัวเสือ ----------
+   ไฟล์ BUM มีส่วนลดสองชุด: ชุดหลัก (P/Q/R หัวตารางเขียน "BM10") และชุดเทียบ
+   (AC/AD/AE หัวตารางเขียน "BM9") โดยไฟล์คำนวณ Diff = BM9 − BM10 ไว้เองที่คอลัมน์ AH
+   และเขียนคำอธิบายเครื่องหมายไว้ที่ AJ ว่า "ซื้อรอบนี้ราคาดีกว่า" / "ซื้อรอบถัดไปราคาดีกว่า"
+
+   ⚠️ ห้ามแปล BM10 ว่า "รอบนี้" ลอยๆ — ตรวจกับไฟล์จริง (13 ต.ค. 69) แล้วพบว่า
+      ชุด BM10 (P/Q/R)  = ส่วนลดของรอบ **Oct'26** ตรงกัน 99.8% ของ 1,328 รายการ
+      ชุด BM9 (AC/AD/AE) = ส่วนลดของรอบ **Sep'26** ตรงกัน 95.2%
+   คือไฟล์ "BUM DT Oct'26" ที่ออกวันที่ 29 ก.ย. เทียบ "รอบที่กำลังจะหมด (ก.ย.)"
+   กับ "รอบที่กำลังจะเปิด (ต.ค.)" — ของเดือนหน้าก็จะเลื่อนไปเป็น ต.ค. กับ พ.ย. เอง
+   จึง **จับคู่จากตัวเลขจริงทุกครั้ง ไม่ hard-code เดือน** แล้วเอาชื่อรอบของไฟล์หัวเสือ
+   มาเป็นป้ายให้เจ้าของอ่าน พร้อมบอกว่ารอบนั้นยังสั่งได้อยู่หรือปิดไปแล้ว */
+function prBumRounds(){
+  const items=(PRICE.bum&&PRICE.bum.items)||{};
+  const hsi=(PRICE.hs&&PRICE.hs.items)||{};
+  const rs=prRounds();
+  if(!rs.length||!Object.keys(items).length)return null;
+  const sc=rs.map(()=>({a:0,b:0,n:0}));
+  Object.keys(items).forEach(code=>{
+    const b=prB(code);if(!b||!b.ws)return;
+    const it=hsi[code];if(!it)return;
+    rs.forEach((l,i)=>{
+      const m=prM(it,i);if(!m||!m.ws)return;
+      sc[i].n++;
+      if(Math.abs(m.tpr-b.tpr)<0.02&&Math.abs(m.w-(b.on+b.rb))<0.02)sc[i].a++;
+      if(Math.abs(m.tpr-b.p9tpr)<0.02&&Math.abs(m.w-(b.p9on+b.p9rb))<0.02)sc[i].b++;
+    });
+  });
+  const pick=(k,skip)=>{let bi=-1,bv=-1;
+    sc.forEach((o,i)=>{if(i===skip)return;const v=o.n?o[k]/o.n:0;if(v>bv){bv=v;bi=i;}});
+    return {i:bi,p:bv};};
+  let A=pick("a",-1),B=pick("b",-1);
+  if(A.i===B.i){                       /* ชนกัน: ให้ชุดที่มั่นใจกว่าอยู่ที่เดิม */
+    if(A.p>=B.p)B=pick("b",A.i);else A=pick("a",B.i);
+  }
+  if(A.i<0||B.i<0||A.p<0.6||B.p<0.6)return null;   /* จับคู่ไม่ชัด — ไม่เดา */
+  /* ชุดไหนเป็นรอบเก่ากว่า ตัดสินจากลำดับรอบในไฟล์หัวเสือ (เรียงเก่า→ใหม่) */
+  const older=Math.min(A.i,B.i), newer=Math.max(A.i,B.i);
+  return {iOld:older,iNew:newer,
+    oldIsP9:B.i===older,                            /* รอบเก่าอยู่ในคอลัมน์ชุด BM9 (p9*) ไหม */
+    pA:A.p,pB:B.p};
+}
+/* เทียบสองรอบที่ไฟล์ BUM ให้มา — ตัวที่เจ้าของใช้ตัดสินใจว่าจะตุนตัวไหนก่อนหมดรอบ
+   ⚠️ WS LP ของแต่ละรอบต้องเอาจากไฟล์หัวเสือ เพราะไฟล์ BUM มี WS คอลัมน์เดียว
+      แต่มี 29 รายการ (FOODS 28 + BODY 1) ที่ WS เปลี่ยนระหว่างรอบ ถ้าใช้ WS เดียว
+      ตัวเลขจะเพี้ยน (เจอตอนตรวจ 13 ต.ค. 69) */
+function prCompare(){
+  const out=[];
+  const items=(PRICE.bum&&PRICE.bum.items)||{};
+  const ri=prBumRounds();
+  const iNew=ri?ri.iNew:prNowIdx(), iOld=ri?ri.iOld:(prNowIdx()>0?prNowIdx()-1:-1);
+  const p9IsOld=ri?ri.oldIsP9:true;
+  Object.keys(items).forEach(code=>{
+    const b=prB(code);if(!b||!b.ws)return;
+    const it=((PRICE.hs&&PRICE.hs.items)||{})[code]||null;
+    const mOld=(it&&iOld>=0)?prM(it,iOld):null, mNew=it?prM(it,iNew):null;
+    const wsOld=(mOld&&mOld.ws)||b.ws, wsNew=(mNew&&mNew.ws)||b.ws;
+    /* ชุดส่วนลดของรอบเก่า / รอบใหม่ — ปกติรอบเก่าคือชุด BM9 (p9*) */
+    const dOld=p9IsOld?{t:b.p9tpr,o:b.p9on,r:b.p9rb}:{t:b.tpr,o:b.on,r:b.rb};
+    const dNew=p9IsOld?{t:b.tpr,o:b.on,r:b.rb}:{t:b.p9tpr,o:b.p9on,r:b.p9rb};
+    const cOld=prCost(b,wsOld,dOld.t,dOld.o);
+    const cNew=prCost(b,wsNew,dNew.t,dNew.o);
+    if(cOld==null||cNew==null)return;
+    out.push({code:code,
+      cat:(it&&it.c)||"",brand:(it&&it.b)||"",nm:(it&&(it.v||it.n))||code,size:(it&&it.s)||"",
+      pack:b.pack||1,wsOld:wsOld,wsNew:wsNew,
+      payOld:cOld,payNew:cNew,                       /* ตอนจ่ายเงิน (ยังไม่เคลมรีเบท) */
+      netOld:cOld-dOld.r,netNew:cNew-dNew.r,         /* หลังเคลมรีเบทครบ */
+      rbOld:dOld.r,rbNew:dNew.r,rem:b.rem||"",bbf:b.bbf||""});
+  });
+  return out;
+}
+/* ---------- อ่านไฟล์หัวเสือ (ราคาที่เสนอขายลูกค้า) ----------
+   โครงไฟล์: หัวตาราง 2 แถว · ข้อมูลเริ่มแถว 3
+   A=หมวด B=แบรนด์ C=ชื่อสินค้า D=ชื่อไทย E=รหัส F=ขนาด G=บาร์โค้ดหีบ H=แพ็ค I=ชิ้น
+   J=Pack/CS K=Inner Pack L=CS/Pallet M=CP Bht N=Note
+   แล้วบล็อครอบละ 10 คอลัมน์: O.. / Y.. / AI.. / AS..
+   ภายในบล็อค: WS LP · RT LP · TPR · W% · Total TPR · NTT · Floor · RSP ปกติ · RSP โปร · Remark
+   ⚠️ ชื่อรอบอ่านจากแถวหัวตาราง (O1/Y1/AI1/AS1) ห้าง hard-code เดือน
+      เดือนหน้าไฟล์จะเลื่อนเป็น Oct/Nov/Dec/Jan เอง */
+function prCol(s){return XLSX.utils.decode_col(s);}
+function prNum(v){const n=typeof v==="number"?v:parseFloat(String(v==null?"":v).replace(/,/g,""));return isFinite(n)?n:0;}
+function prTxt(v){return String(v==null?"":v).replace(/\s+/g," ").trim();}
+function prR2(v){return Math.round(v*100)/100;}
+/* ---------- เลือกชีตของไฟล์หัวเสือ ----------
+   ⚠️ ไฟล์หัวเสือมี **สองชีต**: ชีตราคาเต็ม (ชื่อขึ้นต้น "HS DT ...") กับชีต
+   **"เฉพาะแก้ไขเท่านั้น"** ที่มีแค่รายการที่บริษัทแก้รอบนี้ (ไฟล์ ต.ค. 69 มี 1,332 กับไม่กี่สิบแถว)
+   ถ้าไปอ่านชีต "เฉพาะแก้ไข" ลูกค้าจะเห็นสินค้าแค่ไม่กี่สิบตัว — ต้องเลือกชีตราคาเต็มเสมอ
+   จึงเลือกตามชื่อก่อน (HS DT …) แล้วค่อยเดาจากชีตที่แถวมากที่สุด
+   (ชีต "เฉพาะแก้ไข" ของไฟล์ BUM ชื่อ *_REV และพิสูจน์แล้วว่าตัวเลขตรงกับชีตหลัก
+    คือเป็นสำเนาไว้ไฮไลต์ ไม่ใช่ค่าที่ใหม่กว่า — จึงไม่ต้องเอามาทับ) */
+function prGrid(buf){
+  const wb=XLSX.read(buf,{type:"array"});
+  const read=sn=>XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null,raw:true});
+  const named=wb.SheetNames.filter(sn=>/^\s*HS\b/i.test(sn));
+  if(named.length)return {rows:read(named[0]),sheet:named[0],names:wb.SheetNames};
+  let best=null,bn=0,bname="";
+  wb.SheetNames.forEach(sn=>{
+    if(/แก้ไข/.test(sn))return;                 /* ชีต "เฉพาะแก้ไขเท่านั้น" ไม่ใช่ราคาเต็ม */
+    const r=read(sn);
+    if(r.length>bn){bn=r.length;best=r;bname=sn;}
+  });
+  return {rows:best||[],sheet:bname,names:wb.SheetNames};
+}
+function parseHuasuer(name,buf){
+  const g=prGrid(buf),A=g.rows;
+  if(A.length<10)throw new Error("ไฟล์ว่าง หรือไม่ใช่ไฟล์หัวเสือ");
+  const hdr=A[0]||[], h2=A[1]||[];
+  if(!/WS\s*LP/i.test(prTxt(h2[prCol("O")])))
+    throw new Error("ไม่พบคอลัมน์ WS LP ที่ตำแหน่งที่คาด — ฟอร์แมตไฟล์หัวเสืออาจเปลี่ยน แจ้งให้ปรับโปรแกรมได้");
+  const blocks=[];
+  ["O","Y","AI","AS"].forEach(c=>{
+    const o=prCol(c), lab=prTxt(hdr[o]);
+    if(lab&&/WS\s*LP/i.test(prTxt(h2[o])))blocks.push({lab:lab,o:o});
+  });
+  if(!blocks.length)throw new Error("ไม่พบบล็อครอบราคาในไฟล์");
+  const items={};let n=0,skip=0;
+  for(let r=2;r<A.length;r++){
+    const x=A[r];if(!x)continue;
+    const code=prTxt(x[prCol("E")]);
+    if(!/^\d{6,12}$/.test(code)){skip++;continue;}
+    const it={n:prTxt(x[prCol("C")]),v:prTxt(x[prCol("D")]),b:prTxt(x[prCol("B")]),
+      c:prTxt(x[prCol("A")]),s:prTxt(x[prCol("F")]),
+      bc:prTxt(x[prCol("I")])||prTxt(x[prCol("G")]),
+      p:prNum(x[prCol("J")])||1,ip:prNum(x[prCol("K")])||0,
+      cp:prNum(x[prCol("M")])||0,nt:prTxt(x[prCol("N")]),m:[]};
+    blocks.forEach(b=>{const o=b.o;
+      it.m.push([prNum(x[o]),prNum(x[o+1]),prR2(prNum(x[o+2])),prR2(prNum(x[o+3])),
+        prR2(prNum(x[o+5])),prNum(x[o+6]),prNum(x[o+7]),prNum(x[o+8]),prTxt(x[o+9])]);});
+    items[code]=it;n++;
+  }
+  if(!n)throw new Error("ไม่พบสินค้าในไฟล์ (รหัสสินค้าต้องเป็นเลข 6-12 หลักในคอลัมน์ E)");
+  ulog("📗 หัวเสือ: อ่านได้ <b>"+n+"</b> รายการ · รอบ "+blocks.map(b=>b.lab).join(" / ")+
+    " · ชีต <b>"+g.sheet+"</b>"+(skip?" · ข้ามแถวที่ไม่ใช่สินค้า "+skip:""));
+  return prPush({kind:"hs",items:items,rounds:blocks.map(b=>b.lab),file:name},"หัวเสือ");
+}
+/* ---------- อ่านไฟล์ BUM (ต้นทุนศูนย์ — ผู้จัดการเท่านั้น) ----------
+   ใช้ชีต "Cust Finance Print DTCON" เป็นต้นทุนจริง (เจ้าของยืนยัน: ศูนย์จ่ายเงินสด/เครดิตสั้น
+   Cat Fee จึงสูงกว่าชีต Non Cust 0.5% ทุกหมวด)
+   และดึงส่วนลด "รอบก่อน" (BM9) จากชีต Non Cust เพราะชีต Cust ไม่มีบล็อคเทียบรอบ
+   — ส่วนลดเป็นของ Unilever เหมือนกันทั้งสองชีต ต่างแค่ Cat Fee ของศูนย์ */
+function prFindSheet(wb,re){
+  const n=wb.SheetNames.filter(s=>re.test(s));
+  return n.length?n[0]:null;
+}
+function parseBUM(name,buf){
+  const wb=XLSX.read(buf,{type:"array"});
+  const sCust=prFindSheet(wb,/^Cust\s+Finance/i);
+  const sNon=prFindSheet(wb,/^Non\s*Cust\s+Finance/i);
+  if(!sCust)throw new Error('ไม่พบชีต "Cust Finance Print DTCON" — ไฟล์นี้ใช่ BUM หรือเปล่า?');
+  const CU=XLSX.utils.sheet_to_json(wb.Sheets[sCust],{header:1,defval:null,raw:true});
+  const hd=CU[4]||[];
+  if(!/Cat\s*Fee/i.test(prTxt(hd[prCol("T")])))
+    throw new Error("หัวตารางชีต Cust ไม่ตรงที่คาด (คอลัมน์ T ควรเป็น Cat Fee/หีบ) — ฟอร์แมตอาจเปลี่ยน");
+  /* ส่วนลดรอบก่อนจากชีต Non Cust (AC/AD/AE) */
+  const prev={};
+  if(sNon){
+    const NC=XLSX.utils.sheet_to_json(wb.Sheets[sNon],{header:1,defval:null,raw:true});
+    for(let r=5;r<NC.length;r++){const x=NC[r];if(!x)continue;
+      const code=prTxt(x[prCol("E")]);if(!code)continue;
+      prev[code]=[prR2(prNum(x[prCol("AC")])),prR2(prNum(x[prCol("AD")])),prR2(prNum(x[prCol("AE")]))];}
+  }
+  /* อัตราที่ประกาศไว้หัวไฟล์ เก็บไว้โชว์ (การคำนวณถอดจากแถวเอง ไม่พึ่งข้อความนี้) */
+  const rate={};
+  const a2=prTxt((wb.Sheets[sCust]["A2"]||{}).v), a3=prTxt((wb.Sheets[sCust]["A3"]||{}).v);
+  const grab=(t,key)=>{const re=/([A-Z&][A-Z&\s]*?)\s*([\d.]+)\s*%/g;let m;
+    while((m=re.exec(t))){const k=m[1].trim();if(!k)continue;(rate[k]=rate[k]||{})[key]=parseFloat(m[2]);}};
+  grab(a2,"s");grab(a3,"cf");
+  const mon=(a3.match(/เดือน\s*(\S+)\s*(\d{4})/)||[])[0]||"";
+  const items={};let n=0;
+  for(let r=5;r<CU.length;r++){
+    const x=CU[r];if(!x)continue;
+    const code=prTxt(x[prCol("E")]);
+    if(!/^\d{6,12}$/.test(code))continue;
+    const ws=prNum(x[prCol("N")]);
+    const p9=prev[code]||[0,0,0];
+    items[code]=[ws,prNum(x[prCol("H")])||1,
+      prR2(prNum(x[prCol("P")])),prR2(prNum(x[prCol("Q")])),prR2(prNum(x[prCol("R")])),
+      prR2(prNum(x[prCol("T")])),prR2(prNum(x[prCol("U")])),
+      prR2(prNum(x[prCol("X")])),prR2(prNum(x[prCol("Y")])),
+      prNum(x[prCol("Z")]),prNum(x[prCol("AA")]),
+      prTxt(x[prCol("L")]),prTxt(x[prCol("M")]),p9[0],p9[1],p9[2]];
+    n++;
+  }
+  if(!n)throw new Error("ไม่พบสินค้าในชีต Cust");
+  ulog("📕 BUM: อ่านได้ <b>"+n+"</b> รายการ จากชีต <b>"+sCust+"</b>"+
+    (sNon?" · ส่วนลดรอบก่อนจาก "+sNon:" · <b class='down'>ไม่พบชีต Non Cust จึงไม่มีข้อมูลรอบก่อน</b>")+
+    (mon?" · "+mon:""));
+  return prPush({kind:"bum",items:items,rate:rate,mon:mon,file:name},"BUM");
+}
+/* ---------- ส่งขึ้นเซิร์ฟเวอร์ (gzip เหมือน api/save.js) ---------- */
+async function prPush(payload,label){
+  /* เก็บลงหน่วยความจำทันทีเพื่อให้หน้าจอขึ้นเลย แม้เซิร์ฟเวอร์จะล่ม */
+  if(payload.kind==="hs")PRICE.hs=Object.assign({},payload,{up:Date.now(),n:Object.keys(payload.items).length});
+  else PRICE.bum=Object.assign({},payload,{up:Date.now(),n:Object.keys(payload.items).length});
+  PRICE.loaded=true;
+  if(typeof renderPrice==="function"&&!document.getElementById("priceView").classList.contains("hidden"))renderPrice();
+  if(typeof renderCost==="function"&&!document.getElementById("costView").classList.contains("hidden"))renderCost();
+  if(typeof TOKEN==="undefined"||!TOKEN){ulog("⚠️ โหมดออฟไลน์ — ยังไม่ได้ส่งขึ้นเซิร์ฟเวอร์");return true;}
+  const txt=JSON.stringify(payload);
+  let body=txt,headers={"Content-Type":"application/json","Authorization":"Bearer "+TOKEN};
+  try{
+    if(typeof CompressionStream!=="undefined"){
+      const cs=new Blob([txt]).stream().pipeThrough(new CompressionStream("gzip"));
+      body=await new Response(cs).arrayBuffer();
+      headers={"Content-Type":"application/octet-stream","x-body-gzip":"1","Authorization":"Bearer "+TOKEN};
+    }
+  }catch(e){}
+  try{
+    const r=await fetch("/api/price",{method:"POST",headers:headers,body:body});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+    ulog("✅ บันทึก "+label+" ขึ้นเซิร์ฟเวอร์แล้ว ("+j.n+" รายการ)");
+    return true;
+  }catch(ex){
+    ulog("❌ บันทึก "+label+" ไม่สำเร็จ: "+ex.message+" — ข้อมูลเดิมบนเซิร์ฟเวอร์ยังอยู่ครบ");
+    return false;
+  }
+}
+/* ---------- โหลดไฟล์ราคาจากเซิร์ฟเวอร์ ---------- */
+let _prLoading=false;
+/* วาดหน้าใหม่หลังโหลดเสร็จ — ต้องเรียก **ทุกทาง** ที่ออกจาก prLoad ไม่ใช่แค่ทางที่ fetch สำเร็จ
+   ไม่งั้นโหมดไฟล์เดียว (ไม่มี TOKEN) จะค้างที่คำว่า "กำลังโหลด…" ตลอดไป */
+function prAfterLoad(){
+  const a=document.getElementById("priceView"),b=document.getElementById("costView");
+  if(a&&!a.classList.contains("hidden")&&typeof renderPrice==="function")renderPrice();
+  if(b&&!b.classList.contains("hidden")&&typeof renderCost==="function")renderCost();
+}
+async function prLoad(force){
+  if(_prLoading)return;
+  if(PRICE.loaded&&!force)return;
+  if(typeof TOKEN==="undefined"||!TOKEN){PRICE.loaded=true;prAfterLoad();return;}
+  _prLoading=true;PRICE.err="";
+  try{
+    const r=await fetch("/api/price",{headers:{"Authorization":"Bearer "+TOKEN}});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+    PRICE.hs=j.hs||null;PRICE.bum=j.bum||null;PRICE.loaded=true;
+  }catch(ex){PRICE.err=ex.message;PRICE.loaded=true;}
+  _prLoading=false;
+  prAfterLoad();
+}
+/* ====================== 💰 หน้าแคตาลอคราคา (ทุกคนเห็น) ====================== */
+let PRV={i:null,q:"",cat:"all",view:"pct",hide:true};
+function prSetRound(i){PRV.i=i;renderPrice();}
+function prStepRound(n){
+  const rs=prRounds();if(!rs.length)return;
+  let i=(PRV.i==null?prNowIdx():PRV.i)+n;
+  i=Math.max(0,Math.min(rs.length-1,i));
+  if(i!==PRV.i){PRV.i=i;renderPrice();}
+}
+function prSetCat(v){PRV.cat=v;renderPrice();}
+function prSetQ(v){PRV.q=v;renderPrice();}
+function prToggleHide(){PRV.hide=!PRV.hide;renderPrice();}
+function prRows(){
+  const items=(PRICE.hs&&PRICE.hs.items)||{};
+  const i=PRV.i==null?prNowIdx():PRV.i;
+  const q=PRV.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const out=[];
+  Object.keys(items).forEach(code=>{
+    const it=items[code],m=prM(it,i);
+    if(!m)return;
+    if(PRV.cat!=="all"&&it.c!==PRV.cat)return;
+    const hide=prHide(it,m);
+    if(PRV.hide&&hide)return;
+    if(q.length){
+      const hay=(code+" "+it.n+" "+it.v+" "+it.b+" "+it.s+" "+it.c).toLowerCase();
+      if(!q.every(w=>hay.indexOf(w)>=0))return;
+    }
+    out.push({code:code,it:it,m:m,hide:hide,g:prMargin(it,m,false),gp:prMargin(it,m,true)});
+  });
+  out.sort((a,b)=>(a.it.c+a.it.b+a.it.n+a.it.s<b.it.c+b.it.b+b.it.n+b.it.s)?-1:1);
+  return {rows:out,i:i};
+}
+function prBaht(v){return v==null?"-":v.toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function renderPrice(){
+  const bar=document.getElementById("prBar");if(!bar)return;
+  const up=document.getElementById("prUpBar");
+  if(up)up.style.display=(S.user&&S.user.role==="manager")?"":"none";
+  if(!PRICE.loaded){prLoad();bar.innerHTML="💰 ราคาขายลูกค้า · กำลังโหลด…";
+    document.getElementById("prCtl").innerHTML="";document.getElementById("prCards").innerHTML="";
+    document.getElementById("prBody").innerHTML='<div class="panel"><div class="insight">กำลังโหลดไฟล์ราคา…</div></div>';return;}
+  if(PRICE.err){bar.innerHTML="💰 ราคาขายลูกค้า";
+    document.getElementById("prBody").innerHTML='<div class="panel"><div class="note" style="border-color:var(--bad);color:var(--bad)">โหลดไฟล์ราคาไม่สำเร็จ: '+anaEsc(PRICE.err)+' — กดรีเฟรชหน้าเว็บอีกครั้ง</div></div>';
+    document.getElementById("prCtl").innerHTML="";document.getElementById("prCards").innerHTML="";return;}
+  const rs=prRounds();
+  if(!rs.length){
+    bar.innerHTML="💰 ราคาขายลูกค้า";
+    document.getElementById("prCtl").innerHTML="";document.getElementById("prCards").innerHTML="";
+    document.getElementById("prBody").innerHTML='<div class="panel"><div class="insight">ยังไม่มีไฟล์ราคา — '+
+      ((S.user&&S.user.role==="manager")?'อัพไฟล์ <b>หัวเสือ</b> หนึ่งครั้ง (ปุ่มอัพโหลด → 💰)':'รอผู้จัดการอัพไฟล์หัวเสือ')+'</div></div>';
+    return;
+  }
+  const R=prRows(),i=R.i,w=prWindow(rs[i]);
+  const all=Object.keys((PRICE.hs&&PRICE.hs.items)||{}).length;
+  let nHide=0;Object.keys(PRICE.hs.items).forEach(c=>{const m=prM(PRICE.hs.items[c],i);if(prHide(PRICE.hs.items[c],m))nHide++;});
+  bar.innerHTML="💰 ราคาขายลูกค้า · รอบ <b>"+anaEsc(rs[i])+"</b>"+
+    (w?' <span class="pill" style="background:var(--bg);color:var(--muted)">'+fmtDate(w.from)+" – "+fmtDate(w.to)+"</span>":"")+
+    (i===prNowIdx()?' <span class="pill g">รอบปัจจุบัน</span>':"")+
+    '<span class="dci-src">⚠️ รอบของ Unilever ตัดวันที่ 25 ไม่ใช่วันที่ 1 — ช่อง "'+anaEsc(rs[i])+'" คือราคาช่วง '+
+    (w?fmtDate(w.from)+" – "+fmtDate(w.to):"-")+" · NTT = ราคาที่ศูนย์เสนอขาย (รวม VAT แล้ว)"+
+    (PRICE.hs.up?" · อัพเดต "+fmtDateTime(PRICE.hs.up):"")+"</span>";
+  const cats=prCats();
+  document.getElementById("prCtl").innerHTML='<div class="controls">'+
+    '<div class="ctl"><label>รอบราคา</label><div class="dstep">'+
+      '<button type="button" class="dstep-b" onclick="prStepRound(-1)" title="รอบก่อนหน้า">◀</button>'+
+      '<select id="prRoundSel" onchange="prSetRound(+this.value)">'+rs.map((l,k)=>{const ww=prWindow(l);
+        return '<option value="'+k+'"'+(k===i?" selected":"")+'>'+anaEsc(l)+(ww?" ("+fmtDateShort(ww.from)+"–"+fmtDateShort(ww.to)+")":"")+'</option>';}).join("")+'</select>'+
+      '<button type="button" class="dstep-b" onclick="prStepRound(1)" title="รอบถัดไป">▶</button>'+
+    '</div></div>'+
+    '<div class="ctl"><label>หมวด</label><select onchange="prSetCat(this.value)">'+
+      '<option value="all"'+(PRV.cat==="all"?" selected":"")+'>ทุกหมวด ('+all+')</option>'+
+      Object.keys(cats).sort().map(c=>'<option value="'+anaEsc(c)+'"'+(PRV.cat===c?" selected":"")+'>'+anaEsc(c)+" ("+cats[c]+")</option>").join("")+
+    '</select></div>'+
+    '<div class="ctl"><label>🔍 ค้นหาสินค้า</label><input value="'+anaEsc(PRV.q)+'" placeholder="พิมพ์ชื่อ / รหัส / แบรนด์" oninput="prSetQ(this.value)" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:230px"></div>'+
+    '<div class="spacer"></div>'+
+    ((S.user&&S.user.role==="manager")?'<div class="ctl"><label>&nbsp;</label><label class="chk"><input type="checkbox"'+(PRV.hide?" checked":"")+' onchange="prToggleHide()"> ซ่อนรายการที่ไม่พร้อมขาย ('+nHide+')</label></div>':"")+
+  '</div>';
+  const gs=R.rows.map(r=>r.g&&r.g.pct).filter(v=>v!=null).sort((a,b)=>a-b);
+  const med=gs.length?gs[Math.floor(gs.length/2)]:null;
+  const nProm=R.rows.filter(r=>r.gp).length;
+  document.getElementById("prCards").innerHTML=
+    '<div class="card"><div class="k">สินค้าที่ขายได้</div><div class="v">'+R.rows.length+'</div><div class="s">จากทั้งไฟล์ '+all+' รายการ</div></div>'+
+    '<div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">กำไรลูกค้า (กลาง)</div><div class="v up">'+(med==null?"-":med.toFixed(0)+"%")+'</div><div class="s">ซื้อที่ NTT ไปขายที่ RSP ปกติ</div></div>'+
+    '<div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:var(--warn)">🎉 มีราคาโปร</div><div class="v">'+nProm+'</div><div class="s">รอบนี้มี RSP ช่วงโปรให้</div></div>'+
+    '<div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">หมวดสินค้า</div><div class="v">'+Object.keys(cats).length+'</div><div class="s">'+Object.keys(cats).sort().slice(0,3).join(" · ")+'</div></div>';
+  const mgr=S.user&&S.user.role==="manager";
+  let h="";
+  if(mgr)h+='<div class="panel"><h3>🔗 ลิงก์แคตาลอคสำหรับลูกค้า</h3>'+
+    '<div class="psub">ส่งลิงก์นี้ให้ลูกค้าดูราคาเองได้ · <b>หน้านี้เห็นแค่ไฟล์หัวเสือ ไม่มีทางเห็นต้นทุนของศูนย์</b> เพราะต้นทุนอยู่คนละที่เก็บและคนละ API</div>'+
+    '<div class="pr-link"><code id="prLink">'+location.origin+PR_LINK+'</code>'+
+    '<button class="pj-b" onclick="prCopyLink()">📋 ก๊อปลิงก์</button>'+
+    '<a class="pj-b" href="'+PR_LINK+'" target="_blank" rel="noopener">เปิดดู</a></div></div>';
+  h+='<div class="panel" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">'+
+    '<h3>📋 ราคา '+R.rows.length+' รายการ</h3>'+
+    '<div class="psub">NTT = ราคาที่ศูนย์เสนอขาย (รวม VAT) · RSP = ราคาที่แนะนำให้ลูกค้าตั้งขาย · กำไร = (RSP − ทุน) ÷ RSP</div></div>'+
+    prTableHtml(R.rows,mgr)+'</div>';
+  document.getElementById("prBody").innerHTML=h;
+}
+/* ลิงก์ที่ส่งให้ลูกค้า — ชื่อที่เจ้าของขอ ทำเป็น rewrite ไว้ใน vercel.json
+   ชี้ไปที่ไฟล์เดียวกับ /pricelist.html (ลิงก์เก่ายังใช้ได้) */
+const PR_LINK="/UnileverBDpricelist";
+function prCopyLink(){
+  const t=location.origin+PR_LINK;
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>bdToast("ก๊อปลิงก์แล้ว ✓"),()=>{});
+  else bdToast(t);
+}
+const PR_HIDE_LAB={"no-data":"ไม่มีข้อมูลรอบนี้","no-price":"ไม่มีราคา","stopped":"เลิกขาย","loss":"⚠️ RSP ต่ำกว่าทุน"};
+function prTableHtml(rows,mgr){
+  if(!rows.length)return '<div class="insight">ไม่พบสินค้าที่ตรงกับที่ค้นหา</div>';
+  let h='<div style="overflow-x:auto"><table class="plan-tbl pr-tbl"><thead><tr>'+
+    '<th>สินค้า</th><th>ขนาด</th><th class="num">ราคาเสนอขาย<br><small>NTT รวม VAT</small></th>'+
+    '<th class="num">ขายต่ำสุดได้<br><small>Floor</small></th>'+
+    '<th class="num">RSP ปกติ</th><th class="num">กำไรลูกค้า</th>'+
+    '<th class="num">RSP โปร</th><th class="num">กำไรช่วงโปร</th></tr></thead><tbody>';
+  let lastCat="";
+  rows.forEach(r=>{
+    if(r.it.c!==lastCat){lastCat=r.it.c;
+      h+='<tr class="grp-row"><td colspan="8">'+anaEsc(lastCat||"อื่นๆ")+'</td></tr>';}
+    const pk=r.g&&r.g.k>1, pkP=r.gp&&r.gp.k>1;
+    h+='<tr'+(r.hide?' class="pr-off"':"")+'>'+
+      '<td><b>'+anaEsc(r.it.v||r.it.n)+'</b>'+(r.it.b?' <span class="pl-tag">'+anaEsc(r.it.b)+'</span>':"")+
+        '<div class="psub">'+anaEsc(r.code)+(r.it.nt?" · "+anaEsc(r.it.nt):"")+
+        (r.hide?' · <b class="down">'+(PR_HIDE_LAB[r.hide]||r.hide)+'</b>':"")+'</div></td>'+
+      '<td>'+anaEsc(r.it.s)+'<div class="psub">'+r.it.p+' ชิ้น/หีบ'+(r.it.ip>1?" · แพ็ค "+r.it.ip:"")+'</div></td>'+
+      '<td class="num"><b>'+prBaht(r.m.ntt)+'</b></td>'+
+      '<td class="num">'+prBaht(r.m.fl)+'</td>'+
+      '<td class="num">'+(r.m.rspN?prBaht(r.m.rspN)+(pk?'<div class="psub">ยกแพ็ค '+r.g.k+' ชิ้น</div>':""):"-")+'</td>'+
+      '<td class="num">'+prPct(r.g)+'</td>'+
+      '<td class="num">'+(r.m.rspP?prBaht(r.m.rspP)+(pkP?'<div class="psub">ยกแพ็ค '+r.gp.k+' ชิ้น</div>':""):'<span class="psub">-</span>')+'</td>'+
+      '<td class="num">'+prPct(r.gp)+'</td>'+
+    '</tr>';
+    if(r.m.rem)h+='<tr class="pr-rem"><td colspan="8">📌 '+anaEsc(r.m.rem)+'</td></tr>';
+  });
+  return h+'</tbody></table></div>';
+}
+function prPct(g){
+  if(!g)return '<span class="psub">-</span>';
+  if(g.unsure)return '<b class="mid">?</b><div class="psub">เทียบหน่วยไม่ลง</div>';
+  const c=g.pct<0?"down":g.pct<10?"mid":"up";
+  return '<b class="'+c+'">'+g.pct.toFixed(1)+'%</b><div class="psub">'+prBaht(g.baht)+' บ.</div>';
+}
+
+/* ====================== 📉 ต้นทุน & เทียบรอบ (ผู้จัดการเท่านั้น) ====================== */
+let PCV={mode:"pay",q:"",cat:"all"};
+function pcSetMode(v){PCV.mode=v;renderCost();}
+function pcSetQ(v){PCV.q=v;renderCost();}
+function pcSetCat(v){PCV.cat=v;renderCost();}
+function renderCost(){
+  const bar=document.getElementById("pcBar");if(!bar)return;
+  const up=document.getElementById("pcUpBar");
+  if(up)up.style.display=(S.user&&S.user.role==="manager")?"":"none";
+  if(!PRICE.loaded){prLoad();bar.innerHTML="📉 ต้นทุน & เทียบรอบ · กำลังโหลด…";
+    document.getElementById("pcBody").innerHTML='<div class="panel"><div class="insight">กำลังโหลด…</div></div>';return;}
+  if(!PRICE.bum||!Object.keys(PRICE.bum.items||{}).length){
+    bar.innerHTML="📉 ต้นทุน & เทียบรอบ";
+    document.getElementById("pcCtl").innerHTML="";document.getElementById("pcCards").innerHTML="";
+    document.getElementById("pcBody").innerHTML='<div class="panel"><div class="insight">ยังไม่มีไฟล์ BUM — อัพไฟล์ <b>BUM</b> หนึ่งครั้ง (ปุ่มอัพโหลด → 💰)<br><br>ไฟล์นี้เป็น <b>ต้นทุนของศูนย์</b> ระบบเก็บแยกที่เก็บจากไฟล์หัวเสือ และ<b>ลูกค้าไม่มีทางเห็น</b></div></div>';
+    return;
+  }
+  const all=prCompare();
+  const q=PCV.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const rows=all.filter(o=>{
+    if(PCV.cat!=="all"&&o.cat!==PCV.cat)return false;
+    if(!q.length)return true;
+    const hay=(o.code+" "+o.nm+" "+o.brand+" "+o.size+" "+o.cat).toLowerCase();
+    return q.every(w=>hay.indexOf(w)>=0);
+  });
+  const key=PCV.mode==="pay"?["payOld","payNew"]:["netOld","netNew"];
+  /* ประหยัดได้เท่าไรถ้าสั่งใน "รอบเก่า" แทน "รอบใหม่" — บวก = รอบเก่าถูกกว่า */
+  const save=o=>o[key[1]]-o[key[0]];
+  const eps=0.005;
+  const stock=rows.filter(o=>save(o)>eps).sort((a,b)=>save(b)-save(a));
+  const wait=rows.filter(o=>save(o)<-eps).sort((a,b)=>save(a)-save(b));
+  const same=rows.length-stock.length-wait.length;
+
+  /* ---- ป้ายชื่อรอบ: เอาชื่อจริงจากไฟล์หัวเสือ ไม่ใช่คำว่า "รอบนี้/รอบหน้า" ลอยๆ ---- */
+  const ri=prBumRounds(),rs=prRounds(),today=todayISO();
+  const labOld=(ri&&rs[ri.iOld])||"รอบก่อน", labNew=(ri&&rs[ri.iNew])||"รอบถัดไป";
+  const wOld=prWindow(labOld), wNew=prWindow(labNew);
+  const liveOld=!!(wOld&&today>=wOld.from&&today<=wOld.to);
+  const liveNew=!!(wNew&&today>=wNew.from&&today<=wNew.to);
+  const win=w=>w?fmtDate(w.from)+" – "+fmtDate(w.to):"";
+  const tag=(live,w)=>live?' <span class="pill g">สั่งได้ถึง '+(w?fmtDate(w.to):"-")+'</span>'
+    :(w&&w.to<today?' <span class="pill b">รอบนี้ปิดแล้ว</span>':' <span class="pill w">ยังไม่เปิด</span>');
+  bar.innerHTML="📉 ต้นทุนศูนย์ & เทียบรอบ · <b>"+anaEsc(labOld)+"</b> ↔ <b>"+anaEsc(labNew)+"</b>"+
+    '<span class="dci-src">🔒 ข้อมูลนี้เป็นต้นทุนของศูนย์ — <b>ลูกค้าไม่มีทางเห็น</b> (เก็บคนละที่กับไฟล์หัวเสือ คนละ API) · '+
+    "คิดจากชีต Cust Finance (ศูนย์จ่ายเงินสด/เครดิตสั้น จึงได้ส่วนลดมากกว่าชีต Non Cust 0.5%)"+
+    (PRICE.bum.up?" · อัพเดต "+fmtDateTime(PRICE.bum.up):"")+"</span>";
+
+  const cats={};all.forEach(o=>{if(o.cat)cats[o.cat]=(cats[o.cat]||0)+1;});
+  document.getElementById("pcCtl").innerHTML='<div class="controls">'+
+    '<div class="ctl"><label>คิดต้นทุนแบบ</label><div class="seg">'+
+      '<button class="'+(PCV.mode==="pay"?"on":"")+'" onclick="pcSetMode(\'pay\')">💵 ตอนจ่ายเงิน</button>'+
+      '<button class="'+(PCV.mode==="net"?"on":"")+'" onclick="pcSetMode(\'net\')">🧾 หลังเคลมรีเบท</button>'+
+    '</div></div>'+
+    '<div class="ctl"><label>หมวด</label><select onchange="pcSetCat(this.value)">'+
+      '<option value="all"'+(PCV.cat==="all"?" selected":"")+'>ทุกหมวด</option>'+
+      Object.keys(cats).sort().map(c=>'<option value="'+anaEsc(c)+'"'+(PCV.cat===c?" selected":"")+'>'+anaEsc(c)+" ("+cats[c]+")</option>").join("")+
+    '</select></div>'+
+    '<div class="ctl"><label>🔍 ค้นหา</label><input value="'+anaEsc(PCV.q)+'" placeholder="ชื่อ / รหัส / แบรนด์" oninput="pcSetQ(this.value)" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:200px"></div>'+
+  '</div>';
+
+  const sum=a=>a.reduce((t,o)=>t+Math.abs(save(o)),0);
+  document.getElementById("pcCards").innerHTML=
+    '<div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">✅ สั่งในรอบ '+anaEsc(labOld)+' ดีกว่า</div><div class="v up">'+stock.length+'</div><div class="s">ถูกกว่ารวม '+prBaht(sum(stock))+' บ./หีบ</div></div>'+
+    '<div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:var(--warn)">⏳ รอสั่งรอบ '+anaEsc(labNew)+' ดีกว่า</div><div class="v">'+wait.length+'</div><div class="s">ถ้ารอจะถูกลง '+prBaht(sum(wait))+' บ./หีบ</div></div>'+
+    '<div class="card"><div class="k">ราคาเท่ากันสองรอบ</div><div class="v">'+same+'</div><div class="s">ไม่ต้องตัดสินใจอะไร</div></div>'+
+    '<div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">รายการทั้งหมด</div><div class="v">'+rows.length+'</div><div class="s">'+(PCV.mode==="pay"?"ราคาที่จ่ายจริงตอนซื้อ":"หลังหักรีเบทที่เคลมคืนได้")+'</div></div>';
+
+  /* ---- กล่องบอกว่ารอบที่ไฟล์เทียบให้ ยังทันสั่งอยู่ไหม ---- */
+  let h='<div class="note" style="margin-bottom:12px">📅 ไฟล์ BUM ที่อัพล่าสุดเทียบ <b>'+anaEsc(labOld)+'</b> ('+win(wOld)+')'+tag(liveOld,wOld)+
+    ' กับ <b>'+anaEsc(labNew)+'</b> ('+win(wNew)+')'+tag(liveNew,wNew)+'<br>'+
+    (liveOld?'✅ วันนี้ยังอยู่ในรอบ <b>'+anaEsc(labOld)+'</b> — รายการในตารางซ้ายยังสั่งตุนทันก่อนหมดรอบวันที่ '+(wOld?fmtDate(wOld.to):"-")
+      :(liveNew?'⚠️ วันนี้อยู่ในรอบ <b>'+anaEsc(labNew)+'</b> แล้ว — คำแนะนำของไฟล์นี้ใช้ตัดสินใจย้อนหลังได้ แต่ถ้าจะใช้ตัดสินใจรอบหน้า <b>ต้องอัพไฟล์ BUM เดือนใหม่</b>'
+        :'⚠️ วันนี้ไม่ได้อยู่ในสองรอบนี้ — อัพไฟล์ BUM เดือนล่าสุดเพื่อให้คำแนะนำตรงรอบ'))+
+    '</div>';
+  h+='<div class="note" style="margin-bottom:14px">'+
+    (PCV.mode==="pay"
+      ? '💵 <b>ตอนจ่ายเงิน</b> = เงินที่ศูนย์ต้องจ่ายจริงตอนซื้อ (หัก TPR และ W% แบบ on-invoice แล้ว แต่<b>ยังไม่หักรีเบท</b> เพราะต้องเคลมทีหลัง) — ใช้ดูกระแสเงินสด'
+      : '🧾 <b>หลังเคลมรีเบท</b> = ต้นทุนสุทธิเมื่อเคลมรีเบทคืนครบแล้ว — ใช้ดูกำไรจริง แต่เงินต้องออกไปก่อน')+
+    '</div>';
+  h+=pcTable("✅ ถูกกว่าถ้าสั่งในรอบ "+anaEsc(labOld),stock,key,"up",labOld,labNew);
+  h+=pcTable("⏳ ถูกกว่าถ้ารอสั่งรอบ "+anaEsc(labNew),wait,key,"down",labOld,labNew);
+  document.getElementById("pcBody").innerHTML=h;
+}
+function pcTable(title,rows,key,cls,labOld,labNew){
+  let h='<div class="panel" style="margin-top:14px"><h3>'+title+'</h3>';
+  if(!rows.length)return h+'<div class="insight">ไม่มีรายการในกลุ่มนี้</div></div>';
+  h+='<div class="psub">เรียงจากถูกกว่ามากสุด · ราคาต่อหีบ ยังไม่รวม VAT</div>'+
+    '<div style="overflow-x:auto"><table class="plan-tbl pr-tbl"><thead><tr>'+
+    '<th>สินค้า</th><th>ขนาด</th><th class="num">'+anaEsc(labOld||"รอบเก่า")+'<br><small>บ./หีบ</small></th>'+
+    '<th class="num">'+anaEsc(labNew||"รอบใหม่")+'<br><small>บ./หีบ</small></th>'+
+    '<th class="num">ต่างกัน</th><th class="num">ต่อชิ้น</th><th>หมายเหตุ</th></tr></thead><tbody>';
+  rows.slice(0,200).forEach(o=>{
+    const d=o[key[0]]-o[key[1]];
+    h+='<tr><td><b>'+anaEsc(o.nm)+'</b>'+(o.brand?' <span class="pl-tag">'+anaEsc(o.brand)+'</span>':"")+
+      '<div class="psub">'+anaEsc(o.code)+' · '+anaEsc(o.cat)+'</div></td>'+
+      '<td>'+anaEsc(o.size)+'<div class="psub">'+o.pack+' ชิ้น/หีบ</div></td>'+
+      '<td class="num">'+prBaht(o[key[0]])+'</td>'+
+      '<td class="num">'+prBaht(o[key[1]])+'</td>'+
+      '<td class="num"><b class="'+cls+'">'+prBaht(Math.abs(d))+'</b></td>'+
+      '<td class="num">'+prBaht(Math.abs(d)/(o.pack||1))+'</td>'+
+      '<td class="psub">'+anaEsc(o.bbf?("🎁 "+o.bbf+" "):"")+anaEsc(String(o.rem||"").slice(0,44))+'</td></tr>';
+  });
+  if(rows.length>200)h+='<tr><td colspan="7" class="psub">… แสดง 200 รายการแรกจาก '+rows.length+' (ใช้ช่องค้นหาเพื่อเจาะดู)</td></tr>';
+  return h+'</tbody></table></div></div>';
+}
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){
-  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",ana:"ana",dci:"dci",pjp:"pjp"}[CURTAB]||"sales";
-  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์",dci:"📈 อัพไฟล์ DCI Score ของศูนย์",pjp:"🗺 อัพไฟล์ PJP & ร้านค้า"}[g];
+  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price"}[CURTAB]||"sales";
+  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์",dci:"📈 อัพไฟล์ DCI Score ของศูนย์",pjp:"🗺 อัพไฟล์ PJP & ร้านค้า",price:"💰 อัพไฟล์ราคา (หัวเสือ / BUM)"}[g];
   document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
   document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=el.dataset.group===g?"":"none";});
   document.getElementById("modal").classList.remove("hidden");
@@ -8942,10 +9634,14 @@ function handleTyped(e,kind){
     else if(kind==="dci")parseDCI(f.name,ev.target.result);
     else if(kind==="pjpout")parseOutlet(f.name,ev.target.result);
     else if(kind==="pjpplan")parsePJP(f.name,ev.target.result);
+    else if(kind==="pricehs")parseHuasuer(f.name,ev.target.result);
+    else if(kind==="pricebum")parseBUM(f.name,ev.target.result);
     else parseStore(f.name,ev.target.result);
   }catch(err){ulog("❌ "+f.name+": "+err.message);console.error(err);}};rd.readAsArrayBuffer(f);});
   e.target.value="";
 }
+document.getElementById("filePriceHS").addEventListener("change",e=>handleTyped(e,"pricehs"));
+document.getElementById("filePriceBUM").addEventListener("change",e=>handleTyped(e,"pricebum"));
 document.getElementById("filePjpOut").addEventListener("change",e=>handleTyped(e,"pjpout"));
 document.getElementById("filePjpPlan").addEventListener("change",e=>handleTyped(e,"pjpplan"));
 document.getElementById("fileDaily").addEventListener("change",e=>handleTyped(e,"daily"));

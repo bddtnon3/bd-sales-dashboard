@@ -146,6 +146,9 @@ const boot=`
    ['วิเคราะห์เชิงลึก · ช่วงเวลา','ana','anaPeriod','',null],
    ['โปรโมชั่น · เดือน','promo','pmMonth','',null],
    ['ผลโปรโมชั่น · เดือน','promores','prMonth','',null],
+   /* 💰 แคตาลอคราคา — รายการรอบเรียงเก่า→ใหม่ (Sep→Dec) จึงไม่ติดธง data-rev
+      ต้องใส่ข้อมูลราคาปลอมก่อน ไม่งั้น renderPrice วาดแค่ข้อความ "ยังไม่มีไฟล์ราคา" แล้วไม่มีปุ่ม */
+   ['แคตาลอคราคา · รอบราคา','price','prRoundSel',`PRICE.loaded=true;PRICE.err='';PRICE.hs={rounds:["Sep'26","Oct'26","Nov'26","Dec'26"],up:1,items:{'64766471':{n:'BREEZE NM STD',v:'บรีสเพาเวอร์',b:'BREEZE',c:'FAB SOL',s:'2250G',p:6,ip:0,cp:199,nt:'',m:[[1080,1102,223.18,0,152.8,153,199,0,''],[1080,1102,223.18,0,152.8,153,199,0,''],[1080,1102,223.18,0,152.8,153,199,0,''],[1080,1102,223.18,0,152.8,153,199,0,'']]}}};PRV={i:null,q:'',cat:'all',view:'pct',hide:true};renderPrice();`,null],
  ];
  for(const [nm,tab,selId,prep,getter] of PAGES){
    const r=await ev(a=>{

@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/UnileverBDpricelist", "destination": "/pricelist.html" },
+    { "source": "/pricelist", "destination": "/pricelist.html" },
+    { "source": "/join", "destination": "/join.html" }
+  ]
+}

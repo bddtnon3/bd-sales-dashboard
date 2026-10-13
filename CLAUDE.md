@@ -12,7 +12,9 @@ the app UI; the sales team sees everything live. Features (all are tabs in one p
 **วิเคราะห์เชิงลึก** (product-mix analytics by line/group/brand/product + per-store).
 **โปรโมชั่น & เงินรางวัล** (the monthly Unilever promotions and the prize money each sales line
 earns from them).
-The pages sit in **8 top-level tab groups** (`TAB_GROUPS`/`renderTabs`), several of which open a
+**ราคา & ทุน** (the two monthly Unilever price files: the หัวเสือ quote prices the depot sells at —
+also published to shop customers as a public catalogue — and the BUM cost file, manager-only).
+The pages sit in **9 top-level tab groups** (`TAB_GROUPS`/`renderTabs`), several of which open a
 row of sub-tabs. The per-page keys (`CURTAB`) did not change when the grouping was added — see
 `HANDOFF.md` §5 before touching the tab bar.
 
@@ -67,6 +69,24 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   month must not erase the last one, a Master file must not delete a shop it stopped listing, an
   untick must not be undone by a stale tab, and a tab from before visit notes existed must not
   strip a rep's note off the record it shares with the tick), and the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
+
+- The **two monthly price files live OUTSIDE `bd-data-*`** and `PRICE` is deliberately **not** part
+  of the synced state, so `mergeState` never sees them and uploading prices cannot roll the sales
+  data back nor evict its 8 backups. They are two separate blobs behind two endpoints —
+  `bd-pricehs-*` (หัวเสือ, public read) and `bd-pricebum-*` (BUM, manager only). A price list is a
+  complete monthly document, so a new upload **replaces** that file rather than merging into it
+  (a half-merged price list would quote a customer last month's price); 6 rolling copies are kept
+  per kind and an upload parsing fewer than 50 items is refused (409). Prove it with
+  **`node test/browser/price.test.cjs`** (88 checks against the owner's real files).
+
+## 🔒 Customers may see หัวเสือ and NEVER BUM
+The owner stated this twice, in capitals: *"ชีทที่ลูกค้าเห็นจะมีแค่หัวเสือเท่านั้น ชีท Bum จะไม่ให้ลูกค้า
+เห็นเด็ดขาด สำคัญมาก ห้ามลืม"* — a BUM leak would show every customer the depot's margin on every SKU.
+It is enforced by **unreachability, not by filtering**: `api/pricelist.js` is public, GET-only, and
+lists **only `PRICEHS_PREFIX`**, so the cost blob is not reachable from the customer page at all.
+**Never add `PRICEBUM_PREFIX`, the main snapshot, or a `kind` parameter to that file**, and never add
+a second `fetch` to `public/pricelist.html`. `api/price.js` returns `bum` only when
+`claims.role === "manager"` — not merely a hidden button. Rules: `HANDOFF.md` §5.
 
 ## The order form's colour grammar (analysed from the 01/09 confirm form)
 The order cell is filled with **two different colours that mean two different things** — do not
@@ -253,6 +273,25 @@ code, never printed.
   moves `selectedIndex` and dispatches `change`, so it is exactly a dropdown pick and **cannot
   touch data**. Prove both with **`node test/browser/datestep.test.cjs`** (72 checks, including a
   byte-for-byte comparison of every stored blob before and after every button on every page).
+  The **💰 ราคา & ทุน** tab group (`renderPrice`/`renderCost`) reads the two monthly Unilever price
+  files. Its rules are dense and were measured, not guessed — read `HANDOFF.md` §5 before touching
+  any of it. The ones easiest to get wrong: a Unilever round runs **the 25th → the 24th**, not a
+  calendar month (`prWindow`); **NTT must be read from the file, never recomputed** (the file rounds,
+  by up to 0.08); the Cat Fee / S% rates are **derived per row** (`prRate`), never parsed from the
+  header text, because U-Pro is not listed there; both files carry a **"เฉพาะแก้ไขเท่านั้น" / `_REV`
+  sheet** that must not be read as the price list; `prPackBuy` takes **`promo`** because 31 items
+  price the normal RSP per piece and the promo RSP per 3-pack; a margin that still cannot be
+  unit-reconciled is flagged **`unsure`** and shown as "?" rather than published wrong; and
+  `prBumRounds()` **matches the BUM discount columns to a Huasuer round by their numbers** instead of
+  reading BM9/BM10 as "this/next month". The price maths is **copied verbatim into
+  `public/pricelist.html`** (a standalone page cannot import from the app) — change one and you must
+  change the other; the test compares both copies on every item in every round.
+- `public/pricelist.html` — the PUBLIC customer price catalogue (hand-written, like `join.html`),
+  reachable at **`/UnileverBDpricelist`** via the `rewrites` in `vercel.json`.
+- `vercel.json` — `rewrites` only (the pretty links for the catalogue and the application form).
+  Keep it to `rewrites`: `builds`/`routes` would disable Vercel's zero-config handling of `api/*`.
+- `api/price.js` — manager upload + role-aware read of the two price files (separate blobs).
+- `api/pricelist.js` — PUBLIC, GET-only, READ-ONLY, หัวเสือ prefix only. See the 🔒 section above.
 - `build.cjs` — regenerates `public/index.html` from the template (run after every edit).
 - `public/index.html` — generated output that Vercel serves. Do not edit by hand.
 - `public/join.html` + `public/img/*` — the public shop-application page (hand-written).
