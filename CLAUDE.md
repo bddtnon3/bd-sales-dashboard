@@ -216,6 +216,14 @@ code, never printed.
   always sinks to the bottom. The product-status tables (`psTable`, `psShowDiff`) pass
   `alwaysBand:true`, because those lists are pre-filtered and a round with one category would
   otherwise read as a flat list. Rules: `HANDOFF.md` §5.
+  **One exception, at the owner's direct request (16 Oct 26):** the 🎁 โปรโมชั่นแถมในบิล list
+  under วิเคราะห์การสั่งของ is banded by **free-goods ratio** (`psPromoGroups` — 6F1, 7F1, …,
+  best deal first, each band summarising ลงตัว / เหลือเศษ / ยังไม่สั่ง), and sorted inside a band
+  by brand then pack size, because what the owner decides there is "how many to order so it
+  divides evenly", not "where is this on the paper form". The brand key is taken from the FIRST
+  THAI WORD of the order-form name (`psBrandKey`) and never from `STOREPROD` or the price file —
+  mixing sources splits one brand across two places in the list. Every other section keeps
+  `grpByCat` + `poSeqSort`. Prove it with **`node test/browser/psbill.test.cjs`** (25 checks).
   **การสั่งของ** has four sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO.
   The first one opens with **🔁 Drop ค้าง** (`renderDropBack`/`dbScan`/`dbChase`/`dbBlock`): everything
   Unilever dropped in the last 3/5/7/14 days that has still not arrived, with a re-order prompt. It

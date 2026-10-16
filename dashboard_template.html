@@ -6477,7 +6477,9 @@ function renderPOSBody(){
     `<div class="panel" style="border-left:5px solid ${sec.color}">
       <h3 style="color:${sec.color}">${sec.icon} ${sec.title} <span style="color:var(--muted);font-weight:600;font-size:14px">(${rows.length===total?total:rows.length+" จาก "+total})</span></h3>
       <div class="psub">${sec.sub}</div>
-      <div class="psub" style="margin-top:4px">↕️ ${poSeqNote()}</div>
+      <div class="psub" style="margin-top:4px">↕️ ${sec.k==="p"
+        ? 'แบ่งหัวข้อตาม<b>อัตราแถม</b> (อัตราที่คุ้มที่สุดอยู่บน) แล้วไล่สินค้าตาม<b>แบรนด์</b> และ<b>ขนาด</b>'
+        : poSeqNote()}</div>
       ${Object.keys((ORDERS&&ORDERS.cat)||{}).length?"":'<div class="note">ℹ️ ยังไม่มีข้อมูลหมวด — อัพไฟล์ใบสั่ง (BD_...xlsx) สักครั้ง เพื่อให้ระบบแบ่งหมวดจากชีต Home_Care/PC_Hair/... ให้อัตโนมัติ</div>'}
       ${rows.length?psTable(sec,rows):'<div class="psub" style="margin-top:8px">'+(total?"ไม่พบรายการที่ค้นหา":"ไม่มีรายการในกลุ่มนี้")+'</div>'}</div>`;
 }
@@ -6517,6 +6519,76 @@ function psSwapCell(code,dead){
     return c+(f.s?" ของขาด":f.x?(poClosedKind(f.x)==="dropped"?" เลิกขาย":" ปิดชั่วคราว"):"");}).join(" · ");
   return `<span class="pill b">⚠️ รหัสอื่นก็สั่งไม่ได้</span> <span class="psub">${why}</span>`;
 }
+/* ============================================================================
+ * 🎁 โปรโมชั่นแถมในบิล — จับกลุ่มตาม "อัตราแถม" ไม่ใช่ตามหมวดสินค้า
+ *
+ * เดิมกลุ่มนี้แบ่งตามหมวดในใบสั่ง (Home_Care ฯลฯ) เหมือนหน้าอื่น แต่เฉพาะกลุ่มนี้
+ * มันอ่านไม่ได้ — 30 รายการกองอยู่ใน Home_Care ก้อนเดียว แล้วอัตราแถมสลับกันไปมา
+ * (7แถม1 · 6แถม1 · 7แถม1 · 12แถม1 · 11แถม1) เจ้าของแจ้งว่า "ลายตา" (13 ต.ค. 69)
+ * สิ่งที่เจ้าของต้องตัดสินใจในหน้านี้คือ "สั่งเท่าไรให้หารลงตัว" ซึ่งขึ้นกับอัตราแถม
+ * จึงขึ้นหัวข้อเป็นอัตราแถม แล้วไล่สินค้าใต้หัวข้อ
+ *
+ * ลำดับหัวข้อ: อัตราที่คุ้มที่สุดก่อน (แถม ÷ ซื้อ มากไปน้อย) เท่ากันแล้วซื้อน้อยก่อน
+ * ลำดับในหัวข้อ: แบรนด์ → หน่วย → ขนาดต่อชิ้น → ชื่อเต็ม
+ *   · แบรนด์เอาจาก **คำไทยคำแรกของชื่อในใบสั่งเอง** ไม่พึ่ง STOREPROD / ไฟล์ราคา
+ *     ลำดับจึงไม่เปลี่ยนไปตามว่าอัพไฟล์อะไรไปแล้วบ้าง (ถ้าแบรนด์มาจากหลายแหล่ง
+ *     สินค้าแบรนด์เดียวกันจะแยกกันอยู่ เพราะบางตัวได้ "BREEZE" บางตัวได้ "บรีส")
+ *     และสินค้าตระกูลเดียวกันยังติดกันเอง เพราะเรียงตามสตริง:
+ *     "บรีสน้ำ" < "บรีสน้ำซิก" < "บรีสน้ำอัลตร้า" < "บรีสเอกเซล" — บรีสทั้งหมดติดกัน
+ *   · ขนาดต่อชิ้น = เลขตัวสุดท้ายก่อนหน่วย ในสเปคแพ็คท้ายชื่อ
+ *     "คู่6X(2X560)มล" → 560 มล · "20B 12X3X130มล" → 130 มล · "12X750 กรัม" → 750 ก.
+ *     (เลขหน้า X เป็นจำนวนลัง/แพ็ค ไม่ใช่ขนาด จึงต้องเอาตัวท้ายสุด)
+ * ==========================================================================*/
+/* เลข (อาจมีวงเล็บปิดคั่น) + หน่วย โดยหน่วยต้องไม่ติดตัวอักษรอื่นต่อท้าย
+   กัน "G" ไปแมตช์กลางคำอย่าง GEL / MAGIC และกัน "ก." ไปแมตช์ "ก้อน" */
+const PS_VOL_RE=/(\d+(?:[.,]\d+)?)\s*\)?\s*(กก\.?|ก\.ก\.?|KG|ลิตร|LTR|LIT|มล\.?|ML|CC|กรัม|ก\.|G)(?![A-Za-z฀-๿0-9])/gi;
+/* คีย์เป็นหน่วยที่ตัดจุดออกแล้ว ("ก.ก." → "กก" · "มล." → "มล") */
+const PS_VOL_K={"กก":["g",1000],"KG":["g",1000],
+  "ลิตร":["ml",1000],"LTR":["ml",1000],"LIT":["ml",1000],
+  "มล":["ml",1],"ML":["ml",1],"CC":["ml",1],
+  "กรัม":["g",1],"ก":["g",1],"G":["g",1]};
+function psBrandKey(name){
+  const s=String(name||"").trim();
+  const m=s.match(/^[฀-๿]+/);            /* คำไทยคำแรก = ตระกูลสินค้า */
+  if(m)return m[0];
+  const l=s.match(/^[A-Za-z]+/);                   /* ชื่อที่เป็นอังกฤษล้วน */
+  return l?l[0].toUpperCase():s.slice(0,14);
+}
+/* ขนาดต่อชิ้น — คืน {u,v} ; ไม่เจอหน่วยคืน u:"zz" ให้ไปอยู่ท้ายกลุ่มแบรนด์ */
+function psVol(name){
+  const s=String(name||"");
+  let m,last=null;
+  PS_VOL_RE.lastIndex=0;
+  while((m=PS_VOL_RE.exec(s))){
+    const k=PS_VOL_K[m[2].toUpperCase().replace(/\./g,"")];
+    if(!k)continue;
+    last={u:k[0],v:parseFloat(String(m[1]).replace(",",""))*k[1]};
+  }
+  return last||{u:"zz",v:0};
+}
+/* เรียงในหัวข้อ: แบรนด์ → หน่วย → ขนาด → ชื่อเต็ม */
+function psPromoSort(rows){
+  const key={};
+  rows.forEach(r=>{const n=oname(r.code)||"";
+    const v=psVol(n);key[r.code]={b:psBrandKey(n),u:v.u,v:v.v,n:n};});
+  return rows.slice().sort((a,b)=>{
+    const A=key[a.code],B=key[b.code];
+    return A.b.localeCompare(B.b,"th")||A.u.localeCompare(B.u)||(A.v-B.v)
+      ||A.n.localeCompare(B.n,"th")||String(a.code).localeCompare(String(b.code));
+  });
+}
+/* แบ่งเป็นหัวข้อตามอัตราแถม — คุ้มที่สุดก่อน */
+function psPromoGroups(rows){
+  const by={};
+  rows.forEach(r=>{const b=r.b||0,f=r.f||0;
+    const k=b?(b+"F"+f):"?";(by[k]=by[k]||{b:b,f:f,list:[]}).list.push(r);});
+  return Object.keys(by).map(k=>Object.assign({k:k},by[k]))
+    .sort((a,b)=>{
+      if(!a.b)return 1;if(!b.b)return -1;              /* อ่านอัตราไม่ได้ ไว้ท้ายสุด */
+      return (b.f/b.b)-(a.f/a.b)||a.b-b.b||a.f-b.f;
+    })
+    .map(g=>Object.assign(g,{list:psPromoSort(g.list)}));
+}
 function psTable(sec,rows){
   const headCols={p:[{h:"แถม"},{h:"ศูนย์สั่งวันนี้ (ลัง)"},{h:"เช็คจำนวนแถม",a:"l"}],
               q:[{h:"โควต้าสูงสุด (ลัง)"},{h:"ใส่ในช่อง Order Confirm"},{h:"สถานะ",a:"l"}],
@@ -6539,7 +6611,9 @@ function psTable(sec,rows){
         const tip=dn>0?`ลดเหลือ ${dn} (แถม ${fdn}) หรือเพิ่มเป็น ${up} ลัง (แถม ${fup})`
                       :`เพิ่มอีก ${b-rem} ลัง เป็น ${up} ลัง จะได้แถม ${fup} ลัง`;
         note=`<span class="pill b">⚠️ เหลือเศษ ${rem} ลัง ไม่ได้แถม</span> <span class="psub">${tip}</span>`;}
-      return `<td style="text-align:center"><b>ซื้อ ${b} แถม ${f}</b></td><td style="text-align:center">${ord||"-"}</td><td style="text-align:left">${note}</td>`;
+      /* อัตราแถมขึ้นเป็นหัวข้อของแถบแล้ว (psPromoGroups) ในแถวจึงทำให้จางลง
+         ไม่เอาออกทั้งคอลัมน์ เพราะถ้าวันไหนอ่านอัตราจากไฟล์เพี้ยน ต้องยังเห็นได้ว่าแถวไหนเพี้ยน */
+      return `<td style="text-align:center"><span class="psub">ซื้อ ${b} แถม ${f}</span></td><td style="text-align:center">${ord||"-"}</td><td style="text-align:left">${note}</td>`;
     }
     if(sec.k==="q"){
       const q=r.q||0,left=q-ord;
@@ -6563,12 +6637,34 @@ function psTable(sec,rows){
       `<td style="text-align:left">${psSwapCell(r.code,false)}</td>`;
   };
   const line=r=>`<tr><td>${r.code}</td><td style="text-align:left">${psName(r.code)||'<span class="psub">(ไม่มีชื่อในระบบ)</span>'}</td>${cell(r)}</tr>`;
-  /* แบ่งตามหมวดในใบสั่งซื้อ เรียงลำดับเดียวกับใบสั่ง เพื่อไล่เทียบทีละหน้ากับไฟล์ Confirm ได้
+  const head=[{h:"รหัส"},{h:"สินค้า",a:"l"}].concat(headCols);
+  /* 🎁 กลุ่มของแถมในบิล: หัวข้อเป็น "อัตราแถม" ไม่ใช่หมวดสินค้า (ดูเหตุผลที่ psPromoGroups)
+     หมวดสินค้ายังอยู่ ย้ายไปเป็นป้ายเล็กข้างชื่อสินค้า จะได้ไม่เสียข้อมูลไป */
+  if(sec.k==="p"){
+    const pline=r=>{const c=psCat(r.code);
+      return `<tr><td>${r.code}</td><td style="text-align:left">${psName(r.code)||'<span class="psub">(ไม่มีชื่อในระบบ)</span>'}`+
+        (c?` <span class="pl-tag">${c}</span>`:"")+`</td>${cell(r)}</tr>`;};
+    return `<div style="margin-top:8px">`+grpTable(head,
+      psPromoGroups(rows).map(g=>{
+        if(!g.b)return {title:"❔ อ่านอัตราแถมจากไฟล์ไม่ได้",
+          sub:`· ${g.list.length} รายการ · ตรวจในใบสั่งอีกที`,rows:g.list.map(pline)};
+        let ok=0,rem=0,none=0;
+        g.list.forEach(r=>{const o=psOrdered(PS2.date,r.code);
+          if(!o)none++;else if(o%g.b===0)ok++;else rem++;});
+        const st=[];
+        if(ok)st.push(`✅ ลงตัว ${ok}`);
+        if(rem)st.push(`⚠️ เหลือเศษ ${rem}`);
+        if(none)st.push(`ยังไม่สั่ง ${none}`);
+        return {title:`🎁 ซื้อ ${g.b} แถม ${g.f} <span>(${g.k})</span>`,
+          sub:`· ${g.list.length} รายการ · สั่งเป็นชุดละ ${g.b} ลัง · ${st.join(" · ")}`,
+          rows:g.list.map(pline)};
+      }),{cls:"plan-tbl",alwaysBand:true})+`</div>`;
+  }
+  /* กลุ่มอื่น: แบ่งตามหมวดในใบสั่งซื้อ เรียงลำดับเดียวกับใบสั่ง เพื่อไล่เทียบทีละหน้ากับไฟล์ Confirm ได้
      ตารางเดียวไล่ลงมา คอลัมน์จึงตรงกันทุกหมวด (ดู grpTable)
-     alwaysBand = ต้องขึ้นแถบหมวดแม้มีหมวดเดียว — หน้านี้กรองมาแล้ว (แถม/โควต้า/ของขาด…) บางรอบ
+     alwaysBand = ต้องขึ้นแถบหมวดแม้มีหมวดเดียว — หน้านี้กรองมาแล้ว (โควต้า/ของขาด…) บางรอบ
      เหลือหมวดเดียวจริง ๆ ถ้าไม่ขึ้นแถบ เจ้าของจะอ่านเป็น "ลิสต์แบนไม่แบ่งหมวด" (แจ้ง 7 ต.ค. 69) */
-  return `<div style="margin-top:8px">`+grpTable(
-    [{h:"รหัส"},{h:"สินค้า",a:"l"}].concat(headCols),
+  return `<div style="margin-top:8px">`+grpTable(head,
     grpByCat(rows,r=>r.code).map(g=>({title:`${g.icon} ${g.cat}`,sub:`· ${g.list.length} รายการ`,
       rows:g.list.map(line)})),{cls:"plan-tbl",alwaysBand:true})+`</div>`;
 }
