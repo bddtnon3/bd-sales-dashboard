@@ -13,6 +13,14 @@
  *   5) 🔒 ความปลอดภัย: หน้าแคตาลอคของลูกค้าเอื้อมไม่ถึงไฟล์ BUM
  *   6) 🛟 ความปลอดภัยของข้อมูล: อัพไฟล์ราคาแล้วข้อมูลยอดขาย/สั่งของไม่ขยับแม้ไบต์เดียว
  *
+ * ⚠️ ไฟล์ fixture สองอันนี้ **ไม่ได้อยู่ใน repo** และห้ามใส่กลับเข้ามา
+ *    มันคือไฟล์ต้นทุนและไฟล์ราคาตัวจริงของ Unilever เคย commit เข้ามาเมื่อ 13 ต.ค. 69
+ *    ตอนที่ repo ยังตั้งเป็นสาธารณะ ซึ่งขัดกับกฎข้อสำคัญที่สุดของเจ้าของโดยตรง
+ *    ("ชีท Bum จะไม่ให้ลูกค้าเห็นเด็ดขาด สำคัญมาก ห้ามลืม") — เอาออกเมื่อ 19 ต.ค. 69
+ *    และใส่ไว้ใน .gitignore แล้ว
+ *    ถ้าจะรันเทสต์นี้ ให้ก๊อปไฟล์สองอันจากเครื่องเจ้าของมาวางเองที่ test/browser/fixtures/
+ *    ไม่มีไฟล์ = เทสต์ข้ามให้เอง ไม่ฟ้องว่าพัง (แต่ก็ไม่ได้พิสูจน์อะไรเลย)
+ *
  * ต้องติดตั้งก่อน (ไม่ได้อยู่ใน package.json เพราะใช้เฉพาะตอนเทสต์):
  *     npm i --no-save playwright-core xlsx
  * แล้วรัน:  node build.cjs && node test/browser/price.test.cjs
@@ -45,6 +53,16 @@ const sales=`S.user={id:'ct11',role:'sales',code:'209611',name:'CT11 · ก'};`;
 /* ก้อนข้อมูลที่ sync ขึ้นเซิร์ฟเวอร์ — ต้องไม่ขยับเลยตลอดเทสต์นี้ (ดู build.cjs _doSync) */
 const BLOBS=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,
   STOREDAILY,PSTORE,EB2B,POSTATUS,LEADS,DCI,MINSTOCK,PLAN,PROMO,PJP})`;
+
+/* ไม่มีไฟล์จริง = ข้ามทั้งไฟล์ ไม่ใช่ล้มเหลว — ดูหมายเหตุหัวไฟล์ว่าทำไมมันไม่อยู่ใน repo */
+const MISSING=[['huasuer-price.xlsx',F_HS],['bum-oct2026.xlsx',F_BUM]].filter(([,f])=>!fs.existsSync(f));
+if(MISSING.length){
+  console.log('SKIP — ไม่มีไฟล์ fixture: '+MISSING.map(m=>m[0]).join(', '));
+  console.log('ไฟล์ราคา/ต้นทุนตัวจริงไม่ได้เก็บใน repo โดยตั้งใจ (ดูหมายเหตุหัวไฟล์)');
+  console.log('ก๊อปไฟล์มาวางที่ '+path.join(__dirname,'fixtures')+' แล้วรันใหม่');
+  console.log('SKIPPED (0 checks)');
+  process.exit(0);
+}
 
 (async()=>{
  const b=await chromium.launch({executablePath:BROWSER,args:['--no-sandbox']});

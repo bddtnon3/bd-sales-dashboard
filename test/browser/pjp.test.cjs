@@ -9,6 +9,18 @@ const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/c
 const ROOT=path.resolve(__dirname,'..','..');
 const F_OUT=path.join(__dirname,'fixtures','master-outlet.xlsx');
 const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');
+/* ⚠️ ไฟล์ fixture สองอันนี้ **ไม่ได้อยู่ใน repo** และห้ามใส่กลับเข้ามา
+   เป็นรายชื่อร้านลูกค้าจริง — ชื่อร้าน ที่อยู่ พิกัด GPS และแผนเยี่ยมร้านรายวัน
+   repo นี้เคยตั้งเป็นสาธารณะ เอาออกเมื่อ 19 ต.ค. 69 และใส่ .gitignore ไว้แล้ว
+   จะรันเทสต์นี้ ให้ก๊อปไฟล์จากเครื่องเจ้าของมาวางเองที่ test/browser/fixtures/
+   ไม่มีไฟล์ = ข้ามให้เอง ไม่ฟ้องว่าพัง */
+const MISSING=[['master-outlet.xlsx',F_OUT],['pjp-oct2026.xlsx',F_PJP]].filter(([,f])=>!fs.existsSync(f));
+if(MISSING.length){
+  console.log('SKIP — ไม่มีไฟล์ fixture: '+MISSING.map(m=>m[0]).join(', '));
+  console.log('รายชื่อร้านลูกค้าจริงไม่ได้เก็บใน repo โดยตั้งใจ (ดูหมายเหตุหัวไฟล์)');
+  console.log('SKIPPED (0 checks)');
+  process.exit(0);
+}
 (async()=>{
  const b=await chromium.launch({executablePath:BROWSER,args:['--no-sandbox']});
  const pg=await (await b.newContext({viewport:{width:1280,height:1000}})).newPage();

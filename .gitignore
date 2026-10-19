@@ -1,1 +1,13 @@
 node_modules/
+
+# ⛔ ไฟล์ราคา/ต้นทุนตัวจริงของ Unilever ห้ามเข้า repo
+# repo นี้เคยตั้งเป็นสาธารณะ และไฟล์ BUM (ต้นทุนต่อหีบของศูนย์) กับไฟล์ราคาหัวเสือ
+# ถูก commit เข้ามาเป็น fixture ของเทสต์เมื่อ 13 ต.ค. 69 — ขัดกับกฎข้อสำคัญที่สุดของเจ้าของ
+# ("ชีท Bum จะไม่ให้ลูกค้าเห็นเด็ดขาด") เอาออกเมื่อ 19 ต.ค. 69
+# ถ้าจะรันเทสต์ราคา ให้วางไฟล์สองอันนี้เองในเครื่อง แล้วมันจะไม่ถูก commit
+test/browser/fixtures/bum-*.xlsx
+test/browser/fixtures/huasuer-*.xlsx
+
+# ⛔ รายชื่อร้านลูกค้าจริง (ชื่อ · ที่อยู่ · พิกัด GPS) และแผนเยี่ยมร้าน
+test/browser/fixtures/master-outlet*.xlsx
+test/browser/fixtures/pjp-*.xlsx
