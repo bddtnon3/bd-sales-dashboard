@@ -169,6 +169,16 @@ code, never printed.
   clearing writes a NEW dated record with `cl:1` rather than editing an old one, so the history
   survives; and `pjNoteIdx` must index EVERY dated record, not just ones with a note, or a clear
   cannot beat what came before it. `pjTasks(code,ymd)` still takes the date for the other badges.
+  The shop card's sales line is **this month to date vs last month** (`pjSalesNow`/`pjSalesHtml`,
+  from the วิเคราะห์เชิงลึก figures) — a different question from the 🔻ยอดตก / 🛑ไม่ซื้อ chips, which
+  must keep comparing **completed** months through `pjSales`, or every shop reads "ยอดตก" on the 1st
+  of each month. "ยังไม่เปิดบิล" is not ฿0, a file that has not reached this month says so instead of
+  passing its latest month off as the current one, and a partial month is shown against last month's
+  pro-rata pace so nobody panics on the 2nd. The month calendar is clickable like the planner's:
+  **`PJ.ym` (month shown) is separate from `PJ.d` (day selected)**, every cell opens its shop list
+  inline — including days with no plan, which `renderPjp` used to snap back — and in a calendar view
+  ◀ ▶ step the month while the day view still hops to the next **planned** day. Prove it with
+  **`node test/browser/pjpcal.test.cjs`** (37 checks, self-contained).
   An open item shows in the planner as 🏪 งานร้านค้า (`plShopOcc`) **on the day it was recorded**,
   plus the next visit round when 🔔 was ticked — derived at render time, never stored as
   `PLAN.items`. `api/pjpvisit.js` checks the shop is on that rep's route **anywhere** in the

@@ -364,6 +364,13 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .pj-or{display:flex;align-items:center;gap:10px;margin:14px 0 12px;color:var(--muted);font-size:11.5px;font-weight:700}
 .pj-or:before,.pj-or:after{content:"";flex:1;height:1px;background:var(--line)}
 .pj-dfu{color:#7A5AF8}
+/* 📊 ยอดเปิดบิลเดือนนี้เทียบเดือนที่แล้ว บนการ์ดร้าน */
+.pj-sl{background:var(--bg);border-radius:9px;padding:7px 10px;margin:6px 0 2px;font-size:12.5px;line-height:1.6}
+.pj-sl b{font-size:14px}
+.pj-sl .pj-pace{color:var(--muted);font-size:11.5px;display:block;margin-top:2px}
+.pj-pct{font-weight:800;border-radius:7px;padding:1px 7px;font-size:12px;white-space:nowrap}
+.pj-pct.up{background:#E7F6EE;color:#15713F} .pj-pct.dn{background:#FBEAEA;color:#A42828}
+.pj-pct.fl{background:#EEF1F6;color:#4A5465}
 /* PJP มีการ์ดสรุป 5 ใบ (เพิ่ม "ค้างจากครั้งก่อน") — .cards ปกติเป็น 4 คอลัมน์
    ปล่อยไว้ใบที่ 5 จะตกลงไปอยู่บรรทัดใหม่ตัวเดียวเหงา ๆ */
 #pjpCards{grid-template-columns:repeat(5,1fr)}
@@ -412,7 +419,10 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .pj-dh{text-align:center;font-size:11.5px;font-weight:800;color:var(--muted);padding:3px 0}
 .pj-dc{border:1px solid var(--line);border-radius:9px;min-height:62px;padding:5px 6px;cursor:pointer;background:#fff}
 .pj-dc.empty{border:none;background:transparent;cursor:default}
-.pj-dc.off{background:var(--bg);color:var(--muted);cursor:default}
+.pj-dc.off{background:var(--bg);color:var(--muted)}
+/* หัวปฏิทิน PJP — เลื่อนเดือน/สัปดาห์ได้ในหน้าเดียว ไม่ต้องออกไปหน้าอื่น */
+.pj-calh{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.pj-calm{min-width:132px;text-align:center;font-size:14px}
 .pj-dc.sel{border:2px solid var(--blue);background:var(--blue-soft)}
 .pj-dc.today .pj-dn{color:var(--blue);font-weight:900}
 .pj-dc:hover:not(.empty):not(.off){border-color:var(--blue)}
@@ -3595,8 +3605,11 @@ function pmToggle(id){PM.open=(PM.open===id?null:id);renderPromo();
 function prSetMonth(m){PR.m=m;renderPromoRes();}
 function prSetScope(s){PR.scope=s;setSeg("prScopeSeg","s",s);renderPromoRes();}
 /* ====================== 🗺 PJP — แผนเยี่ยมร้านรายวัน ====================== */
-let PJ={d:null,line:null,view:"day",ym:null,only:"all",dt:false,map:false,sel:null};
-function initPjp(){PJ.d=null;PJ.line=null;PJ.ym=null;PJ.sel=null;}
+/* ym = เดือนที่ปฏิทินกำลังโชว์ (คนละเรื่องกับ d = วันที่เลือกไว้ — หลักเดียวกับ PL.ym / PL.day
+   ในปฏิทินงาน) ถ้าผูกเดือนไว้กับวันที่เลือก จะเปิดดูเดือนอื่นไม่ได้เลย
+   open = กล่องรายชื่อร้านใต้ปฏิทินกางอยู่หรือไม่ */
+let PJ={d:null,line:null,view:"day",ym:null,only:"all",dt:false,map:false,sel:null,open:true};
+function initPjp(){PJ.d=null;PJ.line=null;PJ.ym=null;PJ.sel=null;PJ.open=true;}
 /* ทุกวันที่มีแผน (เรียงแล้ว) */
 function pjDates(){return Object.keys(pjOk().plan).sort();}
 /* สายของผู้ใช้คนนี้ — เซลล์เห็นเฉพาะสายตัวเอง · ผู้จัดการเลือกได้ทุกสาย */
@@ -3655,6 +3668,78 @@ function pjSales(code){
   let zero=0;for(let k=idx.length-1;k>=0;k--){if(niv(idx[k])>0)break;zero++;}
   return {m:ms[i1]||"",cur:cur,prv:prv,
     pct:prv>0?((cur-prv)/prv*100):(cur>0?100:0),zero:zero};
+}
+/* ยอดที่ร้าน "เปิดบิลไปแล้ว" ของเดือนปัจจุบัน เทียบเดือนที่แล้ว (ขอโดยเจ้าของ 19 ต.ค. 69)
+   แยกจาก pjSales() คนละเรื่องกัน และห้ามรวมเป็นอันเดียว:
+     · pjSales() ใช้ "เดือนที่จบแล้ว" เพราะป้ายเตือน 🔻ยอดตก / 🛑ไม่ซื้อ ต้องเทียบเดือนเต็มกับเดือนเต็ม
+       ถ้าเอาเดือนที่ยังไม่จบไปเทียบ ทุกร้านจะขึ้น "ยอดตก" ตั้งแต่วันที่ 1-2 ของทุกเดือน
+     · อันนี้ใช้ "เดือนปัจจุบันถึงวันนี้" เพราะเซลล์ยืนอยู่หน้าร้านและอยากรู้ว่าเดือนนี้ร้านซื้อไปเท่าไหร่แล้ว
+   ตัวเลขมาจากไฟล์วิเคราะห์เชิงลึก: STORE ถูกสร้างจาก STOREPROD อยู่แล้ว (storeFromAnalytics)
+   แต่ถ้า STORE ยังไม่มีแถวของร้านนี้ ก็บวกจาก STOREPROD ตรง ๆ เป็นทางสำรอง */
+function monthAdd(key,n){const[y,m]=key.split("-").map(Number);const d=new Date(y,m-1+n,1);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+/* ยอด "มูลค่า" ของร้านนี้ในเดือนนั้น จาก STOREPROD ตรง ๆ โดยไม่ต้องรู้ว่าอยู่สายไหน
+   ⚠️ อ่าน .niv (บาท) ตายตัว — ห้ามไปใช้ spStoreMonth() ของหน้าวิเคราะห์ เพราะอันนั้นอ่าน
+      ตามหน่วยที่ผู้ใช้เลือกไว้ (ANA.metric) ซึ่งอาจเป็นจำนวนชิ้น การ์ด PJP จะกลายเป็นชิ้นปนบาท
+   ⚠️ ชื่อฟังก์ชันต้องไม่ซ้ำกับของเดิม — ตอนแรกตั้งชื่อ spStoreMonth ซ้ำ แล้วตัวที่ประกาศทีหลัง
+      ทับตัวนี้ทั้งไฟล์ ทุกร้านจึงอ่านได้ 0 (เทส pjpcal จับไว้ได้) */
+function pjSpNiv(code,mo){
+  const D=(STOREPROD&&STOREPROD.data)||{};let v=0,hit=0;
+  for(const ln in D){const st=D[ln]&&D[ln][code];if(!st)continue;
+    for(const pc in st){const nv=st[pc]&&st[pc].niv;if(nv&&nv[mo]!=null){v+=+nv[mo]||0;hit=1;}}}
+  return hit?v:null;
+}
+function pjSalesNow(code){
+  const ms=(STORE&&STORE.months)||[];
+  const sp=(STOREPROD&&STOREPROD.months)||[];
+  const all=[...new Set([...ms,...sp])].sort();
+  if(!all.length)return null;
+  const s=pjStoreIdx()[code];
+  const val=mo=>{                                  /* ยอดเปิดบิลของร้านนี้ในเดือนนั้น */
+    const i=ms.indexOf(mo);
+    if(s&&i>=0&&s[3]&&s[3][i])return +s[3][i][2]||0;
+    const d=pjSpNiv(code,mo);
+    return d==null?null:d;
+  };
+  const now=curMonthKey();
+  /* เดือนที่จะเรียกว่า "เดือนนี้": เดือนปัจจุบันถ้าไฟล์มีแล้ว ไม่งั้นเดือนล่าสุดที่ไฟล์มี */
+  const cm=all.indexOf(now)>=0?now:all[all.length-1];
+  const pm=monthAdd(cm,-1);
+  const cur=val(cm),prv=all.indexOf(pm)>=0?val(pm):null;
+  if(cur==null&&prv==null)return null;
+  const c=cur||0,p=prv||0;
+  const running=(cm===now);
+  const d=new Date(),dim=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  const day=running?d.getDate():dim;
+  const pace=running?p*day/dim:p;                  /* เดือนก่อนถึงวันเดียวกันได้เท่าไหร่ (เฉลี่ย) */
+  return {cm:cm,pm:pm,cur:c,prv:p,haveCur:cur!=null,havePrv:prv!=null,running:running,
+    stale:cm!==now,day:day,dim:dim,pace:pace,
+    pct:p>0?((c-p)/p*100):(c>0?100:0),
+    pacePct:pace>0?((c-pace)/pace*100):(c>0?100:0)};
+}
+function fmtMonthS(m){return MONTH_TH[+m.split("-")[1]-1]||m;}
+function pjPctTag(p){const r=Math.round(p);
+  if(r>=1)return `<span class="pj-pct up">▲ ${r}%</span>`;
+  if(r<=-1)return `<span class="pj-pct dn">▼ ${Math.abs(r)}%</span>`;
+  return `<span class="pj-pct fl">= เท่าเดิม</span>`;}
+function pjSalesHtml(code){
+  const n=pjSalesNow(code);
+  if(!n)return `<div class="psub">ยังไม่มีข้อมูลยอดขายรายร้านของร้านนี้</div>`;
+  const mc=fmtMonthS(n.cm),mp=fmtMonthS(n.pm);
+  const curTxt=n.haveCur?`<b>${THB(n.cur)}</b>`:`<b>ยังไม่เปิดบิล</b>`;
+  const head=`📊 ${mc}${n.running?" ถึงวันนี้":""} ${curTxt}`+
+    (n.havePrv?` · ${mp} ${THB(n.prv)} ${pjPctTag(n.pct)}`:` · ${mp} ไม่มีข้อมูล`);
+  let foot="";
+  if(n.stale){
+    /* ไฟล์วิเคราะห์เชิงลึกยังไม่ถึงเดือนปัจจุบัน — ต้องบอก ไม่ใช่เอาเดือนเก่ามาสวมเป็นเดือนนี้ */
+    foot=`ยังไม่มีข้อมูลเดือน ${fmtMonthS(curMonthKey())} — นี่คือเดือนล่าสุดที่อัพไฟล์วิเคราะห์เชิงลึกไว้`;
+  }else if(n.running&&n.havePrv&&n.prv>0){
+    /* เทียบกันตรง ๆ เดือนที่ยังไม่จบย่อมดูน้อยกว่าเสมอ จึงบอก "จังหวะ" ให้ด้วย ไม่ให้เซลล์ตกใจเปล่า ๆ */
+    foot=`ผ่านไป ${n.day}/${n.dim} วัน · จังหวะเดียวกันเดือน ${mp} ได้ ${THB(n.pace)} → `+
+      (Math.round(n.pacePct)>=0?`<b style="color:#15713F">เร็วกว่า ${Math.round(n.pacePct)}%</b>`
+                               :`<b style="color:#A42828">ช้ากว่า ${Math.abs(Math.round(n.pacePct))}%</b>`);
+  }
+  return `<div class="pj-sl">${head}${foot?`<span class="pj-pace">${foot}</span>`:""}</div>`;
 }
 /* Perfect Store รอบล่าสุดของร้านนี้ */
 let _pjPs=null,_pjPsSrc=null;
@@ -3823,12 +3908,33 @@ function pjTasks(code,ymd){
   if(!pjEbIdx()[code]&&o&&o.e)t.push({k:"eb",ic:"🎯",s:"ยังไม่เปิด eB2B",cls:"w"});
   return t;
 }
-function pjSetDate(d){PJ.d=d;PJ.sel=null;renderPjp();}
+function pjSetDate(d){PJ.d=d;PJ.ym=String(d||"").slice(0,7)||PJ.ym;PJ.sel=null;renderPjp();}
+/* เดือนที่ปฏิทินโชว์อยู่ */
+function pjCalMonth(){return PJ.ym||String(PJ.d||pjDefDate()||todayISO()).slice(0,7);}
+/* กดช่องวันในปฏิทิน (อาทิตย์/เดือน) = เปิดดูรายชื่อร้านของวันนั้นในหน้าเดิม ไม่ต้องสลับมุมมอง
+   กดช่องเดิมซ้ำ = พับเก็บ เหมือนปฏิทินงาน (plPickDay)
+   ⚠️ ต้องกดได้ "ทุกวัน" รวมวันที่ไม่มีแผน — ไม่งั้นเซลล์กดแล้วเหมือนเครื่องไม่ทำงาน */
+let PJ_SCROLL=0;
+function pjPickDay(d){
+  if(PJ.d===d)PJ.open=!PJ.open;else{PJ.d=d;PJ.open=true;}
+  PJ.ym=String(d).slice(0,7);PJ.sel=null;
+  if(PJ.open)PJ_SCROLL=1;
+  renderPjp();
+}
+/* ◀ ▶ ในมุมมองปฏิทิน: เลื่อน "เดือน/สัปดาห์ที่โชว์" ไม่ใช่กระโดดไปวันที่มีแผนวันถัดไป
+   (ของเดิมเลื่อนได้แต่ในวันที่มีแผน จึงออกไปดูเดือนอื่นไม่ได้เลย) */
+function pjCalStep(n){
+  if(PJ.view==="week"){const b=PJ.d||pjDefDate()||todayISO();pjSetDate(dayShift(b,7*n));return;}
+  PJ.ym=monthAdd(pjCalMonth(),n);PJ.sel=null;renderPjp();
+}
+function pjCalToday(){const t=todayISO();PJ.d=t;PJ.ym=t.slice(0,7);PJ.open=true;PJ.sel=null;PJ_SCROLL=1;renderPjp();}
 function pjSetLine(c){PJ.line=c;PJ.sel=null;renderPjp();}
 function pjSetView(v){PJ.view=v;renderPjp();}
 function pjSetOnly(v){PJ.only=v;renderPjp();}
 function pjToggleDT(){PJ.dt=!PJ.dt;PJ.line=null;renderPjp();}
 function pjStep(n){
+  /* ในมุมมองปฏิทิน ◀ ▶ = เลื่อนเดือน/สัปดาห์ · ในมุมมองรายวัน = ข้ามไปวันทำงานถัดไปที่มีแผน */
+  if(PJ.view!=="day")return pjCalStep(n);
   const ds=pjDates();if(!ds.length)return;
   let i=ds.indexOf(PJ.d||pjDefDate());
   if(i<0)i=0;
@@ -4064,7 +4170,6 @@ function pjChip(t){
 function pjCardHtml(s,i,ymd){
   const o=pjOut(s.code)||{};
   const t=pjTasks(s.code,ymd);
-  const sa=pjSales(s.code);
   const ps=pjPS(s.code);
   const cta=(ps&&!ps.r[PSF.yes])?psCtaText(ps.r[PSF.cta]):"";
   const nav=(o.la!=null&&o.lo!=null)?`https://www.google.com/maps/dir/?api=1&destination=${o.la},${o.lo}`:"";
@@ -4079,8 +4184,7 @@ function pjCardHtml(s,i,ymd){
         fu.tx?`<div class="pj-fut">“${anaEsc(fu.tx)}”</div>`:""}${
         fu.nx?`<div class="psub" style="margin-top:3px">🔔 ตั้งเตือนซ้ำรอบหน้าไว้</div>`:""}</div>`:""}
       ${t.length?`<div class="pj-tags">${t.filter(x=>x.k!=="fu").map(pjChip).join("")}</div>`:""}
-      ${sa?`<div class="psub">ยอดเดือน ${fmtMonth(sa.m)}: <b>${THB(sa.cur)}</b> · เดือนก่อน ${THB(sa.prv)}</div>`:
-        `<div class="psub">ยังไม่มีข้อมูลยอดขายรายร้านของร้านนี้</div>`}
+      ${pjSalesHtml(s.code)}
       ${cta?`<div class="note" style="margin:6px 0 0">⭐ <b>สิ่งที่ Unilever แนะนำ:</b> ${anaEsc(cta)}</div>`:""}
       <div class="pj-btns">
         <button type="button" class="pj-tick${fu?" on":""}" onclick="pjNoteOpen('${s.code}','${ymd}')">${fu?"📌 แก้งานค้าง":"📌 บันทึกงานค้าง"}</button>
@@ -4109,7 +4213,7 @@ function pjCalHtml(rt){
     const d=new Date(base+"T00:00:00");const dow=(d.getDay()+6)%7;   /* จันทร์=0 */
     from=dayShift(base,-dow);to=dayShift(from,6);
   }else{
-    const ym=base.slice(0,7);from=ym+"-01";
+    const ym=pjCalMonth();from=ym+"-01";
     const d=new Date(+ym.slice(0,4),+ym.slice(5,7),0);to=ym+"-"+String(d.getDate()).padStart(2,"0");
   }
   const cells=[];
@@ -4124,12 +4228,30 @@ function pjCalHtml(rt){
       const st=pjStops(d,rt);
       const hot=st.filter(s=>pjTasks(s.code,d).some(x=>x.k==="dead"||x.k==="zero"||x.k==="down")).length;
       const fu=st.filter(s=>!!pjFollow(s.code,null)).length;
+      const done=st.filter(s=>pjIsDone(s.code,d)).length;
       const isT=d===todayISO();
-      return `<div class="pj-dc${st.length?"":" off"}${d===base?" sel":""}${isT?" today":""}" onclick="pjSetDate('${d}')">
+      /* ทุกช่องกดได้ รวมวันที่ไม่มีแผน (คลาส off เปลี่ยนแค่สีให้รู้ว่าไม่มีร้าน) */
+      return `<div class="pj-dc${st.length?"":" off"}${d===PJ.d?" sel":""}${isT?" today":""}"
+          onclick="pjPickDay('${d}')" title="${st.length?st.length+" ร้าน — กดเพื่อดูรายชื่อ":"ไม่มีร้านในแผน — กดเพื่อดู"}">
         <div class="pj-dn">${+d.slice(8,10)}</div>
         ${st.length?`<div class="pj-dv">${st.length}</div>
-          <div class="pj-dm">${fu?`<span class="pj-dfu">📌${fu}</span>`:""}${hot?` <span class="down">!${hot}</span>`:""}</div>`:""}
+          <div class="pj-dm">${done?`<span class="up">✓${done}</span> `:""}${fu?`<span class="pj-dfu">📌${fu}</span>`:""}${hot?` <span class="down">!${hot}</span>`:""}</div>`:""}
       </div>`;}).join("")+`</div>`;
+}
+/* หัวปฏิทิน: ชื่อเดือน + ปุ่มเลื่อนเดือน/สัปดาห์ + กลับมาวันนี้ */
+function pjCalHead(){
+  const wk=PJ.view==="week";
+  const base=PJ.d||pjDefDate()||todayISO();
+  const lab=wk?("สัปดาห์ของ "+fmtDate(dayShift(base,-((new Date(base+"T00:00:00").getDay()+6)%7))))
+             :fmtMonth(pjCalMonth());
+  return `<div class="pj-calh">
+    <div class="dstep">
+      <button type="button" class="dstep-b" onclick="pjCalStep(-1)" title="${wk?"สัปดาห์ก่อน":"เดือนก่อน"}">◀</button>
+      <b class="pj-calm">${lab}</b>
+      <button type="button" class="dstep-b" onclick="pjCalStep(1)" title="${wk?"สัปดาห์ถัดไป":"เดือนถัดไป"}">▶</button>
+    </div>
+    <button type="button" class="pl-today" onclick="pjCalToday()">วันนี้</button>
+  </div>`;
 }
 /* กล่องตั้งค่า Google Maps key — ต้องโผล่ได้ "ก่อน" มีข้อมูลด้วย
    ไม่งั้นผู้จัดการตั้งแผนที่ไม่ได้จนกว่าจะอัพไฟล์เสร็จ (บั๊กแบบเดียวกับปุ่มอัพโหลด 8 ต.ค. 69) */
@@ -4161,7 +4283,11 @@ function renderPjp(){
       pjKeyPanel();      /* ตั้งค่าแผนที่ได้ตั้งแต่ยังไม่มีข้อมูล */
     return;
   }
-  if(!PJ.d||ds.indexOf(PJ.d)<0)PJ.d=pjDefDate();
+  /* ยอมให้เลือกวันที่ "ไม่มีแผน" ได้ ถ้าเดือนนั้นมีแผนอยู่บ้าง — เพราะในปฏิทินรายเดือน
+     เซลล์ต้องกดช่องไหนก็ได้ ของเดิมดีดกลับทุกครั้งจนเหมือนกดไม่ติด
+     แต่ถ้าวันที่ค้างไว้เก่าจนเดือนนั้นไม่มีแผนเลย (เช่นอัพไฟล์เดือนใหม่) ยังดีดไปวันที่ใช้งานได้ */
+  if(!PJ.d||(ds.indexOf(PJ.d)<0&&!ds.some(d=>d.slice(0,7)===PJ.d.slice(0,7))))PJ.d=pjDefDate();
+  if(!PJ.ym||!/^\d{4}-\d{2}$/.test(PJ.ym))PJ.ym=String(PJ.d||todayISO()).slice(0,7);
   const rt=pjCur(),ymd=PJ.d;
   const stops=pjStops(ymd,rt);
   const hot=stops.filter(s=>pjTasks(s.code,ymd).some(x=>x.k==="dead"||x.k==="zero"||x.k==="down")).length;
@@ -4224,10 +4350,20 @@ function renderPjp(){
         <h3>📋 ร้านที่ต้องเข้า ${stops.length} ร้าน</h3><div class="psub">เรียงตามลำดับการเยี่ยมในไฟล์ PJP — วิ่งตามเส้นทางจริงของตัวเองได้ ไม่ต้องเรียงตามนี้</div></div>
       ${pjDayHtml(ymd,rt)}</div>`
      :`<div class="panel"><h3>${PJ.view==="week"?"🗓 ทั้งอาทิตย์":"📆 ทั้งเดือน"} · ${pjLineName(rt)}</h3>
-       <div class="psub">ตัวเลขใหญ่ = จำนวนร้านที่ต้องเข้า · <span class="up">✓</span> เข้าแล้ว · <span class="down">!</span> ร้านยอดตก/ไม่ซื้อ · กดที่วันเพื่อดูรายชื่อร้าน</div>
+       <div class="psub">ตัวเลขใหญ่ = จำนวนร้านที่ต้องเข้า · <span class="up">✓</span> เข้าแล้ว · <span class="pj-dfu">📌</span> งานค้าง · <span class="down">!</span> ร้านยอดตก/ไม่ซื้อ · <b>กดที่วันเพื่อดูรายชื่อร้านได้เลย</b> (ไม่ต้องเปลี่ยนมุมมอง)</div>
+       ${pjCalHead()}
        ${pjCalHtml(rt)}</div>
-      <div class="panel" style="margin-top:14px"><h3>📋 ร้านของวันที่ ${fmtDate(ymd)} (${stops.length} ร้าน)</h3>${pjDayHtml(ymd,rt)}</div>`);
+      <div class="panel" id="pjDayPanel" style="margin-top:14px">
+       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+         <h3>📋 ร้านของวัน${DOWF[new Date(ymd+"T00:00:00").getDay()]}ที่ ${fmtDate(ymd)} (${stops.length} ร้าน)${ymd===todayISO()?' <span class="pill g">วันนี้</span>':""}</h3>
+         <button type="button" class="pl-today" onclick="PJ.open=${PJ.open?"false":"true"};renderPjp()">${PJ.open?"▲ พับเก็บ":"▼ กางดู"}</button>
+       </div>
+       ${PJ.open?pjDayHtml(ymd,rt):`<div class="psub">พับเก็บไว้ — กดช่องวันในปฏิทิน หรือปุ่ม ▼ กางดู</div>`}</div>`);
   if(key){if(PJMAP.state==="ready")pjMapDraw();else pjMapLoad();}
+  /* กดวันในปฏิทินแล้วรายชื่อร้านอยู่ใต้จอ — บนมือถือจะเหมือนกดแล้วไม่มีอะไรเกิดขึ้น */
+  if(PJ_SCROLL){PJ_SCROLL=0;
+    const el=document.getElementById("pjDayPanel");
+    if(el)requestAnimationFrame(()=>el.scrollIntoView({behavior:"smooth",block:"start"}));}
 }
 /* ลิงก์เปิดเส้นทางทั้งวันใน Google Maps — URL API รับจุดแวะได้จำกัด จึงตัดที่ 10 จุด */
 function pjDirAll(ymd,rt){
