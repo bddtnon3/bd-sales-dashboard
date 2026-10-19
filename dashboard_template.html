@@ -305,6 +305,7 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .pr-tbl td{font-variant-numeric:tabular-nums}
 .pr-tbl td:first-child{white-space:normal;min-width:190px}
 .pr-tbl tr.pr-off td{opacity:.55}
+.pr-code{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink)}
 .pr-tbl tr.pr-rem td{white-space:normal;padding:2px 12px 9px;border-bottom:1px solid var(--line);
   font-size:11.5px;color:var(--muted);text-align:left}
 .pr-tbl tr.pr-rem:hover{background:none}
@@ -9598,7 +9599,9 @@ function prTableHtml(rows,mgr){
       h+='<tr class="grp-row"><td colspan="8">'+anaEsc(lastCat||"อื่นๆ")+'</td></tr>';}
     const pk=r.g&&r.g.k>1, pkP=r.gp&&r.gp.k>1;
     const nmo=prName(r.code,r.it);
-    const sub=[anaEsc(r.code)];
+    /* เขียนว่า "รหัส <เลข>" ให้ตรงกับหน้าแคตาลอคของลูกค้าเป๊ะ — เวลาลูกค้าโทรมาบอกรหัส
+       พนักงานจะได้เห็นข้อความแบบเดียวกันบนจอ ไม่ต้องแปลงในหัว (เจ้าของสั่ง 19 ต.ค. 69) */
+    const sub=['<span class="pr-code">รหัส '+anaEsc(r.code)+'</span>'];
     if(nmo.src==="file")sub.push('<span class="mid">ชื่อจากไฟล์ราคา</span>');
     if(r.it.n&&r.it.n!==nmo.nm)sub.push(anaEsc(r.it.n));       /* ชื่ออังกฤษบนเอกสาร Unilever */
     if(r.it.nt)sub.push(anaEsc(r.it.nt));

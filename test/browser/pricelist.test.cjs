@@ -107,6 +107,39 @@ function payload(){
    cats.some(c=>/ผงซักฟอก/.test(c))&&cats.some(c=>/ปรับผ้านุ่ม/.test(c))&&
    cats.some(c=>/แชมพู/.test(c))&&cats.some(c=>/ล้างจาน/.test(c)),cats.filter(c=>c!=='ทุกหมวดสินค้า').slice(0,4).join(' · '));
 
+ /* ---------- รหัสสินค้า ---------- */
+ const cd=await ev(()=>{
+   const rs=[...document.querySelectorAll('.pl-tbl tr.prow')].slice(0,60);
+   const out=rs.map(r=>{
+     const c=r.querySelector('.nmcell .code');
+     return {txt:c?c.textContent.trim():null,
+       nm:r.querySelector('.nmcell b').textContent.trim()};});
+   return {n:rs.length,rows:out,
+     missing:out.filter(o=>!o.txt).length,
+     badFmt:out.filter(o=>!/^รหัส \d{6,12}$/.test(o.txt||'')).length,
+     sample:out.slice(0,2)};
+ });
+ t('หน้าลูกค้าโชว์รหัสสินค้าทุกแถว',cd.missing===0,cd.missing+' แถวที่ไม่มีรหัส จาก '+cd.n);
+ t('...เขียนว่า "รหัส <เลข>" เหมือนในแอปของพนักงาน',cd.badFmt===0,JSON.stringify(cd.sample));
+ const codeOk=await ev(a3=>{
+   /* รหัสที่พิมพ์ต้องเป็นของสินค้าแถวนั้นจริง ไม่ใช่ของแถวอื่น */
+   const rs=[...document.querySelectorAll('.pl-tbl tr.prow')].slice(0,60);
+   let bad=0,first=null;
+   rs.forEach(r=>{
+     const code=(r.querySelector('.nmcell .code').textContent.match(/\d{6,12}/)||[])[0];
+     const it=P.items[code];
+     if(!it){bad++;if(!first)first='ไม่มีรหัส '+code+' ในข้อมูล';return;}
+     const want=prName(code,it).nm;
+     const got=r.querySelector('.nmcell b').textContent.trim();
+     if(want!==got){bad++;if(!first)first=code+': "'+got+'" ควรเป็น "'+want+'"';}
+   });
+   return {bad:bad,first:first};
+ });
+ t('⚠️ รหัสที่พิมพ์เป็นของสินค้าแถวนั้นจริง (ชื่อที่โชว์ตรงกับรหัส)',codeOk.bad===0,codeOk.first||'ตรวจ 60 แถว');
+ t('รหัสอ่านง่าย ตัวเลขเรียงหลักและเข้มกว่าข้อความรอบๆ',
+   await ev(()=>{const c=getComputedStyle(document.querySelector('.pl-tbl .nmcell .code'));
+     return c.fontVariantNumeric.indexOf('tabular-nums')>=0&&+c.fontWeight>=700;}),'ok');
+
  /* ---------- 3) ตัวกรองแบรนด์ ---------- */
  await pg.click('#bBtn');await pg.waitForTimeout(150);
  const nBrand=await ev(()=>document.querySelectorAll('#bChips .bchip').length);

@@ -467,6 +467,16 @@ if(MISSING.length){
  t('...มีการ์ดสรุป 4 ใบ',ui.cards===4,ui.cards);
  t('...มีปุ่ม ◀ ▶ เลื่อนรอบ',ui.steps.filter(s=>s==='◀').length===1&&ui.steps.filter(s=>s==='▶').length===1,ui.steps.join(' '));
  t('...ผู้จัดการเห็นลิงก์แคตาลอคสำหรับลูกค้า',ui.link,'ok');
+ const appCode=await ev(()=>{
+   const t2=document.querySelector('#prBody table.pr-tbl');
+   const rs=[...t2.querySelectorAll('tbody tr:not(.grp-row):not(.pr-rem)')].slice(0,40);
+   const out=rs.map(r=>{const c=r.querySelector('.pr-code');
+     return c?c.textContent.trim():null;});
+   return {n:rs.length,missing:out.filter(x=>!x).length,
+     badFmt:out.filter(x=>!/^รหัส \d{6,12}$/.test(x||'')).length,sample:out[0]};
+ });
+ t('...โชว์รหัสสินค้าทุกแถว เขียนว่า "รหัส <เลข>" แบบเดียวกับหน้าแคตาลอคของลูกค้า',
+   appCode.missing===0&&appCode.badFmt===0,appCode.sample+' · ตรวจ '+appCode.n+' แถว');
  t('...ตารางไม่ล้นกรอบหน้าจอ',ui.wide,'ok');
 
  const step=await ev(()=>{

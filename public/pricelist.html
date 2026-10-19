@@ -138,7 +138,9 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 /* คอลัมน์ตัวเลข — ตรึงความกว้างไว้ ตัวเลขจึงอยู่ตรงกันทุกแถวจริงๆ */
 .pl-tbl .cnum{width:132px}
 .pl-tbl .nmcell b{font-size:18px;font-weight:800;display:block;line-height:1.35}
-.pl-tbl .nmcell .sz{font-size:15px;color:var(--muted);margin-top:3px}
+.pl-tbl .nmcell .sz{font-size:15px;color:var(--muted);margin-top:3px;line-height:1.6}
+/* รหัสสินค้า — ตัวเลขเรียงหลักและเข้มกว่าข้อความรอบๆ เพราะลูกค้าต้องอ่านออกเสียงบอกเซลล์ */
+.pl-tbl .nmcell .code{font-variant-numeric:tabular-nums;font-weight:800;color:var(--ink)}
 .pl-tbl .nmcell .br{display:inline-block;font-size:12px;font-weight:800;background:var(--bg);
   color:var(--muted);border-radius:999px;padding:2px 10px;margin-top:6px}
 .pl-tbl .v{font-size:25px;font-weight:800;line-height:1.15;display:block}
@@ -507,7 +509,10 @@ function num(v){return '<span class="v">'+baht(v)+'</span>';}
 function dash(){return '<span class="dash">—</span>';}
 function rowHtml(r){
   var nm=prName(r.code,r.it).nm;
-  var sz=[esc(r.it.s)];
+  /* ⚠️ รหัสสินค้าต้องขึ้นด้วย — ลูกค้าใช้เลขนี้สั่งของกับเซลล์และในแอป eB2B/UShopPlus
+     และต้องเขียนแบบเดียวกับในแอปของพนักงาน ("รหัส <เลข>") เพื่อให้คุยกันรู้เรื่อง
+     เป็นรหัสตัวเดียวกันอยู่แล้ว เพราะมาจากไฟล์หัวเสือไฟล์เดียวกัน */
+  var sz=['<span class="code">รหัส '+esc(r.code)+'</span>',esc(r.it.s)];
   if(r.it.p>1)sz.push(r.it.p+' ชิ้น/หีบ');
   if(r.it.ip>1)sz.push('แพ็ค '+r.it.ip+' ชิ้น');
   var h='<tr class="prow"><td class="nmcell"><b>'+esc(nm)+'</b>'+
