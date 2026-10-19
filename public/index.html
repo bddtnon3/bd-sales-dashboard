@@ -221,6 +221,13 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .req-opt .oi b{font-size:14px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .req-opt .oi span{font-size:11.5px;color:var(--muted)}
 .req-opt .oadd{flex-shrink:0;background:var(--blue);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700}
+/* ติ๊กไว้แล้วในตะกร้า — ผลค้นหาต้องไม่หายไป ไม่งั้นเซลล์ต้องพิมพ์ค้นหาใหม่ทุกตัว */
+.req-opt.inc{background:#EAF7EE}
+.req-opt.inc .oadd{background:var(--good)}
+.req-draft{background:#FFF6E0;border:1px solid #F0D79A;border-radius:10px;padding:9px 11px;margin-bottom:8px;font-size:12.5px;line-height:1.5}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#14361f;color:#fff;padding:12px 18px;
+  border-radius:12px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.28);
+  max-width:90vw;text-align:center;white-space:pre-line}
 .req-cart{margin-top:8px}
 .req-cart-item{display:flex;align-items:center;gap:8px;background:var(--blue-soft);border-radius:10px;padding:9px 10px;margin-bottom:8px}
 .req-cart-item .ci{flex:1;min-width:0}
@@ -1529,17 +1536,17 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 <div id="reqModal" class="hidden">
   <div class="modal-card" style="max-width:560px">
     <div class="modal-head">
-      <div><h3>🛒 ขอสินค้า</h3><div class="psub">วันที่ <b id="reqDateTxt"></b> · ค้นหาจากสต็อกจริง แล้วใส่จำนวน ลัง/ชิ้น</div></div>
+      <div><h3>🛒 ขอสินค้า</h3><div class="psub">วันที่ <b id="reqDateTxt"></b> · กดเลือกได้หลายตัว แล้วกด <b>ส่งคำขอ</b> ครั้งเดียว</div></div>
       <button class="modal-x" onclick="closeReqModal()">✕</button>
     </div>
     <div class="up-body">
-      <input id="reqSearch" placeholder="🔍 ค้นหาสินค้า (เช่น บรีส / โอโม)" oninput="renderReqResults()" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;margin-bottom:10px">
+      <input id="reqSearch" placeholder="🔍 ค้นหาสินค้า (เช่น บรีส / โอโม)" oninput="reqSearchInput()" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;margin-bottom:10px">
       <div id="reqResults" class="req-results"></div>
       <div id="reqCart" class="req-cart"></div>
     </div>
     <div class="modal-actions">
-      <button class="btn-ghost" onclick="closeReqModal()">ยกเลิก</button>
-      <button class="upload-btn" onclick="submitRequest()">ส่งคำขอ</button>
+      <button class="btn-ghost" onclick="closeReqModal()">ปิดไว้ก่อน</button>
+      <button class="upload-btn" id="reqSubmitBtn" onclick="submitRequest()">ส่งคำขอ</button>
     </div>
   </div>
 </div>
@@ -6928,15 +6935,25 @@ function poWhyBadge(w){
    happened. Without this gate every fresh request was labelled "ศูนย์ไม่ได้สั่ง". */
 function ordRoundKnown(d){const from=reqFrom(d);
   return (ORDERS.dates||[]).some(x=>x>=from&&ORDERS.data&&ORDERS.data[x]);}
-/* short warning used while a salesperson is picking products */
+/* short warning used while a salesperson is picking products.
+   Memoised: poWhy walks every uploaded order round, and this is called for all 25 search
+   results on every keystroke plus every cart row on every re-render — on a cheap phone that
+   was ~54ms of blocked main thread per key, which felt like the keyboard hanging.
+   The cache is keyed on how much order data is loaded, so a sync that brings a new round in
+   invalidates it by itself. Read-only: it can never change stored data. */
+let REQ_WARN_C={},REQ_WARN_K="";
 function reqWarn(code){
   if(!psDates().length)return "";
+  const k=(POSTATUS.dates||[]).length+"/"+(ORDERS.dates||[]).length+"/"+(REQ.date||"");
+  if(k!==REQ_WARN_K){REQ_WARN_K=k;REQ_WARN_C={};}
+  if(code in REQ_WARN_C)return REQ_WARN_C[code];
   const w=poWhy(REQ.date||orderRoundDate(),code);
+  let out="";
   if(w.why==="oos"||w.why==="closed"||w.why==="dropped"||w.why==="notin"){
     const W=PO_WHY[w.why];
-    return `<span class="req-warn">${W.icon} ${W.lab}${w.newCode?" · ใช้รหัสใหม่ "+w.newCode:""}</span>`;
+    out=`<span class="req-warn">${W.icon} ${W.lab}${w.newCode?" · ใช้รหัสใหม่ "+w.newCode:""}</span>`;
   }
-  return "";
+  REQ_WARN_C[code]=out;return out;
 }
 
 /* ---------------- สถานะการสั่งของของเซลล์ (จากคำขอที่เซลล์คีย์เข้ามา) ---------------- */
@@ -7674,7 +7691,48 @@ function msCard(r){
 }
 
 /* ====================== SALES REQUESTS (คำขอสินค้าเซลล์) ====================== */
-let REQ={date:null,cart:{}};
+let REQ={date:null,cart:{},t:0,st:0,restored:0};
+/* ---- ร่างคำขอที่ยังไม่ได้ส่ง ----
+   เก็บใน localStorage ของเครื่องเซลล์เท่านั้น: ไม่เคยถูกส่งขึ้นเซิร์ฟเวอร์ ไม่อยู่ใน state ที่ sync
+   จึงไม่มีทางไปทับ/ลบข้อมูลใน bd-data-* ได้เลย. คีย์แยกตาม "คนล็อกอิน + รอบวันที่" เพื่อไม่ให้
+   ร่างของรอบเก่าหรือของอีกคนโผล่มาปนกัน. ทุกจุดที่อ่าน/เขียนครอบ try/catch ไว้ เพราะเบราว์เซอร์
+   โหมดส่วนตัว (หรือหน้าที่เปิดแบบไม่มี origin ตอนเทส) จะ throw SecurityError. */
+function reqDraftKey(date){return "bdreq:"+((S.user&&S.user.code)||"?")+":"+(date||REQ.date||"");}
+/* มีร่างค้างอยู่กี่รายการ (ใช้โชว์ป้ายบนหน้าคำขอ โดยไม่ต้องเปิดหน้าต่าง) */
+function reqDraftCount(date){
+  try{const d=JSON.parse(localStorage.getItem(reqDraftKey(date))||"null");
+    return (d&&d.cart&&typeof d.cart==="object")?Object.keys(d.cart).length:0;}catch(e){return 0;}
+}
+function reqDraftSave(){
+  try{const c=REQ.cart||{};
+    if(!Object.keys(c).length){localStorage.removeItem(reqDraftKey());return;}
+    localStorage.setItem(reqDraftKey(),JSON.stringify({at:Date.now(),cart:c}));
+  }catch(e){}
+}
+function reqDraftClear(){try{localStorage.removeItem(reqDraftKey());}catch(e){}}
+function reqWhen(ts){const d=new Date(ts),n=new Date();
+  const hm=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  return (d.toDateString()===n.toDateString()?"วันนี้ ":(d.getDate()+" "+MONTH_TH[d.getMonth()]+" "))+hm+" น.";}
+function reqDraftLoad(){
+  let d=null;try{d=JSON.parse(localStorage.getItem(reqDraftKey())||"null");}catch(e){}
+  const cart=(d&&d.cart&&typeof d.cart==="object")?d.cart:null;
+  if(!cart)return {cart:{},at:0};
+  /* ทำความสะอาด: รับเฉพาะตัวเลข และตั้งธง "แก้ไขของเดิม" ใหม่จากของที่ส่งไปแล้วจริง ๆ
+     เผื่อระหว่างนั้นมีการส่ง/ลบจากอีกเครื่อง ป้ายจะได้ไม่โกหก */
+  const sv=reqSaved(),out={};
+  Object.keys(cart).forEach(c=>{const it=cart[c]||{};
+    out[c]={cs:Math.max(0,parseInt(it.cs)||0),pc:Math.max(0,parseInt(it.pc)||0)};
+    if(sv[c])out[c].edit=1;});
+  return {cart:out,at:(d&&d.at)||0};
+}
+/* ข้อความแจ้งแบบไม่บล็อกหน้าจอ — alert() บนมือถือค้างรอกดปุ่มทุกครั้ง */
+let TOAST_T=0;
+function toast(msg,ms){
+  let el=document.getElementById("toastBox");
+  if(!el){el=document.createElement("div");el.id="toastBox";el.className="toast";document.body.appendChild(el);}
+  el.textContent=msg;el.style.display="block";
+  clearTimeout(TOAST_T);TOAST_T=setTimeout(()=>{el.style.display="none";},ms||2600);
+}
 function todayISO(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 /* order round cutoff 09:00 — before 9am counts for today, from 9am onward goes to next day */
 function orderRoundDate(){const now=new Date();const d=new Date(now);if(now.getHours()>=9)d.setDate(d.getDate()+1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
@@ -7737,63 +7795,79 @@ function reqSaved(){
 }
 function openReqModal(){
   REQ.date=orderRoundDate();
-  /* Start empty. Items already sent stay saved on the server and are merged on submit,
-     so re-opening to add one more product no longer re-lists (or wipes) the earlier ones. */
-  REQ.cart={};
+  /* Items already sent stay saved on the server and are merged on submit, so the cart only
+     ever holds what is NOT sent yet. It is restored from the device draft, so closing the
+     dialog (or losing the page) no longer throws away a half-typed order. */
+  const d=reqDraftLoad();REQ.cart=d.cart;REQ.restored=d.at;
   document.getElementById("reqDateTxt").textContent=fmtDate(REQ.date);
   document.getElementById("reqSearch").value="";renderReqResults();renderReqCart();
   document.getElementById("reqModal").classList.remove("hidden");
 }
-function closeReqModal(){document.getElementById("reqModal").classList.add("hidden");}
+function closeReqModal(){reqDraftSave();document.getElementById("reqModal").classList.add("hidden");renderOrder();}
+/* หน่วงการค้นหาไว้ชั่วครู่ แล้วค่อยวาดครั้งเดียว — ไม่ใช่วาดใหม่ทุกตัวอักษรที่พิมพ์ */
+function reqSearchInput(){clearTimeout(REQ.t);REQ.t=setTimeout(renderReqResults,160);}
 function renderReqResults(){
+  clearTimeout(REQ.t);
   const q=(document.getElementById("reqSearch").value||"").trim().toLowerCase();
   const toks=q.split(/\s+/).filter(Boolean);const el=document.getElementById("reqResults");
   if(!toks.length){el.innerHTML="";return;}
   const seen={},list=[];
-  const consider=(code,name,bal,inStock)=>{if(seen[code]||(code in REQ.cart))return;const h=((name||"")+" "+code).toLowerCase();if(toks.every(t=>h.indexOf(t)>=0)){seen[code]=1;list.push({c:code,n:name,bal:bal,inStock:inStock});}};
+  const consider=(code,name,bal,inStock)=>{if(seen[code])return;const h=((name||"")+" "+code).toLowerCase();if(toks.every(t=>h.indexOf(t)>=0)){seen[code]=1;list.push({c:code,n:name,bal:bal,inStock:inStock});}};
   (STOCKD.rows||[]).filter(r=>r.wh==="sale").forEach(r=>consider(r.c,r.n||oname(r.c),r.i,true));   /* stock first */
   Object.keys((MASTER&&MASTER.items)||{}).forEach(c=>consider(c,MASTER.items[c],null,false));       /* then master catalog */
   const show=list.slice(0,25);
   const sv=reqSaved();
-  el.innerHTML=show.length?show.map(r=>{const q=sv[r.c];
+  /* สินค้าที่หยิบใส่ตะกร้าแล้วต้องยังอยู่ในรายการ (ขึ้น ✓ แทน) ไม่ใช่หายไป —
+     ของเดิมมันหายทันทีที่กด ทำให้เซลล์ต้องพิมพ์ค้นหาใหม่ทีละตัวจนครบ 7-8 ตัว */
+  el.innerHTML=show.length?show.map(r=>{const q=sv[r.c],inc=(r.c in REQ.cart);
     const tag=q?` · <b style="color:#B77A1B">ขอไปแล้ว ${q.cs||0} ลัง${q.pc?" / "+q.pc+" ชิ้น":""}</b>`:"";
-    return `<div class="req-opt" onclick="reqAdd('${r.c}')"><div class="oi"><b>${r.n||r.c}</b><span>${r.c} · ${r.inStock?("คงเหลือ "+(r.bal||"-")):'<span style="color:#b8860b">ไม่มีในสต็อก (จาก master)</span>'}${tag} ${reqWarn(r.c)}</span></div><span class="oadd">${q?"✏️ แก้":"＋ เพิ่ม"}</span></div>`;}).join(""):`<div class="psub" style="padding:12px">ไม่พบสินค้าที่ค้นหา (ลองอัพ master data ถ้ายังไม่ครบ)</div>`;
+    return `<div class="req-opt${inc?" inc":""}" onclick="reqAdd('${r.c}')"><div class="oi"><b>${r.n||r.c}</b><span>${r.c} · ${r.inStock?("คงเหลือ "+(r.bal||"-")):'<span style="color:#b8860b">ไม่มีในสต็อก (จาก master)</span>'}${tag} ${reqWarn(r.c)}</span></div><span class="oadd">${inc?"✓ ในตะกร้า":(q?"✏️ แก้":"＋ เพิ่ม")}</span></div>`;}).join(""):`<div class="psub" style="padding:12px">ไม่พบสินค้าที่ค้นหา (ลองอัพ master data ถ้ายังไม่ครบ)</div>`;
 }
 function reqAdd(code){
-  if(!REQ.cart[code]){const sv=reqSaved()[code];
+  if(REQ.cart[code]){                 /* กดซ้ำ = เอาออกจากตะกร้า */
+    delete REQ.cart[code];
+  }else{const sv=reqSaved()[code];
     /* re-adding something already requested means "edit it", so show the current amount
        instead of starting at 0 — otherwise the two numbers would silently add up */
     REQ.cart[code]=sv?{cs:sv.cs||0,pc:sv.pc||0,edit:1}:{cs:0,pc:0};}
-  document.getElementById("reqSearch").value="";document.getElementById("reqResults").innerHTML="";renderReqCart();}
-function reqSet(code,k,v){v=Math.max(0,parseInt(v)||0);if(!REQ.cart[code])REQ.cart[code]={cs:0,pc:0};REQ.cart[code][k]=v;}
+  reqDraftSave();renderReqResults();renderReqCart();}
+function reqSet(code,k,v){v=Math.max(0,parseInt(v)||0);if(!REQ.cart[code])REQ.cart[code]={cs:0,pc:0};REQ.cart[code][k]=v;
+  clearTimeout(REQ.st);REQ.st=setTimeout(reqDraftSave,400);}
+function reqDrop(code){delete REQ.cart[code];reqDraftSave();renderReqResults();renderReqCart();}
 function renderReqCart(){
   const codes=Object.keys(REQ.cart);const el=document.getElementById("reqCart");
   const saved=reqSaved(),sc=Object.keys(saved);
+  const btn=document.getElementById("reqSubmitBtn");
+  if(btn)btn.textContent=codes.length?("ส่งคำขอ "+codes.length+" รายการ"):"ส่งคำขอ";
   const head=sc.length?`<div class="req-sent">
       <b>✅ รอบนี้คุณส่งคำขอไปแล้ว ${sc.length} รายการ</b>
       <div class="req-sent-list">${sc.map(c=>`<span>${oname(c)||c} · <b>${saved[c].cs||0}</b> ลัง${saved[c].pc?" / <b>"+saved[c].pc+"</b> ชิ้น":""}</span>`).join("")}</div>
       <div class="psub" style="margin-top:5px">ของเดิมเก็บไว้ให้แล้ว <b>ไม่ต้องใส่ซ้ำ</b> — ค้นหาด้านบนเพื่อขอเพิ่ม (ถ้าจะแก้จำนวนของเดิม ให้ค้นหาชื่อนั้นแล้วกด ＋ เพิ่ม)</div>
     </div>`:"";
-  if(!codes.length){el.innerHTML=head+'<div class="psub" style="margin-top:6px">ยังไม่ได้เลือกสินค้า — พิมพ์ค้นหาด้านบน แล้วกด ＋ เพิ่ม</div>';return;}
-  el.innerHTML=head+`<div class="psub" style="margin:8px 0 6px">🛒 รายการที่จะขอเพิ่ม (${codes.length}) — ใส่จำนวน ลัง/ชิ้น</div>`+codes.map(c=>{const it=REQ.cart[c];
+  const draft=(codes.length&&REQ.restored)?`<div class="req-draft">📝 <b>นี่คือรายการที่ค้างไว้</b> ยังไม่ได้ส่ง (เก็บไว้ตอน ${reqWhen(REQ.restored)}) — ใส่จำนวนให้ครบแล้วกด <b>ส่งคำขอ</b></div>`:"";
+  if(!codes.length){el.innerHTML=head+'<div class="psub" style="margin-top:6px">ยังไม่ได้เลือกสินค้า — พิมพ์ค้นหาด้านบน กดเลือกได้หลายตัว (กดซ้ำ = เอาออก) แล้วกด <b>ส่งคำขอ</b> ครั้งเดียว</div>';return;}
+  el.innerHTML=head+draft+`<div class="psub" style="margin:8px 0 6px">🛒 รายการที่จะขอเพิ่ม (${codes.length}) — ใส่จำนวน ลัง/ชิ้น</div>`+codes.map(c=>{const it=REQ.cart[c];
     return `<div class="req-cart-item"><div class="ci"><b>${oname(c)||c}</b><span>${c}${it.edit?' · <b style="color:#B77A1B">แก้ไขของเดิม</b>':""} ${reqWarn(c)}</span></div>
       <div class="qty"><div style="text-align:center"><input type="number" min="0" value="${it.cs||""}" placeholder="0" oninput="reqSet('${c}','cs',this.value)"><label>ลัง</label></div>
       <div style="text-align:center"><input type="number" min="0" value="${it.pc||""}" placeholder="0" oninput="reqSet('${c}','pc',this.value)"><label>ชิ้น</label></div></div>
-      <button class="rm" onclick="delete REQ.cart['${c}'];renderReqCart()">✕</button></div>`;}).join("");
+      <button class="rm" onclick="reqDrop('${c}')">✕</button></div>`;}).join("");
 }
 async function pushRequest(date,items){
+  if(typeof TOKEN!=="undefined"&&TOKEN){
+    const keep="\nรายการที่คีย์ไว้ยังอยู่ ลองกดส่งอีกครั้งได้";
+    try{const r=await fetch("/api/request",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({date:date,items:items})});
+      if(!r.ok){const e=await r.json().catch(()=>({}));alert("บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status))+keep);return false;}}catch(ex){alert("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message+keep);return false;}
+  }
+  /* อัพเดทหน้าจอหลังเซิร์ฟเวอร์รับแล้วเท่านั้น — เดิมเขียนก่อนยิง ถ้าเน็ตหลุดหน้าจอจะโชว์ว่า
+     "ส่งไปแล้ว" ทั้งที่เซิร์ฟเวอร์ไม่ได้รับ แล้วเซลล์ก็ไม่กดส่งซ้ำ */
   if(!REQUESTS.data)REQUESTS.data={};if(!REQUESTS.data[date])REQUESTS.data[date]={};
   if(Object.keys(items).length)REQUESTS.data[date][S.user.code]={items:items,at:Date.now(),by:S.user.name};
   else delete REQUESTS.data[date][S.user.code];
-  if(typeof TOKEN!=="undefined"&&TOKEN){
-    try{const r=await fetch("/api/request",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({date:date,items:items})});
-      if(!r.ok){const e=await r.json().catch(()=>({}));alert("บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status)));return false;}}catch(ex){alert("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);return false;}
-  }
   return true;
 }
 async function submitRequest(){
   const codes=Object.keys(REQ.cart);
-  if(!codes.length){alert("กรุณาเลือกสินค้าและใส่จำนวน ลัง หรือ ชิ้น");return;}
+  if(!codes.length){toast("กรุณาเลือกสินค้าและใส่จำนวน ลัง หรือ ชิ้น");return;}
   /* MERGE into what was already sent this round — never replace it, or adding one product
      would wipe everything requested earlier. */
   const saved=reqSaved(),items=JSON.parse(JSON.stringify(saved));
@@ -7804,11 +7878,17 @@ async function submitRequest(){
     if(items[c])edited++;else added++;
     items[c]={cs:cs,pc:pc};
   });
-  if(!added&&!edited&&!removed){alert("กรุณาใส่จำนวน ลัง หรือ ชิ้น อย่างน้อย 1 รายการ");return;}
-  if(await pushRequest(REQ.date,items)){
-    closeReqModal();renderOrder();
+  if(!added&&!edited&&!removed){toast("กรุณาใส่จำนวน ลัง หรือ ชิ้น อย่างน้อย 1 รายการ");return;}
+  const btn=document.getElementById("reqSubmitBtn"),lab=btn?btn.textContent:"";
+  if(btn){btn.disabled=true;btn.textContent="กำลังส่ง…";}                 /* กันกดซ้ำตอนรอเซิร์ฟเวอร์ */
+  const ok=await pushRequest(REQ.date,items);
+  if(btn){btn.disabled=false;btn.textContent=lab;}
+  if(ok){
+    /* ส่งสำเร็จแล้วค่อยทิ้งร่าง — ถ้าส่งไม่ผ่าน ของที่คีย์ไว้ต้องยังอยู่ให้กดส่งซ้ำได้ */
+    REQ.cart={};REQ.restored=0;reqDraftClear();
+    document.getElementById("reqModal").classList.add("hidden");renderOrder();
     const part=[added?"เพิ่มใหม่ "+added+" รายการ":"",edited?"แก้ไข "+edited+" รายการ":"",removed?"เอาออก "+removed+" รายการ":""].filter(Boolean).join(" · ");
-    alert("ส่งคำขอเรียบร้อย ✓\n"+part+"\nรวมคำขอรอบนี้ทั้งหมด "+Object.keys(items).length+" รายการ");
+    toast("ส่งคำขอเรียบร้อย ✓\n"+part+"\nรวมรอบนี้ "+Object.keys(items).length+" รายการ",3400);
   }
 }
 async function reqQuickDel(date,code){
@@ -7822,8 +7902,11 @@ function renderMyRequest(){
   const cur=orderRoundDate();
   const curReq=REQUESTS.data&&REQUESTS.data[cur]&&REQUESTS.data[cur][mine];
   const curItems=(curReq&&curReq.items)||{};
-  let html=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h3>🛒 คำขอรอบถัดไป · ${fmtDate(cur)}</h3><button class="upload-btn" onclick="openReqModal()">${Object.keys(curItems).length?"＋ ขอเพิ่ม":"＋ ขอสินค้า"}</button></div>
+  const dn=reqDraftCount(cur);
+  let html=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h3>🛒 คำขอรอบถัดไป · ${fmtDate(cur)}</h3><button class="upload-btn" onclick="openReqModal()">${dn?("📝 ทำต่อ "+dn+" รายการ"):(Object.keys(curItems).length?"＋ ขอเพิ่ม":"＋ ขอสินค้า")}</button></div>
     <div class="psub">แก้ไขจำนวน/ลบได้จนถึง <b>9:00 น.</b> — หลัง 9 โมงตัดรอบส่ง manager แล้วขึ้นรอบใหม่</div>`;
+  /* ร่างที่ยังไม่ได้ส่งต้องเห็นจากหน้านี้เลย ไม่ใช่ต้องเปิดหน้าต่างก่อนถึงจะรู้ว่าค้างอยู่ */
+  if(dn)html+=`<div class="req-draft" style="margin-top:8px">📝 มีรายการที่ <b>ยังไม่ได้ส่ง</b> ค้างไว้ ${dn} รายการ — กด <b>ทำต่อ</b> เพื่อใส่จำนวนให้ครบแล้วส่ง</div>`;
   if(Object.keys(curItems).length){
     html+=`<div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สินค้า</th><th>ขอ</th><th></th></tr></thead><tbody>`+
       Object.keys(curItems).map(c=>{const it=curItems[c];const wn=reqWarn(c);

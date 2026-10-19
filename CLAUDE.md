@@ -232,6 +232,17 @@ code, never printed.
   mixing sources splits one brand across two places in the list. Every other section keeps
   `grpByCat` + `poSeqSort`. Prove it with **`node test/browser/psbill.test.cjs`** (25 checks).
   **การสั่งของ** has four sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO.
+  A salesperson's own request (`openReqModal`/`reqAdd`/`submitRequest`) is a **basket with one
+  submit**: adding an item must NEVER clear the search box or drop the row out of the results —
+  it flips to `✓ ในตะกร้า` and tapping again removes it. Losing the list on every tap is what made
+  the team send one product at a time (8 round-trips ≈ 10s and 8 blocking `alert()`s = "เครื่องค้าง").
+  The search is debounced and `reqWarn` is memoised, because `poWhy` ran 25× per keystroke.
+  The un-sent basket is a **draft in `localStorage`** (`bdreq:<user>:<round>`) — deliberately NOT
+  part of the synced state, so it can never touch `bd-data-*`; it is cleared only after the server
+  answers ok, and every access is wrapped in try/catch for private-browsing mode. `pushRequest`
+  updates the screen **only after** the server accepts. Prove it with
+  **`node test/browser/sreq.test.cjs`** (39 checks; it must load the page over a real origin,
+  not `setContent`, or localStorage is blocked). Rules: `HANDOFF.md` §5.
   The first one opens with **🔁 Drop ค้าง** (`renderDropBack`/`dbScan`/`dbChase`/`dbBlock`): everything
   Unilever dropped in the last 3/5/7/14 days that has still not arrived, with a re-order prompt. It
   is **strictly read-only** over ORDERS/POSTATUS/STOCKD/REQUESTS (same rule as the auto-PO
