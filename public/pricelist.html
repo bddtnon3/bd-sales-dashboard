@@ -60,7 +60,10 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 .win b{font-weight:800}
 
 /* ---------- ตัวกรอง ---------- */
-.filt{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 0;position:sticky;top:65px;z-index:30;
+/* ⚠️ แถบค้นหา **ไม่ตรึง** โดยตั้งใจ — ของที่ต้องเห็นตลอดเวลาคือ "หัวคอลัมน์" ไม่ใช่ช่องค้นหา
+   (ค้นครั้งเดียว แต่ต้องรู้ตลอดว่าเลขคอลัมน์ไหนคืออะไร) และถ้าตรึงสองแถบซ้อนกัน
+   ต้องมานั่งคำนวณระยะ top ให้พอดีกันเอง ซึ่งพังทันทีที่แถบใดแถบหนึ่งสูงเปลี่ยน */
+.filt{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 0;
   background:var(--bg);padding:10px 0 11px;border-bottom:1px solid var(--line)}
 .filt input,.filt select{border:1.5px solid var(--line);border-radius:11px;padding:13px 15px;
   font:600 16.5px/1 inherit;color:var(--ink);background:#fff;min-width:0}
@@ -72,36 +75,55 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 .cat{margin:26px 0 10px;font-size:16px;font-weight:800;color:var(--uni);
   display:flex;align-items:center;gap:9px}
 .cat:after{content:"";flex:1;height:1px;background:var(--uni-line)}
-/* ---------- การ์ดสินค้า ----------
-   เจ้าของสั่ง 19 ต.ค. 69: *"ทำข้อมูล เสนอขาย แนะนำขาย กำไรที่ได้ช่วงปกติ ช่วงโปร ให้มันเป็น
-   แนวตั้ง column เดียวกันยาวๆลงมาให้อ่านง่ายหน่อย และปรับฟ้อนให้ดูใหญ่ขึ้นด้วย สำหรับลูกค้าสูงอายุ"*
-   เดิมราคาเรียงเป็นกล่องแนวนอน ตาต้องกวาดซ้าย-ขวาแล้วค่อยลงแถวถัดไป
-   ตอนนี้เป็น "ชื่อหัวข้อซ้าย · ตัวเลขขวา" ไล่ลงมาบรรทัดต่อบรรทัด อ่านทางเดียวคือลงล่าง
-   ตัวเลขใช้ 26px (เดิม 17) และทุกอย่างใหญ่ขึ้นหมด */
-.row{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:14px;
+/* ---------- ตารางราคา ----------
+   เจ้าของสั่ง 19 ต.ค. 69 (รอบแก้): *"ทำให้มันโชว์ผลเป็นช่องเรียงตามแนวนอนเหมือนเดิม แต่แค่ปรับให้
+   แต่ละสินค้ามันมีตารางในแนวตั้ง ให้แนวสายตามันไล่ดูลงมาจากด้านบนได้"*
+   คือ **คงกล่องราคาเรียงแนวนอนของแต่ละสินค้าไว้ แต่คอลัมน์ต้องตรงกันทุกแถว**
+   ของเดิมเป็นการ์ด flex-wrap กล่องจึงเลื่อนไปมาตามจำนวนกล่องที่มี (บางตัวมีช่วงโปร บางตัวไม่มี)
+   เจ้าของขีดเส้นแดงให้ดู 4 เส้นว่ามันไม่ตรงกัน — แก้ด้วย **ตารางจริง** คอลัมน์จึงตรึงตำแหน่ง
+   กวาดตาลงมาตามคอลัมน์เดียวได้ทั้งหน้า และหัวตารางค้างบนสุดไว้ให้รู้ว่าคอลัมน์ไหนคืออะไร
+   จอแคบกว่า 760px ตารางกางเป็นการ์ด (ดู @media ท้ายไฟล์) เพราะ 6 คอลัมน์ไม่มีทางลงจอมือถือ */
+/* ⚠️ ห้ามใส่ overflow:hidden ที่กรอบนี้ — ตัวครอบที่ตัด/เลื่อนได้จะทำให้ position:sticky
+   ของหัวตารางตายทันที (หัวตารางจะเลื่อนหายไปกับหน้า) มุมโค้งจึงไปทำที่ช่องมุมแทน */
+.wrapt{background:#fff;border:1px solid var(--line);border-radius:16px;
   box-shadow:0 1px 2px rgba(16,28,134,.04)}
-.row .nm b{font-size:19px;font-weight:800;display:block;line-height:1.35}
-.row .nm .sz{font-size:15.5px;color:var(--muted);margin-top:4px}
-.row .nm .br{display:inline-block;font-size:12.5px;font-weight:800;background:var(--bg);color:var(--muted);
-  border-radius:999px;padding:3px 11px;margin-top:8px}
-/* ราคาไล่ลงมาเป็นบรรทัด — ป้ายซ้าย ตัวเลขขวา */
-.px{display:block;margin-top:14px;border-top:1px solid var(--line)}
-.p{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
-  padding:11px 14px;border-radius:12px;margin-top:8px;background:var(--bg)}
-.p span{font-size:15px;color:var(--muted);font-weight:700;flex:0 0 auto}
-.p b{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15;text-align:right}
-.p .pv{text-align:right;min-width:0}
-.p em{display:block;font-style:normal;font-weight:700;font-size:14.5px;margin-top:2px;opacity:.85}
-.p.cost{background:var(--uni-soft)}.p.cost b{color:var(--uni-dark)}
-.p.cost span{color:var(--uni-dark)}
-.p.rsp b{color:var(--ink)}
-.p.pro{background:var(--gold-soft)}.p.pro b,.p.pro span,.p.pro em{color:var(--gold)}
-.p.gain{background:var(--good-soft)}.p.gain b,.p.gain span,.p.gain em{color:var(--good)}
-.p.na b{color:var(--muted);font-weight:700;font-size:19px}
-.pk{font-size:14px;color:var(--gold);font-weight:700;background:var(--gold-soft);
-  border-radius:10px;padding:10px 14px;margin-top:8px;line-height:1.5}
-.rem{font-size:14px;color:var(--muted);border-top:1px dashed var(--line);
-  margin-top:10px;padding-top:10px;line-height:1.5}
+.pl-tbl thead th:first-child{border-top-left-radius:15px}
+.pl-tbl thead th:last-child{border-top-right-radius:15px}
+.pl-tbl tbody tr:last-child td{border-bottom:none}
+.pl-tbl{width:100%;border-collapse:collapse}
+.pl-tbl th{position:sticky;top:65px;z-index:20;background:var(--uni-soft);color:var(--uni-dark);
+  font-size:13.5px;font-weight:800;text-align:right;padding:12px 14px;line-height:1.35;
+  border-bottom:2px solid var(--uni-line);white-space:nowrap}
+.pl-tbl th:first-child{text-align:left}
+.pl-tbl th small{display:block;font-size:11.5px;font-weight:700;opacity:.75}
+.pl-tbl td{padding:14px;border-bottom:1px solid var(--line);text-align:right;vertical-align:middle;
+  font-variant-numeric:tabular-nums}
+.pl-tbl td:first-child{text-align:left}
+.pl-tbl tr.prow:hover td{background:var(--bg)}
+/* คอลัมน์ตัวเลข — ตรึงความกว้างไว้ ตัวเลขจึงอยู่ตรงกันทุกแถวจริงๆ */
+.pl-tbl .cnum{width:132px}
+.pl-tbl .nmcell b{font-size:18px;font-weight:800;display:block;line-height:1.35}
+.pl-tbl .nmcell .sz{font-size:15px;color:var(--muted);margin-top:3px}
+.pl-tbl .nmcell .br{display:inline-block;font-size:12px;font-weight:800;background:var(--bg);
+  color:var(--muted);border-radius:999px;padding:2px 10px;margin-top:6px}
+.pl-tbl .v{font-size:25px;font-weight:800;line-height:1.15;display:block}
+.pl-tbl .u{display:block;font-size:14px;font-weight:700;margin-top:3px;opacity:.85}
+.pl-tbl .c-cost .v{color:var(--uni-dark)}
+.pl-tbl .c-gain .v,.pl-tbl .c-gain .u{color:var(--good)}
+.pl-tbl .c-pro .v,.pl-tbl .c-pro .u{color:var(--gold)}
+.pl-tbl .c-pro{background:var(--gold-soft)}
+.pl-tbl .c-gain{background:var(--good-soft)}
+.pl-tbl .c-cost{background:var(--uni-soft)}
+.pl-tbl .dash{font-size:20px;color:var(--line);font-weight:700}
+.pl-tbl .ask{font-size:16px;color:var(--muted);font-weight:700}
+.pl-tbl tr.catrow td{background:#fff;border-bottom:1px solid var(--uni-line);
+  padding:20px 14px 8px;font-size:16px;font-weight:800;color:var(--uni);text-align:left}
+.pl-tbl tr.noterow td{padding:0 14px 13px;border-bottom:1px solid var(--line);text-align:left;
+  font-size:14px;line-height:1.6}
+.pl-tbl tr.noterow:hover td{background:none}
+.nt-pk{color:var(--gold);font-weight:700;background:var(--gold-soft);border-radius:9px;
+  padding:7px 12px;display:inline-block}
+.nt-muted{color:var(--muted)}
 .more{display:block;width:100%;margin:18px 0 0;background:#fff;border:1.5px solid var(--uni-line);
   border-radius:12px;padding:14px;font:800 14.5px/1 inherit;color:var(--uni);cursor:pointer}
 .more:hover{background:var(--uni-soft)}
@@ -121,14 +143,33 @@ footer{background:#fff;border-top:1px solid var(--line);margin-top:36px;padding:
 .fnote{border-top:1px solid var(--line);margin-top:20px;padding-top:16px;display:flex;
   justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
 
-@media(max-width:620px){
+/* ---------- จอแคบ: ตารางกางเป็นการ์ด ----------
+   6 คอลัมน์ไม่มีทางลงจอ 390px — เปลี่ยนทุกช่องเป็นบรรทัด "ป้ายซ้าย · ตัวเลขขวา"
+   ป้ายดึงมาจาก data-l ของช่องนั้น จึงใช้ HTML ชุดเดียวกับจอใหญ่ ไม่ต้องเขียนสองแบบ */
+@media(max-width:760px){
+  .wrapt{border:none;background:none;box-shadow:none;overflow:visible}
+  .pl-tbl,.pl-tbl tbody,.pl-tbl tr,.pl-tbl td{display:block;width:auto}
+  .pl-tbl thead{display:none}
+  .pl-tbl tr.prow{background:#fff;border:1px solid var(--line);border-radius:16px;
+    padding:16px 15px 8px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,28,134,.04)}
+  .pl-tbl tr.prow td{border:none;padding:0;text-align:left}
+  .pl-tbl td.nmcell{padding-bottom:12px;border-bottom:1px solid var(--line)!important}
+  .pl-tbl td.cnum{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+    width:auto;border-radius:12px;padding:10px 13px;margin-top:8px}
+  .pl-tbl td.cnum:before{content:attr(data-l);font-size:14.5px;font-weight:700;color:var(--muted);
+    flex:0 0 auto;white-space:nowrap}
+  .pl-tbl td.c-cost:before{color:var(--uni-dark)}
+  .pl-tbl td.c-gain:before{color:var(--good)}
+  .pl-tbl td.c-pro:before{color:var(--gold)}
+  .pl-tbl td.cnum>div{text-align:right}
+  .pl-tbl .v{font-size:24px}
+  .pl-tbl tr.catrow{padding:0;margin:26px 0 10px}
+  .pl-tbl tr.catrow td{border:none;background:none;padding:0}
+  .pl-tbl tr.noterow{padding:0 2px;margin:-8px 0 14px}
+  .pl-tbl tr.noterow td{border:none;padding:0}
   .top h1{font-size:21px}
   .filt{top:62px}
-  .row{padding:16px 15px}
-  .row .nm b{font-size:18px}
-  .p{padding:10px 12px}
-  .p b{font-size:24px}
-  .p span{font-size:14.5px}
+  .pl-tbl th{position:static}
 }
 </style>
 </head>
@@ -309,51 +350,63 @@ function rows(){
   });
   return out;
 }
-/* หนึ่งบรรทัดราคา: ป้ายซ้าย · ตัวเลขขวา · คำอธิบายเล็กใต้ตัวเลข
-   แยกเป็นบรรทัดละเรื่อง ไม่ยัดสองค่าไว้บรรทัดเดียว — ลูกค้าสูงอายุอ่านไล่ลงมาทีละบรรทัดได้ */
-function pRow(lab,val,sub,cls){
-  return '<div class="p '+cls+'"><span>'+lab+'</span>'+
-    '<div class="pv"><b>'+val+'</b>'+(sub?'<em>'+sub+'</em>':'')+'</div></div>';
+/* หนึ่งช่องตัวเลขในตาราง — data-l คือป้ายที่จอแคบเอาไปขึ้นหน้าตัวเลข (ดู @media) */
+function cell(lab,val,sub,cls){
+  return '<td class="cnum '+cls+'" data-l="'+lab+'"><div>'+val+
+    (sub?'<span class="u">'+sub+'</span>':'')+'</div></td>';
 }
+function num(v){return '<span class="v">'+baht(v)+'</span>';}
+function dash(){return '<span class="dash">—</span>';}
 function rowHtml(r){
   var nm=prName(r.code,r.it).nm;
   var sz=[esc(r.it.s)];
   if(r.it.p>1)sz.push(r.it.p+' ชิ้น/หีบ');
   if(r.it.ip>1)sz.push('แพ็ค '+r.it.ip+' ชิ้น');
-  var h='<div class="row"><div class="nm"><b>'+esc(nm)+'</b>'+
+  var h='<tr class="prow"><td class="nmcell"><b>'+esc(nm)+'</b>'+
     '<div class="sz">'+sz.join(' · ')+'</div>'+
-    ((r.it.b&&nm.indexOf(r.it.b)<0)?'<span class="br">'+esc(r.it.b)+'</span>':'')+'</div><div class="px">'+
-    pRow("ราคาที่ศูนย์เสนอขาย",r.m.ntt?baht(r.m.ntt):"—","",'cost')+
-    pRow("ราคาแนะนำให้ร้านตั้งขาย",r.m.rspN?baht(r.m.rspN):"—","",'rsp');
-  if(r.g&&!r.g.unsure)h+=pRow("ร้านได้กำไร",r.g.pct.toFixed(0)+'%','ชิ้นละ '+baht(r.g.baht)+' บาท','gain');
-  else h+=pRow("ร้านได้กำไร",(r.g&&r.g.unsure)?'สอบถาม':'—',"",'na');
-  if(r.m.rspP){
-    h+=pRow("🎉 ราคาช่วงโปร",baht(r.m.rspP),"",'pro');
-    if(r.gp&&!r.gp.unsure)
-      h+=pRow("🎉 กำไรช่วงโปร",r.gp.pct.toFixed(0)+'%','ชิ้นละ '+baht(r.gp.baht)+' บาท','pro');
-  }
-  h+='</div>';
-  if(r.g&&r.g.k>1)h+='<div class="pk">📦 ราคาแนะนำขาย '+baht(r.m.rspN)+' บาท เป็นราคา<b>ยกแพ็ค '+r.g.k+' ชิ้น</b> (ตามที่บริษัทกำหนด)</div>';
-  if(r.gp&&r.gp.k>1)h+='<div class="pk">🎉 ราคาช่วงโปร '+baht(r.m.rspP)+' บาท เป็นราคา<b>ยกแพ็ค '+r.gp.k+' ชิ้น</b></div>';
+    ((r.it.b&&nm.indexOf(r.it.b)<0)?'<span class="br">'+esc(r.it.b)+'</span>':'')+'</td>';
+  h+=cell('ราคาที่ศูนย์เสนอขาย',r.m.ntt?num(r.m.ntt):dash(),'','c-cost');
+  h+=cell('ราคาแนะนำขาย',r.m.rspN?num(r.m.rspN):dash(),'','c-rsp');
+  if(r.g&&!r.g.unsure)
+    h+=cell('ร้านได้กำไร','<span class="v">'+r.g.pct.toFixed(0)+'%</span>',baht(r.g.baht)+' บ./ชิ้น','c-gain');
+  else
+    h+=cell('ร้านได้กำไร',(r.g&&r.g.unsure)?'<span class="ask">สอบถาม</span>':dash(),'','c-gain');
+  h+=cell('🎉 ราคาช่วงโปร',r.m.rspP?num(r.m.rspP):dash(),'','c-pro');
+  h+=cell('🎉 กำไรช่วงโปร',
+    (r.m.rspP&&r.gp&&!r.gp.unsure)?'<span class="v">'+r.gp.pct.toFixed(0)+'%</span>':dash(),
+    (r.m.rspP&&r.gp&&!r.gp.unsure)?baht(r.gp.baht)+' บ./ชิ้น':'','c-pro');
+  h+='</tr>';
+  /* หมายเหตุของสินค้าตัวนั้น — แถวเต็มความกว้างใต้แถวราคา ไม่ไปเบียดคอลัมน์ให้เลื่อน */
+  var nt=[];
+  if(r.g&&r.g.k>1)nt.push('<span class="nt-pk">📦 ราคาแนะนำขาย '+baht(r.m.rspN)+' บาท เป็นราคา<b>ยกแพ็ค '+r.g.k+' ชิ้น</b> (ตามที่บริษัทกำหนด)</span>');
+  if(r.gp&&r.gp.k>1)nt.push('<span class="nt-pk">🎉 ราคาช่วงโปร '+baht(r.m.rspP)+' บาท เป็นราคา<b>ยกแพ็ค '+r.gp.k+' ชิ้น</b></span>');
   if((r.g&&r.g.unsure)||(r.gp&&r.gp.unsure))
-    h+='<div class="rem">ℹ️ รายการนี้บริษัทไม่ได้ระบุจำนวนชิ้นต่อแพ็คมาในไฟล์ จึงยังคิดกำไรต่อหน่วยให้ไม่ได้ — สอบถามเซลล์ประจำสายได้เลย</div>';
+    nt.push('<span class="nt-muted">ℹ️ รายการนี้บริษัทไม่ได้ระบุจำนวนชิ้นต่อแพ็คมาในไฟล์ จึงยังคิดกำไรต่อหน่วยให้ไม่ได้ — สอบถามเซลล์ประจำสายได้เลย</span>');
   /* ⚠️ ห้ามโชว์ช่อง Remark ของไฟล์ให้ลูกค้า — เป็นกลไกโปรฝั่ง "ศูนย์ซื้อจากบริษัท"
      (Rebate, CCN TPR, 1F1, FO 40, ช่วงวันที่เคลม) ลูกค้าอ่านแล้วไม่ได้ประโยชน์
      และเป็นคำในบ้านของเรา · ของที่ลูกค้าใช้ได้จริงคือช่อง Note ว่าเป็นแพ็คพิเศษหรือไม่ */
-  if(/special\s*pack/i.test(r.it.nt||''))h+='<div class="rem">🎁 สินค้าแพ็คพิเศษของบริษัท</div>';
-  return h+'</div>';
+  if(/special\s*pack/i.test(r.it.nt||''))nt.push('<span class="nt-muted">🎁 สินค้าแพ็คพิเศษของบริษัท</span>');
+  if(nt.length)h+='<tr class="noterow"><td colspan="6">'+nt.join('<br>')+'</td></tr>';
+  return h;
 }
+var THEAD='<thead><tr><th>สินค้า</th>'+
+  '<th class="cnum">ราคาที่ศูนย์<br>เสนอขาย<small>รวม VAT แล้ว</small></th>'+
+  '<th class="cnum">ราคาแนะนำ<br>ให้ร้านตั้งขาย</th>'+
+  '<th class="cnum">ร้านได้กำไร</th>'+
+  '<th class="cnum">🎉 ราคา<br>ช่วงโปร</th>'+
+  '<th class="cnum">🎉 กำไร<br>ช่วงโปร</th></tr></thead>';
 function draw(){
   var R=rows(),host=$("list");
   $("cnt").textContent=R.length?("พบ "+R.length.toLocaleString("th-TH")+" รายการ"):"";
   if(!R.length){host.innerHTML='<div class="empty">ไม่พบสินค้าที่ค้นหา — ลองพิมพ์สั้นลง หรือเลือก "ทุกหมวดสินค้า"</div>';return;}
   var show=R.slice(0,V.show),h="",lastCat=null;
   show.forEach(function(r){
-    if(r.it.c!==lastCat){lastCat=r.it.c;h+='<div class="cat">'+esc(lastCat||"อื่นๆ")+'</div>';}
+    if(r.it.c!==lastCat){lastCat=r.it.c;
+      h+='<tr class="catrow"><td colspan="6">'+esc(lastCat||"อื่นๆ")+'</td></tr>';}
     h+=rowHtml(r);
   });
-  if(R.length>V.show)h+='<button class="more" id="moreB">ดูเพิ่ม (เหลืออีก '+(R.length-V.show).toLocaleString("th-TH")+' รายการ)</button>';
-  host.innerHTML=h;
+  host.innerHTML='<div class="wrapt"><table class="pl-tbl">'+THEAD+'<tbody>'+h+'</tbody></table></div>'+
+    (R.length>V.show?'<button class="more" id="moreB">ดูเพิ่ม (เหลืออีก '+(R.length-V.show).toLocaleString("th-TH")+' รายการ)</button>':'');
   var mb=$("moreB");
   if(mb)mb.onclick=function(){V.show+=PAGE;draw();};
 }
