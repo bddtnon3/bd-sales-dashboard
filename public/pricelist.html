@@ -206,6 +206,21 @@ function prWindow(lab){
   var p=function(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
   return {from:p(new Date(r.y,r.m-2,25)),to:p(new Date(r.y,r.m-1,24)),lab:lab};
 }
+/* ชื่อสินค้าที่โชว์ — ต้องเป็นชื่อเดียวกับที่ใช้ในระบบสั่งของ ไม่ใช่แค่ช่อง "สูตร/สี"
+   ไฟล์หัวเสือแยกชื่อเป็น 4 ช่อง ถ้าโชว์แค่ช่องสูตรจะได้คำว่า "สีเขียว" ลอยๆ อ่านไม่รู้เรื่อง
+   it.o = ชื่อจากระบบสั่งของ เก็บติดมากับไฟล์ตอนผู้จัดการอัพ (90.6% ของรายการมี)
+   ที่เหลือประกอบเอง: แบรนด์ + สูตร + ขนาด
+   ⚠️ ต้องเหมือนกับ prCompose/prName ใน dashboard_template.html — เทสต์เทียบสองที่อยู่ */
+function prCompose(it){
+  if(!it)return "";
+  var p=[it.b,it.v||it.n,it.s].filter(Boolean);
+  var s=p.join(" ").replace(/\s+/g," ").trim();
+  return s||it.n||it.v||"";
+}
+function prName(code,it){
+  var o=(it&&it.o)||"";
+  return o?{nm:o,src:"ord"}:{nm:prCompose(it),src:"file"};
+}
 var PR_F=["ws","rt","tpr","w","ntt","fl","rspN","rspP","rem"];
 function prM(it,i){
   var a=(it&&it.m&&it.m[i])||null;if(!a)return null;
@@ -271,7 +286,7 @@ function rows(){
     if(prHide(it,m))return;                       /* ไม่พร้อมขาย / ขาดทุน → ไม่โชว์ให้ลูกค้า */
     if(V.cat!=="all"&&it.c!==V.cat)return;
     if(q.length){
-      var hay=(code+" "+it.n+" "+it.v+" "+it.b+" "+it.s+" "+it.c).toLowerCase();
+      var hay=(code+" "+prName(code,it).nm+" "+it.n+" "+it.v+" "+it.b+" "+it.s+" "+it.c).toLowerCase();
       for(var j=0;j<q.length;j++)if(hay.indexOf(q[j])<0)return;
     }
     out.push({code:code,it:it,m:m,g:prMargin(it,m,false),gp:prMargin(it,m,true)});
@@ -287,9 +302,13 @@ function priceBox(lab,v,cls){
   return '<div class="p '+cls+'"><span>'+lab+'</span><b>'+(v?baht(v):"—")+'</b></div>';
 }
 function rowHtml(r){
-  var h='<div class="row"><div class="nm"><b>'+esc(r.it.v||r.it.n)+'</b>'+
-    '<div class="sz">'+esc(r.it.s)+(r.it.p>1?' · '+r.it.p+' ชิ้น/หีบ':'')+'</div>'+
-    (r.it.b?'<span class="br">'+esc(r.it.b)+'</span>':'')+'</div><div class="px">'+
+  var nm=prName(r.code,r.it).nm;
+  var sz=[esc(r.it.s)];
+  if(r.it.p>1)sz.push(r.it.p+' ชิ้น/หีบ');
+  if(r.it.ip>1)sz.push('แพ็ค '+r.it.ip+' ชิ้น');
+  var h='<div class="row"><div class="nm"><b>'+esc(nm)+'</b>'+
+    '<div class="sz">'+sz.join(' · ')+'</div>'+
+    ((r.it.b&&nm.indexOf(r.it.b)<0)?'<span class="br">'+esc(r.it.b)+'</span>':'')+'</div><div class="px">'+
     priceBox("ศูนย์เสนอขาย",r.m.ntt,"cost")+
     priceBox("แนะนำขาย",r.m.rspN,"rsp");
   if(r.g&&!r.g.unsure)h+='<div class="p gain"><span>ร้านได้กำไร</span><b>'+r.g.pct.toFixed(0)+'%</b><em>'+baht(r.g.baht)+' บ.</em></div>';

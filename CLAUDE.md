@@ -291,7 +291,10 @@ code, never printed.
   price the normal RSP per piece and the promo RSP per 3-pack; a margin that still cannot be
   unit-reconciled is flagged **`unsure`** and shown as "?" rather than published wrong; and
   `prBumRounds()` **matches the BUM discount columns to a Huasuer round by their numbers** instead of
-  reading BM9/BM10 as "this/next month". The price maths is **copied verbatim into
+  reading BM9/BM10 as "this/next month". The displayed product name comes from `prName` — the
+  ORDERING-SYSTEM name (`oname`, 87.5% coverage) first, then the copy stored on the price record
+  for the standalone public page, then brand+variant+size composed; showing only the file's
+  variant column gave staff a bare `สีเขียว` they could not identify. The price maths is **copied verbatim into
   `public/pricelist.html`** (a standalone page cannot import from the app) — change one and you must
   change the other; the test compares both copies on every item in every round.
 - `public/pricelist.html` — the PUBLIC customer price catalogue (hand-written, like `join.html`),

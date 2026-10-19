@@ -9209,6 +9209,28 @@ function prHide(it,m){
   if(g&&g.pct<0)return "loss";
   return "";
 }
+/* ---------- ชื่อสินค้าที่เอาขึ้นจอ ----------
+   ⚠️ ไฟล์หัวเสือแยกชื่อเป็น 4 ช่อง: แบรนด์ (B) · ชื่ออังกฤษ (C) · สูตร/สี (D) · ขนาด (F)
+   ถ้าโชว์แค่ช่อง D จะได้คำว่า "สีเขียว" หรือ "เรดแอลจี AHA แพ็คคู่" ลอยๆ ซึ่งคนในบริษัท
+   อ่านแล้วไม่รู้ว่าตัวไหน (เจ้าของแจ้ง 19 ต.ค. 69)
+   ของจริงที่พนักงานจำได้คือชื่อในระบบสั่งของ — "วิมสีเขียวน้ำยาล้างห้องน้ำ 3500มล.P4"
+   ซึ่งมีแบรนด์ ขนาด และสเปคแพ็ครวมอยู่ในสตริงเดียว ตรวจกับไฟล์จริงแล้วครอบคลุม 90.6%
+   ของ 1,332 รหัส (MASTER 1,166 · ORDERS 1,157 · STOCKD 523)
+
+   ลำดับที่ใช้:
+     1. oname(code) อ่านสดทุกครั้ง — ถ้าอัพไฟล์ราคาก่อนไฟล์สั่งของ พออัพทีหลังชื่อจะมาเอง
+     2. it.o ที่เก็บติดไฟล์ไว้ตอนอัพ — สำหรับหน้าแคตาลอคสาธารณะที่อ่าน oname ไม่ได้
+     3. ประกอบเอง: แบรนด์ + สูตร + ขนาด */
+function prCompose(it){
+  if(!it)return "";
+  const p=[it.b,it.v||it.n,it.s].filter(Boolean);
+  const t=p.join(" ").replace(/\s+/g," ").trim();
+  return t||it.n||it.v||"";
+}
+function prName(code,it){
+  const o=(typeof oname==="function"&&oname(code))||(it&&it.o)||"";
+  return o?{nm:o,src:"ord"}:{nm:prCompose(it),src:"file"};
+}
 function prCats(){
   const s={};Object.keys((PRICE.hs&&PRICE.hs.items)||{}).forEach(c=>{
     const it=PRICE.hs.items[c];if(it.c)s[it.c]=(s[it.c]||0)+1;});
@@ -9298,7 +9320,8 @@ function prCompare(){
     const cNew=prCost(b,wsNew,dNew.t,dNew.o);
     if(cOld==null||cNew==null)return;
     out.push({code:code,
-      cat:(it&&it.c)||"",brand:(it&&it.b)||"",nm:(it&&(it.v||it.n))||code,size:(it&&it.s)||"",
+      cat:(it&&it.c)||"",brand:(it&&it.b)||"",
+      nm:(it?prName(code,it).nm:"")||oname(code)||code,size:(it&&it.s)||"",
       pack:b.pack||1,wsOld:wsOld,wsNew:wsNew,
       payOld:cOld,payNew:cNew,                       /* ตอนจ่ายเงิน (ยังไม่เคลมรีเบท) */
       netOld:cOld-dOld.r,netNew:cNew-dNew.r,         /* หลังเคลมรีเบทครบ */
@@ -9359,7 +9382,11 @@ function parseHuasuer(name,buf){
       c:prTxt(x[prCol("A")]),s:prTxt(x[prCol("F")]),
       bc:prTxt(x[prCol("I")])||prTxt(x[prCol("G")]),
       p:prNum(x[prCol("J")])||1,ip:prNum(x[prCol("K")])||0,
-      cp:prNum(x[prCol("M")])||0,nt:prTxt(x[prCol("N")]),m:[]};
+      cp:prNum(x[prCol("M")])||0,nt:prTxt(x[prCol("N")]),
+      /* ชื่อเดียวกับที่พนักงานเห็นในระบบสั่งของ เก็บติดไปกับไฟล์ด้วย เพราะหน้าแคตาลอค
+         สาธารณะเป็นไฟล์เดี่ยว เอื้อมไม่ถึง STOCKD/MASTER/ORDERS (ฝั่งในแอปอ่านสดอีกที) */
+      o:(typeof oname==="function"?oname(code):"")||"",
+      m:[]};
     blocks.forEach(b=>{const o=b.o;
       it.m.push([prNum(x[o]),prNum(x[o+1]),prR2(prNum(x[o+2])),prR2(prNum(x[o+3])),
         prR2(prNum(x[o+5])),prNum(x[o+6]),prNum(x[o+7]),prNum(x[o+8]),prTxt(x[o+9])]);});
@@ -9500,7 +9527,7 @@ function prRows(){
     const hide=prHide(it,m);
     if(PRV.hide&&hide)return;
     if(q.length){
-      const hay=(code+" "+it.n+" "+it.v+" "+it.b+" "+it.s+" "+it.c).toLowerCase();
+      const hay=(code+" "+prName(code,it).nm+" "+it.n+" "+it.v+" "+it.b+" "+it.s+" "+it.c).toLowerCase();
       if(!q.every(w=>hay.indexOf(w)>=0))return;
     }
     out.push({code:code,it:it,m:m,hide:hide,g:prMargin(it,m,false),gp:prMargin(it,m,true)});
@@ -9594,11 +9621,21 @@ function prTableHtml(rows,mgr){
     if(r.it.c!==lastCat){lastCat=r.it.c;
       h+='<tr class="grp-row"><td colspan="8">'+anaEsc(lastCat||"อื่นๆ")+'</td></tr>';}
     const pk=r.g&&r.g.k>1, pkP=r.gp&&r.gp.k>1;
+    const nmo=prName(r.code,r.it);
+    const sub=[anaEsc(r.code)];
+    if(nmo.src==="file")sub.push('<span class="mid">ชื่อจากไฟล์ราคา</span>');
+    if(r.it.n&&r.it.n!==nmo.nm)sub.push(anaEsc(r.it.n));       /* ชื่ออังกฤษบนเอกสาร Unilever */
+    if(r.it.nt)sub.push(anaEsc(r.it.nt));
+    if(r.hide)sub.push('<b class="down">'+(PR_HIDE_LAB[r.hide]||r.hide)+'</b>');
     h+='<tr'+(r.hide?' class="pr-off"':"")+'>'+
-      '<td><b>'+anaEsc(r.it.v||r.it.n)+'</b>'+(r.it.b?' <span class="pl-tag">'+anaEsc(r.it.b)+'</span>':"")+
-        '<div class="psub">'+anaEsc(r.code)+(r.it.nt?" · "+anaEsc(r.it.nt):"")+
-        (r.hide?' · <b class="down">'+(PR_HIDE_LAB[r.hide]||r.hide)+'</b>':"")+'</div></td>'+
-      '<td>'+anaEsc(r.it.s)+'<div class="psub">'+r.it.p+' ชิ้น/หีบ'+(r.it.ip>1?" · แพ็ค "+r.it.ip:"")+'</div></td>'+
+      /* ป้ายแบรนด์ขึ้นเฉพาะตอนชื่อยังไม่ได้บอกแบรนด์อยู่แล้ว — ชื่อที่ประกอบเองขึ้นต้นด้วยแบรนด์
+         อยู่แล้ว ถ้าติดป้ายอีกจะอ่านว่า "CITRA … CITRA" ส่วนชื่อจากระบบสั่งของเป็นไทยล้วน
+         ("วิมสีเขียวน้ำยาล้างห้องน้ำ") ป้าย VIM ยังช่วยให้กวาดตาหาแบรนด์ได้ */
+      '<td><b>'+anaEsc(nmo.nm)+'</b>'+
+        ((r.it.b&&nmo.nm.indexOf(r.it.b)<0)?' <span class="pl-tag">'+anaEsc(r.it.b)+'</span>':"")+
+        '<div class="psub">'+sub.join(" · ")+'</div></td>'+
+      '<td><b>'+anaEsc(r.it.s)+'</b><div class="psub">'+r.it.p+' ชิ้น/หีบ'+
+        (r.it.ip>1?" · แพ็ค "+r.it.ip+" ชิ้น":"")+'</div></td>'+
       '<td class="num"><b>'+prBaht(r.m.ntt)+'</b></td>'+
       '<td class="num">'+prBaht(r.m.fl)+'</td>'+
       '<td class="num">'+(r.m.rspN?prBaht(r.m.rspN)+(pk?'<div class="psub">ยกแพ็ค '+r.g.k+' ชิ้น</div>':""):"-")+'</td>'+

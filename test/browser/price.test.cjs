@@ -219,7 +219,7 @@ if(MISSING.length){
  const blk=pub.slice(pub.indexOf('var PR_MON='),pub.indexOf('/* ======================= จบส่วนที่คัดลอก'));
  const twin=await ev(a2=>{
    /* โหลดสูตรของหน้าสาธารณะมาในชื่อ pub* แล้วเทียบกับของแอปทุกรายการทุกรอบ */
-   const f=new Function(a2.blk+';return {prM:prM,prMargin:prMargin,prHide:prHide,prWindow:prWindow};')();
+   const f=new Function(a2.blk+';return {prM:prM,prMargin:prMargin,prHide:prHide,prWindow:prWindow,prCompose:prCompose,prName:prName};')();
    const items=PRICE.hs.items;let n=0,bad=0,first=null;
    Object.keys(items).forEach(code=>{
      const it=items[code];
@@ -229,6 +229,8 @@ if(MISSING.length){
                     [prMargin(it,a3,true), f.prMargin(it,b3,true)]];
        n++;
        let ok=prHide(it,a3)===f.prHide(it,b3);
+       /* ชื่อที่ประกอบเองต้องตรงกันด้วย (prName ต่างกันได้ เพราะฝั่งแอปอ่าน oname สดอีกชั้น) */
+       if(prCompose(it)!==f.prCompose(it))ok=false;
        pairs.forEach(([x,y])=>{
          if(!!x!==!!y){ok=false;return;}
          if(x&&(Math.abs(x.pct-y.pct)>1e-9||x.k!==y.k))ok=false;
@@ -241,6 +243,54 @@ if(MISSING.length){
  },{blk:blk});
  t('🔁 สูตรในหน้าแคตาลอคสาธารณะให้เลขตรงกับในแอปทุกรายการทุกรอบ (สองไฟล์ไม่หลุดกัน)',
    twin.bad===0,twin.bad+' เพี้ยน จาก '+twin.n+(twin.first?' ตัวแรก '+JSON.stringify(twin.first):''));
+
+ /* ---- ชื่อสินค้าที่โชว์ ต้องเป็นชื่อเดียวกับระบบสั่งของ ไม่ใช่แค่ช่อง "สูตร/สี" ---- */
+ const nmz=await ev(()=>{
+   const items=PRICE.hs.items,i=prNowIdx();
+   /* จำลองว่าระบบสั่งของรู้จักสินค้าบางตัว (ของจริงมาจาก STOCKD/MASTER/ORDERS) */
+   const codes=Object.keys(items);
+   const known=codes.slice(0,3);
+   /* เก็บของเดิมไว้คืนให้เป๊ะ — ตอนท้ายเทสต์มีการเทียบทุกก้อนทีละไบต์ */
+   window.__sk=JSON.stringify(STOCKD);
+   STOCKD={names:{}};
+   known.forEach((c,k)=>{STOCKD.names[c]='ชื่อในระบบสั่งของ '+k+' 12x500มล.P4';});
+   const got=codes.map(c=>({c:c,nm:prName(c,items[c]).nm,src:prName(c,items[c]).src}));
+   const byOrd=got.filter(g=>g.src==='ord'),byFile=got.filter(g=>g.src==='file');
+   /* ไม่มีชื่อ = โชว์ว่างเปล่า ต้องไม่เกิดขึ้นเลย */
+   const empty=got.filter(g=>!g.nm||!g.nm.trim());
+   /* ชื่อที่ประกอบเองต้องมีทั้งแบรนด์และขนาด ไม่ใช่สูตรลอยๆ */
+   const thin=byFile.filter(g=>{const it=items[g.c];
+     return (it.b&&g.nm.indexOf(it.b)<0)||(it.s&&g.nm.indexOf(it.s)<0);});
+   /* ตัวอย่างจริงจากภาพที่เจ้าของส่งมา */
+   const ex=items['65080361']?prName('65080361',items['65080361']).nm:'';
+   const tbl=(function(){renderPrice();
+     const t=document.querySelector('#prBody table.pr-tbl');
+     const tr=[...t.querySelectorAll('tbody tr:not(.grp-row):not(.pr-rem)')].slice(0,40);
+     return tr.map(x=>({nm:x.children[0].innerText.replace(/\s+/g,' ').trim(),
+                        sz:x.children[1].innerText.replace(/\s+/g,' ').trim()}));})();
+   STOCKD=JSON.parse(window.__sk);delete window.__sk;
+   return {n:got.length,ord:byOrd.length,file:byFile.length,empty:empty.length,
+     thin:thin.length,thinEx:thin.slice(0,3),ex:ex,tbl:tbl};
+ });
+ t('ทุกรายการมีชื่อโชว์ ไม่มีรายการไหนชื่อว่าง',nmz.empty===0,nmz.empty);
+ t('รายการที่ระบบสั่งของรู้จัก ใช้ชื่อจากระบบสั่งของ',nmz.ord===3,nmz.ord+' จาก '+nmz.n);
+ t('ที่เหลือประกอบชื่อเอง และต้องมีทั้ง<b>แบรนด์</b>และ<b>ขนาด</b> ไม่ใช่สูตรลอยๆ',
+   nmz.thin===0,nmz.thin+' ขาด: '+JSON.stringify(nmz.thinEx));
+ t('ตัวอย่างจริงจากภาพ 65080361 เดิมโชว์ "เรดแอลจี AHA แพ็คคู่" ตอนนี้มีแบรนด์+ขนาดครบ',
+   /CITRA/.test(nmz.ex)&&/300ML/.test(nmz.ex),nmz.ex);
+ t('ช่องขนาดในตารางบอก ชิ้น/หีบ ครบทุกแถว',
+   nmz.tbl.length>20&&nmz.tbl.every(r=>/ชิ้น\/หีบ/.test(r.sz)),
+   JSON.stringify(nmz.tbl[0]));
+ t('ช่องสินค้าไม่ได้โชว์แค่สูตรลอยๆ แล้ว (ชื่อยาวกว่า 8 ตัวอักษรทุกแถว)',
+   nmz.tbl.every(r=>r.nm.split('\n')[0].trim().length>8),
+   JSON.stringify(nmz.tbl.slice(0,2)));
+ t('ค้นหาด้วยชื่อจากระบบสั่งของได้',
+   await ev(()=>{const c=Object.keys(PRICE.hs.items)[0];
+     const keep=JSON.stringify(STOCKD);
+     STOCKD={names:{[c]:'วิมสีเขียวน้ำยาล้างห้องน้ำ 3500มล.P4'}};
+     prSetQ('วิมสีเขียว');
+     const n=document.querySelectorAll('#prBody table.pr-tbl tbody tr:not(.grp-row):not(.pr-rem)').length;
+     prSetQ('');STOCKD=JSON.parse(keep);return n===1;}),'ok');
 
  /* ============================================================
   * 3) อ่านไฟล์ BUM
