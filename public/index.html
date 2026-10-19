@@ -2389,12 +2389,17 @@ function _switchTab(t){
   if(t==="price")renderPrice();
   if(t==="cost")renderCost();
 }
+/* เพดาน Ghost order ของ Unilever — ไฟล์ Incentive เขียนไว้เองสองที่:
+   หัวคอลัมน์ Q "%Ghost order (Target < =10%)" และชีต "condition details" ("Ghost order <=10%")
+   เดิมโปรแกรมใช้ 15% ซึ่งไม่มีที่มา ทำให้สายที่เกินเกณฑ์จริงขึ้นว่า "ผ่าน"
+   parseKPI อ่านเลขนี้จากหัวไฟล์มาทานด้วย ถ้า Unilever เปลี่ยนจะเตือนตอนอัพ */
+const KPI_GHOST_MAX=10;
 let KPIS={month:null,show:{active:true,self:true,ghost:true},scope:"team"};
 let kpiCharts=[];
 const KPICFG={
   active:{name:"Active on PJP",unit:"ร้าน",color:"#0F9ED5",light:"#E4F4FB",get:r=>r.activePct,val:r=>r.active,base:r=>r.stores,tiers:[40,50,60],pass:v=>v>=40,dir:"up",desc:"ร้านที่สั่งออนไลน์แล้ว ÷ ร้านในพื้นที่ทั้งหมด"},
   self:{name:"Self-ordering",unit:"ออเดอร์",color:"#4EA72E",light:"#EAF6E2",get:r=>r.selfPct,val:r=>r.self,base:r=>r.orders,tiers:[40],pass:v=>v>=40,dir:"up",desc:"ออเดอร์ที่ลูกค้ากดสั่งเอง ÷ ออเดอร์ทั้งหมด"},
-  ghost:{name:"Ghost order",unit:"ออเดอร์",color:"#E97132",light:"#FCEEE3",get:r=>r.ghostPct,val:r=>r.ghost,base:r=>r.orders,tiers:[15],pass:v=>v<=15,dir:"down",desc:"ออเดอร์ ghost ÷ ออเดอร์ทั้งหมด (ยิ่งน้อยยิ่งดี ไม่เกิน 15%)"},
+  ghost:{name:"Ghost order",unit:"ออเดอร์",color:"#E97132",light:"#FCEEE3",get:r=>r.ghostPct,val:r=>r.ghost,base:r=>r.orders,tiers:[KPI_GHOST_MAX],pass:v=>v<=KPI_GHOST_MAX,dir:"down",desc:"ออเดอร์ ghost ÷ ออเดอร์ทั้งหมด (ยิ่งน้อยยิ่งดี ไม่เกิน "+KPI_GHOST_MAX+"%)"},
 };
 /* รวมคีย์จากทั้ง months และ data เผื่อสองอันไม่ตรงกัน (ข้อมูลเก่าบางชุดมีแต่ใน data)
    ใช้ที่เดียวกันทั้ง initKPI และ renderKPI ไม่ให้ตัวเลือกกับหน้าจอไม่ตรงกัน */
@@ -2431,8 +2436,9 @@ function kpiRows(){
   let codes=Object.keys(KPI.lines||{}).filter(c=>md[c]);
   codes.sort((a,b)=>(KPI.lines[a]||a).localeCompare(KPI.lines[b]||b));
   return codes.map(c=>{const v=md[c];const o=v.orders||0;
-    return {code:c,disp:KPI.lines[c]||c,stores:v.stores,active:v.active,orders:v.orders,self:v.self,ghost:v.ghost,
-      activePct:v.stores?v.active/v.stores*100:0,selfPct:o?v.self/o*100:0,ghostPct:o?v.ghost/o*100:0};});
+    const gh=kpiGhost(v);                       /* ซ่อมรอบเก่าที่เก็บเป็นสัดส่วน (ดู kpiGhost) */
+    return {code:c,disp:KPI.lines[c]||c,stores:v.stores,active:v.active,orders:v.orders,self:v.self,ghost:gh,
+      activePct:v.stores?v.active/v.stores*100:0,selfPct:o?v.self/o*100:0,ghostPct:o?gh/o*100:0};});
 }
 function remainWorkdays(k){
   /* รับได้ทั้งคีย์รายวัน (YYYY-MM-DD) และรายเดือน (YYYY-MM) — ต้องตัดเอาเฉพาะเดือน
@@ -2474,10 +2480,10 @@ function renderKPI(){
 }
 function renderKpiReward(team,rows,focusMe){
   const el=document.getElementById("kpiReward");
-  const passLine=r=>({a:r.activePct>=40,s:r.selfPct>=40,g:r.ghostPct<=15});
+  const passLine=r=>({a:r.activePct>=40,s:r.selfPct>=40,g:r.ghostPct<=KPI_GHOST_MAX});
   const sum=f=>team.reduce((s,r)=>s+f(r),0);
   const stores=sum(r=>r.stores),active=sum(r=>r.active),orders=sum(r=>r.orders),self=sum(r=>r.self),ghost=sum(r=>r.ghost);
-  const cA=stores&&active/stores>=0.40,cS=orders&&self/orders>=0.40,cG=orders&&ghost/orders<=0.15,centerWin=cA&&cS&&cG;
+  const cA=stores&&active/stores>=0.40,cS=orders&&self/orders>=0.40,cG=orders&&ghost/orders<=KPI_GHOST_MAX/100,centerWin=cA&&cS&&cG;
   const dot=(ok,lab)=>`<span class="rdot ${ok?'g':'r'}">${lab} ${ok?'✔':'✘'}</span>`;
   const qLines=team.filter(r=>{const p=passLine(r);return p.a&&p.s&&p.g;});
   let html=`<div class="reward-banner ${centerWin?'win':'pend'}">
@@ -2508,7 +2514,7 @@ function renderKpiCards(team,rows,focusMe){
   document.getElementById("kpiCards").innerHTML=
     mcard(C.active,aP,aP>=40,`${active} / ${stores} ร้าน · เป้า 40%`)+
     mcard(C.self,sP,sP>=40,`${self} / ${orders} ออเดอร์ · เป้า 40%`)+
-    mcard(C.ghost,gP,gP<=15,`${ghost} / ${orders} ออเดอร์ · เพดาน 15%`)+
+    mcard(C.ghost,gP,gP<=KPI_GHOST_MAX,`${ghost} / ${orders} ออเดอร์ · เพดาน ${KPI_GHOST_MAX}%`)+
     `<div class="card"><div class="k">${focusMe?"สายของฉัน":"รอบข้อมูล / ขอบเขต"}</div><div class="v" style="font-size:18px">${focusMe?(rows[0]?rows[0].disp:"–"):kpiLabel(KPIS.month)}</div><div class="s">${focusMe?"เทียบเป้าทั้ง 3 ตัว":scope.length+" สาย CT"}</div></div>`;
 }
 function renderKpiCharts(rows,focusMe,mine){
@@ -2539,7 +2545,7 @@ function renderKpiPlan(rows,focusMe){
   const plan=rows.map(r=>({...r,
     activeNeed:Math.max(0,Math.ceil(0.40*r.stores)-r.active),
     selfNeed:Math.max(0,Math.ceil(0.40*r.orders)-r.self),
-    ghostCut:Math.max(0,r.ghost-Math.floor(0.15*r.orders))}));
+    ghostCut:Math.max(0,r.ghost-Math.floor(KPI_GHOST_MAX/100*r.orders))}));
   const nA=plan.filter(p=>p.activeNeed>0).length,nS=plan.filter(p=>p.selfNeed>0).length,nG=plan.filter(p=>p.ghostCut>0).length;
   const head=closed
     ? `<div class="note">เดือน ${fmtMonth(kpiMonthKey(KPIS.month))} ปิดแล้ว — แสดงส่วนที่ยังขาดไว้วางแผนเดือนถัดไป (บริษัททำงาน ${KPI.workdays||26} วัน/เดือน จ.–ส.)</div>`
@@ -2705,6 +2711,69 @@ function kpiDeleteRound(){
   syncToServer();
   alert("ลบแล้ว — กำลังบันทึกขึ้นเซิร์ฟเวอร์\nอีกสักครู่ให้รีเฟรชหน้าเว็บเพื่อยืนยันว่าหายไปจริง");
 }
+/* ============================================================================
+ * หาตำแหน่งคอลัมน์ของไฟล์ Incentive จาก "หัวตาราง" ไม่ใช่เลขคอลัมน์ตายตัว
+ *
+ * ⛔ บั๊กที่เจอ 19 ต.ค. 69 — ทำไมต้องมีฟังก์ชันนี้
+ * โค้ดเดิมเขียนเลขคอลัมน์ไว้ตรงๆ: ghost:+r[16]
+ * แต่ช่อง 16 (Q) คือ **"%Ghost order" ที่เก็บเป็นสัดส่วน** (0.1125) ไม่ใช่จำนวนบิล
+ * จำนวนบิลจริงอยู่ช่อง 15 (P) = "จำนวน Ghost ออเดอร์" (9 บิล)
+ * แล้วโค้ดเอา 0.1125 ไปหารด้วยจำนวนออเดอร์อีกที → ได้ 0.14% แทนที่จะเป็น 11.25%
+ * = **หารร้อยหาย 2 รอบ** ทุกสายจึงขึ้นเกือบ 0% และ "ผ่าน" หมดทั้งที่จริงมีสายที่เกินเพดาน
+ * เจ้าของเจอเองเพราะเปิดไฟล์ดูแล้วเห็นว่ามี Ghost จริง
+ *
+ * ต้นเหตุไม่ใช่ "พิมพ์เลขผิด" แต่คือ **การเขียนเลขคอลัมน์ตายตัวกับไฟล์ที่คอลัมน์ขยับได้**
+ * ตอนนี้จึงหาตำแหน่งจากข้อความหัวตาราง (แถว 0 กับแถว 1 ของชีต ByRoute)
+ * และถ้าหาไม่เจอแม้แต่ช่องเดียว **โยน error ทิ้งทั้งไฟล์ ไม่เดา ไม่บันทึกอะไรเลย**
+ * — เงียบแล้วอ่านผิดช่อง คือสิ่งที่ทำให้บั๊กนี้อยู่ได้นาน
+ *
+ * หัวตารางจริงของไฟล์ (Salesman_Incentive_DTT_OCT_as_of_19_Oct26.xlsx):
+ *   แถว 0: A รหัสศูนย์ · C สายวิ่ง · D รหัสสายวิ่ง · E ร้านค้าใน PJP · F ROUTE
+ *   แถว 1: J ทำมาแล้ว · L จำนวนออเดอร์ จากแอปทั้งหมด · M จำนวนออเดอร์ Self-ordering
+ *          N จำนวนออเดอร์ Self-ordering ทีต้องทำเพิ่ม · P จำนวน Ghost ออเดอร์ · Q %Ghost order
+ * ⚠️ M กับ N ขึ้นต้นเหมือนกัน ต้องจับแบบลงท้ายพอดี ไม่งั้นได้ "ที่ต้องทำเพิ่ม" มาแทน
+ * ==========================================================================*/
+const KPI_COLSPEC=[
+  {k:"depot", row:0,re:/^รหัสศูนย์/,            nm:"รหัสศูนย์"},
+  {k:"line",  row:0,re:/^สายวิ่ง$/,             nm:"สายวิ่ง"},
+  {k:"route", row:0,re:/^ROUTE$/i,              nm:"ROUTE"},
+  {k:"stores",row:0,re:/ร้านค้าใน\s*PJP/,       nm:"ร้านค้าใน PJP"},
+  {k:"active",row:1,re:/^ทำมาแล้ว$/,            nm:"ทำมาแล้ว"},
+  {k:"orders",row:1,re:/^จำนวนออเดอร์.*ทั้งหมด/, nm:"จำนวนออเดอร์ จากแอปทั้งหมด"},
+  {k:"self",  row:1,re:/^จำนวนออเดอร์\s*Self-ordering$/i, nm:"จำนวนออเดอร์ Self-ordering"},
+  {k:"ghost", row:1,re:/^จำนวน\s*Ghost/i,       nm:"จำนวน Ghost ออเดอร์"},
+  {k:"gpct",  row:1,re:/^%\s*Ghost/i,           nm:"%Ghost order", opt:true},
+];
+function kpiCols(rows){
+  const cell=(r,c)=>String(((rows[r]||[])[c])==null?"":(rows[r]||[])[c]).replace(/\s+/g," ").trim();
+  const wide=Math.max(((rows[0]||[]).length),((rows[1]||[]).length));
+  const out={},miss=[];
+  KPI_COLSPEC.forEach(sp=>{
+    let hit=null;
+    for(let c=0;c<wide;c++){if(sp.re.test(cell(sp.row,c))){hit=c;break;}}
+    if(hit==null&&!sp.opt)miss.push(sp.nm);
+    if(hit!=null)out[sp.k]=hit;
+  });
+  if(miss.length)throw new Error("หาคอลัมน์ในไฟล์ไม่เจอ: "+miss.join(" · ")+
+    " — ฟอร์แมตไฟล์ Incentive เปลี่ยนไป ยังไม่บันทึกอะไรทั้งนั้น แจ้งให้ปรับโปรแกรมก่อน");
+  /* เพดาน Ghost ที่ไฟล์เขียนไว้เอง เช่น "%Ghost order (Target < =10%)" */
+  if(out.gpct!=null){
+    const m=cell(1,out.gpct).match(/(\d+(?:\.\d+)?)\s*%/);
+    if(m)out.gTarget=parseFloat(m[1]);
+  }
+  return out;
+}
+/* ---------- ซ่อมข้อมูลรอบเก่าตอนอ่าน ไม่เขียนทับของที่เก็บไว้ ----------
+   รอบที่อัพก่อน 19 ต.ค. 69 เก็บ ghost เป็น "สัดส่วน" (0.1125) เพราะอ่านผิดช่อง
+   จำนวนบิลเป็นจำนวนเต็มเสมอ ถ้าเจอค่าที่มีเศษและน้อยกว่า 1 = ของเก่าที่อ่านผิดแน่นอน
+   แปลงกลับได้ตรงตัว เพราะสัดส่วนนั้นคือ ghost ÷ orders อยู่แล้ว → ghost = สัดส่วน × orders
+   ทำตอนอ่านอย่างเดียว **ไม่แตะข้อมูลที่เก็บไว้** รอบเก่าจึงกลับมาถูกทันทีโดยไม่ต้องอัพไฟล์ซ้ำ
+   และถ้าอัพไฟล์ใหม่ทับ ค่าที่ได้เป็นจำนวนเต็มอยู่แล้ว ฟังก์ชันนี้ก็ปล่อยผ่าน */
+function kpiGhost(v){
+  const g=+((v&&v.ghost))||0,o=+((v&&v.orders))||0;
+  if(o&&g>0&&g<1&&Math.abs(g-Math.round(g))>1e-9)return Math.round(g*o);
+  return g;
+}
 function parseKPI(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
   const sh=wb.SheetNames.find(s=>/route/i.test(s));
@@ -2715,14 +2784,26 @@ function parseKPI(name,buf){
   const K=kpiKeyOf(name,hay);
   const mk=K.key;
   if(!mk)throw new Error("ระบุวันที่/เดือนของข้อมูลไม่ได้ — ตั้งชื่อไฟล์ให้มีวันที่ (เช่น ..._150926.xlsx)");
-  const md={};let n=0;
+  const CL=kpiCols(rows);
+  const md={};let n=0,gBad=0,gWorst=null;
   for(let i=2;i<rows.length;i++){const r=rows[i];if(!r)continue;
-    if(String(r[0])!=="2096"||String(r[5]).toUpperCase()!=="CT")continue;
-    const code=String(r[2]).trim();
-    md[code]={stores:+r[4]||0,active:+r[9]||0,orders:+r[11]||0,self:+r[12]||0,ghost:+r[16]||0};
+    if(String(r[CL.depot])!=="2096"||String(r[CL.route]).toUpperCase()!=="CT")continue;
+    const code=String(r[CL.line]).trim();
+    const rec={stores:+r[CL.stores]||0,active:+r[CL.active]||0,orders:+r[CL.orders]||0,
+      self:+r[CL.self]||0,ghost:+r[CL.ghost]||0};
+    md[code]=rec;
+    /* กันพลาดซ้ำ: ไฟล์มีช่อง %Ghost ของตัวเองอยู่แล้ว เอามาทานกับที่เราคำนวณเอง
+       ถ้าวันไหนคอลัมน์เลื่อนอีก จะฟ้องทันทีตอนอัพ ไม่ใช่เงียบไป 3 เดือนแบบรอบที่แล้ว */
+    if(CL.gpct!=null&&rec.orders){
+      const mine=rec.ghost/rec.orders, theirs=+r[CL.gpct]||0;
+      if(Math.abs(mine-theirs)>0.005){gBad++;
+        if(!gWorst)gWorst=code+": เราได้ "+(mine*100).toFixed(1)+"% ไฟล์บอก "+(theirs*100).toFixed(1)+"%";}
+    }
     if(!KPI.lines)KPI.lines={};if(!KPI.lines[code])KPI.lines[code]=FOCUS_MAP[code]||code;
     n++;}
   if(!n)throw new Error("ไม่พบสาย CT ของศูนย์ BD (2096) ในไฟล์");
+  if(gBad)throw new Error("%Ghost ที่คำนวณได้ไม่ตรงกับช่อง %Ghost ในไฟล์ "+gBad+" สาย ("+gWorst+
+    ") — คอลัมน์ในไฟล์น่าจะเปลี่ยน ยังไม่บันทึกอะไรทั้งนั้น แจ้งให้ปรับโปรแกรมก่อน");
   if(!KPI.data)KPI.data={};KPI.data[mk]=md;
   if(!KPI.months)KPI.months=[];if(!KPI.months.includes(mk))KPI.months.push(mk);KPI.months.sort();
   if(!KPI.workdays)KPI.workdays=26;
@@ -2731,6 +2812,9 @@ function parseKPI(name,buf){
   if(!KPI.meta)KPI.meta={};KPI.meta[mk]={up:Date.now(),file:name,src:K.src,raw:K.raw||"",close:!!K.close};
   /* อัพรอบเดิมใหม่ = ยกเลิก tombstone ของรอบนั้น (เหมือน parsePS) */
   if(KPI.del)delete KPI.del[mk];
+  if(CL.gTarget&&CL.gTarget!==KPI_GHOST_MAX)
+    ulog("⚠️ ไฟล์บอกเพดาน Ghost ว่า <b>"+CL.gTarget+"%</b> แต่โปรแกรมใช้ "+KPI_GHOST_MAX+
+      "% — ถ้า Unilever เปลี่ยนเกณฑ์จริง แจ้งให้ปรับโปรแกรม");
   const T=Object.values(md).reduce((a,v)=>({st:a.st+v.stores,ac:a.ac+v.active,or:a.or+v.orders,se:a.se+v.self,gh:a.gh+v.ghost}),{st:0,ac:0,or:0,se:0,gh:0});
   ulog("✅ "+name+" (KPI) → <b>"+kpiLabel(mk)+"</b> ("+K.src+") · "+n+" สาย · ศูนย์: Active "+T.ac+"/"+T.st+", Self "+T.se+"/"+T.or+", Ghost "+T.gh+"/"+T.or+" (เทียบ BySup ได้เลย)");
   initKPI();KPIS.month=mk;{const sl=document.getElementById("kpiMonth");if(sl)sl.value=mk;}

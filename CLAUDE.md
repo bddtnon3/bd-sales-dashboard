@@ -187,7 +187,14 @@ code, never printed.
   second upload of a month erase the first. The filename wins over the sheet header, which once
   read `as of W4 Sep'26` as the 4th. `end of Sep` in a filename means the month-closing round.
   Old `YYYY-MM` keys must keep working; `KPI.meta` and the `KPI.del` tombstones must survive
-  `mergeState`. Rules: `HANDOFF.md` §5.
+  `mergeState`. **Column positions come from the header text (`kpiCols`), never from fixed
+  indices** — a hard-coded `r[16]` read the `%Ghost` column instead of the Ghost COUNT for two
+  months and showed 0.14% where the file said 11.25%, so every line passed. A header it cannot
+  find throws and stores nothing, and the computed `ghost/orders` is cross-checked against the
+  file's own `%Ghost` column on every upload. The ceiling is **`KPI_GHOST_MAX` = 10%**, which is
+  what the file itself states twice; it was 15% with no source. Rounds already stored with the
+  fraction are repaired **at read time** in `kpiRows` (`kpiGhost`) and never overwritten. Prove it
+  with **`node test/browser/kpi.test.cjs`** (21 checks, self-contained). Rules: `HANDOFF.md` §5.
   The **🗓 ปฏิทินงาน** tab (`renderPlan`/`plOccur`) is the shared company planner — everyone
   sees the same calendar, the manager may edit any task, a salesperson may add tasks and
   edit/delete only their own (`by` is set from the token, never the payload). Repeating tasks
