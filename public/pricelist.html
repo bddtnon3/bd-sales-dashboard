@@ -91,6 +91,41 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 .pl-tbl thead th:last-child{border-top-right-radius:15px}
 .pl-tbl tbody tr:last-child td{border-bottom:none}
 .pl-tbl{width:100%;border-collapse:collapse}
+/* ---------- ตัวกรองแบรนด์ + หัวตารางกดเรียงได้ ---------- */
+/* ⚠️ จอแคบซ่อนหัวตาราง (ดู @media) จึงกดหัวคอลัมน์เพื่อเรียงไม่ได้
+   ต้องมีช่องเลือกการเรียงให้ด้วย ไม่งั้นลูกค้าที่เปิดจากมือถือใช้ฟังก์ชันนี้ไม่ได้เลย
+   จอใหญ่ซ่อนช่องนี้ เพราะกดที่หัวคอลัมน์ได้ตรงกว่า */
+.sortsel{display:none;margin-top:12px;align-items:center;gap:10px}
+.sortsel label{font-size:15px;font-weight:700;color:var(--muted);flex:0 0 auto}
+.sortsel select{flex:1 1 auto;border:1.5px solid var(--line);border-radius:11px;padding:12px 14px;
+  font:700 15.5px/1 inherit;color:var(--ink);background:#fff;min-width:0}
+.bbar{margin-top:12px}
+.bbtn{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px 16px;
+  font:700 16px/1 inherit;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:9px}
+.bbtn:hover{border-color:var(--uni)}
+.bbtn .cnt2{background:var(--uni);color:#fff;border-radius:999px;padding:3px 10px;font-size:13.5px}
+.bpan{display:none;margin-top:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.bpan.on{display:block}
+.bchips{display:flex;flex-wrap:wrap;gap:9px}
+.bchip{background:var(--bg);border:1.5px solid var(--line);border-radius:999px;padding:10px 16px;
+  font:700 15.5px/1.2 inherit;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.bchip small{color:var(--muted);font-weight:700}
+.bchip.on{background:var(--uni);border-color:var(--uni);color:#fff}
+.bchip.on small{color:#fff;opacity:.8}
+.bpan .act{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+.bpan .act button{background:none;border:none;color:var(--uni);font:700 15px/1 inherit;cursor:pointer;
+  text-decoration:underline;padding:4px}
+.sorted{background:var(--uni)!important;color:#fff!important}
+.sorted small{color:#fff!important;opacity:.8}
+.pl-tbl th.sv{cursor:pointer;user-select:none}
+.pl-tbl th.sv:hover{background:var(--uni-line)}
+.pl-tbl th .ar{display:block;font-size:15px;line-height:1;margin-top:3px;opacity:.45}
+.pl-tbl th.sorted .ar{opacity:1}
+.sortnote{background:var(--uni-soft);border:1px solid var(--uni-line);border-radius:12px;
+  padding:11px 15px;margin-top:12px;font-size:15px;color:var(--uni-dark);font-weight:700;
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+.sortnote button{background:#fff;border:1.5px solid var(--uni-line);border-radius:10px;
+  padding:8px 14px;font:700 14.5px/1 inherit;color:var(--uni);cursor:pointer}
 .pl-tbl th{position:sticky;top:65px;z-index:20;background:var(--uni-soft);color:var(--uni-dark);
   font-size:13.5px;font-weight:800;text-align:right;padding:12px 14px;line-height:1.35;
   border-bottom:2px solid var(--uni-line);white-space:nowrap}
@@ -170,6 +205,7 @@ footer{background:#fff;border-top:1px solid var(--line);margin-top:36px;padding:
   .top h1{font-size:21px}
   .filt{top:62px}
   .pl-tbl th{position:static}
+  .sortsel{display:flex}
 }
 </style>
 </head>
@@ -197,6 +233,17 @@ footer{background:#fff;border-top:1px solid var(--line);margin-top:36px;padding:
   <div class="filt">
     <input id="q" type="search" placeholder="🔍 ค้นหาชื่อสินค้า / แบรนด์ / รหัส" autocomplete="off">
     <select id="cat"><option value="all">ทุกหมวดสินค้า</option></select>
+  </div>
+  <div class="sortsel">
+    <label for="sortS">เรียงลำดับ</label>
+    <select id="sortS"></select>
+  </div>
+  <div class="bbar">
+    <button type="button" class="bbtn" id="bBtn">เลือกแบรนด์ ▾</button>
+    <div class="bpan" id="bPan">
+      <div class="bchips" id="bChips"></div>
+      <div class="act"><button type="button" id="bAll">ดูทุกแบรนด์</button></div>
+    </div>
   </div>
   <div class="cnt" id="cnt"></div>
   <div id="list"></div>
@@ -310,6 +357,28 @@ function prHide(it,m){
 }
 /* ======================= จบส่วนที่คัดลอก ======================= */
 
+/* ---------- ชื่อหมวดภาษาไทย ----------
+   ไฟล์ของ Unilever ใช้ตัวย่อในบ้าน (FAB SOL · PW · H&H · U-Pro) ลูกค้าร้านค้าอ่านไม่ออก
+   ชื่อไทยด้านล่างตั้งจาก **แบรนด์จริงที่อยู่ในหมวดนั้น** ไม่ได้เดาจากตัวย่อ:
+     FAB SOL = BREEZE 137 + OMO 92        FAB SEN = COMFORT 135
+     H&H     = SUNLIGHT 45 + VIM + DOMEX  HAIR    = SUNSILK · DOVE · CLEAR · TRESEMME
+     PW      = LUX 59 + DOVE + VASELINE   BODY    = VASELINE 104 + CITRA 51
+     FACE    = POND'S 57 + VASELINE       DEO     = REXONA · AXE · DOVE
+     FOODS   = KNORR 91 + BESTFOODS 27    U-Pro   = ของ "PROF" ขนาดใหญ่ (3.5L / 4.5KG)
+   ถ้า Unilever เพิ่มหมวดใหม่ที่ไม่มีในตารางนี้ จะโชว์ตัวย่อเดิมไปก่อน ไม่พัง */
+var CAT_TH={
+  "FAB SOL":"ผงซักฟอก & น้ำยาซักผ้า",
+  "FAB SEN":"น้ำยาปรับผ้านุ่ม",
+  "H&H":"น้ำยาล้างจาน & ทำความสะอาดบ้าน",
+  "HAIR":"แชมพู & ครีมนวดผม",
+  "PW":"สบู่ & ครีมอาบน้ำ",
+  "BODY":"โลชั่น & บำรุงผิวกาย",
+  "FACE":"ครีม & โฟมล้างหน้า",
+  "DEO":"ผลิตภัณฑ์ระงับกลิ่นกาย",
+  "FOODS":"อาหาร & เครื่องปรุง",
+  "U-Pro":"ขนาดใหญ่ สำหรับร้าน/โรงแรม"
+};
+function catTh(c){return CAT_TH[c]||c||"อื่นๆ";}
 var MON_TH=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
 function fmtDate(s){var d=new Date(s+"T00:00:00");return d.getDate()+" "+MON_TH[d.getMonth()]+" "+(d.getFullYear()+543);}
 function baht(v){return Number(v).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -319,7 +388,7 @@ function $(id){return document.getElementById(id);}
 function todayISO(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 
 var P={items:{},rounds:[],up:0};
-var V={i:0,q:"",cat:"all",show:300};
+var V={i:0,q:"",cat:"all",show:300,br:[],sort:null,dir:-1};   /* br = แบรนด์ที่ติ๊กไว้ · dir -1 = มากไปน้อย */
 var PAGE=300;
 
 function nowIdx(){
@@ -337,12 +406,27 @@ function rows(){
     if(!m)return;
     if(prHide(it,m))return;                       /* ไม่พร้อมขาย / ขาดทุน → ไม่โชว์ให้ลูกค้า */
     if(V.cat!=="all"&&it.c!==V.cat)return;
+    if(V.br.length&&V.br.indexOf(it.b)<0)return;
     if(q.length){
       var hay=(code+" "+prName(code,it).nm+" "+it.n+" "+it.v+" "+it.b+" "+it.s+" "+it.c).toLowerCase();
       for(var j=0;j<q.length;j++)if(hay.indexOf(q[j])<0)return;
     }
     out.push({code:code,it:it,m:m,g:prMargin(it,m,false),gp:prMargin(it,m,true)});
   });
+  if(V.sort){
+    /* กดหัวคอลัมน์แล้วเรียงทั้งรายการเหมือน Excel — ตอนเรียงจะไม่แบ่งหมวดแล้ว
+       เพราะถ้ายังแบ่งหมวดอยู่ มันจะเรียงแค่ในหมวด ซึ่งไม่ใช่สิ่งที่คนกดคาดหวัง
+       แถวที่ไม่มีค่าช่องนั้น (เช่นไม่มีราคาโปร) ลงไปอยู่ท้ายสุดเสมอ ไม่ว่าจะเรียงทางไหน */
+    var val=SORTV[V.sort];
+    out.sort(function(a,b){
+      var x=val(a),y=val(b);
+      if(x==null&&y==null)return 0;
+      if(x==null)return 1;
+      if(y==null)return -1;
+      return (x-y)*V.dir||String(a.code).localeCompare(String(b.code));
+    });
+    return out;
+  }
   out.sort(function(a,b){
     var ka=(a.it.c||"zz")+"|"+(a.it.b||"")+"|"+(a.it.n||"")+"|"+(a.it.s||"");
     var kb=(b.it.c||"zz")+"|"+(b.it.b||"")+"|"+(b.it.n||"")+"|"+(b.it.s||"");
@@ -350,6 +434,70 @@ function rows(){
   });
   return out;
 }
+/* คอลัมน์ไหนกดเรียงได้บ้าง และเอาค่าอะไรไปเรียง (คืน null = ไม่มีค่า ให้ไปอยู่ท้าย) */
+var SORTV={
+  ntt: function(r){return r.m.ntt||null;},
+  rspN:function(r){return r.m.rspN||null;},
+  gain:function(r){return (r.g&&!r.g.unsure)?r.g.pct:null;},
+  rspP:function(r){return r.m.rspP||null;},
+  gainP:function(r){return (r.m.rspP&&r.gp&&!r.gp.unsure)?r.gp.pct:null;}
+};
+var SORTLAB={ntt:"ราคาที่ศูนย์เสนอขาย",rspN:"ราคาแนะนำขาย",gain:"กำไรที่ร้านได้",
+  rspP:"ราคาช่วงโปร",gainP:"กำไรช่วงโปร"};
+/* กดหัวคอลัมน์: ครั้งแรก = มากไปน้อย · ครั้งที่สอง = น้อยไปมาก · ครั้งที่สาม = เลิกเรียง */
+function sortBy(k){
+  if(V.sort!==k){V.sort=k;V.dir=-1;}
+  else if(V.dir===-1)V.dir=1;
+  else {V.sort=null;V.dir=-1;}
+  V.show=PAGE;drawSortSel();draw();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function sortOff(){V.sort=null;V.dir=-1;V.show=PAGE;drawSortSel();draw();}
+function drawSortSel(){
+  var sel=$("sortS"),o='<option value="">ตามหมวดสินค้า (ปกติ)</option>';
+  Object.keys(SORTLAB).forEach(function(k){
+    o+='<option value="'+k+'|-1">'+SORTLAB[k]+' · มากไปน้อย</option>'+
+       '<option value="'+k+'|1">'+SORTLAB[k]+' · น้อยไปมาก</option>';});
+  sel.innerHTML=o;
+  sel.value=V.sort?(V.sort+"|"+V.dir):"";
+}
+/* ---------- ตัวกรองแบรนด์ ---------- */
+function brandList(){
+  /* นับเฉพาะของที่ผ่านตัวกรองหมวดและคำค้นแล้ว แต่ **ไม่สนตัวกรองแบรนด์เอง**
+     ไม่งั้นพอติ๊กแบรนด์แรก แบรนด์อื่นจะหายหมด แล้วติ๊กเพิ่มไม่ได้อีกเลย */
+  var q=V.q.trim().toLowerCase().split(/\s+/).filter(Boolean),s={};
+  Object.keys(P.items).forEach(function(code){
+    var it=P.items[code],m=prM(it,V.i);
+    if(!m||prHide(it,m))return;
+    if(V.cat!=="all"&&it.c!==V.cat)return;
+    if(q.length){
+      var hay=(code+" "+prName(code,it).nm+" "+it.n+" "+it.v+" "+it.b+" "+it.s+" "+it.c).toLowerCase();
+      for(var j=0;j<q.length;j++)if(hay.indexOf(q[j])<0)return;
+    }
+    if(it.b)s[it.b]=(s[it.b]||0)+1;
+  });
+  return s;
+}
+function drawBrands(){
+  var s=brandList(),names=Object.keys(s).sort(function(a,b){return s[b]-s[a]||a.localeCompare(b);});
+  /* แบรนด์ที่ติ๊กไว้แต่หายไปจากรายการ (เพราะเปลี่ยนหมวด) ต้องปลดออก ไม่งั้นจะได้ผลลัพธ์ว่าง */
+  V.br=V.br.filter(function(b){return s[b];});
+  var n=V.br.length;
+  $("bBtn").innerHTML='เลือกแบรนด์ ▾'+(n?'<span class="cnt2">'+n+'</span>':
+    '<span style="color:var(--muted);font-weight:700">ทุกแบรนด์</span>');
+  $("bChips").innerHTML=names.map(function(b){
+    return '<button type="button" class="bchip'+(V.br.indexOf(b)>=0?' on':'')+'" data-b="'+esc(b)+'">'+
+      esc(b)+' <small>'+s[b]+'</small></button>';}).join("")||
+    '<span style="color:var(--muted)">ไม่มีแบรนด์ให้เลือก</span>';
+  Array.prototype.forEach.call($("bChips").querySelectorAll(".bchip"),function(el){
+    el.onclick=function(){
+      var b=el.dataset.b,i=V.br.indexOf(b);
+      if(i>=0)V.br.splice(i,1);else V.br.push(b);
+      V.show=PAGE;drawBrands();draw();};});
+}
+function brandAll(){V.br=[];V.show=PAGE;drawBrands();draw();}
+function brandToggle(){$("bPan").classList.toggle("on");}
+
 /* หนึ่งช่องตัวเลขในตาราง — data-l คือป้ายที่จอแคบเอาไปขึ้นหน้าตัวเลข (ดู @media) */
 function cell(lab,val,sub,cls){
   return '<td class="cnum '+cls+'" data-l="'+lab+'"><div>'+val+
@@ -389,26 +537,44 @@ function rowHtml(r){
   if(nt.length)h+='<tr class="noterow"><td colspan="6">'+nt.join('<br>')+'</td></tr>';
   return h;
 }
-var THEAD='<thead><tr><th>สินค้า</th>'+
-  '<th class="cnum">ราคาที่ศูนย์<br>เสนอขาย<small>รวม VAT แล้ว</small></th>'+
-  '<th class="cnum">ราคาแนะนำ<br>ให้ร้านตั้งขาย</th>'+
-  '<th class="cnum">ร้านได้กำไร</th>'+
-  '<th class="cnum">🎉 ราคา<br>ช่วงโปร</th>'+
-  '<th class="cnum">🎉 กำไร<br>ช่วงโปร</th></tr></thead>';
+function th(k,lab,sub){
+  var on=V.sort===k;
+  return '<th class="cnum sv'+(on?' sorted':'')+'" data-s="'+k+'">'+lab+
+    (sub?'<small>'+sub+'</small>':'')+
+    '<span class="ar">'+(on?(V.dir===-1?'▼ มากไปน้อย':'▲ น้อยไปมาก'):'↕')+'</span></th>';
+}
+function thead(){
+  return '<thead><tr><th>สินค้า</th>'+
+    th('ntt','ราคาที่ศูนย์<br>เสนอขาย','รวม VAT แล้ว')+
+    th('rspN','ราคาแนะนำ<br>ให้ร้านตั้งขาย','')+
+    th('gain','ร้านได้กำไร','')+
+    th('rspP','🎉 ราคา<br>ช่วงโปร','')+
+    th('gainP','🎉 กำไร<br>ช่วงโปร','')+
+    '</tr></thead>';
+}
 function draw(){
   var R=rows(),host=$("list");
   $("cnt").textContent=R.length?("พบ "+R.length.toLocaleString("th-TH")+" รายการ"):"";
-  if(!R.length){host.innerHTML='<div class="empty">ไม่พบสินค้าที่ค้นหา — ลองพิมพ์สั้นลง หรือเลือก "ทุกหมวดสินค้า"</div>';return;}
+  if(!R.length){host.innerHTML='<div class="empty">ไม่พบสินค้าที่ค้นหา — ลองพิมพ์สั้นลง เลือก "ทุกหมวดสินค้า" หรือกด "ดูทุกแบรนด์"</div>';return;}
   var show=R.slice(0,V.show),h="",lastCat=null;
   show.forEach(function(r){
-    if(r.it.c!==lastCat){lastCat=r.it.c;
-      h+='<tr class="catrow"><td colspan="6">'+esc(lastCat||"อื่นๆ")+'</td></tr>';}
+    /* ตอนเรียงตามราคา ไม่ต้องขึ้นแถบหมวด — รายการถูกคละหมวดกันแล้วโดยตั้งใจ */
+    if(!V.sort&&r.it.c!==lastCat){lastCat=r.it.c;
+      h+='<tr class="catrow"><td colspan="6">'+esc(catTh(lastCat))+'</td></tr>';}
     h+=rowHtml(r);
   });
-  host.innerHTML='<div class="wrapt"><table class="pl-tbl">'+THEAD+'<tbody>'+h+'</tbody></table></div>'+
+  host.innerHTML=
+    (V.sort?'<div class="sortnote"><span>เรียงตาม <b>'+esc(SORTLAB[V.sort])+'</b> '+
+      (V.dir===-1?'มากไปน้อย':'น้อยไปมาก')+' · ไม่ได้แบ่งหมวดอยู่</span>'+
+      '<button type="button" id="sOff">กลับไปแบ่งตามหมวด</button></div>':'')+
+    '<div class="wrapt"><table class="pl-tbl">'+thead()+'<tbody>'+h+'</tbody></table></div>'+
     (R.length>V.show?'<button class="more" id="moreB">ดูเพิ่ม (เหลืออีก '+(R.length-V.show).toLocaleString("th-TH")+' รายการ)</button>':'');
   var mb=$("moreB");
   if(mb)mb.onclick=function(){V.show+=PAGE;draw();};
+  var so=$("sOff");
+  if(so)so.onclick=sortOff;
+  Array.prototype.forEach.call(host.querySelectorAll("th.sv"),function(el){
+    el.onclick=function(){sortBy(el.dataset.s);};});
 }
 function drawRounds(){
   var now=nowIdx();
@@ -416,7 +582,7 @@ function drawRounds(){
     return '<button data-i="'+k+'" class="'+(k===V.i?"on":"")+'">'+esc(l)+(k===now?" · รอบนี้":"")+'</button>';
   }).join("");
   Array.prototype.forEach.call($("rnd").querySelectorAll("button"),function(b){
-    b.onclick=function(){V.i=+b.dataset.i;V.show=PAGE;drawRounds();draw();window.scrollTo(0,0);};
+    b.onclick=function(){V.i=+b.dataset.i;V.show=PAGE;drawRounds();drawCats();drawBrands();draw();window.scrollTo(0,0);};
   });
   var w=prWindow(P.rounds[V.i]);
   if(w){
@@ -433,12 +599,18 @@ function drawCats(){
     if(it.c)s[it.c]=(s[it.c]||0)+1;
   });
   var sel=$("cat"),cur=V.cat;
-  sel.innerHTML='<option value="all">ทุกหมวดสินค้า</option>'+Object.keys(s).sort().map(function(c){
-    return '<option value="'+esc(c)+'">'+esc(c)+' ('+s[c]+')</option>';}).join("");
+  sel.innerHTML='<option value="all">ทุกหมวดสินค้า</option>'+
+    Object.keys(s).sort(function(a,b){return catTh(a).localeCompare(catTh(b),"th");}).map(function(c){
+      return '<option value="'+esc(c)+'">'+esc(catTh(c))+' ('+s[c]+')</option>';}).join("");
   sel.value=(cur!=="all"&&s[cur])?cur:"all";V.cat=sel.value;
 }
-$("q").oninput=function(){V.q=this.value;V.show=PAGE;draw();};
-$("cat").onchange=function(){V.cat=this.value;V.show=PAGE;draw();};
+$("q").oninput=function(){V.q=this.value;V.show=PAGE;drawBrands();draw();};
+$("cat").onchange=function(){V.cat=this.value;V.show=PAGE;drawBrands();draw();};
+$("bBtn").onclick=brandToggle;
+$("bAll").onclick=brandAll;
+$("sortS").onchange=function(){
+  var v=this.value.split("|");
+  V.sort=v[0]||null;V.dir=v[0]?+v[1]:-1;V.show=PAGE;draw();};
 
 (async function(){
   try{
@@ -452,7 +624,7 @@ $("cat").onchange=function(){V.cat=this.value;V.show=PAGE;draw();};
       return;
     }
     V.i=nowIdx();
-    drawRounds();drawCats();draw();
+    drawRounds();drawCats();drawBrands();drawSortSel();draw();
     $("foot").style.display="";
   }catch(ex){
     $("list").innerHTML='<div class="empty">⚠️ '+esc(ex.message)+

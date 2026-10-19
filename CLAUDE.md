@@ -298,7 +298,18 @@ code, never printed.
   `public/pricelist.html`** (a standalone page cannot import from the app) — change one and you must
   change the other; the test compares both copies on every item in every round.
 - `public/pricelist.html` — the PUBLIC customer price catalogue (hand-written, like `join.html`),
-  reachable at **`/UnileverBDpricelist`** via the `rewrites` in `vercel.json`.
+  reachable at **`/UnileverBDpricelist`** via the `rewrites` in `vercel.json`. It is written for
+  shop owners, often elderly, so: a real **table** with fixed-width number columns (the prices must
+  line up down the page — a flex-wrap card made every row start at a different x, which the owner
+  rejected), **25px numbers**, Unilever's in-house category codes translated to plain Thai
+  (`CAT_TH` — `FAB SOL` → `ผงซักฟอก & น้ำยาซักผ้า`, named from the brands actually in each
+  category), a **brand filter** of tick-chips, and **click-a-column-header to sort** like Excel
+  (desc → asc → off; sorting drops the category bands, and rows with no value always sink to the
+  bottom whichever direction). Two traps: the table wrapper must never carry `overflow:hidden`
+  (it silently kills the sticky header), and below 760px the header is hidden so the sort has to be
+  reachable from the `.sortsel` dropdown instead. Prove it with
+  **`node test/browser/pricelist.test.cjs`** (36 checks in a real browser at 1280 and 390,
+  including that the page only ever calls `/api/pricelist`).
 - `vercel.json` — `rewrites` only (the pretty links for the catalogue and the application form).
   Keep it to `rewrites`: `builds`/`routes` would disable Vercel's zero-config handling of `api/*`.
 - `api/price.js` — manager upload + role-aware read of the two price files (separate blobs).
