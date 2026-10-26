@@ -88,6 +88,24 @@ lists **only `PRICEHS_PREFIX`**, so the cost blob is not reachable from the cust
 a second `fetch` to `public/pricelist.html`. `api/price.js` returns `bum` only when
 `claims.role === "manager"` — not merely a hidden button. Rules: `HANDOFF.md` §5.
 
+## Reading the order form's fills — three encodings, not one
+Excel writes the same colour three ways and the parser must handle all three:
+`rgb="FF00FFFF"`, `theme=N`+`tint`, and **`indexed="15"`**. **SheetJS 0.18.5 silently discards
+`indexed`** (`fgColor` becomes `{}`) and it cannot be recovered afterwards, because every
+indexed fill then looks identical — so a closed order cell read as *open* for weeks.
+`poUnIndex()` therefore rewrites `xl/styles.xml` (indexed → rgb, honouring the file's own
+`<indexedColors>` palette, never touching index 64/65 = automatic) **before** `XLSX.read`;
+this is why `parseOrderForm` is **async** and its callers must `await`.
+A fill is matched by **colour family, not an exact hex** (`poIsCyan`/`poIsMag`/`poIsYel`, which
+require real saturation), because Unilever also paints pale decorative fills on the entry cells.
+Never go back to "any fill on the order cell means closed": an unrecognised colour is stored as
+`xu` and **reported** (upload log + `psAudit` on the status page), never guessed at. For the same
+reason `poClosedKind()` returns **null** for a colour that is neither cyan nor magenta, which also
+repairs rounds stored by the old parser **at read time without rewriting them** — all five callers
+must accept null. Quota comes from two markers (a yellow order cell with a cap, or a pale-pink
+code cell `k=2`) and a cap that could not be read is shown as "ไม่ระบุ", never 0. Prove it with
+**`node test/browser/ordercolor.test.cjs`** (46 checks, self-contained). Rules: `HANDOFF.md` §5.
+
 ## The order form's colour grammar (analysed from the 01/09 confirm form)
 The order cell is filled with **two different colours that mean two different things** — do not
 merge them again. Evidence from that file (1,254 rows):

@@ -6158,7 +6158,7 @@ function dbBlock(fday,code){
   if(!fday)return {k:"noform"};
   const fl=(fday.items||{})[code]||{};
   if(fl.s)return {k:"oos"};
-  if(fl.x)return {k:poClosedKind(fl.x)};
+  if(fl.x){const k=poClosedKind(fl.x);if(k)return {k:k};}   /* สีที่ไม่รู้จัก = ไม่ถือว่าปิด */
   if(poInForm(fday,code)===false)return {k:"notin"};
   return null;
 }
@@ -6338,6 +6338,62 @@ function poFill(ws,R,C){
   return (v==="FFFFFF"||v==="000000")?null:v;
 }
 /* Match any neutral mid grey, so both A5A5A5 and the tinted A6A6A6 count as out of stock. */
+/* ---- สีสถานะของ Unilever เป็น "สีจัดจ้าน" ทั้งสามสี ----
+   เดิมเทียบรหัสสีแบบตรงตัว (`===PO_YEL`) และถือว่า **ช่องสั่งมีสีอะไรก็ได้ = ปิดช่อง**
+   สองอย่างนี้ทำให้ผิดคนละทาง: เหลืองคนละเฉดนิดเดียวก็อ่านไม่เจอ ส่วนสีตกแต่งอ่อน ๆ
+   (เช่น D9E1F2 ที่ Unilever ใช้ไฮไลต์ช่องกรอก) กลายเป็น "ยังไม่เปิดให้สั่ง"
+   จึงดูที่ "ความจัดของสี" แทน: สีสถานะต่างสุด-ต่ำสุดของ R/G/B ห่างกันมาก สีตกแต่งห่างกันน้อย */
+function poSat(v){
+  if(!v||v.length!==6)return -1;
+  const r=parseInt(v.substr(0,2),16),g=parseInt(v.substr(2,2),16),b=parseInt(v.substr(4,2),16);
+  if(isNaN(r)||isNaN(g)||isNaN(b))return -1;
+  return Math.max(r,g,b)-Math.min(r,g,b);
+}
+function poRGB(v){return [parseInt(v.substr(0,2),16),parseInt(v.substr(2,2),16),parseInt(v.substr(4,2),16)];}
+const PO_SAT_MIN=0x60;            /* ต่ำกว่านี้ถือเป็นสีอ่อน/สีตกแต่ง ไม่ใช่สถานะ */
+function poIsYel(v){if(poSat(v)<PO_SAT_MIN)return false;const[r,g,b]=poRGB(v);return r>=0xC0&&g>=0xC0&&b<=0x80;}
+function poIsCyan(v){if(poSat(v)<PO_SAT_MIN)return false;const[r,g,b]=poRGB(v);return g>=0xC0&&b>=0xC0&&r<=0x80;}
+function poIsMag(v){if(poSat(v)<PO_SAT_MIN)return false;const[r,g,b]=poRGB(v);return r>=0xC0&&b>=0xC0&&g<=0x80;}
+/* ชมพูอ่อน FFCCFF = ป้ายโควต้าที่ช่องรหัส (ไม่ใช่สีจัด จึงเทียบแบบใกล้เคียงทีละช่อง) */
+function poIsPalePink(v){if(!v||v.length!==6)return false;const[r,g,b]=poRGB(v);
+  return Math.abs(r-0xFF)<=0x22&&Math.abs(g-0xCC)<=0x22&&Math.abs(b-0xFF)<=0x22;}
+/* จานสี indexed มาตรฐานของ Excel (BIFF8) — 64 ช่องแรก · 64/65 = "อัตโนมัติ" ห้ามแปลง */
+const PO_IDX=["000000","FFFFFF","FF0000","00FF00","0000FF","FFFF00","FF00FF","00FFFF",
+"000000","FFFFFF","FF0000","00FF00","0000FF","FFFF00","FF00FF","00FFFF",
+"800000","008000","000080","808000","800080","008080","C0C0C0","808080",
+"9999FF","993366","FFFFCC","CCFFFF","660066","FF8080","0066CC","CCCCFF",
+"000080","FF00FF","FFFF00","00FFFF","800080","800000","008080","0000FF",
+"00CCFF","CCFFFF","CCFFCC","FFFF99","99CCFF","FF99CC","CC99FF","FFCC99",
+"3366FF","33CCCC","99CC00","FFCC00","FF9900","FF6600","666699","969696",
+"003366","339966","003300","333300","993300","993366","333399","333333"];
+/* ⛔ SheetJS 0.18.5 **ทิ้งค่า indexed ของ fgColor** — `<fgColor indexed="15"/>` กลายเป็น `{}`
+   ช่องที่ Excel ถมสีด้วยวิธีนี้จึงอ่านได้ว่า "ไม่มีสี" = เปิดให้สั่ง ทั้งที่ในไฟล์ปิดอยู่
+   (ฟ้า=15 ชมพู=14 เหลือง=13 เป็นสีที่ Unilever ใช้พอดี) และกู้จากผลลัพธ์ทีหลังไม่ได้เลย
+   เพราะทุกฟิลล์ที่ใช้ indexed หน้าตาเหมือนกันหมด จึงต้องแก้ที่ตัวไฟล์ก่อนส่งให้ SheetJS อ่าน:
+   แปลง indexed เป็นรหัสสีจริงใน xl/styles.xml แล้วค่อยอ่าน — ทางอื่นแยกฟิลล์ไม่ออก */
+async function poUnIndex(bytes){
+  const u8=(bytes instanceof Uint8Array)?bytes:new Uint8Array(bytes);
+  let zip,xml;
+  try{
+    const Z=await poLoadZip();
+    zip=await Z.loadAsync(u8);
+    const f=zip.file("xl/styles.xml");if(!f)return {bytes:u8,fixed:0};
+    xml=await f.async("string");
+  }catch(e){return {bytes:u8,fixed:0,err:e.message};}   /* อ่านไม่ได้ = ใช้ไฟล์เดิม ไม่ทำให้พัง */
+  if(!/<fgColor[^>]*\bindexed=/.test(xml))return {bytes:u8,fixed:0};
+  const pal=PO_IDX.slice();
+  const cm=xml.match(/<indexedColors>([\s\S]*?)<\/indexedColors>/);   /* ไฟล์ตั้งจานสีเองได้ */
+  if(cm)[...cm[1].matchAll(/<rgbColor[^>]*rgb="([0-9A-Fa-f]{6,8})"/g)]
+    .forEach((m,i)=>{pal[i]=m[1].slice(-6).toUpperCase();});
+  let n=0;
+  xml=xml.replace(/<fgColor([^>]*?)\bindexed="(\d+)"([^>]*?)\/>/g,(m,a,i,b)=>{
+    const ix=+i;if(ix>=64||!pal[ix])return m;                        /* 64/65 = อัตโนมัติ */
+    n++;return '<fgColor'+a+' rgb="FF'+pal[ix]+'"'+b+'/>';});
+  if(!n)return {bytes:u8,fixed:0};
+  try{zip.file("xl/styles.xml",xml);
+    return {bytes:await zip.generateAsync({type:"uint8array"}),fixed:n};
+  }catch(e){return {bytes:u8,fixed:0,err:e.message};}
+}
 function poIsGrey(v){
   if(!v||v.length!==6)return false;
   const r=parseInt(v.substr(0,2),16),g=parseInt(v.substr(2,2),16),b=parseInt(v.substr(4,2),16);
@@ -6419,9 +6475,13 @@ function poSeqNote(){
     : `<span class="mid">ยังเรียงตามลำดับเดิม — อัพไฟล์ใบสั่ง (BD_…xlsx / ใบ Confirm) สักครั้ง แล้วระบบจะเรียงตามลำดับในใบสั่งให้เอง</span>`;
 }
 
-function parseOrderForm(name,buf,kind){
+async function parseOrderForm(name,buf,kind){
   const blank=(kind==="blank");
-  const wb=XLSX.read(buf,{type:"array",cellStyles:true});
+  /* กู้สีแบบ indexed ก่อน ไม่งั้นช่องที่ปิดอยู่จะอ่านได้ว่าเปิด (ดูหมายเหตุที่ poUnIndex) */
+  const fix=await poUnIndex(buf);
+  if(fix.fixed)ulog("&nbsp;&nbsp;↳ 🎨 ไฟล์นี้เก็บสีแบบ indexed — แปลงให้อ่านได้ "+fix.fixed+" สี");
+  const wb=XLSX.read(fix.bytes,{type:"array",cellStyles:true});
+  const unk={};   /* สีที่ช่องสั่งแต่ไม่ใช่สีสถานะที่รู้จัก — ต้องรายงาน ไม่ใช่เดาว่าปิดช่อง */
   let inside=null;const items={},onames={},cats={},catN={};let ov=0,cv=0;
   const flags={};   /* code -> {p,b,f,q,x,s,k} for the product-status tab */
   const allCodes={}; /* every code the form offered that round — lets us tell "not on the form"
@@ -6461,18 +6521,28 @@ function parseOrderForm(name,buf,kind){
           /* Unilever paints the promo/out-of-stock band on whichever of the two name cells
              actually holds the text, so both must be read — yellow wins if either carries it. */
           const f3=cc>=3?W(cc-3):null,f2=cc>=2?W(cc-2):null;
-          const nf=(f3===PO_YEL||f2===PO_YEL)?PO_YEL:(poIsGrey(f3)||poIsGrey(f2))?PO_GREY:(f3||f2);
-          const kf=W(cc),of=W(cc+6)||W(cc+7);
+          const nf=(poIsYel(f3)||poIsYel(f2))?PO_YEL:(poIsGrey(f3)||poIsGrey(f2))?PO_GREY:(f3||f2);
+          const kf=W(cc);
+          /* ช่องสั่งมีสองช่อง (VMI Order = cc+6 · Order Confirm = cc+7) Unilever ถมช่องไหนก็ได้
+             เดิมเขียน `W(cc+6)||W(cc+7)` คือ "ช่องซ้ายมีสีอะไรก็เอาช่องซ้าย" ซึ่งถ้าช่องซ้าย
+             มีสีตกแต่งอยู่ ก็จะไม่มองช่องขวาที่ถมสีสถานะจริงเลย — ต้องเลือก "สีที่รู้จัก" ก่อน */
+          const o6=W(cc+6),o7=W(cc+7);
+          const isSt=v=>!!v&&(poIsYel(v)||poIsCyan(v)||poIsMag(v));
+          const of=isSt(o6)?o6:(isSt(o7)?o7:null);
+          const ou=of?null:(o6||o7||null);              /* มีสีแต่ไม่ใช่สีสถานะ */
           const fl={};
           if(nf===PO_GREY)fl.s=1;
           if(nf===PO_YEL){const t=[cc>=3?r[cc-3]:"",cc>=2?r[cc-2]:""].map(x=>String(x==null?"":x)).join(" ");
             const m=t.match(PO_F);if(m){fl.p=m[1]+"F"+m[2];fl.b=+m[1];fl.f=+m[2];}else fl.p="?";}
-          if(kf===PO_YEL)fl.k=1;else if(kf===PO_PINK)fl.k=2;
+          if(poIsYel(kf))fl.k=1;else if(poIsPalePink(kf))fl.k=2;
           /* The cap is the LEFT cell (VMI Order, cc+6) per the owner's rule. cc+7 (Order Confirm)
              holds the centre's own quantity and is what ORDERS reads, so taking the cap from cc+7
              would compare a number with itself. */
-          if(of===PO_YEL){const qv=parseFloat(r[cc+6]);fl.q=Math.round((isNaN(qv)||!qv)?(parseFloat(r[cc+7])||0):qv);}
+          if(of&&poIsYel(of)){const qv=parseFloat(r[cc+6]);fl.q=Math.round((isNaN(qv)||!qv)?(parseFloat(r[cc+7])||0):qv);}
           else if(of)fl.x=of;
+          /* ⚠️ ไม่เดาว่า "มีสี = ปิดช่อง" อีกแล้ว — เก็บไว้รายงานให้เจ้าของเห็นว่าเจอสีอะไร
+             ถ้าวันหนึ่ง Unilever เปลี่ยนสี มันจะโผล่ในรายงาน ไม่ใช่เงียบแล้วนับผิด */
+          if(ou){fl.xu=ou;(unk[ou]=unk[ou]||[]).push(code);}
           if(Object.keys(fl).length)flags[code]=Object.assign(flags[code]||{},fl);
         }
         if(!cats[code])cats[code]=sn;                 /* หมวด = ชื่อ sheet (Home_Care ฯลฯ) */
@@ -6506,7 +6576,17 @@ function parseOrderForm(name,buf,kind){
     PO_SEQ=null;                                  /* ลำดับเปลี่ยนแล้ว ล้างแคช */
     if(!POSTATUS.dates.includes(date))POSTATUS.dates.push(date);POSTATUS.dates.sort();
     const cnt=k=>Object.keys(flags).filter(c=>flags[c][k]).length;
-    ulog("&nbsp;&nbsp;↳ 📋 สถานะสินค้า: 🎁 แถม "+cnt("p")+" · 🎫 โควต้า "+cnt("q")+" · ⚠️ ของขาด "+cnt("s")+" · ⛔ ปิดช่อง "+cnt("x")+" · 🔄 รหัสใหม่ "+cnt("k"));
+    const kn=v=>Object.keys(flags).filter(c=>flags[c].k===v).length;
+    const xk=w=>Object.keys(flags).filter(c=>flags[c].x&&poClosedKind(flags[c].x)===w).length;
+    /* รายงานเทียบกับ "ทุกรหัสในใบ" ไม่ใช่เฉพาะแถวที่มีสี เจ้าของจะได้ทานกับไฟล์จริงได้ว่าตรงไหม */
+    const nAll=ordered.length,fg=Object.keys(flags).filter(c=>Object.keys(flags[c]).some(k=>k!=="xu")).length;
+    ulog("&nbsp;&nbsp;↳ 📋 ในใบมี <b>"+nAll+"</b> รหัส · มีแถบสี "+fg+" · เปิดให้สั่งปกติ <b>"+(nAll-fg)+"</b>");
+    ulog("&nbsp;&nbsp;↳ 🎁 แถม "+cnt("p")+" · 🎫 โควต้า "+(cnt("q")+kn(2))+" · ⚠️ ของขาด "+cnt("s")+
+      " · 🔄 ยังไม่เปิดให้สั่ง "+xk("closed")+" · ⛔ เลิกขาย "+xk("dropped")+" · 🆕 รหัสใหม่ "+kn(1));
+    const uk=Object.keys(unk);
+    if(uk.length)ulog("&nbsp;&nbsp;↳ ⚠️ <b>ช่องสั่งมีสีที่ระบบไม่รู้จัก</b> "+uk.map(h=>
+      '<span style="background:#'+h+';padding:0 7px;border:1px solid #999">&nbsp;</span> #'+h+" ("+unk[h].length+" รายการ)").join(" · ")+
+      " — <b>ยังถือว่าเปิดให้สั่ง ไม่ได้เดาว่าปิด</b> ถ้านี่คือสีสถานะใหม่ของ Unilever บอกผมได้");
     if(!document.getElementById("posView").classList.contains("hidden")){PS2.date=date;renderPOS();}
     return Object.keys(flags).length;
   };
@@ -6573,6 +6653,13 @@ function psRows(day,key){
   }else if(key==="k"){
     /* pink is the quota marker, not a new code — it has its own section */
     for(const c in it){if(it[c].k===1)out.push(Object.assign({code:c},it[c]));}
+  }else if(key==="q"){
+    /* 🔧 โควต้าหล่นหายสองทาง (เจอ 26 ต.ค. 69 ตอนการ์ดขึ้น 0 ทั้งที่ในใบมี):
+       ① ช่องรหัสชมพูอ่อน (k=2) ถูกตัดออกจากกลุ่ม "รหัสใหม่" ไปแล้ว แต่ไม่เคยถูกใส่กลับ
+          เข้ากลุ่มโควต้าเลย รายการพวกนี้จึงหายไปจากหน้าเว็บทั้งหมด
+       ② ช่องสั่งเหลืองที่อ่านตัวเลขเพดานไม่ออก จะได้ q=0 แล้วตัวกรองรวม (!==0) ก็ตัดทิ้ง
+       ทั้งสองแบบยังเป็น "โควต้า" อยู่ดี ต้องขึ้นให้เห็น */
+    for(const c in it){if(it[c].q!=null||it[c].k===2)out.push(Object.assign({code:c},it[c]));}
   }else
   for(const c in it){if(it[c][key]!=null&&it[c][key]!==0&&it[c][key]!==false)out.push(Object.assign({code:c},it[c]));}
   const byName=(a,b)=>(psName(a.code)||a.code).localeCompare(psName(b.code)||b.code,"th");
@@ -6612,7 +6699,8 @@ function renderPOS(){
   const n=k=>psRows(day,k).length;
   const ordDay=(ORDERS.data||{})[PS2.date];
   document.getElementById("posBar").innerHTML=`📋 สถานะสินค้า Unilever · รอบใบสั่งวันที่ <b>${fmtDate(PS2.date)}</b>${day.file?` · จากไฟล์ <b>${anaEsc(day.file)}</b>`:""}`+
-    (ordDay?` · <b style="color:var(--good)">มีข้อมูลการสั่งแล้ว</b>`:` · <span style="color:var(--muted)">ยังไม่ได้อัพใบสั่งของวันนี้ — จำนวนสั่งจะขึ้นเองเมื่ออัพ</span>`);
+    (ordDay?` · <b style="color:var(--good)">มีข้อมูลการสั่งแล้ว</b>`:` · <span style="color:var(--muted)">ยังไม่ได้อัพใบสั่งของวันนี้ — จำนวนสั่งจะขึ้นเองเมื่ออัพ</span>`)+
+    psAudit(day);
   document.getElementById("posCards").innerHTML=PS_SEC.map(sec=>
     `<div class="card kpi-card pos-card${PS2.sec===sec.k?" on":""}" style="border-top:3px solid ${sec.color}" onclick="psSetSec('${sec.k}')">
       <div class="k" style="color:${sec.color}">${sec.icon} ${sec.title}</div><div class="v">${n(sec.k).toLocaleString()}</div><div class="s">รายการ${PS2.sec===sec.k?" · กำลังดูอยู่":" · กดเพื่อดู"}</div></div>`).join("");
@@ -6624,6 +6712,28 @@ function renderPOS(){
   document.getElementById("posDiff").classList.toggle("hidden",!isAll);
   if(isAll){renderPOSOverview();renderPOSDiff();document.getElementById("posBody").innerHTML="";}
   else{renderPOSBody();}
+}
+/* 🔍 บรรทัดทานกับไฟล์จริง (เจ้าของขอ 26 ต.ค. 69: "ฝากเช็คเวลาผมอัพใบเปล่า")
+   บอกว่าอ่านรหัสจากใบได้กี่ตัว ติดสถานะกี่ตัว เหลือเปิดให้สั่งปกติกี่ตัว — เปิดไฟล์เทียบได้ทันที
+   และถ้าเจอสีที่ไม่รู้จักในช่องสั่ง ต้องโชว์ให้เห็น ไม่ใช่เงียบแล้วนับเป็น "ปิดช่อง" เหมือนเดิม */
+function psAudit(day){
+  const it=(day&&day.items)||{};
+  const all=String((day&&day.all)||"").split(",").filter(Boolean);
+  const nAll=all.length||Object.keys(it).length;
+  const fg=Object.keys(it).filter(c=>Object.keys(it[c]).some(k=>k!=="xu")).length;
+  const unk={};Object.keys(it).forEach(c=>{if(it[c].xu)(unk[it[c].xu]=unk[it[c].xu]||[]).push(c);});
+  const uk=Object.keys(unk);
+  return `<span class="dci-src">🔍 อ่านจากใบได้ <b>${nAll.toLocaleString()}</b> รหัส · ติดสถานะพิเศษ <b>${fg.toLocaleString()}</b> · เปิดให้สั่งตามปกติ <b>${(nAll-fg).toLocaleString()}</b>`+
+    (uk.length?` · <b class="down">⚠️ เจอสีที่ไม่รู้จักในช่องสั่ง</b> `+uk.map(h=>
+      `<span style="display:inline-block;width:12px;height:12px;background:#${anaEsc(h)};border:1px solid #999;vertical-align:-2px"></span> #${anaEsc(h)} (${unk[h].length}) <a href="#" onclick="psShowUnk('${anaEsc(h)}');return false;">ดูรายชื่อ</a>`).join(" · ")
+      +` — ยังถือว่า<b>เปิดให้สั่ง</b> ไม่ได้เดาว่าปิด`:"")+`</span>`;
+}
+function psShowUnk(hex){
+  const day=psDay(PS2.date),it=(day&&day.items)||{};
+  const codes=Object.keys(it).filter(c=>String(it[c].xu||"").toUpperCase()===String(hex).toUpperCase());
+  alert("ช่องสั่งถมสี #"+hex+" ("+codes.length+" รายการ)\n\n"+
+    codes.slice(0,40).map(c=>c+" "+(oname(c)||"")).join("\n")+
+    (codes.length>40?"\n… และอีก "+(codes.length-40)+" รายการ":""));
 }
 function renderPOSOverview(){
   const day=psDay(PS2.date);if(!day)return;
@@ -6744,7 +6854,8 @@ function psSwapCell(code,dead){
   if(r.pick)return `<span class="pill g">✅ สั่งรหัส <b>${r.pick}</b> แทน</span>`+
     (r.items[r.pick]&&r.items[r.pick].k===1?' <span class="psub">(รหัสใหม่)</span>':' <span class="psub">(รหัสเดิม)</span>');
   const why=r.sibs.map(c=>{const f=r.items[c]||{};
-    return c+(f.s?" ของขาด":f.x?(poClosedKind(f.x)==="dropped"?" เลิกขาย":" ปิดชั่วคราว"):"");}).join(" · ");
+    const xk=f.x?poClosedKind(f.x):null;
+    return c+(f.s?" ของขาด":xk?(xk==="dropped"?" เลิกขาย":" ปิดชั่วคราว"):"");}).join(" · ");
   return `<span class="pill b">⚠️ รหัสอื่นก็สั่งไม่ได้</span> <span class="psub">${why}</span>`;
 }
 /* ============================================================================
@@ -6845,6 +6956,10 @@ function psTable(sec,rows){
     }
     if(sec.k==="q"){
       const q=r.q||0,left=q-ord;
+      /* โควต้าที่ป้ายมาด้วย "ช่องรหัสชมพูอ่อน" ไม่มีตัวเลขเพดานในใบ และบางรอบช่องเหลือง
+         ก็อ่านเพดานไม่ออก — ต้องขึ้นว่าไม่รู้เพดาน ไม่ใช่โชว์ 0 แล้วฟ้องว่าใส่เกินทุกแถว */
+      if(!q)return `<td style="text-align:center"><span class="psub">ไม่ระบุ</span></td><td style="text-align:center">${ord||"-"}</td>`+
+        `<td style="text-align:left"><span class="psub">ใบไม่ได้บอกเพดานไว้ — เช็คกับ Unilever ก่อนสั่งเกิน</span></td>`;
       const st=!ord?'<span class="psub">ยังไม่ได้ใส่จำนวน — เหลือสิทธิ์เต็ม '+q+' ลัง</span>'
         :ord>q?`<span class="pill b">⚠️ ใส่เกินโควต้า ${ord-q} ลัง — จะได้แค่ ${q} ลัง</span>`
         :ord===q?'<span class="pill g">✅ ใส่เต็มโควต้าแล้ว</span>'
@@ -6920,7 +7035,12 @@ const PO_WHY={
 const PO_WHY_ORDER=["oos","closed","dropped","notin","skip","unknown"];
 const PO_CLOSED_TEMP="00FFFF";   /* ฟ้า = ปิดชั่วคราว */
 const PO_CLOSED_DEAD="FF00FF";   /* ชมพู = เลิกขาย   */
-function poClosedKind(x){return String(x||"").toUpperCase()===PO_CLOSED_DEAD?"dropped":"closed";}
+/* ⚠️ คืน null ถ้าสีที่เก็บไว้ไม่ใช่สีสถานะที่รู้จัก
+   รอบที่อัพไว้ก่อน 26 ต.ค. 69 เก็บ "สีอะไรก็ได้ที่ช่องสั่ง" ลงช่อง x ไปแล้ว สีตกแต่งจึงค้าง
+   อยู่ในข้อมูลเป็น "ยังไม่เปิดให้สั่ง" — ซ่อม **ตอนอ่าน** อย่างเดียว ไม่เขียนทับของที่เก็บไว้
+   (หลักเดียวกับ kpiGhost) รอบเก่าจึงกลับมาถูกทันทีโดยไม่ต้องอัพไฟล์ซ้ำ และไม่เสี่ยงข้อมูลหาย */
+function poClosedKind(x){const v=String(x||"").toUpperCase();
+  return poIsMag(v)?"dropped":(poIsCyan(v)?"closed":null);}
 const _pgEmpty={};
 let _pgIdx=null,_pgS=null,_pgM=null,_pgO=null;
 /* ล้าง cache หลังพาร์สไฟล์ที่เพิ่มชื่อสินค้า (พาร์สเซอร์แก้ ORDERS.names ในที่เดิม) */
@@ -7006,7 +7126,8 @@ function poWhy(reqDate,code){
   const at=poRoundFor(reqDate);
   if(!at)return {why:"unknown"};
   const day=psDay(at),items=(day&&day.items)||{};
-  const cls=c=>{const f=items[c];return (f&&f.s)?"oos":(f&&f.x)?poClosedKind(f.x):"skip";};
+  const cls=c=>{const f=items[c];if(f&&f.s)return "oos";
+    const k=(f&&f.x)?poClosedKind(f.x):null;return k||"skip";};
   let why,used=String(code),aliases=null;
   const here=poInForm(day,used);
   if(items[used])why=cls(used);
@@ -8822,7 +8943,7 @@ function poBuild(date){
     let block=null;
     if(!day)block="noform";
     else if(f.s)block="oos";
-    else if(f.x)block=poClosedKind(f.x);
+    else if(f.x)block=poClosedKind(f.x);          /* null = สีที่ไม่รู้จัก ไม่ห้ามสั่ง */
     else if(poInForm(day,target)===false)block="notin";
     /* ---- ความต้องการจากแต่ละฐาน ---- */
     const reqCs=(r.cs||0)+(pack>0?Math.ceil((r.pc||0)/pack):0);
@@ -10058,14 +10179,15 @@ function addLine(code,rawName,emp){
 function guessMonth(name){const m=name.match(/(\d{2})(\d{4})/);if(m&&+m[1]>=1&&+m[1]<=12)return m[2]+"-"+m[1];return null;}
 function handleTyped(e,kind){
   const files=[...e.target.files];
-  files.forEach(f=>{const rd=new FileReader();rd.onload=ev=>{try{
+  /* parseOrderForm เป็น async แล้ว (ต้องแกะ zip เพื่อกู้สีแบบ indexed ก่อนอ่าน) */
+  files.forEach(f=>{const rd=new FileReader();rd.onload=async ev=>{try{
     if(kind==="daily")parseDaily(f.name,ev.target.result);
     else if(kind==="month")parseMonthly(f.name,ev.target.result);
     else if(kind==="kpi")parseKPI(f.name,ev.target.result);
     else if(kind==="ps")parsePS(f.name,ev.target.result);
     else if(kind==="eb")parseEB2B(f.name,ev.target.result);
-    else if(kind==="order")parseOrderForm(f.name,ev.target.result,"order");
-    else if(kind==="blank")parseOrderForm(f.name,ev.target.result,"blank");
+    else if(kind==="order")await parseOrderForm(f.name,ev.target.result,"order");
+    else if(kind==="blank")await parseOrderForm(f.name,ev.target.result,"blank");
     else if(kind==="drop")parseDrop(f.name,ev.target.result);
     else if(kind==="stockd")parseStock(f.name,ev.target.result);
     else if(kind==="master")parseMaster(f.name,ev.target.result);
