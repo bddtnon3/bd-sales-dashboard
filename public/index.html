@@ -212,6 +212,8 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cal-dot{width:12px;height:12px;border-radius:4px;background:var(--blue-soft);border:1px solid var(--blue);display:inline-block}
 /* sales request modal */
 #reqModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px}
+/* ต้องทับทุกกล่อง (z สูงกว่า #reqModal) เพราะเด้งขึ้นตอนกำลังกดส่งในกล่องสั่งของพอดี */
+#reauthModal{position:fixed;inset:0;background:rgba(16,42,93,.55);z-index:300;display:flex;align-items:center;justify-content:center;padding:14px}
 .req-results{max-height:38vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-bottom:4px}
 .req-results:empty{display:none}
 .req-opt{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid var(--line);cursor:pointer}
@@ -1547,6 +1549,28 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 </div>
 <div id="bdToast"></div>
 
+<!-- เข้าสู่ระบบซ้ำตรงนี้เลย ไม่ต้องออกจากระบบ ไม่ต้องคีย์ของใหม่ -->
+<div id="reauthModal" class="hidden">
+  <div class="modal-card" style="max-width:380px">
+    <div class="modal-head">
+      <div><h3>🔑 เข้าสู่ระบบอีกครั้ง</h3>
+        <div class="psub">การล็อกอินหมดอายุ — <b>ของที่คีย์ไว้ยังอยู่ครบ</b><br>ใส่รหัสผ่านแล้วระบบจะส่งให้เองต่อทันที</div></div>
+      <button class="modal-x" onclick="bdReauthClose(false)">✕</button>
+    </div>
+    <div class="up-body">
+      <div class="psub" style="margin-bottom:4px">ผู้ใช้ <b id="reauthWho"></b></div>
+      <input id="reauthPass" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')bdReauthGo()"
+        style="width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:15px">
+      <div id="reauthErr" class="login-err"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="bdReauthClose(false)">ยกเลิก</button>
+      <button class="upload-btn" onclick="bdReauthGo()">เข้าสู่ระบบแล้วส่งต่อ</button>
+    </div>
+  </div>
+</div>
+
 <div id="calModal" class="hidden">
   <div class="cal-card">
     <div class="cal-head">
@@ -1727,6 +1751,113 @@ function ensureFocusOrder(){
 
 /* ====================== STATE ====================== */
 let S={user:null,period:"monthly",key:null,scope:"team",chart:"bar",inclExtra:false};
+/* ============================================================================
+ * 🔑 อายุการล็อกอิน — "บันทึกไม่สำเร็จ: unauthorized" (เจอที่สาย KA97 · 27 ต.ค. 69)
+ *
+ * ของเดิม: ล็อกอินครั้งเดียวอยู่ได้ 7 วัน แล้ว **ไม่มีอะไรต่ออายุให้เลย**
+ * ทีมขายเปิดหน้าเว็บค้างไว้บนเครื่องทั้งวันทั้งสัปดาห์ หน้าจอยังใช้ได้ปกติทุกอย่าง
+ * (เพราะทำงานในเครื่องล้วน ๆ) จะรู้ว่าหมดอายุก็ตอน "กดส่ง" แล้วเด้ง unauthorized
+ * — หลังคีย์สินค้าไปแล้ว 17 ตัว
+ *
+ * แก้ 3 ชั้น ให้ไม่ไปจบที่หน้าจอนั้นอีก:
+ *   ① อายุ 7 วัน → 30 วัน (lib/auth.js)
+ *   ② ต่ออายุอัตโนมัติ (api/renew.js) ตอนเปิดหน้า · ทุก 6 ชม. · ตอนสลับกลับมาที่แท็บ ·
+ *      และก่อน "เขียน" ทุกครั้ง — แท็บที่เปิดค้างไว้จึงไม่มีวันหมดอายุ
+ *   ③ ถ้ายังเจอ 401 จริง ๆ ให้ **ใส่รหัสผ่านตรงนั้นแล้วส่งต่อให้อัตโนมัติ**
+ *      ไม่ต้องออกจากระบบ ไม่ต้องคีย์ใหม่ — ของที่คีย์ไว้ยังอยู่ครบ
+ * ==========================================================================*/
+const BD_RENEW_BEFORE=1000*60*60*24*7;      /* เหลือน้อยกว่า 7 วัน = ต่ออายุ */
+function bdTok(){return (typeof TOKEN!=="undefined"&&TOKEN)?TOKEN:null;}
+function bdSetToken(t){
+  try{TOKEN=t;}catch(e){window.TOKEN=t;}
+  try{localStorage.setItem("bd_token",t);}catch(e){}
+}
+/* อ่านวันหมดอายุจากตัว token เองได้ โดยไม่ต้องถามเซิร์ฟเวอร์ (ส่วนแรกคือ JSON ธรรมดา) */
+function bdTokExp(t){
+  if(t===undefined)t=bdTok();      /* ไม่ส่งอะไรมา = ถามของ token ปัจจุบัน
+                                      ส่งค่าว่างมา = ไม่มี token ต้องตอบ 0 ไม่ใช่ไปหยิบตัวปัจจุบันมาตอบ */
+  if(!t)return 0;
+  try{const p=JSON.parse(atob(String(t).split(".")[0].replace(/-/g,"+").replace(/_/g,"/")));
+    return +p.exp||0;}catch(e){return 0;}
+}
+let _bdRenewing=null;
+async function bdRenew(force){
+  const t=bdTok();if(!t)return false;
+  const exp=bdTokExp(t);
+  if(!force&&exp&&exp-Date.now()>BD_RENEW_BEFORE)return true;   /* ยังอีกนาน ไม่ต้องกวนเซิร์ฟเวอร์ */
+  if(_bdRenewing)return _bdRenewing;
+  _bdRenewing=(async()=>{
+    try{
+      const r=await fetch("/api/renew",{method:"POST",headers:{"Authorization":"Bearer "+t}});
+      if(!r.ok)return false;
+      const d=await r.json();
+      if(d&&d.token){bdSetToken(d.token);return true;}
+      return false;
+    }catch(e){return false;}      /* เน็ตล่มก็ไม่เป็นไร เดี๋ยวรอบหน้าต่อใหม่ */
+    finally{_bdRenewing=null;}
+  })();
+  return _bdRenewing;
+}
+/* กล่องใส่รหัสผ่านซ้ำ — ไม่ล้าง state ไม่ล้างตะกร้า ไม่เปลี่ยนหน้า */
+let _bdReauth=null;
+function bdReauthOpen(){
+  if(_bdReauth)return _bdReauth.promise;
+  const box=document.getElementById("reauthModal");
+  document.getElementById("reauthWho").textContent=(S.user&&(S.user.name||S.user.id))||"";
+  document.getElementById("reauthPass").value="";
+  document.getElementById("reauthErr").textContent="";
+  box.classList.remove("hidden");
+  setTimeout(()=>{const p=document.getElementById("reauthPass");if(p)p.focus();},50);
+  let done;const promise=new Promise(res=>{done=res;});
+  _bdReauth={promise:promise,done:done};
+  return promise;
+}
+function bdReauthClose(ok){
+  const b=_bdReauth;_bdReauth=null;
+  document.getElementById("reauthModal").classList.add("hidden");
+  if(b)b.done(!!ok);
+}
+async function bdReauthGo(){
+  const err=document.getElementById("reauthErr");
+  const pass=document.getElementById("reauthPass").value;
+  const user=(S.user&&S.user.id)||"";
+  if(!pass){err.textContent="ใส่รหัสผ่านก่อน";return;}
+  err.textContent="กำลังเข้าสู่ระบบ…";
+  try{
+    const r=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({user:user,pass:pass})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));err.textContent=e.error||"เข้าสู่ระบบไม่สำเร็จ";return;}
+    const d=await r.json();
+    if(!d||!d.token){err.textContent="เข้าสู่ระบบไม่สำเร็จ";return;}
+    bdSetToken(d.token);
+    /* ยืนยันว่ายังเป็นคนเดิม — ถ้าเผลอใส่บัญชีอื่น ข้อมูลบนจอจะไม่ตรงกับสิทธิ์ที่ได้มา */
+    S.user={id:user,role:d.role,code:d.code,name:d.name};
+    try{localStorage.setItem("bd_user",JSON.stringify(S.user));}catch(e){}
+    bdReauthClose(true);
+  }catch(ex){err.textContent="เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message;}
+}
+/* ยิง POST พร้อม token · เจอ 401 = ต่ออายุ/ขอรหัสผ่านแล้ว "ส่งซ้ำให้เอง" หนึ่งครั้ง
+   คนใช้จึงไม่ต้องคีย์ใหม่ และไม่ต้องรู้ด้วยซ้ำว่าเกิดอะไรขึ้น */
+async function bdPost(url,body){
+  const go=()=>fetch(url,{method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+(bdTok()||"")},
+    body:JSON.stringify(body)});
+  let r=await go();
+  if(r.status!==401)return r;
+  if(await bdRenew(true)){r=await go();if(r.status!==401)return r;}   /* ① ต่ออายุเงียบ ๆ ก่อน */
+  if(await bdReauthOpen())return await go();                          /* ② ไม่ได้ค่อยขอรหัสผ่าน */
+  return r;
+}
+/* ต่ออายุตอนเปิดหน้า · ทุก 6 ชม. · และตอนกลับมาที่แท็บหลังจากทิ้งไว้
+   (แท็บที่เปิดค้างข้ามวันคือเคสที่ทำให้เจอปัญหาตั้งแต่แรก) */
+let _bdAlive=0;
+function bdKeepAlive(){
+  if(typeof TOKEN==="undefined")return;      /* โหมดไฟล์เดียว ไม่มีเซิร์ฟเวอร์ */
+  bdRenew();
+  if(_bdAlive)return;_bdAlive=1;             /* ตั้งนาฬิกากับ listener ครั้งเดียวพอ */
+  setInterval(()=>bdRenew(),1000*60*60*6);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)bdRenew();});
+}
 let chartObj=null;
 const THB=n=>"฿"+Math.round(n).toLocaleString("en-US");
 const THBk=n=>{if(Math.abs(n)>=1e6)return "฿"+(n/1e6).toFixed(2)+"M";if(Math.abs(n)>=1e3)return "฿"+(n/1e3).toFixed(0)+"K";return "฿"+Math.round(n);};
@@ -1752,6 +1883,7 @@ async function afterLogin(){
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
   document.querySelectorAll(".sales-only").forEach(e=>e.style.display=acc.role==="sales"?"":"none");
+  bdKeepAlive();   /* ต่ออายุ token เองตลอด — แท็บที่เปิดค้างไว้จะได้ไม่หมดอายุกลางคัน */
   await loadData();
 }
 async function loadData(){
@@ -3381,9 +3513,7 @@ async function plPush(body,undo){
   if(plIsMgr()){syncToServer();return;}
   if(typeof TOKEN==="undefined"||!TOKEN)return;        /* โหมดไฟล์เดียว (ไม่มีเซิร์ฟเวอร์) */
   try{
-    const r=await fetch("/api/plan",{method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},
-      body:JSON.stringify(body)});
+    const r=await bdPost("/api/plan",body);
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||("HTTP "+r.status));}
   }catch(ex){
     if(undo)undo();
@@ -3979,9 +4109,7 @@ async function pjSaveVisit(code,ymd,v,tx,f,nx,cl){
   if(pjIsMgr()){syncToServer();return true;}
   if(typeof TOKEN==="undefined"||!TOKEN)return true;
   try{
-    const r=await fetch("/api/pjpvisit",{method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},
-      body:JSON.stringify({code:code,date:ymd,v:v?1:0,tx:note,f:flags,nx:nx?1:0,cl:cl?1:0})});
+    const r=await bdPost("/api/pjpvisit",{code:code,date:ymd,v:v?1:0,tx:note,f:flags,nx:nx?1:0,cl:cl?1:0});
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||("HTTP "+r.status));}
     return true;
   }catch(ex){
@@ -7816,9 +7944,7 @@ async function msSave(id,st,note,store){
   LEADS.sales[id]={st:st,note:note,store:store,at:Date.now(),by:(S.user&&S.user.name)||"",line:(S.user&&S.user.code)||""};
   renderMyShops();
   try{
-    const r=await fetch("/api/leadstatus",{method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+(typeof TOKEN!=="undefined"&&TOKEN?TOKEN:"")},
-      body:JSON.stringify({id:id,st:st,note:note,store:store})});
+    const r=await bdPost("/api/leadstatus",{id:id,st:st,note:note,store:store});
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||("HTTP "+r.status));}
   }catch(ex){
     if(before)LEADS.sales[id]=before;else delete LEADS.sales[id];   /* ย้อนกลับ ไม่ให้เห็นผิด */
@@ -8135,8 +8261,11 @@ function renderReqCart(){
 async function pushRequest(date,items){
   if(typeof TOKEN!=="undefined"&&TOKEN){
     const keep="\nรายการที่คีย์ไว้ยังอยู่ ลองกดส่งอีกครั้งได้";
-    try{const r=await fetch("/api/request",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:JSON.stringify({date:date,items:items})});
-      if(!r.ok){const e=await r.json().catch(()=>({}));alert("บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status))+keep);return false;}}catch(ex){alert("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message+keep);return false;}
+    try{const r=await bdPost("/api/request",{date:date,items:items});
+      if(!r.ok){const e=await r.json().catch(()=>({}));
+        /* 401 ที่หลุดมาถึงตรงนี้ = ต่ออายุไม่ได้ และคนใช้กดยกเลิกกล่องใส่รหัสผ่าน */
+        const msg=(r.status===401)?"การล็อกอินหมดอายุ — กด ส่งคำขอ อีกครั้งแล้วใส่รหัสผ่าน":(e.error||("HTTP "+r.status));
+        alert("บันทึกไม่สำเร็จ: "+msg+keep);return false;}}catch(ex){alert("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message+keep);return false;}
   }
   /* อัพเดทหน้าจอหลังเซิร์ฟเวอร์รับแล้วเท่านั้น — เดิมเขียนก่อนยิง ถ้าเน็ตหลุดหน้าจอจะโชว์ว่า
      "ส่งไปแล้ว" ทั้งที่เซิร์ฟเวอร์ไม่ได้รับ แล้วเซลล์ก็ไม่กดส่งซ้ำ */

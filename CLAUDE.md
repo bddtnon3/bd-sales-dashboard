@@ -156,6 +156,21 @@ payload (`CompressionStream`, header `x-body-gzip:1`, content-type `application/
 and `api/save.js` inflates it (`gunzipSync`). Do NOT set `Content-Encoding: gzip` (the edge would
 auto-decompress and the server would double-read). Keep this scheme intact.
 
+## Staying logged in (why `bdPost` exists)
+A login used to last 7 days with nothing to renew it, and `loadData()`'s 401→logout only runs at
+page load — so a rep who leaves the app open on a laptop kept a page that looked fine and only
+found out at the first **write**, as a bare `unauthorized` after keying 17 products. Three layers
+now: `TOKEN_TTL` is 30 days (`lib/auth.js`; `api/login.js` must call `expiry()`, never inline the
+number); **`api/renew.js`** re-dates a *still-valid* token on load, every 6h, on tab focus and
+before a write (`bdKeepAlive`/`bdRenew`), so an always-open tab never expires; and **every sales
+write goes through `bdPost`**, which on 401 renews and **retries once**, and only then asks for the
+password in place (`bdReauthOpen`) and retries again — no logout, no page change, nothing re-keyed.
+`api/renew.js` copies role/code/name from the **verified claims, never the body**, and refuses an
+already-expired token. Cancelling the password box must leave the basket and draft intact and write
+nothing, and the failure message must say what to do, not `unauthorized`. Retry **once** per press,
+or requests double. Prove it with **`node test/auth-renew.test.mjs`** (15 checks) and
+**`node test/browser/reauth.test.cjs`** (25 checks). Rules: `HANDOFF.md` §5.
+
 ## Secrets
 `BLOB_READ_WRITE_TOKEN` and the auth signing secret live only in **Vercel env vars** — never in
 code, never printed.

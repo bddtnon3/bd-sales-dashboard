@@ -107,6 +107,7 @@ async function afterLogin(){
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
   document.querySelectorAll(".sales-only").forEach(e=>e.style.display=acc.role==="sales"?"":"none");
+  bdKeepAlive();   /* ต่ออายุ token เองตลอด — แท็บที่เปิดค้างไว้จะได้ไม่หมดอายุกลางคัน */
   await loadData();
 }
 async function loadData(){

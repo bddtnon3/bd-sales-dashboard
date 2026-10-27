@@ -1,5 +1,5 @@
 import { ACCOUNTS } from "../lib/accounts.js";
-import { sign } from "../lib/auth.js";
+import { sign, expiry } from "../lib/auth.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method not allowed" });
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     role: acc.role,
     code: acc.code,
     name: acc.name,
-    exp: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 days
+    exp: expiry(),                 // lib/auth.js — renewed by api/renew.js long before it runs out
   });
 
   res.json({ ok: true, token, role: acc.role, code: acc.code, name: acc.name });
