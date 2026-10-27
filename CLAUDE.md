@@ -260,6 +260,14 @@ code, never printed.
   mixing sources splits one brand across two places in the list. Every other section keeps
   `grpByCat` + `poSeqSort`. Prove it with **`node test/browser/psbill.test.cjs`** (25 checks).
   **การสั่งของ** has four sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO.
+  The manager's combined request table (`renderSalesRequests`) carries a **line filter** of chips
+  (`rqTog`/`rqOnly`/`rqAll`). It stores the lines **switched off** (`ORD.rqOff`), not the ones
+  selected, so a line that starts sending requests tomorrow appears by itself; it lives on the
+  non-synced `ORD` and is cleared whenever `ORD.date` changes, so a filter can never look like
+  lost requests. Totals, the per-code line tags and the per-rep cards below all recompute from the
+  selected lines only, and a filtered table says so in a banner — the combined total is what the
+  real order form is typed from, so it must never quietly show a partial sum. Prove it with
+  **`node test/browser/reqlines.test.cjs`** (31 checks).
   A salesperson's own request (`openReqModal`/`reqAdd`/`submitRequest`) is a **basket with one
   submit**: adding an item must NEVER clear the search box or drop the row out of the results —
   it flips to `✓ ในตะกร้า` and tapping again removes it. Losing the list on every tap is what made

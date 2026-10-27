@@ -240,6 +240,25 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .req-sales{margin-top:12px} .req-sales h4{font-size:13.5px;margin-bottom:6px}
 .req-combined{background:#EAF7EE;border:1px solid #BEE6CD;border-radius:10px;padding:12px 14px;margin-bottom:12px}
 .req-combined h4{font-size:14px;margin-bottom:6px;color:#146c3f}
+/* ติ๊กเลือกสายบนตารางรวม — กดที่ชิปคือเอาเข้า/เอาออก · ปุ่ม "เฉพาะ" คือดูสายนั้นสายเดียว */
+.rq-lines{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0 10px}
+.rq-chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #BEE6CD;
+  border-radius:999px;padding:4px 6px 4px 11px;font-size:12.5px;font-weight:700;color:#146c3f;cursor:pointer;
+  user-select:none;line-height:1.5}
+.rq-chip:hover{border-color:#5BB683}
+.rq-chip .n{font-weight:500;color:var(--muted);font-size:11.5px}
+/* ปิดอยู่ = เทา + ✗ พอ · ไม่ขีดฆ่าทับตัวหนังสือ เพราะอ่านชื่อสายไม่ออกแล้วลายตา */
+.rq-chip.off{background:#F2F4F7;border-color:var(--line);color:#9AA3B0}
+.rq-chip.off .n{color:#B7BFCC}
+.rq-chip .only{border:none;background:#EAF7EE;color:#146c3f;border-radius:999px;padding:2px 8px;
+  font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.rq-chip .only:hover{background:#CFEBDA}
+.rq-chip.off .only{background:#E6E9EE;color:#7A8597}
+.rq-all{border:1.5px solid #146c3f;background:#146c3f;color:#fff;border-radius:999px;padding:5px 13px;
+  font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit}
+.rq-all.dim{background:#fff;color:#146c3f}
+.rq-note{background:#FFF6E0;border:1px solid #F0D79A;border-radius:9px;padding:7px 11px;margin-bottom:9px;
+  font-size:12.5px;line-height:1.55}
 .req-perwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
 /* การ์ดรายเซลล์เรียงข้างกัน (และเรียงลงมาบนมือถือ) ถ้าปล่อยให้แต่ละตารางคิดความกว้างเอง
    คอลัมน์จะไม่ตรงกันทุกใบ — บังคับสัดส่วนเท่ากันทุกใบ */
@@ -5905,7 +5924,11 @@ function parsePS(name,buf){
 }
 
 /* ====================== ORDERING (สั่งของ) ====================== */
-let ORD={date:null,dropView:'sum',sec:'req',dbWin:5,dbGot:false};
+/* rqOff = สายที่ "ติ๊กออก" จากตารางรวมคำขอ (เจ้าของขอ 27 ต.ค. 69)
+   ⚠️ เก็บแบบ "สายที่เอาออก" ไม่ใช่ "สายที่เลือก" เพื่อให้สายที่เพิ่งส่งคำขอเข้ามาวันใหม่
+   โผล่เองโดยอัตโนมัติ ไม่ต้องไปติ๊กเพิ่ม · อยู่บน ORD ซึ่งไม่ถูก sync ขึ้นเซิร์ฟเวอร์
+   จึงเป็นการกรองดูเฉย ๆ ไม่แตะคำขอของเซลล์สักตัว */
+let ORD={date:null,dropView:'sum',sec:'req',dbWin:5,dbGot:false,rqOff:{}};
 function setDropView(m){ORD.dropView=m;renderOrder();}
 function oname(c){return (STOCKD&&STOCKD.names&&STOCKD.names[c])||(MASTER&&MASTER.items&&MASTER.items[c])||(ORDERS.names&&ORDERS.names[c])||"";}
 function fnameDate(name){
@@ -8288,10 +8311,39 @@ function reqLineTags(lines){
       return (ia<0?999:ia)-(ib<0?999:ib);})
     .map(c=>`<span class="tag ct">${((DATA.lines||{})[c]||{}).display||c}</span>`).join(" ");
 }
+/* ---- ติ๊กเลือกสายบนตารางรวมคำขอ ----
+   กรองเพื่อ "ดู" อย่างเดียว ไม่เคยเขียนอะไรลง REQUESTS — ORD ไม่ถูก sync ขึ้นเซิร์ฟเวอร์
+   และไม่เก็บค้างข้ามการรีเฟรช เพื่อไม่ให้วันหลังเปิดมาแล้วสงสัยว่าทำไมบางสายหายไป */
+function rqSel(codes){const off=ORD.rqOff||{};return codes.filter(c=>!off[c]);}
+function rqTog(line){ORD.rqOff=ORD.rqOff||{};
+  if(ORD.rqOff[line])delete ORD.rqOff[line];else ORD.rqOff[line]=1;renderSalesRequests();}
+function rqOnly(line){const d=ORD.date,day=((REQUESTS&&REQUESTS.data)||{})[d]||{};
+  ORD.rqOff={};Object.keys(day).forEach(c=>{if(c!==line)ORD.rqOff[c]=1;});renderSalesRequests();}
+function rqAll(){ORD.rqOff={};renderSalesRequests();}
+function rqLineOrder(codes){const ord=DATA.focus_order||[];
+  return codes.slice().sort((a,b)=>{const ia=ord.indexOf(a),ib=ord.indexOf(b);
+    return (ia<0?999:ia)-(ib<0?999:ib)||(a<b?-1:1);});}
 function renderSalesRequests(){
   const el=document.getElementById("salesRequests");const d=ORD.date;
-  const dayReq=((REQUESTS&&REQUESTS.data)||{})[d]||{};const codes=Object.keys(dayReq);
-  if(!codes.length){el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${d?fmtDate(d):"-"}</h3><div class="psub">ยังไม่มีคำขอของเซลล์ในวันนี้ (เซลล์ส่งคำขอผ่านแอปแล้วจะเด้งมาที่นี่)</div>`;return;}
+  const dayReq=((REQUESTS&&REQUESTS.data)||{})[d]||{};const all=rqLineOrder(Object.keys(dayReq));
+  /* เปลี่ยนวัน = ล้างตัวกรองเสมอ ไม่งั้นพรุ่งนี้เปิดมาเจอสายหายไปแล้วงงว่าคำขอหาย
+     (เช็คที่จุดเดียวตรงนี้ คนเรียกเปลี่ยนวันที่จากทางไหนก็ครอบคลุมหมด) */
+  if(ORD.rqDay!==d){ORD.rqOff={};ORD.rqDay=d;}
+  if(!all.length){el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${d?fmtDate(d):"-"}</h3><div class="psub">ยังไม่มีคำขอของเซลล์ในวันนี้ (เซลล์ส่งคำขอผ่านแอปแล้วจะเด้งมาที่นี่)</div>`;return;}
+  let codes=rqSel(all);
+  const nameOf=sc=>((DATA.lines||{})[sc]||{}).display||sc;
+  const chips=`<div class="rq-lines">
+    <button type="button" class="rq-all${codes.length===all.length?"":" dim"}" onclick="rqAll()">👥 ทุกสาย (${all.length})</button>`+
+    all.map(sc=>{const on=codes.indexOf(sc)>=0,n=Object.keys((dayReq[sc]||{}).items||{}).length;
+      return `<span class="rq-chip${on?"":" off"}" onclick="rqTog('${sc}')" title="${on?"กดเพื่อเอาสายนี้ออก":"กดเพื่อเอาสายนี้กลับเข้ามา"}">
+        ${on?"✓":"✗"} ${anaEsc(nameOf(sc))} <span class="n">${anaEsc((dayReq[sc]||{}).by||"")} · ${n}</span>
+        <button type="button" class="only" onclick="event.stopPropagation();rqOnly('${sc}')" title="ดูเฉพาะสายนี้สายเดียว">เฉพาะ</button>
+      </span>`;}).join("")+`</div>`;
+  if(!codes.length){
+    el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${fmtDate(d)}</h3>
+      <div class="psub">ติ๊กเลือกสายที่จะเอาเข้าตารางรวม — คำขอของเซลล์ไม่ได้ถูกลบ แค่ซ่อนจากการดู</div>
+      ${chips}<div class="rq-note">ตอนนี้ยังไม่ได้เลือกสายไหนเลย — กด <b>👥 ทุกสาย</b> หรือกดชิปสายที่ต้องการ</div>`;
+    return;}
   const combined={};
   const perSales=codes.map(sc=>{const req=dayReq[sc],items=req.items||{};
     const rows=poSeqSort(Object.keys(items),null,null).map(c=>{const it=items[c];combined[c]=combined[c]||{cs:0,pc:0,lines:[]};combined[c].cs+=it.cs||0;combined[c].pc+=it.pc||0;
@@ -8315,10 +8367,18 @@ function renderSalesRequests(){
             `<td>${stkCell(c,combined[c].cs||0)}</td><td>${R.ord}</td><td>${R.got}</td>`+
             `<td style="text-align:left">${R.badge}</td><td>${reqLineTags(combined[c].lines)}</td></tr>`;})};
     }),{alwaysBand:true});
-  el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${fmtDate(d)} <span style="font-size:13px;color:var(--muted);font-weight:400">(${codes.length} สาย)</span></h3>
+  const filtered=codes.length!==all.length;
+  const totCs=Object.keys(combined).reduce((s,c)=>s+(combined[c].cs||0),0);
+  el.innerHTML=`<h3>📥 คำขอสินค้าจากเซลล์ · ${fmtDate(d)} <span style="font-size:13px;color:var(--muted);font-weight:400">(${
+      filtered?`เลือก ${codes.length} จาก ${all.length} สาย`:`${all.length} สาย`})</span></h3>
     <div class="psub">รวมทุกสายเพื่อเปิดใบสั่ง (แบ่งตามหมวดในใบสั่งซื้อ ไล่เทียบทีละหน้าได้) + แยกรายเซลล์ให้ตรวจ · <b>กดที่รหัสหรือชื่อสินค้า = คัดลอกทันที</b>
       <br><b>สต็อกคงเหลือ</b> = คลังขาย จากไฟล์สต็อกที่อัพล่าสุด รูปแบบ ลัง/ชิ้น · <span class="down">แดง</span> = หมด/ติดลบ · <span class="mid">ส้ม</span> = มีน้อยกว่าที่เซลล์ขอ · <b>สถานะการสั่ง</b> = ไล่ตามไปข้างหน้าทุกรอบ ถ้ารหัสเปลี่ยนก็ตามให้</div>
-    <div class="req-combined"><h4>📋 รวมทั้งหมด (สำหรับเปิดใบสั่ง) — แบ่งตามหมวด</h4>
+    <div class="req-combined">
+      <h4>📋 ${filtered?`รวมเฉพาะสายที่เลือก (${codes.length} สาย)`:"รวมทั้งหมด (สำหรับเปิดใบสั่ง)"} — แบ่งตามหมวด</h4>
+      <div class="psub" style="margin-bottom:7px">ติ๊กเลือกสายที่จะรวมในตารางนี้ · กด <b>เฉพาะ</b> = ดูสายนั้นสายเดียว · การกรองนี้<b>ดูอย่างเดียว ไม่ลบคำขอของใคร</b></div>
+      ${chips}
+      ${filtered?`<div class="rq-note">🔎 <b>กำลังกรองอยู่</b> — ตารางนี้รวมเฉพาะ ${codes.map(c=>anaEsc(nameOf(c))).join(" · ")}
+        (${Object.keys(combined).length} รายการ · ${totCs} ลัง) <b>ไม่ใช่ยอดรวมทุกสาย</b> · กด <b>👥 ทุกสาย</b> เพื่อดูครบก่อนเปิดใบสั่งจริง</div>`:""}
       <div class="psub" style="margin-bottom:8px">↕️ ${poSeqNote()}</div>${haveCat?"":'<div class="note">ℹ️ ยังไม่มีข้อมูลหมวด — อัพไฟล์ใบสั่ง (BD_...xlsx) สักครั้งเพื่อให้ระบบจับหมวดจากชีต Home_Care/PC_Hair/... ให้อัตโนมัติ</div>'}${combHtml}</div>
     <div class="req-perwrap">${perSales}</div>`;
 }
