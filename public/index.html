@@ -385,10 +385,35 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .pj-or{display:flex;align-items:center;gap:10px;margin:14px 0 12px;color:var(--muted);font-size:11.5px;font-weight:700}
 .pj-or:before,.pj-or:after{content:"";flex:1;height:1px;background:var(--line)}
 .pj-dfu{color:#7A5AF8}
-/* 📊 ยอดเปิดบิลเดือนนี้เทียบเดือนที่แล้ว บนการ์ดร้าน */
-.pj-sl{background:var(--bg);border-radius:9px;padding:7px 10px;margin:6px 0 2px;font-size:12.5px;line-height:1.6}
-.pj-sl b{font-size:14px}
+/* การ์ดร้านแยกเป็นกล่อง ๆ: 📊 ยอดขาย กับ 🎯 KPI คนละกล่อง อ่านทีละเรื่อง
+   (เจ้าของแจ้ง 28 ต.ค. 69 ว่าเดิมยอดขายกับ KPI กองรวมเป็นป้ายแถวเดียวกัน อ่านยาก) */
+.pj-box{border-radius:10px;padding:8px 11px;margin:7px 0 0;font-size:12.5px;line-height:1.6}
+.pj-bh{font-size:11.5px;font-weight:800;color:var(--muted);letter-spacing:.2px;margin-bottom:2px;
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.pj-sl{background:var(--bg)}
+.pj-srow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pj-sl b{font-size:15px}
+.pj-mo{font-weight:700;color:#4A5465}
+.pj-vs{color:var(--muted);font-size:11px;margin:0 2px}
+.pj-nd{color:var(--muted);font-weight:600;font-size:12.5px}
 .pj-sl .pj-pace{color:var(--muted);font-size:11.5px;display:block;margin-top:2px}
+.pj-sl .pj-tags{margin-top:4px}
+/* 🎯 KPI — เห็นผ่าน/ไม่ผ่านตั้งแต่แรก กดเพื่อดูว่าต้องทำอะไร */
+.pj-kpi{background:#F7F9FC;border:1px solid var(--line)}
+.pj-kpi.on{background:#F2F6FC;border-color:#C9D8EF}
+.pj-ktap{cursor:pointer;user-select:none;justify-content:space-between}
+.pj-kar{font-weight:700;color:var(--blue);font-size:11px}
+.pj-kn{background:#EEF1F6;color:#4A5465;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:800}
+.pj-kn.all{background:#E7F6EE;color:#15713F}
+.pj-kps{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
+.pj-kp{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+.pj-kp.ok{background:#E7F6EE;color:#15713F}
+.pj-kp.no{background:#FDF3DB;color:#8a6500}
+.pj-kp.nd{background:#EEF1F6;color:#8A93A3}
+.pj-kdet{margin-top:7px;border-top:1px dashed var(--line);padding-top:6px}
+.pj-kd{font-size:12.5px;line-height:1.6;margin-top:4px}
+.pj-kmiss{color:#8a6500;font-size:12px}
+.pj-kcta{color:#8a6500;font-size:12px;background:#FFF8E6;border-radius:7px;padding:4px 8px;margin-top:3px}
 .pj-pct{font-weight:800;border-radius:7px;padding:1px 7px;font-size:12px;white-space:nowrap}
 .pj-pct.up{background:#E7F6EE;color:#15713F} .pj-pct.dn{background:#FBEAEA;color:#A42828}
 .pj-pct.fl{background:#EEF1F6;color:#4A5465}
@@ -3757,8 +3782,8 @@ function prSetScope(s){PR.scope=s;setSeg("prScopeSeg","s",s);renderPromoRes();}
 /* ym = เดือนที่ปฏิทินกำลังโชว์ (คนละเรื่องกับ d = วันที่เลือกไว้ — หลักเดียวกับ PL.ym / PL.day
    ในปฏิทินงาน) ถ้าผูกเดือนไว้กับวันที่เลือก จะเปิดดูเดือนอื่นไม่ได้เลย
    open = กล่องรายชื่อร้านใต้ปฏิทินกางอยู่หรือไม่ */
-let PJ={d:null,line:null,view:"day",ym:null,only:"all",dt:false,map:false,sel:null,open:true};
-function initPjp(){PJ.d=null;PJ.line=null;PJ.ym=null;PJ.sel=null;PJ.open=true;}
+let PJ={d:null,line:null,view:"day",ym:null,only:"all",dt:false,map:false,sel:null,open:true,kpi:{}};
+function initPjp(){PJ.d=null;PJ.line=null;PJ.ym=null;PJ.sel=null;PJ.open=true;PJ.kpi={};}
 /* ทุกวันที่มีแผน (เรียงแล้ว) */
 function pjDates(){return Object.keys(pjOk().plan).sort();}
 /* สายของผู้ใช้คนนี้ — เซลล์เห็นเฉพาะสายตัวเอง · ผู้จัดการเลือกได้ทุกสาย */
@@ -3838,30 +3863,58 @@ function pjSpNiv(code,mo){
     for(const pc in st){const nv=st[pc]&&st[pc].niv;if(nv&&nv[mo]!=null){v+=+nv[mo]||0;hit=1;}}}
   return hit?v:null;
 }
+/* ยอดรายร้านจาก "บิลรายวัน" (STOREDAILY ที่ parseDaily เติมไว้ทุกวัน)
+   ⚠️ นี่คือแหล่งเดียวที่มีข้อมูล **เดือนปัจจุบัน** — ไฟล์วิเคราะห์เชิงลึกมาเดือนละครั้ง
+   การ์ดจึงเคยขึ้น "ก.ย. เทียบ ส.ค." อยู่ทั้งเดือนตุลาคม ทั้งที่บิลตุลาคมอัพเข้ามาทุกวันแล้ว
+   เก็บจำนวน "วันที่อัพไฟล์แล้ว" กับวันล่าสุดไว้ด้วย เพราะต้องบอกให้รู้ว่านับถึงแค่ไหน */
+let _pjSd=null,_pjSdSrc=null;
+function pjDailyIdx(){
+  const src=(STOREDAILY&&STOREDAILY.data)||null;
+  if(_pjSd&&_pjSdSrc===src)return _pjSd;
+  const byM={};
+  Object.keys(src||{}).sort().forEach(d=>{
+    const ym=d.slice(0,7),m=byM[ym]||(byM[ym]={days:0,last:"",v:{}});
+    m.days++;if(d>m.last)m.last=d;
+    const day=src[d]||{};
+    for(const sc in day)m.v[sc]=(m.v[sc]||0)+(+day[sc].niv||0);
+  });
+  _pjSdSrc=src;_pjSd=byM;return byM;
+}
 function pjSalesNow(code){
   const ms=(STORE&&STORE.months)||[];
   const sp=(STOREPROD&&STOREPROD.months)||[];
-  const all=[...new Set([...ms,...sp])].sort();
+  const SD=pjDailyIdx();
+  const all=[...new Set([...ms,...sp,...Object.keys(SD)])].sort();
   if(!all.length)return null;
   const s=pjStoreIdx()[code];
-  const val=mo=>{                                  /* ยอดเปิดบิลของร้านนี้ในเดือนนั้น */
+  /* ลำดับความน่าเชื่อถือ: ไฟล์รายเดือน (ปิดยอดแล้ว) → วิเคราะห์เชิงลึก → บิลรายวัน */
+  const val=mo=>{
     const i=ms.indexOf(mo);
-    if(s&&i>=0&&s[3]&&s[3][i])return +s[3][i][2]||0;
+    if(s&&i>=0&&s[3]&&s[3][i])return {v:+s[3][i][2]||0,src:"month"};
     const d=pjSpNiv(code,mo);
-    return d==null?null:d;
+    if(d!=null)return {v:d,src:"month"};
+    const D=SD[mo];
+    if(D)return {v:+(D.v[code]||0),src:"daily"};    /* ร้านไม่มีบิลเดือนนั้น = 0 จริง ไม่ใช่ไม่มีข้อมูล */
+    /* ร้านนี้อยู่ในไฟล์รายร้าน และเดือนนั้นก็อยู่ในไฟล์ แต่ไม่มีแถวของร้าน = เดือนนั้นไม่ได้ซื้อจริง
+       ต่างจาก "ไม่รู้" ซึ่งคือกรณีที่ไม่มีเดือนนั้นในไฟล์เลย */
+    if(s&&i>=0)return {v:0,src:"month"};
+    return {v:null,src:null};
   };
   const now=curMonthKey();
-  /* เดือนที่จะเรียกว่า "เดือนนี้": เดือนปัจจุบันถ้าไฟล์มีแล้ว ไม่งั้นเดือนล่าสุดที่ไฟล์มี */
   const cm=all.indexOf(now)>=0?now:all[all.length-1];
   const pm=monthAdd(cm,-1);
-  const cur=val(cm),prv=all.indexOf(pm)>=0?val(pm):null;
-  if(cur==null&&prv==null)return null;
-  const c=cur||0,p=prv||0;
+  const C=val(cm),P=all.indexOf(pm)>=0?val(pm):{v:null,src:null};
+  if(C.v==null&&P.v==null)return null;
+  const c=C.v||0,p=P.v||0;
   const running=(cm===now);
-  const d=new Date(),dim=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
-  const day=running?d.getDate():dim;
-  const pace=running?p*day/dim:p;                  /* เดือนก่อนถึงวันเดียวกันได้เท่าไหร่ (เฉลี่ย) */
-  return {cm:cm,pm:pm,cur:c,prv:p,haveCur:cur!=null,havePrv:prv!=null,running:running,
+  const dim=new Date(+cm.slice(0,4),+cm.slice(5,7),0).getDate();
+  const D=SD[cm];
+  /* นับถึงวันไหน: ถ้าตัวเลขมาจากบิลรายวัน ให้ใช้ "วันล่าสุดที่อัพไฟล์" ไม่ใช่วันนี้ —
+     ไม่งั้นวันที่ยังไม่ได้อัพจะถูกนับเป็นวันที่ขายไม่ได้ แล้วจังหวะดูแย่เกินจริง */
+  const day=!running?dim:((C.src==="daily"&&D&&D.last)?+D.last.slice(8,10):new Date().getDate());
+  const pace=running?p*day/dim:p;
+  return {cm:cm,pm:pm,cur:c,prv:p,haveCur:C.v!=null,havePrv:P.v!=null,running:running,
+    src:C.src,psrc:P.src,days:(C.src==="daily"&&D)?D.days:0,thru:(C.src==="daily"&&D)?D.last:"",
     stale:cm!==now,day:day,dim:dim,pace:pace,
     pct:p>0?((c-p)/p*100):(c>0?100:0),
     pacePct:pace>0?((c-pace)/pace*100):(c>0?100:0)};
@@ -3871,24 +3924,36 @@ function pjPctTag(p){const r=Math.round(p);
   if(r>=1)return `<span class="pj-pct up">▲ ${r}%</span>`;
   if(r<=-1)return `<span class="pj-pct dn">▼ ${Math.abs(r)}%</span>`;
   return `<span class="pj-pct fl">= เท่าเดิม</span>`;}
-function pjSalesHtml(code){
+/* กล่อง "ยอดขาย" ของการ์ดร้าน — รวมทุกเรื่องที่เป็นยอดไว้ที่เดียว
+   (เดิมตัวเลขอยู่กล่องหนึ่ง ป้าย 🔻ยอดตก/🔺ยอดโต ไปกองรวมกับป้าย KPI อีกแถวหนึ่ง อ่านยาก) */
+function pjSalesHtml(code,tasks){
   const n=pjSalesNow(code);
-  if(!n)return `<div class="psub">ยังไม่มีข้อมูลยอดขายรายร้านของร้านนี้</div>`;
+  const sTags=(tasks||[]).filter(x=>x.k==="dead"||x.k==="zero"||x.k==="down"||x.k==="up");
+  const tagHtml=sTags.length?`<div class="pj-tags">${sTags.map(pjChip).join("")}</div>`:"";
+  if(!n)return `<div class="pj-box pj-sl"><div class="pj-bh">📊 ยอดขายร้านนี้</div>
+    <div class="psub">ยังไม่มีข้อมูลยอดขายรายร้านของร้านนี้</div>${tagHtml}</div>`;
   const mc=fmtMonthS(n.cm),mp=fmtMonthS(n.pm);
-  const curTxt=n.haveCur?`<b>${THB(n.cur)}</b>`:`<b>ยังไม่เปิดบิล</b>`;
-  const head=`📊 ${mc}${n.running?" ถึงวันนี้":""} ${curTxt}`+
-    (n.havePrv?` · ${mp} ${THB(n.prv)} ${pjPctTag(n.pct)}`:` · ${mp} ไม่มีข้อมูล`);
-  let foot="";
+  /* ไม่มีข้อมูล ≠ ขายได้ 0 บาท ≠ ยังไม่เปิดบิล — สามอย่างนี้ต้องเขียนคนละแบบ */
+  const curTxt=!n.haveCur?`<b class="pj-nd">ไม่มีข้อมูล</b>`
+    :(n.cur>0?`<b>${THB(n.cur)}</b>`:`<b class="pj-nd">ยังไม่เปิดบิล</b>`);
+  const thru=n.running?(n.thru?` ถึงวันที่ ${+n.thru.slice(8,10)}`:" ถึงวันนี้"):"";
+  const head=`<span class="pj-mo">${mc}${thru}</span> ${curTxt}`+
+    `<span class="pj-vs">เทียบ</span><span class="pj-mo">${mp}</span> `+
+    (n.havePrv?`${THB(n.prv)} ${pjPctTag(n.pct)}`:`<span class="pj-nd">ไม่มีข้อมูล</span>`);
+  const foot=[];
   if(n.stale){
-    /* ไฟล์วิเคราะห์เชิงลึกยังไม่ถึงเดือนปัจจุบัน — ต้องบอก ไม่ใช่เอาเดือนเก่ามาสวมเป็นเดือนนี้ */
-    foot=`ยังไม่มีข้อมูลเดือน ${fmtMonthS(curMonthKey())} — นี่คือเดือนล่าสุดที่อัพไฟล์วิเคราะห์เชิงลึกไว้`;
+    /* ไฟล์ยังไม่ถึงเดือนปัจจุบัน — ต้องบอก ไม่ใช่เอาเดือนเก่ามาสวมเป็นเดือนนี้ */
+    foot.push(`ยังไม่มีข้อมูลเดือน ${fmtMonthS(curMonthKey())} — นี่คือเดือนล่าสุดที่มีข้อมูล`);
   }else if(n.running&&n.havePrv&&n.prv>0){
-    /* เทียบกันตรง ๆ เดือนที่ยังไม่จบย่อมดูน้อยกว่าเสมอ จึงบอก "จังหวะ" ให้ด้วย ไม่ให้เซลล์ตกใจเปล่า ๆ */
-    foot=`ผ่านไป ${n.day}/${n.dim} วัน · จังหวะเดียวกันเดือน ${mp} ได้ ${THB(n.pace)} → `+
+    /* เดือนที่ยังไม่จบย่อมน้อยกว่าเดือนเต็มเสมอ จึงบอก "จังหวะ" ไม่ให้เซลล์ตกใจเปล่า ๆ */
+    foot.push(`ผ่านไป ${n.day}/${n.dim} วัน · จังหวะเดียวกันเดือน ${mp} ได้ ${THB(n.pace)} → `+
       (Math.round(n.pacePct)>=0?`<b style="color:#15713F">เร็วกว่า ${Math.round(n.pacePct)}%</b>`
-                               :`<b style="color:#A42828">ช้ากว่า ${Math.abs(Math.round(n.pacePct))}%</b>`);
+                               :`<b style="color:#A42828">ช้ากว่า ${Math.abs(Math.round(n.pacePct))}%</b>`));
   }
-  return `<div class="pj-sl">${head}${foot?`<span class="pj-pace">${foot}</span>`:""}</div>`;
+  if(n.src==="daily")foot.push(`นับจากบิลรายวันที่อัพแล้ว ${n.days} วันในเดือนนี้`);
+  return `<div class="pj-box pj-sl"><div class="pj-bh">📊 ยอดขายร้านนี้</div>
+    <div class="pj-srow">${head}</div>
+    ${foot.length?`<div class="pj-pace">${foot.join(" · ")}</div>`:""}${tagHtml}</div>`;
 }
 /* Perfect Store รอบล่าสุดของร้านนี้ */
 let _pjPs=null,_pjPsSrc=null;
@@ -4039,10 +4104,15 @@ function pjTasks(code,ymd){
     tip:fu.tx||""});
   const sa=pjSales(code);
   if(sa){
-    if(sa.zero>=2)t.push({k:"dead",ic:"🛑",s:"ไม่ซื้อ "+sa.zero+" เดือน",cls:"b"});
-    else if(sa.zero===1)t.push({k:"zero",ic:"⚠️",s:"เดือนที่แล้วไม่ซื้อ",cls:"b"});
-    else if(sa.pct<=-20)t.push({k:"down",ic:"🔻",s:"ยอดตก "+Math.abs(Math.round(sa.pct))+"%",cls:"b"});
-    else if(sa.pct>=20)t.push({k:"up",ic:"🔺",s:"ยอดโต "+Math.round(sa.pct)+"%",cls:"g"});
+    /* ⚠️ ป้ายพวกนี้เทียบ "เดือนที่จบแล้ว" สองเดือน ส่วนตัวเลขใหญ่บนการ์ดเทียบ "เดือนนี้กับเดือนที่แล้ว"
+       คนละคู่เดือนกัน จึงอาจขึ้นคนละทิศได้ (ก.ย. โต 81% แต่ ต.ค. ตก 14%) — ต้องติดชื่อเดือนไว้
+       ทุกป้าย ไม่งั้นอ่านแล้วขัดกันเองจนไม่เชื่อทั้งคู่ */
+    const mc=fmtMonthS(sa.m),mp=fmtMonthS(monthAdd(sa.m,-1));
+    const tip="เทียบเดือนที่จบแล้ว: "+mc+" กับ "+mp;
+    if(sa.zero>=2)t.push({k:"dead",ic:"🛑",s:"ไม่ซื้อ "+sa.zero+" เดือนติด",cls:"b",tip:tip});
+    else if(sa.zero===1)t.push({k:"zero",ic:"⚠️",s:mc+" ไม่ซื้อเลย",cls:"b",tip:tip});
+    else if(sa.pct<=-20)t.push({k:"down",ic:"🔻",s:mc+" ยอดตก "+Math.abs(Math.round(sa.pct))+"%",cls:"b",tip:tip});
+    else if(sa.pct>=20)t.push({k:"up",ic:"🔺",s:mc+" ยอดโต "+Math.round(sa.pct)+"%",cls:"g",tip:tip});
   }
   const ps=pjPS(code);
   if(ps){
@@ -4054,9 +4124,64 @@ function pjTasks(code,ymd){
     }else t.push({k:"psok",ic:"⭐",s:"PS ผ่านแล้ว",cls:"g"});
   }
   const o=pjOut(code);
-  if(!pjEbIdx()[code]&&o&&o.e)t.push({k:"eb",ic:"🎯",s:"ยังไม่เปิด eB2B",cls:"w"});
+  /* ⚠️ ไม่มีข้อมูล eB2B เลย ≠ "ยังไม่เปิด" — ของเดิมพอไฟล์แข่งขันว่าง ทุกร้านขึ้นว่ายังไม่เปิด
+     ทั้งที่ระบบไม่รู้อะไรเลยสักอย่าง (ไฟล์นั้นจบรอบไปตั้งแต่ ก.ย. 69) */
+  if(o&&o.e&&pjEbHave())t.push(pjEbIdx()[code]
+    ?{k:"ebok",ic:"🎯",s:"เปิด eB2B แล้ว",cls:"g"}
+    :{k:"eb",ic:"🎯",s:"ยังไม่เปิด eB2B",cls:"w"});
   return t;
 }
+function pjEbHave(){return Object.keys(pjEbIdx()).length>0;}
+/* KPI รายร้านสำหรับกล่อง 🎯 — ต้องขึ้น "ที่ผ่านแล้ว" ด้วย (เจ้าของขอ 28 ต.ค. 69)
+   เซลล์จะได้รู้ว่าร้านนี้เคลียร์แล้ว ไม่ต้องเข้าซ้ำ เอาเวลาไปลงร้านที่ยังไม่ผ่าน
+   ok:true=ผ่าน · false=ยังไม่ผ่าน · null=ไม่มีข้อมูล (ห้ามนับเป็นไม่ผ่าน) */
+function pjKpi(code){
+  const out=[];
+  const ps=pjPS(code);
+  if(ps){
+    const r=ps.r;
+    if(r[PSF.yes])out.push({k:"ps",ic:"⭐",ok:true,lab:"Perfect Store",s:"ผ่านแล้ว"});
+    else{
+      const miss=[];
+      if(r[PSF.a]==="R")miss.push("A = สินค้าครบ");
+      if(r[PSF.v]==="R")miss.push("V = การจัดเรียง");
+      if(r[PSF.d]==="R")miss.push("D = สั่งผ่านแอป");
+      out.push({k:"ps",ic:"⭐",ok:false,lab:"Perfect Store",
+        s:"ยังไม่ผ่าน"+(miss.length?" (ขาด "+miss.map(x=>x[0]).join("/")+")":""),
+        detail:miss,cta:psCtaText(r[PSF.cta])});
+    }
+  }else out.push({k:"ps",ic:"⭐",ok:null,lab:"Perfect Store",s:"ไม่มีข้อมูลรอบล่าสุด"});
+  const o=pjOut(code);
+  if(o&&o.e){
+    if(!pjEbHave())out.push({k:"eb",ic:"🎯",ok:null,lab:"eB2B",s:"ยังไม่ได้อัพไฟล์รอบล่าสุด"});
+    else{const op=pjEbIdx()[code];
+      out.push(op?{k:"eb",ic:"🎯",ok:true,lab:"eB2B",s:"เปิดแล้ว"+(typeof op==="string"?" · "+op:"")}
+                 :{k:"eb",ic:"🎯",ok:false,lab:"eB2B",s:"ยังไม่เปิด"});}
+  }
+  return out;
+}
+function pjKpiHtml(code){
+  const K=pjKpi(code);
+  if(!K.length)return "";
+  const known=K.filter(x=>x.ok!==null),pass=known.filter(x=>x.ok).length;
+  const open=!!PJ.kpi[code];
+  const sum=known.length?`<span class="pj-kn${pass===known.length?" all":""}">ผ่าน ${pass}/${known.length}</span>`:"";
+  const pills=K.map(x=>`<span class="pj-kp ${x.ok===true?"ok":(x.ok===false?"no":"nd")}">${
+    x.ok===true?"✅":(x.ok===false?"⚠️":"—")} ${anaEsc(x.lab)}</span>`).join("");
+  /* ⭐ คำแนะนำของ Unilever ต้องเห็นตลอด ไม่ซ่อนไว้หลังการกด — เป็นสิ่งเดียวบนการ์ดที่บอกว่า
+     "เข้าไปแล้วต้องทำอะไร" ถ้าซ่อน เซลล์ก็จะเลิกเห็นมันไปเลย */
+  const cta=K.filter(x=>x.ok===false&&x.cta).map(x=>
+    `<div class="pj-kcta">⭐ <b>Unilever แนะนำ:</b> ${anaEsc(x.cta)}</div>`).join("");
+  const det=K.map(x=>`<div class="pj-kd"><b>${x.ic} ${anaEsc(x.lab)}:</b> ${anaEsc(x.s)}${
+    (x.detail&&x.detail.length)?`<div class="pj-kmiss">ต้องทำเพิ่ม: ${x.detail.map(anaEsc).join(" · ")}</div>`:""}</div>`).join("");
+  return `<div class="pj-box pj-kpi${open?" on":""}">
+    <div class="pj-bh pj-ktap" onclick="pjKpiTog('${code}')">🎯 KPI ร้านนี้ ${sum}
+      <span class="pj-kar">${open?"▲ ย่อ":"▼ ดูรายละเอียด"}</span></div>
+    <div class="pj-kps">${pills}</div>
+    ${cta}
+    ${open?`<div class="pj-kdet">${det}</div>`:""}</div>`;
+}
+function pjKpiTog(code){PJ.kpi[code]=!PJ.kpi[code];renderPjp();}
 function pjSetDate(d){PJ.d=d;PJ.ym=String(d||"").slice(0,7)||PJ.ym;PJ.sel=null;renderPjp();}
 /* เดือนที่ปฏิทินโชว์อยู่ */
 function pjCalMonth(){return PJ.ym||String(PJ.d||pjDefDate()||todayISO()).slice(0,7);}
@@ -4317,8 +4442,6 @@ function pjChip(t){
 function pjCardHtml(s,i,ymd){
   const o=pjOut(s.code)||{};
   const t=pjTasks(s.code,ymd);
-  const ps=pjPS(s.code);
-  const cta=(ps&&!ps.r[PSF.yes])?psCtaText(ps.r[PSF.cta]):"";
   const nav=(o.la!=null&&o.lo!=null)?`https://www.google.com/maps/dir/?api=1&destination=${o.la},${o.lo}`:"";
   const fu=pjFollow(s.code,null);                /* งานค้างที่ยังไม่เคลียร์ของร้านนี้ */
   return `<div class="pj-card${fu?" fu":""}${t.some(x=>x.k==="dead"||x.k==="down"||x.k==="zero")?" hot":""}">
@@ -4330,9 +4453,8 @@ function pjCardHtml(s,i,ymd){
         fu.f.length?" "+fu.f.map(k=>PJ_FLAG[k].ic+" "+anaEsc(PJ_FLAG[k].nm)).join(" · "):""}${
         fu.tx?`<div class="pj-fut">“${anaEsc(fu.tx)}”</div>`:""}${
         fu.nx?`<div class="psub" style="margin-top:3px">🔔 ตั้งเตือนซ้ำรอบหน้าไว้</div>`:""}</div>`:""}
-      ${t.length?`<div class="pj-tags">${t.filter(x=>x.k!=="fu").map(pjChip).join("")}</div>`:""}
-      ${pjSalesHtml(s.code)}
-      ${cta?`<div class="note" style="margin:6px 0 0">⭐ <b>สิ่งที่ Unilever แนะนำ:</b> ${anaEsc(cta)}</div>`:""}
+      ${pjSalesHtml(s.code,t)}
+      ${pjKpiHtml(s.code)}
       <div class="pj-btns">
         <button type="button" class="pj-tick${fu?" on":""}" onclick="pjNoteOpen('${s.code}','${ymd}')">${fu?"📌 แก้งานค้าง":"📌 บันทึกงานค้าง"}</button>
         ${fu?`<button type="button" class="pj-b pj-ok" onclick="pjClearWork('${s.code}','${ymd}')">✅ เคลียร์แล้ว</button>`:""}

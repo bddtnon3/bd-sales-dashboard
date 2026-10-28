@@ -202,16 +202,26 @@ code, never printed.
   clearing writes a NEW dated record with `cl:1` rather than editing an old one, so the history
   survives; and `pjNoteIdx` must index EVERY dated record, not just ones with a note, or a clear
   cannot beat what came before it. `pjTasks(code,ymd)` still takes the date for the other badges.
-  The shop card's sales line is **this month to date vs last month** (`pjSalesNow`/`pjSalesHtml`,
-  from the วิเคราะห์เชิงลึก figures) — a different question from the 🔻ยอดตก / 🛑ไม่ซื้อ chips, which
-  must keep comparing **completed** months through `pjSales`, or every shop reads "ยอดตก" on the 1st
-  of each month. "ยังไม่เปิดบิล" is not ฿0, a file that has not reached this month says so instead of
-  passing its latest month off as the current one, and a partial month is shown against last month's
-  pro-rata pace so nobody panics on the 2nd. The month calendar is clickable like the planner's:
+  Each shop card is **two boxes, never one list of mixed chips**: 📊 ยอดขาย then 🎯 KPI.
+  The sales line is **this month to date vs last month** (`pjSalesNow`/`pjSalesHtml`) and reads
+  three sources in order of trust — the monthly by-store file, วิเคราะห์เชิงลึก, then
+  **`STOREDAILY`** (`pjDailyIdx`), which is the only one that has the *current* month, because the
+  monthly files arrive once a month. When the figure comes from daily bills it counts **to the last
+  uploaded day, not to today**, and says so, or a few un-uploaded days make the pace look terrible.
+  Distinguish all three of `ไม่มีข้อมูล` / `ยังไม่เปิดบิล` (a real 0) / a figure: a month that IS in
+  the file with no row for that shop is a real 0. This is a different question from the 🔻ยอดตก /
+  🛑ไม่ซื้อ chips, which must keep comparing **completed** months through `pjSales`, or every shop
+  reads "ยอดตก" on the 1st — so **every chip carries its month name**, since the two comparisons can
+  point opposite ways on the same card. The KPI box shows **what the shop has already passed**, not
+  only what is outstanding (`pjKpi`, `ok: true/false/null`): `null` means no data and must never be
+  counted or shown as a failure — with the eB2B contest file finished, an empty `EB2B` used to brand
+  every eRTM shop "ยังไม่เปิด" (`pjEbHave` now guards it). Unilever's call to action stays **visible
+  on the card**, never behind the expander. The expand state lives on the non-synced `PJ.kpi`.
+  The month calendar is clickable like the planner's:
   **`PJ.ym` (month shown) is separate from `PJ.d` (day selected)**, every cell opens its shop list
   inline — including days with no plan, which `renderPjp` used to snap back — and in a calendar view
   ◀ ▶ step the month while the day view still hops to the next **planned** day. Prove it with
-  **`node test/browser/pjpcal.test.cjs`** (37 checks, self-contained).
+  **`node test/browser/pjpcal.test.cjs`** (58 checks, self-contained).
   An open item shows in the planner as 🏪 งานร้านค้า (`plShopOcc`) **on the day it was recorded**,
   plus the next visit round when 🔔 was ticked — derived at render time, never stored as
   `PLAN.items`. `api/pjpvisit.js` checks the shop is on that rep's route **anywhere** in the

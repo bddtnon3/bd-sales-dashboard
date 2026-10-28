@@ -110,8 +110,11 @@ function setup(a){
    Math.round(n.a.pace)===Math.round(20000*DAY/DIM),Math.round(n.a.pace));
  t('ร้านที่เร็วกว่าจังหวะเดือนก่อน ขึ้นเป็นบวก',n.a.pacePct>0,Math.round(n.a.pacePct)+'%');
  t('ร้านที่ช้ากว่าจังหวะเดือนก่อน ขึ้นเป็นลบ',n.b.pacePct<0,Math.round(n.b.pacePct)+'%');
- t('ร้านที่เดือนนี้ยังไม่เปิดบิล แยกออกจาก "ขายได้ 0 บาท" ได้',
-   n.c.haveCur===false&&n.c.havePrv===true&&n.c.prv===12000,JSON.stringify({haveCur:n.c.haveCur,prv:n.c.prv}));
+ /* เดือนนั้นมีในไฟล์ + ร้านนี้มีในไฟล์รายร้าน แต่ไม่มีแถว = "ไม่ได้ซื้อจริง" (0)
+    ต่างจาก "ไม่รู้" ซึ่งคือเดือนที่ไม่มีในไฟล์เลย */
+ t('ร้านที่เดือนนี้ยังไม่เปิดบิล = 0 จริง (ไม่ใช่ "ไม่มีข้อมูล")',
+   n.c.haveCur===true&&n.c.cur===0&&n.c.havePrv===true&&n.c.prv===12000,
+   JSON.stringify({haveCur:n.c.haveCur,cur:n.c.cur,prv:n.c.prv}));
  t('ร้านที่มีแต่ในไฟล์วิเคราะห์เชิงลึก (ไม่อยู่ในไฟล์รายร้าน) ก็อ่านยอดได้',
    n.d&&n.d.cur===3500&&n.d.prv===5000,n.d?(n.d.cur+' / '+n.d.prv):'(null)');
  t('ร้านที่ไม่มีข้อมูลเลย คืนค่าว่าง ไม่พัง',n.none===null,String(n.none));
@@ -239,6 +242,118 @@ function setup(a){
  t('🛟 กดปฏิทินทุกปุ่มทุกมุมมองแล้ว ข้อมูลทุกก้อนเหมือนเดิมเป๊ะทุกไบต์',after===before,moved);
  t('🛟 ไม่มีการยิงอะไรขึ้นเซิร์ฟเวอร์เลย',await ev(()=>window.__posts.length===0&&!window.__sync),
    await ev(()=>window.__posts.join(', ')+' sync='+(window.__sync||0)));
+
+ /* ---------- 8) เดือนปัจจุบันจาก "บิลรายวัน" (เจ้าของขอ 28 ต.ค. 69) ----------
+    ไฟล์วิเคราะห์เชิงลึกมาเดือนละครั้ง การ์ดจึงเคยค้างอยู่ที่ "ก.ย. เทียบ ส.ค." ทั้งเดือนตุลาคม
+    ทั้งที่บิลรายวันของตุลาคมอัพเข้ามาทุกวันแล้ว */
+ const daily=await ev(a=>{
+   /* เอาเดือนปัจจุบันออกจากไฟล์รายเดือนทั้งสองตัว ให้เหลือแต่บิลรายวัน */
+   STORE={months:[a.PM2,a.PM],stores:[
+     ['209611','2000001','ร้านทดสอบโต',[[1,10,10000],[1,20,20000]]],
+     ['209611','2000002','ร้านทดสอบตก',[[1,10,10000],[1,20,20000]]]]};
+   STOREPROD={months:[a.PM2,a.PM],cat:{},stores:{},data:{}};
+   if(typeof buildStoreIdx==='function')buildStoreIdx();
+   /* บิลรายวัน: อัพมาแล้ว 10 วัน (วันที่ 1-10 ของเดือนนี้) */
+   STOREDAILY={data:{}};
+   for(let d=1;d<=10;d++){
+     const k=a.CM+'-'+String(d).padStart(2,'0');
+     STOREDAILY.data[k]={'2000001':{l:'209611',n:'ร้านทดสอบโต',cs:1,pc:0,niv:500}};
+     if(d<=4)STOREDAILY.data[k]['2000002']={l:'209611',n:'ร้านทดสอบตก',cs:1,pc:0,niv:100};
+   }
+   return {a:pjSalesNow('2000001'),b:pjSalesNow('2000002'),c:pjSalesNow('2000003'),
+     ha:pjSalesHtml('2000001',[]),hc:pjSalesHtml('2000003',[])};
+ },ARG);
+ const txt2=x=>String(x).replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+ t('🔧 ไม่มีไฟล์รายเดือนของเดือนนี้ ก็ยังรู้ยอดเดือนนี้จากบิลรายวัน',
+   daily.a.cm===CM&&daily.a.src==='daily'&&daily.a.cur===5000&&daily.a.stale===false,
+   JSON.stringify({cm:daily.a.cm,src:daily.a.src,cur:daily.a.cur,stale:daily.a.stale}));
+ t('...เทียบกับเดือนที่แล้วจากไฟล์รายเดือน (ของแม่นกว่า) ไม่ใช่บิลรายวัน',
+   daily.a.prv===20000&&daily.a.psrc==='month',daily.a.prv+' / '+daily.a.psrc);
+ t('...นับถึง "วันล่าสุดที่อัพไฟล์" ไม่ใช่วันนี้ — วันที่ยังไม่อัพต้องไม่ถูกนับเป็นวันขายไม่ได้',
+   daily.a.day===10&&daily.a.days===10,'ถึงวันที่ '+daily.a.day+' · อัพแล้ว '+daily.a.days+' วัน');
+ t('...จังหวะคิดจากวันที่นับถึงจริง (20000 × 10 ÷ '+DIM+')',
+   Math.round(daily.a.pace)===Math.round(20000*10/DIM),Math.round(daily.a.pace));
+ t('...บนการ์ดบอกว่านับถึงวันไหน และมาจากบิลรายวันกี่วัน',
+   /ถึงวันที่ 10/.test(txt2(daily.ha))&&/บิลรายวัน/.test(txt2(daily.ha))&&/10 วัน/.test(txt2(daily.ha)),
+   txt2(daily.ha));
+ t('ร้านที่มีบิลแค่ 4 วันแรก ได้ยอดเฉพาะของตัวเอง',daily.b.cur===400,daily.b.cur);
+ t('🛟 ร้านที่ไม่มีบิลเลยในเดือนนี้ = 0 จริง ไม่ใช่ "ไม่มีข้อมูล"',
+   daily.c.haveCur===true&&daily.c.cur===0&&/ยังไม่เปิดบิล/.test(txt2(daily.hc)),
+   JSON.stringify({haveCur:daily.c.haveCur,cur:daily.c.cur})+' | '+txt2(daily.hc));
+
+ /* ---------- 9) KPI: ต้องขึ้น "ที่ผ่านแล้ว" ด้วย ---------- */
+ const kpi=await ev(a=>{
+   PSTORE={rounds:{[a.PM+'-30']:{asof:a.PM+'-30',bm:9,up:1,rows:[
+     /* [route, code, name, type, yes, A, V, D, months, gap, cta, gsv] */
+     ['R1','2000001','ร้านทดสอบโต','F',1,'G','G','G',6,0,'',0.01],
+     ['R1','2000002','ร้านทดสอบตก','F',0,'R','G','R',3,2,'Drive AO & SO',0.01]]}}};
+   EB2B={asof:null,up:0,lines:{},data:{'209611':{n:1,stores:[['2000001','ร้านทดสอบโต',a.PM+'-10']]}}};
+   PJP.out['2000001'].e='Y';PJP.out['2000002'].e='Y';PJP.out['2000003'].e='Y';
+   return {k1:pjKpi('2000001'),k2:pjKpi('2000002'),k3:pjKpi('2000003'),
+     h1:pjKpiHtml('2000001'),h2:pjKpiHtml('2000002'),
+     t1:pjTasks('2000001',a.D5).map(x=>x.k)};
+ },ARG);
+ t('🔧 ร้านที่ผ่าน Perfect Store แล้ว ต้องขึ้นให้เห็นว่า "ผ่านแล้ว"',
+   kpi.k1[0].k==='ps'&&kpi.k1[0].ok===true,JSON.stringify(kpi.k1[0]));
+ t('🔧 ร้านที่เปิด eB2B แล้ว ก็ต้องขึ้นว่าเปิดแล้ว (เดิมเงียบ ไม่ขึ้นอะไรเลย)',
+   (kpi.k1[1]||{}).k==='eb'&&kpi.k1[1].ok===true,JSON.stringify(kpi.k1[1]));
+ t('...และมีป้ายสรุป "ผ่าน 2/2" ให้เห็นตั้งแต่ยังไม่กด',
+   /ผ่าน 2\/2/.test(txt2(kpi.h1)),txt2(kpi.h1).slice(0,90));
+ t('ร้านที่ยังไม่ผ่าน ขึ้นว่าไม่ผ่านพร้อมบอกว่าขาดอะไร',
+   kpi.k2[0].ok===false&&/ขาด A\/D/.test(kpi.k2[0].s)&&kpi.k2[0].detail.length===2,
+   JSON.stringify({s:kpi.k2[0].s,d:kpi.k2[0].detail}));
+ t('...และคำแนะนำของ Unilever ยังเห็นบนการ์ดเลย ไม่ต้องกดก่อน',
+   /Unilever แนะนำ/.test(txt2(kpi.h2))&&/Drive B2B/.test(txt2(kpi.h2)),txt2(kpi.h2));
+ t('...ป้ายสรุปของร้านที่ยังไม่ผ่านคือ 0/2',/ผ่าน 0\/2/.test(txt2(kpi.h2)),txt2(kpi.h2).slice(0,80));
+ t('🛟 ร้านที่ไม่มีข้อมูล Perfect Store ขึ้น "ไม่มีข้อมูล" ไม่ใช่ "ไม่ผ่าน"',
+   kpi.k3[0].ok===null&&/ไม่มีข้อมูล/.test(kpi.k3[0].s),JSON.stringify(kpi.k3[0]));
+ t('pjTasks ยังให้ป้าย psok / ebok สำหรับร้านที่ผ่านแล้ว',
+   kpi.t1.indexOf('psok')>=0&&kpi.t1.indexOf('ebok')>=0,kpi.t1.join(','));
+
+ /* ไม่มีไฟล์ eB2B เลย = ห้ามบอกว่าทุกร้าน "ยังไม่เปิด" */
+ const noEb=await ev(()=>{EB2B={asof:null,up:0,lines:{},data:{}};
+   return {k:pjKpi('2000001'),t:pjTasks('2000001',Object.keys(PJP.plan)[0]).map(x=>x.k)};});
+ t('🛟 ไม่มีไฟล์ eB2B เลย → ขึ้น "ยังไม่ได้อัพไฟล์" ไม่ใช่ตราหน้าว่าทุกร้านยังไม่เปิด',
+   (noEb.k[1]||{}).ok===null&&noEb.t.indexOf('eb')<0&&noEb.t.indexOf('ebok')<0,
+   JSON.stringify(noEb.k[1])+' | '+noEb.t.join(','));
+
+ /* ---------- 10) ยอดขายกับ KPI แยกกล่องกัน และ KPI กดดูได้ ---------- */
+ const sep=await ev(a=>{
+   PJ.d=a.D5;PJ.view='day';PJ.kpi={};renderPjp();
+   const c=document.querySelector('#pjpBody .pj-card');
+   const g=sel=>c.querySelectorAll(sel).length;
+   const before={sales:g('.pj-sl'),kpi:g('.pj-kpi'),det:g('.pj-kdet')};
+   c.querySelector('.pj-ktap').click();
+   const c2=document.querySelector('#pjpBody .pj-card');
+   const after={det:c2.querySelectorAll('.pj-kdet').length,txt:c2.innerText.replace(/\s+/g,' ')};
+   document.querySelector('#pjpBody .pj-card .pj-ktap').click();
+   return {before:before,after:after,
+     closed:document.querySelectorAll('#pjpBody .pj-card .pj-kdet').length,
+     order:[...document.querySelectorAll('#pjpBody .pj-card .pj-box')].map(x=>x.className)};
+ },ARG);
+ t('การ์ดแยกเป็นสองกล่องชัดเจน: 📊 ยอดขาย แล้วตามด้วย 🎯 KPI',
+   sep.before.sales===1&&sep.before.kpi===1&&/pj-sl/.test(sep.order[0])&&/pj-kpi/.test(sep.order[1]),
+   sep.order.join(' | '));
+ t('...ตอนแรกย่อไว้ กดแล้วกางรายละเอียด กดอีกทีย่อกลับ',
+   sep.before.det===0&&sep.after.det===1&&sep.closed===0,
+   'ก่อน '+sep.before.det+' · กด '+sep.after.det+' · กดซ้ำ '+sep.closed);
+ t('...รายละเอียดที่กางออกบอกว่าต้องทำอะไรเพิ่ม',/ต้องทำเพิ่ม/.test(sep.after.txt)||/ผ่านแล้ว/.test(sep.after.txt),
+   sep.after.txt.slice(0,140));
+
+ /* ---------- 11) 🛟 ทั้งหมดนี้อ่านอย่างเดียว ---------- */
+ const before2=await ev(new Function('return '+BLOBS));
+ await ev(a=>{
+   ['2000001','2000002','2000003','2000004'].forEach(c=>{pjKpiTog(c);pjSalesNow(c);pjKpiHtml(c);});
+   ['2000001','2000002','2000003','2000004'].forEach(c=>pjKpiTog(c));
+   renderPjp();
+ },ARG);
+ const after2=await ev(new Function('return '+BLOBS));
+ let moved2='';
+ if(after2!==before2){const x=JSON.parse(before2),y=JSON.parse(after2);
+   moved2=Object.keys(x).filter(k=>JSON.stringify(x[k])!==JSON.stringify(y[k])).join(', ');}
+ t('🛟 กดดู KPI ทุกร้านทุกแบบแล้ว ข้อมูลทุกก้อนเหมือนเดิมเป๊ะทุกไบต์',after2===before2,moved2||'(ไม่มี)');
+ t('🛟 สถานะกาง/ย่ออยู่บน PJ (ไม่ถูก sync) ไม่ได้อยู่ใน PJP',
+   await ev(()=>typeof PJ.kpi==='object'&&!('kpi' in PJP)),'ok');
 
  const real=errs.filter(e=>!/localStorage|SecurityError/.test(e));
  t('ไม่มี JavaScript error ตลอดเทสต์',real.length===0,real.join(' | '));
