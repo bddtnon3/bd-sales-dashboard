@@ -8,7 +8,7 @@ const fs=require('fs');const path=require('path');
 const {chromium}=require('playwright-core');
 const ROOT=path.resolve(__dirname,'..','..');
 const PAGE=path.join(ROOT,'public','index.html');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 (async()=>{
  const b=await chromium.launch({executablePath:BROWSER,args:['--no-sandbox']});
  const W=+(process.env.W||1280);

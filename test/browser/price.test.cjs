@@ -27,7 +27,7 @@
  */
 const fs=require('fs');const path=require('path');
 const {chromium}=require('playwright-core');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 const ROOT=path.resolve(__dirname,'..','..');
 const PAGE=path.join(ROOT,'public','index.html');
 const F_HS=path.join(__dirname,'fixtures','huasuer-price.xlsx');

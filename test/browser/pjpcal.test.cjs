@@ -24,7 +24,7 @@
  */
 const fs=require('fs');const path=require('path');
 const {chromium}=require('playwright-core');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 const PAGE=path.resolve(__dirname,'..','..','public','index.html');
 
 const BLOBS=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,

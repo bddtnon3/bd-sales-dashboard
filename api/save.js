@@ -237,6 +237,24 @@ function mergeState(server, c) {
       ? Object.assign({}, sPj.cfg || {}, cPj.cfg || {})
       : Object.assign({}, cPj.cfg || {}, sPj.cfg || {}),
   };
+  // สต็อคกลาง — ของที่ "ตัดบิลไว้ก่อน" แล้วยังค้างรอหาที่ขาย (เจ้าของแจ้ง 31 ต.ค. 69)
+  //   lots : หนึ่งเรคอร์ดต่อหนึ่งลอต (สินค้าหนึ่งตัวที่ตัดบิลไว้รอบหนึ่ง) newest `up` ชนะ
+  //          ⚠️ รายการเคลียร์เก็บ "อยู่ในเรคอร์ดลอตเดียวกัน" (clr[]) ไม่แยก map ต่างหาก
+  //          เพราะแอดมินถือไฟล์ Excel ฉบับเดียวแล้วอัพทับทุกรอบ ถ้าแยก map เมื่อไหร่
+  //          ที่แอดมินลบ/แก้แถวเคลียร์ จะเหลือเศษค้างเป็นผี แล้วยอดคงเหลือจะเพี้ยน
+  //          ลอตที่อยู่บนเซิร์ฟเวอร์แต่ไม่มีในไฟล์รอบนี้ **ยังอยู่ครบ** (union) — ไฟล์ที่กรอกไม่ครบ
+  //          จึงลบของเก่าไม่ได้ ต้องใช้ tombstone เท่านั้น
+  //   del  : tombstone ใส่หลัง union (กฎเดียวกับ PLAN/PROMO) แท็บเก่าจึงปลุกลอตที่ลบแล้วไม่ได้
+  const sCs = s.CSTOCK || {}, cCs = c.CSTOCK || {};
+  const csLots = newestByUp(sCs.lots, cCs.lots);
+  const csDel = keyMerge(sCs.del, cCs.del);
+  for (const k of Object.keys(csDel)) {
+    const it = csLots[k];
+    if (it && (it.up || it.at || 0) > csDel[k]) delete csDel[k];   // อัพกลับมาใหม่หลังลบ
+    else delete csLots[k];
+  }
+  const CSTOCK = { lots: csLots, del: csDel, up: Math.max(sCs.up || 0, cCs.up || 0) };
+
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),
@@ -257,6 +275,7 @@ function mergeState(server, c) {
     PLAN,
     PROMO,
     PJP,
+    CSTOCK,
     savedAt: Date.now(),
   };
 }

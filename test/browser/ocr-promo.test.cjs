@@ -6,7 +6,7 @@ const fs=require('fs');const path=require('path');const http=require('http');
      npm i --no-save playwright-core
    แล้วรัน:  node build.cjs && node test/browser/ocr-promo.test.cjs   */
 const {chromium}=require('playwright-core');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 const ROOT=path.resolve(__dirname,'..','..','public');
 const IMG=path.join(__dirname,'fixtures','ct-combo-by-route.jpg');   /* CT Combo Drive by Route */
 const IMG2=path.join(__dirname,'fixtures','ka-combo-by-route.jpg');  /* KA Combo Drive by Route */

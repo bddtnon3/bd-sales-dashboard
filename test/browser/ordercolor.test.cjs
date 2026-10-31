@@ -21,7 +21,7 @@
  */
 const fs=require('fs');const path=require('path');
 const {chromium}=require('playwright-core');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 const ROOT=path.resolve(__dirname,'..','..');
 const PAGE=path.join(ROOT,'public','index.html');
 const FNAME='7001_15389839_Confirm_15389839_HPC_261026.xlsx';

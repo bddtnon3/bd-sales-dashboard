@@ -18,7 +18,7 @@
 const fs=require('fs');const path=require('path');const http=require('http');
 const {chromium}=require('playwright-core');
 const XLSX=require('xlsx');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 const ROOT=path.resolve(__dirname,'..','..');
 const PAGE=path.join(ROOT,'public','pricelist.html');
 const F_HS=path.join(__dirname,'fixtures','huasuer-price.xlsx');

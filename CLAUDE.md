@@ -376,6 +376,24 @@ code, never printed.
   variant column gave staff a bare `สีเขียว` they could not identify. The price maths is **copied verbatim into
   `public/pricelist.html`** (a standalone page cannot import from the app) — change one and you must
   change the other; the test compares both copies on every item in every round.
+  The **📦 สต็อก** group has two tabs: `stock` (สต็อคปัจจุบัน, the daily stock file) and
+  **`cstock` (🧊 สต็อคกลาง, manager-only)** — stock the depot billed out in advance and still
+  has to place. The admin keeps ONE Excel, downloads it from the tab (`cstTemplate`, three sheets:
+  ลอตตัดบิล / การเคลียร์ / วิธีกรอก, pre-filled with what the system holds) and re-uploads it each
+  round. **`คงเหลือ` is always computed (`cstLeft`), never read from the file** — the owner's
+  original notes said "85 … 50 … 5 … คงเหลือ 12" when 85−50−5 is 30, and that hand-typed number is
+  exactly how stock got forgotten. Clearings live **inside the lot record** (`clr[]`), not a
+  separate map, because one re-uploaded file is the whole truth and a separate map would leave
+  orphan rows. The merge is a union per lot id, so **a file missing some lots cannot delete them**;
+  removing one needs the `CSTOCK.del` tombstone. `parseCStock` finds its columns by header text and
+  **refuses the whole file** on a missing sheet, missing header, duplicate lot id, a row with no lot
+  id, or a clearing that references a lot that does not exist — swallowing that last one would make
+  the remaining quantity read higher than reality. When writing the template, a formula cell must
+  carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove it with
+  **`node test/browser/cstock.test.cjs`** (46 checks). Rules: `HANDOFF.md` §5.
+- `test/browser/_chrome.cjs` — finds the installed Chromium at run time. Never hard-code a
+  `/opt/pw-browsers/chromium-NNNN/...` path in a test again: the image moved once and took all 15
+  browser tests down with it.
 - `public/pricelist.html` — the PUBLIC customer price catalogue (hand-written, like `join.html`),
   reachable at **`/UnileverBDpricelist`** via the `rewrites` in `vercel.json`. It is written for
   shop owners, often elderly, so: a real **table** with fixed-width number columns (the prices must

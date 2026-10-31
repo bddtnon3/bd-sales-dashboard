@@ -10,7 +10,7 @@
    แล้วรัน:  node build.cjs && node test/browser/datestep.test.cjs   */
 const fs=require('fs');const path=require('path');
 const {chromium}=require('playwright-core');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 const ROOT=path.resolve(__dirname,'..','..');
 
 /* ทุกก้อนที่ถือข้อมูลจริง — ต้องไม่ขยับแม้แต่ไบต์เดียวตลอดการทดสอบ */

@@ -5,7 +5,7 @@ const fs=require('fs');const path=require('path');
      npm i --no-save playwright-core xlsx
    แล้วรัน:  node build.cjs && node test/browser/pjp.test.cjs   */
 const {chromium}=require('playwright-core');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 const ROOT=path.resolve(__dirname,'..','..');
 const F_OUT=path.join(__dirname,'fixtures','master-outlet.xlsx');
 const F_PJP=path.join(__dirname,'fixtures','pjp-oct2026.xlsx');

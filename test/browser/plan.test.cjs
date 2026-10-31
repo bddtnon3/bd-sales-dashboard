@@ -5,7 +5,7 @@ const fs=require('fs');const path=require('path');
      npm i --no-save playwright-core
    แล้วรัน:  node build.cjs && node test/browser/plan.test.cjs   */
 const {chromium}=require('playwright-core');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 const PAGE=path.resolve(__dirname,'..','..','public','index.html');
 const boot=`
   document.getElementById('login').classList.add('hidden');

@@ -24,7 +24,7 @@
 const fs=require('fs');const path=require('path');
 const {chromium}=require('playwright-core');
 const XLSX=require('xlsx');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 const ROOT=path.resolve(__dirname,'..','..');
 const PAGE=path.join(ROOT,'public','index.html');
 const REAL=path.join(__dirname,'fixtures','Salesman_Incentive_DTT_OCT_as_of_19_Oct26.xlsx');

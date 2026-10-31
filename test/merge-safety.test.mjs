@@ -913,5 +913,84 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
         looksEmpty({ DATA: {}, PROMO: srv.PROMO }) === true);
 }
 
+/* ============================================================================
+ * 📦 สต็อคกลาง (CSTOCK) — ของที่ตัดบิลไว้ก่อนแล้วยังค้าง
+ * แอดมินถือไฟล์ Excel ฉบับเดียว แล้วอัพทับทุกรอบที่มีการเคลียร์ของออกไป
+ * สิ่งที่ห้ามเกิด: ไฟล์ที่กรอกไม่ครบ (หรือแท็บเก่า) ลบลอตที่เซิร์ฟเวอร์มีอยู่
+ * ==========================================================================*/
+{
+  const base = JSON.parse(JSON.stringify(server));
+  const srv = JSON.parse(JSON.stringify(base));
+  srv.CSTOCK = {
+    lots: {
+      "ST-01": { id: "ST-01", d: "2026-10-22", own: "PT", nm: "คอมฟอร์ท อินโนเซนท์", cs: 10,
+                 clr: [{ d: "2026-10-25", who: "คุณกรานรุ้ง", cs: 4 }], up: 1000 },
+      "ST-02": { id: "ST-02", d: "2026-10-27", own: "พี่แอ๊ะ", nm: "โอโม ซอฟท์ ทัช", cs: 11,
+                 clr: [], up: 1000 },
+    },
+    del: {}, up: 1000,
+  };
+
+  // แท็บเก่าที่ยังไม่รู้จักสต็อคกลางเลย
+  const oldTab = JSON.parse(JSON.stringify(base));
+  delete oldTab.CSTOCK;
+  const c1 = mergeState(srv, oldTab);
+  check("แท็บเก่าที่ไม่มี CSTOCK เลย ลบลอตที่เก็บไว้ไม่ได้",
+        Object.keys(c1.CSTOCK.lots).length === 2 && c1.CSTOCK.lots["ST-01"].clr.length === 1);
+
+  // ไฟล์รอบใหม่ของแอดมิน: มีแค่ลอตที่เขากำลังตามอยู่ + เพิ่มลอตใหม่
+  const round2 = JSON.parse(JSON.stringify(base));
+  round2.CSTOCK = { lots: {
+    "ST-01": { id: "ST-01", d: "2026-10-22", own: "PT", nm: "คอมฟอร์ท อินโนเซนท์", cs: 10,
+               clr: [{ d: "2026-10-25", who: "คุณกรานรุ้ง", cs: 4 },
+                     { d: "2026-10-30", who: "ลัดดาวัล", cs: 6 }], up: 2000 },
+    "ST-03": { id: "ST-03", d: "2026-10-29", own: "พี่แอ๊ะ", nm: "คนอร์", cs: 4, clr: [], up: 2000 },
+  }, del: {}, up: 2000 };
+  const c2 = mergeState(c1, round2);
+  check("อัพไฟล์รอบใหม่ที่ไม่มี ST-02 อยู่ในไฟล์ → ST-02 ต้องยังอยู่",
+        !!c2.CSTOCK.lots["ST-02"] && c2.CSTOCK.lots["ST-02"].cs === 11,
+        Object.keys(c2.CSTOCK.lots).join(","));
+  check("...ลอตเดิมรับรายการเคลียร์ใหม่ครบ (เคลียร์เพิ่มเป็น 2 ครั้ง)",
+        c2.CSTOCK.lots["ST-01"].clr.length === 2 &&
+        c2.CSTOCK.lots["ST-01"].clr[1].who === "ลัดดาวัล");
+  check("...และลอตใหม่เข้ามาด้วย", !!c2.CSTOCK.lots["ST-03"]);
+
+  // แท็บที่เปิดค้างไว้ก่อนแอดมินบันทึกการเคลียร์ ต้องย้อนยอดคืนไม่ได้
+  const stale = JSON.parse(JSON.stringify(base));
+  stale.CSTOCK = { lots: {
+    "ST-01": { id: "ST-01", d: "2026-10-22", own: "PT", nm: "คอมฟอร์ท อินโนเซนท์", cs: 10,
+               clr: [{ d: "2026-10-25", who: "คุณกรานรุ้ง", cs: 4 }], up: 900 },
+  }, del: {}, up: 900 };
+  const c3 = mergeState(c2, stale);
+  check("🛟 แท็บเก่า (up เก่ากว่า) ย้อนรายการเคลียร์ที่บันทึกไปแล้วไม่ได้",
+        c3.CSTOCK.lots["ST-01"].clr.length === 2,
+        JSON.stringify(c3.CSTOCK.lots["ST-01"].clr.length));
+
+  // ลบลอตที่คีย์ผิด ต้องใช้ tombstone และแท็บเก่าต้องปลุกกลับไม่ได้
+  const kill = JSON.parse(JSON.stringify(c3));
+  delete kill.CSTOCK.lots["ST-03"];
+  kill.CSTOCK.del = { "ST-03": 5000 };
+  const c4 = mergeState(c3, kill);
+  check("ลบลอตที่คีย์ผิดด้วย tombstone ได้จริง", !c4.CSTOCK.lots["ST-03"]);
+  const revive = JSON.parse(JSON.stringify(base));
+  revive.CSTOCK = { lots: { "ST-03": { id: "ST-03", nm: "คนอร์", cs: 4, clr: [], up: 2000 } }, del: {}, up: 2000 };
+  const c5 = mergeState(c4, revive);
+  check("🛟 แท็บเก่าปลุกลอตที่ลบไปแล้วกลับมาไม่ได้", !c5.CSTOCK.lots["ST-03"]);
+  const redo = JSON.parse(JSON.stringify(base));
+  redo.CSTOCK = { lots: { "ST-03": { id: "ST-03", nm: "คนอร์ (คีย์ใหม่)", cs: 4, clr: [], up: 9000 } }, del: {}, up: 9000 };
+  const c6 = mergeState(c5, redo);
+  check("...แต่ถ้าแอดมินคีย์ลอตนั้นกลับเข้ามาใหม่ (up ใหม่กว่า tombstone) ต้องได้",
+        !!c6.CSTOCK.lots["ST-03"] && c6.CSTOCK.lots["ST-03"].nm === "คนอร์ (คีย์ใหม่)");
+
+  const firstC = mergeState(null, { DATA: server.DATA, CSTOCK: srv.CSTOCK });
+  check("บันทึกครั้งแรกในที่เก็บว่าง ลอตไม่หาย", !!firstC.CSTOCK.lots["ST-01"]);
+  check("สต็อคกลางไม่ไปกวนก้อนอื่น",
+        Object.keys(c6.DATA.monthly).length === 2 && !!c6.PSTORE.rounds["2026-06-30"] &&
+        c6.ORDERS.dates.length === 2 && !!c6.PLAN && !!c6.PROMO && !!c6.PJP &&
+        Object.keys(c6.KPI.data).length === 2);
+  check("looksEmpty: บันทึกที่มีแต่สต็อคกลาง ยังไม่นับว่าเป็นข้อมูลจริง (เหมือน PLAN/PROMO)",
+        looksEmpty({ DATA: {}, CSTOCK: srv.CSTOCK }) === true);
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

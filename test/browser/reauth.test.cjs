@@ -21,7 +21,7 @@
  */
 const fs=require('fs');const path=require('path');
 const {chromium}=require('playwright-core');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 const ROOT=path.resolve(__dirname,'..','..');
 const ORIGIN='https://bd-reauth.test/';     /* ต้องมี origin จริง ไม่งั้น localStorage ถูกห้าม */
 

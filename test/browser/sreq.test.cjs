@@ -25,7 +25,7 @@
  */
 const fs=require('fs');const path=require('path');
 const {chromium}=require('playwright-core');
-const BROWSER=process.env.CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const BROWSER=require('./_chrome.cjs').chromePath();
 const PAGE=path.resolve(__dirname,'..','..','public','index.html');
 const SEED=path.resolve(__dirname,'..','..','api','seed-data.json');
 const ORIGIN='https://bd-sreq.test/';            /* ต้องมี origin จริง ไม่งั้น localStorage โดนห้าม */
