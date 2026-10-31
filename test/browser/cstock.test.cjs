@@ -266,6 +266,50 @@ function seed(a){
    del.n1===del.n0-1&&del.tomb,JSON.stringify(del));
  t('...การลบถึงจะสั่งบันทึกขึ้นเซิร์ฟเวอร์ (ต่างจากการแค่กดดู)',del.d===1,'sync +'+del.d);
 
+ /* ---------- 9) ปุ่มอัพโหลดต้องเปิดกลุ่มของแท็บตัวเอง ----------
+    เจ้าของเจอเอง 31 ต.ค. 69: กด "＋ อัพโหลดไฟล์" ในแท็บสต็อคกลาง แล้วเด้งช่องอัพ
+    "ยอดขายรายวัน / ยอดรายเดือน / ยอดรายร้าน" มาแทน เพราะ openUpload แมปแท็บไม่ครบ
+    แล้วมี `||"sales"` รับท้ายไว้ ทำให้แท็บใหม่ทุกแท็บตกไปเป็นยอดขายเงียบ ๆ */
+ const up=await ev(()=>{_switchTab('cstock');openUpload();
+   const rows=[...document.querySelectorAll('#modal .up-row')];
+   const vis=rows.filter(r=>r.style.display!=='none');
+   const o={title:document.getElementById('upTitle').textContent,
+     sub:document.getElementById('upSub').textContent,
+     vis:vis.map(r=>r.dataset.group),
+     labels:vis.map(r=>(r.querySelector('label b')||{}).textContent||''),
+     open:!document.getElementById('modal').classList.contains('hidden')};
+   closeUpload();return o;});
+ t('🔧 กดอัพโหลดในแท็บสต็อคกลาง → เปิดกลุ่มสต็อคกลาง ไม่ใช่ยอดขาย',
+   up.vis.length===1&&up.vis[0]==='cstock',up.vis.join(',')||'(ไม่มี)');
+ t('...เห็นเฉพาะช่องอัพสต็อคกลางช่องเดียว',
+   up.labels.length===1&&/สต็อคกลาง/.test(up.labels[0]),up.labels.join(' | '));
+ t('...และหัวกล่องบอกว่าเป็นไฟล์สต็อคกลาง',/สต็อคกลาง/.test(up.title),up.title);
+ t('...บรรทัดรองไม่บอกว่ามาจาก Unilever (ไฟล์นี้แอดมินกรอกเอง)',
+   !/Unilever/.test(up.sub)&&/โหลดไฟล์ฟอร์ม/.test(up.sub),up.sub);
+ t('...ไม่มีช่อง "ยอดขายรายวัน" โผล่มาให้อัพผิดช่อง',
+   !up.labels.some(x=>/ยอดขายรายวัน/.test(x)),up.labels.join(' | '));
+ /* กันพลาดแบบเดิมอีก: ทุกแท็บที่มีปุ่มอัพโหลด ต้องแมปไปกลุ่มที่มีอยู่จริง */
+ const cover=await ev(()=>{
+   const groups=[...new Set([...document.querySelectorAll('#modal .up-row')].map(r=>r.dataset.group))];
+   const bad=[],fallback=[];
+   TAB_GROUPS.forEach(G=>G.tabs.forEach(tb=>{
+     _switchTab(tb.t);
+     const v=document.getElementById(tb.t+'View');
+     const hasBtn=!!(v&&[...v.querySelectorAll('button')].some(b=>/อัพโหลดไฟล์/.test(b.textContent)));
+     if(!hasBtn)return;
+     openUpload();
+     const vis=[...document.querySelectorAll('#modal .up-row')].filter(r=>r.style.display!=='none');
+     const gs=[...new Set(vis.map(r=>r.dataset.group))];
+     closeUpload();
+     if(!vis.length)bad.push(tb.t+':ไม่เห็นช่องอะไรเลย');
+     else if(gs.length>1)fallback.push(tb.t+':โชว์ทุกกลุ่ม');
+   }));
+   return {groups:groups,bad:bad,fallback:fallback};});
+ t('🛟 ทุกแท็บที่มีปุ่มอัพโหลด เปิดมาแล้วเห็นช่องอัพของตัวเองเสมอ',
+   cover.bad.length===0,cover.bad.join(' · ')||'ok');
+ t('🛟 ...และไม่มีแท็บไหนตกไปโชว์กลุ่มมั่ว (แท็บที่ยังไม่ได้แมปจะโชว์ทุกกลุ่มให้เลือกเอง)',
+   cover.fallback.length===0,cover.fallback.join(' · ')||'ok');
+
  const real=errs.filter(e=>!/localStorage|SecurityError/.test(e));
  t('ไม่มี JavaScript error ตลอดเทสต์',real.length===0,real.join(' | '));
 

@@ -1541,7 +1541,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <label class="drop up-stock" for="fileStock2">📦 <b>สต็อกสินค้า</b><small>อัพทุกวัน · ไฟล์ Stock ...xlsx (อัปเดตชื่อสินค้า+จำนวนคงเหลือ)</small></label>
         <input id="fileStock2" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
-      <div class="up-row" data-group="stock">
+      <div class="up-row" data-group="cstock">
         <label class="drop up-stock" for="fileCStock">🧊 <b>สต็อคกลาง (ตัดบิลไว้ก่อน)</b><small>อัพทุกรอบที่เคลียร์ของออก · ไฟล์ฟอร์มที่โหลดจากแท็บ สต็อคกลาง</small></label>
         <input id="fileCStock" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
@@ -10834,10 +10834,19 @@ function pcTable(title,rows,key,cls,labOld,labNew){
 }
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){
-  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price"}[CURTAB]||"sales";
-  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์",dci:"📈 อัพไฟล์ DCI Score ของศูนย์",pjp:"🗺 อัพไฟล์ PJP & ร้านค้า",price:"💰 อัพไฟล์ราคา (หัวเสือ / BUM)"}[g];
+  /* ⚠️ แท็บไหนไม่ได้อยู่ในตารางนี้ ห้ามตกไปเป็น "sales" เงียบๆ — ตอนเพิ่มแท็บสต็อคกลาง
+     ลืมใส่บรรทัดนี้ กดปุ่มอัพโหลดในแท็บนั้นแล้วเด้งช่องอัพ "ยอดขายรายวัน" มาแทน
+     ไม่รู้จัก = โชว์ทุกกลุ่ม ให้ผู้ใช้เลือกเอง ดีกว่าโชว์กลุ่มที่ผิด */
+  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",
+    cstock:"cstock",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price"}[CURTAB]||null;
+  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",cstock:"🧊 อัพไฟล์สต็อคกลาง (ตัดบิลไว้ก่อน)",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์",dci:"📈 อัพไฟล์ DCI Score ของศูนย์",pjp:"🗺 อัพไฟล์ PJP & ร้านค้า",price:"💰 อัพไฟล์ราคา (หัวเสือ / BUM)"}[g];
   document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
-  document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=el.dataset.group===g?"":"none";});
+  /* ไฟล์สต็อคกลางแอดมินกรอกเอง ไม่ได้มาจาก Unilever — บรรทัดรองต้องไม่บอกผิด */
+  {const sub=document.getElementById("upSub");
+   if(sub)sub.textContent=(g==="cstock")
+     ?"ไฟล์ฟอร์มที่แอดมินกรอก — กด ⬇️ โหลดไฟล์ฟอร์ม ในแท็บนี้ก่อน แล้วอัพกลับเข้ามา"
+     :"เลือกไฟล์ .xlsx/.xls จาก Unilever — อัปเดตทันที";}
+  document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=(!g||el.dataset.group===g)?"":"none";});
   document.getElementById("modal").classList.remove("hidden");
 }
 function closeUpload(){document.getElementById("modal").classList.add("hidden");}

@@ -390,7 +390,11 @@ code, never printed.
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove it with
-  **`node test/browser/cstock.test.cjs`** (46 checks). Rules: `HANDOFF.md` §5.
+  **`node test/browser/cstock.test.cjs`** (53 checks). Rules: `HANDOFF.md` §5.
+  Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
+  map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales
+  slots. An unmapped tab now shows every group instead of the wrong one, and the cstock test walks
+  every tab that has an upload button to prove each opens its own.
 - `test/browser/_chrome.cjs` — finds the installed Chromium at run time. Never hard-code a
   `/opt/pw-browsers/chromium-NNNN/...` path in a test again: the image moved once and took all 15
   browser tests down with it.
