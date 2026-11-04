@@ -287,7 +287,7 @@ function seed(a){
  t('🔧 กดอัพโหลดในแท็บสต็อคกลาง → เปิดกลุ่มสต็อคกลาง ไม่ใช่ยอดขาย',
    up.vis.length>0&&up.vis.every(g=>g==='cstock'),up.vis.join(',')||'(ไม่มี)');
  t('...เห็นเฉพาะช่องอัพของสต็อคกลาง: ไฟล์ร้านที่ตัดบิลเข้า + ฟอร์ม Excel วิธีเดิม',
-   up.labels.length===2&&/Ex\.export/.test(up.labels[0])&&/สต็อคกลาง/.test(up.labels[1]),
+   up.labels.length===2&&/ร้านที่ตัดบิลเข้า/.test(up.labels[0])&&/สต็อคกลาง/.test(up.labels[1]),
    up.labels.join(' | '));
  t('...และหัวกล่องบอกว่าเป็นไฟล์สต็อคกลาง',/สต็อคกลาง/.test(up.title),up.title);
  t('...บรรทัดรองไม่บอกว่ามาจาก Unilever (ไฟล์นี้แอดมินถือเอง)',
@@ -778,6 +778,198 @@ function seed(a){
    t('...จับคู่ใบตัดบิลจากวันที่ในไฟล์ได้เองโดยไม่ต้องเลือกใบ',!!r.attached,r.sid);
  }else{
    console.log('  (ข้าม 5 เช็ค: ไม่มี test/browser/fixtures/ex-export.xlsx ในเครื่องนี้)');
+ }
+
+ /* ==========================================================================
+  * 17) ☑️ ติ๊กหลายแถว แล้วปรับทีเดียว
+  *     เจ้าของขอเอง 4 พ.ย. 69: *"ต้องการกรอก KA97 ทั้งใบ สามารถกดให้ติ๊กรายการที่จะปรับ
+  *     และมีปุ่มปรับทุกรายการให้เป็น KA97 ได้ในครั้งเดียว"*
+  * ======================================================================== */
+ const bulk=await ev(()=>{
+   CST.sec='bill';cstNew();
+   CST.f.rows=[];CST.f.seq=0;cstRowAdd(5);
+   CST.f.rows.forEach((r,i)=>{r.code='65660382';r.nm='โอโม ซอฟท์ ทัช';r.cs=1;r.ln='CT11';r.own='Supervisor';});
+   renderCStock();
+   const o={rows:CST.f.rows.length,boxes:document.querySelectorAll('#cstBill .cst-ft tbody input[type=checkbox]').length,
+     barOff:/ติ๊กหน้าแถวที่ต้องการ/.test(document.querySelector('#cstBill .cst-bulk').textContent)};
+   /* ติ๊ก 3 แถว แล้วปรับเป็น KA97 */
+   cstSelTog(0);cstSelTog(2);cstSelTog(4);
+   o.n=cstSelN();
+   o.bar=/ติ๊กไว้ 3 แถว/.test(document.querySelector('#cstBill .cst-bulk').textContent);
+   o.hl=document.querySelectorAll('#cstBill .cst-ft tbody tr.on').length;
+   cstBulk('ln','KA97');
+   o.lines=CST.f.rows.map(r=>r.ln).join(',');
+   cstBulk('own','KA97');
+   o.owns=CST.f.rows.map(r=>r.own).join(',');
+   cstBulk('cs','7');
+   o.cs=CST.f.rows.map(r=>+r.cs||0).join(',');
+   cstBulk('pc','12');
+   o.pc=CST.f.rows.map(r=>+r.pc||0).join(',');
+   return o;});
+ t('ทุกแถวมีช่องติ๊ก และแถบปรับหลายแถวบอกวิธีใช้ตอนยังไม่ได้ติ๊ก',
+   bulk.rows===5&&bulk.boxes===5&&bulk.barOff,bulk.boxes+' ช่อง');
+ t('☑️ ติ๊ก 3 แถว → แถบบอกจำนวน และแถวที่ติ๊กไฮไลต์',
+   bulk.n===3&&bulk.bar&&bulk.hl===3,bulk.n+' แถว · ไฮไลต์ '+bulk.hl);
+ t('🔑 กด "ปรับสายวิ่ง" เป็น KA97 → เฉพาะ 3 แถวที่ติ๊กเปลี่ยน แถวอื่นอยู่เหมือนเดิม',
+   bulk.lines==='KA97,CT11,KA97,CT11,KA97',bulk.lines);
+ t('...ปรับผู้รับผิดชอบพร้อมกันได้เหมือนกัน',
+   bulk.owns==='KA97,Supervisor,KA97,Supervisor,KA97',bulk.owns);
+ t('...ปรับจำนวนลัง/ชิ้นพร้อมกันได้',
+   bulk.cs==='7,1,7,1,7'&&bulk.pc==='12,0,12,0,12',bulk.cs+' / '+bulk.pc);
+ const bulk2=await ev(()=>{
+   const o={};
+   /* ปรับสินค้าทั้งชุดจากรหัสเดียว */
+   MASTER.items['64852733']='คนอร์โจ๊กซองรสไก่10บ. 8x12x28';
+   cstBulk('code','64852733');
+   o.codes=CST.f.rows.map(r=>r.code).join(',');
+   o.names=CST.f.rows.map(r=>r.nm).filter(n=>/โจ๊ก/.test(n)).length;
+   /* ติ๊กทั้งหมด / ล้างติ๊ก */
+   cstSelAll(true);o.all=cstSelN();
+   cstSelAll(false);o.none=cstSelN();
+   /* ไม่ได้ติ๊กอะไรแล้วกดปุ่ม ต้องเตือน ไม่ใช่เงียบ หรือไปปรับทั้งใบ */
+   window.__alerts=[];const before=CST.f.rows.map(r=>r.ln).join(',');
+   cstBulk('ln','CT12');cstBulkDel();cstBulkSpread();
+   o.warn=window.__alerts.length;o.same=CST.f.rows.map(r=>r.ln).join(',')===before;
+   /* ลบเฉพาะแถวที่ติ๊ก */
+   cstSelTog(1);cstSelTog(3);cstBulkDel();
+   o.left=CST.f.rows.length;
+   /* กระจายทุกสายจากแถวที่ติ๊ก */
+   cstSelAll(false);cstSelTog(0);cstBulkSpread();
+   o.spread=CST.f.rows.length;
+   o.lines=[...new Set(CST.f.rows.map(r=>r.ln))].length;
+   return o;});
+ /* ยังติ๊กอยู่ 3 แถวเหมือนเดิม การปรับสินค้าจึงต้องลงเฉพาะ 3 แถวนั้น ไม่ใช่ทั้งใบ */
+ t('...ปรับสินค้าทั้งชุดจากรหัสเดียว แล้วชื่อมาจาก master data ให้เอง (เฉพาะแถวที่ติ๊ก)',
+   bulk2.codes==='64852733,65660382,64852733,65660382,64852733'&&bulk2.names===3,
+   bulk2.codes+' · '+bulk2.names+' แถว');
+ t('ติ๊กทั้งหมด / ล้างติ๊ก ทำงานถูก',bulk2.all===5&&bulk2.none===0,bulk2.all+' → '+bulk2.none);
+ t('🛟 ยังไม่ได้ติ๊กแล้วกดปุ่มปรับ/ลบ/กระจาย → เตือนทั้ง 3 ปุ่ม และไม่แก้อะไรเลย',
+   bulk2.warn===3&&bulk2.same,bulk2.warn+' คำเตือน');
+ t('🗑 ลบเฉพาะแถวที่ติ๊ก (5 − 2 = 3)',bulk2.left===3,bulk2.left+' แถว');
+ t('⇉ กระจายทุกสายจากแถวที่ติ๊กได้เหมือนกัน',
+   bulk2.spread>=12&&bulk2.lines>=12,bulk2.spread+' แถว · '+bulk2.lines+' สาย');
+ await ev(()=>{cstFormClear&&(CST.f=null);try{localStorage.removeItem(cstDraftKey());}catch(e){}});
+
+ /* ==========================================================================
+  * 18) 📥 นำเข้าลอตเก่า 4 ใบ (ไฟล์ 4-11_Stock ของแอดมิน 1 + Stock_2026 ของแอดมิน 2)
+  *     ตัวเลขทุกตัวด้านล่างมาจากไฟล์จริงทั้งสองไฟล์ ถ้าแก้ตารางนำเข้าแล้วเลขเพี้ยน เทสจะฟ้อง
+  * ======================================================================== */
+ const imp=await ev(()=>{
+   CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};
+   CST.f=null;CST.sopen={};CST.open={};
+   const s0=window.__sync;
+   const r1=cstImport(),r2=cstImport();          /* รอบสองต้องไม่เพิ่มอะไร */
+   const sum=sid=>{const rows=cstSlipRows(sid);const by={};
+     rows.forEach(l=>{const o=by[l.code]||(by[l.code]={cs:0,pc:0,clr:0,n:0});
+       o.cs+=+l.cs||0;o.pc+=+l.pc||0;o.clr+=cstClrCs(l);o.n++;});
+     return by;};
+   return {r1:r1,r2:r2,sync:window.__sync-s0,
+     slips:cstSlipList().map(s=>s.id).join(','),
+     a:sum('B20261019-01'),b:sum('B20261022-01'),c:sum('B20261027-01'),d:sum('B20261029-01'),
+     dates:[...new Set(cstSlipRows('B20261027-01').map(l=>l.d))].sort().join(','),
+     nw:CSTOCK.slips['B20261027-01'].nw,
+     ng19:CSTOCK.slips['B20261019-01'].ng,
+     left19:cstSlipRows('B20261019-01').reduce((x,l)=>x+cstLeft(l),0),
+     pc19:cstSlipRows('B20261019-01').reduce((x,l)=>x+((+l.pc||0)-cstClrPc(l)),0),
+     noLn:cstSlipRows('B20261027-01').filter(l=>!l.ln).length};});
+ t('📥 นำเข้า 4 ใบ 44 แถว ในครั้งเดียว',
+   imp.r1.slips===4&&imp.r1.rows===44,JSON.stringify(imp.r1));
+ t('🛟 นำเข้าซ้ำไม่เพิ่มอะไรเลย (กันกดซ้ำ / เปิดหลายเครื่อง)',
+   imp.r2.slips===0&&imp.r2.rows===0&&imp.r2.skip===4,JSON.stringify(imp.r2));
+ t('...และสั่งบันทึกขึ้นเซิร์ฟเวอร์ครั้งเดียว',imp.sync===1,'sync +'+imp.sync);
+ t('ใบครบ 4 ใบตามลอตจริง',
+   imp.slips==='B20261029-01,B20261027-01,B20261022-01,B20261019-01',imp.slips);
+ /* ใบ 19 ต.ค. — ชีต "ซอฟทัชชุด1" */
+ t('ใบ 19 ต.ค.: โอโม ซอฟท์ ทัช 64 ลัง (8 สาย × 8) เคลียร์ส่งคุณกรานต์รุ้งหมดแล้ว',
+   imp.a['65660382']&&imp.a['65660382'].cs===64&&imp.a['65660382'].n===8&&imp.a['65660382'].clr===64,
+   JSON.stringify(imp.a['65660382']));
+ t('...โอโมน้ำ พิงค์ ฟลอรัล ตัดบิลจริง 80 ลัง 192 ชิ้น เคลียร์ไป 55 ลัง',
+   imp.a['64829046']&&imp.a['64829046'].cs===80&&imp.a['64829046'].pc===192&&imp.a['64829046'].clr===55,
+   JSON.stringify(imp.a['64829046']));
+ t('🔑 คงเหลือตรงกับที่เจ้าของเขียนไว้เอง: 25 ลัง + 192 ชิ้น = 30 ลัง 12 ชิ้น (36 ชิ้น/ลัง)',
+   imp.left19===25&&imp.pc19===192,imp.left19+' ลัง '+imp.pc19+' ชิ้น');
+ t('...และโน้ตอธิบายที่มาของตัวเลขไว้ในใบ ไม่ปล่อยให้งงทีหลัง',
+   /85 ลัง 12 ชิ้น/.test(imp.ng19)&&/36 ชิ้น\/ลัง/.test(imp.ng19)&&/708 บิล/.test(imp.ng19),
+   (imp.ng19.match(/หมายเหตุตัวเลข[^\n]*/)||[''])[0].slice(0,80));
+ /* ใบ 22 ต.ค. — ชีต "สต็อคPT" */
+ t('ใบ 22 ต.ค. (PT): คอมฟอร์ท 2 ตัว ตัวละ 5 ลัง · เบิกส่ง PT ไปแล้ว 3 ลัง',
+   imp.b['69724339'].cs===5&&imp.b['69724339'].clr===3&&imp.b['69593551'].cs===5&&
+   imp.b['69593551'].clr===0,JSON.stringify(imp.b));
+ /* ใบ 27 ต.ค. — ชีต "ซอฟทัชชุด2" */
+ t('ใบ 27 ต.ค.: โอโม ซอฟท์ ทัช 39 ลัง (14 แถว 4 วัน) ส่งสองเมืองหมดแล้ว',
+   imp.c['65660382'].cs===39&&imp.c['65660382'].n===14&&imp.c['65660382'].clr===39,
+   JSON.stringify(imp.c['65660382']));
+ t('🔑 ใบเดียวที่ตัดบิลหลายวัน เก็บวันของแต่ละแถวไว้ครบ ไม่ถูกวันของใบทับ',
+   imp.dates==='2026-10-27,2026-10-29,2026-10-30,2026-10-31',imp.dates);
+ t('⚠️ โอโมน้ำ พิงค์ ฟลอรัล ของใบนี้ใช้ยอดที่ตัดบิลจริง 16 ลัง 48 ชิ้น (ไฟล์รวมไว้ 10 ลัง 24 ชิ้น)',
+   imp.c['64829046'].cs===16&&imp.c['64829046'].pc===48,JSON.stringify(imp.c['64829046']));
+ t('...แถวที่ไฟล์ไม่ได้ระบุสาย เก็บเป็น "ไม่ระบุ" ไม่ใช่เดาสายให้',imp.noLn===1,imp.noLn+' แถว');
+ t('Note ถึงคลังมาจากข้อความที่เขียนไว้ท้ายชีตจริง',
+   /ของแถมเอาเข้าลอย/.test(imp.nw)&&/จัดของแต่ตัวขาย/.test(imp.nw),imp.nw);
+ /* ใบ 29 ต.ค. — ชีต "สต็อคซุป" */
+ t('ใบ 29 ต.ค.: คนอร์ซุปก้อน 4 ลัง 48 ชิ้น (4 แถว) ยังไม่ได้เคลียร์',
+   imp.d['65546800'].cs===4&&imp.d['65546800'].pc===48&&imp.d['65546800'].n===4&&
+   imp.d['65546800'].clr===0,JSON.stringify(imp.d['65546800']));
+ /* 🛟 ลบทิ้งแล้วต้องไม่ถูกนำเข้ากลับมาอีก */
+ const impDel=await ev(()=>{
+   cstSlipDel('B20261029-01');
+   const gone=!CSTOCK.slips['B20261029-01']&&!!CSTOCK.sdel['B20261029-01'];
+   const r=cstImport();
+   return {gone:gone,back:!!CSTOCK.slips['B20261029-01'],r:r};});
+ t('🛟 ใบที่ลบทิ้งแล้ว นำเข้าอีกกี่รอบก็ไม่กลับมา (ใช้ tombstone เดิม)',
+   impDel.gone&&!impDel.back&&impDel.r.slips===0,JSON.stringify(impDel.r));
+ /* 🛟 นำเข้าแล้วต้องไม่ไปแตะก้อนข้อมูลอื่น */
+ const impBefore=await ev(new Function('return '+BLOBS));
+ await ev(()=>{CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};cstImport();});
+ const impAfter=await ev(new Function('return '+BLOBS));
+ t('🛟 การนำเข้าแตะแค่สต็อคกลาง ก้อนอื่นเหมือนเดิมทุกไบต์',impAfter===impBefore,'ok');
+ /* เซลล์เรียกเองไม่ได้ */
+ t('🛟 เซลล์สั่งนำเข้าเองไม่ได้',
+   await ev(()=>{const u=S.user;S.user={id:'ct11',role:'sales',code:'209611',name:'CT11'};
+     const n0=Object.keys(CSTOCK.slips).length;CSTOCK.slips={};
+     const r=cstImport();const ok=r===null&&!Object.keys(CSTOCK.slips).length;
+     S.user=u;cstImport();return ok;}),'ok');
+
+ /* ==========================================================================
+  * 19) 📄 ไฟล์สรุป Stock ของแอดมิน 2 — หลายลอตในไฟล์เดียว (ถ้ามีไฟล์จริงในเครื่อง)
+  *     ⛔ ไม่ commit — มีชื่อร้านลูกค้าจริง 906 บิล (ดู .gitignore)
+  * ======================================================================== */
+ const F_ST=path.join(__dirname,'fixtures','stock-2026.xlsx');
+ if(fs.existsSync(F_ST)){
+   const st=await ev(a=>{
+     CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};cstImport();
+     window.__log=[];CST.exFor='';
+     const s0=window.__sync;let err='';
+     try{cstExTake('Stock_2026.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)));}
+     catch(e){err=String(e.message||e);}
+     const ex={};Object.keys(CSTOCK.ex).forEach(k=>{const e=CSTOCK.ex[k];
+       ex[k]={n:e.n,val:e.val,stores:new Set(e.rows.map(r=>r.c)).size,first:e.rows[0]};});
+     return {err:err,ex:ex,sync:window.__sync-s0,log:window.__log.join('\n'),
+       slip:JSON.stringify(CSTOCK.slips['B20261019-01'].ng).length>100};
+   },{b64:fs.readFileSync(F_ST).toString('base64')});
+   t('📄 อ่านไฟล์สรุป Stock ของแอดมิน 2 ได้ทั้ง 4 บล็อกในครั้งเดียว',
+     !st.err&&Object.keys(st.ex).length===4,st.err||Object.keys(st.ex).join(','));
+   t('🔑 บล็อก "Stock PT" ไปเกาะใบ 22 ต.ค. (30 บิล · 2,228.40 บาท)',
+     st.ex['B20261022-01']&&st.ex['B20261022-01'].n===30&&
+     Math.abs(st.ex['B20261022-01'].val-2228.4)<0.01,JSON.stringify(st.ex['B20261022-01']||{}).slice(0,80));
+   t('🔑 บล็อก "Stock สองเมือง" ไปเกาะใบ 19 ต.ค. (708 บิล · 35,130.96 บาท)',
+     st.ex['B20261019-01']&&st.ex['B20261019-01'].n===708&&
+     Math.abs(st.ex['B20261019-01'].val-35130.96)<0.01,JSON.stringify(st.ex['B20261019-01']||{}).slice(0,80));
+   t('🔑 บล็อก "Stock พี่แอ๊ะ รับผิดชอบ" ไปเกาะใบ 27 ต.ค. (132 บิล · 6,549.84 บาท)',
+     st.ex['B20261027-01']&&st.ex['B20261027-01'].n===132&&
+     Math.abs(st.ex['B20261027-01'].val-6549.84)<0.01,JSON.stringify(st.ex['B20261027-01']||{}).slice(0,80));
+   t('🔑 บล็อก "คนอร์" ไปเกาะใบ 29 ต.ค. (36 บิล · 3,515.04 บาท)',
+     st.ex['B20261029-01']&&st.ex['B20261029-01'].n===36&&
+     Math.abs(st.ex['B20261029-01'].val-3515.04)<0.01,JSON.stringify(st.ex['B20261029-01']||{}).slice(0,80));
+   t('...รหัสร้าน/ชื่อร้าน/เลขที่ INV. อ่านมาถูกคอลัมน์',
+     /^\d{7}$/.test(st.ex['B20261022-01'].first.c)&&!!st.ex['B20261022-01'].first.n&&
+     /^MF\d+$/.test(st.ex['B20261022-01'].first.dn),JSON.stringify(st.ex['B20261022-01'].first));
+   t('...บันทึกขึ้นเซิร์ฟเวอร์ครั้งเดียวสำหรับทั้งไฟล์',st.sync===1,'sync +'+st.sync);
+   t('...บันทึกการอัพบอกชัดว่าบล็อกไหนไปใบไหน',
+     (st.log.match(/→ ใบ B\d{8}-\d{2}/g)||[]).length===4,
+     (st.log.split('\n')[0]||'').replace(/<[^>]*>/g,'').slice(0,90));
+ }else{
+   console.log('  (ข้าม 8 เช็ค: ไม่มี test/browser/fixtures/stock-2026.xlsx ในเครื่องนี้)');
  }
 
  const real=errs.filter(e=>!/localStorage|SecurityError/.test(e));

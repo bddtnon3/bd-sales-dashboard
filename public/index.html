@@ -317,6 +317,15 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cst-sg.none{cursor:default;color:var(--muted)}
 .cst-sg.none:hover{background:#fff}
 .cst-fb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+/* ☑️ ปรับหลายแถวพร้อมกัน */
+.cst-bulk{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;
+  background:var(--blue-soft);border:1.5px solid #BBD2F5;border-radius:10px;padding:8px 11px;font-size:12.5px}
+.cst-bulk.off{background:var(--bg);border-color:var(--line);color:var(--muted)}
+.cst-bg{display:flex;gap:4px;align-items:center}
+.cst-bulk select,.cst-bulk input{padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;
+  font-size:12.5px;font-family:inherit;background:#fff}
+.cst-ft tr.on>td{background:#EAF1FD}
+.cst-ft td.n input[type=checkbox],.cst-ft th input[type=checkbox]{width:17px;height:17px;cursor:pointer}
 .cst-nb{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}
 .cst-nb label{display:block;font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:3px}
 .cst-nb textarea{width:100%;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;
@@ -1623,7 +1632,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <input id="fileStock2" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="cstock">
-        <label class="drop up-stock" for="fileCStockEx">🏪 <b>ร้านที่ตัดบิลเข้า (Ex.export)</b><small>ไฟล์ Ex.export.xlsx จากระบบ — บอกว่าบิลสต็อคกลางรอบนั้นตัดเข้าร้านไหน · <b>แนบทีหลังได้</b> ระบบจับคู่ใบตัดบิลจากวันที่วางบิล</small></label>
+        <label class="drop up-stock" for="fileCStockEx">🏪 <b>ร้านที่ตัดบิลเข้า</b><small>ไฟล์ <b>Ex.export.xlsx</b> (รอบเดียว) หรือ <b>ไฟล์สรุป Stock ของแอดมิน 2</b> (หลายลอตในไฟล์เดียว ระบบแยกให้เอง) · <b>แนบทีหลังได้</b> จับคู่ใบตัดบิลจากวันที่ให้อัตโนมัติ</small></label>
         <input id="fileCStockEx" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="cstock">
@@ -2115,6 +2124,7 @@ async function loadData(){
     LEADSRAW=[];LEADSLOADED=false;   /* shop applications are re-fetched per session */
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();initPlan();initPromo();initPjp();navReset();
+    try{cstImport();}catch(e){console.error("cstImport",e);}   /* นำเข้าลอตเก่า 4 ใบ ครั้งเดียว (ดูหมายเหตุที่ cstImpDefs) */
     _switchTab("sales");   /* never leave the previous user's tab (incl. manager-only ones) open */
   }catch(ex){alert("โหลดข้อมูลจากเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
 }
@@ -9070,6 +9080,16 @@ function cstSlipList(){
     .sort((a,b)=>String(b.d||"").localeCompare(String(a.d||""))||(+b.at||0)-(+a.at||0));
 }
 function cstSlipCs(sid){return cstSlipRows(sid).reduce((s,l)=>s+(+l.cs||0),0);}
+/* มูลค่าของแถว — ไฟล์ของแอดมิน 1 ไม่ได้ให้มูลค่ารายสินค้า มีแต่ยอดรวมของบิลในไฟล์แอดมิน 2
+   ถ้าแถวไม่มีมูลค่าของตัวเอง จึงเฉลี่ยจากยอดรวมของใบตามสัดส่วนลัง — เป็น "ประมาณ" เท่านั้น
+   (การ์ดสรุปเขียนกำกับไว้แล้วว่าประมาณจากสัดส่วนที่เหลือ) ห้ามเอาไปใช้เป็นตัวเลขทางบัญชี */
+function cstVal(l){
+  if(+l.val)return +l.val;
+  const ex=l&&l.sl?cstOk().ex[l.sl]:null;
+  if(!ex||!(+ex.val))return 0;
+  const tot=cstSlipCs(l.sl);
+  return tot>0?(+ex.val)*((+l.cs||0)/tot):0;
+}
 function cstSlipPc(sid){return cstSlipRows(sid).reduce((s,l)=>s+(+l.pc||0),0);}
 /* สถานะของแถว — เจ้าของสั่ง: "ให้รายการออเดอร์ขึ้นไปเป็นสถานะรอจัดส่ง รอเคลียร์
    เพื่อให้ทางเซลล์ไปขายกันมา" · สถานะคิดสดจากรายการเคลียร์ ไม่เคยเก็บเป็นฟิลด์
@@ -9282,28 +9302,112 @@ function parseCStockEx(name,buf){
   return {file:name,d:d,rows:out,n:out.length,val:Math.round(val*100)/100,skip:skip,
     stores:Object.keys(out.reduce((m,x)=>{m[x.c]=1;return m;},{})).length};
 }
+/* ---------- ไฟล์สรุปของแอดมิน 2 (Stock_2026.xlsx) ----------
+   คนละหน้าตากับ Ex.export: ไฟล์เดียวมีหลาย "บล็อก" (ลอตละบล็อก) ต่อกันลงมาในชีตเดียว
+     <ชื่อลอต>                         ← บรรทัดหัวข้อ
+     เส้นทาง · วันที่ใบแจ้งหนี้ · เลขที่ INV. · รหัสร้านค้า · รายชื่อลูกหนี้ · หัวเรื่องคำสั่ง · จำนวนเงิน
+     <แถวบิล …>
+   อ่านหัวตารางจากข้อความเหมือนทุกที่ ห้ามใช้เลขคอลัมน์ตายตัว */
+const CST_ST_H={rt:"เส้นทาง",d:"วันที่ใบแจ้งหนี้",inv:"เลขที่INV.",sc:"รหัสร้านค้า",
+  sn:"รายชื่อลูกหนี้",tag:"หัวเรื่องคำสั่ง",val:"จำนวนเงิน"};
+function cstExStock(rows){
+  const blocks=[];
+  for(let i=0;i<rows.length;i++){
+    const h=(rows[i]||[]).map(cstExNorm);
+    const idx={};Object.keys(CST_ST_H).forEach(k=>{idx[k]=h.indexOf(CST_ST_H[k]);});
+    if(idx.sc<0||idx.inv<0||idx.val<0)continue;
+    let title="";
+    for(let j=i-1;j>=0&&j>=i-4;j--){
+      const t=(rows[j]||[]).map(x=>String(x==null?"":x).trim()).filter(Boolean);
+      if(t.length){title=t.join(" · ");break;}
+    }
+    const out=[],dc={},lc={};let val=0,j=i+1;
+    for(;j<rows.length;j++){
+      const r=rows[j]||[];
+      const sc=String(r[idx.sc]==null?"":r[idx.sc]).trim();
+      if(!sc)break;                                  /* จบบล็อก */
+      const v=parseFloat(String(r[idx.val]==null?"":r[idx.val]).replace(/,/g,""))||0;
+      const d=cstDate(r[idx.d]);if(d)dc[d]=(dc[d]||0)+1;
+      const rt=String(r[idx.rt]==null?"":r[idx.rt]).trim();if(rt)lc[rt]=(lc[rt]||0)+1;
+      if(out.length<CST_EX_MAX)out.push({c:sc,n:String(r[idx.sn]==null?"":r[idx.sn]).trim(),
+        v:Math.round(v*100)/100,dn:String(r[idx.inv]==null?"":r[idx.inv]).trim()});
+      val+=v;
+    }
+    if(out.length)blocks.push({title:title,rows:out,n:out.length,val:Math.round(val*100)/100,
+      dates:dc,lines:lc,d:Object.keys(dc).sort((a,b)=>dc[b]-dc[a])[0]||"",
+      stores:Object.keys(out.reduce((m,x)=>{m[x.c]=1;return m;},{})).length});
+    i=j-1;
+  }
+  return blocks;
+}
+/* บล็อกนี้เป็นของใบไหน — ให้คะแนนจาก "วันที่ตัดบิลตรงกัน" เป็นหลัก แล้วค่อยดูสาย
+   ห้ามเดาเมื่อไม่มีอะไรตรงเลย (คืน null แล้วให้คนเลือกเอง) */
+function cstExMatch(b,slips){
+  let best=null,bs=0;
+  slips.forEach(s=>{
+    const rows=cstSlipRows(s.id);
+    const ds={},ls={};
+    if(s.d)ds[s.d]=1;
+    rows.forEach(l=>{if(l.d)ds[l.d]=1;if(l.ln)ls[l.ln]=1;});
+    let sc=0;
+    Object.keys(b.dates).forEach(d=>{if(ds[d])sc+=10*b.dates[d];});
+    if(!sc)return;                                   /* ไม่มีวันไหนตรงเลย = ไม่ใช่ใบนี้ */
+    Object.keys(b.lines).forEach(rt=>{if(ls[FOCUS_MAP[rt]||rt])sc+=b.lines[rt];});
+    if(b.d&&s.d===b.d)sc+=5*b.n;                     /* วันหลักของบล็อก = วันของใบ */
+    if(sc>bs){bs=sc;best=s;}
+  });
+  return best;
+}
+function cstExRead(name,buf){
+  const wb=XLSX.read(buf,{type:"array",cellDates:true});
+  for(const sn of wb.SheetNames){
+    const bl=cstExStock(XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:null}));
+    if(bl.length)return {kind:"stock",file:name,blocks:bl};
+  }
+  return Object.assign({kind:"ex"},parseCStockEx(name,buf));
+}
 /* อัพไฟล์เข้ามาแล้วต้องรู้ว่าเป็นของ "ใบไหน" — ถ้ากดจากปุ่มในใบ ก็ใช้ใบนั้น
    ถ้าอัพจากกล่องอัพโหลดรวม ให้จับคู่จากวันที่วางบิล และถ้าไม่ชัดต้องฟ้อง ไม่ใช่เดา */
-function cstExTake(name,buf){
-  const o=parseCStockEx(name,buf);
-  const C=cstOk();
-  let sid=CST.exFor||"";
-  if(sid&&!C.slips[sid])sid="";
-  if(!sid){
-    const same=cstSlipList().filter(s=>s.d&&o.d&&s.d===o.d);
-    if(same.length===1)sid=same[0].id;
-    else if(!same.length)throw new Error("ยังไม่มีใบตัดบิลของวันที่ "+(o.d?fmtDate(o.d):"ในไฟล์")+
-      " — สร้างใบตัดบิลก่อน แล้วกดปุ่ม 📎 แนบไฟล์ร้าน ในใบนั้น");
-    else throw new Error("วันที่ "+fmtDate(o.d)+" มีใบตัดบิลอยู่ "+same.length+
-      " ใบ — ให้กดปุ่ม 📎 แนบไฟล์ร้าน ในใบที่ต้องการ ระบบจะได้แนบใบถูกต้อง");
-  }
-  const now=Date.now();
-  C.ex[sid]={file:o.file,d:o.d,n:o.n,val:o.val,rows:o.rows,up:now,by:(S.user&&S.user.name)||""};
+function cstExSet(sid,o,name){
+  const C=cstOk(),now=Date.now();
+  C.ex[sid]={file:name,d:o.d,n:o.n,val:o.val,rows:o.rows,up:now,by:(S.user&&S.user.name)||""};
   if(C.sdel[sid]&&C.sdel[sid]<now)delete C.sdel[sid];
-  C.up=now;CST.exFor="";CST.sopen[sid]=1;
-  ulog("✅ "+name+" (ร้านที่ตัดบิลเข้า) → ใบ "+sid+" · "+o.n.toLocaleString()+" บิล · "+
+  C.up=now;CST.sopen[sid]=1;
+  ulog("✅ "+name+(o.title?" · "+o.title:"")+" → ใบ "+sid+" · "+o.n.toLocaleString()+" บิล · "+
     o.stores.toLocaleString()+" ร้าน · รวม "+THB(o.val)+(o.skip?" · ข้ามบิลที่ถูกยกเลิก "+o.skip+" ใบ":""));
   if(o.n>=CST_EX_MAX)ulog("&nbsp;&nbsp;↳ ⚠️ ไฟล์มีแถวเยอะมาก เก็บรายร้านไว้ "+CST_EX_MAX.toLocaleString()+" แถวแรก (ยอดรวมนับครบทุกแถว)");
+}
+function cstExTake(name,buf){
+  const o=cstExRead(name,buf);
+  const C=cstOk();
+  if(o.kind==="stock"){
+    /* ไฟล์ของแอดมิน 2 — ลอตละบล็อก แนบให้ครบทุกบล็อกในครั้งเดียว */
+    const slips=CST.exFor&&C.slips[CST.exFor]?[C.slips[CST.exFor]]:cstSlipList();
+    if(!slips.length)throw new Error("ยังไม่มีใบตัดบิลในระบบ — สร้างใบตัดบิลก่อนแล้วค่อยอัพไฟล์นี้");
+    let done=0;const miss=[];
+    o.blocks.forEach(b=>{
+      const s=cstExMatch(b,slips);
+      if(!s){miss.push(b.title||("บล็อกวันที่ "+(b.d||"?")));return;}
+      cstExSet(s.id,b,name);done++;
+    });
+    CST.exFor="";
+    if(!done)throw new Error("จับคู่บล็อกในไฟล์กับใบตัดบิลไม่ได้เลย ("+o.blocks.length+" บล็อก) — "+
+      "วันที่ในไฟล์ไม่ตรงกับใบไหนเลย ลองสร้าง/แก้วันที่ตัดบิลให้ตรงก่อน");
+    if(miss.length)ulog("&nbsp;&nbsp;↳ ⚠️ จับคู่ไม่ได้ "+miss.length+" บล็อก: "+miss.join(" · ")+
+      " — ถ้าต้องการ ให้กด 📎 แนบไฟล์ร้าน ในใบนั้นแล้วอัพซ้ำ");
+  }else{
+    let sid=CST.exFor||"";
+    if(sid&&!C.slips[sid])sid="";
+    if(!sid){
+      const same=cstSlipList().filter(s=>s.d&&o.d&&s.d===o.d);
+      if(same.length===1)sid=same[0].id;
+      else if(!same.length)throw new Error("ยังไม่มีใบตัดบิลของวันที่ "+(o.d?fmtDate(o.d):"ในไฟล์")+
+        " — สร้างใบตัดบิลก่อน แล้วกดปุ่ม 📎 แนบไฟล์ร้าน ในใบนั้น");
+      else throw new Error("วันที่ "+fmtDate(o.d)+" มีใบตัดบิลอยู่ "+same.length+
+        " ใบ — ให้กดปุ่ม 📎 แนบไฟล์ร้าน ในใบที่ต้องการ ระบบจะได้แนบใบถูกต้อง");
+    }
+    cstExSet(sid,o,name);CST.exFor="";
+  }
   if(!document.getElementById("cstockView").classList.contains("hidden")){CST.sec="bill";renderCStock();}
   syncToServer();
 }
@@ -9311,6 +9415,107 @@ function cstExPick(sid){
   if(!cstMgr())return;
   CST.exFor=sid;
   const el=document.getElementById("fileCStockEx");if(el)el.click();
+}
+
+/* ============================================================================
+ * 📥 นำเข้าลอตเก่า 4 ใบ ที่ "ตัดบิลลอยไว้" (เจ้าของส่งไฟล์มา 4 พ.ย. 69 ให้ match แล้วอัพขึ้นเว็บ)
+ *
+ * ที่มา 2 ไฟล์:
+ *   4-11_Stock.xlsx  (แอดมิน 1 คีย์ให้ตัดบิล) — 4 ชีต = 4 ลอต: สินค้า · สาย · ลัง/เศษ ·
+ *                    บรรทัด "เก็บเป็นสต็อคกลาง" และรายการจ่ายออก
+ *   Stock_2026.xlsx  (แอดมิน 2 เก็บปลายทาง) — 906 บิล 4 บล็อก บอกว่าตัดเข้าร้านไหนบ้าง
+ * จับคู่กันได้ตรงทั้ง 4 ลอต (จำนวนลัง · วันที่ · สาย · จำนวนบิล 12 บิล = 1 ลัง):
+ *   สต็อคPT 10 ลัง ↔ "Stock PT" 30 บิล · ซอฟทัชชุด1 64+85 ลัง ↔ "Stock สองเมือง" 708 บิล
+ *   ซอฟทัชชุด2 (เฉพาะ 27 ต.ค. 11 ลัง) ↔ "Stock พี่แอ๊ะ รับผิดชอบ" 132 บิล
+ *   สต็อคซุป 4 ลัง 48 ชิ้น ↔ "Stock พี่แอ๊ะ รับผิดชอบเอง" 36 บิล
+ *
+ * ⚠️ ชื่อสินค้าใช้ของไฟล์ 4-11 (มีรหัส + ปริมาตร) ตามที่เจ้าของสั่ง ไม่ใช่ชื่อย่อในไฟล์ Stock
+ * ⚠️ รายชื่อร้าน 906 บิล **ไม่ได้อยู่ในโค้ด** — repo นี้ยังเป็นสาธารณะ ข้อมูลลูกค้าจริงห้ามเข้า
+ *    เจ้าของอัพไฟล์ Stock_2026.xlsx เองครั้งเดียว แล้วรายชื่อร้านจะไปเกาะใบที่ถูกต้องเอง
+ *    (ดู cstExStock — ตัวอ่านไฟล์แบบแบ่งบล็อกของแอดมิน 2)
+ * ⚠️ นำเข้าซ้ำไม่ได้: ใบที่มีอยู่แล้ว หรือเคยถูกลบ (sdel) จะถูกข้าม ใช้กลไกเดิมล้วน ๆ
+ * ==========================================================================*/
+function cstImpDefs(){
+  const OMO={c:"65660382",n:"โอโม ซอฟท์ ทัช FO20 36X250ก"};
+  const PINK={c:"64829046",n:"โอโมน้ำ พิงค์ ฟลอรัล 12X3X120มล"};
+  const KNORR={c:"65546800",n:"คนอร์ซุปก้อนรสหมู FO VOS P12x12x40G"};
+  const CFI={c:"69724339",n:"คอมฟอร์ท อินโนเซนท์ บูส 12X3X110มล"};
+  const CFS={c:"69593551",n:"คอมฟอร์ท ซากุระ บูส 12X3X110มล"};
+  const R=(p,ln,cs,pc,d,clr)=>({code:p.c,nm:p.n,ln:ln,cs:cs,pc:pc||0,d:d,clr:clr||[]});
+  const L8=["CT11","CT12","CT13","CT14","CT15","CT16","CT17","CT22"];
+  /* ---- ใบ 1: ซอฟทัชชุด1 (19 ต.ค.) ---- */
+  const a=[];
+  L8.forEach(ln=>a.push(R(OMO,ln,8,0,"2026-10-19",
+    [{d:"2026-10-22",who:"ส่งคุณกรานต์รุ้ง",cs:8,pc:0,note:"จ่ายหมดสต็อค (ทั้งลอต 64 ลัง)"}])));
+  L8.forEach((ln,i)=>a.push(R(PINK,ln,10,24,"2026-10-19",
+    i<5?[{d:"2026-10-22",who:"ส่งคุณกรานต์รุ้ง",cs:10,pc:0,note:"ทั้งลอตส่ง 50 ลัง"}]
+    :(i===5?[{d:"2026-10-24",who:"ส่งลัดดาวัลย์",cs:5,pc:0,note:"ทำราคา 300 บาท/ลัง (ทั้งลอตส่ง 5 ลัง)"}]:[]))));
+  /* ---- ใบ 3: ซอฟทัชชุด2 (27-31 ต.ค.) ---- */
+  const oc=cs=>[{d:"2026-11-04",who:"ส่งสองเมือง",cs:cs,pc:0,note:"จ่ายหมดสต็อค (ทั้งลอต 39 ลัง)"}];
+  const c=[[["CT22",1],["CT17",2],["CT14",1],["CT12",2],["CT11",5]],"2026-10-27",
+           [["CT12",2],["CT14",4],["CT22",4],["CT16",4]],"2026-10-29",
+           [["CT11",4],["CT12",1],["CT15",4],["CT17",2]],"2026-10-30",
+           [["CT19",3]],"2026-10-31"];
+  const s3=[];
+  for(let i=0;i<c.length;i+=2)c[i].forEach(x=>s3.push(R(OMO,x[0],x[1],0,c[i+1],oc(x[1]))));
+  s3.push(R(PINK,"CT22",2,24,"2026-10-27"),R(PINK,"CT11",4,0,"2026-10-27"),
+          R(PINK,"CT12",2,24,"2026-10-29"),R(PINK,"CT12",4,0,"2026-10-30"),
+          R(PINK,"",4,0,"2026-10-31"));          /* แถวที่ไฟล์ไม่ได้ระบุสาย */
+  return [
+   {id:"B20261019-01",d:"2026-10-19",own:CST_SUP,nw:"",
+    ng:"เก็บเป็นสต็อคกลาง (ไฟล์แอดมิน 1 ชีต \"ซอฟทัชชุด1\")\n"+
+       "• โอโม ซอฟท์ ทัช 64 ลัง — 22 ต.ค. 69 ตัดบิลส่งคุณกรานต์รุ้งหมดแล้ว\n"+
+       "• โอโมน้ำ พิงค์ ฟลอรัล 85 ลัง 12 ชิ้น — ส่งคุณกรานต์รุ้ง 50 ลัง (22 ต.ค.) · ส่งลัดดาวัลย์ 5 ลัง ทำราคา 300 บาท/ลัง (24 ต.ค.) · คงเหลือ 30 ลัง 12 ชิ้น\n"+
+       "• [ไฟล์ Stock ของแอดมิน 2] \"Stock สองเมือง โอโม ซอฟท์ ทัช 64 ลัง + โอโมน้ำ พิง ฟลอรัล 85 ลัง\" — 708 บิล · 35,130.96 บาท · ตัดบิล 12 / 13 / 19 ต.ค. 69\n"+
+       "• หมายเหตุตัวเลข: ที่ตัดบิลจริงคือ 80 ลัง 192 ชิ้น ซึ่งก็คือ 85 ลัง 12 ชิ้น (36 ชิ้น/ลัง) ระบบคิดคงเหลือจากตัวเลขที่ตัดบิลจริง จึงขึ้นเป็น 25 ลัง + 192 ชิ้น (เท่ากับ 30 ลัง 12 ชิ้น)",
+    rows:a},
+   {id:"B20261022-01",d:"2026-10-22",own:"CT19",nw:"",
+    ng:"เก็บเป็น Stock รอส่ง PT (ไฟล์แอดมิน 1 ชีต \"สต็อคPT\")\n"+
+       "• 2 พ.ย. 69 เบิกส่ง PT คอมฟอร์ท อินโนเซนท์บูส 110ML 3 ลัง\n"+
+       "• โอโมน้ำ พิงค์ ฟลอรัล 2 ลัง 24 ชิ้น เก็บเป็นสต็อคไว้ส่งสองเมือง\n"+
+       "• [ไฟล์ Stock ของแอดมิน 2] \"Stock PT — คอมฟอร์ท อินโนเซนท์ บูส + คอมฟอร์ท ซากุระ จำนวน 10 ลัง\" — 30 บิล · 2,228.40 บาท · สาย 209619 · 22 ต.ค. 69",
+    rows:[R(CFI,"CT19",5,0,"2026-10-22",
+            [{d:"2026-11-02",who:"เบิกส่ง PT",cs:3,pc:0,note:"คอมฟอร์ท อินโนเซนท์บูส 110ML"}]),
+          R(CFS,"CT19",5,0,"2026-10-23"),
+          R(PINK,"CT19",2,24,"2026-10-22")]},
+   {id:"B20261027-01",d:"2026-10-27",own:CST_SUP,
+    nw:"ของแถมเอาเข้าลอย ไม่ต้องจัด · จัดของแต่ตัวขาย เท่านั้น!!!!!",
+    ng:"เก็บเป็นสต็อคกลาง (ไฟล์แอดมิน 1 ชีต \"ซอฟทัชชุด2\")\n"+
+       "• โอโม ซอฟท์ ทัช 39 ลัง — 4 พ.ย. 69 ส่งสองเมือง 39 ลัง (จ่ายหมดสต็อค)\n"+
+       "• โอโมน้ำ พิงค์ ฟลอรัล เก็บเป็นสต็อคไว้ส่งสองเมือง\n"+
+       "• [ไฟล์ Stock ของแอดมิน 2] \"Stock พี่แอ๊ะ รับผิดชอบ — โอโม ซอฟท์ ทัช จำนวน 11 ลัง\" — 132 บิล · 6,549.84 บาท · 27 ต.ค. 69 · สาย 11/12/14/17/22 (คือส่วนที่ตัดบิลวันที่ 27 ต.ค. ของลอตนี้พอดี)\n"+
+       "• ⚠️ ตัวเลขในไฟล์ไม่ตรง: สูตรรวมของโอโมน้ำ พิงค์ ฟลอรัล เริ่มนับที่แถว 9 จึงไม่ได้นับของวันที่ 27 ต.ค. อีก 6 ลัง — ไฟล์เขียน 10 ลัง 24 ชิ้น แต่ที่ตัดบิลจริงคือ 16 ลัง 48 ชิ้น ระบบใช้ตัวเลขที่ตัดบิลจริง",
+    rows:s3},
+   {id:"B20261029-01",d:"2026-10-29",own:CST_SUP,nw:"",
+    ng:"เก็บเป็น Stock ของพี่แอ๊ะ (รับผิดชอบเอง · ไฟล์แอดมิน 1 ชีต \"สต็อคซุป\")\n"+
+       "• โอโมน้ำ พิงค์ ฟลอรัล 6 ลัง 24 ชิ้น เก็บเป็นสต็อคไว้ส่งสองเมือง\n"+
+       "• [ไฟล์ Stock ของแอดมิน 2] \"Stock พี่แอ๊ะ รับผิดชอบเอง คนอร์ 4 ลัง 48 ชิ้น\" — 36 บิล · 3,515.04 บาท · 29 ต.ค. 69 · สาย 15/17/22",
+    rows:[R(KNORR,"CT15",1,12,"2026-10-29"),R(KNORR,"CT17",1,12,"2026-10-29"),
+          R(KNORR,"CT22",1,12,"2026-10-29"),R(KNORR,"CT16",1,12,"2026-10-30"),
+          R(PINK,"CT15",2,24,"2026-10-29"),R(PINK,"",4,0,"2026-10-30")]},
+  ];
+}
+function cstImport(){
+  if(!cstMgr())return null;
+  const C=cstOk(),now=Date.now(),who=(S.user&&S.user.name)||"";
+  let ns=0,nr=0,skip=0;
+  cstImpDefs().forEach(def=>{
+    /* มีอยู่แล้ว หรือเคยลบทิ้งไปแล้ว → ห้ามยัดกลับ (กฎเดียวกับ tombstone ทุกที่ในระบบ) */
+    if(C.slips[def.id]||C.sdel[def.id]){skip++;return;}
+    def.rows.forEach((r,i)=>{
+      const id=def.id+"-r"+(i+1);
+      if(C.lots[id]||C.del[id])return;
+      C.lots[id]={id:id,sl:def.id,sq:i+1,d:r.d||def.d,code:r.code,nm:r.nm,
+        cs:+r.cs||0,pc:+r.pc||0,ln:r.ln||"",own:r.own||def.own||"",
+        clr:(r.clr||[]).map(x=>Object.assign({},x,{at:now,by:who})),up:now,by:who};
+      nr++;
+    });
+    C.slips[def.id]={id:def.id,d:def.d,own:def.own,nw:def.nw||"",ng:def.ng||"",
+      by:(S.user&&(S.user.code||S.user.id))||"",byName:who,at:now,up:now};
+    ns++;
+  });
+  if(ns||nr){C.up=now;syncToServer();}
+  return {slips:ns,rows:nr,skip:skip};
 }
 
 /* ---------- หน้าจอ ---------- */
@@ -9351,7 +9556,10 @@ function cstDraftLoad(){
 }
 let CST_DT=0;
 function cstDraftLater(){clearTimeout(CST_DT);CST_DT=setTimeout(cstDraftSave,400);}
-function cstRowNew(ln,own){return {k:"",code:"",nm:"",cs:"",pc:"",ln:ln||"",own:own||""};}
+/* d = วันที่ของแถวนั้นเอง · ว่าง = ใช้วันที่ของใบ
+   ลอตจริงของเจ้าของกินเวลาหลายวันในใบเดียว (ไฟล์ 4-11: 27/29/30/31 ต.ค. อยู่ในชีตเดียว)
+   จึงต้องไม่ทับวันของแถวที่ต่างจากวันของใบ เวลาแก้ใบทีหลัง */
+function cstRowNew(ln,own){return {k:"",code:"",nm:"",cs:"",pc:"",ln:ln||"",own:own||"",d:""};}
 function cstRowKey(f,r){f.seq=(+f.seq||0)+1;r.k="r"+f.seq;return r;}
 function cstNew(){
   if(!cstMgr())return;
@@ -9371,7 +9579,8 @@ function cstSlipEdit(sid){
   f.seq=mx;
   rows.forEach(l=>{const k=String(l.id||"").slice(String(sid).length+1);
     const r={k:/^r\d+$/.test(k)?k:"",code:l.code||"",nm:l.nm||"",
-      cs:(+l.cs||0)||"",pc:(+l.pc||0)||"",ln:l.ln||l.rt||"",own:l.own||""};
+      cs:(+l.cs||0)||"",pc:(+l.pc||0)||"",ln:l.ln||l.rt||"",own:l.own||"",
+      d:(l.d&&l.d!==(s.d||""))?l.d:""};
     if(!r.k)cstRowKey(f,r);
     f.rows.push(r);});
   if(!f.rows.length)f.rows.push(cstRowKey(f,cstRowNew("",f.own)));
@@ -9432,11 +9641,72 @@ function cstLinkMark(i){
   const c=String(f.rows[i].code||"").trim();
   el.innerHTML=!c?"":(oname(c)?'<span class="cst-ok">✓ master</span>':'<span class="cst-no">ไม่มีรหัสนี้</span>');
 }
-function cstRowAdd(){
+function cstRowAdd(n){
   const f=CST.f;if(!f)return;
-  const last=f.rows[f.rows.length-1]||{};
-  f.rows.push(cstRowKey(f,cstRowNew(last.ln||"",last.own||f.own)));
+  for(let i=0;i<Math.max(1,+n||1);i++){
+    const last=f.rows[f.rows.length-1]||{};
+    f.rows.push(cstRowKey(f,cstRowNew(last.ln||"",last.own||f.own)));
+  }
   cstDraftSave();renderCStock();
+}
+/* ============================================================================
+ * ☑️ ติ๊กหลายแถว แล้วปรับทีเดียว (เจ้าของขอ 4 พ.ย. 69)
+ *   *"ต้องการกรอก KA97 ทั้งใบ สามารถกดให้ติ๊กรายการที่จะปรับ และมีปุ่มปรับทุกรายการ
+ *   ให้เป็น KA97 ได้ในครั้งเดียว"*
+ * ธงติ๊ก (`sel`) อยู่บนแถวของ "ฟอร์ม" เท่านั้น ไม่ได้ถูกเขียนลง lots ตอนบันทึก
+ * ==========================================================================*/
+function cstSelTog(i){const f=CST.f;if(!f||!f.rows[i])return;
+  f.rows[i].sel=!f.rows[i].sel;cstDraftSave();renderCStock();}
+function cstSelAll(on){const f=CST.f;if(!f)return;
+  f.rows.forEach(r=>{r.sel=!!on;});cstDraftSave();renderCStock();}
+function cstSelN(){const f=CST.f;return f?f.rows.filter(r=>r.sel).length:0;}
+function cstSelRows(){const f=CST.f;return f?f.rows.filter(r=>r.sel):[];}
+/* ปรับค่าเดียวกันให้ทุกแถวที่ติ๊กไว้ — ถ้ายังไม่ได้ติ๊กอะไรเลย ต้องบอก ไม่ใช่เงียบ */
+function cstBulk(k,v){
+  const f=CST.f;if(!f)return;
+  const rows=cstSelRows();
+  if(!rows.length){alert("ติ๊ก ☑️ หน้าแถวที่ต้องการก่อน แล้วค่อยกดปุ่มปรับ");return;}
+  v=String(v==null?"":v).trim();
+  if(k==="code"){
+    if(!v){alert("ใส่รหัสสินค้าก่อน");return;}
+    const nm=oname(v);
+    if(!nm&&!confirm("รหัส "+v+" ไม่มีใน master data\n\nใส่ให้ "+rows.length+" แถวนี้เลยไหม?"))return;
+    rows.forEach(r=>{r.code=v;if(nm)r.nm=nm;});
+  }else if(k==="cs"||k==="pc"){
+    if(v===""){alert("ใส่จำนวนก่อน");return;}
+    rows.forEach(r=>{r[k]=Math.max(0,parseFloat(v)||0);});
+  }else{                                  /* ln | own */
+    rows.forEach(r=>{r[k]=v;});
+  }
+  cstDraftSave();renderCStock();
+  toast("ปรับให้แล้ว "+rows.length+" แถว");
+}
+function cstBulkDel(){
+  const f=CST.f;if(!f)return;
+  const n=cstSelN();
+  if(!n){alert("ติ๊ก ☑️ หน้าแถวที่ต้องการลบก่อน");return;}
+  if(!confirm("ลบ "+n+" แถวที่ติ๊กไว้?"))return;
+  f.rows=f.rows.filter(r=>!r.sel);
+  if(!f.rows.length)f.rows.push(cstRowKey(f,cstRowNew("",f.own)));
+  cstDraftSave();renderCStock();
+}
+/* คัดลอกทุกแถวที่ติ๊กไว้ ให้ครบทุกสาย — ใช้ตอนตัดบิลสินค้าหลายตัวเข้าทุกสายพร้อมกัน */
+function cstBulkSpread(){
+  const f=CST.f;if(!f)return;
+  const rows=cstSelRows();
+  if(!rows.length){alert("ติ๊ก ☑️ หน้าแถวที่ต้องการกระจายก่อน");return;}
+  const lines=cstLines();let add=0;
+  rows.forEach(src=>{
+    if(!String(src.nm||"").trim())return;
+    const key=r=>String(r.code||r.nm||"").trim();
+    const have={};f.rows.forEach(r=>{if(key(r)===key(src))have[String(r.ln||"")]=1;});
+    if(!String(src.ln||"").trim()&&lines.length){src.ln=lines[0];have[lines[0]]=1;}
+    lines.forEach(ln=>{if(have[ln])return;
+      const r=cstRowKey(f,cstRowNew(ln,src.own||f.own));
+      r.code=src.code;r.nm=src.nm;r.cs=src.cs;r.pc=src.pc;f.rows.push(r);add++;});
+  });
+  cstDraftSave();renderCStock();
+  toast(add?("เพิ่มให้อีก "+add+" แถว"):"ทุกสายมีแถวของสินค้าที่เลือกแล้ว");
 }
 function cstRowDel(i){
   const f=CST.f;if(!f)return;
@@ -9485,8 +9755,10 @@ function cstSlipSave(){
     "\n\nถ้าคีย์ผิดจริง ให้ลบรายการเคลียร์ในแถวนั้นออกก่อน");return;}
   rows.forEach((r,i)=>{
     const id=sid+"-"+r.k,old=C.lots[id]||null;
+    /* แถวที่มีวันของตัวเอง (ลอตเดียวที่กินเวลาหลายวัน) ต้องไม่ถูกวันของใบทับ */
+    const rd=(r.d&&/^\d{4}-\d{2}-\d{2}$/.test(r.d)&&r.d!==d)?r.d:d;
     C.lots[id]=Object.assign({},old,{
-      id:id,sl:sid,sq:i+1,d:d,
+      id:id,sl:sid,sq:i+1,d:rd,
       code:String(r.code||"").trim(),nm:String(r.nm||"").trim(),
       cs:+r.cs||0,pc:+r.pc||0,
       ln:String(r.ln||"").trim(),own:String(r.own||f.own||"").trim(),
@@ -9606,9 +9878,10 @@ function cstSlipAoa(sid){
     ["เลขที่ใบ",sid,"","วันที่ตัดบิล",s.d?fmtDate(s.d):""],
     ["ผู้รับผิดชอบ",s.own||"","","ผู้ลงข้อมูล",s.byName||""],
     [""],
-    ["ลำดับ","รหัสสินค้า","ชื่อสินค้า","จำนวนลัง","จำนวนชิ้น","สายวิ่ง","ผู้รับผิดชอบ","สถานะ"]];
-  rows.forEach((l,i)=>a.push([i+1,l.code||"",l.nm||"",+l.cs||0,+l.pc||0,l.ln||l.rt||"",l.own||"",cstStatusTxt(l)]));
-  a.push(["","","รวม",cstSlipCs(sid),cstSlipPc(sid)]);
+    ["ลำดับ","วันที่ตัดบิล","รหัสสินค้า","ชื่อสินค้า","จำนวนลัง","จำนวนชิ้น","สายวิ่ง","ผู้รับผิดชอบ","สถานะ"]];
+  rows.forEach((l,i)=>a.push([i+1,l.d?fmtDate(l.d):"",l.code||"",l.nm||"",+l.cs||0,+l.pc||0,
+    l.ln||l.rt||"",l.own||"",cstStatusTxt(l)]));
+  a.push(["","","","รวม",cstSlipCs(sid),cstSlipPc(sid)]);
   a.push([""],["Note ถึงคลัง",s.nw||"-"],["Note ที่ไปของสินค้า",s.ng||"-"]);
   if(ex)a.push([""],["ร้านที่ตัดบิลเข้า",(ex.n||0)+" บิล","มูลค่ารวม",+ex.val||0,"ไฟล์",ex.file||""]);
   return a;
@@ -9617,7 +9890,7 @@ function cstSlipXlsx(sid){
   const C=cstOk(),ex=C.ex[sid];
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet(cstSlipAoa(sid));
-  ws["!cols"]=[{wch:7},{wch:13},{wch:42},{wch:10},{wch:10},{wch:10},{wch:14},{wch:24}];
+  ws["!cols"]=[{wch:7},{wch:14},{wch:13},{wch:42},{wch:10},{wch:10},{wch:10},{wch:14},{wch:24}];
   XLSX.utils.book_append_sheet(wb,ws,"ใบตัดบิล");
   if(ex&&(ex.rows||[]).length){
     const a2=[["เอกสารการวางบิล","รหัสร้าน","ชื่อร้าน","สาย","มูลค่ารวมภาษี"]];
@@ -9639,12 +9912,12 @@ function cstSlipHtml(sid){
       <div class="pr-id">เลขที่ ${anaEsc(sid)}<div>วันที่ตัดบิล ${s.d?fmtDate(s.d):"-"}</div></div></div>
     <div class="pr-m">ผู้รับผิดชอบ: <b>${anaEsc(s.own||"-")}</b> · ผู้ลงข้อมูล: ${anaEsc(s.byName||"-")}
       · พิมพ์เมื่อ ${fmtDate(todayISO())}</div>
-    <table class="pr-t"><thead><tr><th>#</th><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th>ลัง</th><th>ชิ้น</th>
+    <table class="pr-t"><thead><tr><th>#</th><th>วันที่ตัดบิล</th><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th>ลัง</th><th>ชิ้น</th>
       <th>สายวิ่ง</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th></tr></thead><tbody>
-      ${rows.map((l,i)=>`<tr><td>${i+1}</td><td>${anaEsc(l.code||"")}</td><td class="l">${anaEsc(l.nm||"")}</td>
+      ${rows.map((l,i)=>`<tr><td>${i+1}</td><td>${l.d?fmtDate(l.d):"-"}</td><td>${anaEsc(l.code||"")}</td><td class="l">${anaEsc(l.nm||"")}</td>
         <td>${(+l.cs||0).toLocaleString()}</td><td>${(+l.pc||0)||"-"}</td><td>${anaEsc(l.ln||l.rt||"")}</td>
         <td>${anaEsc(l.own||"")}</td><td class="l">${anaEsc(cstStatusTxt(l))}</td></tr>`).join("")}
-      <tr class="pr-sum"><td colspan="3">รวม ${rows.length} รายการ</td><td>${cstSlipCs(sid).toLocaleString()}</td>
+      <tr class="pr-sum"><td colspan="4">รวม ${rows.length} รายการ</td><td>${cstSlipCs(sid).toLocaleString()}</td>
         <td>${cstSlipPc(sid)?cstSlipPc(sid).toLocaleString():"-"}</td><td colspan="3"></td></tr>
     </tbody></table>
     <div class="pr-n"><b>Note ถึงคลัง</b><div>${anaEsc(s.nw||"-")}</div></div>
@@ -9664,8 +9937,30 @@ function cstOptList(list,cur,blank){
   return (blank?`<option value=""${cur?"":" selected"}>${blank}</option>`:"")+
     list.map(v=>`<option value="${anaEsc(v)}"${String(cur)===String(v)?" selected":""}>${anaEsc(v)}</option>`).join("");
 }
+/* แถบ "ปรับหลายแถวพร้อมกัน" — โผล่เมื่อมีแถวถูกติ๊ก */
+function cstBulkHtml(lines,owners){
+  const n=cstSelN();
+  if(!n)return `<div class="cst-bulk off">☑️ ติ๊กหน้าแถวที่ต้องการ แล้วปรับ <b>สายวิ่ง / ผู้รับผิดชอบ / จำนวน / สินค้า</b> ให้ทุกแถวที่ติ๊กได้ในครั้งเดียว</div>`;
+  return `<div class="cst-bulk">
+    <b>☑️ ติ๊กไว้ ${n} แถว</b>
+    <span class="cst-bg"><select id="cstBkLn">${cstOptList(lines,"","— เลือกสาย —")}</select>
+      <button class="cst-x" onclick="cstBulk('ln',document.getElementById('cstBkLn').value)">ปรับสายวิ่ง</button></span>
+    <span class="cst-bg"><select id="cstBkOwn">${cstOptList(owners,"","— เลือกผู้รับผิดชอบ —")}</select>
+      <button class="cst-x" onclick="cstBulk('own',document.getElementById('cstBkOwn').value)">ปรับผู้รับผิดชอบ</button></span>
+    <span class="cst-bg"><input id="cstBkCs" type="number" min="0" step="1" placeholder="ลัง" style="width:72px">
+      <input id="cstBkPc" type="number" min="0" step="1" placeholder="ชิ้น" style="width:72px">
+      <button class="cst-x" onclick="cstBulk('cs',document.getElementById('cstBkCs').value)">ปรับลัง</button>
+      <button class="cst-x" onclick="cstBulk('pc',document.getElementById('cstBkPc').value)">ปรับชิ้น</button></span>
+    <span class="cst-bg"><input id="cstBkCode" placeholder="รหัสสินค้า" style="width:110px" inputmode="numeric">
+      <button class="cst-x" onclick="cstBulk('code',document.getElementById('cstBkCode').value)">ปรับสินค้า</button></span>
+    <button class="cst-x" onclick="cstBulkSpread()">⇉ กระจายทุกสาย</button>
+    <button class="cst-x" onclick="cstBulkDel()">🗑 ลบแถวที่ติ๊ก</button>
+    <button class="cst-x" onclick="cstSelAll(false)">ล้างที่ติ๊ก</button>
+  </div>`;
+}
 function cstFormHtml(){
   const f=CST.f,lines=cstLines(),owners=cstOwners();
+  const sel=cstSelN();
   const tot=f.rows.reduce((a,r)=>({cs:a.cs+(+r.cs||0),pc:a.pc+(+r.pc||0)}),{cs:0,pc:0});
   return `<div class="panel cst-form">
     <div class="cst-fh"><h3>${f.sid?("✏️ แก้ไขใบตัดบิล "+anaEsc(f.sid)):"🧾 ใบตัดบิลใหม่"}</h3>
@@ -9679,10 +9974,14 @@ function cstFormHtml(){
         <select onchange="cstSetOwn(this.value)">${cstOptList(owners,f.own,"— เลือก —")}</select></div>
       <div class="psub" style="align-self:flex-end">รวม <b>${tot.cs.toLocaleString()}</b> ลัง${tot.pc?" / <b>"+tot.pc.toLocaleString()+"</b> ชิ้น":""} · ${f.rows.length} แถว</div>
     </div>
+    ${cstBulkHtml(lines,owners)}
     <div class="cst-tw"><table class="cst-ft"><thead><tr>
+      <th><input type="checkbox" title="ติ๊กทุกแถว" ${sel&&sel===f.rows.length?"checked":""}
+        onchange="cstSelAll(this.checked)"></th>
       <th>#</th><th>รหัสสินค้า</th><th>ชื่อสินค้า (เชื่อม master data)</th><th>ลัง</th><th>ชิ้น</th>
       <th>สายวิ่ง</th><th>ผู้รับผิดชอบ</th><th></th></tr></thead><tbody>
-      ${f.rows.map((r,i)=>`<tr>
+      ${f.rows.map((r,i)=>`<tr${r.sel?' class="on"':""}>
+        <td class="n"><input type="checkbox" ${r.sel?"checked":""} onchange="cstSelTog(${i})"></td>
         <td class="n">${i+1}</td>
         <td><input id="cstCd${i}" class="cst-in w-code" value="${anaEsc(r.code||"")}" inputmode="numeric"
              placeholder="รหัส" oninput="cstRowCode(${i},this.value)">
@@ -9700,6 +9999,7 @@ function cstFormHtml(){
             <button class="cst-x" title="ลบแถวนี้" onclick="cstRowDel(${i})">🗑</button></td></tr>`).join("")}
     </tbody></table></div>
     <div class="cst-fb"><button class="btn-ghost" onclick="cstRowAdd()">＋ เพิ่มแถว</button>
+      <button class="btn-ghost" onclick="cstRowAdd(5)">＋ เพิ่มทีเดียว 5 แถว</button>
       <span class="psub">⇉ = คัดลอกสินค้าแถวนั้นให้ครบทุกสาย (${lines.length} สาย) แล้วแก้จำนวนรายสายได้</span></div>
     <div class="cst-nb">
       <div><label>📝 Note ถึงคลัง</label>
@@ -9761,6 +10061,8 @@ function cstBillHtml(){
   }
   h+=slips.map(s=>{
     const rows=cstSlipRows(s.id),op=!!CST.sopen[s.id];
+    /* ลอตเดียวที่ตัดบิลหลายวัน (ของจริงเป็นแบบนั้น) ต้องเห็นวันของแต่ละแถว */
+    const multi=rows.some(l=>l.d&&l.d!==s.d);
     const leftCs=rows.reduce((a,l)=>a+cstLeft(l),0),cs=cstSlipCs(s.id);
     const doneN=rows.filter(cstDone).length;
     const ex=cstOk().ex[s.id];
@@ -9775,9 +10077,9 @@ function cstBillHtml(){
           <span class="psub">${doneN}/${rows.length} รายการเคลียร์แล้ว</span></div>
         <span class="cst-ar">${op?"▲":"▼"}</span></div>
       ${op?`<div class="cst-d">
-        <table class="cst-tbl"><thead><tr><th>#</th><th>รหัส</th><th style="text-align:left">สินค้า</th>
+        <table class="cst-tbl"><thead><tr><th>#</th>${multi?"<th>วันที่ตัดบิล</th>":""}<th>รหัส</th><th style="text-align:left">สินค้า</th>
           <th>ลัง</th><th>ชิ้น</th><th>สาย</th><th>ผู้รับผิดชอบ</th><th style="text-align:left">สถานะ</th></tr></thead><tbody>
-          ${rows.map((l,i)=>`<tr><td>${i+1}</td><td>${anaEsc(l.code||"-")}</td>
+          ${rows.map((l,i)=>`<tr><td>${i+1}</td>${multi?`<td>${l.d?fmtDate(l.d):"-"}</td>`:""}<td>${anaEsc(l.code||"-")}</td>
             <td style="text-align:left">${anaEsc(l.nm||"")}</td><td>${(+l.cs||0).toLocaleString()}</td>
             <td>${(+l.pc||0)||"-"}</td><td>${anaEsc(l.ln||l.rt||"-")}</td><td>${anaEsc(l.own||s.own||"-")}</td>
             <td style="text-align:left"><span class="pill ${CST_ST[cstStatus(l)].c}">${CST_ST[cstStatus(l)].t}</span></td></tr>`).join("")}
@@ -9840,7 +10142,7 @@ function renderCStock(){
   const openL=all.filter(l=>!cstDone(l)),doneL=all.filter(cstDone);
   const leftCs=openL.reduce((s,l)=>s+cstLeft(l),0);
   /* มูลค่าที่ยังค้าง = มูลค่าของลอต × สัดส่วนที่ยังเหลือ (ไฟล์ให้มูลค่ามาทั้งลอต) */
-  const leftVal=openL.reduce((s,l)=>s+((+l.val||0)*((+l.cs||0)?cstLeft(l)/(+l.cs||1):0)),0);
+  const leftVal=openL.reduce((s,l)=>s+(cstVal(l)*((+l.cs||0)?cstLeft(l)/(+l.cs||1):0)),0);
   const oldL=openL.filter(l=>cstAge(l)>=CST_OLD);
   bar.innerHTML="📦 สต็อคกลาง · ของที่ตัดบิลไว้ก่อนแล้วยังไม่ได้ส่งออก"+
     (CSTOCK.up?`<span class="dci-src">🕒 อัพเดตล่าสุด ${fmtDateTime(CSTOCK.up)}</span>`:"");
@@ -9880,7 +10182,7 @@ function renderCStock(){
       ${op?`<div class="cst-d">
         <div class="psub">เคลียร์ไปแล้ว <b>${did.toLocaleString()}</b> ลัง จาก <b>${cs.toLocaleString()}</b> ลัง (${pct}%)${
           l.pc?` · ตัดไว้ ${(+l.pc).toLocaleString()} ชิ้น เคลียร์แล้ว ${cstClrPc(l).toLocaleString()} ชิ้น`:""}${
-          l.val?` · มูลค่าทั้งลอต ${THB(l.val)}`:""}${l.bills?` · ${l.bills} บิล`:""}${
+          cstVal(l)?` · มูลค่าทั้งลอต ${+l.val?"":"≈ "}${THB(cstVal(l))}`:""}${l.bills?` · ${l.bills} บิล`:""}${
           l.rt&&l.rt!==l.ln?` · สาย ${anaEsc(l.rt)}`:""}${l.tag?` · ป้ายในบิล "${anaEsc(l.tag)}"`:""}${
           l.sl?(mgr?` · 🧾 <a href="javascript:void(0)" onclick="event.stopPropagation();cstGoSlip('${anaEsc(l.sl)}')">ใบตัดบิล ${anaEsc(l.sl)}</a>`
                    :` · 🧾 ใบตัดบิล ${anaEsc(l.sl)}`):""}</div>

@@ -17,6 +17,7 @@ process.env.AUTH_SECRET = "test-secret-for-renew-only";
 const { sign, verify, TOKEN_TTL, expiry } = await import("../lib/auth.js");
 const renew = (await import("../api/renew.js")).default;
 const login = (await import("../api/login.js")).default;
+const { ACCOUNTS } = await import("../lib/accounts.js");
 const { readFileSync } = await import("fs");
 
 const A = [];
@@ -93,6 +94,26 @@ if (anyUser) {
   const bad = await call(login, { body: { user: anyUser, pass: "ผิดแน่ ๆ" } });
   t("ล็อกอินด้วยรหัสผ่านผิดยังถูกปฏิเสธเหมือนเดิม", bad.code === 401, bad.code);
 }
+
+/* ---------- 7) บัญชีแอดมิน 2 คน ที่ดูแลสต็อคกลาง (เจ้าของกำหนดรหัสผ่านมาเอง 4 พ.ย. 69) ----------
+   ต้องล็อกอินได้จริงผ่าน api/login และได้สิทธิ์ manager (เดิมทั้งคู่ใช้บัญชี manager ร่วมกัน)
+   ⚠️ รหัสผ่านอยู่ใน lib/accounts.js ฝั่งเซิร์ฟเวอร์เท่านั้น ไม่เคยถูกส่งไปที่เบราว์เซอร์ */
+for (const [u, p, nm] of [["admin1", "bd@admin1", "แอดมิน 1"], ["admin2", "bd@admin2", "แอดมิน 2"]]) {
+  const ok = await call(login, { body: { user: u, pass: p } });
+  t("ล็อกอิน " + u + " ด้วยรหัสที่เจ้าของกำหนดได้",
+    ok.code === 200 && ok.body && ok.body.ok === true, ok.code);
+  t("..." + u + " ได้สิทธิ์ manager และชื่อบอกว่าเป็นใคร",
+    ok.body && ok.body.role === "manager" && String(ok.body.name).indexOf(nm) === 0,
+    ok.body && ok.body.role + " / " + ok.body.name);
+  const wrong = await call(login, { body: { user: u, pass: p + "x" } });
+  t("..." + u + " ใส่รหัสผิดเข้าไม่ได้", wrong.code === 401, wrong.code);
+  const claims2 = verify((ok.body || {}).token || "");
+  t("..." + u + " ได้ token ที่ตรวจผ่าน และ role อยู่ใน token ไม่ใช่ใน body เฉย ๆ",
+    !!claims2 && claims2.role === "manager" && claims2.u === u, JSON.stringify(claims2 && claims2.u));
+}
+t("🛟 เพิ่มบัญชีแอดมินแล้วบัญชีเดิมยังอยู่ครบ (manager + เซลล์ 12 สาย)",
+  Object.keys(ACCOUNTS).length === 15 && ACCOUNTS.manager.role === "manager" &&
+  ACCOUNTS.ct11.role === "sales", Object.keys(ACCOUNTS).length + " บัญชี");
 
 let fail = 0;
 A.forEach(([ok, n, x]) => { if (!ok) fail++; console.log((ok ? "  ok  " : "  FAIL") + "  " + n + (x ? "   [" + x + "]" : "")); });

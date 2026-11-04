@@ -59,7 +59,9 @@ s = must(s, "let PROMO = __PROMODATA__;", "PROMO decl")
 // accounts -> server side
 const ACC_BLOCK = `/* ====================== ACCOUNTS ====================== */
 /* v1 simple client-side auth. username = display code, password = code(lower)+"@bd" */
-const ACCOUNTS={"manager":{pass:"bd@admin",role:"manager",name:"ผู้จัดการฝ่ายขาย"}};
+const ACCOUNTS={"manager":{pass:"bd@admin",role:"manager",name:"ผู้จัดการฝ่ายขาย"},
+  "admin1":{pass:"bd@admin1",role:"manager",name:"แอดมิน 1 · คีย์ตัดบิล"},
+  "admin2":{pass:"bd@admin2",role:"manager",name:"แอดมิน 2 · คีย์ข้อมูลร้าน"}};
 DATA.focus_order.forEach(code=>{
   const d=DATA.lines[code];
   ACCOUNTS[d.display.toLowerCase()]={pass:d.display.toLowerCase()+"@bd",role:"sales",code:code,name:d.display+" · "+d.name};
@@ -123,6 +125,7 @@ async function loadData(){
     LEADSRAW=[];LEADSLOADED=false;   /* shop applications are re-fetched per session */
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();initPlan();initPromo();initPjp();navReset();
+    try{cstImport();}catch(e){console.error("cstImport",e);}   /* นำเข้าลอตเก่า 4 ใบ ครั้งเดียว (ดูหมายเหตุที่ cstImpDefs) */
     _switchTab("sales");   /* never leave the previous user's tab (incl. manager-only ones) open */
   }catch(ex){alert("โหลดข้อมูลจากเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
 }

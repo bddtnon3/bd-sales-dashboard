@@ -174,6 +174,16 @@ nothing, and the failure message must say what to do, not `unauthorized`. Retry 
 or requests double. Prove it with **`node test/auth-renew.test.mjs`** (15 checks) and
 **`node test/browser/reauth.test.cjs`** (25 checks). Rules: `HANDOFF.md` §5.
 
+## Accounts
+`lib/accounts.js` is the only real account list (passwords never reach the browser; any one can be
+overridden with `PASS_<USER>`). It holds `manager`, the 12 sales lines, and **`admin1` / `admin2`**,
+the two people who keep สต็อคกลาง — admin 1 keys the bill-cut, admin 2 keys where the bills went.
+Both are **role `manager`**, which is what they had before as shared users of the `manager` login;
+the gain is that every record now says **who keyed it** (`by`/`byName`). The client-side `ACCOUNTS`
+block in the template is only for the standalone build, and `build.cjs` replaces it by matching that
+exact text — change one and you must change the other or the build fails with `ANCHOR NOT FOUND`.
+Prove logins with **`node test/auth-renew.test.mjs`** (24 checks).
+
 ## Secrets
 `BLOB_READ_WRITE_TOKEN` and the auth signing secret live only in **Vercel env vars** — never in
 code, never printed.
@@ -387,7 +397,13 @@ code, never printed.
   วันที่ตัดบิล · รหัสสินค้า · ชื่อสินค้า · ลัง · ชิ้น · สายวิ่ง (CT11–KA99) · ผู้รับผิดชอบ, plus
   **Note ถึงคลัง** and **Note ที่ไปของสินค้า** at the bottom, with code ⇄ name linked to MASTER
   both ways and **⇉ spread one row across all 12 lines** (the source file bills one SKU into every
-  line at the same quantity). The un-saved slip is a **`localStorage` draft** (`bdcst:<user>`),
+  line at the same quantity). Rows can also be **ticked and changed together** (`cstSelTog`/`cstBulk`:
+  line, owner, cases, pieces, product, delete, spread) — asked for as "ติ๊กรายการที่จะปรับ แล้วปรับ
+  ทุกรายการให้เป็น KA97 ครั้งเดียว"; `sel` lives on the form row only and is never written to a lot,
+  and a bulk button with nothing ticked must warn, never fall back to "all rows".
+  A row may carry **its own date** (`r.d`): one real lot spans several bill-cut days, so a later edit
+  of the slip must not flatten the rows onto the slip's date.
+  The un-saved slip is a **`localStorage` draft** (`bdcst:<user>`),
   deliberately NOT part of the synced state. One saved slip = `CSTOCK.slips[sid]` (header only) plus
   one lot per row carrying `sl`/`ln`; **the rows are read back from `lots`, never stored twice**.
   Each slip exports as Excel (`cstSlipXlsx`) or PDF via the browser's own print (`cstSlipPrint`
@@ -401,6 +417,16 @@ code, never printed.
   substring of it, so `indexOf` picks the wrong column — cancelled bills are skipped, and it lands
   in **`CSTOCK.ex[sid]`, a map of its own**, because the owner submits the slip first and attaches
   the file later, so slip and file are saved at different times from different tabs.
+  `cstExRead` also accepts **admin 2's own summary file** (`Stock_2026.xlsx`): one sheet holding
+  several lots as **blocks** (title row, then `เส้นทาง · วันที่ใบแจ้งหนี้ · เลขที่ INV. · รหัสร้านค้า
+  · รายชื่อลูกหนี้ · หัวเรื่องคำสั่ง · จำนวนเงิน`). `cstExStock` splits the blocks and `cstExMatch`
+  attaches each to the slip it belongs to, scored by **bill date first** (×10, plus a bonus when the
+  block's main date is the slip's date) then by line; a block that matches no date at all is
+  **reported, never guessed onto a slip**.
+  The 4 historical lots the owner sent (Oct 26) are seeded by **`cstImport`** from `cstImpDefs()`,
+  run once from `loadData`: it skips any slip that already exists **or carries an `sdel` tombstone**,
+  so a deleted slip never comes back. The 906 customer rows that go with them are deliberately
+  **not in the repo** (it is public) — the owner attaches them by uploading his own file once.
   **`คงเหลือ` is always computed (`cstLeft`), never read from a file or a form** — the owner's
   original notes said "85 … 50 … 5 … คงเหลือ 12" when 85−50−5 is 30, and that hand-typed number is
   exactly how stock got forgotten. Clearings live **inside the lot record** (`clr[]`), not a
@@ -413,7 +439,7 @@ code, never printed.
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
-  with **`node test/browser/cstock.test.cjs`** (123 checks; it must load the page over a real origin,
+  with **`node test/browser/cstock.test.cjs`** (159 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
   Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
   map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales
