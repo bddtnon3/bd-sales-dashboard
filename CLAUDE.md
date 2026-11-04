@@ -60,7 +60,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (169 checks against the real `api/save.js` and the
+  running **`node test/merge-safety.test.mjs`** (227 checks against the real `api/save.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
@@ -68,7 +68,10 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   money (`PROMO.items`/`res`/`del`), the PJP visit plan (`PJP.out`/`plan`/`done`/`cfg` — a new
   month must not erase the last one, a Master file must not delete a shop it stopped listing, an
   untick must not be undone by a stale tab, and a tab from before visit notes existed must not
-  strip a rep's note off the record it shares with the tick), and the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
+  strip a rep's note off the record it shares with the tick), central stock (`CSTOCK.lots`/`del` and
+  the in-app bill-cut slips `slips`/`sdel`/`ex` — a tab that submitted the slip before the shop file
+  was attached must not delete that file, and uploading the file later must not wipe a note typed in
+  between), and the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
 
 - The **two monthly price files live OUTSIDE `bd-data-*`** and `PRICE` is deliberately **not** part
   of the synced state, so `mergeState` never sees them and uploading prices cannot roll the sales
@@ -377,20 +380,41 @@ code, never printed.
   `public/pricelist.html`** (a standalone page cannot import from the app) — change one and you must
   change the other; the test compares both copies on every item in every round.
   The **📦 สต็อก** group has two tabs: `stock` (สต็อคปัจจุบัน, the daily stock file) and
-  **`cstock` (🧊 สต็อคกลาง, manager-only)** — stock the depot billed out in advance and still
-  has to place. The admin keeps ONE Excel, downloads it from the tab (`cstTemplate`, three sheets:
-  ลอตตัดบิล / การเคลียร์ / วิธีกรอก, pre-filled with what the system holds) and re-uploads it each
-  round. **`คงเหลือ` is always computed (`cstLeft`), never read from the file** — the owner's
+  **`cstock` (🧊 สต็อคกลาง)** — stock the depot billed out in advance and still has to place.
+  **Everyone sees it** ("เพื่อให้ทางเซลล์ไปขายกันมา"), only the admin writes: every writing
+  function tests `cstMgr()` itself, never relying on the button being hidden.
+  The admin now **types the bill-cut slip in the app** (`cstNew`/`cstSlipSave`), not in Excel —
+  วันที่ตัดบิล · รหัสสินค้า · ชื่อสินค้า · ลัง · ชิ้น · สายวิ่ง (CT11–KA99) · ผู้รับผิดชอบ, plus
+  **Note ถึงคลัง** and **Note ที่ไปของสินค้า** at the bottom, with code ⇄ name linked to MASTER
+  both ways and **⇉ spread one row across all 12 lines** (the source file bills one SKU into every
+  line at the same quantity). The un-saved slip is a **`localStorage` draft** (`bdcst:<user>`),
+  deliberately NOT part of the synced state. One saved slip = `CSTOCK.slips[sid]` (header only) plus
+  one lot per row carrying `sl`/`ln`; **the rows are read back from `lots`, never stored twice**.
+  Each slip exports as Excel (`cstSlipXlsx`) or PDF via the browser's own print (`cstSlipPrint`
+  into `#prArea`, which must stay a direct child of `body` for the `@media print` rule).
+  Status (`รอจัดส่ง · รอเคลียร์` → `เคลียร์ไปบางส่วน` → `เคลียร์หมดแล้ว`) is computed from `clr[]`
+  on every render and **never stored as a field**. Recording a sale (`cstClrSave`) writes date +
+  quantity + **shop**, searched through `cstStoreIdx()` which takes `STOREPROD.stores` (the monthly
+  insight file, the source the owner named) first and `STORE`/`PJP.out`/`STOREDAILY` as fallbacks.
+  The Ex.export file (which shops the bills were cut into) is read by `parseCStockEx`: the shop code
+  is the **`ผู้สั่งซื้อ (ID)`** column, matched by **exact header text** — `ผู้สั่งซื้อ` is a
+  substring of it, so `indexOf` picks the wrong column — cancelled bills are skipped, and it lands
+  in **`CSTOCK.ex[sid]`, a map of its own**, because the owner submits the slip first and attaches
+  the file later, so slip and file are saved at different times from different tabs.
+  **`คงเหลือ` is always computed (`cstLeft`), never read from a file or a form** — the owner's
   original notes said "85 … 50 … 5 … คงเหลือ 12" when 85−50−5 is 30, and that hand-typed number is
   exactly how stock got forgotten. Clearings live **inside the lot record** (`clr[]`), not a
   separate map, because one re-uploaded file is the whole truth and a separate map would leave
   orphan rows. The merge is a union per lot id, so **a file missing some lots cannot delete them**;
-  removing one needs the `CSTOCK.del` tombstone. `parseCStock` finds its columns by header text and
+  removing one needs the `CSTOCK.del` tombstone (`sdel` for a whole slip, which also drops its
+  `ex`), and a row that already has clearings cannot be dropped by editing the slip at all.
+  The Excel round-trip stays for old data: `parseCStock` finds its columns by header text and
   **refuses the whole file** on a missing sheet, missing header, duplicate lot id, a row with no lot
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
-  carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove it with
-  **`node test/browser/cstock.test.cjs`** (53 checks). Rules: `HANDOFF.md` §5.
+  carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
+  with **`node test/browser/cstock.test.cjs`** (123 checks; it must load the page over a real origin,
+  not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
   Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
   map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales
   slots. An unmapped tab now shows every group instead of the wrong one, and the cstock test walks

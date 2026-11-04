@@ -11,3 +11,7 @@ test/browser/fixtures/huasuer-*.xlsx
 # ⛔ รายชื่อร้านลูกค้าจริง (ชื่อ · ที่อยู่ · พิกัด GPS) และแผนเยี่ยมร้าน
 test/browser/fixtures/master-outlet*.xlsx
 test/browser/fixtures/pjp-*.xlsx
+
+# ⛔ ไฟล์ Ex.export (ร้านที่ตัดบิลเข้า) — มีชื่อร้านลูกค้าจริง + รหัสร้าน + มูลค่าบิล
+# เหตุผลเดียวกับไฟล์ master outlet ด้านบน · วางไว้เองในเครื่องเพื่อรันเทสต์สต็อคกลางได้
+test/browser/fixtures/ex-export*.xlsx

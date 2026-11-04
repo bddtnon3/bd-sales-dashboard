@@ -28,6 +28,9 @@ const XLSX=require('xlsx');
 const BROWSER=require('./_chrome.cjs').chromePath();
 const ROOT=path.resolve(__dirname,'..','..');
 const PAGE=path.join(ROOT,'public','index.html');
+/* ต้องเสิร์ฟผ่าน origin จริง ไม่ใช่ setContent — ไม่งั้นเบราว์เซอร์ห้าม localStorage
+   แล้วเทส "ฉบับร่างใบตัดบิลยังอยู่" จะวัดไม่ได้ (บทเรียนเดียวกับ sreq.test.cjs) */
+const ORIGIN='https://bd-cstock.test/';
 
 const BLOBS=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,
   STOREDAILY,PSTORE,EB2B,POSTATUS,LEADS,DCI,MINSTOCK,PLAN,PROMO,PJP})`;
@@ -74,7 +77,9 @@ function seed(a){
  const ctx=await b.newContext({viewport:{width:1100,height:1000},acceptDownloads:true});
  const pg=await ctx.newPage();
  const errs=[];pg.on('pageerror',e=>errs.push(String(e)));
- await pg.setContent(fs.readFileSync(PAGE,'utf8'),{waitUntil:'domcontentloaded'});
+ const html=fs.readFileSync(PAGE,'utf8');
+ await pg.route(ORIGIN+'**',r=>r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}));
+ await pg.goto(ORIGIN);
  await pg.addScriptTag({path:require.resolve('xlsx/dist/xlsx.full.min.js')});
  const A=[];const t=(n,c,x)=>A.push([!!c,n,x===undefined?'':String(x)]);
  const ev=(f,a)=>pg.evaluate(f,a);
@@ -280,12 +285,13 @@ function seed(a){
      open:!document.getElementById('modal').classList.contains('hidden')};
    closeUpload();return o;});
  t('🔧 กดอัพโหลดในแท็บสต็อคกลาง → เปิดกลุ่มสต็อคกลาง ไม่ใช่ยอดขาย',
-   up.vis.length===1&&up.vis[0]==='cstock',up.vis.join(',')||'(ไม่มี)');
- t('...เห็นเฉพาะช่องอัพสต็อคกลางช่องเดียว',
-   up.labels.length===1&&/สต็อคกลาง/.test(up.labels[0]),up.labels.join(' | '));
+   up.vis.length>0&&up.vis.every(g=>g==='cstock'),up.vis.join(',')||'(ไม่มี)');
+ t('...เห็นเฉพาะช่องอัพของสต็อคกลาง: ไฟล์ร้านที่ตัดบิลเข้า + ฟอร์ม Excel วิธีเดิม',
+   up.labels.length===2&&/Ex\.export/.test(up.labels[0])&&/สต็อคกลาง/.test(up.labels[1]),
+   up.labels.join(' | '));
  t('...และหัวกล่องบอกว่าเป็นไฟล์สต็อคกลาง',/สต็อคกลาง/.test(up.title),up.title);
- t('...บรรทัดรองไม่บอกว่ามาจาก Unilever (ไฟล์นี้แอดมินกรอกเอง)',
-   !/Unilever/.test(up.sub)&&/โหลดไฟล์ฟอร์ม/.test(up.sub),up.sub);
+ t('...บรรทัดรองไม่บอกว่ามาจาก Unilever (ไฟล์นี้แอดมินถือเอง)',
+   !/Unilever/.test(up.sub)&&/ใบตัดบิล/.test(up.sub),up.sub);
  t('...ไม่มีช่อง "ยอดขายรายวัน" โผล่มาให้อัพผิดช่อง',
    !up.labels.some(x=>/ยอดขายรายวัน/.test(x)),up.labels.join(' | '));
  /* กันพลาดแบบเดิมอีก: ทุกแท็บที่มีปุ่มอัพโหลด ต้องแมปไปกลุ่มที่มีอยู่จริง */
@@ -309,6 +315,470 @@ function seed(a){
    cover.bad.length===0,cover.bad.join(' · ')||'ok');
  t('🛟 ...และไม่มีแท็บไหนตกไปโชว์กลุ่มมั่ว (แท็บที่ยังไม่ได้แมปจะโชว์ทุกกลุ่มให้เลือกเอง)',
    cover.fallback.length===0,cover.fallback.join(' · ')||'ok');
+
+ /* ==========================================================================
+  * 10) 🧾 ใบตัดบิล — กรอกในเว็บ แทนการโหลด/กรอก/อัพ Excel
+  *     เจ้าของสั่ง 4 พ.ย. 69: *"ต่อจากนี้ไม่ต้องทำผ่าน excel แล้ว ให้ทำผ่านเวปไปเลย
+  *     โดยแอดมิน 1 คนจะเป็นคนลงข้อมูลไว้"* พร้อมรายการช่องที่ต้องกรอก
+  * ======================================================================== */
+ await ev(a=>{
+   CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};
+   MASTER={items:{"65660382":"โอโม ซอฟท์ ทัช FO20 36X250ก","64829046":"โอโมน้ำ พิงค์ ฟลอรัล 12X3X120มล",
+     "65288800":"ซันไลต์ยูซุ 12x3x300ML (P36)"}};
+   /* ร้านค้ามาจากไฟล์ insight (วิเคราะห์เชิงลึก) ตามที่เจ้าของระบุที่มาเอง */
+   STOREPROD={months:['2026-10'],cat:{},data:{},stores:{
+     "4862412":{n:"ประภัสสร",l:"CT11"},"4862371":{n:"เฟรนด์ลี่มาร์ท",l:"CT12"},
+     "5196282":{n:"ร้าน เอ มาร์ท",l:"CT22"}}};
+   DATA.lines={};DATA.focus_order=[];
+   CST.q='';CST.only='open';CST.open={};CST.sec='list';CST.f=null;CST.sopen={};CST._auto=1;
+   try{localStorage.removeItem(cstDraftKey());}catch(e){}
+   _switchTab('cstock');
+ },{});
+ const f0=await ev(()=>{cstNew();const f=CST.f;
+   return {sec:CST.sec,rows:f.rows.length,d:f.d,own:f.own,today:todayISO(),
+     lines:cstLines().join(','),owners:cstOwners()[0],
+     form:!!document.querySelector('#cstBill .cst-form'),
+     hasDate:!!document.getElementById('cstFD'),
+     billShown:!document.getElementById('cstBill').classList.contains('hidden'),
+     listHidden:document.getElementById('cstBody').classList.contains('hidden')};});
+ t('กด ➕ ตัดบิลใหม่ → เปิดฟอร์มในเว็บ (ไม่ต้องโหลด Excel)',
+   f0.sec==='bill'&&f0.form&&f0.billShown&&f0.listHidden,JSON.stringify({sec:f0.sec,form:f0.form}));
+ t('...เริ่มด้วยวันที่ตัดบิล = วันนี้ และผู้รับผิดชอบตั้งต้น Supervisor',
+   f0.d===f0.today&&f0.own==='Supervisor'&&f0.owners==='Supervisor',f0.d+' / '+f0.own);
+ t('...สายวิ่งให้เลือกครบ CT11-CT22 และ KA97-KA99 ตามที่เจ้าของเขียนไว้',
+   f0.lines==='CT11,CT12,CT13,CT14,CT15,CT16,CT17,CT19,CT22,KA97,KA98,KA99',f0.lines);
+ /* ช่องที่เจ้าของสั่งให้มี ต้องมีครบจริงในหน้าจอ */
+ const fields=await ev(()=>{
+   const th=[...document.querySelectorAll('#cstBill .cst-ft th')].map(x=>x.textContent.trim());
+   const lb=[...document.querySelectorAll('#cstBill .cst-nb label')].map(x=>x.textContent.trim());
+   return {th:th.join(' | '),lb:lb.join(' | ')};});
+ t('ตารางมีช่องครบตามที่สั่ง: รหัสสินค้า · ชื่อสินค้า · ลัง · ชิ้น · สายวิ่ง · ผู้รับผิดชอบ',
+   /รหัสสินค้า/.test(fields.th)&&/ชื่อสินค้า/.test(fields.th)&&/ลัง/.test(fields.th)&&
+   /ชิ้น/.test(fields.th)&&/สายวิ่ง/.test(fields.th)&&/ผู้รับผิดชอบ/.test(fields.th),fields.th);
+ t('...และด้านล่างมี Note ถึงคลัง + Note ที่ไปของสินค้า',
+   /Note ถึงคลัง/.test(fields.lb)&&/Note ที่ไปของสินค้า/.test(fields.lb),fields.lb);
+ /* 🔑 รหัส ⇄ ชื่อ ผูกกับ master data ทั้งสองทาง */
+ const link=await ev(async()=>{
+   cstRowCode(0,'65660382');
+   const byCode={nm:CST.f.rows[0].nm,input:document.getElementById('cstNm0').value,
+     mark:document.getElementById('cstLk0').innerHTML};
+   cstRowCode(0,'99999999');
+   const badMark=document.getElementById('cstLk0').innerHTML;
+   /* ใส่ชื่อแล้วรหัสต้องขึ้นเอง */
+   CST.f.rows[0].code='';CST.f.rows[0].nm='';
+   document.getElementById('cstCd0').value='';document.getElementById('cstNm0').value='';
+   cstRowNm(0,'พิงค์ ฟลอรัล');
+   await new Promise(r=>setTimeout(r,320));
+   return {byCode:byCode,badMark:badMark,
+     byName:{code:CST.f.rows[0].code,input:document.getElementById('cstCd0').value},
+     sug:[...document.querySelectorAll('#cstSug0 .cst-sg')].map(x=>x.textContent.replace(/\s+/g,' ')).join(' / ')};});
+ t('🔑 ใส่รหัสสินค้า → ชื่อขึ้นเองจาก master data',
+   link.byCode.nm==='โอโม ซอฟท์ ทัช FO20 36X250ก'&&link.byCode.input===link.byCode.nm&&
+   /master/.test(link.byCode.mark),link.byCode.nm);
+ t('...รหัสที่ไม่มีใน master ต้องบอกให้รู้ ไม่ใช่เงียบ',/ไม่มีรหัสนี้/.test(link.badMark),link.badMark);
+ t('🔑 ใส่ชื่อสินค้า → รหัสขึ้นเองเมื่อตรงตัวเดียว',
+   link.byName.code==='64829046'&&link.byName.input==='64829046',JSON.stringify(link.byName));
+ t('...และมีรายการให้กดเลือกจาก master data',/พิงค์ ฟลอรัล/.test(link.sug),link.sug.slice(0,80));
+ /* กระจายทุกสาย — ไฟล์สรุปตัวกระจายของเจ้าของตัดสินค้าตัวเดียวเข้าสาย 11-22 จำนวนเท่ากัน */
+ const spread=await ev(()=>{
+   CST.f.rows=[];CST.f.seq=0;cstRowAdd();
+   cstRowCode(0,'65660382');CST.f.rows[0].cs=8;CST.f.rows[0].pc=0;
+   cstRowSpread(0);
+   return {n:CST.f.rows.length,lines:CST.f.rows.map(r=>r.ln).join(','),
+     cs:CST.f.rows.map(r=>+r.cs||0).join(','),
+     same:CST.f.rows.every(r=>r.nm===CST.f.rows[0].nm),
+     keys:new Set(CST.f.rows.map(r=>r.k)).size};});
+ t('⇉ กระจายสินค้าแถวหนึ่งให้ครบทุกสายในคลิกเดียว (12 สาย)',
+   spread.n===12&&spread.lines==='CT11,CT12,CT13,CT14,CT15,CT16,CT17,CT19,CT22,KA97,KA98,KA99',
+   spread.n+' แถว · '+spread.lines);
+ t('...จำนวนและชื่อสินค้าตามแถวต้นแบบ และคีย์แถวไม่ซ้ำกันเลย',
+   spread.same&&spread.cs==='8,8,8,8,8,8,8,8,8,8,8,8'&&spread.keys===12,spread.cs);
+ const own=await ev(()=>{
+   CST.f.rows[2].own='CT13';                 /* แถวนี้เลือกคนอื่นเอง */
+   cstSetOwn('CT11');
+   return {all:CST.f.rows.map(r=>r.own).join(','),head:CST.f.own};});
+ t('เปลี่ยนผู้รับผิดชอบที่หัวใบ → ทุกแถวตามไปด้วย ยกเว้นแถวที่เลือกคนอื่นไว้เอง',
+   own.head==='CT11'&&own.all.split(',').filter(x=>x==='CT11').length===11&&
+   own.all.split(',')[2]==='CT13',own.all);
+ /* ฟอร์มที่ยังกรอกไม่ครบ ต้องฟ้อง และห้ามเขียนอะไรลงข้อมูลจริง */
+ const guard=await ev(()=>{
+   const o={};const snap=()=>JSON.stringify(CSTOCK);
+   const b=snap();window.__alerts=[];
+   CST.f.d='';cstSlipSave();o.noDate=(window.__alerts.join('|'));o.sameDate=snap()===b;
+   CST.f.d=todayISO();
+   const save=CST.f.rows.slice();
+   CST.f.rows=[{k:'r90',code:'',nm:'',cs:'',pc:'',ln:'',own:''}];
+   window.__alerts=[];cstSlipSave();o.noRow=window.__alerts.join('|');o.sameRow=snap()===b;
+   CST.f.rows=[{k:'r91',code:'',nm:'',cs:3,pc:0,ln:'CT11',own:''}];
+   window.__alerts=[];cstSlipSave();o.noName=window.__alerts.join('|');o.sameName=snap()===b;
+   CST.f.rows=[{k:'r92',code:'65660382',nm:'โอโม',cs:0,pc:0,ln:'CT11',own:''}];
+   window.__alerts=[];cstSlipSave();o.noQty=window.__alerts.join('|');o.sameQty=snap()===b;
+   CST.f.rows=save;return o;});
+ t('🛟 ไม่ใส่วันที่ตัดบิล → ฟ้อง และไม่เขียนข้อมูลสักตัว',
+   /วันที่ตัดบิล/.test(guard.noDate)&&guard.sameDate,guard.noDate);
+ t('🛟 ไม่มีรายการสินค้าเลย → ฟ้อง และไม่เขียนข้อมูล',
+   /ยังไม่ได้กรอกรายการ/.test(guard.noRow)&&guard.sameRow,guard.noRow);
+ t('🛟 แถวที่ใส่จำนวนแต่ลืมชื่อสินค้า → ฟ้อง และไม่เขียนข้อมูล',
+   /ชื่อสินค้า/.test(guard.noName)&&guard.sameName,guard.noName);
+ t('🛟 ทุกแถวจำนวนเป็น 0 → ฟ้อง และไม่เขียนข้อมูล',
+   /จำนวนลัง/.test(guard.noQty)&&guard.sameQty,guard.noQty);
+ /* บันทึกจริง */
+ const saved=await ev(()=>{
+   CST.f.nw='จัดของแยกไว้ รอเรียกส่ง';CST.f.ng='รอขายเข้าร้าน / ตัวกระจาย';
+   CST.f.rows[0].cs=8;CST.f.rows[1].cs=10;CST.f.rows[1].pc=24;
+   const s0=window.__sync;cstSlipSave();
+   const sid=Object.keys(CSTOCK.slips)[0];
+   const rows=cstSlipRows(sid);
+   let draft=1;try{draft=localStorage.getItem(cstDraftKey())?1:0;}catch(e){draft=-1;}
+   return {sid:sid,n:rows.length,slip:CSTOCK.slips[sid],
+     first:rows[0],ids:rows.map(l=>l.id).slice(0,3).join(','),
+     sq:rows.map(l=>l.sq).join(','),sync:window.__sync-s0,draft:draft,
+     formClosed:CST.f===null,
+     noRowsInSlip:!('rows' in CSTOCK.slips[sid])&&!('items' in CSTOCK.slips[sid]),
+     status:rows.map(l=>cstStatusTxt(l))[0],left:cstLeft(rows[0]),
+     body:document.getElementById('cstBill').innerText.replace(/\s+/g,' ')};});
+ t('💾 บันทึกใบตัดบิล → เก็บเป็นแถวสินค้าครบทุกสาย',saved.n===12,saved.n+' แถว');
+ t('...เลขที่ใบตั้งจากวันที่ตัดบิล และแถวผูกกับใบด้วย sl',
+   /^B\d{8}-01$/.test(saved.sid)&&saved.first.sl===saved.sid&&saved.sq==='1,2,3,4,5,6,7,8,9,10,11,12',
+   saved.sid+' · '+saved.ids);
+ t('...ใบเก็บแค่หัวใบ (วันที่ · ผู้รับผิดชอบ · Note 2 ช่อง) ไม่เก็บรายการซ้ำอีกชุด',
+   saved.noRowsInSlip&&saved.slip.nw==='จัดของแยกไว้ รอเรียกส่ง'&&
+   saved.slip.ng==='รอขายเข้าร้าน / ตัวกระจาย'&&!!saved.slip.d,JSON.stringify(saved.slip).slice(0,120));
+ t('...แถวเก็บครบทุกช่อง: รหัส · ชื่อ · ลัง · ชิ้น · สายวิ่ง · ผู้รับผิดชอบ',
+   saved.first.code==='65660382'&&/โอโม ซอฟท์ ทัช/.test(saved.first.nm)&&saved.first.cs===8&&
+   saved.first.ln==='CT11'&&!!saved.first.own,JSON.stringify({c:saved.first.code,cs:saved.first.cs,ln:saved.first.ln}));
+ t('🔑 บันทึกแล้วรายการขึ้นสถานะ "รอจัดส่ง / รอเคลียร์" ให้เซลล์ไปขาย',
+   saved.status==='รอจัดส่ง / รอเคลียร์'&&saved.left===8,saved.status);
+ t('...บันทึกขึ้นเซิร์ฟเวอร์ครั้งเดียว และฟอร์มปิดพร้อมล้างฉบับร่างในเครื่อง',
+   saved.sync===1&&saved.formClosed&&saved.draft===0,'sync +'+saved.sync+' draft='+saved.draft);
+ /* 8 + 10 + (8 × อีก 10 สาย) = 98 ลัง */
+ t('...หน้าใบตัดบิลโชว์ใบที่บันทึกแล้วพร้อมยอดรวม',
+   /ใบตัดบิลที่บันทึกไว้ \(1\)/.test(saved.body)&&/98 ลัง/.test(saved.body),
+   (saved.body.match(/ค้าง[^·]{0,24}/)||[''])[0]);
+ /* ฉบับร่าง: ปิดฟอร์มทิ้งแล้วกลับมาต้องยังอยู่ (หลักเดียวกับตะกร้าขอสินค้าของเซลล์) */
+ const draft=await ev(()=>{
+   cstNew();cstRowCode(0,'65288800');CST.f.rows[0].cs=5;CST.f.rows[0].ln='CT13';
+   cstDraftSave();
+   cstFormHide();
+   const hidden=CST.f===null;
+   let raw=0;try{raw=localStorage.getItem(cstDraftKey())?1:0;}catch(e){raw=-1;}
+   cstSetSec('list');cstSetSec('bill');
+   return {hidden:hidden,raw:raw,back:!!CST.f,cs:CST.f&&+CST.f.rows[0].cs,
+     nm:CST.f&&CST.f.rows[0].nm,note:/กู้ใบที่กรอกค้างไว้/.test(document.getElementById('cstBill').innerText)};});
+ t('📝 กดออกจากฟอร์มแล้วของที่กรอกไว้ยังอยู่ (ฉบับร่างในเครื่อง ไม่ใช่ข้อมูลที่ sync)',
+   draft.hidden&&draft.raw===1&&draft.back&&draft.cs===5&&/ซันไลต์/.test(draft.nm||''),
+   JSON.stringify({raw:draft.raw,cs:draft.cs}));
+ t('...และบอกผู้ใช้ว่ากู้ใบที่กรอกค้างไว้กลับมาให้แล้ว',draft.note,'ok');
+ /* แก้ไขใบที่บันทึกแล้ว */
+ const edit=await ev(()=>{
+   const sid=Object.keys(CSTOCK.slips)[0];
+   cstFormClear();   /* ทิ้งฉบับร่างชุดทดสอบก่อน */
+   cstSlipEdit(sid);
+   const n0=CST.f.rows.length;
+   CST.f.rows[0].cs=9;              /* แก้จำนวน */
+   const killId=sid+'-'+CST.f.rows[11].k;
+   CST.f.rows.splice(11,1);          /* เอาแถวสุดท้ายออก */
+   cstSlipSave();
+   const rows=cstSlipRows(sid);
+   return {n0:n0,n1:rows.length,cs:rows[0].cs,tomb:!!CSTOCK.del[killId],
+     gone:!CSTOCK.lots[killId],sameSid:Object.keys(CSTOCK.slips).length===1,
+     note:CSTOCK.slips[sid].nw};});
+ t('✏️ แก้ไขใบที่บันทึกแล้ว: แก้จำนวนได้ และเลขที่ใบไม่เปลี่ยน',
+   edit.n0===12&&edit.cs===9&&edit.sameSid,'rows '+edit.n0+'→'+edit.n1+' cs='+edit.cs);
+ t('🛟 เอาแถวออกจากใบ = tombstone ไม่ใช่ลบ key เงียบ ๆ (แท็บเก่าจึงปลุกกลับไม่ได้)',
+   edit.n1===11&&edit.gone&&edit.tomb,'เหลือ '+edit.n1+' แถว · tombstone='+edit.tomb);
+ t('...Note ของใบยังอยู่ครบหลังแก้ไข',edit.note==='จัดของแยกไว้ รอเรียกส่ง',edit.note);
+
+ /* ==========================================================================
+  * 11) ✅ "ขายออกไปแล้ว" — วันที่ · จำนวน · ร้านค้าไหน (จากไฟล์ insight)
+  *     เจ้าของสั่ง: *"เมื่อได้ใบส่งของ แอดมินก็จะเอาข้อมูลมากระทบในเวปนี้อีกที …
+  *     ให้มีขึ้นบันทึกวันที่ว่าขายออกไปวันที่เท่าไหร่ จำนวนเท่าไหร่ และขายไปยังร้านค้าไหน"*
+  * ======================================================================== */
+ const clr=await ev(async()=>{
+   const sid=Object.keys(CSTOCK.slips)[0],id=cstSlipRows(sid)[0].id;
+   CST.sec='list';renderCStock();cstTog(id);
+   const hasBtn=!!document.querySelector('#cstBody .cst-lot button.upload-btn');
+   cstClrOpen(id);
+   const openM=!document.getElementById('cstClrModal').classList.contains('hidden');
+   const sub=document.getElementById('cstClrSub').innerText.replace(/\s+/g,' ');
+   document.getElementById('cstClrWho').value='ประภัส';
+   cstClrSug();
+   const sug=[...document.querySelectorAll('#cstClrSug .cst-sg')].map(x=>x.textContent.replace(/\s+/g,' '));
+   cstClrPick('4862412');
+   const picked={who:document.getElementById('cstClrWho').value,
+     pick:document.getElementById('cstClrPick').innerText.replace(/\s+/g,' ')};
+   document.getElementById('cstClrD').value='2026-11-03';
+   document.getElementById('cstClrCs').value='5';
+   document.getElementById('cstClrPc').value='0';
+   document.getElementById('cstClrNote').value='ทำราคา 300/ลัง';
+   const s0=window.__sync;cstClrSave();
+   const l=CSTOCK.lots[id];
+   return {id:id,hasBtn:hasBtn,openM:openM,sub:sub,sug:sug.join(' / '),picked:picked,
+     closed:document.getElementById('cstClrModal').classList.contains('hidden'),
+     clr:l.clr,left:cstLeft(l),status:cstStatus(l),sync:window.__sync-s0,
+     row:(document.querySelector('#cstBody .cst-lot')||{innerText:''}).innerText.replace(/\s+/g,' ')};});
+ t('ผู้จัดการ/แอดมินมีปุ่ม "บันทึกว่าขายออกไปแล้ว" ในแถวสินค้า',clr.hasBtn&&clr.openM,'ok');
+ t('...กล่องบอกชัดว่าลอตนี้ตัดไว้เท่าไหร่ เหลือเท่าไหร่',
+   /ตัดบิลไว้ 9 ลัง/.test(clr.sub)&&/เหลือ 9/.test(clr.sub),clr.sub);
+ t('🏪 ค้นหาร้านจากไฟล์ insight (วิเคราะห์เชิงลึก) ได้ด้วยชื่อ',
+   /ประภัสสร/.test(clr.sug)&&/4862412/.test(clr.sug),clr.sug.slice(0,70));
+ t('...เลือกร้านแล้วเก็บทั้งชื่อและรหัสร้าน',
+   clr.picked.who==='ประภัสสร'&&/4862412/.test(clr.picked.pick)&&
+   clr.clr[0].sc==='4862412'&&clr.clr[0].sn==='ประภัสสร',JSON.stringify(clr.clr[0]).slice(0,110));
+ t('🔑 บันทึกแล้วได้ วันที่ขายออก + จำนวน + ร้าน ครบในรายการเดียว',
+   clr.clr.length===1&&clr.clr[0].d==='2026-11-03'&&clr.clr[0].cs===5&&
+   clr.clr[0].note==='ทำราคา 300/ลัง',JSON.stringify(clr.clr[0]).slice(0,120));
+ t('...คงเหลือคิดใหม่เอง (9−5 = 4) และสถานะกลายเป็นเคลียร์บางส่วน',
+   clr.left===4&&clr.status==='part',clr.left+' / '+clr.status);
+ t('...ปิดกล่องเองและบันทึกขึ้นเซิร์ฟเวอร์ครั้งเดียว',clr.closed&&clr.sync===1,'sync +'+clr.sync);
+ t('...แถวในหน้าจอขึ้นสถานะใหม่ให้เห็นทันที',/เคลียร์ไปบางส่วน/.test(clr.row),
+   (clr.row.match(/เคลียร์ไปบางส่วน|รอจัดส่ง[^·]*/)||[''])[0]);
+ const clr2=await ev(()=>{
+   const id=CST.open&&Object.keys(CST.open)[0];
+   const l=CSTOCK.lots[id];const o={};
+   /* เคลียร์ส่วนที่เหลือ → ต้องกลายเป็น "เคลียร์หมดแล้ว" */
+   cstClrOpen(id);
+   document.getElementById('cstClrD').value='2026-11-04';
+   document.getElementById('cstClrCs').value='4';
+   document.getElementById('cstClrWho').value='ส่งตัวกระจายสองเมือง';
+   cstClrSave();
+   o.left=cstLeft(l);o.status=cstStatus(l);o.n=l.clr.length;
+   o.freeText=l.clr[1].who==='ส่งตัวกระจายสองเมือง'&&!l.clr[1].sc;
+   /* เคลียร์เกินของที่เหลือ ต้องถามก่อน ไม่ใช่บันทึกเงียบ ๆ */
+   window.confirm=()=>false;window.__alerts=[];
+   cstClrOpen(id);
+   document.getElementById('cstClrD').value='2026-11-05';
+   document.getElementById('cstClrCs').value='99';
+   document.getElementById('cstClrWho').value='ใครก็ไม่รู้';
+   cstClrSave();
+   o.blocked=l.clr.length===2;
+   window.confirm=()=>true;
+   /* ว่างเปล่า → ฟ้อง */
+   cstClrOpen(id);document.getElementById('cstClrCs').value='';
+   document.getElementById('cstClrWho').value='x';window.__alerts=[];
+   cstClrSave();o.noQty=window.__alerts.join('|');o.still=l.clr.length===2;
+   cstClrClose();
+   /* ลบรายการที่คีย์ผิดได้ แล้วยอดคงเหลือกลับมา */
+   cstClrDel(id,1);
+   o.afterDel=l.clr.length;o.leftBack=cstLeft(l);
+   return o;});
+ t('เคลียร์ส่วนที่เหลือครบ → สถานะเป็น "เคลียร์หมดแล้ว" และคงเหลือ 0',
+   clr2.left===0&&clr2.status==='done'&&clr2.n===2,clr2.left+' / '+clr2.status);
+ t('...ผู้รับที่ไม่ใช่ร้านในระบบ (เช่น ส่งตัวกระจาย) พิมพ์ชื่อเองได้',clr2.freeText,'ok');
+ t('🛟 เคลียร์เกินจำนวนที่ตัดไว้ ต้องถามก่อน — กดยกเลิกแล้วไม่บันทึก',clr2.blocked,'ok');
+ t('🛟 ไม่ใส่จำนวน → ฟ้อง และไม่บันทึก',/จำนวน/.test(clr2.noQty)&&clr2.still,clr2.noQty);
+ t('ลบรายการเคลียร์ที่คีย์ผิดได้ และคงเหลือกลับมาเอง (0 → 4)',
+   clr2.afterDel===1&&clr2.leftBack===4,clr2.afterDel+' รายการ · เหลือ '+clr2.leftBack);
+
+ /* ==========================================================================
+  * 12) 🏪 ไฟล์ Ex.export — ร้านที่ยอดตัดบิลถูกส่งเข้าไป (แนบทีหลังได้)
+  * ======================================================================== */
+ const EXH=['เอกสารการวางบิล','ประเภทการวางบิล','ผู้สั่งซื้อ (ID)','ผู้สั่งซื้อ','มูลค่าสุทธิ','จำนวนภาษี',
+   'สกุลเงินเอกสาร','สถานะการผ่านรายการ','ถูกยกเลิก','วันที่วางบิล','สร้างโดย'];
+ const exRow=(doc,sc,sn,net,tax,d,cx)=>[doc,'ใบกำกับสินค้า',sc,sn,net,tax,'THB','ยังไม่หักล้าง',cx||'ไม่ใช่',d,'2096DO2'];
+ const mkEx=(rows,head)=>{
+   const w=XLSX.utils.book_new();
+   XLSX.utils.book_append_sheet(w,XLSX.utils.aoa_to_sheet([head||EXH].concat(rows)),'Data');
+   return Buffer.from(XLSX.write(w,{bookType:'xlsx',type:'array'})).toString('base64');
+ };
+ const today=await ev(()=>todayISO());
+ const exRows=[exRow('MF80475729','4862412','ประภัสสร',46.37,3.25,today),
+   exRow('MF80475730','4862371','เฟรนด์ลี่มาร์ท',46.37,3.25,today),
+   exRow('MF80475743','5196282','ร้าน  เอ มาร์ท',46.37,3.25,today),
+   exRow('MF80475799','4862999','บิลที่ถูกยกเลิก',99.99,7.00,today,'ใช่')];
+ const exOut=await ev(a=>{
+   const sid=Object.keys(CSTOCK.slips)[0];
+   const before=JSON.stringify(CSTOCK.slips[sid]);
+   CST.exFor=sid;window.__log=[];const s0=window.__sync;
+   cstExTake('Ex.export.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)));
+   const ex=CSTOCK.ex[sid];
+   return {sid:sid,ex:ex,slipSame:JSON.stringify(CSTOCK.slips[sid])===before,
+     inSlip:!!(CSTOCK.slips[sid].ex||CSTOCK.slips[sid].rows),
+     log:window.__log.join('\n'),sync:window.__sync-s0,exFor:CST.exFor};
+ },{b64:mkEx(exRows)});
+ t('🏪 อ่านไฟล์ Ex.export ได้ และนับเฉพาะบิลที่ไม่ถูกยกเลิก (4 แถว → 3 บิล)',
+   exOut.ex&&exOut.ex.n===3&&/ข้ามบิลที่ถูกยกเลิก 1 ใบ/.test(exOut.log),
+   exOut.ex&&exOut.ex.n+' บิล');
+ t('🔑 รหัสร้านอ่านจากคอลัมน์ "ผู้สั่งซื้อ (ID)" ไม่ใช่คอลัมน์ "ผู้สั่งซื้อ" ที่ชื่อคล้ายกัน',
+   exOut.ex.rows[0].c==='4862412'&&exOut.ex.rows[0].n==='ประภัสสร',
+   JSON.stringify(exOut.ex.rows[0]));
+ t('...มูลค่ารวมภาษี (46.37+3.25) × 3 บิล = 148.86',
+   Math.abs(exOut.ex.val-148.86)<0.01,exOut.ex.val);
+ t('...แนบเข้าใบที่เลือก และเก็บคนละ map กับหัวใบ (อัพไฟล์ทีหลังจึงไม่ทับ Note)',
+   exOut.ex&&exOut.slipSame&&!exOut.inSlip,'slip ไม่ขยับ='+exOut.slipSame);
+ t('...บันทึกขึ้นเซิร์ฟเวอร์ครั้งเดียว และล้างใบที่เลือกไว้ทิ้ง',
+   exOut.sync===1&&exOut.exFor==='','sync +'+exOut.sync);
+ const exUi=await ev(()=>{
+   const sid=Object.keys(CSTOCK.slips)[0];
+   CST.sec='bill';CST.sopen={};CST.sopen[sid]=1;renderCStock();
+   const txt=document.getElementById('cstBill').innerText.replace(/\s+/g,' ');
+   const rowsBefore=document.querySelectorAll('#cstBill .cst-ex .cst-tbl tbody tr').length;
+   cstSlipTog('ex|'+sid);
+   const rowsAfter=document.querySelectorAll('#cstBill .cst-ex .cst-tbl tbody tr').length;
+   const open=document.getElementById('cstBill').innerText.replace(/\s+/g,' ');
+   return {txt:txt,rowsBefore:rowsBefore,rowsAfter:rowsAfter,open:open};});
+ t('สรุปบนใบบอกว่าตัดบิลเข้าไปกี่ร้าน แต่ "ยังไม่ขึ้นโชว์รายร้าน" จนกดดู (ตามที่เจ้าของสั่ง)',
+   /ร้านที่ตัดบิลเข้า 3 ร้าน/.test(exUi.txt)&&exUi.rowsBefore===0,
+   (exUi.txt.match(/ร้านที่ตัดบิลเข้า[^·]*/)||[''])[0]);
+ t('...กดดูรายชื่อแล้วขึ้นครบ พร้อมสายของร้านจากข้อมูลที่มีอยู่แล้ว',
+   exUi.rowsAfter===3&&/เฟรนด์ลี่มาร์ท/.test(exUi.open)&&/CT12/.test(exUi.open),
+   exUi.rowsAfter+' แถว');
+ const exBad=await ev(a=>{
+   const o={};const snap=()=>JSON.stringify(CSTOCK);
+   const b=snap();
+   const run=(b64,how)=>{CST.exFor=how||'';
+     try{cstExTake('x.xlsx',Uint8Array.from(atob(b64),c=>c.charCodeAt(0)));return '';}
+     catch(e){return String(e.message||e);}};
+   o.noHead=run(a.noHead);o.sameHead=snap()===b;
+   o.noSlip=run(a.otherDay);o.sameSlip=snap()===b;
+   /* สองใบวันเดียวกัน → ต้องให้เลือกเอง ไม่ใช่เดา */
+   const now=Date.now();
+   CSTOCK.slips['B99999999-01']={id:'B99999999-01',d:a.today,up:now};
+   CSTOCK.slips['B99999999-02']={id:'B99999999-02',d:a.today,up:now};
+   o.many=run(a.sameDay);
+   delete CSTOCK.slips['B99999999-01'];delete CSTOCK.slips['B99999999-02'];
+   return o;
+ },{noHead:mkEx([['x','y']],['ไม่ใช่ไฟล์นี้','เลย']),
+    otherDay:mkEx([exRow('MF1','4862412','ประภัสสร',10,0.7,'2019-01-02')]),
+    sameDay:mkEx([exRow('MF2','4862412','ประภัสสร',10,0.7,today)]),today:today});
+ t('🛟 ไฟล์ที่ไม่ใช่ Ex.export → ฟ้องชัด และไม่เขียนข้อมูล',
+   /ไม่พบหัวตาราง/.test(exBad.noHead)&&exBad.sameHead,exBad.noHead);
+ t('🛟 ไม่มีใบตัดบิลของวันที่ในไฟล์ → ฟ้องว่าให้สร้างใบก่อน ไม่ใช่เดาใบให้',
+   /ยังไม่มีใบตัดบิลของวันที่/.test(exBad.noSlip)&&exBad.sameSlip,exBad.noSlip);
+ t('🛟 วันเดียวกันมีหลายใบ → ให้กดแนบในใบที่ต้องการ ไม่ใช่เดา',
+   /มีใบตัดบิลอยู่ 3 ใบ|มีใบตัดบิลอยู่ 2 ใบ/.test(exBad.many)&&/📎/.test(exBad.many),exBad.many);
+
+ /* ==========================================================================
+  * 13) 🖨 ส่งต่องาน — ใบตัดบิลออกเป็น PDF (สั่งพิมพ์) หรือ Excel
+  * ======================================================================== */
+ const sid1=await ev(()=>Object.keys(CSTOCK.slips)[0]);
+ const [dl2]=await Promise.all([pg.waitForEvent('download'),ev(a=>cstSlipXlsx(a.sid),{sid:sid1})]);
+ const out2=path.join(os.tmpdir(),'bd-cutbill.xlsx');
+ await dl2.saveAs(out2);
+ try{fs.copyFileSync(out2,path.join(process.env.KEEP_DIR||os.tmpdir(),'BD-cutbill-sample.xlsx'));}catch(e){}
+ t('ชื่อไฟล์ใบตัดบิลเป็น ASCII ล้วน (Chromium ทิ้งชื่อไฟล์ไทยทั้งนามสกุล)',
+   /^[A-Za-z0-9.\-]+\.xlsx$/.test(dl2.suggestedFilename()),dl2.suggestedFilename());
+ const wb2=XLSX.readFile(out2);
+ t('ไฟล์ Excel มี 2 ชีต: ใบตัดบิล + ร้านที่ตัดบิลเข้า',
+   wb2.SheetNames.join(' | ')==='ใบตัดบิล | ร้านที่ตัดบิลเข้า',wb2.SheetNames.join(' | '));
+ const S1=XLSX.utils.sheet_to_json(wb2.Sheets['ใบตัดบิล'],{header:1,raw:true,defval:null});
+ const flat=S1.map(r=>(r||[]).join('|')).join('\n');
+ t('...หัวใบมีเลขที่ใบ วันที่ตัดบิล ผู้รับผิดชอบ',
+   new RegExp(sid1).test(flat)&&/วันที่ตัดบิล/.test(flat)&&/ผู้รับผิดชอบ/.test(flat),S1[1].join(' '));
+ t('...ตารางสินค้ามีครบ 11 แถว พร้อมสถานะของแต่ละแถว',
+   S1.filter(r=>r&&/^\d+$/.test(String(r[0]))).length===11&&/รอจัดส่ง \/ รอเคลียร์/.test(flat),
+   S1.filter(r=>r&&/^\d+$/.test(String(r[0]))).length+' แถว');
+ t('...มี Note ถึงคลัง และ Note ที่ไปของสินค้า ติดไปในไฟล์ด้วย',
+   /Note ถึงคลัง\|จัดของแยกไว้ รอเรียกส่ง/.test(flat)&&/Note ที่ไปของสินค้า/.test(flat),'ok');
+ const S2=XLSX.utils.sheet_to_json(wb2.Sheets['ร้านที่ตัดบิลเข้า'],{header:1,raw:true,defval:null});
+ t('...ชีตร้านมีรหัสร้าน ชื่อร้าน สาย และมูลค่า ครบทุกบิล',
+   S2.length===4&&S2[1][1]==='4862412'&&S2[1][3]==='CT11',JSON.stringify(S2[1]));
+ const prt=await ev(a=>{
+   let printed=0;window.print=()=>{printed++;};
+   cstSlipPrint(a.sid);
+   const el=document.getElementById('prArea');
+   return {printed:printed,txt:el.innerText.replace(/\s+/g,' '),
+     rows:el.querySelectorAll('.pr-t tbody tr').length,
+     child:el.parentElement===document.body};},{sid:sid1});
+ t('🖨 กด PDF → เตรียมใบแล้วสั่งพิมพ์ (Save as PDF ของเบราว์เซอร์ ไม่ต้องลงไลบรารีเพิ่ม)',
+   prt.printed===1&&prt.rows===12,'print×'+prt.printed+' · '+prt.rows+' แถว');
+ t('...ใบที่พิมพ์มีหัวบริษัท เลขที่ใบ วันที่ Note และช่องเซ็นรับของ',
+   /BD DISTRIBUTION/.test(prt.txt)&&new RegExp(sid1).test(prt.txt)&&
+   /Note ถึงคลัง/.test(prt.txt)&&/ผู้รับของ/.test(prt.txt),prt.txt.slice(0,90));
+ t('...พื้นที่พิมพ์เป็นลูกตรงของ body (กฎ @media print body>* จะซ่อนที่เหลือได้จริง)',prt.child,'ok');
+
+ /* ==========================================================================
+  * 14) 🛟 บันทึกใบตัดบิล/เคลียร์ ต้องแตะแค่ CSTOCK — ก้อนอื่นห้ามขยับสักไบต์
+  * ======================================================================== */
+ const bBefore=await ev(new Function('return '+BLOBS));
+ await ev(()=>{
+   cstNew();cstRowCode(0,'65288800');CST.f.rows[0].cs=3;CST.f.rows[0].ln='CT15';
+   cstSlipSave();
+   const sid=cstSlipList()[0].id,id=cstSlipRows(sid)[0].id;
+   cstClrOpen(id);document.getElementById('cstClrD').value='2026-11-04';
+   document.getElementById('cstClrCs').value='1';document.getElementById('cstClrWho').value='ทดสอบ';
+   cstClrSave();
+   CST.sec='bill';renderCStock();CST.sec='list';renderCStock();
+ });
+ const bAfter=await ev(new Function('return '+BLOBS));
+ let moved2='';
+ if(bAfter!==bBefore){const x=JSON.parse(bBefore),y=JSON.parse(bAfter);
+   moved2=Object.keys(x).filter(k=>JSON.stringify(x[k])!==JSON.stringify(y[k])).join(', ');}
+ t('🛟 กรอกใบใหม่ + บันทึกขายออก แล้วข้อมูลก้อนอื่นเหมือนเดิมเป๊ะทุกไบต์',
+   bAfter===bBefore,moved2||'(ไม่มี)');
+
+ /* ==========================================================================
+  * 15) 👤 ฝั่งเซลล์: เห็นของที่ค้างเพื่อไปขาย แต่กรอก/แก้/ลบไม่ได้
+  *     เจ้าของสั่ง: *"ให้รายการออเดอร์ขึ้นไปเป็นสถานะรอจัดส่ง รอเคลียร์
+  *     เพื่อให้ทางเซลล์ไปขายกันมา"*
+  * ======================================================================== */
+ const sales=await ev(()=>{
+   S.user={id:'ct11',role:'sales',code:'209611',name:'CT11'};
+   renderTabs();_switchTab('cstock');
+   const o={tab:[...document.querySelectorAll('#tabSub button')].map(b=>b.textContent).join(' | '),
+     lots:document.querySelectorAll('#cstBody .cst-lot').length,
+     secBox:(document.getElementById('cstSecBox')||{style:{}}).style.display,
+     upBar:(document.getElementById('cstUpBar')||{style:{}}).style.display,
+     sec:CST.sec};
+   /* กดดูรายละเอียดแล้วต้องไม่มีปุ่มบันทึก/ลบ */
+   const id=Object.keys(CSTOCK.lots)[0];cstTog(id);
+   const el=document.querySelector('#cstBody .cst-lot');
+   o.btns=[...el.querySelectorAll('button')].map(b=>b.textContent.trim()).join(' | ');
+   /* เรียกฟังก์ชันเขียนตรง ๆ ก็ต้องไม่เขียน */
+   const snap=JSON.stringify(CSTOCK);const s0=window.__sync;window.__alerts=[];
+   CST.f={sid:'',d:todayISO(),own:'x',nw:'',ng:'',seq:1,
+     rows:[{k:'r1',code:'65660382',nm:'โอโม',cs:5,pc:0,ln:'CT11',own:''}]};
+   cstSlipSave();
+   cstClrOpen(id);const openM=!document.getElementById('cstClrModal').classList.contains('hidden');
+   cstDel(id);cstSlipDel(cstSlipList()[0].id);
+   o.same=JSON.stringify(CSTOCK)===snap;o.sync=window.__sync-s0;o.openM=openM;
+   o.alert=window.__alerts.join('|');
+   CST.f=null;S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};renderTabs();
+   return o;});
+ t('👤 เซลล์เห็นแท็บ 🧊 สต็อคกลาง และเห็นลอตที่ยังค้างอยู่',
+   /สต็อคกลาง/.test(sales.tab)&&sales.lots>0,sales.lots+' ลอต · '+sales.tab);
+ t('...แต่ไม่เห็นปุ่มตัดบิลใหม่ / อัพโหลด / สลับไปหน้าใบตัดบิล',
+   sales.upBar==='none'&&sales.secBox==='none'&&sales.sec==='list',
+   'up='+sales.upBar+' sec='+sales.secBox);
+ t('...และในรายละเอียดลอตไม่มีปุ่มบันทึกขายออก/ลบ',
+   !/ขายออก/.test(sales.btns)&&!/ลบลอต/.test(sales.btns),sales.btns||'(ไม่มีปุ่ม)');
+ t('🛟 เซลล์เรียกฟังก์ชันบันทึก/ลบตรง ๆ ก็เขียนอะไรไม่ได้เลย',
+   sales.same&&sales.sync===0&&!sales.openM,'sync +'+sales.sync+' · '+(sales.alert||'ไม่มีการเขียน'));
+
+ /* ==========================================================================
+  * 16) ไฟล์ Ex.export ตัวจริงของเจ้าของ (ถ้ามีในเครื่อง)
+  *     ⛔ ไม่ commit เข้า repo — มีชื่อร้านลูกค้าจริง (ดู .gitignore)
+  *     วางเองที่ test/browser/fixtures/ex-export.xlsx แล้วเทสต์นี้จะทำงาน
+  * ======================================================================== */
+ const F_EX=path.join(__dirname,'fixtures','ex-export.xlsx');
+ if(fs.existsSync(F_EX)){
+   const r=await ev(a=>{
+     const now=Date.now();
+     CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};
+     let err='';let o=null;
+     try{o=parseCStockEx('Ex.export.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)));}
+     catch(e){err=String(e.message||e);}
+     if(!o)return {err:err};
+     /* จับคู่อัตโนมัติจากวันที่ในไฟล์ ต้องทำงานกับไฟล์จริงด้วย */
+     const sid='B'+String(o.d).replace(/-/g,'')+'-01';
+     CSTOCK.slips[sid]={id:sid,d:o.d,own:'Supervisor',up:now};
+     CST.exFor='';window.__log=[];
+     cstExTake('Ex.export.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)));
+     const ex=CSTOCK.ex[sid];
+     return {o:{d:o.d,n:o.n,val:o.val,stores:o.stores,skip:o.skip,first:o.rows[0]},
+       attached:!!ex,sid:sid,log:window.__log.join('\n')};
+   },{b64:fs.readFileSync(F_EX).toString('base64')});
+   t('📄 ไฟล์ Ex.export ตัวจริง: อ่านได้ทุกบิล',!r.err&&r.o.n===60,r.err||(r.o&&r.o.n+' บิล'));
+   t('...รหัสร้าน 7 หลักและชื่อร้านมาถูกคอลัมน์',
+     !!r.o&&/^\d{7}$/.test(r.o.first.c)&&!!r.o.first.n&&!/^\d/.test(r.o.first.n),
+     r.o&&JSON.stringify(r.o.first));
+   t('...มูลค่ารวมภาษี = 2,977.20 บาท ตรงกับไฟล์',!!r.o&&Math.abs(r.o.val-2977.2)<0.01,r.o&&r.o.val);
+   t('...นับร้านไม่ซ้ำได้ 60 ร้าน และวันที่วางบิลอ่านออก',
+     !!r.o&&r.o.stores===60&&r.o.d==='2026-10-27',r.o&&(r.o.stores+' ร้าน · '+r.o.d));
+   t('...จับคู่ใบตัดบิลจากวันที่ในไฟล์ได้เองโดยไม่ต้องเลือกใบ',!!r.attached,r.sid);
+ }else{
+   console.log('  (ข้าม 5 เช็ค: ไม่มี test/browser/fixtures/ex-export.xlsx ในเครื่องนี้)');
+ }
 
  const real=errs.filter(e=>!/localStorage|SecurityError/.test(e));
  t('ไม่มี JavaScript error ตลอดเทสต์',real.length===0,real.join(' | '));

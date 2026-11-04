@@ -245,6 +245,13 @@ function mergeState(server, c) {
   //          ลอตที่อยู่บนเซิร์ฟเวอร์แต่ไม่มีในไฟล์รอบนี้ **ยังอยู่ครบ** (union) — ไฟล์ที่กรอกไม่ครบ
   //          จึงลบของเก่าไม่ได้ ต้องใช้ tombstone เท่านั้น
   //   del  : tombstone ใส่หลัง union (กฎเดียวกับ PLAN/PROMO) แท็บเก่าจึงปลุกลอตที่ลบแล้วไม่ได้
+  //   slips: "ใบตัดบิล" ที่แอดมินกรอกในเว็บ (เจ้าของสั่ง 4 พ.ย. 69 ให้เลิกทำผ่าน Excel)
+  //          newest `up` ชนะต่อใบ · รายการสินค้าในใบไม่ได้เก็บซ้ำที่นี่ (อ่านจาก lots.sl)
+  //   sdel : tombstone ของใบ — ลบใบแล้วต้องลบ ex ของใบนั้นตามไปด้วย
+  //   ex   : ไฟล์ Ex.export (ร้านที่บิลถูกตัดเข้า) ของแต่ละใบ — **คนละ map กับ slips**
+  //          เพราะแอดมิน "ซับมิทใบก่อน แล้วมาอัพไฟล์ทีหลังก็ได้" สองฝั่งนี้จึงบันทึกคนละเวลา
+  //          คนละแท็บได้ ถ้าอยู่เรคอร์ดเดียวกันแบบ newest-wins การอัพไฟล์จากแท็บที่เปิดค้าง
+  //          จะลบ Note ที่พิมพ์ทีหลังทิ้ง (บทเรียนเดียวกับ LEADS.meta / LEADS.sales)
   const sCs = s.CSTOCK || {}, cCs = c.CSTOCK || {};
   const csLots = newestByUp(sCs.lots, cCs.lots);
   const csDel = keyMerge(sCs.del, cCs.del);
@@ -253,7 +260,17 @@ function mergeState(server, c) {
     if (it && (it.up || it.at || 0) > csDel[k]) delete csDel[k];   // อัพกลับมาใหม่หลังลบ
     else delete csLots[k];
   }
-  const CSTOCK = { lots: csLots, del: csDel, up: Math.max(sCs.up || 0, cCs.up || 0) };
+  const csSlips = newestByUp(sCs.slips, cCs.slips);
+  const csEx = newestByUp(sCs.ex, cCs.ex);
+  const csSdel = keyMerge(sCs.sdel, cCs.sdel);
+  for (const k of Object.keys(csSdel)) {
+    const sl = csSlips[k], ex = csEx[k];
+    const newer = Math.max((sl && (sl.up || sl.at)) || 0, (ex && (ex.up || ex.at)) || 0);
+    if (newer > csSdel[k]) delete csSdel[k];                       // คีย์ใบกลับเข้ามาใหม่หลังลบ
+    else { delete csSlips[k]; delete csEx[k]; }
+  }
+  const CSTOCK = { lots: csLots, del: csDel, slips: csSlips, sdel: csSdel, ex: csEx,
+                   up: Math.max(sCs.up || 0, cCs.up || 0) };
 
   return {
     DATA,

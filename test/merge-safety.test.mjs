@@ -984,6 +984,100 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
 
   const firstC = mergeState(null, { DATA: server.DATA, CSTOCK: srv.CSTOCK });
   check("บันทึกครั้งแรกในที่เก็บว่าง ลอตไม่หาย", !!firstC.CSTOCK.lots["ST-01"]);
+
+  /* ------------------------------------------------------------------
+   * 🧾 ใบตัดบิลที่แอดมินกรอกในเว็บ (slips / sdel) + ไฟล์ร้าน Ex.export (ex)
+   * เจ้าของสั่ง 4 พ.ย. 69: เลิกทำผ่าน Excel · "ซับมิทก่อนแล้วมาอัพไฟล์ทีหลังก็ได้"
+   * ซึ่งหมายความว่าหัวใบกับไฟล์ร้าน **ถูกบันทึกคนละเวลา คนละแท็บ** ได้
+   * ------------------------------------------------------------------ */
+  const B1 = "B20261104-01";
+  const srvB = JSON.parse(JSON.stringify(base));
+  srvB.CSTOCK = {
+    lots: {
+      [B1 + "-r1"]: { id: B1 + "-r1", sl: B1, sq: 1, d: "2026-11-04", nm: "โอโม ซอฟท์ ทัช",
+                      code: "65660382", cs: 8, pc: 0, ln: "CT11", clr: [], up: 1000 },
+      [B1 + "-r2"]: { id: B1 + "-r2", sl: B1, sq: 2, d: "2026-11-04", nm: "โอโม ซอฟท์ ทัช",
+                      code: "65660382", cs: 8, pc: 0, ln: "CT12", clr: [], up: 1000 },
+    },
+    del: {},
+    slips: { [B1]: { id: B1, d: "2026-11-04", own: "Supervisor", nw: "จัดของแยกไว้", ng: "รอขายเข้าร้าน", up: 1000 } },
+    sdel: {},
+    ex: { [B1]: { file: "Ex.export.xlsx", d: "2026-11-04", n: 60, val: 2977.2,
+                  rows: [{ c: "4862412", n: "ประภัสสร", v: 49.62 }], up: 1200 } },
+    up: 1200,
+  };
+  // แท็บเก่าที่ยังไม่รู้จักใบตัดบิลเลย (รุ่นก่อนฟีเจอร์นี้)
+  const preBill = JSON.parse(JSON.stringify(base));
+  preBill.CSTOCK = { lots: srvB.CSTOCK.lots, del: {}, up: 1000 };
+  const b1 = mergeState(srvB, preBill);
+  check("🛟 แท็บรุ่นก่อนมีใบตัดบิล บันทึกทับแล้วใบ+ไฟล์ร้านยังอยู่ครบ",
+        !!b1.CSTOCK.slips[B1] && b1.CSTOCK.slips[B1].nw === "จัดของแยกไว้" &&
+        !!b1.CSTOCK.ex[B1] && b1.CSTOCK.ex[B1].n === 60,
+        JSON.stringify(Object.keys(b1.CSTOCK.slips || {})));
+
+  // ใบใหม่จากอีกวัน ต้องไม่ลบใบเดิม
+  const B2 = "B20261105-01";
+  const addBill = JSON.parse(JSON.stringify(base));
+  addBill.CSTOCK = { lots: {
+      [B2 + "-r1"]: { id: B2 + "-r1", sl: B2, sq: 1, d: "2026-11-05", nm: "คนอร์", cs: 4, pc: 48, ln: "CT15", clr: [], up: 3000 },
+    }, del: {},
+    slips: { [B2]: { id: B2, d: "2026-11-05", own: "CT15", nw: "", ng: "", up: 3000 } },
+    sdel: {}, ex: {}, up: 3000 };
+  const b2 = mergeState(b1, addBill);
+  check("ตัดบิลใบใหม่ → ใบเดิมและแถวเดิมยังอยู่ครบทั้งคู่",
+        !!b2.CSTOCK.slips[B1] && !!b2.CSTOCK.slips[B2] &&
+        Object.keys(b2.CSTOCK.lots).filter(k => k.startsWith("B")).length === 3,
+        Object.keys(b2.CSTOCK.slips).join(","));
+  check("...และไฟล์ร้านของใบเดิมไม่ถูกบันทึกใบใหม่ลบทิ้ง", !!b2.CSTOCK.ex[B1]);
+
+  // 🔑 เหตุผลที่ ex ต้องแยก map: แท็บที่ "ซับมิทใบไว้ก่อนอัพไฟล์" บันทึกทับทีหลัง
+  const staleBill = JSON.parse(JSON.stringify(base));
+  staleBill.CSTOCK = { lots: {}, del: {},
+    slips: { [B1]: { id: B1, d: "2026-11-04", own: "Supervisor", nw: "จัดของแยกไว้", ng: "รอขายเข้าร้าน", up: 1000 } },
+    sdel: {}, ex: {}, up: 1000 };
+  const b3 = mergeState(b2, staleBill);
+  check("🛟 แท็บที่ยังไม่มีไฟล์ร้าน บันทึกหัวใบทับ → ไฟล์ร้านที่อัพทีหลังไม่หาย",
+        !!b3.CSTOCK.ex[B1] && b3.CSTOCK.ex[B1].n === 60);
+  check("🛟 ...และแถวสินค้าของใบนั้นก็ยังอยู่ (แท็บส่ง lots มาว่าง)",
+        !!b3.CSTOCK.lots[B1 + "-r1"] && !!b3.CSTOCK.lots[B1 + "-r2"]);
+  // ตรงกันข้าม: อัพไฟล์ร้านทีหลัง ต้องไม่ลบ Note ที่แก้ไปแล้ว
+  const noteFirst = JSON.parse(JSON.stringify(base));
+  noteFirst.CSTOCK = { lots: {}, del: {},
+    slips: { [B1]: { id: B1, d: "2026-11-04", own: "Supervisor", nw: "ส่งคลัง 2 รอบ", ng: "ลัดดาวัลย์", up: 5000 } },
+    sdel: {}, ex: {}, up: 5000 };
+  const b4 = mergeState(b3, noteFirst);
+  const exLater = JSON.parse(JSON.stringify(base));
+  exLater.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {},
+    ex: { [B1]: { file: "Ex.export (2).xlsx", d: "2026-11-04", n: 61, val: 3000, rows: [], up: 6000 } }, up: 6000 };
+  const b5 = mergeState(b4, exLater);
+  check("🔑 อัพไฟล์ร้านทีหลัง → Note ที่แอดมินพิมพ์ไว้ไม่ถูกทับหาย",
+        b5.CSTOCK.slips[B1].nw === "ส่งคลัง 2 รอบ" && b5.CSTOCK.ex[B1].n === 61,
+        b5.CSTOCK.slips[B1].nw + " / " + b5.CSTOCK.ex[B1].n);
+
+  // ลบใบทั้งใบ = tombstone ของใบ + ไฟล์ร้านของใบนั้นต้องไปด้วย
+  const killBill = JSON.parse(JSON.stringify(b5));
+  delete killBill.CSTOCK.slips[B2];
+  killBill.CSTOCK.sdel = { [B2]: 8000 };
+  const b6 = mergeState(b5, killBill);
+  check("ลบใบที่คีย์ผิดด้วย tombstone ได้", !b6.CSTOCK.slips[B2] && !!b6.CSTOCK.sdel[B2]);
+  const reviveBill = JSON.parse(JSON.stringify(base));
+  reviveBill.CSTOCK = { lots: {}, del: {},
+    slips: { [B2]: { id: B2, d: "2026-11-05", up: 3000 } }, sdel: {},
+    ex: { [B2]: { file: "เก่า.xlsx", n: 9, rows: [], up: 3000 } }, up: 3000 };
+  const b7 = mergeState(b6, reviveBill);
+  check("🛟 แท็บเก่าปลุกใบที่ลบไปแล้วกลับมาไม่ได้ (ทั้งใบและไฟล์ร้าน)",
+        !b7.CSTOCK.slips[B2] && !b7.CSTOCK.ex[B2]);
+  const redoBill = JSON.parse(JSON.stringify(base));
+  redoBill.CSTOCK = { lots: {}, del: {},
+    slips: { [B2]: { id: B2, d: "2026-11-05", nw: "คีย์ใหม่", up: 9000 } }, sdel: {}, ex: {}, up: 9000 };
+  const b8 = mergeState(b7, redoBill);
+  check("...แต่ถ้าแอดมินคีย์ใบนั้นกลับเข้ามาใหม่ (up ใหม่กว่า tombstone) ต้องได้",
+        !!b8.CSTOCK.slips[B2] && b8.CSTOCK.slips[B2].nw === "คีย์ใหม่");
+  check("ใบตัดบิลไม่ไปกวนลอตที่มาจากไฟล์ Excel รอบเก่า",
+        !!b8.CSTOCK.lots["ST-01"] === false && !!b8.CSTOCK.lots[B1 + "-r1"],
+        Object.keys(b8.CSTOCK.lots).join(","));
+  check("looksEmpty: บันทึกที่มีแต่ใบตัดบิล ยังไม่นับว่าเป็นข้อมูลจริง",
+        looksEmpty({ DATA: {}, CSTOCK: srvB.CSTOCK }) === true);
   check("สต็อคกลางไม่ไปกวนก้อนอื่น",
         Object.keys(c6.DATA.monthly).length === 2 && !!c6.PSTORE.rounds["2026-06-30"] &&
         c6.ORDERS.dates.length === 2 && !!c6.PLAN && !!c6.PROMO && !!c6.PJP &&

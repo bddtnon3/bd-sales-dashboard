@@ -175,6 +175,11 @@ function setup(a){
    const got={};
    got.cells=cells.length;
    got.allClickable=cells.every(x=>/pjPickDay/.test(x.getAttribute('onclick')||''));
+   /* วันที่มีแผน
+      ⚠️ ต้องเริ่มจากวันอื่นก่อน: ถ้าวันที่เลือกอยู่ "เป็นวันเดียวกัน" อยู่แล้ว การกดคือ
+      การพับเก็บ (ซึ่งถูกต้อง และมีเทสของมันเองด้านล่าง) — เดือนที่วันที่ 5 เป็นวันแผน
+      ถัดไปจากวันนี้ ค่าตั้งต้นจะเลือกวันที่ 5 ไว้ให้แล้ว เทสจึงเคยแดงเฉพาะบางวันของเดือน */
+   PJ.d=a.D12;PJ.open=true;renderPjp();
    /* วันที่มีแผน */
    got.hitPlan=click(a.D5);
    got.planDate=PJ.d;got.planView=PJ.view;

@@ -212,6 +212,9 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cal-dot{width:12px;height:12px;border-radius:4px;background:var(--blue-soft);border:1px solid var(--blue);display:inline-block}
 /* sales request modal */
 #reqModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px}
+/* กล่อง "บันทึกว่าขายออกไปแล้ว" ของสต็อคกลาง — ต้องมีกฎของตัวเอง ไม่งั้นมันจะไหลไปท้ายหน้า
+   (คลาส .modal-card จัดแค่ตัวกล่อง ส่วนฉากหลัง/การจัดกลางอยู่ที่ id ของแต่ละกล่อง) */
+#cstClrModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:140;display:flex;align-items:center;justify-content:center;padding:14px}
 /* ต้องทับทุกกล่อง (z สูงกว่า #reqModal) เพราะเด้งขึ้นตอนกำลังกดส่งในกล่องสั่งของพอดี */
 #reauthModal{position:fixed;inset:0;background:rgba(16,42,93,.55);z-index:300;display:flex;align-items:center;justify-content:center;padding:14px}
 .req-results{max-height:38vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-bottom:4px}
@@ -280,6 +283,57 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cst-tbl{width:100%;margin-top:8px;font-size:12.5px}
 .cst-tbl th{font-size:11.5px;color:var(--muted);font-weight:700;padding:4px 6px;border-bottom:1px solid var(--line)}
 .cst-tbl td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:center}
+.cst-ln{color:var(--blue)}
+/* 🧾 ฟอร์มใบตัดบิล (กรอกในเว็บ แทนไฟล์ Excel) */
+.cst-form{border-top:3px solid var(--blue)}
+.cst-fh h3{margin:0}
+.cst-frow{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin:10px 0 4px}
+.cst-frow .ctl{display:flex;flex-direction:column;gap:3px}
+.cst-frow label{font-size:11.5px;color:var(--muted);font-weight:700}
+.cst-frow input,.cst-frow select{padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;
+  font-size:14px;font-family:inherit;background:#fff}
+.cst-lb{display:block;font-size:11.5px;color:var(--muted);font-weight:700;margin:10px 0 3px}
+.cst-tw{overflow-x:auto;margin-top:8px;-webkit-overflow-scrolling:touch}
+.cst-ft{width:100%;border-collapse:collapse;font-size:13px;min-width:860px}
+.cst-ft th{font-size:11.5px;color:var(--muted);font-weight:700;padding:5px 6px;text-align:left;
+  border-bottom:1.5px solid var(--line);white-space:nowrap}
+.cst-ft td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top;position:relative}
+.cst-ft td.n{text-align:center;color:var(--muted);white-space:nowrap}
+.cst-in{padding:8px 9px;border:1.5px solid var(--line);border-radius:8px;font-size:13.5px;
+  font-family:inherit;background:#fff;width:100%}
+.cst-in:focus{outline:none;border-color:var(--blue)}
+.w-code{width:110px}.w-nm{min-width:240px}.w-n{width:78px;text-align:right}
+.w-ln{width:116px}.w-ow{width:132px}
+.cst-lk{font-size:10.5px;margin-top:2px;white-space:nowrap}
+.cst-ok{color:var(--good);font-weight:700}
+.cst-no{color:var(--bad);font-weight:700}
+.cst-sug{position:relative;z-index:5}
+.cst-sg{border:1px solid var(--line);border-top:none;background:#fff;padding:6px 9px;cursor:pointer;font-size:12.5px}
+.cst-sg:first-child{border-top:1px solid var(--line);border-radius:8px 8px 0 0;margin-top:3px}
+.cst-sg:last-child{border-radius:0 0 8px 8px}
+.cst-sg:hover{background:var(--blue-soft)}
+.cst-sg b{display:block}
+.cst-sg span{color:var(--muted);font-size:11px}
+.cst-sg.none{cursor:default;color:var(--muted)}
+.cst-sg.none:hover{background:#fff}
+.cst-fb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.cst-nb{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}
+.cst-nb label{display:block;font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:3px}
+.cst-nb textarea{width:100%;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;
+  font-size:13.5px;font-family:inherit;resize:vertical}
+.cst-x{background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:4px 8px;cursor:pointer;
+  font-size:12px;font-family:inherit;font-weight:700;color:var(--ink)}
+.cst-x:hover{border-color:var(--blue);color:var(--blue)}
+.cst-pick{background:var(--blue-soft);border-radius:9px;padding:7px 10px;margin-top:6px;font-size:12.5px;
+  display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.cst-slip{border:1px solid var(--line);border-left:5px solid var(--blue);border-radius:11px;
+  margin-top:9px;background:#fff;overflow:hidden}
+.cst-slip.done{border-left-color:var(--good);background:#F7FBF8}
+.cst-sh{display:flex;align-items:center;gap:12px;padding:10px 13px;cursor:pointer;flex-wrap:wrap}
+.cst-sh:hover{background:var(--blue-soft)}
+.cst-ex{background:var(--bg);border-radius:9px;padding:8px 11px;margin-top:9px;font-size:12.5px}
+.cst-ex.none{color:var(--muted)}
+.cst-exh{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .rq-note{background:#FFF6E0;border:1px solid #F0D79A;border-radius:9px;padding:7px 11px;margin-bottom:9px;
   font-size:12.5px;line-height:1.55}
 .req-perwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
@@ -945,6 +999,27 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 .ps-typetag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:12px;background:#EAF1FD;color:var(--blue);white-space:nowrap}
 .ps-typetag.n{background:#F1F3F7;color:#6B7A90}
 .ps-typetag.f{background:#F3EAFB;color:#7A3EB1}
+/* ===== 🖨 สั่งพิมพ์ใบตัดบิล (ได้ PDF ด้วย "Save as PDF" ของเบราว์เซอร์ ไม่ต้องลงไลบรารี) =====
+   #prArea ต้องเป็นลูกตรงของ body — กฎ body>* ซ่อนทุกอย่างยกเว้นใบที่จะพิมพ์ */
+#prArea{display:none}
+@media print{
+  body>*{display:none !important}
+  #prArea{display:block !important}
+  @page{size:A4 portrait;margin:12mm}
+}
+.pr-doc{color:#000;font-size:12px}
+.pr-h{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:6px}
+.pr-h b{font-size:18px}
+.pr-id{text-align:right;font-weight:700}
+.pr-m{margin:8px 0}
+.pr-t{width:100%;border-collapse:collapse;margin-top:6px}
+.pr-t th,.pr-t td{border:1px solid #666;padding:4px 6px;text-align:center}
+.pr-t th{background:#EEE}
+.pr-t .l{text-align:left}
+.pr-t .pr-sum td{font-weight:700;background:#F6F6F6}
+.pr-n{margin-top:8px;border:1px solid #999;padding:6px 8px;min-height:30px;white-space:pre-wrap}
+.pr-sg{display:flex;justify-content:space-between;margin-top:34px;text-align:center}
+.pr-sg>div{width:30%}
 </style>
 </head>
 <body>
@@ -1263,12 +1338,17 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="panel" id="stockTable"></div>
     </div>
 
-    <!-- 📦 สต็อคกลาง — ของที่ตัดบิลไว้ก่อนแล้วยังค้าง (แอดมิน/ผู้จัดการเท่านั้นในรอบแรก) -->
+    <!-- 📦 สต็อคกลาง — ของที่ตัดบิลไว้ก่อนแล้วยังค้าง
+         ทีมขายดูได้ (เจ้าของสั่ง "เพื่อให้ทางเซลล์ไปขายกันมา") แต่กรอก/แก้ได้เฉพาะแอดมิน -->
     <div id="cstockView" class="hidden">
       <div class="controls">
-        <div class="ctl"><label>ค้นหา</label><input id="cstQ" placeholder="🔍 ชื่อสินค้า / รหัสลอต / ผู้รับผิดชอบ"
+        <div class="ctl" id="cstSecBox" style="display:none"><label>หน้าจอ</label><div class="seg" id="cstSec">
+          <button data-s="list" class="on" onclick="cstSetSec('list')">📦 รายการค้าง</button>
+          <button data-s="bill" onclick="cstSetSec('bill')">🧾 ใบตัดบิล</button>
+        </div></div>
+        <div class="ctl" id="cstQBox"><label>ค้นหา</label><input id="cstQ" placeholder="🔍 ชื่อสินค้า / รหัส / สาย / ผู้รับผิดชอบ"
           oninput="CST.q=this.value;renderCStock()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:240px"></div>
-        <div class="ctl"><label>แสดง</label><div class="seg" id="cstOnly">
+        <div class="ctl" id="cstOnlyBox"><label>แสดง</label><div class="seg" id="cstOnly">
           <button data-o="open" class="on" onclick="cstSetOnly('open')">ยังค้าง</button>
           <button data-o="old" onclick="cstSetOnly('old')">ค้างนาน</button>
           <button data-o="done" onclick="cstSetOnly('done')">เคลียร์หมดแล้ว</button>
@@ -1276,12 +1356,13 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         </div></div>
         <div class="spacer"></div>
         <div class="ctl admin-upload" id="cstUpBar" style="display:none"><label>&nbsp;</label>
-          <button class="btn-ghost" onclick="cstTemplate()">⬇️ โหลดไฟล์ฟอร์ม</button>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+          <button class="upload-btn" onclick="cstNew()">➕ ตัดบิลใหม่</button>
+          <button class="btn-ghost" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
         </div>
       </div>
       <div class="kpi-monthbar" id="cstBar"></div>
       <div class="cards" id="cstCards"></div>
+      <div id="cstBill" class="hidden"></div>
       <div id="cstBody"></div>
     </div>
 
@@ -1542,7 +1623,11 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <input id="fileStock2" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="cstock">
-        <label class="drop up-stock" for="fileCStock">🧊 <b>สต็อคกลาง (ตัดบิลไว้ก่อน)</b><small>อัพทุกรอบที่เคลียร์ของออก · ไฟล์ฟอร์มที่โหลดจากแท็บ สต็อคกลาง</small></label>
+        <label class="drop up-stock" for="fileCStockEx">🏪 <b>ร้านที่ตัดบิลเข้า (Ex.export)</b><small>ไฟล์ Ex.export.xlsx จากระบบ — บอกว่าบิลสต็อคกลางรอบนั้นตัดเข้าร้านไหน · <b>แนบทีหลังได้</b> ระบบจับคู่ใบตัดบิลจากวันที่วางบิล</small></label>
+        <input id="fileCStockEx" type="file" accept=".xlsx,.xls" multiple class="hidden">
+      </div>
+      <div class="up-row" data-group="cstock">
+        <label class="drop up-stock" for="fileCStock">🧊 <b>สต็อคกลาง — ฟอร์ม Excel (วิธีเดิม)</b><small>ไม่ต้องใช้แล้ว ให้กรอกในเว็บที่แท็บ 🧾 ใบตัดบิล · เก็บไว้เผื่อไฟล์เก่าที่ยังกรอกค้างอยู่</small></label>
         <input id="fileCStock" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="stock">
@@ -1676,6 +1761,40 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
   </div>
 </div>
 
+<!-- ✅ บันทึกว่าของสต็อคกลาง "ขายออกไปแล้ว" (ได้ใบส่งของมาแล้ว) -->
+<div id="cstClrModal" class="hidden">
+  <div class="modal-card" style="max-width:560px">
+    <div class="modal-head">
+      <div><h3>✅ บันทึกว่าขายออกไปแล้ว</h3><div class="psub" id="cstClrSub"></div></div>
+      <button class="modal-x" onclick="cstClrClose()">✕</button>
+    </div>
+    <div class="up-body">
+      <div class="cst-frow">
+        <div class="ctl"><label>วันที่ขายออกไป</label><input id="cstClrD" type="date" onchange="cstClrHint()">
+          <div class="psub" id="cstClrDHint"></div></div>
+        <div class="ctl"><label>จำนวนลัง</label><input id="cstClrCs" type="number" min="0" step="1" style="width:110px"></div>
+        <div class="ctl"><label>จำนวนชิ้น</label><input id="cstClrPc" type="number" min="0" step="1" style="width:110px"></div>
+      </div>
+      <label class="cst-lb">ขายไปยังร้านค้าไหน</label>
+      <input id="cstClrWho" placeholder="🔍 พิมพ์ชื่อร้าน หรือรหัสร้าน 7 หลัก (หรือพิมพ์ชื่อผู้รับเองได้)"
+        oninput="cstClrSearch()" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px">
+      <div class="cst-sug" id="cstClrSug"></div>
+      <div id="cstClrPick"></div>
+      <label class="cst-lb">หมายเหตุ (ไม่บังคับ)</label>
+      <input id="cstClrNote" placeholder="เช่น ทำราคา 300/ลัง"
+        style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px">
+      <div class="psub" style="margin-top:8px">คงเหลือระบบคิดให้เอง (ตัดไว้ − ที่เคลียร์ไปแล้ว) ไม่ต้องพิมพ์</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="cstClrClose()">ยกเลิก</button>
+      <button class="upload-btn" onclick="cstClrSave()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- พื้นที่สั่งพิมพ์ (ใบตัดบิล → PDF ด้วย Save as PDF ของเบราว์เซอร์) — ต้องเป็นลูกตรงของ body -->
+<div id="prArea"></div>
+
 <script>
 /* ====================== DATA ====================== */
 const DATA = __SALESDATA__;
@@ -1786,9 +1905,22 @@ let PJP = __PJPDATA__;
  * ธุรกิจ: ศูนย์ตัดบิลเอายอดขาย ณ ตอนนั้นไปก่อน แล้วค่อยหาที่ระบายของทีหลัง
  *         ปัญหาคือ "ลืม" ว่ายังมีของค้างอยู่ — ต้องมีที่เดียวที่ทุกคนเห็นว่าเหลืออะไรบ้าง
  *
- * CSTOCK = { lots:{ id:{...} }, del:{id:ts}, up }
- *   lots  หนึ่งเรคอร์ด = สินค้าหนึ่งตัวที่ตัดบิลไว้หนึ่งรอบ
- *         {id,d,own,tag,code,nm,cs,pc,val,bills,rt,note, clr:[{d,who,cs,pc,note}], up,by}
+ * CSTOCK = { lots:{ id:{...} }, del:{id:ts}, slips:{sid:{...}}, sdel:{sid:ts}, ex:{sid:{...}}, up }
+ *   lots  หนึ่งเรคอร์ด = สินค้าหนึ่งตัวที่ตัดบิลไว้หนึ่งรอบ "ของสายหนึ่งสาย"
+ *         {id,d,own,tag,code,nm,cs,pc,val,bills,rt,note, clr:[{d,who,sc,sn,cs,pc,note,at,by}],
+ *          sl,sq,ln, up,by}
+ *         sl = รหัสใบตัดบิลที่แถวนี้อยู่ (ว่าง = ลอตเก่าที่มาจากไฟล์ Excel ก่อนมีหน้ากรอก)
+ *         sq = ลำดับแถวในใบ · ln = สายวิ่ง (CT11…KA99)
+ *   slips หนึ่งเรคอร์ด = "ใบตัดบิล" หนึ่งใบที่แอดมินกรอกในเว็บ (เจ้าของสั่ง 4 พ.ย. 69
+ *         ให้เลิกทำผ่าน Excel: *"ต่อจากนี้ไม่ต้องทำผ่าน excel แล้ว ให้ทำผ่านเวปไปเลย"*)
+ *         {id,d,own,nw,ng,by,byName,at,up}  nw = Note ถึงคลัง · ng = Note ที่ไปของสินค้า
+ *         รายการสินค้าในใบ "ไม่ได้เก็บซ้ำที่นี่" — อ่านจาก lots ที่ sl ตรงกัน (cstSlipRows)
+ *         ลบแถวในใบ = tombstone ใน del เหมือนเดิม ไม่ใช่หายไปเงียบ ๆ
+ *   ex    ไฟล์ Ex.export (ร้านที่บิลพวกนี้ถูกตัดเข้า) ของแต่ละใบ — **คนละ map กับ slips**
+ *         {file,d,n,val,rows:[{c,n,v,dn}],up,by}
+ *   ⚠️ ex แยก map เพราะแอดมิน "ซับมิทใบก่อน แล้วมาอัพไฟล์ทีหลังก็ได้" (เจ้าของสั่งเอง)
+ *      สองฝั่งนี้จึงบันทึกคนละเวลา คนละแท็บได้ ถ้าอยู่เรคอร์ดเดียวกันแบบ newest-wins
+ *      การอัพไฟล์จากแท็บที่เปิดค้างไว้จะลบ Note ที่พิมพ์ทีหลังทิ้ง (บทเรียนเดียวกับ LEADS.meta/sales)
  *   ⚠️ รายการเคลียร์ (clr) อยู่ "ในเรคอร์ดลอตเดียวกัน" ไม่แยก map
  *      เพราะแอดมินถือไฟล์ Excel ฉบับเดียวแล้วอัพทับทุกรอบ ถ้าแยก map พอแอดมินลบ/แก้แถว
  *      จะเหลือเศษค้างเป็นผีแล้วยอดคงเหลือเพี้ยน
@@ -2533,10 +2665,14 @@ const TAB_GROUPS=[
     {t:"pos",nm:"📊 วิเคราะห์การสั่งของ",role:"manager"}]},
   /* 📦 สต็อก — สองแท็บ
      stock  = สต็อคปัจจุบัน (ไฟล์สต็อกที่อัพทุกวัน)
-     cstock = สต็อคกลาง (ของที่ตัดบิลไว้ก่อนแล้วยังค้าง) เริ่มจากฝั่งแอดมินก่อนตามที่เจ้าของสั่ง */
+     cstock = สต็อคกลาง (ของที่ตัดบิลไว้ก่อนแล้วยังค้าง)
+       ⚠️ ทีมขาย "ดูได้" ตั้งแต่ 4 พ.ย. 69 — เจ้าของสั่งว่าพอแอดมินซับมิทใบตัดบิลแล้ว
+          "ให้รายการออเดอร์ขึ้นไปเป็นสถานะรอจัดส่ง รอเคลียร์ เพื่อให้ทางเซลล์ไปขายกันมา"
+          ของที่ค้างอยู่จึงต้องอยู่ในมือเซลล์ ส่วนการ "กรอก/แก้/ลบ" ยังเป็นของแอดมินคนเดียว
+          (cstMgr ในทุกปุ่ม) */
   {k:"stock",nm:"📦 สต็อก",tabs:[
     {t:"stock",nm:"สต็อคปัจจุบัน"},
-    {t:"cstock",nm:"🧊 สต็อคกลาง",role:"manager"}]},
+    {t:"cstock",nm:"🧊 สต็อคกลาง"}]},
   /* 💰 ราคา & ทุน — สองไฟล์ที่ Unilever ส่งมาทุกเดือน
      "price" = ไฟล์หัวเสือ (ราคาที่ศูนย์เสนอขายลูกค้า) ทุกคนในศูนย์ดูได้ และลูกค้าดูได้จาก
                ลิงก์สาธารณะ /pricelist.html
@@ -8796,9 +8932,92 @@ const CST_C=[
 /* คอลัมน์ที่ Excel คำนวณเอง — ไม่เคยถูกอ่านกลับ ระบบคิดใหม่จาก clr เสมอ */
 const CST_F=[{h:"เคลียร์แล้ว (ลัง)",w:15},{h:"คงเหลือ (ลัง)",w:14},{h:"สถานะ",w:16}];
 function cstOk(){
-  if(!CSTOCK||typeof CSTOCK!=="object")CSTOCK={lots:{},del:{},up:0};
+  if(!CSTOCK||typeof CSTOCK!=="object")CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};
   if(!CSTOCK.lots)CSTOCK.lots={};if(!CSTOCK.del)CSTOCK.del={};
+  if(!CSTOCK.slips)CSTOCK.slips={};if(!CSTOCK.sdel)CSTOCK.sdel={};if(!CSTOCK.ex)CSTOCK.ex={};
   return CSTOCK;
+}
+/* ---------- สายวิ่ง / ผู้รับผิดชอบ ที่ให้เลือกในฟอร์ม ----------
+   เจ้าของเขียนไว้ว่า "สายวิ่ง CT11 12 - KA99" และ "ผู้รับผิดชอบ : Supervisor / CT11… 12 - KA99"
+   เอาลำดับจาก FOCUS_ORDER (ลำดับสายมาตรฐานของระบบ) แล้วค่อยต่อด้วยสายอื่นที่มีข้อมูลจริง
+   — ฟอร์มต้องใช้ได้ตั้งแต่ก่อนอัพไฟล์ยอดขายรอบแรก จึงไม่พึ่ง DATA.lines อย่างเดียว */
+function cstLines(){
+  const out=[],seen={};
+  const add=n=>{n=String(n||"").trim();if(n&&!seen[n]){seen[n]=1;out.push(n);}};
+  FOCUS_ORDER.forEach(c=>add(FOCUS_MAP[c]));
+  (DATA.focus_order||[]).forEach(c=>add(((DATA.lines||{})[c]||{}).display||FOCUS_MAP[c]));
+  return out;
+}
+const CST_SUP="Supervisor";
+function cstOwners(){return [CST_SUP].concat(cstLines());}
+/* ---------- สินค้า: รหัส ⇄ ชื่อ (เชื่อมกับ master data ตามที่เจ้าของสั่ง) ----------
+   ทำดัชนีครั้งเดียวแล้วจำไว้ — ของเดิมค้นหาแบบวนทุก key ของ MASTER ทุกตัวอักษรที่พิมพ์
+   (บทเรียนเดียวกับ reqWarn ที่ poWhy วิ่ง 25 รอบต่อการกดแป้นหนึ่งครั้ง) */
+let CST_PIDX=null,CST_PIDX_K="";
+function cstProdIdx(){
+  const k=Object.keys((MASTER&&MASTER.items)||{}).length+"/"+(((STOCKD&&STOCKD.rows)||[]).length)+
+          "/"+Object.keys((ORDERS&&ORDERS.names)||{}).length;
+  if(CST_PIDX&&CST_PIDX_K===k)return CST_PIDX;
+  const seen={},out=[];
+  const add=(c,n)=>{c=String(c==null?"":c).trim();if(!c||seen[c])return;
+    seen[c]=1;out.push({c:c,n:String(n==null?"":n).trim()||c});};
+  ((STOCKD&&STOCKD.rows)||[]).forEach(r=>add(r.c,r.n||oname(r.c)));
+  Object.keys((MASTER&&MASTER.items)||{}).forEach(c=>add(c,MASTER.items[c]));
+  Object.keys((ORDERS&&ORDERS.names)||{}).forEach(c=>add(c,ORDERS.names[c]));
+  CST_PIDX=out;CST_PIDX_K=k;return out;
+}
+function cstProdFind(q,lim){
+  const toks=String(q||"").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if(!toks.length)return [];
+  const out=[];const idx=cstProdIdx();
+  for(let i=0;i<idx.length;i++){const p=idx[i];
+    const h=(p.n+" "+p.c).toLowerCase();
+    if(toks.every(t=>h.indexOf(t)>=0)){out.push(p);if(out.length>=(lim||8))break;}}
+  return out;
+}
+/* ---------- ร้านค้า: สำหรับบันทึกว่า "ขายออกไปร้านไหน" ----------
+   เจ้าของระบุที่มาเอง: *"ดึงข้อมูลร้านจากในไฟล์ insight ที่มีข้อมูลยอดขายรายปีของทั้งศูนย์"*
+   = ไฟล์วิเคราะห์เชิงลึก (STOREPROD.stores) · ที่เหลือเป็นตัวสำรองเผื่อยังไม่ได้อัพไฟล์นั้น */
+let CST_SIDX=null,CST_SIDX_K="";
+function cstStoreIdx(){
+  const sp=(STOREPROD&&STOREPROD.stores)||{};
+  const k=Object.keys(sp).length+"/"+((STORE&&STORE.stores)||[]).length+
+          "/"+Object.keys((PJP&&PJP.out)||{}).length+"/"+Object.keys((STOREDAILY&&STOREDAILY.data)||{}).length;
+  if(CST_SIDX&&CST_SIDX_K===k)return CST_SIDX;
+  const map={};
+  const add=(c,n,l)=>{c=String(c==null?"":c).trim();if(!c)return;
+    const o=map[c]||(map[c]={c:c,n:"",l:""});
+    if(!o.n&&n)o.n=String(n).trim();if(!o.l&&l)o.l=String(l).trim();};
+  Object.keys(sp).forEach(c=>add(c,sp[c].n,sp[c].l));
+  ((STORE&&STORE.stores)||[]).forEach(s=>add(s[1],s[2],(DATA.lines&&DATA.lines[s[0]]&&DATA.lines[s[0]].display)||s[0]));
+  const out2=(PJP&&PJP.out)||{};Object.keys(out2).forEach(c=>add(c,out2[c].n,out2[c].rt));
+  const sd=(STOREDAILY&&STOREDAILY.data)||{};
+  Object.keys(sd).forEach(d=>{const day=sd[d]||{};Object.keys(day).forEach(c=>add(c,day[c].n,day[c].l));});
+  CST_SIDX=Object.keys(map).map(c=>map[c]).sort((a,b)=>String(a.n).localeCompare(String(b.n),"th"));
+  CST_SIDX_K=k;return CST_SIDX;
+}
+/* ค้นทีละรหัสต้องเป็นการ "เปิดตาราง" ไม่ใช่ไล่ทั้งลิสต์ — ไฟล์ Ex.export รอบใหญ่มีเกือบพันบิล
+   คูณกับร้านทั้งศูนย์หลายพันร้าน คือหลายล้านรอบต่อการวาดหนึ่งครั้ง */
+let CST_SMAP=null,CST_SMAP_SRC=null;
+function cstStoreMap(){
+  const idx=cstStoreIdx();
+  if(CST_SMAP&&CST_SMAP_SRC===idx)return CST_SMAP;
+  const m={};idx.forEach(s=>{m[s.c]=s;});
+  CST_SMAP_SRC=idx;CST_SMAP=m;return m;
+}
+function cstStoreName(code){
+  const c=String(code==null?"":code).trim();if(!c)return "";
+  const sp=(STOREPROD&&STOREPROD.stores&&STOREPROD.stores[c])||null;if(sp&&sp.n)return sp.n;
+  const hit=cstStoreMap()[c];return (hit&&hit.n)||"";
+}
+function cstStoreFind(q,lim){
+  const toks=String(q||"").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if(!toks.length)return [];
+  const idx=cstStoreIdx(),out=[];
+  for(let i=0;i<idx.length;i++){const s=idx[i];
+    const h=(s.n+" "+s.c+" "+s.l).toLowerCase();
+    if(toks.every(t=>h.indexOf(t)>=0)){out.push(s);if(out.length>=(lim||8))break;}}
+  return out;
 }
 function cstClrCs(l){return ((l&&l.clr)||[]).reduce((s,c)=>s+(+c.cs||0),0);}
 function cstClrPc(l){return ((l&&l.clr)||[]).reduce((s,c)=>s+(+c.pc||0),0);}
@@ -8812,6 +9031,44 @@ function cstList(){const C=cstOk();
     .sort((a,b)=>{const A=cstDone(a)?1:0,B=cstDone(b)?1:0;
       return A-B||String(b.d||"").localeCompare(String(a.d||""))||String(a.id).localeCompare(String(b.id));});}
 const CST_OLD=30;    /* ค้างเกินกี่วันถือว่า "ลืม" — ตัวเลขนี้เปลี่ยนได้ตามที่เจ้าของบอก */
+/* ---------- ใบตัดบิล (slip) ----------
+   แถวสินค้าของใบ "อ่านจาก lots" เสมอ ไม่เก็บซ้ำในเรคอร์ดใบ — ถ้าเก็บสองที่
+   พอเคลียร์ของออกไปแล้ว ตัวเลขสองที่จะไม่ตรงกัน แล้วใครจะรู้ว่าอันไหนจริง */
+function cstSlipRows(sid){
+  const C=cstOk();
+  return Object.keys(C.lots).map(k=>C.lots[k]).filter(l=>l&&l.sl===sid)
+    .sort((a,b)=>(+a.sq||0)-(+b.sq||0)||String(a.id).localeCompare(String(b.id)));
+}
+function cstSlipList(){
+  const C=cstOk();
+  return Object.keys(C.slips).map(k=>C.slips[k]).filter(Boolean)
+    .sort((a,b)=>String(b.d||"").localeCompare(String(a.d||""))||(+b.at||0)-(+a.at||0));
+}
+function cstSlipCs(sid){return cstSlipRows(sid).reduce((s,l)=>s+(+l.cs||0),0);}
+function cstSlipPc(sid){return cstSlipRows(sid).reduce((s,l)=>s+(+l.pc||0),0);}
+/* สถานะของแถว — เจ้าของสั่ง: "ให้รายการออเดอร์ขึ้นไปเป็นสถานะรอจัดส่ง รอเคลียร์
+   เพื่อให้ทางเซลล์ไปขายกันมา" · สถานะคิดสดจากรายการเคลียร์ ไม่เคยเก็บเป็นฟิลด์
+   (ฟิลด์สถานะที่พิมพ์เอง = ตัวเลขที่เชื่อไม่ได้ เหมือน "คงเหลือ 12" ในไฟล์เดิม) */
+function cstStatus(l){
+  if(cstDone(l))return "done";
+  return cstClrCs(l)>0||cstClrPc(l)>0?"part":"wait";
+}
+const CST_ST={wait:{t:"⏳ รอจัดส่ง · รอเคลียร์",c:"w"},part:{t:"🔄 เคลียร์ไปบางส่วน",c:"w"},
+  done:{t:"✅ เคลียร์หมดแล้ว",c:"g"}};
+function cstStatusTxt(l){
+  const k=cstStatus(l);
+  return k==="done"?"เคลียร์หมดแล้ว"
+    :(k==="part"?("เคลียร์ไปบางส่วน · เหลือ "+cstLeft(l)+" ลัง"):"รอจัดส่ง / รอเคลียร์");
+}
+/* มูลค่าบิลรายร้านเป็นเลขหลักสิบ ปัดเป็นจำนวนเต็ม (THB) แล้วเจ้าของทานกับไฟล์ไม่ตรง
+   — ตรงนี้ต้องเห็นสตางค์ ส่วนยอดรวมทั้งใบใช้ THB เหมือนทั้งเว็บ */
+function cstBaht(v){return "฿"+(Math.round((+v||0)*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function cstNewId(d){
+  const base="B"+String(d||todayISO()).replace(/-/g,"");
+  const C=cstOk();let n=1,id;
+  do{id=base+"-"+String(n).padStart(2,"0");n++;}while(C.slips[id]||C.sdel[id]||n>999);
+  return id;
+}
 
 /* ---------- สร้างไฟล์ template ให้แอดมินกรอก ----------
    เติมลอตที่มีอยู่แล้วลงไปให้ด้วย แอดมินจะได้กรอกต่อ ไม่ใช่เริ่มจากศูนย์ */
@@ -8950,14 +9207,583 @@ function parseCStock(name,buf){
   if(!document.getElementById("cstockView").classList.contains("hidden"))renderCStock();
   syncToServer();
 }
+/* ============================================================================
+ * 🧾 ไฟล์ Ex.export — "ร้านที่ยอดตัดบิลพวกนี้ถูกส่งเข้าไป"
+ *
+ * เจ้าของสั่ง (4 พ.ย. 69): *"เพิ่มปุ่มอัพไฟล์ excel ที่จะเป็นร้านที่ยอดตัดบิลพวกนี้จะถูกส่งเข้าไป
+ * เพื่อดูว่าออเดอร์พวกนี้ตัดบิลเข้าร้านไหนบ้างเพื่อเก็บเป็นข้อมูล ซึ่งจะซับมิทก่อนแล้วมาอัพทีหลังก็ได้
+ * แต่ข้อมูลก็ยังไม่ขึ้นโชว์รายร้าน"*
+ *
+ * ไฟล์จริง (Ex.export.xlsx) มีชีตเดียวชื่อ Data · 1 แถว = 1 บิล:
+ *   เอกสารการวางบิล · ประเภทการวางบิล · ผู้สั่งซื้อ (ID) · ผู้สั่งซื้อ · มูลค่าสุทธิ · จำนวนภาษี ·
+ *   สกุลเงินเอกสาร · สถานะการผ่านรายการ · ถูกยกเลิก · วันที่วางบิล · สร้างโดย
+ * ⚠️ "ผู้สั่งซื้อ (ID)" = รหัสร้าน 7 หลัก ตัวเดียวกับที่ STORE/PSTORE/EB2B/PJP ใช้
+ * ⚠️ หัวคอลัมน์ "ผู้สั่งซื้อ" เป็นสตริงย่อยของ "ผู้สั่งซื้อ (ID)" — ต้องเทียบแบบ "เท่ากันพอดี"
+ *    ไม่ใช่ indexOf ไม่งั้นได้คอลัมน์ผิด (บทเรียนเดียวกับ Ghost order ที่อ่าน %Ghost มาแทน)
+ * ⚠️ บิลที่ถูกยกเลิกไม่นับ — ไม่งั้นมูลค่ารวมจะเกินจริง
+ * ==========================================================================*/
+const CST_EX_SHEET="Data";
+const CST_EX_MAX=4000;     /* กันก้อน state บวม — ไฟล์จริงรอบหนึ่ง 60 บิล แต่รอบใหญ่เคยมี 906 */
+function cstExNorm(s){return String(s==null?"":s).replace(/\s+/g,"").trim();}
+function cstExCols(rows){
+  const want={sc:"ผู้สั่งซื้อ(ID)",sn:"ผู้สั่งซื้อ",doc:"เอกสารการวางบิล",val:"มูลค่าสุทธิ",
+    tax:"จำนวนภาษี",cx:"ถูกยกเลิก",d:"วันที่วางบิล"};
+  for(let i=0;i<Math.min(rows.length,20);i++){
+    const r=(rows[i]||[]).map(cstExNorm);
+    const idx={};Object.keys(want).forEach(k=>{idx[k]=r.indexOf(want[k]);});
+    if(idx.sc>=0&&idx.d>=0)return {row:i,idx:idx};
+  }
+  throw new Error('ไม่พบหัวตาราง "ผู้สั่งซื้อ (ID)" และ "วันที่วางบิล" — ไฟล์นี้ไม่ใช่ไฟล์ Ex.export');
+}
+function parseCStockEx(name,buf){
+  const wb=XLSX.read(buf,{type:"array",cellDates:true});
+  const sn=wb.SheetNames.find(x=>String(x).trim()===CST_EX_SHEET)||wb.SheetNames[0];
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:null});
+  const H=cstExCols(rows),I=H.idx;
+  const S2=(r,i)=>i<0?"":String(r[i]==null?"":r[i]).trim();
+  const N=(r,i)=>{if(i<0)return 0;const v=parseFloat(String(r[i]==null?"":r[i]).replace(/,/g,""));return isNaN(v)?0:v;};
+  const out=[],dc={};let skip=0,val=0;
+  for(let i=H.row+1;i<rows.length;i++){
+    const r=rows[i]||[];const sc=S2(r,I.sc);
+    if(!sc)continue;
+    if(/^(ใช่|yes|y|true)$/i.test(S2(r,I.cx))){skip++;continue;}   /* บิลที่ถูกยกเลิก ไม่นับ */
+    const v=N(r,I.val)+N(r,I.tax);
+    const d=cstDate(r[I.d]);if(d)dc[d]=(dc[d]||0)+1;
+    if(out.length<CST_EX_MAX)out.push({c:sc,n:S2(r,I.sn),v:Math.round(v*100)/100,dn:S2(r,I.doc)});
+    val+=v;
+  }
+  if(!out.length)throw new Error("ไฟล์นี้ไม่มีแถวบิลที่อ่านได้เลย");
+  const d=Object.keys(dc).sort((a,b)=>dc[b]-dc[a])[0]||"";
+  return {file:name,d:d,rows:out,n:out.length,val:Math.round(val*100)/100,skip:skip,
+    stores:Object.keys(out.reduce((m,x)=>{m[x.c]=1;return m;},{})).length};
+}
+/* อัพไฟล์เข้ามาแล้วต้องรู้ว่าเป็นของ "ใบไหน" — ถ้ากดจากปุ่มในใบ ก็ใช้ใบนั้น
+   ถ้าอัพจากกล่องอัพโหลดรวม ให้จับคู่จากวันที่วางบิล และถ้าไม่ชัดต้องฟ้อง ไม่ใช่เดา */
+function cstExTake(name,buf){
+  const o=parseCStockEx(name,buf);
+  const C=cstOk();
+  let sid=CST.exFor||"";
+  if(sid&&!C.slips[sid])sid="";
+  if(!sid){
+    const same=cstSlipList().filter(s=>s.d&&o.d&&s.d===o.d);
+    if(same.length===1)sid=same[0].id;
+    else if(!same.length)throw new Error("ยังไม่มีใบตัดบิลของวันที่ "+(o.d?fmtDate(o.d):"ในไฟล์")+
+      " — สร้างใบตัดบิลก่อน แล้วกดปุ่ม 📎 แนบไฟล์ร้าน ในใบนั้น");
+    else throw new Error("วันที่ "+fmtDate(o.d)+" มีใบตัดบิลอยู่ "+same.length+
+      " ใบ — ให้กดปุ่ม 📎 แนบไฟล์ร้าน ในใบที่ต้องการ ระบบจะได้แนบใบถูกต้อง");
+  }
+  const now=Date.now();
+  C.ex[sid]={file:o.file,d:o.d,n:o.n,val:o.val,rows:o.rows,up:now,by:(S.user&&S.user.name)||""};
+  if(C.sdel[sid]&&C.sdel[sid]<now)delete C.sdel[sid];
+  C.up=now;CST.exFor="";CST.sopen[sid]=1;
+  ulog("✅ "+name+" (ร้านที่ตัดบิลเข้า) → ใบ "+sid+" · "+o.n.toLocaleString()+" บิล · "+
+    o.stores.toLocaleString()+" ร้าน · รวม "+THB(o.val)+(o.skip?" · ข้ามบิลที่ถูกยกเลิก "+o.skip+" ใบ":""));
+  if(o.n>=CST_EX_MAX)ulog("&nbsp;&nbsp;↳ ⚠️ ไฟล์มีแถวเยอะมาก เก็บรายร้านไว้ "+CST_EX_MAX.toLocaleString()+" แถวแรก (ยอดรวมนับครบทุกแถว)");
+  if(!document.getElementById("cstockView").classList.contains("hidden")){CST.sec="bill";renderCStock();}
+  syncToServer();
+}
+function cstExPick(sid){
+  if(!cstMgr())return;
+  CST.exFor=sid;
+  const el=document.getElementById("fileCStockEx");if(el)el.click();
+}
+
 /* ---------- หน้าจอ ---------- */
-let CST={q:"",only:"open",open:{}};
+let CST={q:"",only:"open",open:{},sec:"list",f:null,exFor:"",clr:null,sopen:{},st:0,_auto:0};
 function cstSetOnly(v){CST.only=v;renderCStock();}
+function cstSetSec(v){
+  CST.sec=(v==="bill"&&cstMgr())?"bill":"list";
+  if(CST.sec==="bill"&&!CST.f){const d=cstDraftLoad();if(d){CST.f=d;CST.fRest=1;}}
+  renderCStock();
+}
 /* ไฮไลต์ปุ่ม "แสดง" ต้องขยับตามที่เลือกเสมอ — renderCStock ไม่ได้วาดปุ่มพวกนี้ใหม่
    (อยู่ใน markup คงที่) ถ้าไม่สั่ง setSeg เอง ปุ่มแรกจะค้างเป็นตัวที่เลือกตลอด */
-function cstSyncSeg(){const el=document.getElementById("cstOnly");if(el)setSeg("cstOnly","o",CST.only);}
+function cstSyncSeg(){const el=document.getElementById("cstOnly");if(el)setSeg("cstOnly","o",CST.only);
+  const s=document.getElementById("cstSec");if(s)setSeg("cstSec","s",CST.sec);}
+function cstSlipTog(sid){CST.sopen[sid]=!CST.sopen[sid];renderCStock();}
+function cstGoSlip(sid){CST.sopen[sid]=true;CST.sec=cstMgr()?"bill":"list";renderCStock();
+  const el=document.getElementById("cstBill");if(el&&el.scrollIntoView)el.scrollIntoView({block:"start"});}
+
+/* ============================================================================
+ * 📝 ฟอร์มใบตัดบิล — แทนการโหลด/กรอก/อัพ Excel
+ *   ฉบับร่างเก็บใน localStorage (ไม่ใช่ state ที่ sync) จึงไม่มีทางไปแตะ bd-data-*
+ *   หลักเดียวกับตะกร้าขอสินค้าของเซลล์ (reqDraft*) — ปิดหน้าไปแล้วกลับมากรอกต่อได้
+ * ==========================================================================*/
+/* ช่องวันที่ของเบราว์เซอร์แสดงรูปแบบตามภาษาเครื่อง (11/04/2026 อ่านได้สองแบบ)
+   จึงเขียนวันที่แบบไทยกำกับไว้ใต้ช่องเสมอ ไม่ให้ลงวันผิดเดือน */
+function cstThDate(d){return /^\d{4}-\d{2}-\d{2}$/.test(String(d||""))?fmtDate(d):"";}
+function cstDHint(){const f=CST.f,el=document.getElementById("cstDHint");
+  if(el)el.textContent=cstThDate(f&&f.d);}
+function cstClrHint(){const el=document.getElementById("cstClrDHint");
+  if(el)el.textContent=cstThDate((document.getElementById("cstClrD")||{}).value);}
+function cstDraftKey(){return "bdcst:"+((S.user&&(S.user.code||S.user.id||S.user.name))||"x");}
+function cstDraftSave(){try{if(CST.f)localStorage.setItem(cstDraftKey(),JSON.stringify(CST.f));}catch(e){}}
+function cstDraftWipe(){try{localStorage.removeItem(cstDraftKey());}catch(e){}}
+function cstDraftLoad(){
+  try{const d=JSON.parse(localStorage.getItem(cstDraftKey())||"null");
+    if(d&&typeof d==="object"&&Array.isArray(d.rows)&&d.rows.length)return d;}catch(e){}
+  return null;
+}
+let CST_DT=0;
+function cstDraftLater(){clearTimeout(CST_DT);CST_DT=setTimeout(cstDraftSave,400);}
+function cstRowNew(ln,own){return {k:"",code:"",nm:"",cs:"",pc:"",ln:ln||"",own:own||""};}
+function cstRowKey(f,r){f.seq=(+f.seq||0)+1;r.k="r"+f.seq;return r;}
+function cstNew(){
+  if(!cstMgr())return;
+  if(CST.f&&CST.f.rows.some(r=>r.nm||r.code||+r.cs||+r.pc)&&
+     !confirm("เริ่มใบใหม่? ใบที่กรอกค้างอยู่จะถูกล้าง"))return;
+  const f={sid:"",d:todayISO(),own:CST_SUP,nw:"",ng:"",seq:0,rows:[]};
+  f.rows.push(cstRowKey(f,cstRowNew("",f.own)));
+  CST.f=f;CST.fRest=0;CST.sec="bill";cstDraftSave();renderCStock();
+}
+function cstSlipEdit(sid){
+  if(!cstMgr())return;
+  const C=cstOk(),s=C.slips[sid];if(!s)return;
+  const rows=cstSlipRows(sid);let mx=0;
+  const f={sid:sid,d:s.d||"",own:s.own||"",nw:s.nw||"",ng:s.ng||"",seq:0,rows:[]};
+  rows.forEach(l=>{const m=String(l.id||"").slice(String(sid).length+1).match(/^r(\d+)$/);
+    if(m)mx=Math.max(mx,+m[1]);});
+  f.seq=mx;
+  rows.forEach(l=>{const k=String(l.id||"").slice(String(sid).length+1);
+    const r={k:/^r\d+$/.test(k)?k:"",code:l.code||"",nm:l.nm||"",
+      cs:(+l.cs||0)||"",pc:(+l.pc||0)||"",ln:l.ln||l.rt||"",own:l.own||""};
+    if(!r.k)cstRowKey(f,r);
+    f.rows.push(r);});
+  if(!f.rows.length)f.rows.push(cstRowKey(f,cstRowNew("",f.own)));
+  CST.f=f;CST.fRest=0;CST.sec="bill";cstDraftSave();renderCStock();
+}
+function cstFormHide(){CST.f=null;CST.fRest=0;renderCStock();}   /* ฉบับร่างยังอยู่ในเครื่อง */
+function cstFormClear(){
+  if(!confirm("ล้างใบที่กรอกค้างไว้ทิ้ง?"))return;
+  CST.f=null;CST.fRest=0;cstDraftWipe();renderCStock();
+}
+function cstFormSet(k,v){const f=CST.f;if(!f)return;f[k]=v;cstDraftLater();}
+function cstRowSet(i,k,v){const f=CST.f;if(!f||!f.rows[i])return;f.rows[i][k]=v;cstDraftLater();}
+/* ใส่รหัส → ชื่อขึ้นเอง (เจ้าของสั่ง: "ดึงอัตโนมัติเมื่อใส่รหัส") */
+function cstRowCode(i,v){
+  const f=CST.f;if(!f||!f.rows[i])return;
+  f.rows[i].code=String(v==null?"":v).trim();
+  const nm=oname(f.rows[i].code);
+  if(nm){f.rows[i].nm=nm;
+    const el=document.getElementById("cstNm"+i);if(el)el.value=nm;
+    const s=document.getElementById("cstSug"+i);if(s)s.innerHTML="";}
+  cstLinkMark(i);cstDraftLater();
+}
+/* ใส่ชื่อ → รหัสขึ้นเอง ("หรือเมื่อใส่ชื่อ รหัสขึ้นอัตโนมัติ") + รายการให้เลือก
+   หน่วงไว้ก่อนค้นหา ไม่ใช่ค้นทุกตัวอักษร */
+function cstRowNm(i,v){
+  const f=CST.f;if(!f||!f.rows[i])return;
+  f.rows[i].nm=String(v==null?"":v);
+  clearTimeout(CST.st);CST.st=setTimeout(()=>cstSug(i),160);
+  cstDraftLater();
+}
+function cstSug(i){
+  const f=CST.f;if(!f||!f.rows[i])return;
+  const box=document.getElementById("cstSug"+i);if(!box)return;
+  const q=String(f.rows[i].nm||"").trim();
+  if(q.length<2){box.innerHTML="";return;}
+  if(oname(f.rows[i].code)===q){box.innerHTML="";cstLinkMark(i);return;}
+  const hit=cstProdFind(q,8);
+  if(hit.length===1&&!String(f.rows[i].code||"").trim()){
+    f.rows[i].code=hit[0].c;
+    const el=document.getElementById("cstCd"+i);if(el)el.value=hit[0].c;
+  }
+  cstLinkMark(i);
+  box.innerHTML=hit.length
+    ?hit.map(p=>`<div class="cst-sg" onclick="cstRowPick(${i},'${anaEsc(p.c)}')"><b>${anaEsc(p.n)}</b><span>${anaEsc(p.c)}</span></div>`).join("")
+    :`<div class="cst-sg none">ไม่พบชื่อนี้ใน master data — พิมพ์เองได้ แต่ควรอัพ Master Data ให้ครบก่อน</div>`;
+}
+function cstRowPick(i,code){
+  const f=CST.f;if(!f||!f.rows[i])return;
+  f.rows[i].code=String(code||"");f.rows[i].nm=oname(code)||f.rows[i].nm;
+  const a=document.getElementById("cstCd"+i),b=document.getElementById("cstNm"+i);
+  if(a)a.value=f.rows[i].code;if(b)b.value=f.rows[i].nm;
+  const s=document.getElementById("cstSug"+i);if(s)s.innerHTML="";
+  cstLinkMark(i);cstDraftSave();
+}
+function cstLinkMark(i){
+  const f=CST.f;if(!f||!f.rows[i])return;
+  const el=document.getElementById("cstLk"+i);if(!el)return;
+  const c=String(f.rows[i].code||"").trim();
+  el.innerHTML=!c?"":(oname(c)?'<span class="cst-ok">✓ master</span>':'<span class="cst-no">ไม่มีรหัสนี้</span>');
+}
+function cstRowAdd(){
+  const f=CST.f;if(!f)return;
+  const last=f.rows[f.rows.length-1]||{};
+  f.rows.push(cstRowKey(f,cstRowNew(last.ln||"",last.own||f.own)));
+  cstDraftSave();renderCStock();
+}
+function cstRowDel(i){
+  const f=CST.f;if(!f)return;
+  f.rows.splice(i,1);
+  if(!f.rows.length)f.rows.push(cstRowKey(f,cstRowNew("",f.own)));
+  cstDraftSave();renderCStock();
+}
+/* "กระจายทุกสาย" — ในไฟล์สรุปตัวกระจายของเจ้าของ สินค้าตัวเดียวถูกตัดเข้าสาย 11-22
+   ด้วยจำนวนเท่ากันทุกสาย (M10-สต็อคกลาง: 8 ลัง × 8 สาย) คีย์มือทีละแถวคือเสียเวลาเปล่า */
+function cstRowSpread(i){
+  const f=CST.f;if(!f||!f.rows[i])return;
+  const src=f.rows[i],lines=cstLines();
+  if(!String(src.nm||"").trim()){alert("ใส่ชื่อสินค้าในแถวนี้ก่อน แล้วค่อยกดกระจายทุกสาย");return;}
+  const key=r=>String(r.code||r.nm||"").trim();
+  const have={};f.rows.forEach(r=>{if(key(r)===key(src))have[String(r.ln||"")]=1;});
+  if(!String(src.ln||"").trim()&&lines.length){src.ln=lines[0];have[lines[0]]=1;}
+  let add=0;
+  lines.forEach(ln=>{if(have[ln])return;
+    const r=cstRowKey(f,cstRowNew(ln,src.own||f.own));
+    r.code=src.code;r.nm=src.nm;r.cs=src.cs;r.pc=src.pc;f.rows.push(r);add++;});
+  cstDraftSave();renderCStock();
+  toast(add?("เพิ่มให้อีก "+add+" สาย — แก้จำนวนรายสายได้"):"ทุกสายมีแถวของสินค้านี้แล้ว");
+}
+/* ---------- บันทึกใบ ----------
+   เขียนเฉพาะคีย์ของตัวเอง (lots ของใบนี้ + slips[sid]) ไม่เคยแตะก้อนอื่น
+   แถวที่เอาออกจากใบ = tombstone ใน del ไม่ใช่ลบ key เงียบ ๆ (ฝั่งเซิร์ฟเวอร์ merge แบบรวม key) */
+function cstSlipSave(){
+  if(!cstMgr()){alert("เฉพาะผู้จัดการ/แอดมินเท่านั้น");return;}
+  const f=CST.f;if(!f)return;
+  const d=String(f.d||"").trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){alert("ใส่วันที่ตัดบิลก่อน");return;}
+  const rows=(f.rows||[]).filter(r=>String(r.nm||"").trim()||String(r.code||"").trim()||+r.cs||+r.pc);
+  if(!rows.length){alert("ยังไม่ได้กรอกรายการสินค้าเลย");return;}
+  const noName=rows.filter(r=>!String(r.nm||"").trim()).length;
+  if(noName){alert("มี "+noName+" แถวที่ยังไม่ได้ใส่ชื่อสินค้า — ใส่รหัสแล้วชื่อจะขึ้นเอง");return;}
+  if(!rows.some(r=>(+r.cs||0)>0||(+r.pc||0)>0)){alert("ใส่จำนวนลัง หรือจำนวนชิ้น อย่างน้อยหนึ่งแถว");return;}
+  const C=cstOk(),now=Date.now(),who=(S.user&&S.user.name)||"",uid=(S.user&&(S.user.code||S.user.id))||"";
+  const sid=f.sid||cstNewId(d);
+  rows.forEach(r=>{if(!r.k)cstRowKey(f,r);});
+  const keep={};rows.forEach(r=>{keep[sid+"-"+r.k]=1;});
+  /* 🛟 แถวที่เคยบันทึกการเคลียร์ของไปแล้ว ห้ามหายไปเพราะการแก้ใบ */
+  const gone=cstSlipRows(sid).filter(l=>!keep[l.id]);
+  const lock=gone.filter(l=>(l.clr||[]).length);
+  if(lock.length){alert("เอาแถวที่บันทึกการเคลียร์ของไปแล้วออกจากใบไม่ได้:\n"+
+    lock.map(l=>"• "+(l.nm||l.id)+(l.ln?" ("+l.ln+")":"")).join("\n")+
+    "\n\nถ้าคีย์ผิดจริง ให้ลบรายการเคลียร์ในแถวนั้นออกก่อน");return;}
+  rows.forEach((r,i)=>{
+    const id=sid+"-"+r.k,old=C.lots[id]||null;
+    C.lots[id]=Object.assign({},old,{
+      id:id,sl:sid,sq:i+1,d:d,
+      code:String(r.code||"").trim(),nm:String(r.nm||"").trim(),
+      cs:+r.cs||0,pc:+r.pc||0,
+      ln:String(r.ln||"").trim(),own:String(r.own||f.own||"").trim(),
+      clr:(old&&old.clr)||[],up:now,by:who});
+    if(C.del[id]&&C.del[id]<now)delete C.del[id];
+  });
+  gone.forEach(l=>{delete C.lots[l.id];C.del[l.id]=now;});
+  C.slips[sid]=Object.assign({},C.slips[sid]||{},{id:sid,d:d,own:String(f.own||"").trim(),
+    nw:String(f.nw||""),ng:String(f.ng||""),by:uid,byName:who,
+    at:(C.slips[sid]&&C.slips[sid].at)||now,up:now});
+  if(C.sdel[sid]&&C.sdel[sid]<now)delete C.sdel[sid];
+  C.up=now;
+  CST.f=null;CST.fRest=0;cstDraftWipe();CST.sopen[sid]=1;CST.sec="bill";
+  renderCStock();syncToServer();
+  toast("บันทึกใบตัดบิล "+sid+" แล้ว · "+rows.length+" รายการ"+(gone.length?" (เอาออก "+gone.length+" แถว)":""));
+}
+function cstSlipDel(sid){
+  if(!cstMgr())return;
+  const C=cstOk(),s=C.slips[sid];if(!s)return;
+  const rows=cstSlipRows(sid);
+  const lock=rows.filter(l=>(l.clr||[]).length);
+  if(lock.length){alert("ลบใบนี้ไม่ได้ เพราะมี "+lock.length+" แถวที่บันทึกการเคลียร์ของไปแล้ว\n\n"+
+    "ถ้าคีย์ผิดจริง ให้ลบรายการเคลียร์ในแถวนั้นออกก่อน");return;}
+  if(!confirm("ลบใบตัดบิล "+sid+" ทั้งใบ ("+rows.length+" รายการ)?\n\nใช้เมื่อคีย์ผิดเท่านั้น"))return;
+  const now=Date.now();
+  rows.forEach(l=>{delete C.lots[l.id];C.del[l.id]=now;});
+  delete C.slips[sid];C.sdel[sid]=now;delete C.ex[sid];
+  C.up=now;renderCStock();syncToServer();
+}
+
+/* ============================================================================
+ * ✅ บันทึกว่า "ขายออกไปแล้ว" (การเคลียร์)
+ * เจ้าของสั่ง: *"เมื่อได้ใบส่งของ แอดมินก็จะเอาข้อมูลมากระทบในเวปนี้อีกที … ให้มีขึ้นบันทึก
+ * วันที่ว่าขายออกไปวันที่เท่าไหร่ จำนวนเท่าไหร่ และขายไปยังร้านค้าไหน"*
+ * ==========================================================================*/
+function cstClrOpen(id){
+  if(!cstMgr())return;
+  const l=cstOk().lots[id];if(!l)return;
+  CST.clr={id:id,sc:"",sn:""};
+  const set=(k,v)=>{const el=document.getElementById(k);if(el)el.value=v;};
+  set("cstClrD",todayISO());set("cstClrCs","");set("cstClrPc","");set("cstClrWho","");set("cstClrNote","");
+  const sub=document.getElementById("cstClrSub");
+  if(sub)sub.innerHTML="<b>"+anaEsc(l.nm||id)+"</b> · ตัดบิลไว้ "+(+l.cs||0).toLocaleString()+" ลัง"+
+    (l.pc?" / "+(+l.pc).toLocaleString()+" ชิ้น":"")+" · เหลือ <b>"+cstLeft(l).toLocaleString()+"</b> ลัง"+
+    (l.ln?" · สาย "+anaEsc(l.ln):"");
+  const sg=document.getElementById("cstClrSug");if(sg)sg.innerHTML="";
+  const pk=document.getElementById("cstClrPick");if(pk)pk.innerHTML="";
+  cstClrHint();
+  document.getElementById("cstClrModal").classList.remove("hidden");
+  setTimeout(()=>{const el=document.getElementById("cstClrCs");if(el)el.focus();},40);
+}
+function cstClrClose(){CST.clr=null;document.getElementById("cstClrModal").classList.add("hidden");}
+let CST_CT=0;
+function cstClrSearch(){clearTimeout(CST_CT);CST_CT=setTimeout(cstClrSug,160);}
+function cstClrSug(){
+  const box=document.getElementById("cstClrSug");if(!box||!CST.clr)return;
+  const q=(document.getElementById("cstClrWho").value||"").trim();
+  if(q.length<2){box.innerHTML="";return;}
+  const hit=cstStoreFind(q,8);
+  box.innerHTML=hit.length?hit.map(s=>`<div class="cst-sg" onclick="cstClrPick('${anaEsc(s.c)}')">
+    <b>${anaEsc(s.n||s.c)}</b><span>${anaEsc(s.c)}${s.l?" · สาย "+anaEsc(s.l):""}</span></div>`).join("")
+    :`<div class="cst-sg none">ไม่พบร้านนี้ — พิมพ์ชื่อผู้รับเองได้ (เช่น ส่งตัวกระจาย) ระบบจะเก็บเป็นชื่อล้วน</div>`;
+}
+function cstClrPick(code){
+  if(!CST.clr)return;
+  const s=cstStoreMap()[code]||{c:code,n:cstStoreName(code),l:""};
+  CST.clr.sc=s.c;CST.clr.sn=s.n||s.c;
+  const w=document.getElementById("cstClrWho");if(w)w.value=CST.clr.sn;
+  const box=document.getElementById("cstClrSug");if(box)box.innerHTML="";
+  const pk=document.getElementById("cstClrPick");
+  if(pk)pk.innerHTML=`<div class="cst-pick">🏪 ร้าน <b>${anaEsc(CST.clr.sn)}</b> · รหัส ${anaEsc(s.c)}${s.l?" · สาย "+anaEsc(s.l):""}
+    <button class="cst-x" onclick="cstClrUnpick()">เอาออก</button></div>`;
+}
+function cstClrUnpick(){
+  if(!CST.clr)return;
+  CST.clr.sc="";CST.clr.sn="";
+  const pk=document.getElementById("cstClrPick");if(pk)pk.innerHTML="";
+}
+function cstClrSave(){
+  if(!cstMgr()||!CST.clr)return;
+  const C=cstOk(),l=C.lots[CST.clr.id];if(!l){cstClrClose();return;}
+  const g=k=>(document.getElementById(k)||{}).value||"";
+  const d=cstDate(g("cstClrD"));
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){alert("ใส่วันที่ที่ขายออกไปก่อน");return;}
+  const cs=Math.max(0,parseFloat(g("cstClrCs"))||0),pc=Math.max(0,parseFloat(g("cstClrPc"))||0);
+  if(cs<=0&&pc<=0){alert("ใส่จำนวนที่ขายออกไป (ลัง หรือ ชิ้น)");return;}
+  const who=String(g("cstClrWho")).trim()||CST.clr.sn;
+  if(!who){alert("ใส่ชื่อร้าน หรือชื่อผู้รับของ");return;}
+  const left=cstLeft(l);
+  if(cs>left&&!confirm("ใส่ "+cs+" ลัง แต่ลอตนี้เหลืออยู่ "+left+" ลัง\n\nบันทึกตามนี้เลยไหม? (คงเหลือจะติดลบ)"))return;
+  const now=Date.now();
+  l.clr=(l.clr||[]).concat([{d:d,who:who,sc:CST.clr.sc||"",sn:CST.clr.sn||"",
+    cs:cs,pc:pc,note:String(g("cstClrNote")).trim(),at:now,by:(S.user&&S.user.name)||""}]);
+  l.clr.sort((a,b)=>String(a.d||"").localeCompare(String(b.d||"")));
+  l.up=now;C.up=now;
+  cstClrClose();CST.open[l.id]=true;renderCStock();syncToServer();
+  toast(cstDone(l)?"บันทึกแล้ว — ลอตนี้เคลียร์หมดแล้ว ✅":"บันทึกแล้ว — เหลืออีก "+cstLeft(l)+" ลัง");
+}
+function cstClrDel(id,i){
+  if(!cstMgr())return;
+  const C=cstOk(),l=C.lots[id];if(!l||!l.clr||!l.clr[i])return;
+  const c=l.clr[i];
+  if(!confirm("ลบรายการเคลียร์นี้? ("+(c.who||"-")+" "+(+c.cs||0)+" ลัง)\n\nใช้เมื่อคีย์ผิดเท่านั้น — ยอดคงเหลือจะเพิ่มกลับ"))return;
+  l.clr=l.clr.slice(0,i).concat(l.clr.slice(i+1));
+  l.up=Date.now();C.up=l.up;renderCStock();syncToServer();
+}
+
+/* ============================================================================
+ * 🖨 ส่งต่อใบตัดบิล — PDF (สั่งพิมพ์) หรือ Excel
+ * เจ้าของสั่ง: *"สามารถดึงใบตัดบิลนี้ออกมาเป็น PDF หรือ excel ให้ส่งต่องานกันได้ด้วย"*
+ * PDF ใช้การสั่งพิมพ์ของเบราว์เซอร์ (Save as PDF) ไม่ลงไลบรารี PDF เพิ่ม —
+ * หน้าเว็บนี้โหลดบนมือถือในร้านด้วย ไลบรารีเพิ่มอีกหลาย MB ไม่คุ้ม
+ * ==========================================================================*/
+function cstSlipAoa(sid){
+  const C=cstOk(),s=C.slips[sid]||{id:sid},rows=cstSlipRows(sid),ex=C.ex[sid];
+  const a=[["ใบตัดบิลสต็อคกลาง — BD DISTRIBUTION"],
+    ["เลขที่ใบ",sid,"","วันที่ตัดบิล",s.d?fmtDate(s.d):""],
+    ["ผู้รับผิดชอบ",s.own||"","","ผู้ลงข้อมูล",s.byName||""],
+    [""],
+    ["ลำดับ","รหัสสินค้า","ชื่อสินค้า","จำนวนลัง","จำนวนชิ้น","สายวิ่ง","ผู้รับผิดชอบ","สถานะ"]];
+  rows.forEach((l,i)=>a.push([i+1,l.code||"",l.nm||"",+l.cs||0,+l.pc||0,l.ln||l.rt||"",l.own||"",cstStatusTxt(l)]));
+  a.push(["","","รวม",cstSlipCs(sid),cstSlipPc(sid)]);
+  a.push([""],["Note ถึงคลัง",s.nw||"-"],["Note ที่ไปของสินค้า",s.ng||"-"]);
+  if(ex)a.push([""],["ร้านที่ตัดบิลเข้า",(ex.n||0)+" บิล","มูลค่ารวม",+ex.val||0,"ไฟล์",ex.file||""]);
+  return a;
+}
+function cstSlipXlsx(sid){
+  const C=cstOk(),ex=C.ex[sid];
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(cstSlipAoa(sid));
+  ws["!cols"]=[{wch:7},{wch:13},{wch:42},{wch:10},{wch:10},{wch:10},{wch:14},{wch:24}];
+  XLSX.utils.book_append_sheet(wb,ws,"ใบตัดบิล");
+  if(ex&&(ex.rows||[]).length){
+    const a2=[["เอกสารการวางบิล","รหัสร้าน","ชื่อร้าน","สาย","มูลค่ารวมภาษี"]];
+    const smap=cstStoreMap();
+    ex.rows.forEach(r=>{const st=smap[r.c]||{};
+      a2.push([r.dn||"",r.c||"",r.n||st.n||"",st.l||"",+r.v||0]);});
+    const w2=XLSX.utils.aoa_to_sheet(a2);
+    w2["!cols"]=[{wch:16},{wch:12},{wch:34},{wch:9},{wch:14}];
+    XLSX.utils.book_append_sheet(wb,w2,"ร้านที่ตัดบิลเข้า");
+  }
+  const out=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+  msDownload(new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),
+    "BD-cutbill-"+fnAscii(sid,"slip")+".xlsx");   /* ชื่อไฟล์ ASCII ล้วน — ดู fnAscii */
+}
+function cstSlipHtml(sid){
+  const C=cstOk(),s=C.slips[sid]||{id:sid},rows=cstSlipRows(sid),ex=C.ex[sid];
+  return `<div class="pr-doc">
+    <div class="pr-h"><div><b>ใบตัดบิลสต็อคกลาง</b><div>BD DISTRIBUTION</div></div>
+      <div class="pr-id">เลขที่ ${anaEsc(sid)}<div>วันที่ตัดบิล ${s.d?fmtDate(s.d):"-"}</div></div></div>
+    <div class="pr-m">ผู้รับผิดชอบ: <b>${anaEsc(s.own||"-")}</b> · ผู้ลงข้อมูล: ${anaEsc(s.byName||"-")}
+      · พิมพ์เมื่อ ${fmtDate(todayISO())}</div>
+    <table class="pr-t"><thead><tr><th>#</th><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th>ลัง</th><th>ชิ้น</th>
+      <th>สายวิ่ง</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th></tr></thead><tbody>
+      ${rows.map((l,i)=>`<tr><td>${i+1}</td><td>${anaEsc(l.code||"")}</td><td class="l">${anaEsc(l.nm||"")}</td>
+        <td>${(+l.cs||0).toLocaleString()}</td><td>${(+l.pc||0)||"-"}</td><td>${anaEsc(l.ln||l.rt||"")}</td>
+        <td>${anaEsc(l.own||"")}</td><td class="l">${anaEsc(cstStatusTxt(l))}</td></tr>`).join("")}
+      <tr class="pr-sum"><td colspan="3">รวม ${rows.length} รายการ</td><td>${cstSlipCs(sid).toLocaleString()}</td>
+        <td>${cstSlipPc(sid)?cstSlipPc(sid).toLocaleString():"-"}</td><td colspan="3"></td></tr>
+    </tbody></table>
+    <div class="pr-n"><b>Note ถึงคลัง</b><div>${anaEsc(s.nw||"-")}</div></div>
+    <div class="pr-n"><b>Note ที่ไปของสินค้า</b><div>${anaEsc(s.ng||"-")}</div></div>
+    ${ex?`<div class="pr-n"><b>ร้านที่ตัดบิลเข้า</b><div>${(+ex.n||0).toLocaleString()} บิล · รวม ${THB(ex.val)} · ไฟล์ ${anaEsc(ex.file||"")}</div></div>`:""}
+    <div class="pr-sg"><div>ผู้ตัดบิล<br>__________________</div><div>คลัง<br>__________________</div>
+      <div>ผู้รับของ<br>__________________</div></div></div>`;
+}
+function cstSlipPrint(sid){
+  const el=document.getElementById("prArea");if(!el)return;
+  el.innerHTML=cstSlipHtml(sid);
+  try{window.print();}catch(e){}
+}
+
+/* ---------- หน้า "ใบตัดบิล": ฟอร์มกรอก + ใบที่บันทึกไว้แล้ว ---------- */
+function cstOptList(list,cur,blank){
+  return (blank?`<option value=""${cur?"":" selected"}>${blank}</option>`:"")+
+    list.map(v=>`<option value="${anaEsc(v)}"${String(cur)===String(v)?" selected":""}>${anaEsc(v)}</option>`).join("");
+}
+function cstFormHtml(){
+  const f=CST.f,lines=cstLines(),owners=cstOwners();
+  const tot=f.rows.reduce((a,r)=>({cs:a.cs+(+r.cs||0),pc:a.pc+(+r.pc||0)}),{cs:0,pc:0});
+  return `<div class="panel cst-form">
+    <div class="cst-fh"><h3>${f.sid?("✏️ แก้ไขใบตัดบิล "+anaEsc(f.sid)):"🧾 ใบตัดบิลใหม่"}</h3>
+      <div class="psub">กรอกในเว็บได้เลย ไม่ต้องผ่าน Excel · ระบบเก็บเป็นฉบับร่างในเครื่องให้ตลอด กดออกแล้วกลับมากรอกต่อได้</div></div>
+    ${CST.fRest?`<div class="rq-note">📝 กู้ใบที่กรอกค้างไว้กลับมาให้แล้ว — ตรวจแล้วกด <b>บันทึกใบตัดบิล</b> ได้เลย</div>`:""}
+    <div class="cst-frow">
+      <div class="ctl"><label>วันที่ตัดบิล</label>
+        <input id="cstFD" type="date" value="${anaEsc(f.d||"")}" onchange="cstFormSet('d',this.value);cstDHint()">
+        <div class="psub" id="cstDHint">${cstThDate(f.d)}</div></div>
+      <div class="ctl"><label>ผู้รับผิดชอบ (ทั้งใบ)</label>
+        <select onchange="cstSetOwn(this.value)">${cstOptList(owners,f.own,"— เลือก —")}</select></div>
+      <div class="psub" style="align-self:flex-end">รวม <b>${tot.cs.toLocaleString()}</b> ลัง${tot.pc?" / <b>"+tot.pc.toLocaleString()+"</b> ชิ้น":""} · ${f.rows.length} แถว</div>
+    </div>
+    <div class="cst-tw"><table class="cst-ft"><thead><tr>
+      <th>#</th><th>รหัสสินค้า</th><th>ชื่อสินค้า (เชื่อม master data)</th><th>ลัง</th><th>ชิ้น</th>
+      <th>สายวิ่ง</th><th>ผู้รับผิดชอบ</th><th></th></tr></thead><tbody>
+      ${f.rows.map((r,i)=>`<tr>
+        <td class="n">${i+1}</td>
+        <td><input id="cstCd${i}" class="cst-in w-code" value="${anaEsc(r.code||"")}" inputmode="numeric"
+             placeholder="รหัส" oninput="cstRowCode(${i},this.value)">
+            <div class="cst-lk" id="cstLk${i}"></div></td>
+        <td><input id="cstNm${i}" class="cst-in w-nm" value="${anaEsc(r.nm||"")}"
+             placeholder="พิมพ์ชื่อสินค้าเพื่อค้นหา" oninput="cstRowNm(${i},this.value)">
+            <div class="cst-sug" id="cstSug${i}"></div></td>
+        <td><input class="cst-in w-n" type="number" min="0" step="1" value="${r.cs===""||r.cs==null?"":+r.cs}"
+             oninput="cstRowSet(${i},'cs',this.value)"></td>
+        <td><input class="cst-in w-n" type="number" min="0" step="1" value="${r.pc===""||r.pc==null?"":+r.pc}"
+             oninput="cstRowSet(${i},'pc',this.value)"></td>
+        <td><select class="cst-in w-ln" onchange="cstRowSet(${i},'ln',this.value)">${cstOptList(lines,r.ln,"— ไม่ระบุ —")}</select></td>
+        <td><select class="cst-in w-ow" onchange="cstRowSet(${i},'own',this.value)">${cstOptList(owners,r.own,"— ตามใบ —")}</select></td>
+        <td class="n"><button class="cst-x" title="กระจายสินค้าแถวนี้ให้ทุกสาย" onclick="cstRowSpread(${i})">⇉</button>
+            <button class="cst-x" title="ลบแถวนี้" onclick="cstRowDel(${i})">🗑</button></td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="cst-fb"><button class="btn-ghost" onclick="cstRowAdd()">＋ เพิ่มแถว</button>
+      <span class="psub">⇉ = คัดลอกสินค้าแถวนั้นให้ครบทุกสาย (${lines.length} สาย) แล้วแก้จำนวนรายสายได้</span></div>
+    <div class="cst-nb">
+      <div><label>📝 Note ถึงคลัง</label>
+        <textarea rows="2" placeholder="เช่น จัดของแยกไว้ รอเรียกส่ง" oninput="cstFormSet('nw',this.value)">${anaEsc(f.nw||"")}</textarea></div>
+      <div><label>📝 Note ที่ไปของสินค้า</label>
+        <textarea rows="2" placeholder="เช่น ส่งตัวกระจายสองเมือง / รอขายเข้าร้าน" oninput="cstFormSet('ng',this.value)">${anaEsc(f.ng||"")}</textarea></div>
+    </div>
+    <div class="cst-fb">
+      <button class="upload-btn" onclick="cstSlipSave()">💾 บันทึกใบตัดบิล</button>
+      <button class="btn-ghost" onclick="cstFormHide()">เก็บไว้ก่อน (ยังไม่บันทึก)</button>
+      <button class="btn-ghost" onclick="cstFormClear()">ล้างใบนี้</button>
+      <span class="psub">บันทึกแล้วรายการจะขึ้นสถานะ <b>รอจัดส่ง · รอเคลียร์</b> ให้ทีมขายเห็นทันที</span>
+    </div></div>`;
+}
+/* เปลี่ยนผู้รับผิดชอบของทั้งใบ — แถวที่ "ยังไม่ได้เลือกเป็นคนอื่นเอง" ต้องเปลี่ยนตามไปด้วย
+   ไม่งั้นแก้หัวใบแล้วทุกแถวยังค้างชื่อเดิม แล้วไฟล์ที่ส่งต่อให้คลังจะบอกคนผิด */
+function cstSetOwn(v){
+  const f=CST.f;if(!f)return;
+  const old=String(f.own||"");
+  f.rows.forEach(r=>{if(!String(r.own||"").trim()||String(r.own)===old)r.own=v;});
+  f.own=v;cstDraftSave();renderCStock();
+}
+function cstExHtml(sid){
+  const ex=cstOk().ex[sid];
+  if(!ex)return `<div class="cst-ex none">📎 ยังไม่ได้แนบไฟล์ร้านที่ตัดบิลเข้า (Ex.export) — แนบทีหลังได้${
+    cstMgr()?` · <button class="cst-x" onclick="cstExPick('${anaEsc(sid)}')">📎 แนบไฟล์ร้าน</button>`:""}</div>`;
+  const op=!!CST.sopen["ex|"+sid];
+  const st=cstStoreMap();
+  const nm=c=>st[c]||{n:"",l:""};
+  const uniq={};(ex.rows||[]).forEach(r=>{uniq[r.c]=1;});
+  return `<div class="cst-ex">
+    <div class="cst-exh">📎 <b>ร้านที่ตัดบิลเข้า ${Object.keys(uniq).length.toLocaleString()} ร้าน</b>
+      · ${(+ex.n||0).toLocaleString()} บิล · รวม ${THB(ex.val)}
+      <span class="psub">${anaEsc(ex.file||"")}${ex.up?" · อัพ "+fmtDateTime(ex.up):""}</span>
+      <button class="cst-x" onclick="cstSlipTog('ex|${anaEsc(sid)}')">${op?"▲ ซ่อนรายชื่อ":"▼ ดูรายชื่อร้าน"}</button>
+      ${cstMgr()?`<button class="cst-x" onclick="cstExPick('${anaEsc(sid)}')">🔄 อัพไฟล์ใหม่ทับ</button>`:""}</div>
+    ${op?`<table class="cst-tbl"><thead><tr><th style="text-align:left">ร้าน</th><th>รหัส</th><th>สาย</th>
+      <th style="text-align:right">มูลค่า</th><th>เอกสาร</th></tr></thead><tbody>
+      ${(ex.rows||[]).slice(0,300).map(r=>{const h=nm(r.c);
+        return `<tr><td style="text-align:left">${anaEsc(r.n||h.n||"-")}</td><td>${anaEsc(r.c)}</td>
+          <td>${anaEsc(h.l||"")}</td><td style="text-align:right">${cstBaht(r.v)}</td><td>${anaEsc(r.dn||"")}</td></tr>`;}).join("")}
+      </tbody></table>${(ex.rows||[]).length>300?`<div class="psub">แสดง 300 แถวแรกจาก ${(ex.rows||[]).length.toLocaleString()} แถว — ดูครบในไฟล์ Excel ที่ดาวน์โหลด</div>`:""}`:""}
+  </div>`;
+}
+function cstBillHtml(){
+  const mgr=cstMgr(),slips=cstSlipList();
+  const draft=(!CST.f&&cstDraftLoad())?1:0;
+  let h=CST.f?cstFormHtml():`<div class="panel"><div class="cst-fb">
+      <button class="upload-btn" onclick="cstNew()">➕ ตัดบิลใหม่ (กรอกในเว็บ)</button>
+      ${draft?`<button class="btn-ghost" onclick="cstSetSec('bill')">📝 กรอกใบที่ค้างไว้ต่อ</button>`:""}
+      <span class="psub">กรอกวันที่ตัดบิล · สินค้า · จำนวน · สายวิ่ง · ผู้รับผิดชอบ แล้วกดบันทึกครั้งเดียว</span></div></div>`;
+  h+=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h3>ใบตัดบิลที่บันทึกไว้ (${slips.length})</h3>
+      <div class="psub">กดที่ใบเพื่อดูรายการข้างใน · ส่งต่องานได้ทั้ง PDF และ Excel</div></div>`;
+  if(!slips.length){
+    h+=`<div class="insight">ยังไม่มีใบตัดบิลที่กรอกในเว็บ${mgr?" — กด ➕ ตัดบิลใหม่ ด้านบน":""}
+      ${Object.keys(cstOk().lots).length?`<br><span class="psub">ลอตที่มาจากไฟล์ Excel รอบก่อน ๆ ยังอยู่ครบในแท็บ 📦 รายการค้าง</span>`:""}</div></div>`;
+    return h;
+  }
+  h+=slips.map(s=>{
+    const rows=cstSlipRows(s.id),op=!!CST.sopen[s.id];
+    const leftCs=rows.reduce((a,l)=>a+cstLeft(l),0),cs=cstSlipCs(s.id);
+    const doneN=rows.filter(cstDone).length;
+    const ex=cstOk().ex[s.id];
+    return `<div class="cst-slip${doneN===rows.length&&rows.length?" done":""}">
+      <div class="cst-sh" onclick="cstSlipTog('${anaEsc(s.id)}')">
+        <div class="cst-t"><b>🧾 ${s.d?fmtDate(s.d):"-"}</b>
+          <span class="psub">${anaEsc(s.id)} · ${rows.length} รายการ · ${cs.toLocaleString()} ลัง${
+            s.own?" · 👤 "+anaEsc(s.own):""}${ex?" · 📎 แนบไฟล์ร้านแล้ว":""}</span></div>
+        <div class="cst-n">${rows.length&&doneN===rows.length
+          ?`<span class="pill g">✅ เคลียร์หมดทั้งใบ</span>`
+          :`<span class="pill w">ค้าง <b>${(Math.round(leftCs*100)/100).toLocaleString()}</b> / ${cs.toLocaleString()} ลัง</span>`}
+          <span class="psub">${doneN}/${rows.length} รายการเคลียร์แล้ว</span></div>
+        <span class="cst-ar">${op?"▲":"▼"}</span></div>
+      ${op?`<div class="cst-d">
+        <table class="cst-tbl"><thead><tr><th>#</th><th>รหัส</th><th style="text-align:left">สินค้า</th>
+          <th>ลัง</th><th>ชิ้น</th><th>สาย</th><th>ผู้รับผิดชอบ</th><th style="text-align:left">สถานะ</th></tr></thead><tbody>
+          ${rows.map((l,i)=>`<tr><td>${i+1}</td><td>${anaEsc(l.code||"-")}</td>
+            <td style="text-align:left">${anaEsc(l.nm||"")}</td><td>${(+l.cs||0).toLocaleString()}</td>
+            <td>${(+l.pc||0)||"-"}</td><td>${anaEsc(l.ln||l.rt||"-")}</td><td>${anaEsc(l.own||s.own||"-")}</td>
+            <td style="text-align:left"><span class="pill ${CST_ST[cstStatus(l)].c}">${CST_ST[cstStatus(l)].t}</span></td></tr>`).join("")}
+        </tbody></table>
+        ${s.nw?`<div class="cst-note">📝 <b>ถึงคลัง:</b> ${anaEsc(s.nw)}</div>`:""}
+        ${s.ng?`<div class="cst-note">📝 <b>ที่ไปของสินค้า:</b> ${anaEsc(s.ng)}</div>`:""}
+        ${cstExHtml(s.id)}
+        <div class="cst-fb">
+          <button class="btn-ghost" onclick="event.stopPropagation();cstSlipPrint('${anaEsc(s.id)}')">🖨 PDF / พิมพ์</button>
+          <button class="btn-ghost" onclick="event.stopPropagation();cstSlipXlsx('${anaEsc(s.id)}')">⬇️ Excel</button>
+          ${mgr?`<button class="btn-ghost" onclick="event.stopPropagation();cstSlipEdit('${anaEsc(s.id)}')">✏️ แก้ไขใบนี้</button>
+          <button class="pl-today" onclick="event.stopPropagation();cstSlipDel('${anaEsc(s.id)}')">🗑 ลบใบนี้</button>`:""}
+          <span class="psub">${s.byName?"ลงข้อมูลโดย "+anaEsc(s.byName):""}${s.up?" · แก้ล่าสุด "+fmtDateTime(s.up):""}</span>
+        </div></div>`:""}
+    </div>`;}).join("");
+  h+=`</div>`;
+  /* ของเดิม (Excel) ยังใช้ได้อยู่ ไม่ตัดทิ้ง — ข้อมูลที่อัพไว้แล้วต้องไม่มีทางหาย */
+  if(mgr)h+=`<div class="panel"><h3>วิธีเดิม (Excel) — ยังใช้ได้ถ้าจำเป็น</h3>
+    <div class="cst-fb"><button class="btn-ghost" onclick="cstTemplate()">⬇️ โหลดไฟล์ฟอร์ม</button>
+      <button class="btn-ghost" onclick="openUpload()">＋ อัพไฟล์ฟอร์มกลับเข้ามา</button>
+      <span class="psub">ลอตที่เคยอัพด้วยไฟล์ยังอยู่ครบและตามต่อได้ในแท็บ 📦 รายการค้าง</span></div></div>`;
+  return h;
+}
+function cstBillAfter(){
+  const f=CST.f;if(!f)return;
+  f.rows.forEach((r,i)=>cstLinkMark(i));
+}
 function cstTog(id){CST.open[id]=!CST.open[id];renderCStock();}
 function cstDel(id){
+  if(!cstMgr())return;        /* ปุ่มนี้โชว์เฉพาะแอดมิน แต่ตัวฟังก์ชันต้องกันเองด้วย
+                                 ไม่ใช่พึ่งว่า "ปุ่มไม่ขึ้น" (เทสฝั่งเซลล์จับได้) */
   const l=cstOk().lots[id];if(!l)return;
   if(!confirm("ลบลอต "+id+" ("+(l.nm||"")+") ออกจากสต็อคกลาง?\n\nใช้เมื่อคีย์ผิดเท่านั้น — ถ้าเคลียร์ของหมดแล้ว ไม่ต้องลบ ระบบจะย้ายไปกลุ่ม \"เคลียร์หมดแล้ว\" ให้เอง"))return;
   const C=cstOk();delete C.lots[id];C.del[id]=Date.now();C.up=Date.now();
@@ -8966,9 +9792,25 @@ function cstDel(id){
 function cstMgr(){return !!(S.user&&S.user.role==="manager");}
 function renderCStock(){
   const bar=document.getElementById("cstBar");if(!bar)return;
+  const C=cstOk(),mgr=cstMgr();
+  if(!mgr&&CST.sec!=="list")CST.sec="list";
+  /* ครั้งแรกสุดที่ยังไม่มีข้อมูลอะไรเลย เปิดหน้ากรอกให้ทันที —
+     เจ้าของบอกว่า "หน้าแรก แอดมินจะต้องกรอกข้อมูล" แต่พอมีของค้างแล้ว
+     สิ่งที่ต้องเห็นก่อนคือ "เหลืออะไรค้างอยู่" ซึ่งเป็นเหตุผลที่ทำฟีเจอร์นี้ */
+  if(mgr&&!CST._auto){CST._auto=1;
+    if(!Object.keys(C.lots).length&&!Object.keys(C.slips).length){
+      CST.sec="bill";if(!CST.f){const d=cstDraftLoad();if(d){CST.f=d;CST.fRest=1;}}}}
   cstSyncSeg();
-  const mgr=cstMgr();
   {const u=document.getElementById("cstUpBar");if(u)u.style.display=mgr?"":"none";}
+  {const s=document.getElementById("cstSecBox");if(s)s.style.display=mgr?"":"none";}
+  {const q=document.getElementById("cstQBox"),o=document.getElementById("cstOnlyBox");
+   const show=CST.sec==="list"?"":"none";
+   if(q)q.style.display=show;if(o)o.style.display=show;}
+  {const b=document.getElementById("cstBill");if(b){
+     b.classList.toggle("hidden",CST.sec!=="bill");
+     b.innerHTML=CST.sec==="bill"?cstBillHtml():"";
+     if(CST.sec==="bill")cstBillAfter();}}
+  {const b=document.getElementById("cstBody");if(b)b.classList.toggle("hidden",CST.sec!=="list");}
   const all=cstList();
   const openL=all.filter(l=>!cstDone(l)),doneL=all.filter(cstDone);
   const leftCs=openL.reduce((s,l)=>s+cstLeft(l),0);
@@ -8985,7 +9827,7 @@ function renderCStock(){
     `<div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">เคลียร์หมดแล้ว</div><div class="v up">${doneL.length}</div><div class="s">ลอต</div></div>`;
   if(!all.length){
     document.getElementById("cstBody").innerHTML=`<div class="panel"><div class="insight">
-      ยังไม่มีข้อมูลสต็อคกลาง${mgr?' — กด <b>⬇️ โหลดไฟล์ฟอร์ม</b> ด้านบน กรอกแล้วอัพกลับเข้ามา':" — รอแอดมินอัพไฟล์"}
+      ยังไม่มีข้อมูลสต็อคกลาง${mgr?' — กด <b>➕ ตัดบิลใหม่</b> ด้านบน แล้วกรอกในเว็บได้เลย':" — รอแอดมินลงข้อมูล"}
       </div></div>`;
     return;
   }
@@ -9000,10 +9842,11 @@ function renderCStock(){
     return `<div class="cst-lot${cstDone(l)?" done":(old?" old":"")}">
       <div class="cst-h" onclick="cstTog('${anaEsc(l.id)}')">
         <div class="cst-t"><b>${anaEsc(l.nm||"(ไม่ได้ใส่ชื่อสินค้า)")}</b>
-          <span class="psub">${anaEsc(l.id)}${l.code?" · "+anaEsc(l.code):""}${l.own?" · 👤 "+anaEsc(l.own):""}</span></div>
+          <span class="psub">${anaEsc(l.id)}${l.code?" · "+anaEsc(l.code):""}${
+            l.ln?' · <b class="cst-ln">🚚 '+anaEsc(l.ln)+"</b>":""}${l.own?" · 👤 "+anaEsc(l.own):""}</span></div>
         <div class="cst-n">
-          ${cstDone(l)?`<span class="pill g">✅ เคลียร์หมดแล้ว</span>`
-            :`<span class="pill ${old?"b":"w"}">ค้าง <b>${left.toLocaleString()}</b> / ${cs.toLocaleString()} ลัง</span>`}
+          <span class="pill ${cstStatus(l)==="done"?"g":(old?"b":"w")}">${CST_ST[cstStatus(l)].t}</span>
+          ${cstDone(l)?"":`<span class="pill ${old?"b":"w"}">ค้าง <b>${left.toLocaleString()}</b> / ${cs.toLocaleString()} ลัง</span>`}
           <span class="psub">ตัดบิล ${l.d?fmtDate(l.d):"-"}${l.d?` · ${age} วันแล้ว`:""}</span>
         </div>
         <span class="cst-ar">${op?"▲":"▼"}</span>
@@ -9013,12 +9856,18 @@ function renderCStock(){
         <div class="psub">เคลียร์ไปแล้ว <b>${did.toLocaleString()}</b> ลัง จาก <b>${cs.toLocaleString()}</b> ลัง (${pct}%)${
           l.pc?` · ตัดไว้ ${(+l.pc).toLocaleString()} ชิ้น เคลียร์แล้ว ${cstClrPc(l).toLocaleString()} ชิ้น`:""}${
           l.val?` · มูลค่าทั้งลอต ${THB(l.val)}`:""}${l.bills?` · ${l.bills} บิล`:""}${
-          l.rt?` · สาย ${anaEsc(l.rt)}`:""}${l.tag?` · ป้ายในบิล "${anaEsc(l.tag)}"`:""}</div>
+          l.rt&&l.rt!==l.ln?` · สาย ${anaEsc(l.rt)}`:""}${l.tag?` · ป้ายในบิล "${anaEsc(l.tag)}"`:""}${
+          l.sl?(mgr?` · 🧾 <a href="javascript:void(0)" onclick="event.stopPropagation();cstGoSlip('${anaEsc(l.sl)}')">ใบตัดบิล ${anaEsc(l.sl)}</a>`
+                   :` · 🧾 ใบตัดบิล ${anaEsc(l.sl)}`):""}</div>
         ${l.note?`<div class="cst-note">📝 ${anaEsc(l.note)}</div>`:""}
-        ${(l.clr||[]).length?`<table class="cst-tbl"><thead><tr><th>วันที่</th><th style="text-align:left">เคลียร์ให้</th><th>ลัง</th><th>ชิ้น</th><th style="text-align:left">หมายเหตุ</th></tr></thead><tbody>`+
-          l.clr.map(c=>`<tr><td>${c.d?fmtDate(c.d):"-"}</td><td style="text-align:left">${anaEsc(c.who||"-")}</td><td>${(+c.cs||0).toLocaleString()}</td><td>${(+c.pc||0)||"-"}</td><td style="text-align:left">${anaEsc(c.note||"")}</td></tr>`).join("")+
+        ${(l.clr||[]).length?`<table class="cst-tbl"><thead><tr><th>วันที่ขายออก</th><th style="text-align:left">ร้าน / ผู้รับของ</th><th>ลัง</th><th>ชิ้น</th><th style="text-align:left">หมายเหตุ</th>${mgr?"<th></th>":""}</tr></thead><tbody>`+
+          l.clr.map((c,ci)=>`<tr><td>${c.d?fmtDate(c.d):"-"}</td><td style="text-align:left">${anaEsc(c.who||c.sn||"-")}${
+            c.sc?` <span class="psub">(${anaEsc(c.sc)})</span>`:""}</td><td>${(+c.cs||0).toLocaleString()}</td><td>${(+c.pc||0)||"-"}</td><td style="text-align:left">${anaEsc(c.note||"")}</td>${
+            mgr?`<td><button class="cst-x" title="ลบรายการนี้ (คีย์ผิด)" onclick="event.stopPropagation();cstClrDel('${anaEsc(l.id)}',${ci})">🗑</button></td>`:""}</tr>`).join("")+
           `</tbody></table>`:`<div class="psub" style="margin-top:6px">ยังไม่มีการเคลียร์ของลอตนี้เลย</div>`}
-        ${mgr?`<div style="margin-top:8px"><button class="pl-today" onclick="event.stopPropagation();cstDel('${anaEsc(l.id)}')">🗑 ลบลอตนี้ (ใช้เมื่อคีย์ผิด)</button></div>`:""}
+        ${mgr?`<div class="cst-fb" style="margin-top:8px">
+          <button class="upload-btn" onclick="event.stopPropagation();cstClrOpen('${anaEsc(l.id)}')">✅ บันทึกว่าขายออกไปแล้ว</button>
+          <button class="pl-today" onclick="event.stopPropagation();cstDel('${anaEsc(l.id)}')">🗑 ลบลอตนี้ (ใช้เมื่อคีย์ผิด)</button></div>`:""}
       </div>`:""}
     </div>`;};
   document.getElementById("cstBody").innerHTML=
@@ -10816,10 +11665,11 @@ function openUpload(){
     cstock:"cstock",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price"}[CURTAB]||null;
   const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",cstock:"🧊 อัพไฟล์สต็อคกลาง (ตัดบิลไว้ก่อน)",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์",dci:"📈 อัพไฟล์ DCI Score ของศูนย์",pjp:"🗺 อัพไฟล์ PJP & ร้านค้า",price:"💰 อัพไฟล์ราคา (หัวเสือ / BUM)"}[g];
   document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
-  /* ไฟล์สต็อคกลางแอดมินกรอกเอง ไม่ได้มาจาก Unilever — บรรทัดรองต้องไม่บอกผิด */
+  /* ไฟล์สต็อคกลางแอดมินถือเอง ไม่ได้มาจาก Unilever — บรรทัดรองต้องไม่บอกผิด
+     ตั้งแต่ 4 พ.ย. 69 การตัดบิลใหม่กรอกในเว็บ ไฟล์ฟอร์ม Excel เหลือไว้เป็นวิธีเดิมเท่านั้น */
   {const sub=document.getElementById("upSub");
    if(sub)sub.textContent=(g==="cstock")
-     ?"ไฟล์ฟอร์มที่แอดมินกรอก — กด ⬇️ โหลดไฟล์ฟอร์ม ในแท็บนี้ก่อน แล้วอัพกลับเข้ามา"
+     ?"ไฟล์ที่แอดมินถือเอง — ไฟล์ร้านที่ตัดบิลเข้า (Ex.export) หรือฟอร์ม Excel แบบเดิม · การตัดบิลใหม่ให้กรอกที่แท็บ 🧾 ใบตัดบิล"
      :"เลือกไฟล์ .xlsx/.xls จาก Unilever — อัปเดตทันที";}
   document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=(!g||el.dataset.group===g)?"":"none";});
   document.getElementById("modal").classList.remove("hidden");
@@ -10845,6 +11695,7 @@ function handleTyped(e,kind){
     else if(kind==="drop")parseDrop(f.name,ev.target.result);
     else if(kind==="stockd")parseStock(f.name,ev.target.result);
     else if(kind==="cstock")parseCStock(f.name,ev.target.result);
+    else if(kind==="cstockex")cstExTake(f.name,ev.target.result);
     else if(kind==="master")parseMaster(f.name,ev.target.result);
     else if(kind==="ana")parseAnalytics(f.name,ev.target.result);
     else if(kind==="dci")parseDCI(f.name,ev.target.result);
@@ -10871,6 +11722,7 @@ document.getElementById("fileBlank").addEventListener("change",e=>handleTyped(e,
 document.getElementById("fileDrop").addEventListener("change",e=>handleTyped(e,"drop"));
 document.getElementById("fileStock2").addEventListener("change",e=>handleTyped(e,"stockd"));
 document.getElementById("fileCStock").addEventListener("change",e=>handleTyped(e,"cstock"));
+document.getElementById("fileCStockEx").addEventListener("change",e=>handleTyped(e,"cstockex"));
 document.getElementById("fileMaster").addEventListener("change",e=>handleTyped(e,"master"));
 document.getElementById("fileAna").addEventListener("change",e=>handleTyped(e,"ana"));
 document.getElementById("fileDCI").addEventListener("change",e=>handleTyped(e,"dci"));
