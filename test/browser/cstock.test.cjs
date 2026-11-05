@@ -228,9 +228,11 @@ function seed(a){
    const el=document.querySelector('#cstBody .cst-grp');
    const rows=[...el.querySelectorAll('.cst-rt tbody tr')].map(r=>r.innerText.replace(/\s+/g,' '));
    return {n:rows.length,rows:rows,st04:rows.find(x=>/โอโมน้ำ/.test(x))||'',
-     boxes:el.querySelectorAll('.cst-rt input[type=checkbox]').length};});
+     boxes:el.querySelectorAll('.cst-rt tbody input[type=checkbox]').length,
+     head:el.querySelectorAll('.cst-rt thead input[type=checkbox]').length};});
  t('กดที่ก้อนแล้วกางเห็นรายการข้างใน (ยังค้าง 4 รายการ)',det.n===4,det.n+' แถว');
- t('...ทุกแถวมีช่องติ๊ก "ส่งออกแล้ว" ให้แอดมิน',det.boxes===4,det.boxes+' ช่อง');
+ t('...ทุกแถวมีช่องติ๊ก และหัวตารางมีช่อง "เลือกทั้งใบ"',
+   det.boxes===4&&det.head===1,det.boxes+' แถว + หัวตาราง '+det.head);
  t('...แถวที่ส่งไปแล้วบางส่วน บอกว่าส่งไปที่ไหนบ้าง',
    /เคลียร์ไปบางส่วน/.test(det.st04)&&/คุณกราณรุ้ง/.test(det.st04)&&/ลัดดาวัล/.test(det.st04),
    det.st04.slice(0,120));
@@ -499,18 +501,27 @@ function seed(a){
  t('...Note ของใบยังอยู่ครบหลังแก้ไข',edit.note==='จัดของแยกไว้ รอเรียกส่ง',edit.note);
 
  /* ==========================================================================
-  * 11) ✅ "ขายออกไปแล้ว" — วันที่ · จำนวน · ร้านค้าไหน (จากไฟล์ insight)
-  *     เจ้าของสั่ง: *"เมื่อได้ใบส่งของ แอดมินก็จะเอาข้อมูลมากระทบในเวปนี้อีกที …
-  *     ให้มีขึ้นบันทึกวันที่ว่าขายออกไปวันที่เท่าไหร่ จำนวนเท่าไหร่ และขายไปยังร้านค้าไหน"*
+  * 11) ✅ "ส่งของออกไปแล้ว" — ติ๊กหลายรายการ แล้วบันทึกทีเดียว
+  *     เจ้าของทัก 5 พ.ย. 69: *"ตอนนี้ติ๊กรายการแล้วมันขึ้นไล่ให้ปรับทีละตัว"*
+  *     → ติ๊ก = แค่เลือก · ปุ่มเดียวบันทึกให้ทุกรายการที่เลือก (ปลายทางเดียว วันเดียว)
+  *     ส่วนการส่งแค่บางส่วน ยังทำรายตัวได้จากปุ่ม 📝
   * ======================================================================== */
  const clr=await ev(async()=>{
-   const sid=Object.keys(CSTOCK.slips)[0],id=cstSlipRows(sid)[0].id;
-   CST.sec='list';CST.open={};renderCStock();cstGrpTog(sid);
-   const hasBtn=!!document.querySelector('#cstBody .cst-rt input[type=checkbox]');
-   cstTick(id);                               /* ติ๊ก = เปิดกล่อง พร้อมเติมจำนวนที่เหลือให้ */
-   const pre=document.getElementById('cstClrCs').value;
+   const sid=Object.keys(CSTOCK.slips)[0],rows=cstSlipRows(sid);
+   const id=rows[0].id,id2=rows[1].id;
+   CST.sec='list';CST.only='open';CST.open={};CST.sel={};renderCStock();cstGrpTog(sid);
+   const boxes=document.querySelectorAll('#cstBody .cst-rt tbody input[type=checkbox]').length;
+   const barOff=document.querySelector('#cstBody .cst-bulk').textContent.replace(/\s+/g,' ');
+   cstSelRow(id);cstSelRow(id2);                 /* ติ๊ก 2 รายการ */
+   const afterTick=document.getElementById('cstClrModal').classList.contains('hidden');
+   const bar=document.querySelector('#cstBody .cst-bulk').textContent.replace(/\s+/g,' ');
+   const hl=document.querySelectorAll('#cstBody .cst-rt tbody tr.on').length;
+   cstBulkSent();                                /* ปุ่มเดียว → กล่องเดียว */
    const openM=!document.getElementById('cstClrModal').classList.contains('hidden');
    const sub=document.getElementById('cstClrSub').innerText.replace(/\s+/g,' ');
+   const qtyHidden=document.getElementById('cstClrQ1').style.display==='none'&&
+                   document.getElementById('cstClrQ2').style.display==='none'&&
+                   document.getElementById('cstClrBulk').style.display!=='none';
    document.getElementById('cstClrWho').value='ประภัส';
    cstClrSug();
    const sug=[...document.querySelectorAll('#cstClrSug .cst-sg')].map(x=>x.textContent.replace(/\s+/g,' '));
@@ -518,68 +529,95 @@ function seed(a){
    const picked={who:document.getElementById('cstClrWho').value,
      pick:document.getElementById('cstClrPick').innerText.replace(/\s+/g,' ')};
    document.getElementById('cstClrD').value='2026-11-03';
-   document.getElementById('cstClrCs').value='5';
-   document.getElementById('cstClrPc').value='0';
-   document.getElementById('cstClrNote').value='ทำราคา 300/ลัง';
+   document.getElementById('cstClrNote').value='ส่งรอบเช้า';
    const s0=window.__sync;cstClrSave();
-   const l=CSTOCK.lots[id];
-   return {id:id,hasBtn:hasBtn,openM:openM,pre:pre,sub:sub,sug:sug.join(' / '),picked:picked,
+   const l=CSTOCK.lots[id],l2=CSTOCK.lots[id2];
+   return {id:id,id2:id2,boxes:boxes,rows:rows.length,barOff:barOff,bar:bar,hl:hl,
+     afterTick:afterTick,openM:openM,sub:sub,qtyHidden:qtyHidden,sug:sug.join(' / '),picked:picked,
      closed:document.getElementById('cstClrModal').classList.contains('hidden'),
-     clr:l.clr,left:cstLeft(l),status:cstStatus(l),sync:window.__sync-s0,
-     row:(document.querySelector('#cstBody .cst-rt tbody tr')||{innerText:''}).innerText.replace(/\s+/g,' ')};});
- t('☑️ ติ๊กในรายการ = เปิดกล่องบันทึกว่าส่งไปไหน',clr.hasBtn&&clr.openM,'ok');
- t('...และเติมจำนวนที่เหลือให้เลย ไม่ต้องพิมพ์ซ้ำ (เหลือ 9 ลัง)',clr.pre==='9',clr.pre);
- t('...กล่องบอกชัดว่าลอตนี้ตัดไว้เท่าไหร่ เหลือเท่าไหร่',
-   /ตัดบิลไว้ 9 ลัง/.test(clr.sub)&&/เหลือ 9/.test(clr.sub),clr.sub);
+     clr:l.clr,clr2:l2.clr,left:cstLeft(l),left2:cstLeft(l2),
+     st:cstStatus(l),st2:cstStatus(l2),sel:Object.keys(CST.sel).length,sync:window.__sync-s0,
+     gone:![...document.querySelectorAll('#cstBody .cst-rt tbody tr')]
+       .some(r=>/เคลียร์หมดแล้ว/.test(r.innerText)),
+     seen:[...document.querySelectorAll('#cstBody .cst-rt tbody tr')].length};});
+ t('ทุกแถวมีช่องติ๊ก และหัวตารางมีช่อง "เลือกทั้งใบ"',
+   clr.boxes===clr.rows,clr.boxes+' ช่อง / '+clr.rows+' แถว');
+ t('ยังไม่ติ๊ก แถบด้านบนบอกวิธีใช้',/ติ๊กหน้ารายการที่ส่งของออกไปแล้ว/.test(clr.barOff),clr.barOff.slice(0,60));
+ t('🔑 ติ๊กแล้ว "ไม่เด้งกล่องทีละตัว" — แค่เลือกไว้ แล้วแถบบอกจำนวน',
+   clr.afterTick&&/ติ๊กไว้ 2 รายการ/.test(clr.bar)&&clr.hl===2,clr.bar.slice(0,70));
+ t('🔑 กดปุ่มเดียว เปิดกล่องเดียวสำหรับทุกรายการที่ติ๊ก',
+   clr.openM&&/2 รายการที่ติ๊กไว้/.test(clr.sub),clr.sub.slice(0,70));
+ t('...โหมดหลายรายการซ่อนช่องจำนวน (แต่ละตัวเหลือไม่เท่ากัน ระบบใช้ที่เหลือของแต่ละตัว)',
+   clr.qtyHidden,'ok');
  t('🏪 ค้นหาร้านจากไฟล์ insight (วิเคราะห์เชิงลึก) ได้ด้วยชื่อ',
    /ประภัสสร/.test(clr.sug)&&/4862412/.test(clr.sug),clr.sug.slice(0,70));
  t('...เลือกร้านแล้วเก็บทั้งชื่อและรหัสร้าน',
    clr.picked.who==='ประภัสสร'&&/4862412/.test(clr.picked.pick)&&
    clr.clr[0].sc==='4862412'&&clr.clr[0].sn==='ประภัสสร',JSON.stringify(clr.clr[0]).slice(0,110));
- t('🔑 บันทึกแล้วได้ วันที่ขายออก + จำนวน + ร้าน ครบในรายการเดียว',
-   clr.clr.length===1&&clr.clr[0].d==='2026-11-03'&&clr.clr[0].cs===5&&
-   clr.clr[0].note==='ทำราคา 300/ลัง',JSON.stringify(clr.clr[0]).slice(0,120));
- t('...คงเหลือคิดใหม่เอง (9−5 = 4) และสถานะกลายเป็นเคลียร์บางส่วน',
-   clr.left===4&&clr.status==='part',clr.left+' / '+clr.status);
- t('...ปิดกล่องเองและบันทึกขึ้นเซิร์ฟเวอร์ครั้งเดียว',clr.closed&&clr.sync===1,'sync +'+clr.sync);
- t('...แถวในหน้าจอขึ้นสถานะใหม่ให้เห็นทันที',/เคลียร์ไปบางส่วน/.test(clr.row),
-   (clr.row.match(/เคลียร์ไปบางส่วน|รอจัดส่ง[^·]*/)||[''])[0]);
- const clr2=await ev(a=>{
-   const id=a.id;                       /* CST.open เก็บ "ก้อนของใบ" แล้ว ไม่ใช่รหัสรายการ */
-   const l=CSTOCK.lots[id];const o={};
-   /* เคลียร์ส่วนที่เหลือ → ต้องกลายเป็น "เคลียร์หมดแล้ว" */
-   cstClrOpen(id);
+ t('🔑 บันทึกครั้งเดียว ลงให้ครบทุกรายการที่ติ๊ก เต็มจำนวนที่เหลือของแต่ละตัว',
+   clr.clr.length===1&&clr.clr2.length===1&&clr.clr[0].cs===9&&clr.clr2[0].cs===10&&
+   clr.st==='done'&&clr.st2==='done',
+   'r1='+clr.clr[0].cs+' ลัง · r2='+clr.clr2[0].cs+' ลัง');
+ t('...วันที่ ปลายทาง และหมายเหตุ เหมือนกันทุกรายการที่ติ๊ก',
+   clr.clr[0].d==='2026-11-03'&&clr.clr2[0].d==='2026-11-03'&&
+   clr.clr2[0].who==='ประภัสสร'&&clr.clr[0].note==='ส่งรอบเช้า',JSON.stringify(clr.clr2[0]).slice(0,100));
+ t('...คงเหลือเป็น 0 ทั้งคู่ · ล้างที่ติ๊กให้เอง · บันทึกขึ้นเซิร์ฟเวอร์ครั้งเดียว',
+   clr.left===0&&clr.left2===0&&clr.sel===0&&clr.closed&&clr.sync===1,
+   'เหลือ '+clr.left+'/'+clr.left2+' · ติ๊กค้าง '+clr.sel+' · sync +'+clr.sync);
+ t('...หน้าจอวาดใหม่ทันที: ตัวกรอง "ยังค้าง" ไม่โชว์รายการที่เพิ่งส่งออกไปแล้ว',
+   clr.gone&&clr.seen===clr.rows-2,'เหลือบนจอ '+clr.seen+' จาก '+clr.rows);
+ /* ↩️ ย้อนกลับเป็นยังค้าง ทีเดียวหลายรายการ */
+ const unsent=await ev(a=>{
+   CST.sel={};CST.sel[a.id]=1;CST.sel[a.id2]=1;
+   const s0=window.__sync;cstBulkUnsent();
+   return {n:(CSTOCK.lots[a.id].clr||[]).length+(CSTOCK.lots[a.id2].clr||[]).length,
+     left:cstLeft(CSTOCK.lots[a.id]),st:cstStatus(CSTOCK.lots[a.id]),
+     sel:Object.keys(CST.sel).length,sync:window.__sync-s0};},{id:clr.id,id2:clr.id2});
+ t('↩️ ติ๊กแล้วกด "กลับเป็นยังค้าง" ได้ทีเดียวหลายรายการ',
+   unsent.n===0&&unsent.left===9&&unsent.st==='wait'&&unsent.sel===0&&unsent.sync===1,
+   JSON.stringify(unsent));
+ /* 📝 ส่งบางส่วนรายตัว ยังทำได้เหมือนเดิม */
+ const part=await ev(a=>{
+   cstClrOpen(a.id,true);                       /* ปุ่ม 📝 — เติมจำนวนที่เหลือให้ก่อน */
+   const pre=document.getElementById('cstClrCs').value;
+   const shown=document.getElementById('cstClrQ1').style.display!=='none';
    document.getElementById('cstClrD').value='2026-11-04';
-   document.getElementById('cstClrCs').value='4';
+   document.getElementById('cstClrCs').value='5';
    document.getElementById('cstClrWho').value='ส่งตัวกระจายสองเมือง';
    cstClrSave();
-   o.left=cstLeft(l);o.status=cstStatus(l);o.n=l.clr.length;
-   o.freeText=l.clr[1].who==='ส่งตัวกระจายสองเมือง'&&!l.clr[1].sc;
+   const l=CSTOCK.lots[a.id];
+   return {pre:pre,shown:shown,n:l.clr.length,cs:l.clr[0].cs,left:cstLeft(l),st:cstStatus(l),
+     freeText:l.clr[0].who==='ส่งตัวกระจายสองเมือง'&&!l.clr[0].sc};},{id:clr.id});
+ t('📝 ส่งแค่บางส่วนรายตัว: กล่องโชว์ช่องจำนวน และเติมที่เหลือมาให้ (9 ลัง)',
+   part.shown&&part.pre==='9',part.pre);
+ t('...แก้เป็น 5 ลังแล้วบันทึก → เหลือ 4 ลัง สถานะเคลียร์บางส่วน',
+   part.cs===5&&part.left===4&&part.st==='part',part.left+' / '+part.st);
+ t('...ผู้รับที่ไม่ใช่ร้านในระบบ (เช่น ส่งตัวกระจาย) พิมพ์ชื่อเองได้',part.freeText,'ok');
+ const clr2=await ev(a=>{
+   const id=a.id,l=CSTOCK.lots[id],o={};
    /* เคลียร์เกินของที่เหลือ ต้องถามก่อน ไม่ใช่บันทึกเงียบ ๆ */
    window.confirm=()=>false;window.__alerts=[];
-   cstClrOpen(id);
+   cstClrOpen(id,true);
    document.getElementById('cstClrD').value='2026-11-05';
    document.getElementById('cstClrCs').value='99';
    document.getElementById('cstClrWho').value='ใครก็ไม่รู้';
    cstClrSave();
-   o.blocked=l.clr.length===2;
+   o.blocked=l.clr.length===1;
    window.confirm=()=>true;
    /* ว่างเปล่า → ฟ้อง */
    cstClrOpen(id);document.getElementById('cstClrCs').value='';
+   document.getElementById('cstClrPc').value='';
    document.getElementById('cstClrWho').value='x';window.__alerts=[];
-   cstClrSave();o.noQty=window.__alerts.join('|');o.still=l.clr.length===2;
+   cstClrSave();o.noQty=window.__alerts.join('|');o.still=l.clr.length===1;
    cstClrClose();
    /* ลบรายการที่คีย์ผิดได้ แล้วยอดคงเหลือกลับมา */
-   cstClrDel(id,1);
+   cstClrDel(id,0);
    o.afterDel=l.clr.length;o.leftBack=cstLeft(l);
    return o;},{id:clr.id});
- t('เคลียร์ส่วนที่เหลือครบ → สถานะเป็น "เคลียร์หมดแล้ว" และคงเหลือ 0',
-   clr2.left===0&&clr2.status==='done'&&clr2.n===2,clr2.left+' / '+clr2.status);
- t('...ผู้รับที่ไม่ใช่ร้านในระบบ (เช่น ส่งตัวกระจาย) พิมพ์ชื่อเองได้',clr2.freeText,'ok');
  t('🛟 เคลียร์เกินจำนวนที่ตัดไว้ ต้องถามก่อน — กดยกเลิกแล้วไม่บันทึก',clr2.blocked,'ok');
  t('🛟 ไม่ใส่จำนวน → ฟ้อง และไม่บันทึก',/จำนวน/.test(clr2.noQty)&&clr2.still,clr2.noQty);
- t('ลบรายการเคลียร์ที่คีย์ผิดได้ และคงเหลือกลับมาเอง (0 → 4)',
-   clr2.afterDel===1&&clr2.leftBack===4,clr2.afterDel+' รายการ · เหลือ '+clr2.leftBack);
+ t('ลบรายการที่คีย์ผิดได้ และคงเหลือกลับมาเอง (4 → 9)',
+   clr2.afterDel===0&&clr2.leftBack===9,clr2.afterDel+' รายการ · เหลือ '+clr2.leftBack);
 
  /* ==========================================================================
   * 12) 🏪 ไฟล์ Ex.export — ร้านที่ยอดตัดบิลถูกส่งเข้าไป (แนบทีหลังได้)
@@ -729,7 +767,7 @@ function seed(a){
    const o={tab:[...document.querySelectorAll('#tabSub button')].map(b=>b.textContent).join(' | '),
      lots:document.querySelectorAll('#cstBody .cst-grp').length,
      secBox:(document.getElementById('cstSecBox')||{style:{}}).style.display,
-     upBar:(document.getElementById('cstUpBar')||{style:{}}).style.display,
+     upBar:document.getElementById('cstUpBar')?'ยังมีอยู่':'ไม่มีแล้ว',
      sec:CST.sec};
    /* กดดูรายละเอียดแล้วต้องไม่มีปุ่มบันทึก/ลบ */
    const id=Object.keys(CSTOCK.lots)[0];
@@ -742,7 +780,7 @@ function seed(a){
    CST.f={sid:'',d:todayISO(),own:'x',nw:'',ng:'',seq:1,
      rows:[{k:'r1',code:'65660382',nm:'โอโม',cs:5,pc:0,ln:'CT11',own:''}]};
    cstSlipSave();
-   cstClrOpen(id);cstTick(id);
+   cstClrOpen(id);cstSelRow(id);cstBulkSent();cstBulkUnsent();
    const openM=!document.getElementById('cstClrModal').classList.contains('hidden');
    cstDel(id);cstSlipDel(cstSlipList()[0].id);
    o.same=JSON.stringify(CSTOCK)===snap;o.sync=window.__sync-s0;o.openM=openM;
@@ -751,9 +789,9 @@ function seed(a){
    return o;});
  t('👤 เซลล์เห็นแท็บ 🧊 สต็อคกลาง และเห็นลอตที่ยังค้างอยู่',
    /สต็อคกลาง/.test(sales.tab)&&sales.lots>0,sales.lots+' ลอต · '+sales.tab);
- t('...แต่ไม่เห็นปุ่มตัดบิลใหม่ / อัพโหลด / สลับไปหน้าใบตัดบิล',
-   sales.upBar==='none'&&sales.secBox==='none'&&sales.sec==='list',
-   'up='+sales.upBar+' sec='+sales.secBox);
+ t('🔧 ไม่มีปุ่มอัพโหลด/ตัดบิลใหม่บนแถบบนสุดเลย (เจ้าของสั่งเอาออก) และเซลล์สลับไปหน้าใบตัดบิลไม่ได้',
+   sales.upBar==='ไม่มีแล้ว'&&sales.secBox==='none'&&sales.sec==='list',
+   sales.upBar+' · sec='+sales.secBox);
  t('...และในรายการไม่มีช่องติ๊ก ไม่มีปุ่มบันทึก/ลบ',
    sales.boxes===0&&!/ขายออก/.test(sales.btns)&&!/ลบ/.test(sales.btns),
    sales.boxes+' ช่องติ๊ก · '+(sales.btns||'ไม่มีปุ่ม'));

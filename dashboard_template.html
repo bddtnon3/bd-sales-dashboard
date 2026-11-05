@@ -1382,11 +1382,9 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
           <button data-o="all" onclick="cstSetOnly('all')">ทั้งหมด</button>
         </div></div>
         <div class="spacer"></div>
-        <!-- ⚠️ ไม่มีปุ่มอัพโหลดไฟล์ตรงนี้ (เจ้าของสั่งเอาออก 5 พ.ย. 69 "เดี๋ยวแอดมินงง")
-             การอัพไฟล์รายชื่อร้านทำได้จาก 📎 ในใบตัดบิลใบนั้นเท่านั้น เพราะไฟล์ผูกกับใบ -->
-        <div class="ctl admin-upload" id="cstUpBar" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="cstNew()">➕ ตัดบิลใหม่</button>
-        </div>
+        <!-- ⚠️ แถบบนสุดต้องไม่มีปุ่มอะไรที่หน้าตาเหมือนปุ่มอัพโหลดเลย (เจ้าของสั่ง 5 พ.ย. 69
+             "เดี๋ยวแอดมินงง") · ปุ่ม ➕ ตัดบิลใหม่ อยู่ในหน้า 🧾 ใบตัดบิล เท่านั้น
+             และการแนบไฟล์รายชื่อร้านทำจาก 📎 ของใบนั้น ๆ เพราะไฟล์ผูกกับใบเสมอ -->
       </div>
       <div class="kpi-monthbar" id="cstBar"></div>
       <div class="cards" id="cstCards"></div>
@@ -1800,9 +1798,11 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="cst-frow">
         <div class="ctl"><label>วันที่ส่งออกไป</label><input id="cstClrD" type="date" onchange="cstClrHint()">
           <div class="psub" id="cstClrDHint"></div></div>
-        <div class="ctl"><label>จำนวนลัง</label><input id="cstClrCs" type="number" min="0" step="1" style="width:110px"></div>
-        <div class="ctl"><label>จำนวนชิ้น</label><input id="cstClrPc" type="number" min="0" step="1" style="width:110px"></div>
+        <div class="ctl" id="cstClrQ1"><label>จำนวนลัง</label><input id="cstClrCs" type="number" min="0" step="1" style="width:110px"></div>
+        <div class="ctl" id="cstClrQ2"><label>จำนวนชิ้น</label><input id="cstClrPc" type="number" min="0" step="1" style="width:110px"></div>
       </div>
+      <!-- โหมดติ๊กหลายรายการ: ไม่ต้องกรอกจำนวน เพราะแต่ละรายการเหลือไม่เท่ากัน -->
+      <div class="rq-note" id="cstClrBulk" style="display:none">บันทึกให้ <b>ทุกรายการที่ติ๊กไว้</b> เต็มจำนวนที่เหลือของแต่ละรายการ · ถ้าจะส่งแค่บางส่วน ให้กดปุ่ม 📝 ที่แถวนั้นแทน</div>
       <label class="cst-lb">ส่งไปที่ไหน (ร้านค้า / ตัวกระจาย / ผู้รับ)</label>
       <input id="cstClrWho" placeholder="🔍 พิมพ์ชื่อร้าน หรือรหัสร้าน 7 หลัก (หรือพิมพ์ชื่อผู้รับเองได้)"
         oninput="cstClrSearch()" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px">
@@ -9431,6 +9431,15 @@ function cstExPick(sid){
   CST.exFor=sid;
   const el=document.getElementById("fileCStockEx");if(el)el.click();
 }
+/* แนบไฟล์รายชื่อร้านจาก "ในฟอร์มใบตัดบิล" ได้เลย (เจ้าของทักว่าในฟอร์มไม่มีปุ่มนี้)
+   ไฟล์ต้องผูกกับใบ ใบใหม่จึงต้องบันทึกก่อน — ทำให้ในคลิกเดียว: บันทึก แล้วเปิดช่องเลือกไฟล์ */
+function cstFormEx(){
+  const f=CST.f;if(!f||!cstMgr())return;
+  if(f.sid){cstExPick(f.sid);return;}
+  if(!confirm("ไฟล์รายชื่อร้านต้องผูกกับใบตัดบิล จึงต้องบันทึกใบนี้ก่อน\n\nบันทึกแล้วเลือกไฟล์เลยไหม?"))return;
+  const sid=cstSlipSave();
+  if(sid)cstExPick(sid);
+}
 
 /* ============================================================================
  * 📥 นำเข้าลอตเก่า 4 ใบ ที่ "ตัดบิลลอยไว้" (เจ้าของส่งไฟล์มา 4 พ.ย. 69 ให้ match แล้วอัพขึ้นเว็บ)
@@ -9555,7 +9564,10 @@ function cstImport(){
 }
 
 /* ---------- หน้าจอ ---------- */
-let CST={q:"",only:"open",open:{},sec:"list",f:null,exFor:"",clr:null,sopen:{},st:0,_auto:0};
+/* sel = รายการในหน้ารายการค้างที่ "ติ๊กเลือกไว้" (คนละอันกับ sel ของแถวในฟอร์ม)
+   _shown = รายการที่แสดงอยู่จริงต่อก้อน ใช้ตอนกด "เลือกทั้งใบ" ให้เลือกเฉพาะที่เห็น */
+let CST={q:"",only:"open",open:{},sec:"list",f:null,exFor:"",clr:null,sopen:{},st:0,_auto:0,
+  sel:{},_shown:{}};
 function cstSetOnly(v){CST.only=v;renderCStock();}
 function cstSetSec(v){
   CST.sec=(v==="bill"&&cstMgr())?"bill":"list";
@@ -9810,6 +9822,7 @@ function cstSlipSave(){
   CST.f=null;CST.fRest=0;cstDraftWipe();CST.sopen[sid]=1;CST.sec="bill";
   renderCStock();syncToServer();
   toast("บันทึกใบตัดบิล "+sid+" แล้ว · "+rows.length+" รายการ"+(gone.length?" (เอาออก "+gone.length+" แถว)":""));
+  return sid;                 /* คืนเลขใบ เพื่อให้ "บันทึกแล้วแนบไฟล์ต่อ" ทำงานได้ */
 }
 function cstSlipDel(sid){
   if(!cstMgr())return;
@@ -9830,26 +9843,44 @@ function cstSlipDel(sid){
  * เจ้าของสั่ง: *"เมื่อได้ใบส่งของ แอดมินก็จะเอาข้อมูลมากระทบในเวปนี้อีกที … ให้มีขึ้นบันทึก
  * วันที่ว่าขายออกไปวันที่เท่าไหร่ จำนวนเท่าไหร่ และขายไปยังร้านค้าไหน"*
  * ==========================================================================*/
-/* full = มาจากการติ๊กในรายการ → เติมจำนวนที่เหลือให้เลย (แก้เป็นบางส่วนได้)
-   เพราะการติ๊กหมายถึง "ส่งออกไปแล้ว" ทั้งรายการ ไม่ควรต้องพิมพ์จำนวนซ้ำอีก */
+/* id = รหัสรายการเดียว หรือ "อาเรย์ของรหัส" เมื่อติ๊กมาหลายรายการ
+   full = เติมจำนวนที่เหลือให้เลย · โหมดหลายรายการจะซ่อนช่องจำนวนไปเลย
+          เพราะแต่ละรายการเหลือไม่เท่ากัน ระบบบันทึก "เต็มจำนวนที่เหลือของแต่ละตัว" */
 function cstClrOpen(id,full){
   if(!cstMgr())return;
-  const l=cstOk().lots[id];if(!l)return;
-  CST.clr={id:id,sc:"",sn:""};
+  const C=cstOk(),many=Array.isArray(id);
+  const ids=(many?id:[id]).filter(x=>C.lots[x]);
+  if(!ids.length)return;
+  CST.clr={id:ids[0],ids:many?ids:null,sc:"",sn:""};
   const set=(k,v)=>{const el=document.getElementById(k);if(el)el.value=v;};
+  const show=(k,on)=>{const el=document.getElementById(k);if(el)el.style.display=on?"":"none";};
+  const l=C.lots[ids[0]];
   const left=cstLeft(l),lpc=Math.max(0,(+l.pc||0)-cstClrPc(l));
   set("cstClrD",todayISO());
-  set("cstClrCs",full?(left>0?left:""):"");set("cstClrPc",full?(lpc>0?lpc:""):"");
+  set("cstClrCs",(!many&&full)?(left>0?left:""):"");
+  set("cstClrPc",(!many&&full)?(lpc>0?lpc:""):"");
   set("cstClrWho","");set("cstClrNote","");
+  show("cstClrQ1",!many);show("cstClrQ2",!many);show("cstClrBulk",many);
   const sub=document.getElementById("cstClrSub");
-  if(sub)sub.innerHTML="<b>"+anaEsc(l.nm||id)+"</b> · ตัดบิลไว้ "+(+l.cs||0).toLocaleString()+" ลัง"+
-    (l.pc?" / "+(+l.pc).toLocaleString()+" ชิ้น":"")+" · เหลือ <b>"+cstLeft(l).toLocaleString()+"</b> ลัง"+
-    (l.ln?" · สาย "+anaEsc(l.ln):"");
+  if(sub){
+    if(many){
+      const cs=ids.reduce((a,x)=>a+Math.max(0,cstLeft(C.lots[x])),0);
+      const pc=ids.reduce((a,x)=>a+Math.max(0,(+C.lots[x].pc||0)-cstClrPc(C.lots[x])),0);
+      const nm=[...new Set(ids.map(x=>C.lots[x].nm||""))];
+      sub.innerHTML="<b>"+ids.length+" รายการที่ติ๊กไว้</b> · รวมที่เหลือ <b>"+
+        (Math.round(cs*100)/100).toLocaleString()+"</b> ลัง"+(pc?" / <b>"+pc.toLocaleString()+"</b> ชิ้น":"")+
+        "<div class=\"psub\">"+anaEsc(nm.slice(0,3).join(" · "))+(nm.length>3?" และอีก "+(nm.length-3)+" สินค้า":"")+"</div>";
+    }else{
+      sub.innerHTML="<b>"+anaEsc(l.nm||ids[0])+"</b> · ตัดบิลไว้ "+(+l.cs||0).toLocaleString()+" ลัง"+
+        (l.pc?" / "+(+l.pc).toLocaleString()+" ชิ้น":"")+" · เหลือ <b>"+left.toLocaleString()+"</b> ลัง"+
+        (l.ln?" · สาย "+anaEsc(l.ln):"");
+    }
+  }
   const sg=document.getElementById("cstClrSug");if(sg)sg.innerHTML="";
   const pk=document.getElementById("cstClrPick");if(pk)pk.innerHTML="";
   cstClrHint();
   document.getElementById("cstClrModal").classList.remove("hidden");
-  setTimeout(()=>{const el=document.getElementById(full?"cstClrWho":"cstClrCs");if(el)el.focus();},40);
+  setTimeout(()=>{const el=document.getElementById((many||full)?"cstClrWho":"cstClrCs");if(el)el.focus();},40);
 }
 /* ปิดกล่องแล้วต้องวาดใหม่ — ถ้าผู้ใช้กดติ๊กแล้วยกเลิก ช่องติ๊กต้องเด้งกลับเป็นเดิม */
 function cstClrClose(){CST.clr=null;document.getElementById("cstClrModal").classList.add("hidden");
@@ -9882,23 +9913,42 @@ function cstClrUnpick(){
 }
 function cstClrSave(){
   if(!cstMgr()||!CST.clr)return;
-  const C=cstOk(),l=C.lots[CST.clr.id];if(!l){cstClrClose();return;}
+  const C=cstOk();
   const g=k=>(document.getElementById(k)||{}).value||"";
   const d=cstDate(g("cstClrD"));
   if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){alert("ใส่วันที่ที่ส่งของออกไปก่อน");return;}
-  const cs=Math.max(0,parseFloat(g("cstClrCs"))||0),pc=Math.max(0,parseFloat(g("cstClrPc"))||0);
-  if(cs<=0&&pc<=0){alert("ใส่จำนวนที่ส่งออกไป (ลัง หรือ ชิ้น)");return;}
   const who=String(g("cstClrWho")).trim()||CST.clr.sn;
   if(!who){alert("ใส่ชื่อร้าน หรือชื่อผู้รับของ");return;}
+  const note=String(g("cstClrNote")).trim(),by=(S.user&&S.user.name)||"";
+  const now=Date.now(),rec=(cs,pc)=>({d:d,who:who,sc:CST.clr.sc||"",sn:CST.clr.sn||"",
+    cs:cs,pc:pc,note:note,at:now,by:by});
+  /* ---- หลายรายการพร้อมกัน: แต่ละตัวบันทึกเต็มจำนวนที่เหลือของตัวเอง ---- */
+  if(CST.clr.ids){
+    const ids=CST.clr.ids.filter(x=>C.lots[x]);
+    let n=0,skip=0;
+    ids.forEach(x=>{const l=C.lots[x];
+      const cs=cstLeft(l),pc=Math.max(0,(+l.pc||0)-cstClrPc(l));
+      if(cs<=0&&pc<=0){skip++;return;}                 /* ส่งครบแล้ว ไม่ต้องซ้ำ */
+      l.clr=(l.clr||[]).concat([rec(cs>0?cs:0,pc>0?pc:0)]);
+      l.clr.sort((a,b)=>String(a.d||"").localeCompare(String(b.d||"")));
+      l.up=now;n++;});
+    if(!n){alert("รายการที่เลือกไว้ บันทึกว่าส่งออกครบแล้วทุกตัว");return;}
+    C.up=now;CST.sel={};
+    cstClrClose();renderCStock();syncToServer();
+    toast("บันทึกส่งออกแล้ว "+n+" รายการ → "+who+(skip?" (ข้าม "+skip+" ที่ส่งครบแล้ว)":""));
+    return;
+  }
+  /* ---- รายการเดียว (ปุ่ม 📝 ส่งบางส่วน / แก้ไข) ---- */
+  const l=C.lots[CST.clr.id];if(!l){cstClrClose();return;}
+  const cs=Math.max(0,parseFloat(g("cstClrCs"))||0),pc=Math.max(0,parseFloat(g("cstClrPc"))||0);
+  if(cs<=0&&pc<=0){alert("ใส่จำนวนที่ส่งออกไป (ลัง หรือ ชิ้น)");return;}
   const left=cstLeft(l);
   if(cs>left&&!confirm("ใส่ "+cs+" ลัง แต่ลอตนี้เหลืออยู่ "+left+" ลัง\n\nบันทึกตามนี้เลยไหม? (คงเหลือจะติดลบ)"))return;
-  const now=Date.now();
-  l.clr=(l.clr||[]).concat([{d:d,who:who,sc:CST.clr.sc||"",sn:CST.clr.sn||"",
-    cs:cs,pc:pc,note:String(g("cstClrNote")).trim(),at:now,by:(S.user&&S.user.name)||""}]);
+  l.clr=(l.clr||[]).concat([rec(cs,pc)]);
   l.clr.sort((a,b)=>String(a.d||"").localeCompare(String(b.d||"")));
   l.up=now;C.up=now;
-  cstClrClose();CST.open[l.id]=true;renderCStock();syncToServer();
-  toast(cstDone(l)?"บันทึกแล้ว — ลอตนี้เคลียร์หมดแล้ว ✅":"บันทึกแล้ว — เหลืออีก "+cstLeft(l)+" ลัง");
+  cstClrClose();renderCStock();syncToServer();
+  toast(cstDone(l)?"บันทึกแล้ว — รายการนี้ส่งออกครบแล้ว ✅":"บันทึกแล้ว — เหลืออีก "+cstLeft(l)+" ลัง");
 }
 function cstClrDel(id,i){
   if(!cstMgr())return;
@@ -10070,9 +10120,11 @@ function cstFormHtml(){
     </div>
     <div class="cst-fb">
       <button class="upload-btn" onclick="cstSlipSave()">💾 บันทึกใบตัดบิล</button>
+      <button class="btn-ghost" onclick="cstFormEx()">📎 แนบไฟล์รายชื่อร้าน</button>
       <button class="btn-ghost" onclick="cstFormHide()">เก็บไว้ก่อน (ยังไม่บันทึก)</button>
       <button class="btn-ghost" onclick="cstFormClear()">ล้างใบนี้</button>
-      <span class="psub">บันทึกแล้วรายการจะขึ้นสถานะ <b>รอจัดส่ง · รอเคลียร์</b> ให้ทีมขายเห็นทันที</span>
+      <span class="psub">บันทึกแล้วรายการจะขึ้นสถานะ <b>รอจัดส่ง · รอเคลียร์</b> ให้ทีมขายเห็นทันที${
+        f.sid?"":" · ไฟล์รายชื่อร้านแนบได้เลย ระบบจะบันทึกใบให้ก่อนแล้วค่อยแนบ"}</span>
     </div></div>`;
 }
 /* เปลี่ยนผู้รับผิดชอบของทั้งใบ — แถวที่ "ยังไม่ได้เลือกเป็นคนอื่นเอง" ต้องเปลี่ยนตามไปด้วย
@@ -10166,15 +10218,39 @@ function cstBillHtml(){
  * ติ๊ก = เปิดกล่องบันทึกพร้อมเติมจำนวนที่เหลือให้ (แก้เป็นบางส่วนได้) เพราะต้องรู้ว่า
  * "ส่งไปไหน" ด้วยเสมอ · ติ๊กออก = ลบรายการส่งของใบนั้นแล้วกลับเป็นยังค้าง
  * ==========================================================================*/
-function cstTick(id){
+/* ---------- ติ๊กหลายรายการ แล้วบันทึกทีเดียว ----------
+   เจ้าของทัก 5 พ.ย. 69: *"ติ๊กรายการแล้วมันขึ้นไล่ให้ปรับทีละตัว"* — ติ๊กจึงเป็นแค่ "เลือก"
+   แล้วค่อยกดปุ่มเดียวบันทึกให้ทุกรายการที่เลือก (ปลายทางเดียวกัน วันเดียวกัน)
+   ของแต่ละรายการบันทึก "เต็มจำนวนที่เหลือของตัวเอง" · ถ้าจะส่งบางส่วนให้ใช้ปุ่ม 📝 รายแถว */
+function cstSelRow(id){
   if(!cstMgr())return;
-  const C=cstOk(),l=C.lots[id];if(!l)return;
-  if((l.clr||[]).length){
-    if(!confirm("เอาเครื่องหมายออก = กลับไปเป็น \"ยังค้างอยู่\"\n\n"+
-      "บันทึกการส่งของของรายการนี้ "+l.clr.length+" ครั้ง จะถูกลบทิ้ง ใช่ไหม?")){renderCStock();return;}
-    l.clr=[];l.up=Date.now();C.up=l.up;renderCStock();syncToServer();return;
-  }
-  cstClrOpen(id,true);
+  if(CST.sel[id])delete CST.sel[id];else CST.sel[id]=1;
+  renderCStock();
+}
+function cstSelIds(){const C=cstOk();return Object.keys(CST.sel).filter(id=>C.lots[id]);}
+function cstSelGrp(k,on){
+  if(!cstMgr())return;
+  (CST._shown[k||""]||[]).forEach(id=>{if(on)CST.sel[id]=1;else delete CST.sel[id];});
+  renderCStock();
+}
+function cstSelClear(){CST.sel={};renderCStock();}
+/* เปิดกล่องเดียวสำหรับทุกรายการที่เลือก */
+function cstBulkSent(){
+  if(!cstMgr())return;
+  const ids=cstSelIds();
+  if(!ids.length){alert("ติ๊ก ☑️ หน้ารายการที่ส่งออกไปแล้วก่อน แล้วค่อยกดปุ่มนี้");return;}
+  cstClrOpen(ids,true);
+}
+function cstBulkUnsent(){
+  if(!cstMgr())return;
+  const C=cstOk(),ids=cstSelIds().filter(id=>(C.lots[id].clr||[]).length);
+  if(!ids.length){alert("รายการที่เลือกไว้ ยังไม่มีบันทึกว่าส่งออกไปแล้วสักรายการ");return;}
+  if(!confirm("ย้อนกลับเป็น \"ยังค้างอยู่\" "+ids.length+" รายการ?\n\n"+
+    "บันทึกการส่งของของรายการเหล่านี้จะถูกลบทิ้ง"))return;
+  const now=Date.now();
+  ids.forEach(id=>{C.lots[id].clr=[];C.lots[id].up=now;});
+  C.up=now;CST.sel={};renderCStock();syncToServer();
+  toast("ย้อนกลับเป็นยังค้าง "+ids.length+" รายการแล้ว");
 }
 function cstGrpTog(k){CST.open[k||"_none"]=!CST.open[k||"_none"];renderCStock();}
 function cstClrLine(l){
@@ -10182,15 +10258,17 @@ function cstClrLine(l){
     ((+c.pc||0)?" "+(+c.pc).toLocaleString()+" ชิ้น":"")+(c.d?" ("+fmtDate(c.d)+")":"")+
     (c.note?" · "+c.note:"")).join(" · ");
 }
-function cstRowsHtml(rows,s,mgr,multi){
+function cstRowsHtml(rows,s,mgr,multi,k){
+  const allSel=mgr&&rows.length&&rows.every(l=>CST.sel[l.id]);
   return `<table class="cst-tbl cst-rt"><thead><tr>
-      ${mgr?'<th class="tk">ส่งออกแล้ว</th>':""}<th>#</th><th style="text-align:left">สินค้า</th>
+      ${mgr?`<th class="tk"><input type="checkbox" ${allSel?"checked":""} title="เลือกทั้งใบ"
+        onchange="cstSelGrp('${anaEsc(k||"")}',this.checked)"> เลือก</th>`:""}<th>#</th><th style="text-align:left">สินค้า</th>
       ${multi?"<th>วันที่ตัดบิล</th>":""}<th>ลัง</th><th>ชิ้น</th><th>สาย</th>
       <th style="text-align:left">สถานะ / ส่งไปที่ไหน</th>${mgr?"<th></th>":""}</tr></thead><tbody>
     ${rows.map((l,i)=>{const st=cstStatus(l),done=st==="done";
-      return `<tr class="${done?"done":""}">
-      ${mgr?`<td class="tk"><input type="checkbox" ${done?"checked":""} title="ติ๊กเมื่อส่งของออกไปแล้ว"
-        onchange="cstTick('${anaEsc(l.id)}')"></td>`:""}
+      return `<tr class="${done?"done":""}${CST.sel[l.id]?" on":""}">
+      ${mgr?`<td class="tk"><input type="checkbox" ${CST.sel[l.id]?"checked":""} title="ติ๊กเลือกไว้ แล้วกดปุ่มด้านบนทีเดียว"
+        onchange="cstSelRow('${anaEsc(l.id)}')"></td>`:""}
       <td>${i+1}</td>
       <td style="text-align:left"><b>${anaEsc(l.nm||"(ไม่ได้ใส่ชื่อ)")}</b>
         <div class="psub">${anaEsc(l.code||"")}${l.own?" · 👤 "+anaEsc(l.own):""}</div></td>
@@ -10200,8 +10278,8 @@ function cstRowsHtml(rows,s,mgr,multi){
       <td style="text-align:left"><span class="pill ${CST_ST[st].c}">${CST_ST[st].t}</span>
         ${(l.clr||[]).length?`<div class="psub">${anaEsc(cstClrLine(l))}</div>`:
           (st==="wait"?`<div class="psub">ยังไม่ได้บันทึกว่าส่งไปไหน</div>`:"")}</td>
-      ${mgr?`<td><button class="cst-x" title="บันทึกว่าส่งออกไปบางส่วน / แก้ไข"
-        onclick="cstClrOpen('${anaEsc(l.id)}')">📝</button>
+      ${mgr?`<td><button class="cst-x" title="ส่งออกแค่บางส่วน / แก้ไขรายตัว"
+        onclick="cstClrOpen('${anaEsc(l.id)}',true)">📝</button>
         <button class="cst-x" title="ลบรายการนี้ (คีย์ผิด)" onclick="cstDel('${anaEsc(l.id)}')">🗑</button></td>`:""}
     </tr>`;}).join("")}
   </tbody></table>`;
@@ -10221,11 +10299,13 @@ function cstListHtml(all,mgr){
     const sa=C.slips[a]||{},sb=C.slips[b]||{};
     return String(sb.d||"").localeCompare(String(sa.d||""))||String(a).localeCompare(String(b));});
   let shown=0,out="";
+  CST._shown={};                       /* รายการที่อยู่บนจอจริง ๆ ต่อก้อน (ใช้ตอน "เลือกทั้งใบ") */
   keys.forEach(k=>{
     const rowsAll=by[k].slice().sort((x,y)=>(+x.sq||0)-(+y.sq||0)||String(x.id).localeCompare(String(y.id)));
     const rows=rowsAll.filter(l=>pick(l)&&match(l));
     if(!rows.length)return;
     shown+=rows.length;
+    CST._shown[k||""]=rows.map(l=>l.id);
     const s=k?(C.slips[k]||{id:k,d:rowsAll[0].d}):{id:"",d:""};
     const op=!!CST.open[k||"_none"];
     const cs=rowsAll.reduce((a,l)=>a+(+l.cs||0),0);
@@ -10247,7 +10327,7 @@ function cstListHtml(all,mgr){
         <span class="cst-ar">${op?"▲":"▼"}</span></div>
       <div class="cst-bar"><span style="width:${pct}%"></span></div>
       ${op?`<div class="cst-d">
-        ${cstRowsHtml(rows,s,mgr,multi)}
+        ${cstRowsHtml(rows,s,mgr,multi,k)}
         ${k?cstNotesHtml(s):""}
         ${k?cstExHtml(k):""}
         ${k&&mgr?`<div class="cst-fb">
@@ -10259,6 +10339,21 @@ function cstListHtml(all,mgr){
     </div>`;
   });
   return {html:out,n:shown};
+}
+/* แถบ "ติ๊กไว้แล้วทำทีเดียว" — โผล่เมื่อมีรายการถูกติ๊ก */
+function cstSelBarHtml(mgr){
+  if(!mgr)return "";
+  const C=cstOk(),ids=cstSelIds();
+  if(!ids.length)return `<div class="cst-bulk off">☑️ ติ๊กหน้ารายการที่ส่งของออกไปแล้ว (ติ๊กกี่รายการก็ได้) แล้วกดบันทึกทีเดียว — ระบบจะถามแค่ครั้งเดียวว่าส่งไปที่ไหน</div>`;
+  const cs=ids.reduce((a,x)=>a+Math.max(0,cstLeft(C.lots[x])),0);
+  const done=ids.filter(x=>cstDone(C.lots[x])).length;
+  return `<div class="cst-bulk">
+    <b>☑️ ติ๊กไว้ ${ids.length} รายการ</b>
+    <span class="psub">รวมที่เหลือ ${(Math.round(cs*100)/100).toLocaleString()} ลัง${done?" · ส่งครบแล้ว "+done:""}</span>
+    <button class="upload-btn" onclick="cstBulkSent()">✅ บันทึกว่าส่งออกไปแล้ว</button>
+    <button class="cst-x" onclick="cstBulkUnsent()">↩️ กลับเป็นยังค้าง</button>
+    <button class="cst-x" onclick="cstSelClear()">ล้างที่ติ๊ก</button>
+  </div>`;
 }
 function cstBillAfter(){
   const f=CST.f;if(!f)return;
@@ -10285,7 +10380,6 @@ function renderCStock(){
     if(!Object.keys(C.lots).length&&!Object.keys(C.slips).length){
       CST.sec="bill";if(!CST.f){const d=cstDraftLoad();if(d){CST.f=d;CST.fRest=1;}}}}
   cstSyncSeg();
-  {const u=document.getElementById("cstUpBar");if(u)u.style.display=mgr?"":"none";}
   {const s=document.getElementById("cstSecBox");if(s)s.style.display=mgr?"":"none";}
   {const q=document.getElementById("cstQBox"),o=document.getElementById("cstOnlyBox");
    const show=CST.sec==="list"?"":"none";
@@ -10320,8 +10414,9 @@ function renderCStock(){
     (oldL.length?`<div class="rq-note">⚠️ มี <b>${oldL.length}</b> รายการที่ตัดบิลไว้เกิน ${CST_OLD} วันแล้วยังไม่ได้ส่งออก — นี่คือของที่มักจะถูกลืม</div>`:"")+
     `<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <h3>ของที่ตัดบิลไว้ (${g.n} รายการ)</h3>
-      <div class="psub">${mgr?"กดที่ใบเพื่อกางรายการ แล้ว <b>ติ๊ก ☑️ เมื่อส่งของออกไปแล้ว</b> (ระบบจะถามว่าส่งไปที่ไหน)"
+      <div class="psub">${mgr?"กดที่ใบเพื่อกางรายการ แล้วติ๊กเลือกได้หลายรายการพร้อมกัน"
         :"กดที่ใบเพื่อดูรายการข้างใน"}</div></div>
+     ${cstSelBarHtml(mgr)}
      ${g.html||'<div class="insight">ไม่มีรายการที่ตรงกับที่เลือกไว้</div>'}</div>`;
 }
 /* Master product catalog (Unilever full list): Item_Code + TH_Description */

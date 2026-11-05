@@ -438,10 +438,16 @@ code, never printed.
   The 906 customer rows that go with them are deliberately
   **not in the repo** (it is public) — the owner attaches them by uploading his own file once.
   The **รายการค้าง page groups rows under their slip** (`cstListHtml`): one block per bill-cut
-  slip, click to open, and each row has a **☑️ ส่งออกแล้ว tick** (`cstTick`) that opens the save
-  dialog with the remaining quantity pre-filled, because "sent" always has to say **where it went**;
-  unticking deletes that row's clearings after a confirm. There is **no upload button on either
-  page header** — a shop file belongs to one slip, so it is attached from 📎 inside that slip only.
+  slip, click to open, then **tick any number of rows and save them in one go** — a tick only
+  selects (`cstSelRow`, `cstSelGrp` for a whole slip), and `cstBulkSent` opens **one** dialog that
+  asks the date and **where it went** once and writes each row's own remaining quantity
+  (`CST.clr.ids`); the quantity fields are hidden in that mode. Opening the dialog per row was the
+  complaint — *"ติ๊กรายการแล้วมันขึ้นไล่ให้ปรับทีละตัว"* — so a tick must never open it.
+  `cstBulkUnsent` reverses a selection, and 📝 on a row still does a partial amount.
+  **Neither page header carries any upload or create button**: ➕ ตัดบิลใหม่ lives inside the
+  🧾 ใบตัดบิล page, and a shop file belongs to one slip, so it is attached from 📎 inside that
+  slip — or from **📎 in the slip form itself** (`cstFormEx`), which saves the new slip first,
+  since a file cannot attach to a slip that has no id yet.
   **`คงเหลือ` is always computed (`cstLeft`), never read from a file or a form** — the owner's
   original notes said "85 … 50 … 5 … คงเหลือ 12" when 85−50−5 is 30, and that hand-typed number is
   exactly how stock got forgotten. Clearings live **inside the lot record** (`clr[]`), not a
@@ -454,7 +460,7 @@ code, never printed.
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
-  with **`node test/browser/cstock.test.cjs`** (169 checks; it must load the page over a real origin,
+  with **`node test/browser/cstock.test.cjs`** (173 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
   Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
   map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales
