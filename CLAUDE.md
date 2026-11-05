@@ -423,10 +423,25 @@ code, never printed.
   attaches each to the slip it belongs to, scored by **bill date first** (×10, plus a bonus when the
   block's main date is the slip's date) then by line; a block that matches no date at all is
   **reported, never guessed onto a slip**.
+  🙈 **A hidden Excel column is not data.** The hidden flag only reaches SheetJS when the workbook
+  is read with `cellStyles:true` (`CST_XOPT`), and every cstock reader does, then blanks hidden
+  columns before matching headers (`cstHidden`). Admin 1's file copies one sheet into the next, so
+  three sheets still carried a second product in hidden columns G–J; read as real, it put a product
+  the owner could not see on every slip. Never drop `cellStyles` from these readers.
   The 4 historical lots the owner sent (Oct 26) are seeded by **`cstImport`** from `cstImpDefs()`,
   run once from `loadData`: it skips any slip that already exists **or carries an `sdel` tombstone**,
-  so a deleted slip never comes back. The 906 customer rows that go with them are deliberately
+  so a deleted slip never comes back. Every imported row starts **not cleared** — the clearing
+  history the files record lives in the slip note for the admins to tick off themselves. Data
+  already pushed is repaired by `cstImpFix`, which is versioned on the slip itself (`fx`, which
+  survives `mergeState` because a slip merges as one record) and only removes clearings whose
+  date+recipient match what the import wrote, so an admin's own entry is never eaten.
+  The 906 customer rows that go with them are deliberately
   **not in the repo** (it is public) — the owner attaches them by uploading his own file once.
+  The **รายการค้าง page groups rows under their slip** (`cstListHtml`): one block per bill-cut
+  slip, click to open, and each row has a **☑️ ส่งออกแล้ว tick** (`cstTick`) that opens the save
+  dialog with the remaining quantity pre-filled, because "sent" always has to say **where it went**;
+  unticking deletes that row's clearings after a confirm. There is **no upload button on either
+  page header** — a shop file belongs to one slip, so it is attached from 📎 inside that slip only.
   **`คงเหลือ` is always computed (`cstLeft`), never read from a file or a form** — the owner's
   original notes said "85 … 50 … 5 … คงเหลือ 12" when 85−50−5 is 30, and that hand-typed number is
   exactly how stock got forgotten. Clearings live **inside the lot record** (`clr[]`), not a
@@ -439,7 +454,7 @@ code, never printed.
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
-  with **`node test/browser/cstock.test.cjs`** (159 checks; it must load the page over a real origin,
+  with **`node test/browser/cstock.test.cjs`** (169 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
   Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
   map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales

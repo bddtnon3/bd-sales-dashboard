@@ -204,35 +204,44 @@ function seed(a){
  t('...และบันทึกการอัพบอกชัดว่าลอตเดิมยังถูกเก็บไว้',/ยังเก็บไว้ครบ 4 ลอต/.test(keepR.log),
    (keepR.log.match(/.*ยังเก็บไว้.*/)||[''])[0].replace(/<[^>]*>/g,''));
 
- /* ---------- 6) หน้าจอ ---------- */
- await ev(a=>{CSTOCK={lots:{},del:{},up:0};
+ /* ---------- 6) หน้าจอรายการค้าง — ก้อนใหญ่ทีละใบ กดเข้าไปดูรายการ ----------
+    เจ้าของสั่ง 5 พ.ย. 69 ให้รวมเป็นก้อน ไม่ใช่ลอยเป็นแถวยาว ๆ
+    ลอตชุดนี้มาจากไฟล์ Excel (ไม่มีเลขใบ) จึงรวมอยู่ในก้อน "ลอตเก่า" ก้อนเดียว */
+ await ev(a=>{CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};
    (a.LOTS||[]).forEach(l=>{CSTOCK.lots[l.id]=JSON.parse(JSON.stringify(l));CSTOCK.lots[l.id].up=1000;});
-   CST.only='open';CST.q='';CST.open={};_switchTab('cstock');renderCStock();},{LOTS});
+   CST.only='open';CST.q='';CST.open={};CST.sec='list';_switchTab('cstock');renderCStock();},{LOTS});
  const ui=await ev(()=>({
    cards:[...document.querySelectorAll('#cstCards .card')].map(c=>c.innerText.replace(/\s+/g,' ')),
-   lots:[...document.querySelectorAll('#cstBody .cst-lot')].map(x=>x.innerText.replace(/\s+/g,' ')),
+   grps:[...document.querySelectorAll('#cstBody .cst-grp')].map(x=>x.innerText.replace(/\s+/g,' ')),
+   rows:document.querySelectorAll('#cstBody .cst-rt tbody tr').length,
    body:document.getElementById('cstBody').innerText.replace(/\s+/g,' ')}));
- t('หน้าจอโชว์เฉพาะลอตที่ยังค้าง (ST-03 เคลียร์หมดแล้วต้องไม่อยู่)',
-   ui.lots.length===4&&!ui.lots.some(x=>/ST-03/.test(x)),ui.lots.length+' ลอต');
+ t('หน้าจอรวมเป็นก้อน ไม่ใช่รายการลอยยาว ๆ',ui.grps.length===1&&/ลอตเก่า/.test(ui.grps[0]),
+   ui.grps.length+' ก้อน');
+ t('...ก้อนบอกจำนวนรายการ ยอดลังรวม และค้างเท่าไหร่',
+   /5 รายการ/.test(ui.grps[0])&&/ค้าง 55 \/ 174 ลัง/.test(ui.grps[0])&&/ส่งออกแล้ว 1\/5/.test(ui.grps[0]),
+   ui.grps[0].slice(0,110));
+ t('...ยังไม่กดเข้าไป จะยังไม่เห็นรายการข้างใน',ui.rows===0,ui.rows+' แถว');
  t('การ์ดสรุปบอกจำนวนลอตที่ยังค้าง',/ยังค้างอยู่ 4/.test(ui.cards.join(' ')),ui.cards[0]);
  t('...และบอกยอดลังที่ยังค้างรวม (10+11+30+4 = 55)',/55/.test(ui.cards[1]),ui.cards[1]);
  t('...และนับลอตที่เคลียร์หมดแล้วแยกไว้',/เคลียร์หมดแล้ว 1/.test(ui.cards.join(' ')),ui.cards[4]);
- t('แถวลอตบอกคงเหลือ/ที่ตัดไว้ และกี่วันแล้ว',
-   /ค้าง 30 \/ 85 ลัง/.test(ui.body)&&/วันแล้ว/.test(ui.body),
-   (ui.lots.find(x=>/ST-04/.test(x))||'').slice(0,100));
- const det=await ev(()=>{cstTog('ST-04');
-   const el=[...document.querySelectorAll('#cstBody .cst-lot')].find(x=>/ST-04/.test(x.innerText));
-   return {txt:el.innerText.replace(/\s+/g,' '),rows:el.querySelectorAll('.cst-tbl tbody tr').length};});
- t('กดแถวแล้วกางดูรายการเคลียร์ทีละครั้งได้',
-   det.rows===2&&/คุณกราณรุ้ง/.test(det.txt)&&/ลัดดาวัล/.test(det.txt),det.rows+' แถว');
- t('...และสรุปว่าเคลียร์ไปแล้วกี่ลังจากกี่ลัง',/เคลียร์ไปแล้ว 55 ลัง จาก 85 ลัง/.test(det.txt),
-   (det.txt.match(/เคลียร์ไปแล้ว[^·]*/)||[''])[0]);
+ const det=await ev(()=>{cstGrpTog('');
+   const el=document.querySelector('#cstBody .cst-grp');
+   const rows=[...el.querySelectorAll('.cst-rt tbody tr')].map(r=>r.innerText.replace(/\s+/g,' '));
+   return {n:rows.length,rows:rows,st04:rows.find(x=>/โอโมน้ำ/.test(x))||'',
+     boxes:el.querySelectorAll('.cst-rt input[type=checkbox]').length};});
+ t('กดที่ก้อนแล้วกางเห็นรายการข้างใน (ยังค้าง 4 รายการ)',det.n===4,det.n+' แถว');
+ t('...ทุกแถวมีช่องติ๊ก "ส่งออกแล้ว" ให้แอดมิน',det.boxes===4,det.boxes+' ช่อง');
+ t('...แถวที่ส่งไปแล้วบางส่วน บอกว่าส่งไปที่ไหนบ้าง',
+   /เคลียร์ไปบางส่วน/.test(det.st04)&&/คุณกราณรุ้ง/.test(det.st04)&&/ลัดดาวัล/.test(det.st04),
+   det.st04.slice(0,120));
+ t('...แถวที่ยังไม่ได้ส่ง บอกตรง ๆ ว่ายังไม่ได้บันทึกว่าส่งไปไหน',
+   det.rows.some(x=>/รอจัดส่ง/.test(x)&&/ยังไม่ได้บันทึกว่าส่งไปไหน/.test(x)),'ok');
  const filt=await ev(()=>{const o={};
    ['all','done','old','open'].forEach(k=>{cstSetOnly(k);
-     o[k]=document.querySelectorAll('#cstBody .cst-lot').length;
+     o[k]=document.querySelectorAll('#cstBody .cst-rt tbody tr').length;
      o[k+'_on']=(document.querySelector('#cstOnly button.on')||{}).dataset.o;});
    cstSetOnly('open');CST.q='คนอร์';renderCStock();
-   o.q=document.querySelectorAll('#cstBody .cst-lot').length;CST.q='';renderCStock();return o;});
+   o.q=document.querySelectorAll('#cstBody .cst-rt tbody tr').length;CST.q='';renderCStock();return o;});
  t('ปุ่มกรอง ทั้งหมด / เคลียร์หมดแล้ว / ยังค้าง ทำงานถูก',
    filt.all===5&&filt.done===1&&filt.open===4,JSON.stringify(filt));
  t('...และปุ่มที่ไฮไลต์ขยับตามที่กดจริง',
@@ -246,8 +255,8 @@ function seed(a){
  const csBefore=await ev(()=>JSON.stringify(CSTOCK));
  await ev(()=>{
    ['all','done','old','open'].forEach(cstSetOnly);
-   Object.keys(CSTOCK.lots).forEach(k=>{cstTog(k);cstLeft(CSTOCK.lots[k]);cstAge(CSTOCK.lots[k]);});
-   Object.keys(CSTOCK.lots).forEach(k=>cstTog(k));
+   cstGrpTog('');Object.keys(CSTOCK.lots).forEach(k=>{cstLeft(CSTOCK.lots[k]);cstAge(CSTOCK.lots[k]);});
+   cstGrpTog('');cstGrpTog('');
    CST.q='โอโม';renderCStock();CST.q='';renderCStock();
  });
  const after=await ev(new Function('return '+BLOBS));
@@ -496,9 +505,10 @@ function seed(a){
   * ======================================================================== */
  const clr=await ev(async()=>{
    const sid=Object.keys(CSTOCK.slips)[0],id=cstSlipRows(sid)[0].id;
-   CST.sec='list';renderCStock();cstTog(id);
-   const hasBtn=!!document.querySelector('#cstBody .cst-lot button.upload-btn');
-   cstClrOpen(id);
+   CST.sec='list';CST.open={};renderCStock();cstGrpTog(sid);
+   const hasBtn=!!document.querySelector('#cstBody .cst-rt input[type=checkbox]');
+   cstTick(id);                               /* ติ๊ก = เปิดกล่อง พร้อมเติมจำนวนที่เหลือให้ */
+   const pre=document.getElementById('cstClrCs').value;
    const openM=!document.getElementById('cstClrModal').classList.contains('hidden');
    const sub=document.getElementById('cstClrSub').innerText.replace(/\s+/g,' ');
    document.getElementById('cstClrWho').value='ประภัส';
@@ -513,11 +523,12 @@ function seed(a){
    document.getElementById('cstClrNote').value='ทำราคา 300/ลัง';
    const s0=window.__sync;cstClrSave();
    const l=CSTOCK.lots[id];
-   return {id:id,hasBtn:hasBtn,openM:openM,sub:sub,sug:sug.join(' / '),picked:picked,
+   return {id:id,hasBtn:hasBtn,openM:openM,pre:pre,sub:sub,sug:sug.join(' / '),picked:picked,
      closed:document.getElementById('cstClrModal').classList.contains('hidden'),
      clr:l.clr,left:cstLeft(l),status:cstStatus(l),sync:window.__sync-s0,
-     row:(document.querySelector('#cstBody .cst-lot')||{innerText:''}).innerText.replace(/\s+/g,' ')};});
- t('ผู้จัดการ/แอดมินมีปุ่ม "บันทึกว่าขายออกไปแล้ว" ในแถวสินค้า',clr.hasBtn&&clr.openM,'ok');
+     row:(document.querySelector('#cstBody .cst-rt tbody tr')||{innerText:''}).innerText.replace(/\s+/g,' ')};});
+ t('☑️ ติ๊กในรายการ = เปิดกล่องบันทึกว่าส่งไปไหน',clr.hasBtn&&clr.openM,'ok');
+ t('...และเติมจำนวนที่เหลือให้เลย ไม่ต้องพิมพ์ซ้ำ (เหลือ 9 ลัง)',clr.pre==='9',clr.pre);
  t('...กล่องบอกชัดว่าลอตนี้ตัดไว้เท่าไหร่ เหลือเท่าไหร่',
    /ตัดบิลไว้ 9 ลัง/.test(clr.sub)&&/เหลือ 9/.test(clr.sub),clr.sub);
  t('🏪 ค้นหาร้านจากไฟล์ insight (วิเคราะห์เชิงลึก) ได้ด้วยชื่อ',
@@ -533,8 +544,8 @@ function seed(a){
  t('...ปิดกล่องเองและบันทึกขึ้นเซิร์ฟเวอร์ครั้งเดียว',clr.closed&&clr.sync===1,'sync +'+clr.sync);
  t('...แถวในหน้าจอขึ้นสถานะใหม่ให้เห็นทันที',/เคลียร์ไปบางส่วน/.test(clr.row),
    (clr.row.match(/เคลียร์ไปบางส่วน|รอจัดส่ง[^·]*/)||[''])[0]);
- const clr2=await ev(()=>{
-   const id=CST.open&&Object.keys(CST.open)[0];
+ const clr2=await ev(a=>{
+   const id=a.id;                       /* CST.open เก็บ "ก้อนของใบ" แล้ว ไม่ใช่รหัสรายการ */
    const l=CSTOCK.lots[id];const o={};
    /* เคลียร์ส่วนที่เหลือ → ต้องกลายเป็น "เคลียร์หมดแล้ว" */
    cstClrOpen(id);
@@ -561,7 +572,7 @@ function seed(a){
    /* ลบรายการที่คีย์ผิดได้ แล้วยอดคงเหลือกลับมา */
    cstClrDel(id,1);
    o.afterDel=l.clr.length;o.leftBack=cstLeft(l);
-   return o;});
+   return o;},{id:clr.id});
  t('เคลียร์ส่วนที่เหลือครบ → สถานะเป็น "เคลียร์หมดแล้ว" และคงเหลือ 0',
    clr2.left===0&&clr2.status==='done'&&clr2.n===2,clr2.left+' / '+clr2.status);
  t('...ผู้รับที่ไม่ใช่ร้านในระบบ (เช่น ส่งตัวกระจาย) พิมพ์ชื่อเองได้',clr2.freeText,'ok');
@@ -716,20 +727,23 @@ function seed(a){
    S.user={id:'ct11',role:'sales',code:'209611',name:'CT11'};
    renderTabs();_switchTab('cstock');
    const o={tab:[...document.querySelectorAll('#tabSub button')].map(b=>b.textContent).join(' | '),
-     lots:document.querySelectorAll('#cstBody .cst-lot').length,
+     lots:document.querySelectorAll('#cstBody .cst-grp').length,
      secBox:(document.getElementById('cstSecBox')||{style:{}}).style.display,
      upBar:(document.getElementById('cstUpBar')||{style:{}}).style.display,
      sec:CST.sec};
    /* กดดูรายละเอียดแล้วต้องไม่มีปุ่มบันทึก/ลบ */
-   const id=Object.keys(CSTOCK.lots)[0];cstTog(id);
-   const el=document.querySelector('#cstBody .cst-lot');
+   const id=Object.keys(CSTOCK.lots)[0];
+   CST.open={};cstGrpTog(CSTOCK.lots[id].sl||'');
+   const el=document.querySelector('#cstBody .cst-grp');
    o.btns=[...el.querySelectorAll('button')].map(b=>b.textContent.trim()).join(' | ');
+   o.boxes=el.querySelectorAll('input[type=checkbox]').length;
    /* เรียกฟังก์ชันเขียนตรง ๆ ก็ต้องไม่เขียน */
    const snap=JSON.stringify(CSTOCK);const s0=window.__sync;window.__alerts=[];
    CST.f={sid:'',d:todayISO(),own:'x',nw:'',ng:'',seq:1,
      rows:[{k:'r1',code:'65660382',nm:'โอโม',cs:5,pc:0,ln:'CT11',own:''}]};
    cstSlipSave();
-   cstClrOpen(id);const openM=!document.getElementById('cstClrModal').classList.contains('hidden');
+   cstClrOpen(id);cstTick(id);
+   const openM=!document.getElementById('cstClrModal').classList.contains('hidden');
    cstDel(id);cstSlipDel(cstSlipList()[0].id);
    o.same=JSON.stringify(CSTOCK)===snap;o.sync=window.__sync-s0;o.openM=openM;
    o.alert=window.__alerts.join('|');
@@ -740,8 +754,9 @@ function seed(a){
  t('...แต่ไม่เห็นปุ่มตัดบิลใหม่ / อัพโหลด / สลับไปหน้าใบตัดบิล',
    sales.upBar==='none'&&sales.secBox==='none'&&sales.sec==='list',
    'up='+sales.upBar+' sec='+sales.secBox);
- t('...และในรายละเอียดลอตไม่มีปุ่มบันทึกขายออก/ลบ',
-   !/ขายออก/.test(sales.btns)&&!/ลบลอต/.test(sales.btns),sales.btns||'(ไม่มีปุ่ม)');
+ t('...และในรายการไม่มีช่องติ๊ก ไม่มีปุ่มบันทึก/ลบ',
+   sales.boxes===0&&!/ขายออก/.test(sales.btns)&&!/ลบ/.test(sales.btns),
+   sales.boxes+' ช่องติ๊ก · '+(sales.btns||'ไม่มีปุ่ม'));
  t('🛟 เซลล์เรียกฟังก์ชันบันทึก/ลบตรง ๆ ก็เขียนอะไรไม่ได้เลย',
    sales.same&&sales.sync===0&&!sales.openM,'sync +'+sales.sync+' · '+(sales.alert||'ไม่มีการเขียน'));
 
@@ -853,6 +868,8 @@ function seed(a){
  /* ==========================================================================
   * 18) 📥 นำเข้าลอตเก่า 4 ใบ (ไฟล์ 4-11_Stock ของแอดมิน 1 + Stock_2026 ของแอดมิน 2)
   *     ตัวเลขทุกตัวด้านล่างมาจากไฟล์จริงทั้งสองไฟล์ ถ้าแก้ตารางนำเข้าแล้วเลขเพี้ยน เทสจะฟ้อง
+  *     ⚠️ ทุกแถวต้องเริ่มที่ "ยังไม่ได้เคลียร์" ตามที่เจ้าของสั่ง 5 พ.ย. 69
+  *     ⚠️ โอโมน้ำ พิงค์ ฟลอรัล มีจริงแค่ใบ 19 ต.ค. — อีก 3 ชีตมันอยู่ใน "คอลัมน์ที่ซ่อนไว้"
   * ======================================================================== */
  const imp=await ev(()=>{
    CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};
@@ -863,53 +880,80 @@ function seed(a){
      rows.forEach(l=>{const o=by[l.code]||(by[l.code]={cs:0,pc:0,clr:0,n:0});
        o.cs+=+l.cs||0;o.pc+=+l.pc||0;o.clr+=cstClrCs(l);o.n++;});
      return by;};
+   const allRows=[];cstSlipList().forEach(s=>cstSlipRows(s.id).forEach(l=>allRows.push(l)));
    return {r1:r1,r2:r2,sync:window.__sync-s0,
      slips:cstSlipList().map(s=>s.id).join(','),
      a:sum('B20261019-01'),b:sum('B20261022-01'),c:sum('B20261027-01'),d:sum('B20261029-01'),
      dates:[...new Set(cstSlipRows('B20261027-01').map(l=>l.d))].sort().join(','),
      nw:CSTOCK.slips['B20261027-01'].nw,
      ng19:CSTOCK.slips['B20261019-01'].ng,
-     left19:cstSlipRows('B20261019-01').reduce((x,l)=>x+cstLeft(l),0),
-     pc19:cstSlipRows('B20261019-01').reduce((x,l)=>x+((+l.pc||0)-cstClrPc(l)),0),
-     noLn:cstSlipRows('B20261027-01').filter(l=>!l.ln).length};});
- t('📥 นำเข้า 4 ใบ 44 แถว ในครั้งเดียว',
-   imp.r1.slips===4&&imp.r1.rows===44,JSON.stringify(imp.r1));
+     pink:allRows.filter(l=>l.code==='64829046').map(l=>l.sl).join(','),
+     anyClr:allRows.filter(l=>(l.clr||[]).length).length,
+     allWait:allRows.every(l=>cstStatus(l)==='wait'),
+     fx:cstSlipList().every(s=>+s.fx>=2)};});
+ t('📥 นำเข้า 4 ใบ 36 แถว ในครั้งเดียว',
+   imp.r1.slips===4&&imp.r1.rows===36,JSON.stringify(imp.r1));
  t('🛟 นำเข้าซ้ำไม่เพิ่มอะไรเลย (กันกดซ้ำ / เปิดหลายเครื่อง)',
    imp.r2.slips===0&&imp.r2.rows===0&&imp.r2.skip===4,JSON.stringify(imp.r2));
  t('...และสั่งบันทึกขึ้นเซิร์ฟเวอร์ครั้งเดียว',imp.sync===1,'sync +'+imp.sync);
  t('ใบครบ 4 ใบตามลอตจริง',
    imp.slips==='B20261029-01,B20261027-01,B20261022-01,B20261019-01',imp.slips);
+ t('🔑 ทุกแถวเริ่มที่ "รอจัดส่ง · รอเคลียร์" — ไม่มีรายการเคลียร์ติดมาเลย',
+   imp.anyClr===0&&imp.allWait,imp.anyClr+' แถวที่มีการเคลียร์');
+ t('🔑 โอโมน้ำ พิงค์ ฟลอรัล อยู่เฉพาะใบ 19 ต.ค. (อีก 3 ชีตมันอยู่ในคอลัมน์ที่ซ่อนไว้)',
+   imp.pink==='B20261019-01,B20261019-01,B20261019-01,B20261019-01,'+
+              'B20261019-01,B20261019-01,B20261019-01,B20261019-01',imp.pink||'(ไม่มีเลย)');
  /* ใบ 19 ต.ค. — ชีต "ซอฟทัชชุด1" */
- t('ใบ 19 ต.ค.: โอโม ซอฟท์ ทัช 64 ลัง (8 สาย × 8) เคลียร์ส่งคุณกรานต์รุ้งหมดแล้ว',
-   imp.a['65660382']&&imp.a['65660382'].cs===64&&imp.a['65660382'].n===8&&imp.a['65660382'].clr===64,
+ t('ใบ 19 ต.ค.: โอโม ซอฟท์ ทัช 64 ลัง (8 สาย × 8)',
+   imp.a['65660382']&&imp.a['65660382'].cs===64&&imp.a['65660382'].n===8,
    JSON.stringify(imp.a['65660382']));
- t('...โอโมน้ำ พิงค์ ฟลอรัล ตัดบิลจริง 80 ลัง 192 ชิ้น เคลียร์ไป 55 ลัง',
-   imp.a['64829046']&&imp.a['64829046'].cs===80&&imp.a['64829046'].pc===192&&imp.a['64829046'].clr===55,
+ t('...โอโมน้ำ พิงค์ ฟลอรัล ตัดบิลจริง 80 ลัง 192 ชิ้น',
+   imp.a['64829046']&&imp.a['64829046'].cs===80&&imp.a['64829046'].pc===192,
    JSON.stringify(imp.a['64829046']));
- t('🔑 คงเหลือตรงกับที่เจ้าของเขียนไว้เอง: 25 ลัง + 192 ชิ้น = 30 ลัง 12 ชิ้น (36 ชิ้น/ลัง)',
-   imp.left19===25&&imp.pc19===192,imp.left19+' ลัง '+imp.pc19+' ชิ้น');
- t('...และโน้ตอธิบายที่มาของตัวเลขไว้ในใบ ไม่ปล่อยให้งงทีหลัง',
-   /85 ลัง 12 ชิ้น/.test(imp.ng19)&&/36 ชิ้น\/ลัง/.test(imp.ng19)&&/708 บิล/.test(imp.ng19),
-   (imp.ng19.match(/หมายเหตุตัวเลข[^\n]*/)||[''])[0].slice(0,80));
- /* ใบ 22 ต.ค. — ชีต "สต็อคPT" */
- t('ใบ 22 ต.ค. (PT): คอมฟอร์ท 2 ตัว ตัวละ 5 ลัง · เบิกส่ง PT ไปแล้ว 3 ลัง',
-   imp.b['69724339'].cs===5&&imp.b['69724339'].clr===3&&imp.b['69593551'].cs===5&&
-   imp.b['69593551'].clr===0,JSON.stringify(imp.b));
+ t('...โน้ตของใบเก็บประวัติที่ไฟล์เขียนไว้ครบ ให้แอดมินเอาไปติ๊กเองได้',
+   /ส่งคุณกรานต์รุ้ง 50 ลัง/.test(imp.ng19)&&/708 บิล/.test(imp.ng19)&&/36 ชิ้น\/ลัง/.test(imp.ng19),
+   (imp.ng19.split('\n')[2]||'').slice(0,80));
+ /* ใบ 22 ต.ค. — ชีต "สต็อคPT" (2 แถว ไม่มีพิงค์ ฟลอรัล) */
+ t('ใบ 22 ต.ค. (PT): คอมฟอร์ท 2 ตัว ตัวละ 5 ลัง และไม่มีสินค้าอื่นแถมมา',
+   imp.b['69724339'].cs===5&&imp.b['69593551'].cs===5&&Object.keys(imp.b).length===2,
+   Object.keys(imp.b).join(','));
  /* ใบ 27 ต.ค. — ชีต "ซอฟทัชชุด2" */
- t('ใบ 27 ต.ค.: โอโม ซอฟท์ ทัช 39 ลัง (14 แถว 4 วัน) ส่งสองเมืองหมดแล้ว',
-   imp.c['65660382'].cs===39&&imp.c['65660382'].n===14&&imp.c['65660382'].clr===39,
+ t('ใบ 27 ต.ค.: โอโม ซอฟท์ ทัช 39 ลัง (14 แถว 4 วัน) ตัวเดียวล้วน',
+   imp.c['65660382'].cs===39&&imp.c['65660382'].n===14&&Object.keys(imp.c).length===1,
    JSON.stringify(imp.c['65660382']));
  t('🔑 ใบเดียวที่ตัดบิลหลายวัน เก็บวันของแต่ละแถวไว้ครบ ไม่ถูกวันของใบทับ',
    imp.dates==='2026-10-27,2026-10-29,2026-10-30,2026-10-31',imp.dates);
- t('⚠️ โอโมน้ำ พิงค์ ฟลอรัล ของใบนี้ใช้ยอดที่ตัดบิลจริง 16 ลัง 48 ชิ้น (ไฟล์รวมไว้ 10 ลัง 24 ชิ้น)',
-   imp.c['64829046'].cs===16&&imp.c['64829046'].pc===48,JSON.stringify(imp.c['64829046']));
- t('...แถวที่ไฟล์ไม่ได้ระบุสาย เก็บเป็น "ไม่ระบุ" ไม่ใช่เดาสายให้',imp.noLn===1,imp.noLn+' แถว');
  t('Note ถึงคลังมาจากข้อความที่เขียนไว้ท้ายชีตจริง',
    /ของแถมเอาเข้าลอย/.test(imp.nw)&&/จัดของแต่ตัวขาย/.test(imp.nw),imp.nw);
  /* ใบ 29 ต.ค. — ชีต "สต็อคซุป" */
- t('ใบ 29 ต.ค.: คนอร์ซุปก้อน 4 ลัง 48 ชิ้น (4 แถว) ยังไม่ได้เคลียร์',
+ t('ใบ 29 ต.ค.: คนอร์ซุปก้อน 4 ลัง 48 ชิ้น (4 แถว) ตัวเดียวล้วน',
    imp.d['65546800'].cs===4&&imp.d['65546800'].pc===48&&imp.d['65546800'].n===4&&
-   imp.d['65546800'].clr===0,JSON.stringify(imp.d['65546800']));
+   Object.keys(imp.d).length===1,JSON.stringify(imp.d['65546800']));
+ t('...ทุกใบติดเวอร์ชันการนำเข้าไว้ (fx) เพื่อกันซ่อมซ้ำ',imp.fx,'ok');
+ /* 🔧 ซ่อมของที่นำเข้าไปรอบแรกแล้ว (ขึ้นเว็บจริงไปแล้ว) */
+ const fix=await ev(()=>{
+   /* จำลองสภาพรอบแรก: มีแถวพิงค์ ฟลอรัลที่ไม่ควรมี + มีรายการเคลียร์ที่ระบบใส่ให้ */
+   const C=cstOk(),now=Date.now();
+   delete C.slips['B20261022-01'].fx;
+   C.lots['B20261022-01-r3']={id:'B20261022-01-r3',sl:'B20261022-01',sq:3,d:'2026-10-22',
+     code:'64829046',nm:'โอโมน้ำ พิงค์ ฟลอรัล 12X3X120มล',cs:2,pc:24,ln:'CT19',own:'CT19',clr:[],up:now};
+   C.lots['B20261022-01-r1'].clr=[{d:'2026-11-02',who:'เบิกส่ง PT',cs:3,pc:0,note:'ระบบใส่ให้'}];
+   /* ...และของที่แอดมินคีย์เอง ต้องไม่โดนลบ */
+   C.lots['B20261022-01-r2'].clr=[{d:'2026-11-05',who:'ร้านเจ๊หมู',cs:1,pc:0,note:'แอดมินคีย์เอง'}];
+   const s0=window.__sync;
+   const r=cstImport();
+   return {r:r,gone:!C.lots['B20261022-01-r3'],tomb:!!C.del['B20261022-01-r3'],
+     clr1:(C.lots['B20261022-01-r1'].clr||[]).length,
+     clr2:(C.lots['B20261022-01-r2'].clr||[]).length,
+     who2:((C.lots['B20261022-01-r2'].clr||[])[0]||{}).who,
+     fx:+C.slips['B20261022-01'].fx,sync:window.__sync-s0};});
+ t('🔧 ของที่นำเข้าผิดไปแล้ว ถูกซ่อมตอนเปิดเว็บครั้งถัดไป (ถอนแถวที่มาจากคอลัมน์ซ่อน)',
+   fix.gone&&fix.tomb,'ลบแล้ว='+fix.gone+' tombstone='+fix.tomb);
+ t('...รายการเคลียร์ที่ระบบใส่ให้ ถูกถอนออกให้หมด',fix.clr1===0,fix.clr1+' รายการ');
+ t('🛟 ...แต่รายการที่แอดมินคีย์เอง ต้องไม่โดนลบด้วย',
+   fix.clr2===1&&fix.who2==='ร้านเจ๊หมู',fix.who2||'(หาย!)');
+ t('...ซ่อมแล้วติดเวอร์ชันไว้ ไม่ซ่อมซ้ำ และสั่งบันทึกขึ้นเซิร์ฟเวอร์',
+   fix.fx===2&&fix.sync===1&&fix.r.fix>0,JSON.stringify(fix.r));
  /* 🛟 ลบทิ้งแล้วต้องไม่ถูกนำเข้ากลับมาอีก */
  const impDel=await ev(()=>{
    cstSlipDel('B20261029-01');
@@ -929,6 +973,34 @@ function seed(a){
      const n0=Object.keys(CSTOCK.slips).length;CSTOCK.slips={};
      const r=cstImport();const ok=r===null&&!Object.keys(CSTOCK.slips).length;
      S.user=u;cstImport();return ok;}),'ok');
+
+ /* ==========================================================================
+  * 18b) 🙈 คอลัมน์ที่ซ่อนไว้ใน Excel ไม่ใช่ข้อมูล
+  *      ต้นเหตุจริงของ "ทำไมทุกใบมีโอโมพิงค์ฟลอรัลติดมา" — ไฟล์ของแอดมิน 1
+  *      ก๊อปชีตต่อกันมา เหลือคอลัมน์สินค้าตัวที่สองซ่อนไว้ 3 ชีต
+  * ======================================================================== */
+ {
+   /* หัวตารางที่ใช้ได้อยู่ "เฉพาะในคอลัมน์ที่ซ่อน" เท่านั้น:
+      ถ้าซ่อน → ต้องอ่านไม่ออกและฟ้อง · ถ้าไม่ซ่อน → อ่านได้ตามปกติ
+      (พิสูจน์ว่าต่างกันที่ธง hidden จริง ๆ ไม่ใช่เพราะอย่างอื่น) */
+   const head=['รายการ','ชื่อสินค้า','ลัง','เศษ','ผู้สั่งซื้อ (ID)','ผู้สั่งซื้อ','มูลค่าสุทธิ','จำนวนภาษี','ถูกยกเลิก','วันที่วางบิล','เอกสารการวางบิล'];
+   const row=['65660382','โอโม',8,0,'4862412','ประภัสสร',10,0.7,'ไม่ใช่','2026-10-27','MF1'];
+   const mk=hidden=>{const w=XLSX.utils.book_new();
+     const ws=XLSX.utils.aoa_to_sheet([head,row]);
+     ws['!cols']=head.map((h,i)=>(hidden&&i>=4)?{hidden:true}:{});
+     XLSX.utils.book_append_sheet(w,ws,'Data');
+     return Buffer.from(XLSX.write(w,{bookType:'xlsx',type:'array'})).toString('base64');};
+   const r=await ev(a=>{
+     const out={};
+     [['hid',a.hid],['vis',a.vis]].forEach(([k,b64])=>{
+       try{const o=parseCStockEx('x.xlsx',Uint8Array.from(atob(b64),c=>c.charCodeAt(0)));
+         out[k]={c:o.rows[0].c,d:o.d};}catch(e){out[k]={err:String(e.message||e)};}});
+     return out;},{hid:mk(true),vis:mk(false)});
+   t('🙈 ข้อมูลที่อยู่ในคอลัมน์ "ที่ซ่อนไว้ใน Excel" ต้องไม่ถูกอ่านเป็นของจริง',
+     !!r.hid.err&&/ไม่พบหัวตาราง/.test(r.hid.err),r.hid.err||JSON.stringify(r.hid));
+   t('...คอลัมน์เดียวกันแต่ไม่ได้ซ่อน อ่านได้ตามปกติ (ต่างกันที่ธง hidden จริง ๆ)',
+     r.vis.c==='4862412'&&r.vis.d==='2026-10-27',JSON.stringify(r.vis));
+ }
 
  /* ==========================================================================
   * 19) 📄 ไฟล์สรุป Stock ของแอดมิน 2 — หลายลอตในไฟล์เดียว (ถ้ามีไฟล์จริงในเครื่อง)
