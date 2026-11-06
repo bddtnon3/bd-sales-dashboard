@@ -415,7 +415,20 @@ code, never printed.
   Each slip exports as Excel (`cstSlipXlsx`) or PDF via the browser's own print (`cstSlipPrint`
   into `#prArea`, which must stay a direct child of `body` for the `@media print` rule).
   Status (`รอจัดส่ง · รอเคลียร์` → `เคลียร์ไปบางส่วน` → `เคลียร์หมดแล้ว`) is computed from `clr[]`
-  on every render and **never stored as a field**. Recording a sale (`cstClrSave`) writes date +
+  on every render and **never stored as a field**. Every slip and lot is **coloured by the share of
+  cases already sent out** (`cstPct`/`cstPctCol`/`cstPctPill`/`cstPctBar`): 0% is always red, 100%
+  always green, and in between the hue walks orange → yellow → light green in proportion — the
+  owner asked for the gradient, so never collapse it back to three fixed colours, and never let 99%
+  render the same green as 100%. The same scale paints the left border, the progress bar, the pill
+  and every bar in the report.
+  A third page, **📊 รายงานย้อนหลัง** (`cstRepHtml`, `CST.sec==="rep"`), is the year tracker the
+  owner asked for: year picker with ◀ ▶, a month table, a slip table, by-product and by-line
+  summaries, and a 3-sheet Excel export (`cstRepXlsx`). **Everyone can open it, including sales**
+  (only 🧾 ใบตัดบิล is manager-only), and it is **strictly read-only** over CSTOCK — same rule as the
+  auto-PO calculator: it stores nothing, syncs nothing, and `CST.ry`/`CST.rm` live on the non-synced
+  `CST`. Every figure is recomputed from the stored slips and lots, so the report can never disagree
+  with the รายการค้าง page. It also separates **"cut in month X"** from **"actually sent out in
+  month X"** (`cstRepOut`, keyed on each clearing's own date), because they are different questions. Recording a sale (`cstClrSave`) writes date +
   quantity + **shop**, searched through `cstStoreIdx()` which takes `STOREPROD.stores` (the monthly
   insight file, the source the owner named) first and `STORE`/`PJP.out`/`STOREDAILY` as fallbacks.
   The Ex.export file (which shops the bills were cut into) is read by `parseCStockEx`: the shop code
@@ -477,7 +490,7 @@ code, never printed.
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
-  with **`node test/browser/cstock.test.cjs`** (194 checks; it must load the page over a real origin,
+  with **`node test/browser/cstock.test.cjs`** (211 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
   Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
   map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales

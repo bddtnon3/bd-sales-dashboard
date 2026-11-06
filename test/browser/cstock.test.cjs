@@ -768,7 +768,14 @@ function seed(a){
      lots:document.querySelectorAll('#cstBody .cst-grp').length,
      secBox:(document.getElementById('cstSecBox')||{style:{}}).style.display,
      upBar:document.getElementById('cstUpBar')?'ยังมีอยู่':'ไม่มีแล้ว',
+     billBtn:!document.querySelector('#cstSec button[data-s="bill"]').classList.contains('hidden'),
+     repBtn:!document.querySelector('#cstSec button[data-s="rep"]').classList.contains('hidden'),
      sec:CST.sec};
+   /* เซลล์กดไปหน้าใบตัดบิลเองไม่ได้ แต่ดูรายงานย้อนหลังได้ (เจ้าของให้ทีมขายดูสต็อคกลาง) */
+   cstSetSec('bill');o.secBill=CST.sec;
+   cstSetSec('rep');o.secRep=CST.sec;
+   o.repHtml=/สรุปรายเดือน/.test(document.getElementById('cstRep').innerHTML);
+   cstSetSec('list');
    /* กดดูรายละเอียดแล้วต้องไม่มีปุ่มบันทึก/ลบ */
    const id=Object.keys(CSTOCK.lots)[0];
    CST.open={};cstGrpTog(CSTOCK.lots[id].sl||'');
@@ -790,8 +797,11 @@ function seed(a){
  t('👤 เซลล์เห็นแท็บ 🧊 สต็อคกลาง และเห็นลอตที่ยังค้างอยู่',
    /สต็อคกลาง/.test(sales.tab)&&sales.lots>0,sales.lots+' ลอต · '+sales.tab);
  t('🔧 ไม่มีปุ่มอัพโหลด/ตัดบิลใหม่บนแถบบนสุดเลย (เจ้าของสั่งเอาออก) และเซลล์สลับไปหน้าใบตัดบิลไม่ได้',
-   sales.upBar==='ไม่มีแล้ว'&&sales.secBox==='none'&&sales.sec==='list',
-   sales.upBar+' · sec='+sales.secBox);
+   sales.upBar==='ไม่มีแล้ว'&&!sales.billBtn&&sales.sec==='list'&&sales.secBill==='list',
+   sales.upBar+' · ปุ่มใบตัดบิล='+sales.billBtn+' · sec='+sales.secBill);
+ t('👤 เซลล์เปิดดู 📊 รายงานย้อนหลังได้ (ดูอย่างเดียว)',
+   sales.repBtn&&sales.secRep==='rep'&&sales.repHtml,
+   'ปุ่ม='+sales.repBtn+' · sec='+sales.secRep+' · มีตารางรายเดือน='+sales.repHtml);
  t('...และในรายการไม่มีช่องติ๊ก ไม่มีปุ่มบันทึก/ลบ',
    sales.boxes===0&&!/ขายออก/.test(sales.btns)&&!/ลบ/.test(sales.btns),
    sales.boxes+' ช่องติ๊ก · '+(sales.btns||'ไม่มีปุ่ม'));
@@ -1174,6 +1184,105 @@ function seed(a){
 
   const manAfter=await ev(new Function('return '+BLOBS));
   t('🛟 คีย์ร้านเองแล้วก้อนข้อมูลอื่นไม่ขยับสักไบต์',manBefore===manAfter);
+ }
+
+ /* ==========================================================================
+  * 18d) 🎨 สีตาม % ที่ส่งออกไปแล้ว + 📊 รายงานย้อนหลังทั้งปี
+  *      เจ้าของสั่ง 6 พ.ย. 69: *"รายการที่ค้างทั้งหมดให้เป็นสีแดง ถ้าเคลียร์ออกไปบางส่วน
+  *      ให้เป็นสีส้ม ไล่สีไปเรื่อยๆจนหมด 100% ถึงเป็นสีเขียว นับจาก % ของออเดอร์ก็ได้"*
+  *      และ *"ข้อมูลทั้งหมด ช่วยฝังลงเวปไว้เลย เก็บเป็นรีพอร์ทดึงออกมาดูย้อนหลัง
+  *      สถานะการตัดบิลได้ เพื่อตาม track ของทั้งปีไปเลย อย่าเขียนทับข้อมูลหายอีกนะ"*
+  * ======================================================================== */
+ {
+  const col=await ev(()=>({
+    p0:cstPctCol(0),p1:cstPctCol(1),p50:cstPctCol(50),p99:cstPctCol(99),p100:cstPctCol(100),
+    m0:cstPct(60,60),m25:cstPct(60,45),m100:cstPct(60,0),mNeg:cstPct(60,-5),mZero:cstPct(0,0),
+    wait:CST_ST.wait.c,part:CST_ST.part.c,done:CST_ST.done.c}));
+  t('🎨 ยังไม่ได้ส่งออกเลย = แดง · ครบ 100% = เขียว',
+    col.p0==='#D64545'&&col.p100==='#1E9E5A',col.p0+' / '+col.p100);
+  t('...ส่งออกบางส่วนไล่สีจริง (1% ส้ม → 50% เหลือง → 99% เขียวอ่อน ไม่ซ้ำกันสักตัว)',
+    /^hsl\(/.test(col.p1)&&/^hsl\(/.test(col.p50)&&/^hsl\(/.test(col.p99)&&
+    new Set([col.p0,col.p1,col.p50,col.p99,col.p100]).size===5,
+    [col.p1,col.p50,col.p99].join(' / '));
+  t('...99% ต้องไม่ใช่สีเขียวเดียวกับ 100% (ไม่งั้นนึกว่าจบแล้วทั้งที่ยังค้าง)',
+    col.p99!==col.p100,col.p99+' vs '+col.p100);
+  t('...% คิดจากสัดส่วนลังที่ส่งออกไปแล้ว และไม่มีทางหลุดช่วง 0-100',
+    col.m0===0&&col.m25===25&&col.m100===100&&col.mNeg===100&&col.mZero===100,
+    [col.m0,col.m25,col.m100,col.mNeg,col.mZero].join(','));
+  t('...ป้ายสถานะรายแถว: รอเคลียร์ = แดง · บางส่วน = ส้ม · หมดแล้ว = เขียว',
+    col.wait==='b'&&col.part==='w'&&col.done==='g',[col.wait,col.part,col.done].join(','));
+
+  /* ใบ 3 ใบ 3 ปี เพื่อทดสอบรายงาน: 0% (ปีก่อน) · 50% · 100% */
+  const rep=await ev(()=>{
+    CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:Date.now()};
+    const mk=(sid,d,own,pcs)=>{CSTOCK.slips[sid]={id:sid,d:d,own:own,nw:'',ng:'',up:1};
+      pcs.forEach((pc,i)=>{const id=sid+'-r'+(i+1),cs=10,cl=Math.round(cs*pc/100);
+        CSTOCK.lots[id]={id:id,sl:sid,sq:i+1,d:d,code:'6566038'+i,nm:'สินค้า '+(i+1),cs:cs,pc:0,
+          ln:i?'CT12':'CT11',own:own,up:1,clr:cl?[{d:d,who:'ร้าน',cs:cl,pc:0,note:''}]:[]};});};
+    mk('B20251210-01','2025-12-10','KA97',[0,0]);         /* ปีก่อน · ยังไม่ส่งเลย */
+    mk('B20260315-01','2026-03-15','Supervisor',[100,0]); /* ครึ่งเดียว */
+    mk('B20260920-01','2026-09-20','CT19',[100,100]);     /* ครบ */
+    CST.sec='rep';CST.ry='';CST.rm='';renderCStock();
+    const rows=cstRepRows();
+    return {years:cstRepYears(rows),ry:CST.ry,n:rows.length,
+      sum:cstRepSum(rows.filter(r=>r.d.slice(0,4)==='2026')),
+      pcts:rows.map(r=>r.id+'='+r.pct).join(' '),
+      html:document.getElementById('cstRep').innerHTML,
+      hidden:document.getElementById('cstBody').classList.contains('hidden'),
+      cards:document.getElementById('cstCards').innerHTML.length>50};
+  });
+  t('📊 รายงานเก็บทุกใบไว้ดูย้อนหลัง แยกตามปีที่มีข้อมูลจริง',
+    rep.years.join(',')==='2026,2025'&&rep.ry==='2026'&&rep.n===3,
+    rep.years.join(',')+' · ปีที่เปิด '+rep.ry+' · '+rep.n+' ใบ');
+  t('...% ของแต่ละใบตรงกับของจริง (0 / 50 / 100)',
+    rep.pcts==='B20260920-01=100 B20260315-01=50 B20251210-01=0',rep.pcts);
+  t('...ยอดรวมของปีถูกต้อง (2 ใบ · 40 ลัง · ค้าง 10)',
+    rep.sum.n===2&&rep.sum.cs===40&&rep.sum.left===10,JSON.stringify(rep.sum));
+  t('...หน้ารายงานแสดงตารางรายเดือน รายใบ และสรุปตามสินค้า/สาย',
+    /สรุปรายเดือน/.test(rep.html)&&/ใบตัดบิล/.test(rep.html)&&
+    /สรุปตามสินค้า/.test(rep.html)&&/สรุปตามสายวิ่ง/.test(rep.html));
+  t('...เดือนที่มีข้อมูลขึ้นครบ และซ่อนหน้ารายการค้างไว้ แต่การ์ดสรุปด้านบนยังอยู่',
+    /ก\.ย\. 2569/.test(rep.html)&&/มี\.ค\. 2569/.test(rep.html)&&rep.hidden&&rep.cards,
+    'ซ่อนรายการค้าง='+rep.hidden+' · การ์ด='+rep.cards);
+
+  const mon=await ev(()=>{cstRepMon('2026-09');
+    const h=document.getElementById('cstRep').innerHTML;
+    const only=(h.match(/B2026\d{4}-01/g)||[]).filter((v,i,a)=>a.indexOf(v)===i);
+    cstRepMon('2026-09');                       /* กดซ้ำ = เลิกกรอง */
+    return {rm:CST.rm,only:only.join(','),back:CST.rm};},{});
+  t('กดเดือนแล้วกรองเฉพาะเดือนนั้น และกดซ้ำเพื่อกลับไปทั้งปี',
+    mon.only==='B20260920-01'&&mon.back==='',mon.only+' · หลังกดซ้ำ rm="'+mon.back+'"');
+
+  const yr=await ev(()=>{selStep('cstRY',-1);          /* ◀ = ปีเก่ากว่า */
+    const h=document.getElementById('cstRep').innerHTML;
+    return {ry:CST.ry,has25:/B20251210-01/.test(h),has26:/B20260920-01/.test(h)};});
+  t('◀ ▶ เดินปีได้ และ ◀ คือปีที่เก่ากว่าเสมอ (กฎเดียวกับทั้งเว็บ)',
+    yr.ry==='2025'&&yr.has25&&!yr.has26,'ปี '+yr.ry);
+
+  const repBefore=await ev(()=>JSON.stringify(CSTOCK));
+  const ro=await ev(()=>{const s0=window.__sync;
+    CST.ry='2026';CST.rm='';renderCStock();
+    cstRepMon('2026-03');cstRepMon('');selStep('cstRY',1);selStep('cstRY',-1);
+    cstRepHtml();cstRepRows();cstRepOut('2026');
+    return {sync:window.__sync-s0,posts:window.__posts.length};});
+  const repAfter=await ev(()=>JSON.stringify(CSTOCK));
+  t('🛟 หน้ารายงานอ่านอย่างเดียว — กดทุกปุ่มแล้วข้อมูลไม่ขยับสักไบต์ และไม่บันทึกขึ้นเซิร์ฟเวอร์',
+    repBefore===repAfter&&ro.sync===0,'sync +'+ro.sync);
+
+  const [dl2]=await Promise.all([pg.waitForEvent('download'),ev(()=>{CST.ry='2026';cstRepXlsx();})]);
+  const rp=path.join(os.tmpdir(),'bd-cstock-report.xlsx');
+  await dl2.saveAs(rp);
+  const rwb=XLSX.readFile(rp);
+  const m1=XLSX.utils.sheet_to_json(rwb.Sheets['รายเดือน'],{header:1});
+  const m3=XLSX.utils.sheet_to_json(rwb.Sheets['รายรายการ'],{header:1});
+  t('⬇️ รายงานทั้งปีดึงออกเป็น Excel ได้ 3 ชีต',
+    rwb.SheetNames.join(',')==='รายเดือน,รายใบ,รายรายการ',rwb.SheetNames.join(','));
+  t('...ชีตรายเดือนมีบรรทัดรวมทั้งปี และตัวเลขตรงกับหน้าจอ',
+    m1.some(r=>r[0]==='รวมทั้งปี'&&r[1]===2&&r[3]===40&&r[5]===10),
+    JSON.stringify((m1.filter(r=>r[0]==='รวมทั้งปี')[0]||[]).slice(0,6)));
+  t('...ชีตรายรายการเก็บทุกแถวพร้อมสถานะ และบอกว่าส่งไปที่ไหน',
+    m3.length===5&&m3.some(r=>/เคลียร์หมดแล้ว/.test(String(r[10])))&&
+    m3.some(r=>/ร้าน/.test(String(r[11]))),(m3.length-1)+' แถว');
  }
 
  /* ==========================================================================
