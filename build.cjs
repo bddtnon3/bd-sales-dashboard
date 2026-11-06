@@ -61,7 +61,9 @@ const ACC_BLOCK = `/* ====================== ACCOUNTS ====================== */
 /* v1 simple client-side auth. username = display code, password = code(lower)+"@bd" */
 const ACCOUNTS={"manager":{pass:"bd@admin",role:"manager",name:"ผู้จัดการฝ่ายขาย"},
   "admin1":{pass:"bd@admin1",role:"manager",name:"แอดมิน 1 · คีย์ตัดบิล"},
-  "admin2":{pass:"bd@admin2",role:"manager",name:"แอดมิน 2 · คีย์ข้อมูลร้าน"}};
+  "admin2":{pass:"bd@admin2",role:"manager",name:"แอดมิน 2 · คีย์ข้อมูลร้าน"},
+  "admin3":{pass:"bd@admin3",role:"manager",name:"แอดมิน 3"},
+  "admin4":{pass:"bd@admin4",role:"manager",name:"แอดมิน 4"}};
 DATA.focus_order.forEach(code=>{
   const d=DATA.lines[code];
   ACCOUNTS[d.display.toLowerCase()]={pass:d.display.toLowerCase()+"@bd",role:"sales",code:code,name:d.display+" · "+d.name};

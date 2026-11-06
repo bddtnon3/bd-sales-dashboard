@@ -176,13 +176,19 @@ or requests double. Prove it with **`node test/auth-renew.test.mjs`** (15 checks
 
 ## Accounts
 `lib/accounts.js` is the only real account list (passwords never reach the browser; any one can be
-overridden with `PASS_<USER>`). It holds `manager`, the 12 sales lines, and **`admin1` / `admin2`**,
-the two people who keep สต็อคกลาง — admin 1 keys the bill-cut, admin 2 keys where the bills went.
-Both are **role `manager`**, which is what they had before as shared users of the `manager` login;
-the gain is that every record now says **who keyed it** (`by`/`byName`). The client-side `ACCOUNTS`
-block in the template is only for the standalone build, and `build.cjs` replaces it by matching that
-exact text — change one and you must change the other or the build fails with `ANCHOR NOT FOUND`.
-Prove logins with **`node test/auth-renew.test.mjs`** (24 checks).
+overridden with `PASS_<USER>`). It holds `manager`, the 12 sales lines, and **`admin1`…`admin4`**
+(`bd@admin1`…`bd@admin4` — the owner set the scheme himself and asked for it to run 1-4 in step, so
+**keep adding them as `admin<N>`/`bd@admin<N>`**, never a one-off name). admin 1 keys the bill-cut
+and admin 2 keys where the bills went; 3 and 4 were added on 6 Nov 26 with no job named yet, so
+their display names are deliberately plain.
+All four are **role `manager`**, which is what they had before as shared users of the `manager`
+login; the gain is that every record now says **who keyed it** (`by`/`byName`). The client-side
+`ACCOUNTS` block in the template is only for the standalone build, and `build.cjs` replaces it by
+matching that exact text — change one and you must change **all three** (`lib/accounts.js`, the
+template block, `build.cjs`) or the build fails with `ANCHOR NOT FOUND`.
+Prove logins with **`node test/auth-renew.test.mjs`** (34 checks — all four log in, a wrong
+password is still refused, the 12 sales lines stay role `sales`, and no password is in
+`public/index.html`).
 
 ## Secrets
 `BLOB_READ_WRITE_TOKEN` and the auth signing secret live only in **Vercel env vars** — never in

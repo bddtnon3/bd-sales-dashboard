@@ -95,10 +95,12 @@ if (anyUser) {
   t("ล็อกอินด้วยรหัสผ่านผิดยังถูกปฏิเสธเหมือนเดิม", bad.code === 401, bad.code);
 }
 
-/* ---------- 7) บัญชีแอดมิน 2 คน ที่ดูแลสต็อคกลาง (เจ้าของกำหนดรหัสผ่านมาเอง 4 พ.ย. 69) ----------
-   ต้องล็อกอินได้จริงผ่าน api/login และได้สิทธิ์ manager (เดิมทั้งคู่ใช้บัญชี manager ร่วมกัน)
+/* ---------- 7) บัญชีแอดมิน (เจ้าของกำหนดรหัสผ่านมาเอง · 2 คน 4 พ.ย. 69 → 4 คน 6 พ.ย. 69) ----------
+   ต้องล็อกอินได้จริงผ่าน api/login และได้สิทธิ์ manager (เดิมใช้บัญชี manager ร่วมกัน)
+   รหัสไล่ตามเลข 1-4 แบบเดียวกันหมด (admin<N> / bd@admin<N>) ตามที่เจ้าของสั่ง
    ⚠️ รหัสผ่านอยู่ใน lib/accounts.js ฝั่งเซิร์ฟเวอร์เท่านั้น ไม่เคยถูกส่งไปที่เบราว์เซอร์ */
-for (const [u, p, nm] of [["admin1", "bd@admin1", "แอดมิน 1"], ["admin2", "bd@admin2", "แอดมิน 2"]]) {
+for (const n of [1, 2, 3, 4]) {
+  const u = "admin" + n, p = "bd@admin" + n, nm = "แอดมิน " + n;
   const ok = await call(login, { body: { user: u, pass: p } });
   t("ล็อกอิน " + u + " ด้วยรหัสที่เจ้าของกำหนดได้",
     ok.code === 200 && ok.body && ok.body.ok === true, ok.code);
@@ -111,9 +113,16 @@ for (const [u, p, nm] of [["admin1", "bd@admin1", "แอดมิน 1"], ["adm
   t("..." + u + " ได้ token ที่ตรวจผ่าน และ role อยู่ใน token ไม่ใช่ใน body เฉย ๆ",
     !!claims2 && claims2.role === "manager" && claims2.u === u, JSON.stringify(claims2 && claims2.u));
 }
-t("🛟 เพิ่มบัญชีแอดมินแล้วบัญชีเดิมยังอยู่ครบ (manager + เซลล์ 12 สาย)",
-  Object.keys(ACCOUNTS).length === 15 && ACCOUNTS.manager.role === "manager" &&
+t("🛟 เพิ่มบัญชีแอดมินแล้วบัญชีเดิมยังอยู่ครบ (manager + เซลล์ 12 สาย + แอดมิน 4 คน)",
+  Object.keys(ACCOUNTS).length === 17 && ACCOUNTS.manager.role === "manager" &&
   ACCOUNTS.ct11.role === "sales", Object.keys(ACCOUNTS).length + " บัญชี");
+t("🛟 แอดมินทั้ง 4 คนมีรหัสไม่ซ้ำกัน และไม่ซ้ำกับ manager",
+  new Set([1, 2, 3, 4].map(n => ACCOUNTS["admin" + n].pass).concat([ACCOUNTS.manager.pass])).size === 5,
+  "ตรวจว่ารหัสผ่านไม่ชนกัน");
+t("🛟 เซลล์ไม่ได้สิทธิ์ manager ติดมาด้วย (ยังเป็น sales ทั้ง 12 สาย)",
+  Object.keys(ACCOUNTS).filter(k => ACCOUNTS[k].role === "sales").length === 12 &&
+  Object.keys(ACCOUNTS).filter(k => ACCOUNTS[k].role === "manager").length === 5,
+  Object.keys(ACCOUNTS).filter(k => ACCOUNTS[k].role === "manager").length + " manager");
 
 let fail = 0;
 A.forEach(([ok, n, x]) => { if (!ok) fail++; console.log((ok ? "  ok  " : "  FAIL") + "  " + n + (x ? "   [" + x + "]" : "")); });
