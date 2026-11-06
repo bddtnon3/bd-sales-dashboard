@@ -1076,6 +1076,62 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
   check("ใบตัดบิลไม่ไปกวนลอตที่มาจากไฟล์ Excel รอบเก่า",
         !!b8.CSTOCK.lots["ST-01"] === false && !!b8.CSTOCK.lots[B1 + "-r1"],
         Object.keys(b8.CSTOCK.lots).join(","));
+  /* ------------------------------------------------------------------
+   * 🏪 ร้านที่ "คีย์เอง" ในใบตัดบิล (ex[sid].man) — เจ้าของสั่ง 6 พ.ย. 69
+   * *"บางออเดอร์เราคีย์เข้าไม่เยอะ แค่ 1 ร้านจะไม่ได้อัพไฟล์ excel"*
+   * ex ทั้งก้อนเป็น newest-wins ดังนั้นถ้าไม่ union รายแถว แท็บที่อัพไฟล์ทีหลัง
+   * (หรือแท็บรุ่นก่อนที่ไม่รู้จัก man) จะกินร้านที่คีย์มือหายทั้งหมด
+   * ------------------------------------------------------------------ */
+  const M1 = { id: "m1", m: 1, c: "4862412", n: "ปิโตรเลียมไทย", v: 1200, at: 7000 };
+  const M2 = { id: "m2", m: 1, c: "4870011", n: "ซีอาร์ซีไทวัสดุ", v: 980, at: 7100 };
+  const manTab = JSON.parse(JSON.stringify(base));
+  manTab.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {},
+    ex: { [B1]: { d: "2026-11-04", man: [M1], up: 7000 } }, up: 7000 };
+  const m1 = mergeState(b8, manTab);
+  check("🏪 คีย์ร้านเองใส่ใบที่มีไฟล์อยู่แล้ว → ได้ทั้งแถวจากไฟล์และแถวที่คีย์เอง",
+        m1.CSTOCK.ex[B1].man.length === 1 && m1.CSTOCK.ex[B1].man[0].c === "4862412" &&
+        m1.CSTOCK.ex[B1].n === 61,
+        JSON.stringify(m1.CSTOCK.ex[B1].man));
+  // แท็บอื่นอัพไฟล์ Ex.export ทับทีหลัง — ของที่คีย์มือต้องไม่หาย
+  const exOver = JSON.parse(JSON.stringify(base));
+  exOver.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {},
+    ex: { [B1]: { file: "Ex.export (3).xlsx", d: "2026-11-04", n: 70, val: 5000,
+                  rows: [{ c: "4862412", n: "ประภัสสร", v: 49.62 }], up: 9000 } }, up: 9000 };
+  const m2 = mergeState(m1, exOver);
+  check("🛟 แท็บอื่นอัพไฟล์ร้านทับทีหลัง → ร้านที่แอดมินคีย์เองไม่หาย",
+        m2.CSTOCK.ex[B1].file === "Ex.export (3).xlsx" &&
+        (m2.CSTOCK.ex[B1].man || []).length === 1 && m2.CSTOCK.ex[B1].man[0].id === "m1",
+        JSON.stringify((m2.CSTOCK.ex[B1].man || []).map(x => x.id)));
+  // สองแท็บคีย์คนละร้านพร้อมกัน — ต้องได้ทั้งคู่ ไม่ใช่ตัวใดตัวหนึ่ง
+  const manTab2 = JSON.parse(JSON.stringify(base));
+  manTab2.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {},
+    ex: { [B1]: { d: "2026-11-04", man: [M2], up: 7100 } }, up: 7100 };
+  const m3 = mergeState(m2, manTab2);
+  check("🛟 สองแท็บคีย์คนละร้านในใบเดียวกัน → อยู่ครบทั้งสองร้าน",
+        (m3.CSTOCK.ex[B1].man || []).length === 2 &&
+        m3.CSTOCK.ex[B1].man.map(x => x.id).sort().join(",") === "m1,m2",
+        JSON.stringify(m3.CSTOCK.ex[B1].man.map(x => x.c)));
+  // เอาร้านออก = ธง x:1 (ไม่ตัดออกจากอาเรย์) แท็บเก่าจึงปลุกกลับมาไม่ได้
+  const manDel = JSON.parse(JSON.stringify(base));
+  manDel.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {},
+    ex: { [B1]: { d: "2026-11-04", man: [Object.assign({}, M1, { x: 1, at: 9500 })], up: 9500 } }, up: 9500 };
+  const m4 = mergeState(m3, manDel);
+  const live = (m4.CSTOCK.ex[B1].man || []).filter(r => !r.x);
+  check("เอาร้านที่คีย์ผิดออกได้ (ธง x:1) และร้านอีกตัวยังอยู่",
+        live.length === 1 && live[0].id === "m2",
+        JSON.stringify((m4.CSTOCK.ex[B1].man || []).map(x => x.id + (x.x ? "(x)" : ""))));
+  const manRevive = JSON.parse(JSON.stringify(base));
+  manRevive.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {},
+    ex: { [B1]: { d: "2026-11-04", man: [M1, M2], up: 9600 } }, up: 9600 };
+  const m5 = mergeState(m4, manRevive);
+  check("🛟 แท็บเก่าที่ยังเห็นร้านที่ถูกเอาออก บันทึกทับแล้วมันต้องไม่กลับมา",
+        ((m5.CSTOCK.ex[B1].man || []).filter(r => r.id === "m1")[0] || {}).x === 1,
+        JSON.stringify((m5.CSTOCK.ex[B1].man || []).map(x => x.id + (x.x ? "(x)" : ""))));
+  check("🛟 ลบทั้งใบแล้ว ร้านที่คีย์เองไปด้วย (ไม่เหลือค้างใน ex)",
+        !mergeState(m5, (() => { const k = JSON.parse(JSON.stringify(base));
+          k.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: { [B1]: 99000 }, ex: {}, up: 99000 };
+          return k; })()).CSTOCK.ex[B1]);
+
   check("looksEmpty: บันทึกที่มีแต่ใบตัดบิล ยังไม่นับว่าเป็นข้อมูลจริง",
         looksEmpty({ DATA: {}, CSTOCK: srvB.CSTOCK }) === true);
   check("สต็อคกลางไม่ไปกวนก้อนอื่น",

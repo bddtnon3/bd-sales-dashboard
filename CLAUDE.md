@@ -60,7 +60,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (227 checks against the real `api/save.js` and the
+  running **`node test/merge-safety.test.mjs`** (233 checks against the real `api/save.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
@@ -423,6 +423,17 @@ code, never printed.
   substring of it, so `indexOf` picks the wrong column — cancelled bills are skipped, and it lands
   in **`CSTOCK.ex[sid]`, a map of its own**, because the owner submits the slip first and attaches
   the file later, so slip and file are saved at different times from different tabs.
+  A slip billed into **one or two shops gets no Excel file at all** — the admin picks the shop in
+  the app (`cstExManOpen`/`cstExManSave`, the 🏪 button beside 📎). Those rows live in
+  **`ex[sid].man`, never mixed into `rows`**, so a later Ex.export upload cannot wipe them
+  (`cstExSet` carries `man` over) — and because `ex` merges newest-wins as one record, `api/save.js`
+  merges the two halves separately (`mergeExOne`: the newer record wins but a missing `file` half is
+  refilled from the other side; `mergeExMan` unions the rows by id). Removing a hand-keyed shop
+  writes a **tombstone `x:1` in place**, never a splice, or a stale tab puts it back. Everything on
+  screen, in the Excel export and on the printed slip reads the combined figures through
+  **`cstExStat`**, so the two halves can never be counted differently. `CST_EX_FAV` pins
+  **ปิโตรเลียมไทย / ซีอาร์ซีไทวัสดุ** (all their branches) to the top of the picker — matched on the
+  shop NAME, since each has several codes.
   `cstExRead` also accepts **admin 2's own summary file** (`Stock_2026.xlsx`): one sheet holding
   several lots as **blocks** (title row, then `เส้นทาง · วันที่ใบแจ้งหนี้ · เลขที่ INV. · รหัสร้านค้า
   · รายชื่อลูกหนี้ · หัวเรื่องคำสั่ง · จำนวนเงิน`). `cstExStock` splits the blocks and `cstExMatch`
@@ -466,7 +477,7 @@ code, never printed.
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
-  with **`node test/browser/cstock.test.cjs`** (173 checks; it must load the page over a real origin,
+  with **`node test/browser/cstock.test.cjs`** (194 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
   Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
   map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales

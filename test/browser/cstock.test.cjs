@@ -1041,6 +1041,142 @@ function seed(a){
  }
 
  /* ==========================================================================
+  * 18c) 🏪 คีย์ "ร้านที่ตัดบิลเข้า" เองทีละร้าน — ไม่ต้องทำไฟล์ Excel
+  *      เจ้าของสั่ง 6 พ.ย. 69: *"บางออเดอร์เราคีย์เข้าไม่เยอะ แค่ 1 ร้านจะไม่ได้อัพไฟล์
+  *      excel ช่วยเพิ่มช่องที่รวมรายชื่อร้านค้าทั้งหมด ให้กดเลือกร้านที่จะคีย์เข้าได้ ร้านเดียว
+  *      (โดยปกติจะเข้าแค่ ปิโตรเลียมไทย และ ซีอาร์ซีไทวัสดุ ช่วยเอาสองรายชื่อนี้ขึ้นบนสุด)"*
+  * ======================================================================== */
+ {
+  const set=await ev(()=>{
+    /* ร้านจากไฟล์ insight — ใส่ร้านทั่วไปคั่นไว้ เพื่อพิสูจน์ว่า 2 ร้านนั้นถูกดันขึ้นบนจริง
+       ไม่ใช่บังเอิญเรียงตามตัวอักษร */
+    STOREPROD={months:['2026-10'],cat:{},data:{},stores:{
+      "4862412":{n:"ประภัสสร",l:"CT11"},
+      "4870001":{n:"บจก. ปิโตรเลียมไทย คอร์ปอเรชั่น (สาขา 1)",l:"KA97"},
+      "4870002":{n:"ซีอาร์ซี ไทวัสดุ นนทบุรี",l:"KA98"},
+      "4870003":{n:"ก.เจริญพาณิชย์",l:"CT12"},
+      "4870004":{n:"บจก.ปิโตรเลียมไทย คอร์ปอเรชั่น (สาขา 2)",l:"KA97"}}};
+    CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};
+    CST.f=null;CST.sec='bill';CST.sopen={};CST.sel={};
+    try{localStorage.removeItem(cstDraftKey());}catch(e){}
+    cstNew();CST.f.d='2026-11-06';CST.f.own='KA97';
+    CST.f.rows=[{sq:1,code:'65660382',nm:oname('65660382'),cs:5,pc:0,ln:'KA97',own:'KA97',d:''}];
+    const sid=cstSlipSave();
+    window.__posts.length=0;
+    return {sid:sid,fav:cstExFavList().map(x=>x.c)};
+  });
+  /* จับภาพหลังตั้งร้าน/ใบเสร็จแล้ว — จากจุดนี้ไป "คีย์ร้านเอง" ต้องไม่แตะก้อนอื่นเลย */
+  const manBefore=await ev(new Function('return '+BLOBS));
+  t('⭐ ปิโตรเลียมไทย + ซีอาร์ซีไทวัสดุ ถูกจับเป็น "ร้านที่เข้าบ่อย" (ทุกสาขา)',
+    set.fav.length===3&&set.fav[0]==='4870001'&&set.fav[1]==='4870004'&&set.fav[2]==='4870002',
+    set.fav.join(','));
+
+  const op=await ev(a=>{cstExManOpen(a.sid);
+    const sel=document.getElementById('cstExSel');
+    const gs=[].slice.call(sel.querySelectorAll('optgroup'));
+    return {shown:!document.getElementById('cstExModal').classList.contains('hidden'),
+      g1:gs[0]?gs[0].label:'',g2:gs[1]?gs[1].label:'',
+      first:[].slice.call(gs[0]?gs[0].children:[]).map(o=>o.value),
+      all:sel.options.length,
+      chips:[].slice.call(document.querySelectorAll('#cstExFavBar button')).map(b=>b.textContent.trim()).length,
+      sub:(document.getElementById('cstExSub').textContent||'')};},{sid:set.sid});
+  t('กด 🏪 แล้วกล่องเลือกร้านเปิด และบอกว่าเป็นของใบไหน',
+    op.shown&&op.sub.indexOf(set.sid)>=0,op.sub);
+  t('...รายชื่อร้านทั้งหมดอยู่ในช่องเดียว และกลุ่มบนสุดคือร้านที่เข้าบ่อย',
+    /ร้านที่เข้าบ่อย/.test(op.g1)&&/ร้านค้าทั้งหมด/.test(op.g2)&&op.all===5,
+    op.g1+' | '+op.g2+' | '+op.all+' ตัวเลือก');
+  t('...ร้านที่เข้าบ่อยอยู่บนสุดจริง (ไม่ได้เรียงตามตัวอักษรเฉย ๆ)',
+    op.first.join(',')==='4870001,4870004,4870002',op.first.join(','));
+  t('...มีปุ่มลัด ⭐ ให้กดทีเดียว',op.chips===3,op.chips+' ปุ่ม');
+
+  const fl=await ev(()=>{const q=document.getElementById('cstExQ');
+    q.value='ไทวัสดุ';cstExFill();
+    const sel=document.getElementById('cstExSel');
+    return {n:sel.options.length,v:sel.value};});
+  t('พิมพ์ค้นหาแล้วกรองรายชื่อให้แคบลงได้',fl.n===1&&fl.v==='4870002',fl.n+' / '+fl.v);
+
+  const sv=await ev(a=>{const s0=window.__sync;cstExFavPick('4870001');
+    document.getElementById('cstExVal').value='1250.50';
+    document.getElementById('cstExDoc').value='MF9001';
+    const picked=document.getElementById('cstExSel').value;
+    cstExManSave();
+    const ex=CSTOCK.ex[a.sid]||{};
+    const body=document.getElementById('cstBody').textContent.replace(/\s+/g,' ');
+    return {picked:picked,man:(ex.man||[]).length,row:(ex.man||[])[0]||null,
+      closed:document.getElementById('cstExModal').classList.contains('hidden'),
+      n:ex.n,file:ex.file||'',d:ex.d||'',
+      tag:/ร้านที่ตัดบิลเข้า 1 ร้าน/.test(body),
+      sync:window.__sync-s0,posts:window.__posts.length};},{sid:set.sid});
+  t('กดปุ่มลัด ⭐ แล้วเลือกร้านนั้นให้เลย',sv.picked==='4870001',sv.picked);
+  t('🏪 บันทึกร้านเดียวได้โดยไม่ต้องอัพไฟล์ Excel',
+    sv.man===1&&sv.row&&sv.row.c==='4870001'&&sv.row.v===1250.5&&sv.row.dn==='MF9001'&&sv.row.m===1,
+    JSON.stringify(sv.row));
+  t('...เก็บเป็นรายการ "คีย์เอง" ไม่ใช่แถวของไฟล์ (file ยังว่าง)',
+    !sv.file&&!sv.n,JSON.stringify({file:sv.file,n:sv.n}));
+  t('...ยืมวันที่ตัดบิลของใบมาให้เอง',sv.d==='2026-11-06',sv.d);
+  t('...ปิดกล่อง + ขึ้นบนหน้าใบว่าตัดเข้า 1 ร้าน + บันทึกขึ้นเซิร์ฟเวอร์ 1 ครั้ง',
+    sv.closed&&sv.tag&&sv.sync===1,'tag='+sv.tag+' sync='+sv.sync);
+
+  /* ซ้ำร้านเดิมต้องถามก่อน (confirm ของเทสต์ตอบ true) แล้วได้ 2 แถว */
+  const dup=await ev(a=>{cstExManOpen(a.sid);cstExFavPick('4870001');cstExManSave();
+    return (CSTOCK.ex[a.sid].man||[]).length;},{sid:set.sid});
+  t('เพิ่มร้านเดิมซ้ำได้ถ้ายืนยัน (คนละใบส่งของ)',dup===2,dup+' แถว');
+
+  /* 🔑 อัพไฟล์ Ex.export ทับทีหลัง — ร้านที่คีย์มือต้องไม่หาย */
+  const ex2=await ev(a=>{
+    cstExSet(a.sid,{d:'2026-11-06',n:40,val:9000,rows:[{c:'4862412',n:'ประภัสสร',v:80}],stores:1},'Ex.export.xlsx');
+    renderCStock();
+    const ex=CSTOCK.ex[a.sid],st=cstExStat(a.sid);
+    return {man:(ex.man||[]).length,file:ex.file,rows:st.rows.length,n:st.n,
+      val:st.val,shops:st.shops,firstIsMan:!!st.rows[0].m};},{sid:set.sid});
+  t('🛟 อัพไฟล์ Ex.export ทับทีหลัง → ร้านที่คีย์เองไม่หาย',
+    ex2.man===2&&ex2.file==='Ex.export.xlsx',JSON.stringify(ex2));
+  t('...ยอดรวมนับทั้งสองทาง (ไฟล์ 40 บิล + คีย์เอง 2 · 2 ร้าน · 9,000+1,250.50 บาท)',
+    ex2.n===42&&ex2.shops===2&&Math.abs(ex2.val-10250.5)<0.01,
+    ex2.n+' บิล / '+ex2.shops+' ร้าน / '+ex2.val);
+  t('...แถวที่คีย์เองขึ้นก่อน จะได้เห็นทันทีในใบที่ตัดเข้าร้านเดียว',ex2.firstIsMan);
+
+  const del=await ev(a=>{const id=CSTOCK.ex[a.sid].man[1].id;
+    cstExManDel(a.sid,id);
+    const ex=CSTOCK.ex[a.sid];
+    return {len:(ex.man||[]).length,live:cstExManRows(ex).length,
+      tomb:((ex.man||[]).filter(r=>r.id===id)[0]||{}).x};},{sid:set.sid});
+  t('เอาร้านที่คีย์ผิดออกได้ และเก็บเป็น tombstone (แท็บเก่าจะได้ไม่เอากลับมา)',
+    del.len===2&&del.live===1&&del.tomb===1,JSON.stringify(del));
+
+  const rp=await ev(a=>{const h=cstSlipHtml(a.sid).replace(/\s+/g,' ');
+    const aoa=cstSlipAoa(a.sid),last=aoa[aoa.length-1];
+    return {pdf:/ร้านที่ตัดบิลเข้า/.test(h)&&/ปิโตรเลียมไทย/.test(h),
+      xls:last.join('|')};},{sid:set.sid});
+  t('ใบ PDF/Excel ที่ส่งต่อ บอกร้านที่ตัดบิลเข้าด้วย',
+    rp.pdf&&/ร้านที่ตัดบิลเข้า/.test(rp.xls),rp.xls.slice(0,70));
+
+  /* ฝั่งเซลล์: เห็นได้ แต่กดเพิ่ม/ลบไม่ได้ */
+  const sales=await ev(a=>{const u=S.user;S.user={id:'ct11',role:'sales',code:'209611',name:'CT11'};
+    CST.sec='bill';CST.sopen={};CST.sopen[a.sid]=1;renderCStock();
+    const body=document.getElementById('cstBody').innerHTML;
+    const before=JSON.stringify(CSTOCK.ex[a.sid]);
+    cstExManOpen(a.sid);
+    const opened=!document.getElementById('cstExModal').classList.contains('hidden');
+    CST.exMan={sid:a.sid};cstExManSave();cstExManDel(a.sid,CSTOCK.ex[a.sid].man[0].id);
+    const after=JSON.stringify(CSTOCK.ex[a.sid]);
+    CST.exMan=null;S.user=u;renderCStock();
+    return {btn:/cstExManOpen/.test(body),see:/ร้านที่ตัดบิลเข้า/.test(body),
+      opened:opened,same:before===after};},{sid:set.sid});
+  t('เซลล์เห็นว่าตัดบิลเข้าร้านไหน แต่ไม่มีปุ่มแก้',sales.see&&!sales.btn,
+    'เห็น='+sales.see+' ปุ่ม='+sales.btn);
+  t('🛟 เซลล์เรียกฟังก์ชันตรง ๆ ก็เขียนอะไรไม่ได้',!sales.opened&&sales.same);
+
+  const fb=await ev(()=>{cstNew();const h=document.getElementById('cstBill').innerHTML;
+    CST.f=null;try{localStorage.removeItem(cstDraftKey());}catch(e){}
+    return {man:/cstFormExMan/.test(h),file:/cstFormEx\(\)/.test(h)};});
+  t('ในฟอร์มใบตัดบิลมีทั้งปุ่ม 🏪 เลือกร้าน และ 📎 แนบไฟล์',fb.man&&fb.file,JSON.stringify(fb));
+
+  const manAfter=await ev(new Function('return '+BLOBS));
+  t('🛟 คีย์ร้านเองแล้วก้อนข้อมูลอื่นไม่ขยับสักไบต์',manBefore===manAfter);
+ }
+
+ /* ==========================================================================
   * 19) 📄 ไฟล์สรุป Stock ของแอดมิน 2 — หลายลอตในไฟล์เดียว (ถ้ามีไฟล์จริงในเครื่อง)
   *     ⛔ ไม่ commit — มีชื่อร้านลูกค้าจริง 906 บิล (ดู .gitignore)
   * ======================================================================== */

@@ -214,7 +214,10 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 #reqModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px}
 /* กล่อง "บันทึกว่าขายออกไปแล้ว" ของสต็อคกลาง — ต้องมีกฎของตัวเอง ไม่งั้นมันจะไหลไปท้ายหน้า
    (คลาส .modal-card จัดแค่ตัวกล่อง ส่วนฉากหลัง/การจัดกลางอยู่ที่ id ของแต่ละกล่อง) */
-#cstClrModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:140;display:flex;align-items:center;justify-content:center;padding:14px}
+#cstClrModal,#cstExModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:140;display:flex;align-items:center;justify-content:center;padding:14px}
+.cst-fav{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 4px}
+.cst-fav button{border:1.5px solid var(--blue);background:var(--blue-soft);color:var(--blue);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.cst-fav button:hover{background:var(--blue);color:#fff}
 /* ต้องทับทุกกล่อง (z สูงกว่า #reqModal) เพราะเด้งขึ้นตอนกำลังกดส่งในกล่องสั่งของพอดี */
 #reauthModal{position:fixed;inset:0;background:rgba(16,42,93,.55);z-index:300;display:flex;align-items:center;justify-content:center;padding:14px}
 .req-results{max-height:38vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-bottom:4px}
@@ -1816,6 +1819,37 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
     <div class="modal-actions">
       <button class="btn-ghost" onclick="cstClrClose()">ยกเลิก</button>
       <button class="upload-btn" onclick="cstClrSave()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🏪 คีย์ "ร้านที่ตัดบิลเข้า" เองทีละร้าน — ไม่ต้องทำไฟล์ Excel
+     เจ้าของสั่ง 6 พ.ย. 69: "บางออเดอร์เราคีย์เข้าไม่เยอะ แค่ 1 ร้านจะไม่ได้อัพไฟล์ excel
+     ช่วยเพิ่มช่องที่รวมรายชื่อร้านค้าทั้งหมด ให้กดเลือกร้านที่จะคีย์เข้าได้ ร้านเดียว"
+     ⚠️ สิ่งที่คีย์เองเก็บแยกจากแถวที่มาจากไฟล์ (ex.man) — อัพไฟล์ทับทีหลังแล้วต้องไม่หาย -->
+<div id="cstExModal" class="hidden">
+  <div class="modal-card" style="max-width:580px">
+    <div class="modal-head">
+      <div><h3>🏪 เพิ่มร้านที่ตัดบิลเข้า</h3><div class="psub" id="cstExSub"></div></div>
+      <button class="modal-x" onclick="cstExManClose()">✕</button>
+    </div>
+    <div class="up-body">
+      <div class="cst-fav" id="cstExFavBar"></div>
+      <label class="cst-lb">รายชื่อร้านค้าทั้งหมด — กดเลือกร้านที่ตัดบิลเข้า</label>
+      <input id="cstExQ" placeholder="🔍 พิมพ์กรองรายชื่อ — ชื่อร้าน หรือรหัสร้าน 7 หลัก"
+        oninput="cstExFill()" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px">
+      <select id="cstExSel" size="8"
+        style="width:100%;margin-top:6px;padding:6px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px"></select>
+      <div class="psub" id="cstExHint"></div>
+      <div class="cst-frow">
+        <div class="ctl"><label>มูลค่า (บาท · ไม่บังคับ)</label><input id="cstExVal" type="number" min="0" step="0.01" style="width:150px"></div>
+        <div class="ctl"><label>เลขที่เอกสาร (ไม่บังคับ)</label><input id="cstExDoc" style="width:180px"></div>
+      </div>
+      <div class="psub" style="margin-top:8px">เพิ่มได้ทีละร้าน กดซ้ำได้เรื่อย ๆ · ถ้าตัดเข้าหลายสิบร้านให้ใช้ไฟล์ Ex.export จะเร็วกว่า</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="cstExManClose()">ยกเลิก</button>
+      <button class="upload-btn" onclick="cstExManSave()">เพิ่มร้านนี้</button>
     </div>
   </div>
 </div>
@@ -9051,6 +9085,37 @@ function cstStoreFind(q,lim){
     if(toks.every(t=>h.indexOf(t)>=0)){out.push(s);if(out.length>=(lim||8))break;}}
   return out;
 }
+/* ---------- ร้านที่ "เข้าบ่อย" — ต้องอยู่บนสุดของรายการเสมอ ----------
+   เจ้าของสั่ง 6 พ.ย. 69: *"โดยปกติจะเข้าแค่ ปิโตรเลียมไทย และ ซีอาร์ซีไทวัสดุ
+   ช่วยเอาสองรายชื่อนี้ขึ้นบนสุดในรายการร้านค้าหน่อยนะ"*
+   ⚠️ จับจาก "ชื่อร้านมีคำนี้" ไม่ใช่รหัสร้านตายตัว เพราะทั้งสองเจ้ามีหลายสาขา/หลายรหัส
+      และแต่ละไฟล์เว้นวรรคไม่เหมือนกัน (ตัดช่องว่างก่อนเทียบ) */
+const CST_EX_FAV=["ปิโตรเลียมไทย","ซีอาร์ซีไทวัสดุ"];
+const CST_EX_OPT=600;        /* กันลิสต์ยาวเป็นพันจนหน้าหน่วง — พิมพ์ค้นหาแทน */
+function cstExFavList(){
+  const idx=cstStoreIdx(),out=[],seen={};
+  CST_EX_FAV.forEach(k=>{const kk=k.replace(/\s+/g,"");
+    idx.forEach(s=>{if(seen[s.c])return;
+      if(String(s.n||"").replace(/\s+/g,"").indexOf(kk)>=0){seen[s.c]=1;out.push(s);}});});
+  return out;
+}
+/* แถวที่แอดมินคีย์เอง: เก็บเป็น tombstone (x:1) ตอนเอาออก ไม่ลบทิ้งจากอาเรย์
+   เพราะแท็บเก่าที่ยังเปิดค้างจะเอากลับเข้ามาใหม่ได้ */
+function cstExManRows(ex){return ((ex&&ex.man)||[]).filter(r=>r&&!r.x);}
+/* รวม "แถวจากไฟล์ + แถวที่คีย์เอง" ให้ทุกที่ (หน้าจอ · Excel · PDF) นับตรงกันเสมอ */
+function cstExStat(sid){
+  const ex=cstOk().ex[sid];if(!ex)return null;
+  const man=cstExManRows(ex),rows=man.concat(ex.rows||[]);
+  if(!rows.length&&!ex.file)return null;
+  const u={};rows.forEach(r=>{u[r.c]=1;});
+  return {ex:ex,man:man,rows:rows,file:ex.file||"",
+    n:(+ex.n||0)+man.length,shops:Object.keys(u).length,
+    val:Math.round(((+ex.val||0)+man.reduce((a,r)=>a+(+r.v||0),0))*100)/100};
+}
+function cstExTag(sid){
+  const st=cstExStat(sid);if(!st)return "";
+  return " · "+(st.file?"📎":"🏪")+" ร้านที่ตัดบิลเข้า "+st.shops.toLocaleString()+" ร้าน";
+}
 function cstClrCs(l){return ((l&&l.clr)||[]).reduce((s,c)=>s+(+c.cs||0),0);}
 function cstClrPc(l){return ((l&&l.clr)||[]).reduce((s,c)=>s+(+c.pc||0),0);}
 /* คงเหลือคิดจากตัวเลขเสมอ ห้ามให้ใครพิมพ์เอง (ดูหมายเหตุที่ประกาศ CSTOCK) */
@@ -9385,7 +9450,10 @@ function cstExRead(name,buf){
    ถ้าอัพจากกล่องอัพโหลดรวม ให้จับคู่จากวันที่วางบิล และถ้าไม่ชัดต้องฟ้อง ไม่ใช่เดา */
 function cstExSet(sid,o,name){
   const C=cstOk(),now=Date.now();
+  const prev=C.ex[sid]||{};
   C.ex[sid]={file:name,d:o.d,n:o.n,val:o.val,rows:o.rows,up:now,by:(S.user&&S.user.name)||""};
+  /* ⚠️ ร้านที่แอดมินคีย์เองอยู่คนละที่กับ rows ก็เพื่อข้อนี้ — อัพไฟล์ทับแล้วต้องไม่หาย */
+  if((prev.man||[]).length)C.ex[sid].man=prev.man;
   if(C.sdel[sid]&&C.sdel[sid]<now)delete C.sdel[sid];
   C.up=now;CST.sopen[sid]=1;
   ulog("✅ "+name+(o.title?" · "+o.title:"")+" → ใบ "+sid+" · "+o.n.toLocaleString()+" บิล · "+
@@ -9441,6 +9509,94 @@ function cstFormEx(){
   if(!confirm("ไฟล์รายชื่อร้านต้องผูกกับใบตัดบิล จึงต้องบันทึกใบนี้ก่อน\n\nบันทึกแล้วเลือกไฟล์เลยไหม?"))return;
   const sid=cstSlipSave();
   if(sid)cstExPick(sid);
+}
+/* ---------- 🏪 คีย์ร้านที่ตัดบิลเข้าเอง ทีละร้าน (ไม่ต้องอัพไฟล์) ----------
+ * เจ้าของสั่ง 6 พ.ย. 69: *"บางออเดอร์เราคีย์เข้าไม่เยอะ แค่ 1 ร้านจะไม่ได้อัพไฟล์ excel"*
+ * เขียนลง ex[sid].man เท่านั้น ไม่แตะ rows ที่มาจากไฟล์ และไม่แตะ lots/clr —
+ * ส่วนนี้เป็น "ข้อมูลประกอบใบ" ไม่มีผลกับยอดคงเหลือ (คงเหลือคิดจาก clr เสมอ) */
+/* ปุ่ม 🏪 ในฟอร์ม — ใบใหม่ยังไม่มีเลขให้ผูก จึงบันทึกใบให้ก่อนแล้วเปิดกล่องต่อในคลิกเดียว */
+function cstFormExMan(){
+  const f=CST.f;if(!f||!cstMgr())return;
+  if(f.sid){cstExManOpen(f.sid);return;}
+  if(!confirm("รายชื่อร้านต้องผูกกับใบตัดบิล จึงต้องบันทึกใบนี้ก่อน\n\nบันทึกแล้วเลือกร้านเลยไหม?"))return;
+  const sid=cstSlipSave();
+  if(sid)cstExManOpen(sid);
+}
+function cstExManOpen(sid){
+  if(!cstMgr())return;
+  const C=cstOk();if(!C.slips[sid]&&!cstSlipRows(sid).length)return;
+  const s=C.slips[sid]||{id:sid};
+  CST.exMan={sid:sid};
+  const sub=document.getElementById("cstExSub");
+  if(sub)sub.innerHTML="ใบ "+anaEsc(sid)+(s.d?" · ตัดบิล "+fmtDate(s.d):"");
+  ["cstExQ","cstExVal","cstExDoc"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  const fb=document.getElementById("cstExFavBar");
+  if(fb){const fav=cstExFavList();
+    fb.innerHTML=fav.length
+      ?"<span class=\"psub\" style=\"align-self:center\">⭐ ร้านที่เข้าบ่อย:</span>"+
+       fav.slice(0,6).map(x=>`<button onclick="cstExFavPick('${anaEsc(x.c)}')">${anaEsc(x.n||x.c)}</button>`).join("")
+      :"";}
+  cstExFill();
+  document.getElementById("cstExModal").classList.remove("hidden");
+  setTimeout(()=>{const el=document.getElementById("cstExQ");if(el)el.focus();},40);
+}
+function cstExManClose(){CST.exMan=null;
+  const m=document.getElementById("cstExModal");if(m)m.classList.add("hidden");}
+/* เติมรายชื่อลง <select> — ร้านที่เข้าบ่อยอยู่กลุ่มบนสุดเสมอ ตามที่เจ้าของสั่ง */
+function cstExFill(){
+  const sel=document.getElementById("cstExSel");if(!sel)return;
+  const q=String((document.getElementById("cstExQ")||{}).value||"").trim().toLowerCase();
+  const toks=q.split(/\s+/).filter(Boolean);
+  const ok=x=>!toks.length||toks.every(t=>((x.n||"")+" "+x.c+" "+(x.l||"")).toLowerCase().indexOf(t)>=0);
+  const fav=cstExFavList().filter(ok),fk={};fav.forEach(x=>{fk[x.c]=1;});
+  const rest=cstStoreIdx().filter(x=>!fk[x.c]&&ok(x));
+  const opt=x=>`<option value="${anaEsc(x.c)}">${anaEsc((x.n||x.c)+" · "+x.c+(x.l?" · สาย "+x.l:""))}</option>`;
+  sel.innerHTML=(fav.length?`<optgroup label="⭐ ร้านที่เข้าบ่อย">${fav.map(opt).join("")}</optgroup>`:"")+
+    `<optgroup label="ร้านค้าทั้งหมด (${rest.length.toLocaleString()} ร้าน)">${rest.slice(0,CST_EX_OPT).map(opt).join("")}</optgroup>`;
+  if(sel.options.length)sel.selectedIndex=0;
+  const hint=document.getElementById("cstExHint");
+  if(hint)hint.innerHTML=!cstStoreIdx().length
+    ?"⚠️ ยังไม่มีรายชื่อร้านในระบบ — อัพไฟล์วิเคราะห์เชิงลึก (insight) ก่อน รายชื่อร้านจะขึ้นเอง"
+    :(rest.length>CST_EX_OPT?"แสดง "+CST_EX_OPT.toLocaleString()+" ร้านแรก — พิมพ์ค้นหาเพื่อกรองให้แคบลง":"");
+}
+function cstExFavPick(code){
+  const sel=document.getElementById("cstExSel");if(!sel)return;
+  const q=document.getElementById("cstExQ");if(q)q.value="";
+  cstExFill();
+  for(let i=0;i<sel.options.length;i++)if(sel.options[i].value===code){sel.selectedIndex=i;break;}
+  sel.focus();
+}
+function cstExManSave(){
+  if(!cstMgr()||!CST.exMan)return;
+  const sid=CST.exMan.sid,C=cstOk(),sel=document.getElementById("cstExSel");
+  const code=String((sel&&sel.value)||"").trim();
+  if(!code){alert("ยังไม่ได้เลือกร้าน — ถ้ารายชื่อว่าง ให้อัพไฟล์วิเคราะห์เชิงลึก (insight) ก่อน");return;}
+  const st=cstStoreMap()[code]||{c:code,n:cstStoreName(code)};
+  const ex=C.ex[sid]||{},man=(ex.man||[]).slice(),now=Date.now();
+  if(man.some(r=>!r.x&&r.c===code)&&
+     !confirm("ร้าน "+(st.n||code)+" มีอยู่ในใบนี้แล้ว — เพิ่มอีกแถวไหม?"))return;
+  const v=parseFloat(String((document.getElementById("cstExVal")||{}).value||"").replace(/,/g,""));
+  man.push({id:"m"+now.toString(36)+Math.random().toString(36).slice(2,6),m:1,c:code,n:st.n||code,
+    v:isNaN(v)?0:Math.round(v*100)/100,
+    dn:String((document.getElementById("cstExDoc")||{}).value||"").trim(),
+    by:(S.user&&S.user.name)||"",at:now});
+  C.ex[sid]=Object.assign({},ex,{man:man,up:now,by:(S.user&&S.user.name)||""});
+  if(!C.ex[sid].d&&C.slips[sid]&&C.slips[sid].d)C.ex[sid].d=C.slips[sid].d;
+  if(C.sdel[sid]&&C.sdel[sid]<now)delete C.sdel[sid];   /* ใบถูกคีย์ต่อ = ไม่ใช่ใบที่ลบแล้ว */
+  C.up=now;CST.sopen[sid]=1;CST.sopen["ex|"+sid]=1;
+  cstExManClose();renderCStock();syncToServer();
+  toast("เพิ่มร้าน "+(st.n||code)+" เข้าใบ "+sid+" แล้ว");
+}
+function cstExManDel(sid,id){
+  if(!cstMgr())return;
+  const C=cstOk(),ex=C.ex[sid];if(!ex)return;
+  const r=(ex.man||[]).filter(x=>x.id===id)[0];if(!r||r.x)return;
+  if(!confirm("เอาร้าน "+(r.n||r.c)+" ออกจากใบ "+sid+"?"))return;
+  const now=Date.now();
+  C.ex[sid]=Object.assign({},ex,{up:now,
+    man:(ex.man||[]).map(x=>x.id===id?Object.assign({},x,{x:1,at:now}):x)});
+  C.up=now;renderCStock();syncToServer();
+  toast("เอาร้าน "+(r.n||r.c)+" ออกแล้ว");
 }
 
 /* ============================================================================
@@ -9569,7 +9725,7 @@ function cstImport(){
 /* sel = รายการในหน้ารายการค้างที่ "ติ๊กเลือกไว้" (คนละอันกับ sel ของแถวในฟอร์ม)
    _shown = รายการที่แสดงอยู่จริงต่อก้อน ใช้ตอนกด "เลือกทั้งใบ" ให้เลือกเฉพาะที่เห็น */
 let CST={q:"",only:"open",open:{},sec:"list",f:null,exFor:"",clr:null,sopen:{},st:0,_auto:0,
-  sel:{},_shown:{}};
+  sel:{},_shown:{},exMan:null};
 function cstSetOnly(v){CST.only=v;renderCStock();}
 function cstSetSec(v){
   CST.sec=(v==="bill"&&cstMgr())?"bill":"list";
@@ -9968,7 +10124,7 @@ function cstClrDel(id,i){
  * หน้าเว็บนี้โหลดบนมือถือในร้านด้วย ไลบรารีเพิ่มอีกหลาย MB ไม่คุ้ม
  * ==========================================================================*/
 function cstSlipAoa(sid){
-  const C=cstOk(),s=C.slips[sid]||{id:sid},rows=cstSlipRows(sid),ex=C.ex[sid];
+  const C=cstOk(),s=C.slips[sid]||{id:sid},rows=cstSlipRows(sid);
   const a=[["ใบตัดบิลสต็อคกลาง — BD DISTRIBUTION"],
     ["เลขที่ใบ",sid,"","วันที่ตัดบิล",s.d?fmtDate(s.d):""],
     ["ผู้รับผิดชอบ",s.own||"","","ผู้ลงข้อมูล",s.byName||""],
@@ -9978,22 +10134,24 @@ function cstSlipAoa(sid){
     l.ln||l.rt||"",l.own||"",cstStatusTxt(l)]));
   a.push(["","","","รวม",cstSlipCs(sid),cstSlipPc(sid)]);
   a.push([""],["Note ถึงคลัง",s.nw||"-"],["Note ที่ไปของสินค้า",s.ng||"-"]);
-  if(ex)a.push([""],["ร้านที่ตัดบิลเข้า",(ex.n||0)+" บิล","มูลค่ารวม",+ex.val||0,"ไฟล์",ex.file||""]);
+  const xs=cstExStat(sid);
+  if(xs)a.push([""],["ร้านที่ตัดบิลเข้า",xs.shops+" ร้าน",xs.n+" บิล","มูลค่ารวม",xs.val,
+    "ที่มา",xs.file||"คีย์เองในเว็บ"]);
   return a;
 }
 function cstSlipXlsx(sid){
-  const C=cstOk(),ex=C.ex[sid];
+  const xs=cstExStat(sid);
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet(cstSlipAoa(sid));
   ws["!cols"]=[{wch:7},{wch:14},{wch:13},{wch:42},{wch:10},{wch:10},{wch:10},{wch:14},{wch:24}];
   XLSX.utils.book_append_sheet(wb,ws,"ใบตัดบิล");
-  if(ex&&(ex.rows||[]).length){
-    const a2=[["เอกสารการวางบิล","รหัสร้าน","ชื่อร้าน","สาย","มูลค่ารวมภาษี"]];
+  if(xs&&xs.rows.length){
+    const a2=[["เอกสารการวางบิล","รหัสร้าน","ชื่อร้าน","สาย","มูลค่ารวมภาษี","ที่มา"]];
     const smap=cstStoreMap();
-    ex.rows.forEach(r=>{const st=smap[r.c]||{};
-      a2.push([r.dn||"",r.c||"",r.n||st.n||"",st.l||"",+r.v||0]);});
+    xs.rows.forEach(r=>{const st=smap[r.c]||{};
+      a2.push([r.dn||"",r.c||"",r.n||st.n||"",st.l||"",+r.v||0,r.m?"คีย์เอง":"ไฟล์"]);});
     const w2=XLSX.utils.aoa_to_sheet(a2);
-    w2["!cols"]=[{wch:16},{wch:12},{wch:34},{wch:9},{wch:14}];
+    w2["!cols"]=[{wch:16},{wch:12},{wch:34},{wch:9},{wch:14},{wch:9}];
     XLSX.utils.book_append_sheet(wb,w2,"ร้านที่ตัดบิลเข้า");
   }
   const out=XLSX.write(wb,{bookType:"xlsx",type:"array"});
@@ -10001,7 +10159,7 @@ function cstSlipXlsx(sid){
     "BD-cutbill-"+fnAscii(sid,"slip")+".xlsx");   /* ชื่อไฟล์ ASCII ล้วน — ดู fnAscii */
 }
 function cstSlipHtml(sid){
-  const C=cstOk(),s=C.slips[sid]||{id:sid},rows=cstSlipRows(sid),ex=C.ex[sid];
+  const C=cstOk(),s=C.slips[sid]||{id:sid},rows=cstSlipRows(sid);
   return `<div class="pr-doc">
     <div class="pr-h"><div><b>ใบตัดบิลสต็อคกลาง</b><div>BD DISTRIBUTION</div></div>
       <div class="pr-id">เลขที่ ${anaEsc(sid)}<div>วันที่ตัดบิล ${s.d?fmtDate(s.d):"-"}</div></div></div>
@@ -10017,7 +10175,10 @@ function cstSlipHtml(sid){
     </tbody></table>
     <div class="pr-n"><b>Note ถึงคลัง</b><div>${anaEsc(s.nw||"-")}</div></div>
     <div class="pr-n"><b>Note ที่ไปของสินค้า</b><div>${anaEsc(s.ng||"-")}</div></div>
-    ${ex?`<div class="pr-n"><b>ร้านที่ตัดบิลเข้า</b><div>${(+ex.n||0).toLocaleString()} บิล · รวม ${THB(ex.val)} · ไฟล์ ${anaEsc(ex.file||"")}</div></div>`:""}
+    ${(()=>{const x=cstExStat(sid);if(!x)return "";
+      return `<div class="pr-n"><b>ร้านที่ตัดบิลเข้า</b><div>${x.shops.toLocaleString()} ร้าน · ${
+        x.n.toLocaleString()} บิล · รวม ${THB(x.val)} · ${x.file?anaEsc(x.file):"คีย์เองในเว็บ"}${
+        x.rows.length<=12?"<br>"+x.rows.map(r=>anaEsc((r.n||r.c)+" ("+r.c+")")).join(" · "):""}</div></div>`;})()}
     <div class="pr-sg"><div>ผู้ตัดบิล<br>__________________</div><div>คลัง<br>__________________</div>
       <div>ผู้รับของ<br>__________________</div></div></div>`;
 }
@@ -10122,6 +10283,7 @@ function cstFormHtml(){
     </div>
     <div class="cst-fb">
       <button class="upload-btn" onclick="cstSlipSave()">💾 บันทึกใบตัดบิล</button>
+      <button class="btn-ghost" onclick="cstFormExMan()">🏪 เลือกร้านที่ตัดบิลเข้า</button>
       <button class="btn-ghost" onclick="cstFormEx()">📎 แนบไฟล์รายชื่อร้าน</button>
       <button class="btn-ghost" onclick="cstFormHide()">เก็บไว้ก่อน (ยังไม่บันทึก)</button>
       <button class="btn-ghost" onclick="cstFormClear()">ล้างใบนี้</button>
@@ -10138,25 +10300,30 @@ function cstSetOwn(v){
   f.own=v;cstDraftSave();renderCStock();
 }
 function cstExHtml(sid){
-  const ex=cstOk().ex[sid];
-  if(!ex)return `<div class="cst-ex none">📎 ยังไม่ได้แนบไฟล์ร้านที่ตัดบิลเข้า (Ex.export) — แนบทีหลังได้${
-    cstMgr()?` · <button class="cst-x" onclick="cstExPick('${anaEsc(sid)}')">📎 แนบไฟล์ร้าน</button>`:""}</div>`;
+  const mgr=cstMgr(),st=cstExStat(sid),q=anaEsc(sid);
+  /* ปุ่มสองทางเสมอ: ร้านเดียวกดเลือกเอง · หลายสิบร้านใช้ไฟล์ (เจ้าของสั่ง 6 พ.ย. 69) */
+  const bMan=`<button class="cst-x" onclick="cstExManOpen('${q}')">🏪 เลือกร้านเอง</button>`;
+  if(!st)return `<div class="cst-ex none">📎 ยังไม่ได้ระบุร้านที่ตัดบิลเข้า — ทำทีหลังได้${
+    mgr?` · ${bMan} <button class="cst-x" onclick="cstExPick('${q}')">📎 แนบไฟล์ Ex.export</button>`:""}</div>`;
   const op=!!CST.sopen["ex|"+sid];
-  const st=cstStoreMap();
-  const nm=c=>st[c]||{n:"",l:""};
-  const uniq={};(ex.rows||[]).forEach(r=>{uniq[r.c]=1;});
+  const smap=cstStoreMap();
   return `<div class="cst-ex">
-    <div class="cst-exh">📎 <b>ร้านที่ตัดบิลเข้า ${Object.keys(uniq).length.toLocaleString()} ร้าน</b>
-      · ${(+ex.n||0).toLocaleString()} บิล · รวม ${THB(ex.val)}
-      <span class="psub">${anaEsc(ex.file||"")}${ex.up?" · อัพ "+fmtDateTime(ex.up):""}</span>
-      <button class="cst-x" onclick="cstSlipTog('ex|${anaEsc(sid)}')">${op?"▲ ซ่อนรายชื่อ":"▼ ดูรายชื่อร้าน"}</button>
-      ${cstMgr()?`<button class="cst-x" onclick="cstExPick('${anaEsc(sid)}')">🔄 อัพไฟล์ใหม่ทับ</button>`:""}</div>
+    <div class="cst-exh">${st.file?"📎":"🏪"} <b>ร้านที่ตัดบิลเข้า ${st.shops.toLocaleString()} ร้าน</b>
+      · ${st.n.toLocaleString()} บิล · รวม ${THB(st.val)}
+      <span class="psub">${st.file?anaEsc(st.file):"คีย์เองในเว็บ"}${
+        st.file&&st.man.length?" + คีย์เอง "+st.man.length+" ร้าน":""}${
+        st.ex.up?" · อัพเดต "+fmtDateTime(st.ex.up):""}</span>
+      <button class="cst-x" onclick="cstSlipTog('ex|${q}')">${op?"▲ ซ่อนรายชื่อ":"▼ ดูรายชื่อร้าน"}</button>
+      ${mgr?`${bMan}
+      <button class="cst-x" onclick="cstExPick('${q}')">🔄 ${st.file?"อัพไฟล์ใหม่ทับ":"แนบไฟล์ Ex.export"}</button>`:""}</div>
     ${op?`<table class="cst-tbl"><thead><tr><th style="text-align:left">ร้าน</th><th>รหัส</th><th>สาย</th>
       <th style="text-align:right">มูลค่า</th><th>เอกสาร</th></tr></thead><tbody>
-      ${(ex.rows||[]).slice(0,300).map(r=>{const h=nm(r.c);
+      ${st.rows.slice(0,300).map(r=>{const h=smap[r.c]||{n:"",l:""};
         return `<tr><td style="text-align:left">${anaEsc(r.n||h.n||"-")}</td><td>${anaEsc(r.c)}</td>
-          <td>${anaEsc(h.l||"")}</td><td style="text-align:right">${cstBaht(r.v)}</td><td>${anaEsc(r.dn||"")}</td></tr>`;}).join("")}
-      </tbody></table>${(ex.rows||[]).length>300?`<div class="psub">แสดง 300 แถวแรกจาก ${(ex.rows||[]).length.toLocaleString()} แถว — ดูครบในไฟล์ Excel ที่ดาวน์โหลด</div>`:""}`:""}
+          <td>${anaEsc(h.l||"")}</td><td style="text-align:right">${cstBaht(r.v)}</td><td>${
+          r.m?`🏪 คีย์เอง${r.dn?" · "+anaEsc(r.dn):""}${mgr?` <button class="cst-x" onclick="cstExManDel('${q}','${anaEsc(r.id)}')">🗑</button>`:""}`
+             :anaEsc(r.dn||"")}</td></tr>`;}).join("")}
+      </tbody></table>${st.rows.length>300?`<div class="psub">แสดง 300 แถวแรกจาก ${st.rows.length.toLocaleString()} แถว — ดูครบในไฟล์ Excel ที่ดาวน์โหลด</div>`:""}`:""}
   </div>`;
 }
 function cstBillHtml(){
@@ -10185,7 +10352,7 @@ function cstBillHtml(){
       <div class="cst-sh" onclick="cstSlipTog('${anaEsc(s.id)}')">
         <div class="cst-t"><b>🧾 ${s.d?fmtDate(s.d):"-"}</b>
           <span class="psub">${anaEsc(s.id)} · ${rows.length} รายการ · ${cs.toLocaleString()} ลัง${
-            s.own?" · 👤 "+anaEsc(s.own):""}${ex?" · 📎 แนบไฟล์ร้านแล้ว":""}</span></div>
+            s.own?" · 👤 "+anaEsc(s.own):""}${cstExTag(s.id)}</span></div>
         <div class="cst-n">${rows.length&&doneN===rows.length
           ?`<span class="pill g">✅ เคลียร์หมดทั้งใบ</span>`
           :`<span class="pill w">ค้าง <b>${(Math.round(leftCs*100)/100).toLocaleString()}</b> / ${cs.toLocaleString()} ลัง</span>`}
@@ -10320,7 +10487,7 @@ function cstListHtml(all,mgr){
       <div class="cst-gh" onclick="cstGrpTog('${anaEsc(k)}')">
         <div class="cst-t"><b>${k?"🧾 "+(s.d?fmtDate(s.d):"-"):"📄 ลอตเก่า (อัพจากไฟล์ Excel)"}</b>
           <span class="psub">${k?anaEsc(k)+" · ":""}${rowsAll.length} รายการ · ${cs.toLocaleString()} ลัง${
-            s.own?" · 👤 "+anaEsc(s.own):""}${C.ex[k]?" · 📎 มีรายชื่อร้าน":""}</span></div>
+            s.own?" · 👤 "+anaEsc(s.own):""}${k?cstExTag(k):""}</span></div>
         <div class="cst-n">
           ${doneN===rowsAll.length?`<span class="pill g">✅ ส่งออกครบแล้ว</span>`
             :`<span class="pill ${old?"b":"w"}">ค้าง <b>${(Math.round(left*100)/100).toLocaleString()}</b> / ${cs.toLocaleString()} ลัง</span>`}

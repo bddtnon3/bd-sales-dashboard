@@ -55,6 +55,35 @@ function newestByAt(server, client) {
   for (const k in c) { const a = out[k], b = c[k]; if (!a || ((b && b.at) || 0) >= ((a && a.at) || 0)) out[k] = b; }
   return out;
 }
+// ไฟล์ร้าน (file/rows/n/val) กับร้านที่คีย์เอง (man) ของใบเดียวกัน ถูกบันทึกคนละเวลาคนละแท็บ:
+// แอดมินคีย์ร้านเองจากแท็บที่ยังไม่เห็นไฟล์ หรืออัพไฟล์จากแท็บที่ยังไม่เห็นร้านที่คีย์ไว้
+// ทั้งสองกรณีห้ามให้อีกฝั่งหาย จึงเอาฝั่งที่ใหม่กว่าเป็นตัวตั้ง แล้วดึงส่วนที่ขาดจากอีกฝั่งมาเติม
+function mergeExOne(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const bNewer = ((b && b.up) || 0) >= ((a && a.up) || 0);
+  const newest = bNewer ? b : a, other = bNewer ? a : b;
+  let out = Object.assign({}, newest);
+  if (!out.file && other.file) {
+    out = Object.assign({}, out, { file: other.file, n: other.n, val: other.val,
+                                   rows: other.rows, d: out.d || other.d });
+  }
+  const man = mergeExMan(a, b);
+  if (man.length) out.man = man;
+  return out;
+}
+// รายชื่อร้านที่คีย์เองในใบตัดบิลหนึ่งใบ — รวมสองฝั่งแบบ union ต่อแถว (ใหม่กว่าชนะต่อ id)
+function mergeExMan(a, b) {
+  const rows = [].concat((a && a.man) || [], (b && b.man) || []);
+  const out = {};
+  for (const r of rows) {
+    if (!r) continue;
+    const id = r.id || r.c + "|" + (r.at || 0) + "|" + (r.v || 0);
+    const prev = out[id];
+    if (!prev || (r.at || 0) >= (prev.at || 0)) out[id] = r;
+  }
+  return Object.keys(out).map((k) => out[k]).sort((x, y) => (x.at || 0) - (y.at || 0));
+}
 function keyMerge(server, client) { const out = Object.assign({}, server || {}); const c = client || {}; for (const k in c) out[k] = c[k]; return out; }
 function unionArr(a, b) { const o = [], seen = {}; [...(a || []), ...(b || [])].forEach((x) => { if (!seen[x]) { seen[x] = 1; o.push(x); } }); return o.sort(); }
 function stockScore(x) { if (!x) return -1; const up = x.up || 0; const d = x.date ? Number(String(x.date).replace(/-/g, "")) : 0; return up * 1e9 + d; }
@@ -262,6 +291,9 @@ function mergeState(server, c) {
   }
   const csSlips = newestByUp(sCs.slips, cCs.slips);
   const csEx = newestByUp(sCs.ex, cCs.ex);
+  // ex ของใบหนึ่งมีสองส่วนที่เกิดคนละเวลา: แถวจากไฟล์ Ex.export กับร้านที่แอดมินคีย์เอง (man)
+  // newest-wins ทั้งก้อนจะทำให้ฝั่งที่ส่งมาแบบไม่มีอีกส่วน กินอีกส่วนหายไปเลย — จึงรวมทีละส่วน
+  for (const k of Object.keys(csEx)) csEx[k] = mergeExOne((sCs.ex || {})[k], (cCs.ex || {})[k]);
   const csSdel = keyMerge(sCs.sdel, cCs.sdel);
   for (const k of Object.keys(csSdel)) {
     const sl = csSlips[k], ex = csEx[k];
