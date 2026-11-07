@@ -323,6 +323,21 @@ code, never printed.
   updates the screen **only after** the server accepts. Prove it with
   **`node test/browser/sreq.test.cjs`** (39 checks; it must load the page over a real origin,
   not `setContent`, or localStorage is blocked). Rules: `HANDOFF.md` §5.
+  Under it sits its twin, **🚫 ขอแล้วสั่งไม่ได้** (`renderReqBack`/`rbScan`/`rbRoundAt`): the sales
+  requests that could not be ordered at all because the form had the row **greyed (ของขาด)**, filled
+  cyan (ยังไม่เปิด) or missing — carried forward every day until the round opens again, because the
+  owner kept losing them ("พอถัดมาอีกวัน มันสั่งได้แล้ว ผมเลยหลุดเคสแบบนี้บ่อย"). The two lists must
+  stay separate: Drop ค้าง is *ordered but not delivered*, this is *never orderable in the first
+  place*. The reason is read with **`rbRoundAt`, the round nearest the request date — never
+  `poRoundFor`/`ordServedAt`**, which judge a request against the LATEST round and therefore turn
+  "it was grey that day" into a bland "ศูนย์ไม่ได้สั่ง" the moment the row reopens; that erasure is
+  the bug. Whether it can be ordered **now** is a second, separate question answered from the latest
+  round (`dbBlock`), and those rows get a green banner at the top. `dropped` (magenta, discontinued)
+  is never carried — it is counted and reported as "ไม่ต้องรอ". The chase for "has it been ordered
+  since?" passes `incl=true` to `dbChase`, because a rep asks in the morning and the depot orders
+  the same afternoon — Drop ค้าง must keep its strict `>`. Read-only over
+  ORDERS/POSTATUS/STOCKD/REQUESTS like its twin. Prove it with
+  **`node test/browser/reqback.test.cjs`** (26 checks, self-contained).
   The first one opens with **🔁 Drop ค้าง** (`renderDropBack`/`dbScan`/`dbChase`/`dbBlock`): everything
   Unilever dropped in the last 3/5/7/14 days that has still not arrived, with a re-order prompt. It
   is **strictly read-only** over ORDERS/POSTATUS/STOCKD/REQUESTS (same rule as the auto-PO

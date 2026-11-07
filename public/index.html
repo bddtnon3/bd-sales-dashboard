@@ -1273,6 +1273,9 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <!-- Drop ค้างย้อนหลัง: ต้องอยู่บนสุด เพราะเจ้าของไล่สั่งของจากบนลงล่าง
              ถ้าอยู่ท้ายหน้าจะเลยตามเคย (เหตุผลที่ขอฟีเจอร์นี้คือ "ลืม") -->
         <div class="panel" id="dropBack" style="display:none"></div>
+        <!-- ของที่เซลล์ขอแล้ว "สั่งไม่ได้เพราะคาดเทา/ยังไม่เปิด" — ต้องอยู่ติดกับ Drop ค้าง
+             เพราะเป็นงานเดียวกัน: ของที่ต้องตามสั่งซ้ำวันถัดไป (เจ้าของสั่ง 7 พ.ย. 69) -->
+        <div class="panel" id="reqBack" style="display:none"></div>
         <div id="myRequest" style="display:none"></div>
         <div class="panel" id="salesRequests" style="display:none"></div>
       </div>
@@ -6478,7 +6481,7 @@ function parsePS(name,buf){
    ⚠️ เก็บแบบ "สายที่เอาออก" ไม่ใช่ "สายที่เลือก" เพื่อให้สายที่เพิ่งส่งคำขอเข้ามาวันใหม่
    โผล่เองโดยอัตโนมัติ ไม่ต้องไปติ๊กเพิ่ม · อยู่บน ORD ซึ่งไม่ถูก sync ขึ้นเซิร์ฟเวอร์
    จึงเป็นการกรองดูเฉย ๆ ไม่แตะคำขอของเซลล์สักตัว */
-let ORD={date:null,dropView:'sum',sec:'req',dbWin:5,dbGot:false,rqOff:{}};
+let ORD={date:null,dropView:'sum',sec:'req',dbWin:5,dbGot:false,rqOff:{},rbWin:7,rbGot:false};
 function setDropView(m){ORD.dropView=m;renderOrder();}
 function oname(c){return (STOCKD&&STOCKD.names&&STOCKD.names[c])||(MASTER&&MASTER.items&&MASTER.items[c])||(ORDERS.names&&ORDERS.names[c])||"";}
 function fnameDate(name){
@@ -6527,6 +6530,7 @@ function renderOrder(){
   if(isSales)renderMyRequest();else renderSalesRequests();
   /* ต้องอยู่ก่อน early-return ข้างล่าง — ไม่งั้นวันที่ยังไม่มีข้อมูล กล่องนี้จะค้างของเก่าไว้ */
   renderDropBack();
+  renderReqBack();
   if(!ORDERS||!ORDERS.dates||!ORDERS.dates.length){
     bar.innerHTML="🛒 การสั่งของ · ศูนย์ BD";
     const none='<div class="insight">ยังไม่มีข้อมูลการสั่งของ — แอดมินอัพไฟล์ใบสั่ง / ไฟล์ Confirm ก่อน (ปุ่มอัพโหลด → 🛒)</div>';
@@ -6650,10 +6654,14 @@ function dbSetGot(v){ORD.dbGot=!!v;dbBlur();renderDropBack();}
    ⚠️ เรียก reqFulfillmentExact ตรง ๆ ไม่ได้ เพราะช่วงของมันยึดกับ "วันที่เซลล์ขอ"
    (reqFrom = ขอ − REQ_BACK_DAYS) จึงนับรอบ *ก่อน* วันดรอปเข้ามาด้วย แล้วจะอ่านผิดว่า
    "ได้ของแล้ว" ทั้งที่ของที่ได้นั้นมาถึงก่อนรอบที่ดรอป */
-function dbChaseOne(after,code){
+/* incl=true → นับรอบของ "วันเดียวกัน" ด้วย
+   ใช้กับลิสต์คำขอของเซลล์เท่านั้น: เซลล์ขอเช้า ศูนย์สั่งบ่ายวันเดียวกัน ถ้าตัดวันนั้นทิ้ง
+   จะอ่านว่า "ยังไม่ได้สั่งเลย" ทั้งที่สั่งไปแล้ว · ส่วน Drop ค้างยังต้องเป็น > เหมือนเดิม
+   (ของที่ได้มาก่อนรอบที่ดรอป ไม่ใช่ของที่ได้จากการสั่งซ้ำ — กฎใน HANDOFF.md §5) */
+function dbChaseOne(after,code,incl){
   const D=(ORDERS&&ORDERS.data)||{};
   const out={state:"none",got:0,gotDate:null,pendDate:null,redrop:0,lastDate:null};
-  ((ORDERS&&ORDERS.dates)||[]).filter(d=>d>after&&D[d]).slice().sort().forEach(d=>{
+  ((ORDERS&&ORDERS.dates)||[]).filter(d=>(incl?d>=after:d>after)&&D[d]).slice().sort().forEach(d=>{
     const day=D[d],om=orderedMerged(day),dp=day.dropped||{};
     const inOrd=(code in om);
     if(day.hasResult){
@@ -6676,12 +6684,12 @@ function dbChaseOne(after,code){
    ของไซส์หนึ่งมาถึงจะทำให้อีกไซส์หลุดจากลิสต์เงียบ ๆ ซึ่งคือสิ่งที่ฟีเจอร์นี้มีไว้กัน
    จึงใช้ได้ "เพื่อบอกข้อมูล" เท่านั้น: แถวที่ปิดด้วยรหัสพี่น้องจะติดธง alt แล้ว
    renderDropBack จะ **ไม่ซ่อนแถวนั้น** ให้เจ้าของตรวจด้วยตาอีกที */
-function dbChase(after,code){
-  const self=dbChaseOne(after,code);
+function dbChase(after,code,incl){
+  const self=dbChaseOne(after,code,incl);
   if(self.state!=="none"||self.got>0)return self;
   for(const a of codeAliases(code)){
     if(a===String(code))continue;
-    const alt=dbChaseOne(after,a);
+    const alt=dbChaseOne(after,a,incl);
     if(alt.state!=="none"||alt.got>0){alt.alt=a;return alt;}
   }
   return self;
@@ -6817,6 +6825,160 @@ function renderDropBack(){
     {cls:"plan-tbl db-tbl",alwaysBand:true,
      empty:`<div class="insight">${q?"ไม่พบรายการที่ค้นหา":"✅ ของที่ดรอปในช่วงนี้ได้ครบหมดแล้ว — ติ๊ก “แสดงตัวที่ได้ของแล้วด้วย” เพื่อดูย้อนหลัง"}</div>`});
   el.innerHTML=head+info+bar+`<div class="psub" style="margin-bottom:6px">↕️ ${poSeqNote()}</div>`+tbl;
+}
+/* ============================================================================
+ * 🚫 ขอแล้วสั่งไม่ได้ — คำขอของเซลล์ที่ติด "ของขาด (คาดเทา)" / "ยังไม่เปิดให้สั่ง"
+ *
+ * เจ้าของแจ้ง 7 พ.ย. 69: *"วันไหนที่มีเซลล์คีย์ขอสินค้าเข้ามา แต่มันคาดสีเทา ระบบแจ้งเตือนว่า
+ * สั่งไม่ได้ แต่พอถัดมาอีกวัน มันสั่งได้แล้ว ผมเลยหลุดเคสแบบนี้บ่อย เพราะบางทีมีหลายตัวยิบย่อย
+ * ที่ต้องคอยสั่งให้ ... ให้เอากลับมาให้ดูวันต่อไปเหมือนรายการดรอปด้วย"*
+ *
+ * เป็นฝาแฝดของ 🔁 Drop ค้าง แต่คนละต้นทาง — ห้ามยุบรวมกัน:
+ *   Drop ค้าง = ศูนย์สั่งไปแล้ว Unilever ไม่ให้ของ
+ *   ลิสต์นี้  = เซลล์ขอมา แต่ "สั่งไม่ได้ตั้งแต่แรก" เพราะใบสั่งปิดช่องไว้ (เทา/ฟ้า/ไม่มีในใบ)
+ * สิ่งที่ต้องตอบให้ได้ทุกเช้าคือ **"รอบนี้ช่องเปิดแล้วหรือยัง"** ซึ่งต้องเช็คกับใบสั่งรอบล่าสุด
+ * ไม่ใช่ใบของวันที่เซลล์ขอ
+ *
+ * ⚠️ อ่านอย่างเดียวล้วน ๆ เหมือน Drop ค้าง — ห้ามเขียน ORDERS/POSTATUS/STOCKD/REQUESTS
+ *    ตัวเลือกช่วงวันอยู่บน ORD ซึ่งไม่ได้อยู่ใน payload ที่ sync ขึ้นเซิร์ฟเวอร์
+ * ==========================================================================*/
+const RB_WINS=[{d:3,t:"3 วัน"},{d:7,t:"1 อาทิตย์"},{d:14,t:"2 อาทิตย์"},{d:30,t:"1 เดือน"}];
+/* เอาเฉพาะเหตุผลที่ "เดี๋ยวก็กลับมาสั่งได้" — เลิกขายถาวร (ชมพู) ไม่ต้องรอ จึงแยกไปบอกต่างหาก */
+const RB_WHY={oos:1,closed:1,notin:1};
+/* ใบสั่งรอบที่ "ใกล้วันที่เซลล์ขอที่สุด" — ไม่ใช่รอบล่าสุดที่ศูนย์ยังสั่งได้
+   ⚠️ นี่คือหัวใจของฟีเจอร์นี้: poWhy ปกติยึด ordServedAt = รอบล่าสุดในช่วง +7 วัน
+   พอวันนี้ช่องเปิดแล้ว คำขอเมื่อวานจะถูกตัดสินด้วยใบของวันนี้ แล้วกลายเป็น
+   "ศูนย์ไม่ได้สั่ง" — เรื่องที่ว่า "วันนั้นมันคาดเทา" หายไปเลย ซึ่งคือสาเหตุที่
+   เจ้าของหลุดเคสพวกนี้บ่อย (แจ้ง 7 พ.ย. 69) · ที่นี่จึงต้องถามว่า
+   "ตอนที่ขอ ใบสั่งรอบนั้นเปิดให้สั่งไหม" แล้วค่อยไปถามรอบล่าสุดต่างหากว่าตอนนี้เปิดหรือยัง */
+function rbRoundAt(d){
+  const ds=psDates();if(!ds.length)return null;
+  if(ds.indexOf(d)>=0)return d;
+  let best=null,bg=1e9;
+  ds.forEach(x=>{const g=poDayGap(x,d);
+    if(g<bg||(g===bg&&x<best)){bg=g;best=x;}});
+  return bg<=PO_NEAR_DAYS?best:null;
+}
+function rbSetWin(n){ORD.rbWin=n;dbBlur();renderReqBack();}
+function rbSetGot(v){ORD.rbGot=!!v;dbBlur();renderReqBack();}
+function rbScan(ref,days){
+  const R=(REQUESTS&&REQUESTS.data)||{};
+  if(!ref)return {days:[],rows:[],dead:[]};
+  const from=dayShift(ref,-(days-1));
+  const hit={},dead={},seen={},wc={};
+  /* poWhy ตัวเดิมถูกถามซ้ำทั้งหลายสายหลายวัน และมันเดินทุกรอบที่อัพไว้ — จำคำตอบไว้ก่อน
+     (เหตุผลเดียวกับที่ reqWarn ต้อง memoise ดู HANDOFF.md §5) */
+  const rc={};
+  const roundOf=d=>(d in rc)?rc[d]:(rc[d]=rbRoundAt(d));
+  const why=(d,c)=>{const k=d+"|"+c;return (k in wc)?wc[k]:(wc[k]=poWhy(d,c,roundOf(d)));};
+  Object.keys(R).filter(d=>d>=from&&d<=ref).sort().forEach(d=>{
+    const dd=R[d]||{};
+    Object.keys(dd).forEach(line=>{
+      const rq=dd[line]||{},items=rq.items||{},by=rq.by||"";
+      Object.keys(items).forEach(c=>{
+        const w=why(d,c);
+        if(w.why==="dropped"){(dead[c]=dead[c]||{code:c}).last=d;return;}
+        if(!RB_WHY[w.why])return;
+        seen[d]=1;
+        const it=items[c]||{};
+        const r=hit[c]||(hit[c]={code:c,first:d,n:0,cs:0,pc:0,lines:{},why:{}});
+        r.last=d;r.n++;r.cs+=(+it.cs||0);r.pc+=(+it.pc||0);
+        const L=r.lines[line]||(r.lines[line]={line:line,by:by,cs:0});
+        L.cs+=(+it.cs||0);if(by&&!L.by)L.by=by;
+        r.why[w.why]=(r.why[w.why]||0)+1;r.lastWhy=w.why;r.at=w.at;
+        if(w.newCode)r.newCode=w.newCode;
+      });
+    });
+  });
+  const rows=Object.keys(hit).map(c=>{
+    const r=hit[c];
+    /* incl=true — เซลล์ขอเช้า ศูนย์สั่งวันเดียวกันได้ ถ้าไม่นับวันนั้นจะอ่านผิดว่ายังไม่ได้สั่ง */
+    const f=dbChase(r.last,c,true);
+    r.chase=f;
+    r.st=f.state==="got"?"got":(f.state==="wait"?"wait":(f.state==="redrop"?"redrop":"none"));
+    return r;
+  });
+  return {days:Object.keys(seen).sort(),rows:rows,dead:Object.keys(dead).map(k=>dead[k])};
+}
+function renderReqBack(){
+  const el=document.getElementById("reqBack");if(!el)return;
+  const isMgr=S.user&&S.user.role==="manager";
+  el.style.display=isMgr?"":"none";
+  if(!isMgr){el.innerHTML="";return;}
+  if(RB_WINS.every(w=>w.d!==ORD.rbWin))ORD.rbWin=7;
+  const head=`<h3 style="color:#9a7100">🚫 ขอแล้วสั่งไม่ได้ — ของขาด / ยังไม่เปิดให้สั่ง</h3>`;
+  const ref=ORD.date;
+  if(!ref||!Object.keys((REQUESTS&&REQUESTS.data)||{}).length){
+    el.innerHTML=head+'<div class="psub">ยังไม่มีคำขอของเซลล์ — พอเซลล์เริ่มคีย์คำขอเข้ามา ตัวที่สั่งไม่ได้จะถูกเก็บมาไว้ที่นี่ให้ตามต่อวันถัดไป</div>';return;}
+  const from=dayShift(ref,-(ORD.rbWin-1));
+  const scan=rbScan(ref,ORD.rbWin),rows=scan.rows;
+  /* ใบสั่งรอบล่าสุดที่ใช้ตอบว่า "รอบนี้สั่งได้หรือยัง" — ต้องบอกวันของใบที่อ้างอิงเสมอ */
+  const fd=poRoundFor(ref),fday=fd?psDay(fd):null;
+  const nameOf=sc=>((DATA.lines||{})[sc]||{}).display||sc;
+  const open=rows.filter(r=>r.st==="none"&&!dbBlock(fday,r.code));
+  const still=rows.filter(r=>r.st==="none"&&dbBlock(fday,r.code));
+  const nGot=rows.filter(r=>r.st==="got").length;
+  const nWait=rows.filter(r=>r.st==="wait").length;
+  const seg=`<div class="seg">`+RB_WINS.map(w=>`<button class="${ORD.rbWin===w.d?"on":""}" onclick="rbSetWin(${w.d})">${w.t}</button>`).join("")+`</div>`;
+  const chk=`<label class="chk"><input type="checkbox"${ORD.rbGot?" checked":""} onchange="rbSetGot(this.checked)"> แสดงตัวที่สั่ง/ได้ของแล้วด้วย</label>`;
+  const bar=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:10px 0 4px"><span class="psub">ย้อนหลัง</span>${seg}${chk}</div>`;
+  const info=`<div class="psub">ของที่<b>เซลล์ขอมา</b>ในช่วง <b>${fmtDate(from)} – ${fmtDate(ref)}</b> แต่ตอนนั้น<b>สั่งไม่ได้</b> (ใบสั่งคาดเทา = ของขาด · ถมฟ้า = ยังไม่เปิด · ไม่มีในใบ) — ระบบไล่เช็คให้ทุกวันว่า<b>รอบนี้เปิดให้สั่งแล้วหรือยัง</b>`+
+    `<br>มีคำขอที่สั่งไม่ได้ <b>${rows.length}</b> รายการ · <b class="up">✅ รอบนี้สั่งได้แล้ว ${open.length}</b> · ⏳ ยังสั่งไม่ได้ <b>${still.length}</b> · 🕓 สั่งไปแล้วรอผล <b>${nWait}</b> · ได้ของแล้ว <b>${nGot}</b>`+
+    `<br>เช็คกับ${fd?` <b>ใบสั่งวันที่ ${fmtDate(fd)}</b>`:'<span class="mid">ใบสั่ง — ยังไม่ได้อัพใบไหนเลย ระบบจึงยังบอกไม่ได้ว่ารอบนี้สั่งได้ไหม</span>'}`+
+    (scan.dead.length?`<br>⛔ <b>เลิกขายถาวร ${scan.dead.length}</b> รายการ (${scan.dead.slice(0,6).map(x=>x.code).join(" · ")}${scan.dead.length>6?" …":""}) — ไม่ต้องรอ บอกเซลล์ได้เลย`:"")+
+    `</div>`;
+  /* แถบเขียวบนสุด = งานของวันนี้จริง ๆ ไม่ต้องไล่หาในตาราง (นี่คือเคสที่เจ้าของบอกว่า "หลุดบ่อย") */
+  const hero=open.length?`<div class="rq-note" style="border-color:var(--good);background:#F2FBF5">
+    ✅ <b>รอบนี้สั่งได้แล้ว ${open.length} รายการ</b> — ${open.map(r=>`<b>${r.code}</b> ${anaEsc(oname(r.code)||"")}`).join(" · ")}</div>`:"";
+  if(!rows.length){
+    el.innerHTML=head+info+bar+'<div class="insight">ไม่มีคำขอที่สั่งไม่ได้ในช่วงนี้ — ทุกตัวที่เซลล์ขอมา ใบสั่งเปิดให้สั่งหมด</div>';return;}
+  const q=((document.getElementById("orderSearch")||{}).value||"").trim().toLowerCase();
+  const match=c=>!q||String(c).includes(q)||oname(c).toLowerCase().includes(q);
+  /* ซ่อนเฉพาะตัวที่ "ได้ของแล้ว" เท่านั้น — ตัวที่สั่งไปแล้วรอผลต้องยังเห็น
+     ไม่งั้นเจ้าของไม่รู้ว่าสั่งไปแล้ว แล้วจะสั่งซ้ำอีกรอบ (กฎเดียวกับ Drop ค้าง) */
+  const show=rows.filter(r=>(ORD.rbGot||r.st!=="got")&&match(r.code));
+  const whyCell=r=>{
+    const W=PO_BLOCK[r.lastWhy]||PO_BLOCK.notin;
+    const days=Object.keys(r.why).filter(k=>k!==r.lastWhy);
+    return `<span class="pill ${r.lastWhy==="oos"?"w":"b"}">${W.icon} ${W.lab}</span>`+
+      (days.length?` <span class="psub">(ก่อนหน้านี้: ${days.map(k=>(PO_BLOCK[k]||{}).lab||k).join(" · ")})</span>`:"");
+  };
+  const actCell=r=>{
+    if(r.st==="got")return `<span class="pill g">✅ ได้ของแล้ว${r.chase.gotDate?" · "+fmtDayMon(r.chase.gotDate):""}</span>`+
+      (r.chase.alt?` <b class="mid">(มาเป็นรหัส ${r.chase.alt})</b>`:"");
+    if(r.st==="wait")return `<span class="pill w">🕓 สั่งไปแล้ว รอผล${r.chase.pendDate?" · "+fmtDayMon(r.chase.pendDate):""}</span>`;
+    if(r.st==="redrop")return `<b class="down">🔁 สั่งแล้วโดนดรอป ${r.chase.redrop} รอบ</b> <span class="psub">ไล่ต่อที่ลิสต์ 🔁 Drop ค้าง ด้านบน</span>`;
+    const b=dbBlock(fday,r.code);
+    if(!b)return `<b class="up">✅ รอบนี้สั่งได้แล้ว — สั่งเลย</b>`+
+      (r.newCode?` <span class="psub">(หรือใช้รหัส ${r.newCode})</span>`:"");
+    if(b.k==="noform")return `<span class="psub">ยังไม่ได้อัพใบสั่งรอบนี้ — อัพแล้วระบบจะบอกว่าเปิดให้สั่งหรือยัง</span>`;
+    const L=PO_BLOCK[b.k]||PO_BLOCK.notin;
+    let swap="";
+    if(b.k!=="dropped"){const sw=poSwapFor(fday,r.code);if(sw&&sw.pick)swap=` <span class="pill g">→ รอบนี้สั่งรหัส <b>${sw.pick}</b> แทนได้</span>`;}
+    return `<span class="pill b">⏳ ยังสั่งไม่ได้</span> <span class="psub">${L.icon} ${L.lab}</span>${swap}`;
+  };
+  const line=r=>{
+    const ls=Object.keys(r.lines).map(k=>r.lines[k]);
+    return `<tr><td>${r.code}</td><td style="text-align:left">${anaEsc(oname(r.code))||'<span class="psub">(ไม่มีชื่อในระบบ)</span>'}</td>`+
+    `<td style="text-align:left">${ls.map(x=>`${anaEsc(nameOf(x.line))}${x.by?' <span class="psub">'+anaEsc(x.by)+'</span>':""}`).join("<br>")}</td>`+
+    `<td>${fmtDayMon(r.last)}${r.n>1?` <span class="psub">· ขอ ${r.n} ครั้ง</span>`:""}</td>`+
+    `<td>${(r.cs||0).toLocaleString()}${r.pc?` <span class="psub">+${r.pc} ชิ้น</span>`:""}</td>`+
+    `<td style="text-align:left">${whyCell(r)}</td>`+
+    `<td>${stkCell(r.code,r.cs||0)}</td>`+
+    `<td style="text-align:left">${actCell(r)}</td></tr>`;};
+  /* เรียงเหมือนทุกตารางในหน้านี้: แบ่งหมวด + ไล่ตามลำดับหน้าใบสั่งซื้อ (กฎใน CLAUDE.md) */
+  const sorted=poSeqSort(show,r=>r.code,(a,b)=>(b.last<a.last?-1:b.last>a.last?1:0)||(b.cs-a.cs));
+  const tbl=grpTable(
+    [{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"เซลล์ที่ขอ",a:"l"},{h:"ขอล่าสุด"},{h:"ขอ (ลัง)"},
+     {h:"ตอนขอ สั่งไม่ได้เพราะ",a:"l"},
+     {h:"สต็อกคงเหลือ",t:"คลังขาย จากไฟล์สต็อกล่าสุด — ถ้ายังมีของอยู่ ก็ยังไม่ด่วนมาก"},
+     {h:"ต้องทำอะไร",a:"l"}],
+    grpByCat(sorted,r=>r.code).map(g=>({title:`${g.icon} ${g.cat}`,
+      sub:`· ${g.list.length} รายการ · ขอรวม ${g.list.reduce((s,r)=>s+(r.cs||0),0).toLocaleString()} ลัง`,
+      rows:g.list.map(line)})),
+    {cls:"plan-tbl db-tbl",alwaysBand:true,
+     empty:`<div class="insight">${q?"ไม่พบรายการที่ค้นหา":"✅ คำขอที่สั่งไม่ได้ในช่วงนี้ ตามครบแล้ว — ติ๊ก “แสดงตัวที่สั่ง/ได้ของแล้วด้วย” เพื่อดูย้อนหลัง"}</div>`});
+  el.innerHTML=head+info+hero+bar+`<div class="psub" style="margin-bottom:6px">↕️ ${poSeqNote()}</div>`+tbl;
 }
 /* search a product across ALL order days → its status per day (สั่ง/ได้/ดรอป). For sales & manager. */
 function renderOrderSearch(){
@@ -7695,8 +7857,10 @@ function poInForm(day,code){
   if(!day.all)return null;
   return (","+day.all+",").indexOf(","+code+",")>=0;
 }
-function poWhy(reqDate,code){
-  const at=poRoundFor(reqDate);
+/* atRound = บังคับว่าจะตัดสินด้วยใบสั่งรอบไหน (ไม่ใส่ = รอบที่ศูนย์มีโอกาสสั่งล่าสุด)
+   ลิสต์ 🚫 ขอแล้วสั่งไม่ได้ ต้องใส่ เพราะมันถามคนละคำถาม — ดู rbRoundAt */
+function poWhy(reqDate,code,atRound){
+  const at=atRound||poRoundFor(reqDate);
   if(!at)return {why:"unknown"};
   const day=psDay(at),items=(day&&day.items)||{};
   const cls=c=>{const f=items[c];if(f&&f.s)return "oos";
