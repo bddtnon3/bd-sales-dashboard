@@ -233,9 +233,16 @@ function seed(a){
  t('กดที่ก้อนแล้วกางเห็นรายการข้างใน (ยังค้าง 4 รายการ)',det.n===4,det.n+' แถว');
  t('...ทุกแถวมีช่องติ๊ก และหัวตารางมีช่อง "เลือกทั้งใบ"',
    det.boxes===4&&det.head===1,det.boxes+' แถว + หัวตาราง '+det.head);
- t('...แถวที่ส่งไปแล้วบางส่วน บอกว่าส่งไปที่ไหนบ้าง',
-   /เคลียร์ไปบางส่วน/.test(det.st04)&&/คุณกราณรุ้ง/.test(det.st04)&&/ลัดดาวัล/.test(det.st04),
-   det.st04.slice(0,120));
+ /* ตั้งแต่ 10 พ.ย. 69 รายละเอียด "ส่งไปที่ไหน" ถูกซ่อนไว้หลังปุ่ม (เจ้าของบอกว่าลายตา)
+    แถวจึงต้องบอกแค่สถานะ + ปุ่มกางดู ส่วนชื่อผู้รับอยู่ในกล่องที่กางออกมา */
+ t('...แถวที่ส่งไปแล้วบางส่วน มีปุ่มกางดูว่าส่งไปที่ไหนบ้าง (ไม่เอามาโชว์ในแถว)',
+   /เคลียร์ไปบางส่วน/.test(det.st04)&&/ดูรายละเอียด \(2\)/.test(det.st04)&&
+   !/คุณกราณรุ้ง/.test(det.st04),det.st04.slice(0,120));
+ const det2=await ev(()=>{const id=Object.keys(CSTOCK.lots).find(k=>/โอโมน้ำ/.test(CSTOCK.lots[k].nm||''));
+   cstRowTog(id);const d=document.querySelector('#cstBody .cst-rt tr.det');
+   const tx=d?d.textContent.replace(/\s+/g,' '):'';cstRowTog(id);return tx;});
+ t('...กางแล้วเห็นชื่อผู้รับครบทุกครั้งที่ส่ง',
+   /คุณกราณรุ้ง/.test(det2)&&/ลัดดาวัล/.test(det2),det2.slice(0,100));
  t('...แถวที่ยังไม่ได้ส่ง บอกตรง ๆ ว่ายังไม่ได้บันทึกว่าส่งไปไหน',
    det.rows.some(x=>/รอจัดส่ง/.test(x)&&/ยังไม่ได้บันทึกว่าส่งไปไหน/.test(x)),'ok');
  const filt=await ev(()=>{const o={};
@@ -1048,6 +1055,86 @@ function seed(a){
      !!r.hid.err&&/ไม่พบหัวตาราง/.test(r.hid.err),r.hid.err||JSON.stringify(r.hid));
    t('...คอลัมน์เดียวกันแต่ไม่ได้ซ่อน อ่านได้ตามปกติ (ต่างกันที่ธง hidden จริง ๆ)',
      r.vis.c==='4862412'&&r.vis.d==='2026-10-27',JSON.stringify(r.vis));
+ }
+
+ /* ==========================================================================
+  * 18b1) 🧾 หน้าตาแถวในหน้ารายการค้าง — ปุ่มต้องเหมือนกันทุกแถว + 4 ช่องที่เจ้าของขอ
+  *       เจ้าของแจ้ง 10 พ.ย. 69: *"บางตัวมีปุ่มท้าย บางตัวไม่มี ช่วยปรับให้ตรงกันหน่อย
+  *       และปรับให้เป็นข้อมูลตามนี้เลย วันที่ตัดบิล / จำนวนทั้งหมด / จำนวนที่เคลียร์แล้ว /
+  *       จำนวนที่ยังค้างรอเคลียร์ ... และรายละเอียดที่มีการเคลียร์ออกไปแล้ว ขอให้ซ่อนไว้"*
+  *       ต้นเหตุเดิม: ข้อความ "ส่งไปร้านไหน" ยาวมาก ดันตารางกว้างจนปุ่มหลุดนอกการ์ด
+  *       (วัดบนบิลด์เก่าได้ขอบขวา 1409 ขณะที่การ์ดกว้างถึง 1216 เท่านั้น)
+  * ======================================================================== */
+ {
+  const setup=await ev(()=>{
+    CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:Date.now()};
+    CSTOCK.slips['B20261102-01']={id:'B20261102-01',d:'2026-11-02',own:'KA97',nw:'',ng:'',up:1};
+    CSTOCK.lots['L1']={id:'L1',sl:'B20261102-01',sq:1,d:'2026-11-02',code:'64838788',
+      nm:'บรีสแดง เมติก 2X8000กรัม',cs:146,pc:0,ln:'KA97',own:'KA97',up:1,
+      clr:[{d:'2026-11-06',who:'บ.ซีอาร์ซี ไทวัสดุ จำกัด',cs:15,pc:0,note:'PO.2610073081 ส่งของ 10/11/69'},
+           {d:'2026-11-06',who:'บ.ซีอาร์ซี ไทวัสดุ จำกัด',cs:29,pc:0,note:'PO.2611006678 ส่งของ 10/11/69'}]};
+    CSTOCK.lots['L2']={id:'L2',sl:'B20261102-01',sq:2,d:'2026-11-03',code:'65591917',
+      nm:'บรีสเอกเซล ชมพู',cs:68,pc:24,ln:'KA97',own:'KA97',up:1,clr:[]};
+    CST.sel={};CST.row={};CST.only='open';CST.q='';CST.sec='list';CST.f=null;
+    CST.open={'B20261102-01':1};renderCStock();
+    const head=[...document.querySelectorAll('#cstBody .cst-rt thead th')].map(h=>h.textContent.trim());
+    const rows=[...document.querySelectorAll('#cstBody .cst-rt tbody tr:not(.det)')];
+    const card=document.querySelector('#cstBody .cst-grp').getBoundingClientRect();
+    return {head:head,
+      act:rows.map(r=>{const a=r.querySelector('td.act');const b=a&&a.getBoundingClientRect();
+        return {n:a?a.querySelectorAll('button').length:0,
+                inCard:!!b&&b.right<=card.right+1};}),
+      cells:rows.map(r=>[...r.querySelectorAll('td')].map(td=>td.textContent.replace(/\s+/g,' ').trim())),
+      det:document.querySelectorAll('#cstBody .cst-rt tr.det').length,
+      long:/PO\.2610073081/.test(document.querySelector('#cstBody .cst-rt').textContent)};});
+  t('🔑 ปุ่มท้ายแถวเหมือนกันทุกแถว และอยู่ในการ์ดครบ (ไม่หลุดขอบเหมือนเดิม)',
+    setup.act.length===2&&setup.act.every(a=>a.n===2&&a.inCard),JSON.stringify(setup.act));
+  t('หัวตารางเป็น 4 ช่องที่เจ้าของขอ: วันที่ตัดบิล · ทั้งหมด · เคลียร์แล้ว · ยังค้างรอเคลียร์',
+    ['วันที่ตัดบิล','ทั้งหมด','เคลียร์แล้ว','ยังค้างรอเคลียร์'].every(h=>setup.head.indexOf(h)>=0),
+    setup.head.join(' | '));
+  t('...ตัวเลขถูกต้อง (146 ตัดบิล · เคลียร์ 44 · ค้าง 102)',
+    /146/.test(setup.cells[0][5])&&/44/.test(setup.cells[0][6])&&/102/.test(setup.cells[0][7]),
+    setup.cells[0].slice(5,8).join(' / '));
+  t('...แถวที่ยังไม่เคลียร์เลย ช่อง "เคลียร์แล้ว" ต้องว่าง ไม่ใช่ 0 ลวงตา และค้างเท่าของทั้งหมด',
+    setup.cells[1][6]==='-'&&/68/.test(setup.cells[1][7]),setup.cells[1].slice(5,8).join(' / '));
+  t('...วันที่ตัดบิลขึ้นทุกแถว แม้แถวในใบเดียวกันจะคนละวัน',
+    /2 พ\.ย\./.test(setup.cells[0][3])&&/3 พ\.ย\./.test(setup.cells[1][3]),
+    setup.cells[0][3]+' / '+setup.cells[1][3]);
+  t('🔑 รายละเอียดการเคลียร์ถูกซ่อนไว้ ไม่โผล่มาในแถวให้ลายตา',
+    setup.det===0&&!setup.long);
+
+  const open=await ev(()=>{cstRowTog('L1');
+    const d=document.querySelector('#cstBody .cst-rt tr.det');
+    return {n:document.querySelectorAll('#cstBody .cst-rt tr.det').length,
+      items:d?d.querySelectorAll('.cst-di').length:0,
+      del:d?d.querySelectorAll('.cst-di button').length:0,
+      txt:d?d.textContent.replace(/\s+/g,' '):''};});
+  t('กด "ดูรายละเอียด" แล้วกางออกมาเป็นรายการส่งของทีละครั้ง',
+    open.n===1&&open.items===2&&/ไทวัสดุ/.test(open.txt)&&/PO\.2610073081/.test(open.txt),
+    open.items+' ครั้ง');
+  t('...แต่ละครั้งมีปุ่มลบไว้แก้ตอนคีย์ผิด',open.del===2,open.del+' ปุ่ม');
+
+  const del=await ev(()=>{cstClrDel('L1',0);
+    const l=CSTOCK.lots['L1'];
+    return {n:(l.clr||[]).length,left:cstLeft(l),
+      cell:[...document.querySelectorAll('#cstBody .cst-rt tbody tr:not(.det)')][0]
+        .querySelectorAll('td')[7].textContent.replace(/\s+/g,' ').trim()};});
+  t('ลบรายการส่งของที่คีย์ผิดได้จากกล่องนี้ แล้วยอดค้างเพิ่มกลับเอง (102 → 117)',
+    del.n===1&&del.left===117&&/117/.test(del.cell),JSON.stringify(del));
+
+  const hide=await ev(()=>{cstRowTog('L1');
+    return document.querySelectorAll('#cstBody .cst-rt tr.det').length;});
+  t('...กดซ้ำเพื่อซ่อนกลับได้',hide===0);
+
+  const sal=await ev(()=>{const u=S.user;
+    S.user={id:'ct11',role:'sales',code:'209611',name:'CT11'};
+    CST.row={L1:1};renderCStock();
+    const o={act:document.querySelectorAll('#cstBody .cst-rt td.act').length,
+      del:document.querySelectorAll('#cstBody .cst-rt .cst-di button').length,
+      see:/ไทวัสดุ/.test(document.getElementById('cstBody').textContent)};
+    S.user=u;CST.row={};renderCStock();return o;});
+  t('เซลล์เปิดดูรายละเอียดได้ แต่ไม่มีปุ่มแก้/ลบสักปุ่ม',
+    sal.see&&sal.act===0&&sal.del===0,JSON.stringify(sal));
  }
 
  /* ==========================================================================

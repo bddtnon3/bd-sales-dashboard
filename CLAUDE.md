@@ -489,6 +489,14 @@ code, never printed.
   (`CST.clr.ids`); the quantity fields are hidden in that mode. Opening the dialog per row was the
   complaint — *"ติ๊กรายการแล้วมันขึ้นไล่ให้ปรับทีละตัว"* — so a tick must never open it.
   `cstBulkUnsent` reverses a selection, and 📝 on a row still does a partial amount.
+  Each row shows the four figures the owner asked for — **วันที่ตัดบิล (always, even when the slip
+  has one date) · ทั้งหมด · เคลียร์แล้ว · ยังค้างรอเคลียร์** — and the clearing detail is
+  **hidden behind ▼ ดูรายละเอียด** (`cstRowTog`, state on the non-synced `CST.row`), where each
+  dispatch is one line with its own 🗑 (`cstClrDel`). Never put that detail back in the row: the
+  shop + date + PO text made the table wider than the card and pushed the action cell off the right
+  edge, so rows with clearings silently lost their buttons (measured: right edge 1409 against a
+  1216-wide card) — which is what "บางตัวมีปุ่มท้าย บางตัวไม่มี" was. The table is wrapped in
+  `.tblwrap` so an overflow scrolls instead of clipping.
   That bar **must stay on screen** (`.cst-bulk.stick`, sticky under the 60px header): it is
   rendered once above all the slip blocks, so with a 16-row slip open the owner ticked rows and the
   bar sat 289px above the viewport — "ติ๊กแล้วไม่มีปุ่มขึ้นมาให้". Never drop the sticky, never put
@@ -510,7 +518,7 @@ code, never printed.
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
-  with **`node test/browser/cstock.test.cjs`** (217 checks; it must load the page over a real origin,
+  with **`node test/browser/cstock.test.cjs`** (229 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
   Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
   map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales
