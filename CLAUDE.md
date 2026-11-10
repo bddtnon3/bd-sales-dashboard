@@ -489,6 +489,11 @@ code, never printed.
   (`CST.clr.ids`); the quantity fields are hidden in that mode. Opening the dialog per row was the
   complaint — *"ติ๊กรายการแล้วมันขึ้นไล่ให้ปรับทีละตัว"* — so a tick must never open it.
   `cstBulkUnsent` reverses a selection, and 📝 on a row still does a partial amount.
+  That bar **must stay on screen** (`.cst-bulk.stick`, sticky under the 60px header): it is
+  rendered once above all the slip blocks, so with a 16-row slip open the owner ticked rows and the
+  bar sat 289px above the viewport — "ติ๊กแล้วไม่มีปุ่มขึ้นมาให้". Never drop the sticky, never put
+  `overflow` on `.panel`, and keep the ticked rows highlighted whole-row (`.cst-rt tr.on>td`, painted
+  on `>td` not `tr`).
   **Neither page header carries any upload or create button**: ➕ ตัดบิลใหม่ lives inside the
   🧾 ใบตัดบิล page, and a shop file belongs to one slip, so it is attached from 📎 inside that
   slip — or from **📎 in the slip form itself** (`cstFormEx`), which saves the new slip first,
@@ -505,7 +510,7 @@ code, never printed.
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
-  with **`node test/browser/cstock.test.cjs`** (211 checks; it must load the page over a real origin,
+  with **`node test/browser/cstock.test.cjs`** (217 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
   Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
   map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales

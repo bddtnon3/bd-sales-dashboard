@@ -329,6 +329,12 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cst-bulk{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;
   background:var(--blue-soft);border:1.5px solid #BBD2F5;border-radius:10px;padding:8px 11px;font-size:12.5px}
 .cst-bulk.off{background:var(--bg);border-color:var(--line);color:var(--muted)}
+/* ⚠️ พอติ๊กแล้วแถบนี้ต้อง "ติดจอ" ตามลงมาด้วย — เจ้าของเจอเอง 10 พ.ย. 69:
+   กางใบที่มี 16 แถว แล้วเลื่อนลงไปติ๊กแถวล่าง ๆ แถบปุ่มอยู่เหนือจอ 289px (วัดจากเทส)
+   จึงดูเหมือน "ติ๊กแล้วไม่มีปุ่มขึ้นมาให้" ทั้งที่ติ๊กติดแล้ว
+   top = ความสูงของ header ที่ sticky อยู่ (60px / จอเล็ก 54px) + ระยะหายใจ */
+.cst-bulk.stick{position:sticky;top:66px;z-index:40;
+  box-shadow:0 4px 14px rgba(16,42,93,.16);border-color:var(--blue)}
 .cst-bg{display:flex;gap:4px;align-items:center}
 .cst-bulk select,.cst-bulk input{padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;
   font-size:12.5px;font-family:inherit;background:#fff}
@@ -360,6 +366,9 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cst-gh:hover{background:var(--blue-soft)}
 .cst-rt td{vertical-align:top}
 .cst-rt tr.done>td{background:#F4FAF6}
+/* แถวที่ติ๊กไว้ต้องเห็นชัดทั้งแถว ไม่ใช่เห็นแค่ช่องติ๊กเล็ก ๆ
+   (ทาที่ >td ไม่ใช่ tr — กฎเดียวกับตัวไล่บรรทัดด้วยลูกศร ดู HANDOFF.md §5) */
+.cst-rt tr.on>td{background:#E3EEFD;box-shadow:inset 3px 0 0 var(--blue)}
 .cst-rt .tk{width:74px;white-space:nowrap}
 .cst-rt input[type=checkbox]{width:19px;height:19px;cursor:pointer}
 .cst-rt .psub{font-size:11px;line-height:1.45}
@@ -839,6 +848,7 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
 /* ---------- MOBILE ---------- */
 @media(max-width:640px){
   header{padding:0 12px;height:54px}
+  .cst-bulk.stick{top:60px}
   header .brand{font-size:16px}
   .usr .who{display:none}
   main{padding:12px 10px}
@@ -10744,9 +10754,13 @@ function cstSelBarHtml(mgr){
   if(!ids.length)return `<div class="cst-bulk off">☑️ ติ๊กหน้ารายการที่ส่งของออกไปแล้ว (ติ๊กกี่รายการก็ได้) แล้วกดบันทึกทีเดียว — ระบบจะถามแค่ครั้งเดียวว่าส่งไปที่ไหน</div>`;
   const cs=ids.reduce((a,x)=>a+Math.max(0,cstLeft(C.lots[x])),0);
   const done=ids.filter(x=>cstDone(C.lots[x])).length;
-  return `<div class="cst-bulk">
+  /* ติ๊กข้ามใบได้ จึงต้องบอกด้วยว่ากำลังจะบันทึกของใบไหนบ้าง ไม่งั้นเผลอรวมใบอื่นไปด้วย */
+  const sl={};ids.forEach(x=>{const k=(C.lots[x]||{}).sl||"";if(k)sl[k]=(sl[k]||0)+1;});
+  const sk=Object.keys(sl);
+  return `<div class="cst-bulk stick">
     <b>☑️ ติ๊กไว้ ${ids.length} รายการ</b>
-    <span class="psub">รวมที่เหลือ ${(Math.round(cs*100)/100).toLocaleString()} ลัง${done?" · ส่งครบแล้ว "+done:""}</span>
+    <span class="psub">รวมที่เหลือ ${(Math.round(cs*100)/100).toLocaleString()} ลัง${done?" · ส่งครบแล้ว "+done:""}${
+      sk.length>1?" · จาก "+sk.length+" ใบ":(sk.length?" · ใบ "+anaEsc(sk[0]):"")}</span>
     <button class="upload-btn" onclick="cstBulkSent()">✅ บันทึกว่าส่งออกไปแล้ว</button>
     <button class="cst-x" onclick="cstBulkUnsent()">↩️ กลับเป็นยังค้าง</button>
     <button class="cst-x" onclick="cstSelClear()">ล้างที่ติ๊ก</button>

@@ -1051,6 +1051,60 @@ function seed(a){
  }
 
  /* ==========================================================================
+  * 18b2) 📌 แถบ "ติ๊กไว้ N รายการ" ต้องติดจอตามลงมาด้วย
+  *       เจ้าของเจอเอง 10 พ.ย. 69: กางใบที่มี 16 แถว เลื่อนลงไปติ๊กแถวล่าง ๆ แล้ว
+  *       "ไม่มีปุ่มขึ้นมาให้" — ที่จริงติ๊กติดแล้ว แต่แถบปุ่มอยู่เหนือจอไป 289px
+  * ======================================================================== */
+ {
+  const big=await ev(()=>{
+    CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:Date.now()};
+    const LN=['CT11','CT12','CT13','CT14','CT15','CT16','CT17','CT22'];
+    [['2026-11-02',2],['2026-10-27',14],['2026-10-19',16]].forEach(([d,n])=>{
+      const sid='B'+d.replace(/-/g,'')+'-01';
+      CSTOCK.slips[sid]={id:sid,d:d,own:'Supervisor',nw:'',ng:'',up:1};
+      for(let i=0;i<n;i++){const id=sid+'-r'+(i+1);
+        CSTOCK.lots[id]={id:id,sl:sid,sq:i+1,d:d,code:'65660382',nm:'โอโม ซอฟท์ ทัช',
+          cs:8,pc:0,ln:LN[i%8],own:'Supervisor',up:1,clr:[]};}
+    });
+    CST.sel={};CST.only='open';CST.q='';CST.sec='list';CST.f=null;
+    CST.open={'B20261019-01':1};renderCStock();
+    /* เลื่อนให้หัวใบล่างสุดอยู่บนสุดของจอ เหมือนรูปที่เจ้าของส่งมา */
+    const g=[...document.querySelectorAll('#cstBody .cst-grp')].pop();
+    window.scrollTo(0,g.getBoundingClientRect().top+window.scrollY-70);
+    return {grp:document.querySelectorAll('#cstBody .cst-grp').length,y:Math.round(window.scrollY)};});
+  t('เตรียมใบยาว ๆ แล้วเลื่อนจอลงไปที่ใบล่างสุด',big.grp===3&&big.y>300,JSON.stringify(big));
+  const tick=await ev(()=>{
+    const y0=Math.round(window.scrollY);
+    const g=[...document.querySelectorAll('#cstBody .cst-grp')].pop();
+    const cbs=[...g.querySelectorAll('tbody input[type=checkbox]')];
+    cbs[5].click();                                   /* ติ๊กแถวที่ 6 ซึ่งอยู่ลึกลงไป */
+    const bar=document.querySelector('#cstBody .cst-bulk');
+    const r=bar.getBoundingClientRect();
+    return {y0:y0,y1:Math.round(window.scrollY),n:cstSelIds().length,
+      stick:bar.classList.contains('stick'),
+      top:Math.round(r.top),vis:r.bottom>0&&r.top<window.innerHeight,
+      btn:/บันทึกว่าส่งออกไปแล้ว/.test(bar.textContent),
+      /* ต้องถามใหม่หลังคลิก — renderCStock วาด DOM ใหม่ทั้งก้อน ตัวอ้างอิงเก่าหลุดไปแล้ว */
+      row:!!document.querySelector('#cstBody .cst-rt tbody tr.on')};});
+  t('🔑 ติ๊กแถวที่อยู่ลึก ๆ แล้ว "แถบปุ่มบันทึกทีเดียว" ต้องยังอยู่ในจอ ไม่ใช่ลอยอยู่เหนือจอ',
+    tick.vis&&tick.top>=0&&tick.top<200,'ขอบบนของแถบอยู่ที่ '+tick.top+'px');
+  t('...และเป็นแถบแบบติดจอจริง ๆ พร้อมปุ่มบันทึก',tick.stick&&tick.btn&&tick.n===1,
+    JSON.stringify({stick:tick.stick,btn:tick.btn,n:tick.n}));
+  t('...ติ๊กแล้วหน้าจอไม่กระโดด (ยังอยู่ตำแหน่งเดิม)',Math.abs(tick.y1-tick.y0)<=2,
+    tick.y0+' → '+tick.y1);
+  t('...แถวที่ติ๊กไว้ไฮไลต์ให้เห็นทั้งแถว ไม่ใช่เห็นแค่ช่องติ๊ก',tick.row);
+  const two=await ev(()=>{
+    CST.open['B20261102-01']=1;renderCStock();      /* กางอีกใบ แล้วติ๊กข้ามใบ */
+    const gs=[...document.querySelectorAll('#cstBody .cst-grp')];
+    gs[0].querySelector('tbody input[type=checkbox]').click();
+    const bar=document.querySelector('#cstBody .cst-bulk');
+    return bar.textContent.replace(/\s+/g,' ');});
+  t('ติ๊กข้ามใบ แถบต้องบอกว่ามาจากกี่ใบ (กันเผลอรวมใบอื่นไปด้วย)',
+    /ติ๊กไว้ 2 รายการ/.test(two)&&/จาก 2 ใบ/.test(two),two.slice(0,70));
+  await ev(()=>{CST.sel={};CST.open={};renderCStock();window.scrollTo(0,0);});
+ }
+
+ /* ==========================================================================
   * 18c) 🏪 คีย์ "ร้านที่ตัดบิลเข้า" เองทีละร้าน — ไม่ต้องทำไฟล์ Excel
   *      เจ้าของสั่ง 6 พ.ย. 69: *"บางออเดอร์เราคีย์เข้าไม่เยอะ แค่ 1 ร้านจะไม่ได้อัพไฟล์
   *      excel ช่วยเพิ่มช่องที่รวมรายชื่อร้านค้าทั้งหมด ให้กดเลือกร้านที่จะคีย์เข้าได้ ร้านเดียว
