@@ -340,6 +340,54 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   font-size:12.5px;font-family:inherit;background:#fff}
 .cst-ft tr.on>td{background:#EAF1FD}
 .cst-ft td.n input[type=checkbox],.cst-ft th input[type=checkbox]{width:17px;height:17px;cursor:pointer}
+/* 🧾 DCODE — ตารางกรอกออเดอร์ (ใช้หน้าตาเดียวกับใบตัดบิลสต็อคกลางที่แอดมินคุ้นมือแล้ว) */
+main.wide{max-width:1560px}
+.dc-ttl{font-weight:800;font-size:16px;color:var(--ink);line-height:1.3}
+.dc-ttl span{display:block;font-weight:600;font-size:12px;color:var(--muted)}
+.dc-ttl b{color:var(--blue-dark)}
+.dc-cards{grid-template-columns:repeat(3,1fr)}
+.dc-cards .card .v{font-size:22px}
+.dc-cards .card .s{color:var(--muted);font-weight:600;line-height:1.5}
+@media(max-width:900px){.dc-cards{grid-template-columns:1fr}}
+/* ความกว้างรวม ~1,250px ให้พอดีจอแล็ปท็อป 1366px ของแอดมิน (จอเล็กกว่านั้นเลื่อนซ้ายขวาในกรอบตาราง) */
+.dc-ft{min-width:1240px}
+.dc-ft td{text-align:left}
+.dc-ft .cst-in{width:100%}
+.dc-ft .dc-po{width:110px}.dc-ft .dc-oc{width:88px}.dc-ft .dc-on{width:200px}.dc-ft .dc-pj{width:160px}
+.dc-ft .dc-sc{width:96px}.dc-ft .dc-sn{width:210px}.dc-ft .dc-n{width:62px;text-align:right}
+.dc-fb .btn-ghost{border:1.5px solid var(--line);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:700;
+  color:var(--ink);background:#fff}
+.dc-fb .btn-ghost:hover{border-color:var(--blue);color:var(--blue)}
+.dc-ft tr.bad>td:first-child{box-shadow:inset 4px 0 0 var(--bad)}
+.dc-ft .cst-in.dc-bad{border-color:var(--bad);background:#FFF7F7}
+.dc-ft .cst-lk{white-space:normal;max-width:240px;color:var(--muted)}
+.dc-ft .cst-lk b{color:var(--ink)}
+.dc-dtb{display:inline-block;margin-left:8px;font-size:11.5px;font-weight:700;color:var(--muted);background:var(--bg);
+  border:1px solid var(--line);border-radius:7px;padding:2px 8px;vertical-align:middle}
+.dc-msg{border-radius:10px;padding:9px 13px;margin-top:10px;font-size:12.5px;line-height:1.6}
+.dc-msg.err{background:#FDF0F0;border:1.5px solid #F2C4C4;color:#8A1F1F}
+.dc-msg.warn{background:#FFF8E6;border:1.5px solid #F2DDA4;color:#6E5100}
+.dc-msg.ok{background:#EEF8F2;border:1.5px solid #BFE3CD;color:#14532D}
+.dc-msg ul{margin:3px 0 0 18px}
+.dc-sum{margin-top:10px}
+.dc-sum table{font-size:12.5px}
+.dc-sum th,.dc-sum td{padding:6px 9px}
+.dc-go{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.dc-go .dc-make{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:12px 18px;font-size:15px;font-weight:800;cursor:pointer}
+.dc-go .dc-make:hover{background:var(--blue-dark)}
+.dc-go .dc-make[disabled]{opacity:.55;cursor:wait}
+.dc-bk{position:relative}
+.dc-bk .dc-pop{position:absolute;left:0;top:100%;z-index:60;min-width:300px;max-width:420px;box-shadow:0 8px 22px rgba(16,42,93,.18);border-radius:8px}
+.dc-map summary{cursor:pointer;font-weight:800;font-size:14px;color:var(--blue-dark)}
+.dc-map table{margin-top:10px;font-size:12.5px}
+.dc-map th,.dc-map td{padding:6px 9px}
+.dc-map td.l,.dc-map th.l{text-align:left}
+.dc-site{display:inline-block;margin-left:8px;font-size:12px;font-weight:700;color:var(--blue);text-decoration:none;
+  border:1.5px solid var(--line);border-radius:8px;padding:5px 9px;white-space:nowrap}
+.dc-site:hover{border-color:var(--blue);background:var(--blue-soft)}
+@media(max-width:640px){.dc-site{margin-left:0;padding:5px 7px}.dc-site .tx{display:none}}
+.adm-badge{display:inline-block;margin-left:6px;font-size:11px;font-weight:800;color:#fff;background:var(--blue);
+  border-radius:6px;padding:2px 7px;vertical-align:middle;letter-spacing:.3px}
 .cst-nb{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}
 .cst-nb label{display:block;font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:3px}
 .cst-nb textarea{width:100%;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;
@@ -1089,17 +1137,20 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
     <input id="p" type="password" autocomplete="current-password" placeholder="••••••••">
     <button onclick="doLogin()">เข้าสู่ระบบ</button>
     <div class="login-err" id="loginErr"></div>
-    <div class="login-hint">เข้าสู่ระบบด้วยชื่อผู้ใช้ (รหัสสายของคุณ) และรหัสผ่านที่ได้รับจากแอดมิน<br>หากลืมรหัสผ่าน กรุณาติดต่อแอดมิน</div>
+    <div class="login-hint" id="loginHint">เข้าสู่ระบบด้วยชื่อผู้ใช้ (รหัสสายของคุณ) และรหัสผ่านที่ได้รับจากแอดมิน<br>หากลืมรหัสผ่าน กรุณาติดต่อแอดมิน</div>
     <!-- ร้านค้าที่ได้ลิงก์สมัครมาแล้วเปิดโดเมนเปล่า ๆ จะมาโผล่ที่หน้านี้ — พาไปหน้าสมัครให้เลย -->
-    <a class="login-join" href="/join.html">🏪 เป็นร้านค้าที่อยากสมัครเป็นคู่ค้า? <b>กรอกใบสมัครที่นี่</b></a>
+    <a class="login-join" id="loginJoin" href="/join.html">🏪 เป็นร้านค้าที่อยากสมัครเป็นคู่ค้า? <b>กรอกใบสมัครที่นี่</b></a>
   </div>
 </div>
 
 <!-- APP -->
 <div id="app" class="hidden">
   <header>
-    <div class="brand"><span class="b" style="color:var(--blue)">BD</span> Sales Dashboard</div>
+    <div class="brand"><span class="b" style="color:var(--blue)">BD</span> <span id="siteName">Sales Dashboard</span></div>
     <div class="usr">
+      <!-- 🛠 ลิงก์ข้ามเว็บ: เว็บเดิมโชว์ "เว็บแอดมิน" ให้ผู้จัดการ/แอดมิน (คลาส admin-upload) ·
+           เว็บแอดมินเปลี่ยนเป็น "เว็บทีมขาย" (siteInit) — ข้อมูลชุดเดียวกัน ล็อกอินเดียวกัน -->
+      <a class="dc-site admin-upload" id="siteLink" href="/admin" style="display:none"><span>🛠</span><span class="tx"> เว็บแอดมิน</span></a>
       <button class="backbtn" id="backBtn" onclick="navBack()" style="display:none">← ย้อนกลับ</button>
       <div class="who"><b id="uName"></b><span id="uRole"></span></div>
       <div class="av" id="uAv"></div>
@@ -1628,6 +1679,24 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="panel" id="anaTable"></div>
       <div class="panel" id="anaInsight"></div>
     </div>
+
+    <!-- 🧾 DCODE — สร้างไฟล์อัพออเดอร์แบบ bulk (LmtOrderCreationExcel) · เว็บแอดมินเท่านั้น
+         ระบบ dcode สร้างออเดอร์ได้ทีละรายการ ถ้าจะสร้างหลายรายการต้องอัพไฟล์ template ของมัน
+         หน้านี้ "อ่านอย่างเดียว" กับข้อมูลกลาง: แถวที่กรอกเป็นฉบับร่างในเครื่อง (localStorage)
+         ไม่เคยถูกบันทึกขึ้นเซิร์ฟเวอร์ จึงไม่มีทางไปแตะข้อมูลยอดขาย/สั่งของ -->
+    <div id="dcodeView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>DCODE</label>
+          <div class="dc-ttl">🧾 สร้างไฟล์อัพออเดอร์ Bulk <span>LmtOrderCreationExcel · DT CODE <b id="dcDtTxt"></b></span></div>
+        </div>
+        <div class="spacer"></div>
+        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
+        </div>
+      </div>
+      <div id="dcInfo"></div>
+      <div id="dcBody"></div>
+    </div>
   </main>
   <footer>BD Sales Dashboard · v1 · ข้อมูลจาก Unilever (อัพโหลดผ่านเว็บ) · สร้างสำหรับ BD Distribution</footer>
 </div>
@@ -1705,6 +1774,13 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <input id="filePjpOut" type="file" accept=".xls,.xlsx" multiple class="hidden">
         <label class="drop" for="filePjpPlan">🗺 <b>แผน PJP ประจำเดือน</b><small>ไฟล์ PJP_OCT2026.xlsx ฯลฯ · ไฟล์มี 12 วัน (2 อาทิตย์) ระบบสร้างรอบสอง (+14 วัน) ให้เอง · แผนเดือนอื่นไม่หาย</small></label>
         <input id="filePjpPlan" type="file" accept=".xls,.xlsx" multiple class="hidden">
+      </div>
+      <!-- 🧾 DCODE ใช้ไฟล์ 2 ตัวที่มีช่องอัพอยู่แล้ว (Master Data ในกลุ่มสต็อก · Master Outlet ในกลุ่ม PJP)
+           จึงเป็นแค่ "ป้าย" ชี้ไปที่ช่องเดิม (for=…) ไม่มี input ใหม่ — อัพจากตรงนี้หรือจากแท็บเดิม
+           ก็เข้าตัวอ่านตัวเดียวกัน ข้อมูลชุดเดียวกัน (เว็บแอดมินไม่มีแท็บ PJP ให้กดอัพ จึงต้องมีทางนี้) -->
+      <div class="up-row" data-group="dcode">
+        <label class="drop" for="filePjpOut">🏪 <b>Master Outlet Data</b><small>รหัสร้าน · ชื่อร้าน · <b>เลข PJP (คอลัมน์ AC)</b> · ชื่อเซลล์ (คอลัมน์ Z) · อัพใหม่เมื่อไหร่ รายชื่อร้านในหน้า DCODE อัพเดตตามทันที · ร้านเก่าไม่หาย</small></label>
+        <label class="drop up-master" for="fileMaster">📚 <b>Master Data (สินค้าทั้งหมด)</b><small>รหัส + ชื่อสินค้า (Item_Code · TH_Description) · ใช้เลือก SKU ในหน้า DCODE คู่กับสินค้าในใบสั่งรอบล่าสุด</small></label>
       </div>
       <!-- 💰 สองไฟล์ราคาที่ Unilever ส่งมาทุกเดือน
            ⚠️ สองไฟล์นี้ **ไม่ได้เก็บใน bd-data-*** (ข้อมูลยอดขาย/สั่งของ) แต่เก็บเป็นบล็อบของตัวเอง
@@ -1887,6 +1963,16 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 <div id="prArea"></div>
 
 <script>
+/* ============================================================================
+ * 🛠 เว็บไหน — "main" = เว็บเดิม (ทีมขาย) · "admin" = เว็บแอดมิน /admin (เจ้าของสั่ง 10 พ.ย. 69)
+ *
+ * *"สร้างเวปแยกใช้งานกันระหว่างเซลล์และแอดมิน แต่ข้อมูลยังส่งเชื่อมกันได้อยู่"*
+ * ทั้งสองเว็บสร้างจากไฟล์ต้นฉบับนี้ไฟล์เดียว — build.cjs เปลี่ยนบรรทัดข้างล่างเป็น "admin"
+ * แล้วเขียนออกเป็น public/admin.html · ใช้ /api ตัวเดียวกัน ล็อกอินชุดเดียวกัน
+ * ข้อมูลก้อนเดียวกัน (bd-data-*) จึงไม่มีอะไรต้อง "ส่งข้ามเว็บ" — เป็นข้อมูลชุดเดียวอยู่แล้ว
+ * ⚠️ ห้ามแก้ข้อความบรรทัดนี้โดยไม่แก้ build.cjs ตาม (build ใช้เป็นจุดอ้างอิง)
+ * ==========================================================================*/
+const BD_SITE="main";
 /* ====================== DATA ====================== */
 const DATA = __SALESDATA__;
 
@@ -2780,6 +2866,10 @@ const TAB_GROUPS=[
   {k:"shop",nm:"🏪 สมัครร้านค้าใหม่",nmSales:"🏪 ร้านใหม่ของฉัน",tabs:[
     {t:"lead",nm:"ใบสมัครร้านค้า",role:"manager"},
     {t:"myshop",nm:"ร้านใหม่ของฉัน",role:"sales"}]},
+  /* 🧾 DCODE — ระบบใหม่ของศูนย์ (เจ้าของสั่ง 10 พ.ย. 69) · อยู่บน "เว็บแอดมิน" เท่านั้น (site)
+     งานแรก: สร้างไฟล์ LmtOrderCreationExcel สำหรับอัพสร้างออเดอร์ทีละหลายรายการ (bulk) */
+  {k:"dcode",nm:"🧾 DCODE",site:"admin",tabs:[
+    {t:"dcode",nm:"สร้างออเดอร์ Bulk",role:"manager"}]},
   /* 🏆 แข่งขันเปิด eB2B (ส.ค.–ก.ย. 69) จบไปแล้ว เจ้าของสั่งเอาออกจากระบบ 6 ต.ค. 69
      เอาออกเฉพาะ "ทางเข้า" เท่านั้น — ตัวหน้าจอ (ebView/renderEB) ตัวอ่านไฟล์ (parseEB)
      และ **ข้อมูล EB2B ที่บันทึกไว้แล้ว** ยังอยู่ครบและยัง merge ตามปกติใน api/save.js
@@ -2788,13 +2878,44 @@ const TAB_GROUPS=[
 ];
 function tabRole(){return (S.user&&S.user.role)||"";}
 function tabOk(x){return !x.role||x.role===tabRole();}
+/* 🛠 เว็บแอดมินเอาแค่ 4 หัวข้อ + DCODE (เจ้าของสั่ง: *"เวปแอดมินจะเอาแค่หัวข้อ ยอดขาย การสั่งของ
+   สต็อค ปฏิทิน แค่ 4 ตัวนี้ก็พอ เอาให้ข้อมูลเหมือนเดิมให้หมดนะ และเพิ่มหัวข้อนึงเข้าไปหน่อย
+   นั่นคือ DCODE"*) — แท็บย่อยในกลุ่มยังอยู่ครบเหมือนเว็บเดิม ไม่ได้ตัดอะไรออก
+   เว็บเดิม = ทุกกลุ่มเหมือนเดิมทุกอย่าง ยกเว้นกลุ่มที่ติด site:"admin" (DCODE) */
+const ADMIN_SITE_GROUPS=["sales","order","stock","plan","dcode"];
+function tabGrpOnSite(g){
+  if(BD_SITE==="admin")return ADMIN_SITE_GROUPS.indexOf(g.k)>=0;
+  return g.site!=="admin";
+}
+/* เว็บแอดมินเข้าได้เฉพาะบัญชีสิทธิ์ manager (manager + admin1–admin4) — เจ้าของสั่ง "เป็นเวปของแอดมินเท่านั้น"
+   ⚠️ ตัวเช็คนี้คือ "ประตูหน้าเว็บ" เท่านั้น สิทธิ์จริงยังอยู่ที่เซิร์ฟเวอร์ (api/save.js รับแต่ manager)
+   ⚠️ บัญชีเซลล์ที่ล็อกอินค้างไว้ในเครื่องเดียวกัน ห้ามโดนล็อกเอาต์จากเว็บเดิมเพราะมาเปิดหน้านี้
+      → ปฏิเสธเฉย ๆ ไม่ลบ token ที่เก็บไว้ (localStorage ใช้ร่วมกันทั้งสองเว็บ) */
+function siteRoleOk(role){return BD_SITE!=="admin"||role==="manager";}
+function siteRoleMsg(){return "เว็บนี้สำหรับแอดมิน/ผู้จัดการเท่านั้น — ทีมขายใช้เว็บเดิม (ลิงก์ด้านล่าง)";}
+/* หน้าตาของเว็บแอดมิน — ชื่อ ป้าย ลิงก์กลับเว็บทีมขาย (ทำครั้งเดียวตอนโหลดหน้า) */
+function siteInit(){
+  if(BD_SITE!=="admin")return;
+  document.title="BD Admin";
+  const nm=document.getElementById("siteName");if(nm)nm.innerHTML='Admin <span class="adm-badge">แอดมิน</span>';
+  const ln=document.getElementById("siteLink");if(ln){ln.href="/";ln.innerHTML='<span>📊</span><span class="tx"> เว็บทีมขาย</span>';}
+  const lb=document.querySelector("#login .brand .d");if(lb)lb.textContent="Admin";
+  const ls=document.querySelector("#login .brand-sub");if(ls)ls.textContent="เว็บแอดมิน · BD Distribution";
+  const lu=document.getElementById("u");if(lu)lu.placeholder="admin1";
+  const ll=document.querySelector("#login .login-card label");if(ll)ll.textContent="ชื่อผู้ใช้ (เช่น admin1 หรือ manager)";
+  const lh=document.getElementById("loginHint");
+  if(lh)lh.innerHTML="ยอดขาย · สั่งของ · สต็อก · ปฏิทิน · DCODE<br>สำหรับแอดมินและผู้จัดการเท่านั้น (manager · admin1–admin4)<br>ข้อมูลชุดเดียวกับเว็บทีมขาย อัพที่เว็บไหนก็เห็นทั้งสองเว็บ";
+  const lj=document.getElementById("loginJoin");
+  if(lj){lj.href="/";lj.innerHTML="📊 ทีมขาย? <b>ไปที่เว็บทีมขาย</b>";}
+}
+siteInit();
 function tabGroupOf(t){
   for(let i=0;i<TAB_GROUPS.length;i++)if(TAB_GROUPS[i].tabs.some(x=>x.t===t))return TAB_GROUPS[i];
   return TAB_GROUPS[0];
 }
-/* เฉพาะกลุ่มที่มีหน้าให้ดูจริงตามสิทธิ์ของคนที่ล็อกอินอยู่ */
+/* เฉพาะกลุ่มที่มีหน้าให้ดูจริงตามสิทธิ์ของคนที่ล็อกอินอยู่ (และอยู่บนเว็บนี้) */
 function tabVisible(){
-  return TAB_GROUPS.map(g=>({g:g,tabs:g.tabs.filter(tabOk)})).filter(x=>x.tabs.length);
+  return TAB_GROUPS.filter(tabGrpOnSite).map(g=>({g:g,tabs:g.tabs.filter(tabOk)})).filter(x=>x.tabs.length);
 }
 function renderTabs(){
   const top=document.getElementById("tabTop"),sub=document.getElementById("tabSub");
@@ -2814,7 +2935,7 @@ function renderTabs(){
 }
 /* กดกลุ่ม = ไปหน้าแรกของกลุ่มนั้น · ถ้าอยู่ในกลุ่มนั้นอยู่แล้ว ไม่ต้องเด้งกลับหน้าแรก */
 function switchGroup(k){
-  const g=TAB_GROUPS.filter(x=>x.k===k)[0];if(!g)return;
+  const g=TAB_GROUPS.filter(x=>x.k===k)[0];if(!g||!tabGrpOnSite(g))return;
   const tabs=g.tabs.filter(tabOk);if(!tabs.length)return;
   if(tabs.some(x=>x.t===CURTAB))return;
   switchTab(tabs[0].t);
@@ -2840,6 +2961,9 @@ function _switchTab(t){
   document.getElementById("pjpView").classList.toggle("hidden",t!=="pjp");
   document.getElementById("priceView").classList.toggle("hidden",t!=="price");
   document.getElementById("costView").classList.toggle("hidden",t!=="cost");
+  document.getElementById("dcodeView").classList.toggle("hidden",t!=="dcode");
+  /* ตารางกรอกออเดอร์ DCODE มี 10 คอลัมน์ — ขยายหน้าจอเฉพาะแท็บนี้ ไม่แตะหน้าอื่น */
+  {const mn=document.querySelector("main");if(mn)mn.classList.toggle("wide",t==="dcode");}
   if(t==="kpi")renderKPI();
   if(t==="plan")renderPlan();
   if(t==="promo")renderPromo();
@@ -2857,6 +2981,7 @@ function _switchTab(t){
   if(t==="pjp")renderPjp();
   if(t==="price")renderPrice();
   if(t==="cost")renderCost();
+  if(t==="dcode")renderDcode();
 }
 /* เพดาน Ghost order ของ Unilever — ไฟล์ Incentive เขียนไว้เองสองที่:
    หัวคอลัมน์ Q "%Ghost order (Target < =10%)" และชีต "condition details" ("Ghost order <=10%")
@@ -11084,8 +11209,10 @@ function parseMaster(name,buf){
     const nm=(cTH>=0&&r[cTH]?String(r[cTH]):"")||(cEN>=0&&r[cEN]?String(r[cEN]):"");if(nm&&!items[code])items[code]=nm;}
   if(!Object.keys(items).length)throw new Error("ไม่พบรายการสินค้าใน master data");
   MASTER={date:fnameDate(name)||new Date().toISOString().slice(0,10),items:items,up:Date.now()};
-  ulog("✅ "+name+" (Master Data) → "+Object.keys(items).length+" รายการ (ใช้ค้นหาคำขอ + เติมชื่อสินค้าที่หมดสต็อก)");
-  pgBust();syncToServer();
+  ulog("✅ "+name+" (Master Data) → "+Object.keys(items).length+" รายการ (ใช้ค้นหาคำขอ + เติมชื่อสินค้าที่หมดสต็อก + เลือก SKU ในหน้า DCODE)");
+  pgBust();
+  {const v=document.getElementById("dcodeView");if(v&&!v.classList.contains("hidden"))renderDcode();}
+  syncToServer();
 }
 /* Daily Drop Report parser (clean table: Material / Material Description) */
 function parseDrop(name,buf){
@@ -11298,10 +11425,15 @@ function parseOutlet(name,buf){
     ph:pjCol(H,["โทรศั","มือถือ","phone"]),t:pjCol(H,["ชื่อประเภทย่อยของลูกค้า"]),
     ps:pjCol(H,["perfect store"]),psd:pjCol(H,["perfect store description"]),
     e:pjCol(H,["ertm"]),st:pjCol(H,["สถานะ"]),dis:pjCol(H,["อำเภอทางภูมิศ","อำเภอ"]),
-    sub:pjCol(H,["geo district name"]),sal:pjCol(H,["ชื่อพนักงานขาย"])};
+    sub:pjCol(H,["geo district name"]),sal:pjCol(H,["ชื่อพนักงานขาย"]),
+    /* 🧾 DCODE (10 พ.ย. 69): เลข PJP (คอลัมน์ AC) + รหัสพนักงานขาย (คอลัมน์ Y)
+       ⚠️ ต้องจับหัวคอลัมน์ "ตรงตัว" เท่านั้น — หัว Y ในไฟล์จริงคือ "พนักงานข" (ถูกตัดท้าย)
+       ซึ่งเป็นท่อนหนึ่งของ "ชื่อพนักงานขาย" (Z) ถ้าใช้ pjCol แบบหาคำย่อย ไฟล์ที่ไม่มีคอลัมน์ Y
+       จะเอาชื่อเซลล์มาเป็นรหัสแบบเงียบ ๆ (บทเรียนเดียวกับ ผู้สั่งซื้อ / ผู้สั่งซื้อ (ID) ในสต็อคกลาง) */
+    pj:pjColEq(H,["pjp","pjp code"]),emp:pjColEq(H,["พนักงานข","พนักงานขาย","รหัสพนักงานขาย"])};
   if(c.code<0||c.la<0||c.lo<0)
     throw new Error("ไม่ใช่ไฟล์ Master Outlet (ต้องมีคอลัมน์ ลูกค้า / Latitude / Longitude)");
-  const P=pjOk();const now=Date.now();let n=0,geo=0,skip=0,dup=0;
+  const P=pjOk();const now=Date.now();let n=0,geo=0,skip=0,dup=0,npj=0;
   for(let i=1;i<rows.length;i++){
     const r=rows[i]||[];
     const code=String(r[c.code]==null?"":r[c.code]).trim();
@@ -11313,22 +11445,49 @@ function parseOutlet(name,buf){
     put("a",c.a);put("ph",c.ph);put("t",c.t);put("ps",c.ps);put("psd",c.psd);
     put("e",c.e);put("st",c.st);put("d",c.dis);put("sd",c.sub);
     if(c.sal>=0){const v=String(r[c.sal]||"").replace(/\//g," ").trim();if(v)o.sal=v;}
+    {const v=pjCode1(c.pj>=0?r[c.pj]:"");if(v)o.pj=v;}
+    {const v=pjCode1(c.emp>=0?r[c.emp]:"");if(v)o.emp=v;}
     /* ⚠️ ไฟล์จริงมีรหัสร้านซ้ำ ~91 รหัส (สาขาของเชนเดียวกัน) บางแถวพิกัดเป็น 0
        และบางแถวไม่มีชื่อเซลล์ — ถ้าเอา "แถวสุดท้าย" ดื้อ ๆ ร้านจะเสียพิกัดไปเฉย ๆ
        จึงให้คะแนนแล้วเก็บแถวที่สมบูรณ์ที่สุด (เสมอกัน = แถวแรกชนะ) */
     const sc=x=>(x.la!=null?4:0)+(x.sal?2:0)+(x.ps?1:0)+(x.a?1:0);
     const old=P.out[code];
-    if(!old||sc(o)>sc(old)){P.out[code]=o;if(!old)n++;}
-    else dup++;
+    /* ⚠️ "old" ที่ up ไม่ใช่ของรอบนี้ = เรคอร์ดจากไฟล์ก่อน ๆ ต้องถูกแทนเสมอ (เทียบคะแนนเฉพาะ
+       แถวซ้ำ "ในไฟล์เดียวกัน") — เดิมเทียบกับของเก่าด้วย ร้านที่ไฟล์ใหม่ย้ายสาย/เปลี่ยนชื่อ
+       แต่คะแนนเท่าเดิมจึงไม่ถูกอัพเดตเลย ขัดกับที่เจ้าของสั่ง "อัพเมื่อไหร่ข้อมูลต้องอัพเดต" */
+    const fresh=!!old&&old.up===now;
+    if(!fresh||sc(o)>sc(old)){
+      /* แถวที่ชนะไม่มีเลข PJP แต่แถวที่แพ้ของรหัสเดียวกันมี — เก็บเลขไว้ ไม่ทิ้ง */
+      if(fresh&&!o.pj&&old.pj){o.pj=old.pj;if(old.emp&&!o.emp)o.emp=old.emp;}
+      /* ของที่ไฟล์นี้ไม่มีแต่ไฟล์อื่นเคยเติมไว้ (สายจากไฟล์ PJP · พิกัดที่ไฟล์ PJP เติมให้) ห้ามหาย */
+      if(old&&!fresh){if(old.rt&&!o.rt)o.rt=old.rt;
+        if(o.la==null&&old.la!=null){o.la=old.la;o.lo=old.lo;}}
+      P.out[code]=o;if(!fresh)n++;}
+    else{dup++;if(!old.pj&&o.pj){old.pj=o.pj;if(o.emp&&!old.emp)old.emp=o.emp;}}
   }
   if(!n)throw new Error("ไม่พบรหัสร้านในไฟล์");
+  let withGeo=0;
+  Object.keys(P.out).forEach(k=>{const x=P.out[k];if(x.up!==now)return;if(x.pj)npj++;if(x.la!=null)withGeo++;});
   P.cfg.outUp=now;P.cfg.outFile=name;
-  const withGeo=Object.keys(P.out).filter(k=>P.out[k].la!=null).length;
   ulog("✅ "+name+" (Master ร้านค้า) → "+n.toLocaleString()+" ร้าน · มีพิกัด "+withGeo.toLocaleString()+
     " ("+(withGeo/n*100).toFixed(1)+"%)"+(dup?" · รหัสซ้ำในไฟล์ "+dup+" แถว (เก็บแถวที่ข้อมูลครบกว่า)":"")+
     (skip?" · ข้ามแถวที่ไม่ใช่ร้าน "+skip:""));
+  ulog("&nbsp;&nbsp;↳ 🧾 DCODE: มีเลข PJP "+npj.toLocaleString()+" ร้าน"+
+    (c.pj<0?" — ⚠️ ไม่พบคอลัมน์ PJP ในไฟล์นี้ (หน้า DCODE จะเลือกสายให้เองไม่ได้)":""));
   if(!document.getElementById("pjpView").classList.contains("hidden"))renderPjp();
+  if(!document.getElementById("dcodeView").classList.contains("hidden"))renderDcode();
   syncToServer();
+}
+/* หัวคอลัมน์ต้อง "ตรงตัว" (ไม่สนช่องว่าง/ตัวพิมพ์) — ไม่หาคำย่อยแบบ pjCol */
+function pjColEq(hdr,names){
+  const h=hdr.map(x=>String(x==null?"":x).replace(/\s+/g," ").trim().toLowerCase());
+  for(const n of names){const i=h.indexOf(String(n).toLowerCase());if(i>=0)return i;}
+  return -1;
+}
+/* "/401842/" → "401842" · ช่องว่าง → "" · มีหลายค่าในช่องเดียวเอาค่าแรก */
+function pjCode1(v){
+  const t=String(v==null?"":v).split(/[\/\s,;]+/).map(x=>x.trim()).filter(Boolean);
+  return t.length?t[0]:"";
 }
 function parsePJP(name,buf){
   const rows=pjSheet(buf);
@@ -12850,14 +13009,709 @@ function pcTable(title,rows,key,cls,labOld,labNew){
   if(rows.length>200)h+='<tr><td colspan="7" class="psub">… แสดง 200 รายการแรกจาก '+rows.length+' (ใช้ช่องค้นหาเพื่อเจาะดู)</td></tr>';
   return h+'</tbody></table></div></div>';
 }
+/* ============================================================================
+ * 🧾 DCODE — ไฟล์อัพ "สร้างออเดอร์ทีละหลายรายการ" ให้ระบบ dcode (เจ้าของสั่ง 10 พ.ย. 69)
+ *
+ * *"ศูนย์เราจะขึ้นระบบใหม่ชื่อ dcode … ในระบบจะให้เราสร้างทีละรายการ แต่ถ้าจะสร้างหลายรายการ
+ *  ต้องมาทำใน dcode"* — dcode รับไฟล์ template ของมันเอง (LmtOrderCreationExcel) หน้านี้จึงให้
+ *  แอดมินกรอกในเว็บ แล้วเจนไฟล์ออกมาเป็น template เดิมพร้อมอัพ
+ *
+ * แกะจากไฟล์ LmtOrderCreationExcel_12.xlsx ของ dcode — ชีตเดียวชื่อ Sheet1 · หัวตารางแถว 1:
+ *   A PO_NUMBER   กรอกเอง
+ *   B OUTLET_CODE รหัสร้าน (Master Outlet Data คอลัมน์ A) — จอโชว์ชื่อร้าน ไฟล์ลงแค่รหัส
+ *   C PJP_CODE    เลข PJP (Master Outlet Data คอลัมน์ AC) — จอโชว์สาย CT11–KA99 ไฟล์ลงแค่เลข
+ *                 สายจับจากรหัสพนักงาน (คอลัมน์ Y) = DATA.lines[].emp ก่อน แล้วค่อยชื่อเซลล์ (Z)
+ *   D SKU_CODE    รหัสสินค้า (Master Data + สต็อก + ใบสั่งรอบล่าสุด)
+ *   E CS · F SH/SU · G PC   กรอกเอง (ตัวเลข)
+ *   H DT_CODE     15389839 ตายตัว (เจ้าของสั่ง "ตั้งไว้ให้ใช้รหัสเดียวเลย")
+ *  ⚠️ ใน template คอลัมน์ A–D และ H ตั้งรูปแบบเป็น "ข้อความ" ทั้งคอลัมน์ (numFmt 49 = "@")
+ *     จึงต้องเขียนเป็นสตริง ไม่ใช่ตัวเลข · E/F/G เป็นตัวเลขธรรมดา (ช่องว่าง = 0)
+ *
+ * ข้อมูลอัพเดตเองทุกครั้งที่อัพ Master Data / Master Outlet Data — ดัชนีทุกตัวผูกกับสแตมป์การอัพ
+ * แล้วสร้างใหม่เอง และแถวที่กรอกไว้แล้วจะดึงชื่อร้าน/ชื่อสินค้า/สาย (ที่มาจากร้าน) ล่าสุดทุกครั้งที่วาด
+ *
+ * 🛟 แถวที่กรอก = ฉบับร่างในเครื่อง (localStorage `bddc:<user>`) — **ไม่อยู่ในข้อมูลกลาง (bd-data-*)**
+ *    หน้านี้จึงอ่านอย่างเดียวกับข้อมูลยอดขาย/สั่งของ/ร้านค้า ไม่มีทางไปทับหรือย้อนของใคร
+ * ==========================================================================*/
+const DC_DT="15389839";
+const DC_HEAD=["PO_NUMBER","OUTLET_CODE","PJP_CODE","SKU_CODE","CS","SH/SU","PC","DT_CODE"];
+const DC_QTY=[["cs","CS"],["sh","SH/SU"],["pc","PC"]];
+let DC={f:null,who:"",rest:0,dt:0,ft:0,st:0,last:null,busy:false,bk:{}};
+function dcMgr(){return !!(S.user&&S.user.role==="manager");}
+/* ---------- ฉบับร่างในเครื่อง (ห้ามขึ้นเซิร์ฟเวอร์) ---------- */
+function dcDraftKey(){return "bddc:"+((S.user&&(S.user.id||S.user.code||S.user.name))||"x");}
+function dcDraftSave(){try{if(DC.f)localStorage.setItem(dcDraftKey(),JSON.stringify(DC.f));}catch(e){}}
+function dcDraftWipe(){try{localStorage.removeItem(dcDraftKey());}catch(e){}}
+function dcDraftLoad(){
+  try{const d=JSON.parse(localStorage.getItem(dcDraftKey())||"null");
+    if(d&&typeof d==="object"&&Array.isArray(d.rows)&&d.rows.length)return d;}catch(e){}
+  return null;
+}
+function dcDraftLater(){clearTimeout(DC.dt);DC.dt=setTimeout(dcDraftSave,400);}
+/* แถวใหม่: ใช้ PO / ร้าน / สาย ของแถวต้นแบบ (ออเดอร์หนึ่ง = ร้านเดียวหลาย SKU) แต่ SKU กับจำนวนว่าง */
+function dcRowNew(b){b=b||{};
+  return {k:"",po:b.po||"",oc:b.oc||"",on:b.on||"",pj:b.pj||"",pa:b.pa?1:0,sku:"",sn:"",cs:"",sh:"",pc:""};}
+function dcRowKey(f,r){f.seq=(+f.seq||0)+1;r.k="r"+f.seq;return r;}
+/* คนละคนล็อกอินเครื่องเดียวกัน = คนละฉบับร่าง (ไม่เอาของคนก่อนมาโชว์) */
+function dcEnsure(){
+  const who=dcDraftKey();
+  if(DC.f&&DC.who===who)return DC.f;
+  DC.who=who;DC.rest=0;DC.bk={};DC.last=null;
+  const d=dcDraftLoad();
+  if(d){DC.f=d;DC.rest=1;d.rows.forEach(r=>{if(!r.k)dcRowKey(d,r);});}
+  else{const f={seq:0,rows:[]};f.rows.push(dcRowKey(f,dcRowNew()));DC.f=f;}
+  return DC.f;
+}
+/* ---------- ร้านค้า (Master Outlet Data → PJP.out) ---------- */
+let DC_OIDX=null,DC_OIDX_K="";
+function dcOutIdx(){
+  const out=(PJP&&PJP.out)||{},cfg=(PJP&&PJP.cfg)||{};
+  const ks=Object.keys(out);
+  const k=ks.length+"/"+(cfg.outUp||0)+"/"+(cfg.planUp||0);
+  if(DC_OIDX&&DC_OIDX_K===k)return DC_OIDX;
+  const up=+cfg.outUp||0,list=[],by={};
+  ks.forEach(c=>{
+    const x=out[c]||{};
+    if(x.rt===PJP_DT)return;          /* ร้านเสมือนของสาย Digital Coverage ("ร้านค้า DT0001") ไม่ใช่ร้านจริง */
+    const o={c:c,n:String(x.n||"").trim()||c,st:String(x.st||""),pj:String(x.pj||""),sal:String(x.sal||""),
+      d:String(x.d||""),inM:!!(x.st||x.pj||x.sal||x.a||x.t||x.ph),old:!!(up&&x.up&&x.up<up)};
+    o.act=!/^inactive$/i.test(o.st.trim());
+    o.h=(o.n+" "+c).toLowerCase();
+    list.push(o);by[c]=o;
+  });
+  /* Active ก่อน · ร้านที่ยังอยู่ใน Master รอบล่าสุดก่อน · แล้วเรียงชื่อ */
+  list.sort((a,b)=>(b.act-a.act)||(a.old-b.old)||(b.inM-a.inM)||a.n.localeCompare(b.n,"th"));
+  DC_OIDX={list:list,by:by};DC_OIDX_K=k;return DC_OIDX;
+}
+function dcFind(L,q,lim){
+  const toks=String(q||"").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if(!toks.length)return [];
+  const qq=toks.join(""),pre=[],rest=[];lim=lim||8;
+  for(let i=0;i<L.length;i++){const o=L[i];
+    if(!toks.every(t=>o.h.indexOf(t)>=0))continue;
+    (o.c.indexOf(qq)===0?pre:rest).push(o);           /* พิมพ์ต้นรหัสมา = ขึ้นก่อน */
+    if(pre.length>=lim)break;}
+  return pre.concat(rest).slice(0,lim);
+}
+function dcOutFind(q,lim){return dcFind(dcOutIdx().list,q,lim);}
+/* ---------- PJP ↔ สายเซลล์ ----------
+   เจ้าของสั่ง: *"ขึ้นรหัสสายเซลล์ให้เห็น พวก CT11-KA99 แต่พอกรอกลงไฟล์ให้ลงแค่รหัส
+   ให้ระบบจับรหัสกับชื่อเซลล์ช่อง Z"*
+   ในไฟล์จริง (10 พ.ย. 69) เลข PJP 11 เลข ผูกกับชื่อเซลล์ 1:1 ทุกแถว และรหัสพนักงาน (คอลัมน์ Y)
+   ตรงกับ DATA.lines[].emp เป๊ะทุกสาย — ⚠️ แต่ "ชื่อ" ไม่ตรงเสมอ: สาย CT12 เปลี่ยนคนแล้ว
+   (Z = การัณยภาส · ในระบบยังเป็นชื่อเดิม) ถ้าจับด้วยชื่ออย่างเดียว CT12 จะหลุด
+   จึงจับด้วยรหัสพนักงานก่อน แล้วค่อยถอยไปชื่อต้นของเซลล์ · จับไม่ได้ = โชว์ "PJP เลข · ชื่อ" ไม่เดา */
+let DC_PMAP=null,DC_PMAP_K="";
+function dcFirst(s){return String(s||"").replace(/[\/0-9]+/g," ").trim().split(/\s+/)[0]||"";}
+function dcLineDisp(c){const L=(DATA&&DATA.lines)||{};return ((L[c]||{}).display)||FOCUS_MAP[c]||c;}
+function dcPjMap(){
+  const oi=dcOutIdx(),L=(DATA&&DATA.lines)||{},out=(PJP&&PJP.out)||{};
+  const k=DC_OIDX_K+"|"+Object.keys(L).map(c=>c+":"+(L[c].emp||"")+":"+(L[c].name||"")).join(",");
+  if(DC_PMAP&&DC_PMAP_K===k)return DC_PMAP;
+  const g={};
+  oi.list.forEach(o=>{
+    if(!o.pj)return;
+    const e=g[o.pj]||(g[o.pj]={n:0,act:0,sal:{},emp:{}});
+    e.n++;if(o.act)e.act++;
+    if(o.sal)e.sal[o.sal]=(e.sal[o.sal]||0)+1;
+    const em=(out[o.c]||{}).emp;if(em)e.emp[em]=(e.emp[em]||0)+1;
+  });
+  const top=m=>Object.keys(m).sort((a,b)=>m[b]-m[a])[0]||"";
+  const ord=(DATA&&DATA.focus_order&&DATA.focus_order.length)?DATA.focus_order:FOCUS_ORDER;
+  const list=Object.keys(g).map(pj=>{
+    const e=g[pj],sal=top(e.sal),emp=top(e.emp);
+    let line="",how="";
+    if(emp){const h=Object.keys(L).filter(c=>String(L[c].emp||"")===emp);if(h.length===1){line=h[0];how="emp";}}
+    if(!line){const fn=dcFirst(sal);
+      if(fn){const h=Object.keys(L).filter(c=>dcFirst(L[c].name)===fn);if(h.length===1){line=h[0];how="name";}}}
+    return {pj:pj,n:e.n,act:e.act,sal:sal,nm:dcFirst(sal),emp:emp,line:line,how:how,disp:line?dcLineDisp(line):""};
+  });
+  const oi2=x=>{const i=x.line?ord.indexOf(x.line):-1;return i<0?999:i;};
+  list.sort((a,b)=>(oi2(a)-oi2(b))||((a.disp||"~")<(b.disp||"~")?-1:(a.disp||"~")>(b.disp||"~")?1:0)||(a.pj<b.pj?-1:1));
+  const by={};list.forEach(x=>{by[x.pj]=x;});
+  DC_PMAP={list:list,by:by};DC_PMAP_K=k;return DC_PMAP;
+}
+/* สิ่งที่คนเห็น: "CT11 · ชลศิต" (ไฟล์ลง 401727) · จับสายไม่ได้ = "PJP 401727 · ชื่อ" */
+function dcPjLabel(pj){
+  pj=String(pj||"");if(!pj)return "";
+  const x=dcPjMap().by[pj];
+  if(!x)return "PJP "+pj;
+  return (x.disp||("PJP "+pj))+(x.nm?" · "+x.nm:"");
+}
+/* ตัวเลือกสาย: โชว์ "CT11 · ชลศิต" เฉย ๆ (เลขที่ลงไฟล์ขึ้นใต้ช่องอยู่แล้ว) — ใส่เลขต่อท้าย
+   เฉพาะตอนที่สองเลข PJP ได้ชื่อเดียวกัน ไม่งั้นเลือกไม่ถูกว่าตัวไหน */
+function dcPjOpts(cur,blank){
+  const M=dcPjMap();cur=String(cur||"");
+  const cnt={};M.list.forEach(x=>{const l=dcPjLabel(x.pj);cnt[l]=(cnt[l]||0)+1;});
+  let h=`<option value=""${cur?"":" selected"}>${blank||"— เลือกสาย —"}</option>`;
+  M.list.forEach(x=>{const l=dcPjLabel(x.pj);
+    h+=`<option value="${anaEsc(x.pj)}"${x.pj===cur?" selected":""}>${anaEsc(l)}${cnt[l]>1?" ("+anaEsc(x.pj)+")":""}</option>`;});
+  if(cur&&!M.by[cur])h+=`<option value="${anaEsc(cur)}" selected>PJP ${anaEsc(cur)} (ไม่มีใน Master Outlet)</option>`;
+  return h;
+}
+/* ---------- สินค้า: สต็อก (มียอดคงเหลือ) → ใบสั่งรอบล่าสุด → Master Data → ชื่อจากใบสั่งเก่า ---------- */
+let DC_PIDX=null,DC_PIDX_K="";
+function dcProdIdx(){
+  const m=(MASTER&&MASTER.items)||{},sd=(STOCKD&&STOCKD.rows)||[],on=(ORDERS&&ORDERS.names)||{};
+  const seq=poSeqMap();
+  const k=Object.keys(m).length+"/"+((MASTER&&MASTER.up)||0)+"/"+sd.length+"/"+((STOCKD&&STOCKD.date)||"")+
+    "/"+Object.keys(on).length+"/"+((PO_SEQ&&PO_SEQ.key)||"");
+  if(DC_PIDX&&DC_PIDX_K===k)return DC_PIDX;
+  const by={},list=[];
+  const add=(c,n)=>{c=String(c==null?"":c).trim();if(!c)return null;
+    let o=by[c];
+    if(!o){o=by[c]={c:c,n:"",bal:null,f:seq[c]!==undefined,m:!!m[c]};list.push(o);}
+    if(!o.n&&n)o.n=String(n).trim();
+    return o;};
+  sd.forEach(r=>{if(r.wh!=="sale")return;const o=add(r.c,r.n||oname(r.c));if(o)o.bal=(o.bal||0)+(+r.i||0);});
+  Object.keys(seq).sort((a,b)=>seq[a]-seq[b]).forEach(c=>add(c,oname(c)));
+  Object.keys(m).forEach(c=>add(c,m[c]));
+  Object.keys(on).forEach(c=>add(c,on[c]));
+  list.forEach(o=>{if(!o.n)o.n=oname(o.c)||o.c;o.h=(o.n+" "+o.c).toLowerCase();});
+  DC_PIDX={list:list,by:by};DC_PIDX_K=k;return DC_PIDX;
+}
+function dcProdFind(q,lim){return dcFind(dcProdIdx().list,q,lim);}
+function dcSkuNm(c){c=String(c||"").trim();if(!c)return "";const p=dcProdIdx().by[c];return (p&&p.n)||oname(c)||"";}
+/* ---------- อัพข้อมูลตั้งต้นใหม่ → แถวที่กรอกไว้ตามไปด้วย ----------
+   ชื่อร้าน/ชื่อสินค้าดึงของล่าสุดเสมอ · สายที่ "มาจากร้าน" (pa) เปลี่ยนตามร้าน ถ้า Master ย้ายร้าน
+   ไปสายอื่น · สายที่แอดมินเลือกเอง (pa=0) ไม่ไปแตะ */
+function dcRefresh(){
+  const f=DC.f;if(!f)return;
+  const oi=dcOutIdx(),pi=dcProdIdx();let ch=0;
+  f.rows.forEach(r=>{
+    const o=oi.by[String(r.oc||"").trim()];
+    if(o){if(r.on!==o.n){r.on=o.n;ch=1;}
+      if(r.pa&&r.pj!==o.pj){r.pj=o.pj;ch=1;}}
+    const p=pi.by[String(r.sku||"").trim()];
+    if(p&&r.sn!==p.n){r.sn=p.n;ch=1;}
+  });
+  if(ch)dcDraftSave();
+}
+/* ---------- จำนวน ---------- */
+function dcQtyNorm(v){const s=String(v==null?"":v).trim();if(s==="")return 0;
+  if(!/^\d+(\.0+)?$/.test(s))return null;return parseInt(s,10);}
+function dcRowEmpty(r){return !["po","oc","sku","cs","sh","pc"].some(k=>String(r[k]==null?"":r[k]).trim());}
+/* ---------- ตรวจก่อนสร้างไฟล์ ----------
+   err = สร้างไม่ได้ (ไฟล์จะโดน dcode ปฏิเสธแน่ ๆ) · warn = ถามก่อน (อาจตั้งใจ) */
+function dcCheck(){
+  const f=dcEnsure(),oi=dcOutIdx(),pm=dcPjMap(),pi=dcProdIdx();
+  const err=[],warn=[],ok=[],bad={},seen={},poOut={};let n=0;
+  f.rows.forEach((r,i)=>{
+    if(dcRowEmpty(r))return;
+    n++;const no=i+1,e=[],w=[],bf={};
+    const E=(k,m)=>{e.push(m);bf[k]=1;};
+    const po=String(r.po||"").trim(),oc=String(r.oc||"").trim(),pj=String(r.pj||"").trim(),sku=String(r.sku||"").trim();
+    if(!po)E("po","ไม่มี PO number");
+    if(!oc)E("oc","ไม่มีรหัสร้าน");else if(!/^\d+$/.test(oc))E("oc","รหัสร้านต้องเป็นตัวเลข");
+    if(!pj)E("pj","ยังไม่ได้เลือกสาย (PJP)");else if(!/^\d+$/.test(pj))E("pj","เลข PJP ต้องเป็นตัวเลข");
+    if(!sku)E("sku","ไม่มีรหัสสินค้า");else if(!/^\d+$/.test(sku))E("sku","รหัสสินค้าต้องเป็นตัวเลข");
+    const q=DC_QTY.map(([k])=>dcQtyNorm(r[k]));
+    if(q.some(x=>x===null)){DC_QTY.forEach(([k],j)=>{if(q[j]===null)bf[k]=1;});
+      e.push("จำนวน CS / SH/SU / PC ต้องเป็นเลขจำนวนเต็ม 0 ขึ้นไป");}
+    else if(!q.some(x=>x>0)){DC_QTY.forEach(([k])=>{bf[k]=1;});e.push("ยังไม่ได้ใส่จำนวน (CS / SH/SU / PC)");}
+    if(oc&&/^\d+$/.test(oc)){
+      const o=oi.by[oc];
+      if(!o)w.push("รหัสร้าน "+oc+" ไม่มีใน Master Outlet Data");
+      else{
+        if(!o.act)w.push("ร้าน "+o.n+" สถานะ Inactive ใน Master Outlet");
+        if(o.pj&&pj&&o.pj!==pj)w.push("ร้าน "+o.n+" อยู่สาย "+dcPjLabel(o.pj)+" แต่แถวนี้เลือก "+dcPjLabel(pj));
+      }
+    }
+    if(pj&&/^\d+$/.test(pj)&&!pm.by[pj])w.push("PJP "+pj+" ไม่มีใน Master Outlet Data");
+    if(sku&&/^\d+$/.test(sku)&&!pi.by[sku])w.push("รหัสสินค้า "+sku+" ไม่มีใน Master Data / สต็อก / ใบสั่ง");
+    if(po&&oc&&sku){const key=po+"|"+oc+"|"+sku;
+      if(seen[key])w.push("ซ้ำกับแถว "+seen[key]+" (PO + ร้าน + สินค้าเดียวกัน)");else seen[key]=no;}
+    if(po&&oc){const m=poOut[po]||(poOut[po]={});m[oc]=1;}
+    e.forEach(m=>err.push({i:i,n:no,m:m}));w.forEach(m=>warn.push({i:i,n:no,m:m}));
+    if(e.length)bad[i]=bf;
+    else ok.push({i:i,po:po,oc:oc,pj:pj,sku:sku,cs:q[0],sh:q[1],pc:q[2]});
+  });
+  Object.keys(poOut).forEach(po=>{const ocs=Object.keys(poOut[po]);
+    if(ocs.length>1)warn.push({i:-1,n:0,m:"PO "+po+" ใช้กับ "+ocs.length+" ร้าน ("+ocs.join(", ")+") — ปกติ 1 PO = 1 ร้าน"});});
+  return {err:err,warn:warn,ok:ok,bad:bad,n:n};
+}
+/* ---------- กรอกทีละช่อง (ไม่วาดทั้งตารางใหม่ — เคอร์เซอร์จะได้ไม่หลุด) ---------- */
+function dcEl(id){return document.getElementById(id);}
+function dcSet(i,k,v){const r=DC.f&&DC.f.rows[i];if(!r)return;r[k]=v;dcDraftLater();dcFootLater();}
+function dcFootLater(){clearTimeout(DC.ft);DC.ft=setTimeout(dcFootPaint,250);}
+function dcOutApply(r,o){
+  r.oc=o.c;r.on=o.n;
+  if(o.pj){r.pj=o.pj;r.pa=1;}
+  else if(r.pa){r.pj="";r.pa=0;}       /* สายเดิมมาจากร้านก่อนหน้า — ไม่ใช่ของร้านนี้ */
+}
+/* อัพเดตช่องอื่นของแถวเดียว (ไม่แตะช่องที่กำลังพิมพ์อยู่) */
+function dcRowSync(i){
+  const r=DC.f&&DC.f.rows[i];if(!r)return;
+  const a=document.activeElement;
+  const put=(id,v)=>{const el=dcEl(id);if(!el)return;if(el!==a&&el.value!==v)el.value=v;
+    if(el.hasAttribute("title"))el.title=v;};
+  put("dcOc"+i,r.oc||"");put("dcOn"+i,r.on||"");put("dcSc"+i,r.sku||"");put("dcSn"+i,r.sn||"");
+  const s=dcEl("dcPj"+i);if(s&&s!==a){s.innerHTML=dcPjOpts(r.pj);s.value=r.pj||"";}
+  const m1=dcEl("dcOk"+i);if(m1)m1.innerHTML=dcOcMark(r);
+  const m2=dcEl("dcPt"+i);if(m2)m2.innerHTML=dcPjTag(r);
+  const m3=dcEl("dcSk"+i);if(m3)m3.innerHTML=dcSkMark(r);
+}
+function dcOcMark(r){
+  const c=String(r.oc||"").trim();if(!c)return "";
+  const o=dcOutIdx().by[c];
+  if(!o)return '<span class="cst-no">ไม่มีรหัสนี้ใน Master Outlet</span>';
+  return '<span class="cst-ok">✓</span> '+(o.act?"Active":'<span class="cst-no">Inactive</span>')+
+    (o.d?" · "+anaEsc(o.d):"")+(o.old?' · <span class="cst-no">ไม่อยู่ใน Master รอบล่าสุด</span>':"");
+}
+function dcPjTag(r){
+  const pj=String(r.pj||"").trim();
+  const o=dcOutIdx().by[String(r.oc||"").trim()];
+  let h=pj?("ลงไฟล์ <b>"+anaEsc(pj)+"</b>"+(r.pa?" · ตามร้าน":"")):"";
+  if(o&&o.pj&&pj&&o.pj!==pj)h+='<br><span class="cst-no">ร้านนี้อยู่ '+anaEsc(dcPjLabel(o.pj))+'</span>';
+  else if(o&&!o.pj&&!pj)h='<span class="cst-no">ร้านนี้ไม่มี PJP ใน Master — เลือกสายเอง</span>';
+  return h;
+}
+function dcSkMark(r){
+  const c=String(r.sku||"").trim();if(!c)return "";
+  const p=dcProdIdx().by[c];
+  if(!p)return '<span class="cst-no">ไม่มีรหัสนี้</span>';
+  return '<span class="cst-ok">✓</span>'+(p.bal!=null?" คงเหลือ "+(+p.bal).toLocaleString():"")+(p.f?" · ในใบสั่งล่าสุด":"");
+}
+/* รหัสร้าน: พิมพ์ครบ = ชื่อร้าน + สายขึ้นเอง */
+function dcOcIn(i,v){
+  const r=DC.f&&DC.f.rows[i];if(!r)return;
+  r.oc=String(v==null?"":v).trim();
+  const o=dcOutIdx().by[r.oc];
+  if(o){dcOutApply(r,o);const s=dcEl("dcOs"+i);if(s)s.innerHTML="";}
+  else if(!r.oc){r.on="";if(r.pa){r.pj="";r.pa=0;}}     /* ลบรหัสร้านทิ้ง = ชื่อ/สายที่มาจากร้านนั้นก็ต้องออกด้วย */
+  dcRowSync(i);dcDraftLater();dcFootLater();
+}
+/* ชื่อร้าน: พิมพ์แล้วขึ้นรายการให้เลือก (หน่วงไว้ ไม่ค้นทุกตัวอักษร) */
+function dcOnIn(i,v){
+  const r=DC.f&&DC.f.rows[i];if(!r)return;
+  r.on=String(v==null?"":v);
+  clearTimeout(DC.st);DC.st=setTimeout(()=>dcOutSug(i),160);dcDraftLater();
+}
+function dcSugHtml(list,none){
+  return list.length?list.join(""):`<div class="cst-sg none">${none}</div>`;
+}
+/* รหัสที่จะใส่ใน onclick — รหัสร้าน/สินค้าเป็นตัวเลขอยู่แล้ว แต่กันอักขระที่ทำให้สคริปต์พังไว้ด้วย */
+function dcJs(s){return String(s==null?"":s).replace(/[\\'"<>&\s]/g,"");}
+function dcOutRowHtml(o,call){
+  const pj=o.pj?dcPjLabel(o.pj):"ไม่มี PJP";
+  return `<div class="cst-sg" onmousedown="event.preventDefault()" onclick="${call(dcJs(o.c))}"><b>${anaEsc(o.n)}</b>`+
+    `<span>${anaEsc(o.c)} · ${anaEsc(pj)}${o.d?" · "+anaEsc(o.d):""}${o.act?"":' · <b class="cst-no">Inactive</b>'}</span></div>`;
+}
+function dcOutSug(i){
+  const r=DC.f&&DC.f.rows[i];const box=dcEl("dcOs"+i);if(!r||!box)return;
+  const q=String(r.on||"").trim();
+  if(q.length<2){box.innerHTML="";return;}
+  const cur=dcOutIdx().by[String(r.oc||"").trim()];
+  if(cur&&cur.n===q){box.innerHTML="";return;}
+  /* ⚠️ ไม่ "จับให้เอง" แม้ชื่อตรงเป๊ะร้านเดียว — กำลังพิมพ์อยู่แล้วโดนดึงไปช่องอื่นกลางคันจะงง
+     ต้องกดเลือกจากรายการเสมอ (หรือพิมพ์รหัสร้านตรง ๆ) */
+  const hit=dcOutFind(q,8);
+  box.innerHTML=dcSugHtml(hit.map(o=>dcOutRowHtml(o,c=>"dcOutPick("+i+",'"+c+"')")),
+    Object.keys(dcOutIdx().by).length?"ไม่พบร้านนี้ใน Master Outlet Data":"ยังไม่มีข้อมูลร้าน — อัพไฟล์ Master Outlet Data ก่อน");
+}
+function dcOutPick(i,code){
+  const r=DC.f&&DC.f.rows[i];const o=dcOutIdx().by[code];if(!r||!o)return;
+  dcOutApply(r,o);
+  const s=dcEl("dcOs"+i);if(s)s.innerHTML="";
+  dcRowSync(i);dcDraftSave();dcFootPaint();
+  const nx=dcEl(r.pj?"dcSc"+i:"dcPj"+i);if(nx)nx.focus();     /* ไปช่องถัดไปที่ต้องกรอกให้เลย */
+}
+function dcSugHide(id){setTimeout(()=>{const b=dcEl(id);if(b)b.innerHTML="";},180);}
+function dcPjSel(i,v){const r=DC.f&&DC.f.rows[i];if(!r)return;r.pj=String(v||"");r.pa=0;
+  dcRowSync(i);dcDraftSave();dcFootPaint();}
+/* รหัสสินค้า: พิมพ์ครบ = ชื่อขึ้นเอง */
+function dcScIn(i,v){
+  const r=DC.f&&DC.f.rows[i];if(!r)return;
+  r.sku=String(v==null?"":v).trim();
+  const nm=dcProdIdx().by[r.sku]?dcSkuNm(r.sku):"";
+  if(nm){r.sn=nm;const s=dcEl("dcSs"+i);if(s)s.innerHTML="";}
+  dcRowSync(i);dcDraftLater();dcFootLater();
+}
+function dcSnIn(i,v){
+  const r=DC.f&&DC.f.rows[i];if(!r)return;
+  r.sn=String(v==null?"":v);
+  clearTimeout(DC.st);DC.st=setTimeout(()=>dcSkuSug(i),160);dcDraftLater();
+}
+function dcSkuRowHtml(p,call){
+  return `<div class="cst-sg" onmousedown="event.preventDefault()" onclick="${call(dcJs(p.c))}"><b>${anaEsc(p.n)}</b>`+
+    `<span>${anaEsc(p.c)}${p.bal!=null?" · คงเหลือ "+(+p.bal).toLocaleString():""}${p.f?" · ในใบสั่งล่าสุด":""}</span></div>`;
+}
+function dcSkuSug(i){
+  const r=DC.f&&DC.f.rows[i];const box=dcEl("dcSs"+i);if(!r||!box)return;
+  const q=String(r.sn||"").trim();
+  if(q.length<2){box.innerHTML="";return;}
+  if(dcSkuNm(r.sku)===q){box.innerHTML="";return;}
+  const hit=dcProdFind(q,8);
+  box.innerHTML=dcSugHtml(hit.map(p=>dcSkuRowHtml(p,c=>"dcSkuPick("+i+",'"+c+"')")),
+    "ไม่พบสินค้านี้ — ลองพิมพ์รหัส หรืออัพ Master Data ให้ครบก่อน");
+}
+function dcSkuPick(i,code){
+  const r=DC.f&&DC.f.rows[i];if(!r)return;
+  r.sku=String(code||"");r.sn=dcSkuNm(code)||r.sn;
+  const s=dcEl("dcSs"+i);if(s)s.innerHTML="";
+  dcRowSync(i);dcDraftSave();dcFootPaint();
+  const nx=dcEl("dcCs"+i);if(nx)nx.focus();
+}
+/* ---------- แถว: เพิ่ม · คัดลอก · ลบ ---------- */
+function dcRowAdd(n,blank){
+  const f=dcEnsure();
+  for(let i=0;i<Math.max(1,+n||1);i++){
+    const last=blank?null:f.rows[f.rows.length-1];
+    f.rows.push(dcRowKey(f,dcRowNew(last)));
+  }
+  dcDraftSave();renderDcode();
+  const el=dcEl((blank?"dcPo":"dcSc")+(f.rows.length-1));if(el)el.focus();
+}
+/* ⧉ คัดลอกทั้งแถว แทรกไว้ใต้แถวเดิม (เจ้าของขอ "กอปปี้บรรทัดได้") */
+function dcRowCopy(i){
+  const f=DC.f;if(!f||!f.rows[i])return;
+  const r=dcRowKey(f,Object.assign({},f.rows[i],{sel:false}));
+  f.rows.splice(i+1,0,r);
+  dcDraftSave();renderDcode();toast("คัดลอกแถว "+(i+1)+" แล้ว → แถว "+(i+2));
+}
+function dcRowDel(i){
+  const f=DC.f;if(!f||!f.rows[i])return;
+  const r=f.rows[i];
+  if(!dcRowEmpty(r)&&!confirm("ลบแถว "+(i+1)+"?"))return;
+  f.rows.splice(i,1);
+  if(!f.rows.length)f.rows.push(dcRowKey(f,dcRowNew()));
+  dcDraftSave();renderDcode();
+}
+function dcClearAll(){
+  const f=DC.f;if(!f)return;
+  if(f.rows.some(r=>!dcRowEmpty(r))&&!confirm("ล้างรายการทั้งหมด "+f.rows.length+" แถว? (ไฟล์ที่สร้างไปแล้วไม่หาย)"))return;
+  const nf={seq:0,rows:[]};nf.rows.push(dcRowKey(nf,dcRowNew()));
+  DC.f=nf;DC.rest=0;DC.bk={};dcDraftWipe();dcDraftSave();renderDcode();
+}
+/* ============================================================================
+ * ☑️ ติ๊กหลายแถว แล้วปรับทีเดียว (เจ้าของขอ "เลือกปรับหลายๆรายการได้") — แบบเดียวกับใบตัดบิล
+ * ธงติ๊ก (sel) อยู่ในฉบับร่างเท่านั้น ไม่ได้ลงไฟล์ · ไม่ได้ติ๊กอะไรแล้วกดปรับ = เตือน ไม่ทำทั้งตาราง
+ * ==========================================================================*/
+function dcSelTog(i){const r=DC.f&&DC.f.rows[i];if(!r)return;r.sel=!r.sel;dcDraftSave();renderDcode();}
+function dcSelAll(on){const f=DC.f;if(!f)return;f.rows.forEach(r=>{r.sel=!!on;});dcDraftSave();renderDcode();}
+function dcSelRows(){const f=DC.f;return f?f.rows.filter(r=>r.sel):[];}
+function dcSelN(){return dcSelRows().length;}
+function dcBk(k,v){DC.bk[k]=v;}
+function dcBulk(k){
+  const rows=dcSelRows();
+  if(!rows.length){alert("ติ๊ก ☑️ หน้าแถวที่ต้องการก่อน แล้วค่อยกดปุ่มปรับ");return;}
+  const v=String(DC.bk[k]==null?"":DC.bk[k]).trim();
+  if(k==="po"){
+    if(!v){alert("ใส่ PO number ก่อน");return;}
+    rows.forEach(r=>{r.po=v;});
+  }else if(k==="oc"){
+    const o=dcOutIdx().by[v];
+    if(!o){alert(v?("รหัสร้าน "+v+" ไม่มีใน Master Outlet Data — เลือกร้านจากรายการ"):"เลือกร้านก่อน (พิมพ์ชื่อหรือรหัสร้าน แล้วกดเลือกจากรายการ)");return;}
+    rows.forEach(r=>dcOutApply(r,o));
+  }else if(k==="pj"){
+    if(!v){alert("เลือกสาย (PJP) ก่อน");return;}
+    rows.forEach(r=>{r.pj=v;r.pa=0;});
+  }else if(k==="sku"){
+    if(!v){alert("ใส่รหัสสินค้าก่อน (หรือพิมพ์ชื่อแล้วเลือกจากรายการ)");return;}
+    const nm=dcProdIdx().by[v]?dcSkuNm(v):"";
+    if(!nm&&!confirm("รหัส "+v+" ไม่มีใน Master Data / สต็อก / ใบสั่ง\n\nใส่ให้ "+rows.length+" แถวนี้เลยไหม?"))return;
+    rows.forEach(r=>{r.sku=v;r.sn=nm||r.sn;});
+  }else if(k==="cs"||k==="sh"||k==="pc"){
+    if(v===""){alert("ใส่จำนวนก่อน");return;}
+    const q=dcQtyNorm(v);
+    if(q===null){alert("จำนวนต้องเป็นเลขจำนวนเต็ม 0 ขึ้นไป");return;}
+    rows.forEach(r=>{r[k]=String(q);});
+  }else return;
+  dcDraftSave();renderDcode();
+  toast("ปรับให้แล้ว "+rows.length+" แถว");
+}
+/* ⧉ คัดลอกแถวที่ติ๊ก → ไปต่อท้ายแถวที่ติ๊กตัวสุดท้าย และ "ย้ายการติ๊ก" ไปที่แถวใหม่
+   ทำออเดอร์ร้าน A เสร็จ → ติ๊กทั้งชุด → คัดลอก → กดปรับร้านเป็น B ได้ทันที ไม่ต้องติ๊กใหม่ */
+function dcBulkCopy(){
+  const f=DC.f;if(!f)return;
+  const idx=[];f.rows.forEach((r,i)=>{if(r.sel)idx.push(i);});
+  if(!idx.length){alert("ติ๊ก ☑️ หน้าแถวที่ต้องการคัดลอกก่อน");return;}
+  const cp=idx.map(i=>dcRowKey(f,Object.assign({},f.rows[i],{sel:true})));
+  idx.forEach(i=>{f.rows[i].sel=false;});
+  f.rows.splice(idx[idx.length-1]+1,0,...cp);
+  dcDraftSave();renderDcode();
+  toast("คัดลอกแล้ว "+cp.length+" แถว — แถวใหม่ติ๊กไว้ให้แล้ว ปรับร้าน / PO ต่อได้เลย",4200);
+}
+function dcBulkDel(){
+  const f=DC.f;if(!f)return;
+  const n=dcSelN();
+  if(!n){alert("ติ๊ก ☑️ หน้าแถวที่ต้องการลบก่อน");return;}
+  if(!confirm("ลบ "+n+" แถวที่ติ๊กไว้?"))return;
+  f.rows=f.rows.filter(r=>!r.sel);
+  if(!f.rows.length)f.rows.push(dcRowKey(f,dcRowNew()));
+  dcDraftSave();renderDcode();
+}
+/* ช่องค้นหาร้าน/สินค้าในแถบปรับหลายแถว */
+function dcBkOnIn(v){DC.bk.on=v;clearTimeout(DC.st);DC.st=setTimeout(()=>{
+  const box=dcEl("dcBkOs");if(!box)return;const q=String(v||"").trim();
+  if(q.length<2){box.innerHTML="";return;}
+  box.innerHTML=dcSugHtml(dcOutFind(q,8).map(o=>dcOutRowHtml(o,c=>"dcBkOutPick('"+c+"')")),"ไม่พบร้านนี้ใน Master Outlet Data");},160);}
+function dcBkOutPick(code){const o=dcOutIdx().by[code];if(!o)return;
+  DC.bk.oc=o.c;DC.bk.on=o.n;
+  const a=dcEl("dcBkOc"),b=dcEl("dcBkOn"),s=dcEl("dcBkOs");if(a)a.value=o.c;if(b)b.value=o.n;if(s)s.innerHTML="";}
+function dcBkSnIn(v){DC.bk.sn=v;clearTimeout(DC.st);DC.st=setTimeout(()=>{
+  const box=dcEl("dcBkSs");if(!box)return;const q=String(v||"").trim();
+  if(q.length<2){box.innerHTML="";return;}
+  box.innerHTML=dcSugHtml(dcProdFind(q,8).map(p=>dcSkuRowHtml(p,c=>"dcBkSkuPick('"+c+"')")),"ไม่พบสินค้านี้");},160);}
+function dcBkSkuPick(code){DC.bk.sku=String(code);DC.bk.sn=dcSkuNm(code);
+  const a=dcEl("dcBkSku"),b=dcEl("dcBkSn"),s=dcEl("dcBkSs");if(a)a.value=DC.bk.sku;if(b)b.value=DC.bk.sn;if(s)s.innerHTML="";}
+/* ============================================================================
+ * 📥 สร้างไฟล์ — template เดิมของ dcode (LmtOrderCreationExcel)
+ *
+ * เขียนทุกส่วนของไฟล์ขึ้นใหม่ให้ "เหมือนที่ Excel เขียนเวลาคนพิมพ์ลงใน template":
+ *   ชีต Sheet1 · หัวตาราง 8 ช่อง (สไตล์/ลำดับ shared string เดิมเป๊ะ) · ความกว้างคอลัมน์เดิม ·
+ *   styles.xml และ theme เดิมทุกไบต์ · ข้อมูลข้อความเป็น shared string สไตล์ 3 (ข้อความ "@")
+ *   ตัวเลขเป็นเซลล์ตัวเลขธรรมดา
+ * ตัดออก 3 อย่างที่ไม่ใช่ข้อมูล: ชื่อคนของ dcode ใน docProps · path เครื่องคนทำ template ใน
+ * workbook.xml · ไฟล์ตั้งค่าเครื่องพิมพ์ (PrimoPDF) — ไม่มีผลกับการอ่านไฟล์
+ * ==========================================================================*/
+const DC_XML='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
+const DC_NS="http://schemas.openxmlformats.org/";
+const DC_THEME_B64="PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/Pg0KPGE6dGhlbWUgeG1sbnM6YT0iaHR0cDovL3NjaGVtYXMub3BlbnhtbGZvcm1hdHMub3JnL2RyYXdpbmdtbC8yMDA2L21haW4iIG5hbWU9Ik9mZmljZSBUaGVtZSI+PGE6dGhlbWVFbGVtZW50cz48YTpjbHJTY2hlbWUgbmFtZT0iT2ZmaWNlIj48YTpkazE+PGE6c3lzQ2xyIHZhbD0id2luZG93VGV4dCIgbGFzdENscj0iMDAwMDAwIi8+PC9hOmRrMT48YTpsdDE+PGE6c3lzQ2xyIHZhbD0id2luZG93IiBsYXN0Q2xyPSJGRkZGRkYiLz48L2E6bHQxPjxhOmRrMj48YTpzcmdiQ2xyIHZhbD0iNDQ1NDZBIi8+PC9hOmRrMj48YTpsdDI+PGE6c3JnYkNsciB2YWw9IkU3RTZFNiIvPjwvYTpsdDI+PGE6YWNjZW50MT48YTpzcmdiQ2xyIHZhbD0iNUI5QkQ1Ii8+PC9hOmFjY2VudDE+PGE6YWNjZW50Mj48YTpzcmdiQ2xyIHZhbD0iRUQ3RDMxIi8+PC9hOmFjY2VudDI+PGE6YWNjZW50Mz48YTpzcmdiQ2xyIHZhbD0iQTVBNUE1Ii8+PC9hOmFjY2VudDM+PGE6YWNjZW50ND48YTpzcmdiQ2xyIHZhbD0iRkZDMDAwIi8+PC9hOmFjY2VudDQ+PGE6YWNjZW50NT48YTpzcmdiQ2xyIHZhbD0iNDQ3MkM0Ii8+PC9hOmFjY2VudDU+PGE6YWNjZW50Nj48YTpzcmdiQ2xyIHZhbD0iNzBBRDQ3Ii8+PC9hOmFjY2VudDY+PGE6aGxpbms+PGE6c3JnYkNsciB2YWw9IjA1NjNDMSIvPjwvYTpobGluaz48YTpmb2xIbGluaz48YTpzcmdiQ2xyIHZhbD0iOTU0RjcyIi8+PC9hOmZvbEhsaW5rPjwvYTpjbHJTY2hlbWU+PGE6Zm9udFNjaGVtZSBuYW1lPSJPZmZpY2UiPjxhOm1ham9yRm9udD48YTpsYXRpbiB0eXBlZmFjZT0iQ2FsaWJyaSBMaWdodCIgcGFub3NlPSIwMjBGMDMwMjAyMDIwNDAzMDIwNCIvPjxhOmVhIHR5cGVmYWNlPSIiLz48YTpjcyB0eXBlZmFjZT0iIi8+PGE6Zm9udCBzY3JpcHQ9IkpwYW4iIHR5cGVmYWNlPSLvvK3vvLMg77yw44K044K344OD44KvIi8+PGE6Zm9udCBzY3JpcHQ9IkhhbmciIHR5cGVmYWNlPSLrp5HsnYAg6rOg65SVIi8+PGE6Zm9udCBzY3JpcHQ9IkhhbnMiIHR5cGVmYWNlPSLlrovkvZMiLz48YTpmb250IHNjcmlwdD0iSGFudCIgdHlwZWZhY2U9IuaWsOe0sOaYjumrlCIvPjxhOmZvbnQgc2NyaXB0PSJBcmFiIiB0eXBlZmFjZT0iVGltZXMgTmV3IFJvbWFuIi8+PGE6Zm9udCBzY3JpcHQ9IkhlYnIiIHR5cGVmYWNlPSJUaW1lcyBOZXcgUm9tYW4iLz48YTpmb250IHNjcmlwdD0iVGhhaSIgdHlwZWZhY2U9IlRhaG9tYSIvPjxhOmZvbnQgc2NyaXB0PSJFdGhpIiB0eXBlZmFjZT0iTnlhbGEiLz48YTpmb250IHNjcmlwdD0iQmVuZyIgdHlwZWZhY2U9IlZyaW5kYSIvPjxhOmZvbnQgc2NyaXB0PSJHdWpyIiB0eXBlZmFjZT0iU2hydXRpIi8+PGE6Zm9udCBzY3JpcHQ9IktobXIiIHR5cGVmYWNlPSJNb29sQm9yYW4iLz48YTpmb250IHNjcmlwdD0iS25kYSIgdHlwZWZhY2U9IlR1bmdhIi8+PGE6Zm9udCBzY3JpcHQ9Ikd1cnUiIHR5cGVmYWNlPSJSYWF2aSIvPjxhOmZvbnQgc2NyaXB0PSJDYW5zIiB0eXBlZmFjZT0iRXVwaGVtaWEiLz48YTpmb250IHNjcmlwdD0iQ2hlciIgdHlwZWZhY2U9IlBsYW50YWdlbmV0IENoZXJva2VlIi8+PGE6Zm9udCBzY3JpcHQ9IllpaWkiIHR5cGVmYWNlPSJNaWNyb3NvZnQgWWkgQmFpdGkiLz48YTpmb250IHNjcmlwdD0iVGlidCIgdHlwZWZhY2U9Ik1pY3Jvc29mdCBIaW1hbGF5YSIvPjxhOmZvbnQgc2NyaXB0PSJUaGFhIiB0eXBlZmFjZT0iTVYgQm9saSIvPjxhOmZvbnQgc2NyaXB0PSJEZXZhIiB0eXBlZmFjZT0iTWFuZ2FsIi8+PGE6Zm9udCBzY3JpcHQ9IlRlbHUiIHR5cGVmYWNlPSJHYXV0YW1pIi8+PGE6Zm9udCBzY3JpcHQ9IlRhbWwiIHR5cGVmYWNlPSJMYXRoYSIvPjxhOmZvbnQgc2NyaXB0PSJTeXJjIiB0eXBlZmFjZT0iRXN0cmFuZ2VsbyBFZGVzc2EiLz48YTpmb250IHNjcmlwdD0iT3J5YSIgdHlwZWZhY2U9IkthbGluZ2EiLz48YTpmb250IHNjcmlwdD0iTWx5bSIgdHlwZWZhY2U9IkthcnRpa2EiLz48YTpmb250IHNjcmlwdD0iTGFvbyIgdHlwZWZhY2U9IkRva0NoYW1wYSIvPjxhOmZvbnQgc2NyaXB0PSJTaW5oIiB0eXBlZmFjZT0iSXNrb29sYSBQb3RhIi8+PGE6Zm9udCBzY3JpcHQ9Ik1vbmciIHR5cGVmYWNlPSJNb25nb2xpYW4gQmFpdGkiLz48YTpmb250IHNjcmlwdD0iVmlldCIgdHlwZWZhY2U9IlRpbWVzIE5ldyBSb21hbiIvPjxhOmZvbnQgc2NyaXB0PSJVaWdoIiB0eXBlZmFjZT0iTWljcm9zb2Z0IFVpZ2h1ciIvPjxhOmZvbnQgc2NyaXB0PSJHZW9yIiB0eXBlZmFjZT0iU3lsZmFlbiIvPjwvYTptYWpvckZvbnQ+PGE6bWlub3JGb250PjxhOmxhdGluIHR5cGVmYWNlPSJDYWxpYnJpIiBwYW5vc2U9IjAyMEYwNTAyMDIwMjA0MDMwMjA0Ii8+PGE6ZWEgdHlwZWZhY2U9IiIvPjxhOmNzIHR5cGVmYWNlPSIiLz48YTpmb250IHNjcmlwdD0iSnBhbiIgdHlwZWZhY2U9Iu+8re+8syDvvLDjgrTjgrfjg4Pjgq8iLz48YTpmb250IHNjcmlwdD0iSGFuZyIgdHlwZWZhY2U9IuunkeydgCDqs6DrlJUiLz48YTpmb250IHNjcmlwdD0iSGFucyIgdHlwZWZhY2U9IuWui+S9kyIvPjxhOmZvbnQgc2NyaXB0PSJIYW50IiB0eXBlZmFjZT0i5paw57Sw5piO6auUIi8+PGE6Zm9udCBzY3JpcHQ9IkFyYWIiIHR5cGVmYWNlPSJBcmlhbCIvPjxhOmZvbnQgc2NyaXB0PSJIZWJyIiB0eXBlZmFjZT0iQXJpYWwiLz48YTpmb250IHNjcmlwdD0iVGhhaSIgdHlwZWZhY2U9IlRhaG9tYSIvPjxhOmZvbnQgc2NyaXB0PSJFdGhpIiB0eXBlZmFjZT0iTnlhbGEiLz48YTpmb250IHNjcmlwdD0iQmVuZyIgdHlwZWZhY2U9IlZyaW5kYSIvPjxhOmZvbnQgc2NyaXB0PSJHdWpyIiB0eXBlZmFjZT0iU2hydXRpIi8+PGE6Zm9udCBzY3JpcHQ9IktobXIiIHR5cGVmYWNlPSJEYXVuUGVuaCIvPjxhOmZvbnQgc2NyaXB0PSJLbmRhIiB0eXBlZmFjZT0iVHVuZ2EiLz48YTpmb250IHNjcmlwdD0iR3VydSIgdHlwZWZhY2U9IlJhYXZpIi8+PGE6Zm9udCBzY3JpcHQ9IkNhbnMiIHR5cGVmYWNlPSJFdXBoZW1pYSIvPjxhOmZvbnQgc2NyaXB0PSJDaGVyIiB0eXBlZmFjZT0iUGxhbnRhZ2VuZXQgQ2hlcm9rZWUiLz48YTpmb250IHNjcmlwdD0iWWlpaSIgdHlwZWZhY2U9Ik1pY3Jvc29mdCBZaSBCYWl0aSIvPjxhOmZvbnQgc2NyaXB0PSJUaWJ0IiB0eXBlZmFjZT0iTWljcm9zb2Z0IEhpbWFsYXlhIi8+PGE6Zm9udCBzY3JpcHQ9IlRoYWEiIHR5cGVmYWNlPSJNViBCb2xpIi8+PGE6Zm9udCBzY3JpcHQ9IkRldmEiIHR5cGVmYWNlPSJNYW5nYWwiLz48YTpmb250IHNjcmlwdD0iVGVsdSIgdHlwZWZhY2U9IkdhdXRhbWkiLz48YTpmb250IHNjcmlwdD0iVGFtbCIgdHlwZWZhY2U9IkxhdGhhIi8+PGE6Zm9udCBzY3JpcHQ9IlN5cmMiIHR5cGVmYWNlPSJFc3RyYW5nZWxvIEVkZXNzYSIvPjxhOmZvbnQgc2NyaXB0PSJPcnlhIiB0eXBlZmFjZT0iS2FsaW5nYSIvPjxhOmZvbnQgc2NyaXB0PSJNbHltIiB0eXBlZmFjZT0iS2FydGlrYSIvPjxhOmZvbnQgc2NyaXB0PSJMYW9vIiB0eXBlZmFjZT0iRG9rQ2hhbXBhIi8+PGE6Zm9udCBzY3JpcHQ9IlNpbmgiIHR5cGVmYWNlPSJJc2tvb2xhIFBvdGEiLz48YTpmb250IHNjcmlwdD0iTW9uZyIgdHlwZWZhY2U9Ik1vbmdvbGlhbiBCYWl0aSIvPjxhOmZvbnQgc2NyaXB0PSJWaWV0IiB0eXBlZmFjZT0iQXJpYWwiLz48YTpmb250IHNjcmlwdD0iVWlnaCIgdHlwZWZhY2U9Ik1pY3Jvc29mdCBVaWdodXIiLz48YTpmb250IHNjcmlwdD0iR2VvciIgdHlwZWZhY2U9IlN5bGZhZW4iLz48L2E6bWlub3JGb250PjwvYTpmb250U2NoZW1lPjxhOmZtdFNjaGVtZSBuYW1lPSJPZmZpY2UiPjxhOmZpbGxTdHlsZUxzdD48YTpzb2xpZEZpbGw+PGE6c2NoZW1lQ2xyIHZhbD0icGhDbHIiLz48L2E6c29saWRGaWxsPjxhOmdyYWRGaWxsIHJvdFdpdGhTaGFwZT0iMSI+PGE6Z3NMc3Q+PGE6Z3MgcG9zPSIwIj48YTpzY2hlbWVDbHIgdmFsPSJwaENsciI+PGE6bHVtTW9kIHZhbD0iMTEwMDAwIi8+PGE6c2F0TW9kIHZhbD0iMTA1MDAwIi8+PGE6dGludCB2YWw9IjY3MDAwIi8+PC9hOnNjaGVtZUNscj48L2E6Z3M+PGE6Z3MgcG9zPSI1MDAwMCI+PGE6c2NoZW1lQ2xyIHZhbD0icGhDbHIiPjxhOmx1bU1vZCB2YWw9IjEwNTAwMCIvPjxhOnNhdE1vZCB2YWw9IjEwMzAwMCIvPjxhOnRpbnQgdmFsPSI3MzAwMCIvPjwvYTpzY2hlbWVDbHI+PC9hOmdzPjxhOmdzIHBvcz0iMTAwMDAwIj48YTpzY2hlbWVDbHIgdmFsPSJwaENsciI+PGE6bHVtTW9kIHZhbD0iMTA1MDAwIi8+PGE6c2F0TW9kIHZhbD0iMTA5MDAwIi8+PGE6dGludCB2YWw9IjgxMDAwIi8+PC9hOnNjaGVtZUNscj48L2E6Z3M+PC9hOmdzTHN0PjxhOmxpbiBhbmc9IjU0MDAwMDAiIHNjYWxlZD0iMCIvPjwvYTpncmFkRmlsbD48YTpncmFkRmlsbCByb3RXaXRoU2hhcGU9IjEiPjxhOmdzTHN0PjxhOmdzIHBvcz0iMCI+PGE6c2NoZW1lQ2xyIHZhbD0icGhDbHIiPjxhOnNhdE1vZCB2YWw9IjEwMzAwMCIvPjxhOmx1bU1vZCB2YWw9IjEwMjAwMCIvPjxhOnRpbnQgdmFsPSI5NDAwMCIvPjwvYTpzY2hlbWVDbHI+PC9hOmdzPjxhOmdzIHBvcz0iNTAwMDAiPjxhOnNjaGVtZUNsciB2YWw9InBoQ2xyIj48YTpzYXRNb2QgdmFsPSIxMTAwMDAiLz48YTpsdW1Nb2QgdmFsPSIxMDAwMDAiLz48YTpzaGFkZSB2YWw9IjEwMDAwMCIvPjwvYTpzY2hlbWVDbHI+PC9hOmdzPjxhOmdzIHBvcz0iMTAwMDAwIj48YTpzY2hlbWVDbHIgdmFsPSJwaENsciI+PGE6bHVtTW9kIHZhbD0iOTkwMDAiLz48YTpzYXRNb2QgdmFsPSIxMjAwMDAiLz48YTpzaGFkZSB2YWw9Ijc4MDAwIi8+PC9hOnNjaGVtZUNscj48L2E6Z3M+PC9hOmdzTHN0PjxhOmxpbiBhbmc9IjU0MDAwMDAiIHNjYWxlZD0iMCIvPjwvYTpncmFkRmlsbD48L2E6ZmlsbFN0eWxlTHN0PjxhOmxuU3R5bGVMc3Q+PGE6bG4gdz0iNjM1MCIgY2FwPSJmbGF0IiBjbXBkPSJzbmciIGFsZ249ImN0ciI+PGE6c29saWRGaWxsPjxhOnNjaGVtZUNsciB2YWw9InBoQ2xyIi8+PC9hOnNvbGlkRmlsbD48YTpwcnN0RGFzaCB2YWw9InNvbGlkIi8+PGE6bWl0ZXIgbGltPSI4MDAwMDAiLz48L2E6bG4+PGE6bG4gdz0iMTI3MDAiIGNhcD0iZmxhdCIgY21wZD0ic25nIiBhbGduPSJjdHIiPjxhOnNvbGlkRmlsbD48YTpzY2hlbWVDbHIgdmFsPSJwaENsciIvPjwvYTpzb2xpZEZpbGw+PGE6cHJzdERhc2ggdmFsPSJzb2xpZCIvPjxhOm1pdGVyIGxpbT0iODAwMDAwIi8+PC9hOmxuPjxhOmxuIHc9IjE5MDUwIiBjYXA9ImZsYXQiIGNtcGQ9InNuZyIgYWxnbj0iY3RyIj48YTpzb2xpZEZpbGw+PGE6c2NoZW1lQ2xyIHZhbD0icGhDbHIiLz48L2E6c29saWRGaWxsPjxhOnByc3REYXNoIHZhbD0ic29saWQiLz48YTptaXRlciBsaW09IjgwMDAwMCIvPjwvYTpsbj48L2E6bG5TdHlsZUxzdD48YTplZmZlY3RTdHlsZUxzdD48YTplZmZlY3RTdHlsZT48YTplZmZlY3RMc3QvPjwvYTplZmZlY3RTdHlsZT48YTplZmZlY3RTdHlsZT48YTplZmZlY3RMc3QvPjwvYTplZmZlY3RTdHlsZT48YTplZmZlY3RTdHlsZT48YTplZmZlY3RMc3Q+PGE6b3V0ZXJTaGR3IGJsdXJSYWQ9IjU3MTUwIiBkaXN0PSIxOTA1MCIgZGlyPSI1NDAwMDAwIiBhbGduPSJjdHIiIHJvdFdpdGhTaGFwZT0iMCI+PGE6c3JnYkNsciB2YWw9IjAwMDAwMCI+PGE6YWxwaGEgdmFsPSI2MzAwMCIvPjwvYTpzcmdiQ2xyPjwvYTpvdXRlclNoZHc+PC9hOmVmZmVjdExzdD48L2E6ZWZmZWN0U3R5bGU+PC9hOmVmZmVjdFN0eWxlTHN0PjxhOmJnRmlsbFN0eWxlTHN0PjxhOnNvbGlkRmlsbD48YTpzY2hlbWVDbHIgdmFsPSJwaENsciIvPjwvYTpzb2xpZEZpbGw+PGE6c29saWRGaWxsPjxhOnNjaGVtZUNsciB2YWw9InBoQ2xyIj48YTp0aW50IHZhbD0iOTUwMDAiLz48YTpzYXRNb2QgdmFsPSIxNzAwMDAiLz48L2E6c2NoZW1lQ2xyPjwvYTpzb2xpZEZpbGw+PGE6Z3JhZEZpbGwgcm90V2l0aFNoYXBlPSIxIj48YTpnc0xzdD48YTpncyBwb3M9IjAiPjxhOnNjaGVtZUNsciB2YWw9InBoQ2xyIj48YTp0aW50IHZhbD0iOTMwMDAiLz48YTpzYXRNb2QgdmFsPSIxNTAwMDAiLz48YTpzaGFkZSB2YWw9Ijk4MDAwIi8+PGE6bHVtTW9kIHZhbD0iMTAyMDAwIi8+PC9hOnNjaGVtZUNscj48L2E6Z3M+PGE6Z3MgcG9zPSI1MDAwMCI+PGE6c2NoZW1lQ2xyIHZhbD0icGhDbHIiPjxhOnRpbnQgdmFsPSI5ODAwMCIvPjxhOnNhdE1vZCB2YWw9IjEzMDAwMCIvPjxhOnNoYWRlIHZhbD0iOTAwMDAiLz48YTpsdW1Nb2QgdmFsPSIxMDMwMDAiLz48L2E6c2NoZW1lQ2xyPjwvYTpncz48YTpncyBwb3M9IjEwMDAwMCI+PGE6c2NoZW1lQ2xyIHZhbD0icGhDbHIiPjxhOnNoYWRlIHZhbD0iNjMwMDAiLz48YTpzYXRNb2QgdmFsPSIxMjAwMDAiLz48L2E6c2NoZW1lQ2xyPjwvYTpncz48L2E6Z3NMc3Q+PGE6bGluIGFuZz0iNTQwMDAwMCIgc2NhbGVkPSIwIi8+PC9hOmdyYWRGaWxsPjwvYTpiZ0ZpbGxTdHlsZUxzdD48L2E6Zm10U2NoZW1lPjwvYTp0aGVtZUVsZW1lbnRzPjxhOm9iamVjdERlZmF1bHRzLz48YTpleHRyYUNsclNjaGVtZUxzdC8+PGE6ZXh0THN0PjxhOmV4dCB1cmk9InswNUE0QzI1Qy0wODVFLTQzNDAtODVBMy1BNTUzMUU1MTBEQjJ9Ij48dGhtMTU6dGhlbWVGYW1pbHkgeG1sbnM6dGhtMTU9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL3RoZW1lbWwvMjAxMi9tYWluIiBuYW1lPSJPZmZpY2UgVGhlbWUiIGlkPSJ7NjJGOTM5QjYtOTNBRi00REI4LTlDNkItRDZDN0RGREM1ODlGfSIgdmlkPSJ7NEEzQzQ2RTgtNjFDQy00NjAzLUE1ODktNzQyMkE0N0E4RTRBfSIvPjwvYTpleHQ+PC9hOmV4dExzdD48L2E6dGhlbWU+";
+const DC_STYLES='<styleSheet xmlns="'+DC_NS+'spreadsheetml/2006/main" xmlns:mc="'+DC_NS+'markup-compatibility/2006" mc:Ignorable="x14ac x16r2" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac" xmlns:x16r2="http://schemas.microsoft.com/office/spreadsheetml/2015/02/main">'+
+  '<fonts count="2"><font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font><font><sz val="11"/><color rgb="FF000000"/><name val="Aptos Narrow"/></font></fonts>'+
+  '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'+
+  '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border></borders>'+
+  '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
+  '<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/><xf numFmtId="49" fontId="1" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>'+
+  '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles><dxfs count="0"/><tableStyles count="0" defaultTableStyle="TableStyleMedium2" defaultPivotStyle="PivotStyleLight16"/>'+
+  '<extLst><ext uri="{EB79DEF2-80B8-43e5-95BD-54CBDDF9020C}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"><x14:slicerStyles defaultSlicerStyle="SlicerStyleLight1"/></ext><ext uri="{9260A510-F301-46a8-8635-F512D64BE5F5}" xmlns:x15="http://schemas.microsoft.com/office/spreadsheetml/2010/11/main"><x15:timelineStyles defaultTimelineStyle="TimeSlicerStyleLight1"/></ext></extLst></styleSheet>';
+/* ความกว้าง + สไตล์ทั้งคอลัมน์ ตาม template (A–D,H = สไตล์ 3 ข้อความ · E–G ไม่มีสไตล์) */
+const DC_COLS='<cols><col min="1" max="1" width="26.140625" style="3" customWidth="1"/><col min="2" max="2" width="22.5703125" style="3" customWidth="1"/><col min="3" max="3" width="12.28515625" style="3" bestFit="1" customWidth="1"/><col min="4" max="4" width="19" style="3" customWidth="1"/><col min="5" max="5" width="15.42578125" customWidth="1"/><col min="6" max="6" width="14.7109375" customWidth="1"/><col min="7" max="7" width="14.28515625" customWidth="1"/><col min="8" max="8" width="12.85546875" style="3" customWidth="1"/></cols>';
+/* ลำดับ shared string ของหัวตารางตาม template — SH/SU ถูกเพิ่มทีหลังจึงเป็นตัวที่ 8 (index 7) */
+const DC_SST0=["PO_NUMBER","OUTLET_CODE","PJP_CODE","SKU_CODE","CS","PC","DT_CODE","SH/SU"];
+function dcXmlEsc(s){
+  return String(s==null?"":s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F￾￿]/g,"")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function dcW3c(d){return d.toISOString().replace(/\.\d+Z$/,"Z");}
+/* rows = [{po,oc,pj,sku,cs,sh,pc}] → {path: เนื้อไฟล์} (theme เป็น base64) */
+function dcXlsxParts(rows,now){
+  now=now||new Date();
+  const sst=DC_SST0.slice(),at={};sst.forEach((s,i)=>{at[s]=i;});
+  let refs=8;
+  const si=v=>{const s=String(v==null?"":v);refs++;if(at[s]===undefined){at[s]=sst.length;sst.push(s);}return at[s];};
+  const cS=(ref,v)=>'<c r="'+ref+'" s="3" t="s"><v>'+si(v)+'</v></c>';
+  const cN=(ref,v)=>'<c r="'+ref+'"><v>'+(Math.max(0,parseInt(v,10)||0))+'</v></c>';
+  let sd='<row r="1" spans="1:8"><c r="A1" s="2" t="s"><v>0</v></c><c r="B1" s="2" t="s"><v>1</v></c><c r="C1" s="2" t="s"><v>2</v></c><c r="D1" s="2" t="s"><v>3</v></c><c r="E1" s="1" t="s"><v>4</v></c><c r="F1" s="1" t="s"><v>7</v></c><c r="G1" s="1" t="s"><v>5</v></c><c r="H1" s="2" t="s"><v>6</v></c></row>';
+  rows.forEach((r,j)=>{const n=j+2;
+    sd+='<row r="'+n+'" spans="1:8">'+cS("A"+n,r.po)+cS("B"+n,r.oc)+cS("C"+n,r.pj)+cS("D"+n,r.sku)+
+      cN("E"+n,r.cs)+cN("F"+n,r.sh)+cN("G"+n,r.pc)+cS("H"+n,DC_DT)+'</row>';});
+  const last=rows.length+1;
+  const sheet=DC_XML+'<worksheet xmlns="'+DC_NS+'spreadsheetml/2006/main" xmlns:r="'+DC_NS+'officeDocument/2006/relationships" xmlns:mc="'+DC_NS+'markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">'+
+    '<dimension ref="A1:H'+last+'"/><sheetViews><sheetView tabSelected="1" workbookViewId="0"><selection activeCell="A2" sqref="A2"/></sheetView></sheetViews>'+
+    '<sheetFormatPr defaultRowHeight="15"/>'+DC_COLS+'<sheetData>'+sd+'</sheetData>'+
+    '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/><pageSetup orientation="portrait"/></worksheet>';
+  const sstXml=DC_XML+'<sst xmlns="'+DC_NS+'spreadsheetml/2006/main" count="'+refs+'" uniqueCount="'+sst.length+'">'+
+    sst.map(s=>'<si><t'+(/^\s|\s$/.test(s)?' xml:space="preserve"':"")+'>'+dcXmlEsc(s)+'</t></si>').join("")+'</sst>';
+  const ts=dcW3c(now);
+  return {
+    "[Content_Types].xml":DC_XML+'<Types xmlns="'+DC_NS+'package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>',
+    "_rels/.rels":DC_XML+'<Relationships xmlns="'+DC_NS+'package/2006/relationships"><Relationship Id="rId3" Type="'+DC_NS+'officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/><Relationship Id="rId2" Type="'+DC_NS+'package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId1" Type="'+DC_NS+'officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+    "xl/_rels/workbook.xml.rels":DC_XML+'<Relationships xmlns="'+DC_NS+'package/2006/relationships"><Relationship Id="rId3" Type="'+DC_NS+'officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="'+DC_NS+'officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/><Relationship Id="rId1" Type="'+DC_NS+'officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId4" Type="'+DC_NS+'officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>',
+    "xl/workbook.xml":DC_XML+'<workbook xmlns="'+DC_NS+'spreadsheetml/2006/main" xmlns:r="'+DC_NS+'officeDocument/2006/relationships" xmlns:mc="'+DC_NS+'markup-compatibility/2006" mc:Ignorable="x15" xmlns:x15="http://schemas.microsoft.com/office/spreadsheetml/2010/11/main"><fileVersion appName="xl" lastEdited="6" lowestEdited="6" rupBuild="14420"/><workbookPr defaultThemeVersion="153222"/><bookViews><workbookView xWindow="0" yWindow="0" windowWidth="14295" windowHeight="6120"/></bookViews><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets><calcPr calcId="152511"/><extLst><ext uri="{140A7094-0E35-4892-8432-C4D2E57EDEB5}" xmlns:x15="http://schemas.microsoft.com/office/spreadsheetml/2010/11/main"><x15:workbookPr chartTrackingRefBase="1"/></ext></extLst></workbook>',
+    "xl/sharedStrings.xml":sstXml,
+    "xl/theme/theme1.xml":{b64:DC_THEME_B64},
+    "xl/styles.xml":DC_XML+DC_STYLES,
+    "xl/worksheets/sheet1.xml":sheet,
+    "docProps/core.xml":DC_XML+'<cp:coreProperties xmlns:cp="'+DC_NS+'package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>BD Distribution</dc:creator><cp:lastModifiedBy>BD Admin</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">'+ts+'</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">'+ts+'</dcterms:modified></cp:coreProperties>',
+    "docProps/app.xml":DC_XML+'<Properties xmlns="'+DC_NS+'officeDocument/2006/extended-properties" xmlns:vt="'+DC_NS+'officeDocument/2006/docPropsVTypes"><Application>Microsoft Excel</Application><DocSecurity>0</DocSecurity><ScaleCrop>false</ScaleCrop><HeadingPairs><vt:vector size="2" baseType="variant"><vt:variant><vt:lpstr>Worksheets</vt:lpstr></vt:variant><vt:variant><vt:i4>1</vt:i4></vt:variant></vt:vector></HeadingPairs><TitlesOfParts><vt:vector size="1" baseType="lpstr"><vt:lpstr>Sheet1</vt:lpstr></vt:vector></TitlesOfParts><Company></Company><LinksUpToDate>false</LinksUpToDate><SharedDoc>false</SharedDoc><HyperlinksChanged>false</HyperlinksChanged><AppVersion>16.0300</AppVersion></Properties>'
+  };
+}
+/* ชื่อไฟล์ต้องเป็น ASCII (กฎ fnAscii — Chromium ทิ้งชื่อไทยทั้งนามสกุล) */
+function dcFname(now){
+  const d=now||new Date(),p=n=>String(n).padStart(2,"0");
+  return "LmtOrderCreationExcel_"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"_"+p(d.getHours())+p(d.getMinutes())+".xlsx";
+}
+async function dcZip(rows,now){
+  const Z=await poLoadZip();
+  const parts=dcXlsxParts(rows,now);
+  const zip=new Z();
+  Object.keys(parts).forEach(p=>{const v=parts[p];
+    if(v&&v.b64)zip.file(p,v.b64,{base64:true,createFolders:false});
+    else zip.file(p,v,{createFolders:false});});
+  return zip.generateAsync({type:"blob",compression:"DEFLATE",
+    mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+async function dcMake(){
+  if(!dcMgr()){alert("เฉพาะแอดมิน/ผู้จัดการเท่านั้น");return;}
+  if(DC.busy)return;
+  const C=dcCheck();
+  if(!C.n){alert("ยังไม่มีรายการ — กรอกอย่างน้อย 1 แถวก่อน");return;}
+  if(C.err.length){
+    dcFootPaint();
+    alert("ยังสร้างไฟล์ไม่ได้ — มี "+C.err.length+" จุดที่ต้องแก้ก่อน:\n\n"+
+      C.err.slice(0,12).map(x=>"• แถว "+x.n+": "+x.m).join("\n")+(C.err.length>12?"\n…":"")+
+      "\n\n(แถวที่มีปัญหามีแถบแดงหน้าแถว)");
+    return;
+  }
+  if(C.warn.length&&!confirm("มีข้อควรระวัง "+C.warn.length+" ข้อ:\n\n"+
+      C.warn.slice(0,12).map(x=>"• "+(x.n?"แถว "+x.n+": ":"")+x.m).join("\n")+(C.warn.length>12?"\n…":"")+
+      "\n\nสร้างไฟล์ต่อเลยไหม?"))return;
+  DC.busy=true;dcFootPaint();
+  try{
+    const now=new Date();
+    const blob=await dcZip(C.ok,now);
+    const name=dcFname(now);
+    msDownload(blob,name);
+    const pos={},ocs={};C.ok.forEach(r=>{pos[r.po]=1;ocs[r.oc]=1;});
+    DC.last={name:name,n:C.ok.length,po:Object.keys(pos).length,oc:Object.keys(ocs).length,at:now.getTime()};
+    toast("สร้างไฟล์แล้ว ✓ "+C.ok.length+" แถว · "+DC.last.po+" PO");
+  }catch(e){
+    alert("สร้างไฟล์ไม่สำเร็จ\n\n"+(e&&e.message?e.message:e)+"\n\nรายการที่กรอกไว้ยังอยู่ครบ");
+  }finally{DC.busy=false;dcFootPaint();}
+}
+/* ---------- หน้าจอ ---------- */
+function dcAgo(t){return t?fmtDateTime(+t):"";}
+function dcInfoHtml(){
+  const oi=dcOutIdx(),pm=dcPjMap(),pi=dcProdIdx(),cfg=(PJP&&PJP.cfg)||{};
+  const nO=oi.list.length,nAct=oi.list.filter(o=>o.act&&o.inM).length,nPj=oi.list.filter(o=>o.pj).length;
+  const nM=Object.keys((MASTER&&MASTER.items)||{}).length,nF=pi.list.filter(p=>p.f).length,
+    nS=pi.list.filter(p=>p.bal!=null).length;
+  const unm=pm.list.filter(x=>!x.line);
+  let h=`<div class="cards dc-cards">
+    <div class="card"><div class="k">🏪 ร้านค้า (Master Outlet Data)</div><div class="v">${nO.toLocaleString()} ร้าน</div>
+      <div class="s">Active ${nAct.toLocaleString()} · มีเลข PJP ${nPj.toLocaleString()} ร้าน${cfg.outUp?"<br>อัพล่าสุด "+dcAgo(cfg.outUp):""}${cfg.outFile?" · "+anaEsc(cfg.outFile):""}</div></div>
+    <div class="card"><div class="k">🧭 สาย (PJP)</div><div class="v">${pm.list.length} สาย</div>
+      <div class="s">${pm.list.length?("จับรหัสสายได้ "+(pm.list.length-unm.length)+"/"+pm.list.length+" · ดูตารางด้านล่าง"):"ยังไม่มีเลข PJP"}</div></div>
+    <div class="card"><div class="k">📦 สินค้า (SKU)</div><div class="v">${pi.list.length.toLocaleString()} รายการ</div>
+      <div class="s">Master Data ${nM.toLocaleString()}${MASTER&&MASTER.up?" (อัพ "+dcAgo(MASTER.up)+")":""} · มีในสต็อก ${nS.toLocaleString()} · ในใบสั่งล่าสุด ${nF.toLocaleString()}</div></div>
+  </div>`;
+  if(!nO)h+=`<div class="dc-msg warn">ยังไม่มีข้อมูลร้านค้า — กด <b>＋ อัพโหลดไฟล์</b> ด้านบน แล้วเลือก <b>Master Outlet Data</b></div>`;
+  else if(!nPj)h+=`<div class="dc-msg warn">⚠️ ร้านค้าในระบบยังไม่มีเลข PJP — ไฟล์ Master Outlet ชุดที่อยู่ในระบบอัพไว้ก่อนที่ระบบจะเก็บคอลัมน์ AC (PJP)
+    <br>กด <b>＋ อัพโหลดไฟล์</b> แล้วอัพ <b>Master Outlet Data</b> อีกครั้งหนึ่ง สายจะขึ้นให้เองทุกร้าน</div>`;
+  if(!pi.list.length)h+=`<div class="dc-msg warn">ยังไม่มีรายชื่อสินค้า — อัพ <b>Master Data (สินค้าทั้งหมด)</b> ก่อน</div>`;
+  if(unm.length)h+=`<div class="dc-msg warn">⚠️ มี ${unm.length} เลข PJP ที่จับเป็นรหัสสาย (CT/KA) ไม่ได้: ${unm.map(x=>anaEsc(x.pj+(x.nm?" · "+x.nm:""))).join(", ")}
+    — ยังใช้งานได้ (ไฟล์ลงเลข PJP ถูกต้อง) แค่บนจอจะโชว์เป็นเลขแทนชื่อสาย</div>`;
+  if(pm.list.length){
+    h+=`<details class="panel dc-map" style="margin-bottom:16px"${DC.mapOpen?" open":""} ontoggle="DC.mapOpen=this.open">
+      <summary>🧭 ตารางจับคู่ PJP ↔ สายเซลล์ (${pm.list.length} สาย) — ดูว่าเลขไหนคือสายไหน</summary>
+      <div class="psub" style="margin:6px 0 0">จอโชว์ "สาย · ชื่อเซลล์" · <b>ในไฟล์ลงแค่เลข PJP</b> · จับสายจากรหัสพนักงาน (คอลัมน์ Y) ก่อน แล้วค่อยชื่อเซลล์ (คอลัมน์ Z)</div>
+      <div class="tblwrap"><table><thead><tr><th class="l">สาย</th><th class="l">ชื่อเซลล์ (คอลัมน์ Z)</th><th class="l">เลข PJP (ลงไฟล์)</th><th class="l">รหัสพนักงาน (Y)</th><th>ร้าน</th><th>Active</th><th class="l">จับจาก</th></tr></thead><tbody>
+      ${pm.list.map(x=>`<tr><td class="l"><b>${x.disp?anaEsc(x.disp):'<span class="cst-no">จับไม่ได้</span>'}</b></td><td class="l">${anaEsc(x.sal||"-")}</td><td class="l"><b>${anaEsc(x.pj)}</b></td><td class="l">${anaEsc(x.emp||"-")}</td><td>${x.n.toLocaleString()}</td><td>${x.act.toLocaleString()}</td><td class="l psub">${x.how==="emp"?"รหัสพนักงาน":x.how==="name"?"ชื่อเซลล์":"-"}</td></tr>`).join("")}
+      </tbody></table></div></details>`;
+  }
+  return h;
+}
+function dcBulkHtml(){
+  const n=dcSelN(),B=DC.bk;
+  if(!n)return `<div class="cst-bulk off">☑️ ติ๊กหน้าแถวที่ต้องการ แล้วปรับ <b>PO / ร้าน / สาย / สินค้า / จำนวน</b> ให้ทุกแถวที่ติ๊กได้ในครั้งเดียว · <b>⧉</b> ท้ายแถว = คัดลอกแถวนั้น</div>`;
+  const v=k=>anaEsc(B[k]==null?"":B[k]);
+  return `<div class="cst-bulk stick">
+    <b>☑️ ติ๊กไว้ ${n} แถว</b>
+    <span class="cst-bg"><input id="dcBkPo" placeholder="PO number" style="width:120px" value="${v("po")}" oninput="dcBk('po',this.value)">
+      <button class="cst-x" onclick="dcBulk('po')">ปรับ PO</button></span>
+    <span class="cst-bg dc-bk"><input id="dcBkOc" placeholder="รหัสร้าน" style="width:90px" inputmode="numeric" value="${v("oc")}" oninput="dcBk('oc',this.value.trim())">
+      <input id="dcBkOn" placeholder="🔍 ค้นชื่อร้าน" style="width:150px" value="${v("on")}" oninput="dcBkOnIn(this.value)" onblur="dcSugHide('dcBkOs')">
+      <button class="cst-x" onclick="dcBulk('oc')">ปรับร้าน</button><div class="cst-sug dc-pop" id="dcBkOs"></div></span>
+    <span class="cst-bg"><select id="dcBkPj" onchange="dcBk('pj',this.value)">${dcPjOpts(B.pj)}</select>
+      <button class="cst-x" onclick="dcBulk('pj')">ปรับสาย</button></span>
+    <span class="cst-bg dc-bk"><input id="dcBkSku" placeholder="รหัสสินค้า" style="width:100px" inputmode="numeric" value="${v("sku")}" oninput="dcBk('sku',this.value.trim())">
+      <input id="dcBkSn" placeholder="🔍 ค้นชื่อสินค้า" style="width:150px" value="${v("sn")}" oninput="dcBkSnIn(this.value)" onblur="dcSugHide('dcBkSs')">
+      <button class="cst-x" onclick="dcBulk('sku')">ปรับสินค้า</button><div class="cst-sug dc-pop" id="dcBkSs"></div></span>
+    ${DC_QTY.map(([k,lab])=>`<span class="cst-bg"><input id="dcBk_${k}" type="number" min="0" step="1" placeholder="${lab}" style="width:72px" value="${v(k)}" oninput="dcBk('${k}',this.value)"><button class="cst-x" onclick="dcBulk('${k}')">ปรับ ${lab}</button></span>`).join("")}
+    <button class="cst-x" onclick="dcBulkCopy()">⧉ คัดลอกแถวที่ติ๊ก</button>
+    <button class="cst-x" onclick="dcBulkDel()">🗑 ลบแถวที่ติ๊ก</button>
+    <button class="cst-x" onclick="dcSelAll(false)">ล้างที่ติ๊ก</button>
+  </div>`;
+}
+function dcRowHtml(r,i,bf){
+  const e=k=>anaEsc(r[k]==null?"":r[k]);
+  const b=k=>(bf&&bf[k])?" dc-bad":"";
+  const cls=[r.sel?"on":"",bf?"bad":""].filter(Boolean).join(" ");
+  return `<tr id="dcR${i}"${cls?' class="'+cls+'"':""}>
+    <td class="n"><input type="checkbox" ${r.sel?"checked":""} onchange="dcSelTog(${i})"></td>
+    <td class="n">${i+1}</td>
+    <td><input id="dcPo${i}" class="cst-in dc-po${b("po")}" value="${e("po")}" placeholder="PO number" oninput="dcSet(${i},'po',this.value)"></td>
+    <td><input id="dcOc${i}" class="cst-in dc-oc${b("oc")}" value="${e("oc")}" inputmode="numeric" placeholder="รหัสร้าน" oninput="dcOcIn(${i},this.value)">
+        <div class="cst-lk" id="dcOk${i}">${dcOcMark(r)}</div></td>
+    <td><input id="dcOn${i}" class="cst-in dc-on" value="${e("on")}" title="${e("on")}" placeholder="🔍 พิมพ์ชื่อร้านเพื่อค้นหา" oninput="dcOnIn(${i},this.value)" onblur="dcSugHide('dcOs${i}')">
+        <div class="cst-sug" id="dcOs${i}"></div></td>
+    <td><select id="dcPj${i}" class="cst-in dc-pj${b("pj")}" onchange="dcPjSel(${i},this.value)">${dcPjOpts(r.pj)}</select>
+        <div class="cst-lk" id="dcPt${i}">${dcPjTag(r)}</div></td>
+    <td><input id="dcSc${i}" class="cst-in dc-sc${b("sku")}" value="${e("sku")}" inputmode="numeric" placeholder="รหัสสินค้า" oninput="dcScIn(${i},this.value)">
+        <div class="cst-lk" id="dcSk${i}">${dcSkMark(r)}</div></td>
+    <td><input id="dcSn${i}" class="cst-in dc-sn" value="${e("sn")}" title="${e("sn")}" placeholder="🔍 พิมพ์ชื่อสินค้าเพื่อค้นหา" oninput="dcSnIn(${i},this.value)" onblur="dcSugHide('dcSs${i}')">
+        <div class="cst-sug" id="dcSs${i}"></div></td>
+    ${DC_QTY.map(([k])=>`<td><input id="${DC_FID[k]}${i}" class="cst-in dc-n${b(k)}" type="number" min="0" step="1" value="${e(k)}" oninput="dcSet(${i},'${k}',this.value)"></td>`).join("")}
+    <td class="n"><button class="cst-x" title="คัดลอกแถวนี้ (แทรกไว้ใต้แถว)" onclick="dcRowCopy(${i})">⧉</button>
+        <button class="cst-x" title="ลบแถวนี้" onclick="dcRowDel(${i})">🗑</button></td></tr>`;
+}
+function dcFootHtml(C){
+  C=C||dcCheck();
+  const tot=C.ok.reduce((a,r)=>({cs:a.cs+r.cs,sh:a.sh+r.sh,pc:a.pc+r.pc}),{cs:0,sh:0,pc:0});
+  const g={},order=[];
+  C.ok.forEach(r=>{let x=g[r.po];if(!x){x=g[r.po]={po:r.po,oc:{},pj:{},n:0,cs:0,sh:0,pc:0};order.push(x);}
+    x.oc[r.oc]=1;x.pj[r.pj]=1;x.n++;x.cs+=r.cs;x.sh+=r.sh;x.pc+=r.pc;});
+  const oi=dcOutIdx();
+  let h=`<div class="psub" style="margin:12px 0 0">พร้อมลงไฟล์ <b>${C.ok.length.toLocaleString()}</b> แถว · <b>${order.length}</b> PO
+    · รวม CS <b>${tot.cs.toLocaleString()}</b> · SH/SU <b>${tot.sh.toLocaleString()}</b> · PC <b>${tot.pc.toLocaleString()}</b>
+    ${C.n>C.ok.length?` · <span class="cst-no">ยังไม่ครบ ${C.n-C.ok.length} แถว</span>`:""}</div>`;
+  if(C.err.length)h+=`<div class="dc-msg err"><b>⛔ ต้องแก้ก่อนสร้างไฟล์ (${C.err.length})</b><ul>${
+    C.err.slice(0,40).map(x=>`<li>แถว ${x.n}: ${anaEsc(x.m)}</li>`).join("")}${C.err.length>40?"<li>…</li>":""}</ul></div>`;
+  if(C.warn.length)h+=`<div class="dc-msg warn"><b>⚠️ ข้อควรระวัง (${C.warn.length})</b> — สร้างไฟล์ได้ แต่ตรวจก่อน<ul>${
+    C.warn.slice(0,40).map(x=>`<li>${x.n?"แถว "+x.n+": ":""}${anaEsc(x.m)}</li>`).join("")}${C.warn.length>40?"<li>…</li>":""}</ul></div>`;
+  if(order.length)h+=`<div class="dc-sum tblwrap"><table><thead><tr><th>PO number</th><th style="text-align:left">ร้าน</th><th style="text-align:left">สาย</th><th>รายการ</th><th>CS</th><th>SH/SU</th><th>PC</th></tr></thead><tbody>${
+    order.map(x=>{const ocs=Object.keys(x.oc),pjs=Object.keys(x.pj);
+      return `<tr><td><b>${anaEsc(x.po)}</b></td><td style="text-align:left">${ocs.map(c=>anaEsc(((oi.by[c]||{}).n||"")+" ("+c+")")).join("<br>")}</td>
+        <td style="text-align:left">${pjs.map(p=>anaEsc(dcPjLabel(p))).join("<br>")}</td><td>${x.n}</td><td>${x.cs.toLocaleString()}</td><td>${x.sh.toLocaleString()}</td><td>${x.pc.toLocaleString()}</td></tr>`;}).join("")}</tbody></table></div>`;
+  h+=`<div class="dc-go"><button class="dc-make" onclick="dcMake()"${DC.busy?" disabled":""}>${DC.busy?"⏳ กำลังสร้างไฟล์…":"📥 สร้างไฟล์ Excel สำหรับอัพเข้า dcode"}</button>
+    <span class="psub">ได้ไฟล์ <b>LmtOrderCreationExcel_….xlsx</b> template เดิมของ dcode · DT_CODE <b>${DC_DT}</b> ทุกแถว · ช่องจำนวนที่ว่างลงเป็น 0</span></div>`;
+  if(DC.last)h+=`<div class="dc-msg ok">✅ สร้างไฟล์ล่าสุด <b>${anaEsc(DC.last.name)}</b> · ${DC.last.n} แถว · ${DC.last.po} PO · ${DC.last.oc} ร้าน · ${dcAgo(DC.last.at)}
+    <br>เอาไฟล์นี้ไปอัพในหน้า "สร้างออเดอร์หลายรายการ" ของ dcode ได้เลย · รายการยังอยู่ในหน้านี้ แก้แล้วสร้างใหม่ได้</div>`;
+  return h;
+}
+/* ช่องในแถว → id ของ input (ใช้ทาขอบแดงเฉพาะช่องที่ขาด) */
+const DC_FID={po:"dcPo",oc:"dcOc",pj:"dcPj",sku:"dcSc",cs:"dcCs",sh:"dcSh",pc:"dcPc"};
+/* อัพเดตเฉพาะส่วนสรุป + แถบแดงหน้าแถว (ไม่วาดตารางใหม่ ช่องที่กำลังพิมพ์จะได้ไม่หลุด) */
+function dcFootPaint(){
+  clearTimeout(DC.ft);
+  const el=dcEl("dcFoot");if(!el||!DC.f)return;
+  const C=dcCheck();
+  el.innerHTML=dcFootHtml(C);
+  DC.f.rows.forEach((r,i)=>{const tr=dcEl("dcR"+i);if(!tr)return;
+    const bf=C.bad[i]||null;tr.classList.toggle("bad",!!bf);
+    Object.keys(DC_FID).forEach(k=>{const inp=dcEl(DC_FID[k]+i);if(inp)inp.classList.toggle("dc-bad",!!(bf&&bf[k]));});});
+}
+function dcEditorHtml(){
+  const f=DC.f,C=dcCheck(),sel=dcSelN();
+  return `<div class="panel cst-form">
+    <div class="cst-fh"><h3>📝 รายการออเดอร์ (${f.rows.length} แถว) <span class="dc-dtb">DT_CODE ${DC_DT} ลงให้ทุกแถวอัตโนมัติ</span></h3>
+      <div class="psub">หนึ่งแถว = หนึ่งบรรทัดในไฟล์ · พิมพ์ <b>รหัส</b> หรือ <b>ชื่อ</b> ร้าน/สินค้าก็ได้ · เลือกร้านแล้ว <b>สายขึ้นเอง</b>
+        · รายการเก็บเป็นฉบับร่างในเครื่องนี้ให้ตลอด ปิดหน้าแล้วกลับมาทำต่อได้ (ไม่ได้ส่งขึ้นเซิร์ฟเวอร์)</div></div>
+    ${DC.rest?`<div class="rq-note">📝 กู้รายการที่กรอกค้างไว้กลับมาให้แล้ว — ทำต่อได้เลย</div>`:""}
+    ${dcBulkHtml()}
+    <div class="cst-tw"><table class="cst-ft dc-ft"><thead><tr>
+      <th><input type="checkbox" title="ติ๊กทุกแถว" ${sel&&sel===f.rows.length?"checked":""} onchange="dcSelAll(this.checked)"></th>
+      <th>#</th><th>PO_NUMBER</th><th>OUTLET_CODE</th><th>ชื่อร้าน</th><th>PJP_CODE (สาย)</th>
+      <th>SKU_CODE</th><th>ชื่อสินค้า</th><th>CS</th><th>SH/SU</th><th>PC</th><th></th></tr></thead><tbody>
+      ${f.rows.map((r,i)=>dcRowHtml(r,i,C.bad[i]||null)).join("")}
+    </tbody></table></div>
+    <div class="cst-fb dc-fb"><button class="btn-ghost" onclick="dcRowAdd()">＋ เพิ่มแถว (ร้าน/PO เดิม)</button>
+      <button class="btn-ghost" onclick="dcRowAdd(5)">＋ เพิ่มทีเดียว 5 แถว</button>
+      <button class="btn-ghost" onclick="dcRowAdd(1,true)">＋ ออเดอร์ใหม่ (แถวว่าง)</button>
+      <button class="btn-ghost" onclick="dcClearAll()">🧹 ล้างทั้งหมด</button>
+      <span class="psub">แถวใหม่ใช้ PO / ร้าน / สาย เดียวกับแถวสุดท้าย — กรอกแค่สินค้ากับจำนวน</span></div>
+    <div id="dcFoot">${dcFootHtml(C)}</div>
+  </div>`;
+}
+function renderDcode(){
+  const info=dcEl("dcInfo"),body=dcEl("dcBody");if(!info||!body)return;
+  {const t=dcEl("dcDtTxt");if(t)t.textContent=DC_DT;}
+  if(!dcMgr()){info.innerHTML="";
+    body.innerHTML='<div class="panel"><div class="insight">หน้านี้สำหรับแอดมิน — ใช้สร้างไฟล์อัพออเดอร์เข้าระบบ dcode</div></div>';return;}
+  dcEnsure();dcRefresh();
+  info.innerHTML=dcInfoHtml();
+  body.innerHTML=dcEditorHtml();
+}
 /* ====================== UPLOAD (admin) ====================== */
 function openUpload(){
   /* ⚠️ แท็บไหนไม่ได้อยู่ในตารางนี้ ห้ามตกไปเป็น "sales" เงียบๆ — ตอนเพิ่มแท็บสต็อคกลาง
      ลืมใส่บรรทัดนี้ กดปุ่มอัพโหลดในแท็บนั้นแล้วเด้งช่องอัพ "ยอดขายรายวัน" มาแทน
      ไม่รู้จัก = โชว์ทุกกลุ่ม ให้ผู้ใช้เลือกเอง ดีกว่าโชว์กลุ่มที่ผิด */
   const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",
-    cstock:"cstock",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price"}[CURTAB]||null;
-  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",cstock:"🧊 อัพไฟล์สต็อคกลาง (ตัดบิลไว้ก่อน)",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์",dci:"📈 อัพไฟล์ DCI Score ของศูนย์",pjp:"🗺 อัพไฟล์ PJP & ร้านค้า",price:"💰 อัพไฟล์ราคา (หัวเสือ / BUM)"}[g];
+    cstock:"cstock",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price",dcode:"dcode"}[CURTAB]||null;
+  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",cstock:"🧊 อัพไฟล์สต็อคกลาง (ตัดบิลไว้ก่อน)",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์",dci:"📈 อัพไฟล์ DCI Score ของศูนย์",pjp:"🗺 อัพไฟล์ PJP & ร้านค้า",price:"💰 อัพไฟล์ราคา (หัวเสือ / BUM)",dcode:"🧾 อัพไฟล์ข้อมูลตั้งต้นของ DCODE"}[g];
   document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
   /* ไฟล์สต็อคกลางแอดมินถือเอง ไม่ได้มาจาก Unilever — บรรทัดรองต้องไม่บอกผิด
      ตั้งแต่ 4 พ.ย. 69 การตัดบิลใหม่กรอกในเว็บ ไฟล์ฟอร์ม Excel เหลือไว้เป็นวิธีเดิมเท่านั้น */

@@ -1142,5 +1142,57 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
         looksEmpty({ DATA: {}, CSTOCK: srv.CSTOCK }) === true);
 }
 
+console.log("TEST 22 — product master: every upload takes effect, no code is ever lost (DCODE, 10 Nov 26)");
+{
+  /* เจ้าของสั่ง: SKU ในหน้า DCODE ต้อง "อัพเดตทุกครั้งเมื่อมีการอัพ master file"
+     ของเดิม (pickBiggerMaster) เก็บก้อนที่ "มีรายการมากกว่า" → ไฟล์ใหม่ที่ตัดรหัสเลิกขายออกไป
+     ไม่กี่ตัวถูกปฏิเสธเงียบ ๆ และแท็บเก่าที่ถือก้อนเก่า (ใหญ่กว่า) ย้อนไฟล์ใหม่กลับได้ */
+  const base = JSON.parse(JSON.stringify(server));
+  base.MASTER = { date: "2026-10-01", up: 1000, items: { "67000001": "บรีส เก่า", "67000002": "โอโม", "67000003": "ซันไลต์" } };
+  const fresh = JSON.parse(JSON.stringify(base));
+  fresh.MASTER = { date: "2026-11-01", up: 2000, items: { "67000001": "บรีส ชื่อใหม่", "67000009": "สินค้าใหม่ พ.ย." } };
+  const m1 = mergeState(base, fresh);
+  check("ไฟล์ master ใหม่ที่มีรายการ 'น้อยกว่า' ยังอัพเดตชื่อได้ (เดิมถูกปฏิเสธเงียบ ๆ)",
+        m1.MASTER.items["67000001"] === "บรีส ชื่อใหม่", m1.MASTER.items["67000001"]);
+  check("...รหัสใหม่ในไฟล์ใหม่เข้ามาครบ", m1.MASTER.items["67000009"] === "สินค้าใหม่ พ.ย.");
+  check("🛟 ...รหัสที่ไฟล์ใหม่ไม่มีแล้ว ยังอยู่ (ไม่มีรหัสไหนหายเพราะอัพไฟล์)",
+        m1.MASTER.items["67000002"] === "โอโม" && m1.MASTER.items["67000003"] === "ซันไลต์",
+        Object.keys(m1.MASTER.items).join(","));
+  check("...สแตมป์/วันที่ของก้อนเป็นของไฟล์ใหม่", m1.MASTER.up === 2000 && m1.MASTER.date === "2026-11-01");
+  const stale = JSON.parse(JSON.stringify(base));
+  stale.MASTER = { date: "2026-10-01", up: 1000, items: Object.assign({}, base.MASTER.items, { "67000004": "x", "67000005": "y" }) };
+  const m2 = mergeState(m1, stale);
+  check("🛟 แท็บเก่าที่ถือ master ก้อนเก่า (ใหญ่กว่า) บันทึกทับ → ชื่อใหม่ไม่ถูกย้อนกลับ",
+        m2.MASTER.items["67000001"] === "บรีส ชื่อใหม่" && m2.MASTER.up === 2000, m2.MASTER.items["67000001"]);
+  check("...และรหัสที่แท็บเก่ามีเพิ่ม ก็ไม่ถูกทิ้ง (union)", m2.MASTER.items["67000004"] === "x");
+  const blank = JSON.parse(JSON.stringify(base)); delete blank.MASTER;
+  check("🛟 แท็บที่ไม่มี MASTER เลย ลบ master ไม่ได้", Object.keys(mergeState(m2, blank).MASTER.items).length === 6);
+  const empty = JSON.parse(JSON.stringify(base)); empty.MASTER = { items: {} };
+  check("🛟 MASTER ว่าง ๆ ลบ master ไม่ได้", Object.keys(mergeState(m2, empty).MASTER.items).length === 6);
+  check("เซิร์ฟเวอร์ยังไม่มี master → รับของ client ทั้งก้อน",
+        mergeState(Object.assign({}, base, { MASTER: undefined }), fresh).MASTER.items["67000009"] === "สินค้าใหม่ พ.ย.");
+  const noUp = mergeState({ MASTER: { items: { a: "1", b: "2" } } }, { MASTER: { items: { a: "9" } } });
+  check("ข้อมูลรุ่นเก่าที่ไม่มี up ทั้งคู่ → client ชนะชื่อ (เหมือนเดิม) แต่ไม่ทิ้งรหัสของเซิร์ฟเวอร์",
+        noUp.MASTER.items.a === "9" && noUp.MASTER.items.b === "2", JSON.stringify(noUp.MASTER.items));
+  check("master ไม่ไปกวนก้อนอื่น",
+        Object.keys(m1.DATA.monthly).length === 2 && !!m1.PSTORE.rounds["2026-06-30"] && m1.ORDERS.dates.length === 2);
+
+  /* เลข PJP (pj) + รหัสพนักงาน (emp) อยู่ในเรคอร์ดร้านเดิม — ไม่ใช่ section ใหม่ */
+  const o1 = JSON.parse(JSON.stringify(base));
+  o1.PJP = { out: { "2488705": { n: "ร้านนิตท์", up: 100, la: 13.88, lo: 100.4, rt: "209616" },
+                    "2490866": { n: "ปณตพงค์", up: 100 } }, plan: {}, done: {}, cfg: { outUp: 100 } };
+  const o2 = JSON.parse(JSON.stringify(base));
+  o2.PJP = { out: { "2488705": { n: "ร้านนิตท์", up: 200, la: 13.88, lo: 100.4, rt: "209616", pj: "401842", emp: "16956", st: "Active" } },
+             plan: {}, done: {}, cfg: { outUp: 200 } };
+  const p1 = mergeState(o1, o2);
+  check("🧾 อัพ Master Outlet ใหม่ → เลข PJP + รหัสพนักงานเข้าเรคอร์ดร้าน",
+        p1.PJP.out["2488705"].pj === "401842" && p1.PJP.out["2488705"].emp === "16956",
+        JSON.stringify(p1.PJP.out["2488705"]));
+  check("🛟 ร้านที่ไฟล์ใหม่ไม่มี ยังอยู่ครบ", !!p1.PJP.out["2490866"]);
+  const p2 = mergeState(p1, o1);
+  check("🛟 แท็บเก่า (ก่อนมีเลข PJP) บันทึกทับ → เลข PJP ไม่หาย",
+        p2.PJP.out["2488705"].pj === "401842", JSON.stringify(p2.PJP.out["2488705"]));
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

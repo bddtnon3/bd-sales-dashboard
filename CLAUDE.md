@@ -14,9 +14,10 @@ the app UI; the sales team sees everything live. Features (all are tabs in one p
 earns from them).
 **ราคา & ทุน** (the two monthly Unilever price files: the หัวเสือ quote prices the depot sells at —
 also published to shop customers as a public catalogue — and the BUM cost file, manager-only).
-The pages sit in **9 top-level tab groups** (`TAB_GROUPS`/`renderTabs`), several of which open a
-row of sub-tabs. The per-page keys (`CURTAB`) did not change when the grouping was added — see
-`HANDOFF.md` §5 before touching the tab bar.
+The pages sit in **9 top-level tab groups** on the main site (`TAB_GROUPS`/`renderTabs`), several of
+which open a row of sub-tabs. The per-page keys (`CURTAB`) did not change when the grouping was added —
+see `HANDOFF.md` §5 before touching the tab bar. A 10th group, **🧾 DCODE**, carries `site:"admin"` and
+exists only on the **admin site** (`/admin`, see "Admin site + DCODE" below).
 
 ## The user
 Non-technical business owner. **Always respond in Thai**, keep it simple, avoid jargon.
@@ -38,9 +39,10 @@ After deploying, tell the user to refresh / test the live site in ~1 minute.
 `public/index.html` is a **generated file** — never hand-edit it. The real source is
 **`dashboard_template.html`** (one big single-file HTML/CSS/JS app). To change the app:
 1. Edit `dashboard_template.html`.
-2. Run **`node build.cjs`** — this regenerates `public/index.html` (server API-mode) and
-   fails loudly with `ANCHOR NOT FOUND` if an edit broke a string the build depends on.
-3. Commit **both** `dashboard_template.html` and `public/index.html`, then push `main`.
+2. Run **`node build.cjs`** — this regenerates `public/index.html` (server API-mode) **and
+   `public/admin.html`** (the admin site, same file with `BD_SITE="admin"`), and fails loudly with
+   `ANCHOR NOT FOUND` if an edit broke a string the build depends on.
+3. Commit `dashboard_template.html`, `public/index.html` **and** `public/admin.html`, then push `main`.
 `build.cjs` swaps the embedded-data declarations for empty server defaults and injects the
 server login/sync code (real data comes from the API, not the file).
 
@@ -60,7 +62,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (233 checks against the real `api/save.js` and the
+  running **`node test/merge-safety.test.mjs`** (247 checks against the real `api/save.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
@@ -71,7 +73,8 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   strip a rep's note off the record it shares with the tick), central stock (`CSTOCK.lots`/`del` and
   the in-app bill-cut slips `slips`/`sdel`/`ex` — a tab that submitted the slip before the shop file
   was attached must not delete that file, and uploading the file later must not wipe a note typed in
-  between), and the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
+  between), the product master (`mergeMaster` — every upload takes effect, no code is ever lost), and
+  the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
 
 - The **two monthly price files live OUTSIDE `bd-data-*`** and `PRICE` is deliberately **not** part
   of the synced state, so `mergeState` never sees them and uploading prices cannot roll the sales
@@ -152,6 +155,53 @@ button), and two yes/no answers — tax invoice and the ⭐ star-shop programme.
 assets; `public/img/brand/*.png` are the individual brand logos shown grouped by category.
 Keep the brands the owner excluded — Lipton, closeup, aviance, TONI&GUY, Unilever Food Solutions —
 out of it. Opening hours are 08.00–17.00, Mon–Sat, closed Sunday.
+
+## Admin site (`/admin`) + 🧾 DCODE (owner's order, 10 Nov 26)
+*"สร้างเวปแยกใช้งานกันระหว่างเซลล์และแอดมิน แต่ข้อมูลยังส่งเชื่อมกันได้อยู่ … เวปแอดมินจะเอาแค่หัวข้อ
+ยอดขาย การสั่งของ สต็อค ปฏิทิน … และเพิ่มหัวข้อนึง นั่นคือ DCODE"*. The old site is the sales team's.
+- **One source, two outputs.** `build.cjs` writes `public/admin.html` from the freshly built
+  `public/index.html`, changing only `const BD_SITE="main";` → `"admin"` and the `<title>` (each must
+  occur exactly once). Never fork the code: same `/api`, same login, same `bd-data-*` snapshot, so an
+  upload on either site is on both. `/admin` → `admin.html` via `vercel.json` `rewrites`.
+- **Tabs:** `ADMIN_SITE_GROUPS` (`sales`,`order`,`stock`,`plan`,`dcode`) through `tabGrpOnSite`; every
+  sub-tab inside those groups stays. The main site is unchanged except groups marked `site:"admin"`.
+- **Gate:** the admin site admits role `manager` only (manager, admin1–admin4) via `siteRoleOk`, both
+  on the login button (in `build.cjs` `LOGIN_API`) and on the remembered-token path. `bd_token`/`bd_user`
+  in localStorage are **shared by both sites** (same origin), so a refused rep must NOT be logged out
+  and their token must NOT be overwritten — refuse in place. Server permissions are unchanged.
+- **DCODE** generates `LmtOrderCreationExcel_YYYYMMDD_HHMM.xlsx` in dcode's own bulk-order template:
+  one sheet `Sheet1`, header row `PO_NUMBER · OUTLET_CODE · PJP_CODE · SKU_CODE · CS · SH/SU · PC ·
+  DT_CODE`. **Columns A–D and H are text-formatted (`@`, style 3) in the template — write them as
+  shared strings, never numbers**; E–G are numbers (blank = 0); DT_CODE is always `15389839`
+  (`DC_DT`). `dcXlsxParts` rebuilds every part from strings — styles.xml and the theme are
+  byte-identical to the template (the test checks sha256) — minus the dcode staff names, the
+  author's Windows path and the printer settings. The header's shared-string order is the
+  template's (`SH/SU` is index 7). If dcode changes its template, re-read the new file; never guess.
+- **Screen shows names, file gets codes:** outlet = Master Outlet col A (name shown), PJP = col AC
+  (`/401842/` → `401842`) shown as the line `CT11 · ชลศิต`. `dcPjMap` matches a PJP number to a line
+  by the **employee code (col Y = `DATA.lines[].emp`) first**, then the rep's first name (col Z):
+  CT12 changed rep, so name-only matching loses it. Unmatched = "PJP <number> · <name>", never a guess.
+  Picking an outlet fills its PJP (`pa:1`, follows later Master uploads); choosing a line by hand is
+  `pa:0` and is never overwritten. SKUs come from stock (with balance) + the latest order form +
+  Master Data.
+- **`parseOutlet` stores `pj` + `emp` on the existing `PJP.out[code]` record** (no new section) using
+  exact header matching (`pjColEq` — header Y is the truncated "พนักงานข", a substring of Z). It also
+  fixed a real bug: a re-upload used to keep the OLD record unless the new row "scored" higher, so
+  moved/renamed shops never updated (and a file with no new shop threw "ไม่พบรหัสร้านในไฟล์"). Rows are
+  now compared only against duplicates **in the same file** (`old.up===now`); `rt` and coordinates the
+  new file lacks are carried over; shops missing from the file are kept.
+- **`MASTER` merges with `mergeMaster`** (was `pickBiggerMaster`, which refused a newer master with
+  fewer items and let a stale tab roll an upload back): newer `up` wins the names, every code from
+  either side is kept.
+- **The DCODE rows are a device draft** (`localStorage bddc:<user>`, try/catch) — never synced, never
+  in `bd-data-*`; the page is read-only over the shared state. Typing never re-renders the table
+  (`dcRowSync`/`dcFootPaint`, so the caret stays); bulk edit/copy follow the bill-cut slip pattern
+  (`.cst-bulk.stick`; a bulk button with nothing ticked warns; copying ticked rows moves the ticks to the
+  copies). `dcCheck` blocks the file on a missing PO/outlet/line/SKU/quantity and asks first on
+  inactive outlets, a line that differs from the outlet's, unknown codes and duplicates.
+- Prove it with **`node test/browser/dcode.test.cjs`** (97 checks; 99 with the real outlet file via
+  `DCODE_OUTLET=/path/Master_Outlet_Data.xlsx` — that file holds customer data and never enters the
+  repo). Rules and the analysis of the real files: `HANDOFF.md` §5.
 
 ## Request-size limit (why the client gzips)
 Vercel caps the request body (~4.5 MB) and the blob is several MB, so the client gzips the
@@ -542,12 +592,13 @@ code, never printed.
   reachable from the `.sortsel` dropdown instead. Prove it with
   **`node test/browser/pricelist.test.cjs`** (40 checks in a real browser at 1280 and 390,
   including that the page only ever calls `/api/pricelist`).
-- `vercel.json` — `rewrites` only (the pretty links for the catalogue and the application form).
+- `vercel.json` — `rewrites` only (the pretty links for the catalogue, the application form and `/admin`).
   Keep it to `rewrites`: `builds`/`routes` would disable Vercel's zero-config handling of `api/*`.
 - `api/price.js` — manager upload + role-aware read of the two price files (separate blobs).
 - `api/pricelist.js` — PUBLIC, GET-only, READ-ONLY, หัวเสือ prefix only. See the 🔒 section above.
-- `build.cjs` — regenerates `public/index.html` from the template (run after every edit).
+- `build.cjs` — regenerates `public/index.html` and `public/admin.html` from the template (run after every edit).
 - `public/index.html` — generated output that Vercel serves. Do not edit by hand.
+- `public/admin.html` — the admin site (`/admin`), generated by `build.cjs`. Do not edit by hand.
 - `public/join.html` + `public/img/*` — the public shop-application page (hand-written).
 - `public/vendor/jszip.min.js` — vendored (MIT), lazy-loaded only when a PO file is generated.
 - `public/vendor/ocr/*` — Tesseract.js + its wasm core + the English model (Apache-2.0), ~8 MB,

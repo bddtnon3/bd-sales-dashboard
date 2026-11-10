@@ -102,7 +102,10 @@ async function doLogin(){
   try{
     const r=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user:u,pass:p})});
     if(!r.ok){const e=await r.json().catch(()=>({}));err.textContent=e.error||"เข้าสู่ระบบไม่สำเร็จ";return;}
-    const d=await r.json();TOKEN=d.token;S.user={id:u,role:d.role,code:d.code,name:d.name};
+    const d=await r.json();
+    /* เว็บแอดมินรับแต่บัญชี manager — ปฏิเสธก่อนเก็บ token (เซลล์ที่ล็อกอินเว็บเดิมค้างไว้ในเครื่องนี้ต้องไม่หลุด) */
+    if(!siteRoleOk(d.role)){err.textContent=siteRoleMsg();return;}
+    TOKEN=d.token;S.user={id:u,role:d.role,code:d.code,name:d.name};
     localStorage.setItem("bd_token",TOKEN);localStorage.setItem("bd_user",JSON.stringify(S.user));err.textContent="";await afterLogin();
   }catch(ex){err.textContent="เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message;}
 }
@@ -148,7 +151,10 @@ async function _doSync(){
   }catch(ex){ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
 }
 document.getElementById("p").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
-window.addEventListener("DOMContentLoaded",()=>{const t=localStorage.getItem("bd_token"),u=localStorage.getItem("bd_user");if(t&&u){try{TOKEN=t;S.user=JSON.parse(u);afterLogin();}catch(e){logout();}}});`;
+window.addEventListener("DOMContentLoaded",()=>{const t=localStorage.getItem("bd_token"),u=localStorage.getItem("bd_user");if(t&&u){try{const su=JSON.parse(u);
+  /* เปิดเว็บแอดมินด้วยบัญชีเซลล์ที่จำไว้ = ค้างที่หน้าล็อกอินพร้อมบอกเหตุผล ไม่ลบ token ของเว็บเดิม */
+  if(!siteRoleOk(su&&su.role)){document.getElementById("loginErr").textContent=siteRoleMsg();return;}
+  TOKEN=t;S.user=su;afterLogin();}catch(e){logout();}}});`;
 
 s = must(s, LOGIN_BLOCK, "LOGIN block").replace(LOGIN_BLOCK, LOGIN_API);
 
@@ -160,3 +166,16 @@ if (/__[A-Z]+DATA__/.test(s)) throw new Error("server: leftover data placeholder
 fs.writeFileSync(path.join(ROOT, "public", "index.html"), s);
 
 console.log("OK server bytes=" + s.length + " -> public/index.html");
+
+// ---------- ADMIN SITE (/admin) ----------
+// เจ้าของสั่ง 10 พ.ย. 69: แยกเว็บแอดมินออกจากเว็บทีมขาย แต่ข้อมูลยังเชื่อมกัน
+// = ไฟล์เดียวกันทุกบรรทัด ต่างกันแค่ธง BD_SITE (template เลือกแท็บ/หน้าตา/สิทธิ์ล็อกอินจากธงนี้)
+// ใช้ /api ชุดเดียวกัน ข้อมูลก้อนเดียวกัน — ไม่มีโค้ดแยก ไม่มีข้อมูลแยก ให้ดูแลคู่กัน
+const SITE_FLAG = 'const BD_SITE="main";';
+if (s.split(SITE_FLAG).length !== 2) throw new Error("ANCHOR NOT FOUND: BD_SITE flag (must appear exactly once)");
+const TITLE = "<title>BD Sales Dashboard</title>";
+if (s.split(TITLE).length !== 2) throw new Error("ANCHOR NOT FOUND: <title> (must appear exactly once)");
+const a = s.replace(SITE_FLAG, 'const BD_SITE="admin";').replace(TITLE, "<title>BD Admin</title>");
+fs.writeFileSync(path.join(ROOT, "public", "admin.html"), a);
+
+console.log("OK admin bytes=" + a.length + " -> public/admin.html");

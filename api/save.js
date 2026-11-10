@@ -89,7 +89,25 @@ function unionArr(a, b) { const o = [], seen = {}; [...(a || []), ...(b || [])].
 function stockScore(x) { if (!x) return -1; const up = x.up || 0; const d = x.date ? Number(String(x.date).replace(/-/g, "")) : 0; return up * 1e9 + d; }
 function pickNewerStock(a, b) { const ra = ((a && a.rows) || []).length, rb = ((b && b.rows) || []).length; if (!rb) return a || { date: null, rows: [], names: {} }; if (!ra) return b; return stockScore(b) >= stockScore(a) ? b : a; }
 function pickBiggerStore(a, b) { const am = ((a && a.months) || []).length, bm = ((b && b.months) || []).length; if (bm > am) return b; if (am > bm) return a || { months: [], stores: [] }; const as = ((a && a.stores) || []).length, bs = ((b && b.stores) || []).length; return bs >= as ? (b || { months: [], stores: [] }) : a; }
-function pickBiggerMaster(a, b) { const ai = Object.keys((a && a.items) || {}).length, bi = Object.keys((b && b.items) || {}).length; return bi >= ai ? (bi ? b : (a || { items: {} })) : a; }
+// Product master (Item_Code → name). It used to be "pickBiggerMaster": keep whichever copy held MORE
+// items. That silently refused a newer master file that had dropped a few delisted codes, and let a
+// stale tab holding an older-but-bigger copy roll a fresh upload back. The owner asked (10 Nov 26,
+// DCODE: the SKU list must update "every time a master file is uploaded"), so now:
+//   - the copy with the newer `up` stamp wins the NAMES (an upload always takes effect),
+//   - every code that only the other copy has is KEPT (a code never disappears — old orders, stock,
+//     requests and Drop rows still need its name; product codes change and both coexist for months),
+//   - an empty side never wins (crashed / old tab without MASTER cannot erase it).
+// No `up` on either side (data from before parseMaster stamped it) = the client wins ties, exactly
+// as pickBiggerMaster did, and the union still keeps every server-only code.
+function mergeMaster(a, b) {
+  const ai = (a && a.items) || {}, bi = (b && b.items) || {};
+  const an = Object.keys(ai).length, bn = Object.keys(bi).length;
+  if (!bn) return an ? a : (a || b || { items: {} });
+  if (!an) return b;
+  const bNewer = ((b && b.up) || 0) >= ((a && a.up) || 0);
+  const newer = bNewer ? b : a, older = bNewer ? a : b;
+  return Object.assign({}, newer, { items: Object.assign({}, older.items, newer.items) });
+}
 // The eB2B contest table is a full snapshot of the whole window, re-uploaded each time a
 // fresh Migration Report arrives, so "keep the fresher one" is right — but never let an
 // empty payload (old tab, or a client that failed to load) replace a populated one. An
@@ -311,7 +329,7 @@ function mergeState(server, c) {
     ORDERS,
     STOCKD: pickNewerStock(s.STOCKD, c.STOCKD),
     REQUESTS: mergeRequests(s.REQUESTS, c.REQUESTS),
-    MASTER: pickBiggerMaster(s.MASTER, c.MASTER),
+    MASTER: mergeMaster(s.MASTER, c.MASTER),
     ANALYTICS,
     STOREPROD,
     STOREDAILY,

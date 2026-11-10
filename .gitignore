@@ -16,3 +16,8 @@ test/browser/fixtures/pjp-*.xlsx
 # เหตุผลเดียวกับไฟล์ master outlet ด้านบน · วางไว้เองในเครื่องเพื่อรันเทสต์สต็อคกลางได้
 test/browser/fixtures/ex-export*.xlsx
 test/browser/fixtures/stock-2026*.xlsx
+
+# ⛔ template ของระบบ dcode (มีชื่อพนักงานของ dcode + path เครื่องคนทำในไฟล์) และไฟล์ออเดอร์ที่สร้างออกมา
+# (มีรหัสร้านลูกค้าจริง) — เทส dcode.test.cjs เช็คโครงไฟล์จากค่าที่จดไว้แล้ว ไม่ต้องใช้ไฟล์จริง
+test/browser/fixtures/LmtOrderCreation*.xlsx
+LmtOrderCreationExcel_*.xlsx
