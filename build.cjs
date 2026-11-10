@@ -104,7 +104,7 @@ async function doLogin(){
     if(!r.ok){const e=await r.json().catch(()=>({}));err.textContent=e.error||"เข้าสู่ระบบไม่สำเร็จ";return;}
     const d=await r.json();
     /* เว็บแอดมินรับแต่บัญชี manager — ปฏิเสธก่อนเก็บ token (เซลล์ที่ล็อกอินเว็บเดิมค้างไว้ในเครื่องนี้ต้องไม่หลุด) */
-    if(!siteRoleOk(d.role)){err.textContent=siteRoleMsg();return;}
+    if(!siteRoleOk(d.role,u)){err.textContent=siteRoleMsg();return;}
     TOKEN=d.token;S.user={id:u,role:d.role,code:d.code,name:d.name};
     localStorage.setItem("bd_token",TOKEN);localStorage.setItem("bd_user",JSON.stringify(S.user));err.textContent="";await afterLogin();
   }catch(ex){err.textContent="เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message;}
@@ -153,7 +153,7 @@ async function _doSync(){
 document.getElementById("p").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 window.addEventListener("DOMContentLoaded",()=>{const t=localStorage.getItem("bd_token"),u=localStorage.getItem("bd_user");if(t&&u){try{const su=JSON.parse(u);
   /* เปิดเว็บแอดมินด้วยบัญชีเซลล์ที่จำไว้ = ค้างที่หน้าล็อกอินพร้อมบอกเหตุผล ไม่ลบ token ของเว็บเดิม */
-  if(!siteRoleOk(su&&su.role)){document.getElementById("loginErr").textContent=siteRoleMsg();return;}
+  if(!siteRoleOk(su&&su.role,su&&su.id)){document.getElementById("loginErr").textContent=siteRoleMsg();return;}
   TOKEN=t;S.user=su;afterLogin();}catch(e){logout();}}});`;
 
 s = must(s, LOGIN_BLOCK, "LOGIN block").replace(LOGIN_BLOCK, LOGIN_API);

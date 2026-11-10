@@ -2891,8 +2891,16 @@ function tabGrpOnSite(g){
    ⚠️ ตัวเช็คนี้คือ "ประตูหน้าเว็บ" เท่านั้น สิทธิ์จริงยังอยู่ที่เซิร์ฟเวอร์ (api/save.js รับแต่ manager)
    ⚠️ บัญชีเซลล์ที่ล็อกอินค้างไว้ในเครื่องเดียวกัน ห้ามโดนล็อกเอาต์จากเว็บเดิมเพราะมาเปิดหน้านี้
       → ปฏิเสธเฉย ๆ ไม่ลบ token ที่เก็บไว้ (localStorage ใช้ร่วมกันทั้งสองเว็บ) */
-function siteRoleOk(role){return BD_SITE!=="admin"||role==="manager";}
-function siteRoleMsg(){return "เว็บนี้สำหรับแอดมิน/ผู้จัดการเท่านั้น — ทีมขายใช้เว็บเดิม (ลิงก์ด้านล่าง)";}
+/* ใครเข้าได้ — เจ้าของสั่ง 10 พ.ย. 69: *"ใช้รหัสแอดมินเข้าได้เท่านั้นนะ ที่ตั้งไว้ 4 คน รวมถึง manager ด้วย
+   เข้าได้หมด"* = manager + admin1–admin4 (ทุกบัญชีเป็น role manager ใน lib/accounts.js)
+   เช็คทั้ง role และชื่อผู้ใช้ — บัญชีสิทธิ์ผู้จัดการแบบอื่นที่อาจเพิ่มทีหลังจะไม่หลุดเข้ามาเอง
+   ส่วนแอดมินคนที่ 5 ขึ้นไป ตั้งชื่อแบบ admin<N> ตามกติกาเดิม (CLAUDE.md) ก็เข้าได้เลย */
+const ADMIN_SITE_USER=/^(manager|admin\d+)$/;
+function siteRoleOk(role,id){
+  if(BD_SITE!=="admin")return true;
+  return role==="manager"&&ADMIN_SITE_USER.test(String(id==null?"":id).trim().toLowerCase());
+}
+function siteRoleMsg(){return "เว็บนี้เข้าได้เฉพาะ manager และ admin1–admin4 — ทีมขายใช้เว็บเดิม (ลิงก์ด้านล่าง)";}
 /* หน้าตาของเว็บแอดมิน — ชื่อ ป้าย ลิงก์กลับเว็บทีมขาย (ทำครั้งเดียวตอนโหลดหน้า) */
 function siteInit(){
   if(BD_SITE!=="admin")return;

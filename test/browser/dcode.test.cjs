@@ -159,8 +159,9 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
    const s=[...document.querySelectorAll('#tabTop .tab')].map(b=>b.dataset.grp);
    S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};renderTabs();
    switchGroup('dcode');
-   return {m:m,s:s,site:BD_SITE,title:document.title,cur:CURTAB,
+   return {m:m,s:s,site:BD_SITE,title:document.title,cur:CURTAB,gate:siteRoleOk('sales','ct11'),
      link:document.getElementById('siteLink').getAttribute('href')};});
+ t('เว็บเดิม: ประตูแอดมินไม่มีผล — เซลล์ล็อกอินเว็บเดิมได้ตามปกติ',tabsM.gate===true);
  t('เว็บเดิม: กลุ่มแท็บเหมือนเดิมทุกกลุ่ม (9 กลุ่ม) ไม่มี DCODE',
    tabsM.m.join(',')==='sales,pjp,kpi,promo,order,stock,price,plan,shop',tabsM.m.join(','));
  t('เว็บเดิม: เซลล์ก็ไม่เห็น DCODE',tabsM.s.indexOf('dcode')<0&&tabsM.s.length>=8,tabsM.s.join(','));
@@ -186,7 +187,7 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
    app:!document.getElementById('app').classList.contains('hidden'),err:document.getElementById('loginErr').textContent,
    tok:localStorage.getItem('bd_token'),user:S.user,T:TOKEN}));
  t('🔒 เปิดเว็บแอดมินด้วยบัญชีเซลล์ที่จำไว้ → ค้างที่หน้าล็อกอิน พร้อมบอกเหตุผล',
-   g1.login&&!g1.app&&/แอดมิน/.test(g1.err),JSON.stringify({login:g1.login,app:g1.app,err:g1.err}));
+   g1.login&&!g1.app&&/เข้าได้เฉพาะ manager และ admin1–admin4/.test(g1.err),JSON.stringify({login:g1.login,app:g1.app,err:g1.err}));
  t('🔒 ...ไม่ลบ token ของเซลล์ (ยังใช้เว็บเดิมได้ตามปกติ) และไม่ได้เอา token มาใช้',
    g1.tok==='SALES.TOKEN'&&!g1.T&&!g1.user,JSON.stringify({tok:g1.tok,T:g1.T}));
  API.login={token:'MGR.TOKEN',role:'sales',code:'209611',name:'CT11'};
@@ -194,7 +195,7 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  await ev(()=>doLogin());
  const g2=await ev(()=>({app:!document.getElementById('app').classList.contains('hidden'),
    err:document.getElementById('loginErr').textContent,tok:localStorage.getItem('bd_token'),T:TOKEN}));
- t('🔒 ล็อกอินเว็บแอดมินด้วยรหัสเซลล์ (รหัสถูก) → ไม่ให้เข้า',!g2.app&&/แอดมิน/.test(g2.err)&&!g2.T,JSON.stringify(g2));
+ t('🔒 ล็อกอินเว็บแอดมินด้วยรหัสเซลล์ (รหัสถูก) → ไม่ให้เข้า',!g2.app&&/เข้าได้เฉพาะ manager และ admin1–admin4/.test(g2.err)&&!g2.T,JSON.stringify(g2));
  t('🔒 ...และไม่เขียน token ทับของเดิมในเครื่อง',g2.tok==='SALES.TOKEN',g2.tok);
  API.login={token:'MGR.TOKEN',role:'manager',name:'แอดมิน 1'};
  API.data={DATA:{lines:LINES,focus_order:ORDER,monthly:{"2026-10":{"209611":{target:100,niv:50}}},
@@ -209,6 +210,34 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
    g3.app&&g3.T==='MGR.TOKEN'&&g3.tabs==='sales,order,stock,plan,dcode',JSON.stringify(g3)+' '+dialogs.join(' | '));
  t('...ล็อกอินชุดเดียวกับเว็บเดิม (/api/login + /api/data ตัวเดียวกัน)',
    API.calls.indexOf('/api/login')>=0&&API.calls.indexOf('/api/data')>=0,API.calls.join(' '));
+ /* เจ้าของสั่ง: "ใช้รหัสแอดมินเข้าได้เท่านั้นนะ ที่ตั้งไว้ 4 คน รวมถึง manager ด้วย เข้าได้หมด" */
+ const five={};
+ for(const u of ['manager','admin1','admin2','admin3','admin4']){
+   await ev(()=>localStorage.clear());await go('admin.html');
+   API.login={token:'T.'+u,role:'manager',name:u};
+   await ev(a=>{document.getElementById('u').value=a.u.toUpperCase()+' ';document.getElementById('p').value='x';},{u});
+   await ev(()=>doLogin());await pg.waitForTimeout(120);
+   five[u]=await ev(()=>!document.getElementById('app').classList.contains('hidden')&&TOKEN!==null);
+ }
+ t('🔓 เข้าได้ครบ 5 บัญชี: manager · admin1 · admin2 · admin3 · admin4 (พิมพ์ตัวใหญ่/มีเว้นวรรคก็ได้)',
+   Object.keys(five).every(k=>five[k]),JSON.stringify(five));
+ await ev(()=>localStorage.clear());await go('admin.html');
+ API.login={token:'T.boss',role:'manager',name:'บัญชีอื่น'};
+ await ev(()=>{document.getElementById('u').value='boss';document.getElementById('p').value='x';});
+ await ev(()=>doLogin());await pg.waitForTimeout(120);
+ const boss=await ev(()=>({app:!document.getElementById('app').classList.contains('hidden'),T:TOKEN,
+   err:document.getElementById('loginErr').textContent,tok:localStorage.getItem('bd_token')}));
+ t('🔒 บัญชีสิทธิ์ผู้จัดการที่ไม่ใช่ manager/admin<N> (เผื่อเพิ่มทีหลัง) → เข้าเว็บแอดมินไม่ได้',
+   !boss.app&&!boss.T&&!boss.tok&&/admin1–admin4/.test(boss.err),JSON.stringify(boss));
+ await ev(()=>{localStorage.setItem('bd_token','ADMIN3.TOKEN');
+   localStorage.setItem('bd_user',JSON.stringify({id:'admin3',role:'manager',name:'แอดมิน 3'}));});
+ API.login=null;await go('admin.html');await pg.waitForTimeout(200);
+ const rem=await ev(()=>({app:!document.getElementById('app').classList.contains('hidden'),T:TOKEN}));
+ t('🔓 แอดมินที่ล็อกอินค้างไว้ในเครื่อง เปิด /admin แล้วเข้าได้เลย ไม่ต้องใส่รหัสใหม่',rem.app&&rem.T==='ADMIN3.TOKEN',JSON.stringify(rem));
+ const gate=await ev(()=>[siteRoleOk('manager','admin5'),siteRoleOk('manager','Manager'),siteRoleOk('sales','ct11'),
+   siteRoleOk('sales','admin1'),siteRoleOk('manager',''),siteRoleOk('manager','admin'),siteRoleOk('manager',undefined)]);
+ t('🔒 กติกาประตู: admin<N> รุ่นถัดไปเข้าได้ · ต้องเป็นสิทธิ์ manager ด้วย · ไม่มีชื่อ = ไม่ให้เข้า',
+   JSON.stringify(gate)==='[true,true,false,false,false,false,false]',JSON.stringify(gate));
  await ev(()=>localStorage.clear());
 
  /* ==========================================================================

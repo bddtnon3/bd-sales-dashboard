@@ -165,8 +165,11 @@ out of it. Opening hours are 08.00–17.00, Mon–Sat, closed Sunday.
   upload on either site is on both. `/admin` → `admin.html` via `vercel.json` `rewrites`.
 - **Tabs:** `ADMIN_SITE_GROUPS` (`sales`,`order`,`stock`,`plan`,`dcode`) through `tabGrpOnSite`; every
   sub-tab inside those groups stays. The main site is unchanged except groups marked `site:"admin"`.
-- **Gate:** the admin site admits role `manager` only (manager, admin1–admin4) via `siteRoleOk`, both
-  on the login button (in `build.cjs` `LOGIN_API`) and on the remembered-token path. `bd_token`/`bd_user`
+- **Gate:** the owner's rule is *"ใช้รหัสแอดมินเข้าได้เท่านั้น ที่ตั้งไว้ 4 คน รวมถึง manager ด้วย"* —
+  `siteRoleOk(role,id)` admits role `manager` **and** a user id matching `ADMIN_SITE_USER`
+  (`manager` or `admin<N>`, so admin1–admin4 today and a future admin5 by the naming rule, but not some
+  other manager-role account added later), both on the login button (in `build.cjs` `LOGIN_API`, which
+  passes the typed username) and on the remembered-token path (`bd_user.id`). `bd_token`/`bd_user`
   in localStorage are **shared by both sites** (same origin), so a refused rep must NOT be logged out
   and their token must NOT be overwritten — refuse in place. Server permissions are unchanged.
 - **DCODE** generates `LmtOrderCreationExcel_YYYYMMDD_HHMM.xlsx` in dcode's own bulk-order template:
@@ -199,7 +202,7 @@ out of it. Opening hours are 08.00–17.00, Mon–Sat, closed Sunday.
   (`.cst-bulk.stick`; a bulk button with nothing ticked warns; copying ticked rows moves the ticks to the
   copies). `dcCheck` blocks the file on a missing PO/outlet/line/SKU/quantity and asks first on
   inactive outlets, a line that differs from the outlet's, unknown codes and duplicates.
-- Prove it with **`node test/browser/dcode.test.cjs`** (97 checks; 99 with the real outlet file via
+- Prove it with **`node test/browser/dcode.test.cjs`** (102 checks; 104 with the real outlet file via
   `DCODE_OUTLET=/path/Master_Outlet_Data.xlsx` — that file holds customer data and never enters the
   repo). Rules and the analysis of the real files: `HANDOFF.md` §5.
 
