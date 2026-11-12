@@ -356,7 +356,20 @@ code, never printed.
   THAI WORD of the order-form name (`psBrandKey`) and never from `STOREPROD` or the price file —
   mixing sources splits one brand across two places in the list. Every other section keeps
   `grpByCat` + `poSeqSort`. Prove it with **`node test/browser/psbill.test.cjs`** (25 checks).
-  **การสั่งของ** has four sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO.
+  **การสั่งของ** has five sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO /
+  **📊 ประวัติการสั่งของ** (`renderOrdHist`), the month-at-a-glance table that replaces the Excel the
+  depot's sales contact emails every week. The owner gave the mapping himself and it reproduces his
+  file to the satang: **1st Order = CON Confirm × 0.85** (`ohVal`), **1st Order − Drop = that minus
+  the Drop file's `dropVal`**, **2nd = the day's `DATA.daily` summed over every line** (`ohSale`).
+  A day with no order file is `null`, never 0 — but a daily-sales file that says 0 IS a real 0, and
+  the two must keep rendering differently. The −15% figure is an **estimate**, not an invoice total,
+  and the page must keep saying so. The file's fourth column, **BI Report (NIV)**, comes from
+  Unilever's own BI report, which the app has never been given — leave it out rather than guess it
+  from the numbers we hold. **Everyone can open the page** (the owner asked for that explicitly,
+  even though the CON Confirm card on ภาพรวมสั่งของ is manager-only), and it is read-only over
+  ORDERS/DATA with the month on the non-synced `ORD.hm`. Prove it with
+  **`node test/browser/ordhist.test.cjs`** (28 checks, self-contained, made-up figures — the repo
+  is public, so never commit the depot's real revenue).
   The manager's combined request table (`renderSalesRequests`) carries a **line filter** of chips
   (`rqTog`/`rqOnly`/`rqAll`). It stores the lines **switched off** (`ORD.rqOff`), not the ones
   selected, so a line that starts sending requests tomorrow appears by itself; it lives on the

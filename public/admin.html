@@ -278,6 +278,17 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cst-n{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
 .cst-n .psub{font-size:11.5px}
 .cst-ar{color:var(--blue);font-weight:800;font-size:12px;flex-shrink:0}
+/* ตารางประวัติการสั่งของ — ให้ตัวเลขอ่านเป็นคอลัมน์เหมือนไฟล์ Excel ของเจ้าของ */
+.oh-tbl td,.oh-tbl th{text-align:right;white-space:nowrap}
+.oh-tbl .oh-d,.oh-tbl .oh-w{text-align:left}
+.oh-tbl .oh-w{color:var(--muted);font-size:12px}
+.oh-tbl th.oh-g1{background:#FFF4E0;color:#8a6500}
+.oh-tbl th.oh-g2{background:#EAF7EE;color:var(--good)}
+.oh-tbl tr.sun>td{background:#FDECEC}
+.oh-tbl tr.sat>td{background:#F5F8FD}
+.oh-tbl tr.oh-tot>td{background:var(--blue-soft);font-weight:800;color:var(--blue-dark);
+  border-top:2px solid var(--blue)}
+.oh-tbl tr.oh-tot>td:first-child{text-align:left}
 .cst-mb{display:inline-block;width:72px;height:7px;border-radius:4px;background:#EEF1F6;overflow:hidden;vertical-align:middle;margin-right:6px}
 .cst-mb>span{display:block;height:100%}
 .cst-rrow{cursor:pointer}
@@ -1338,6 +1349,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <button class="pos-st" data-k="ord" onclick="ordSetSec('ord')">📄 ใบสั่งของ (แอดมินอัพ)</button>
         <button class="pos-st" data-k="drop" onclick="ordSetSec('drop')">❌ ใบ Drop (แอดมินอัพ)</button>
         <button class="pos-st" data-k="po" onclick="ordSetSec('po')">🧮 คำนวณ PO อัตโนมัติ</button>
+        <button class="pos-st" data-k="hist" onclick="ordSetSec('hist')">📊 ประวัติการสั่งของ</button>
       </div>
       <div id="ordSecReq">
         <!-- Drop ค้างย้อนหลัง: ต้องอยู่บนสุด เพราะเจ้าของไล่สั่งของจากบนลงล่าง
@@ -1361,6 +1373,11 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       </div>
       <div id="ordSecPo" class="hidden">
         <div class="panel" id="poCalc"></div>
+      </div>
+      <!-- 📊 ประวัติการสั่งของ — ตารางรายวันทั้งเดือน 1st / 2nd (เจ้าของสั่ง 12 พ.ย. 69)
+           ทุกคนดูได้ตามที่เจ้าของสั่ง ("ให้เข้าดูได้ทุกคน") -->
+      <div id="ordSecHist" class="hidden">
+        <div id="ohBody"></div>
       </div>
     </div>
 
@@ -6639,7 +6656,7 @@ function parsePS(name,buf){
    ⚠️ เก็บแบบ "สายที่เอาออก" ไม่ใช่ "สายที่เลือก" เพื่อให้สายที่เพิ่งส่งคำขอเข้ามาวันใหม่
    โผล่เองโดยอัตโนมัติ ไม่ต้องไปติ๊กเพิ่ม · อยู่บน ORD ซึ่งไม่ถูก sync ขึ้นเซิร์ฟเวอร์
    จึงเป็นการกรองดูเฉย ๆ ไม่แตะคำขอของเซลล์สักตัว */
-let ORD={date:null,dropView:'sum',sec:'req',dbWin:5,dbGot:false,rqOff:{},rbWin:7,rbGot:false};
+let ORD={date:null,dropView:'sum',sec:'req',dbWin:5,dbGot:false,rqOff:{},rbWin:7,rbGot:false,hm:''};
 function setDropView(m){ORD.dropView=m;renderOrder();}
 function oname(c){return (STOCKD&&STOCKD.names&&STOCKD.names[c])||(MASTER&&MASTER.items&&MASTER.items[c])||(ORDERS.names&&ORDERS.names[c])||"";}
 function fnameDate(name){
@@ -6669,13 +6686,14 @@ function initOrder(){
  *    ห้ามข้ามกล่องที่ซ่อน เพราะ parser เรียก renderOrder() แล้วผู้ใช้สลับแท็บทีหลัง
  *    ถ้าข้าม จะเห็นข้อมูลเก่าค้าง
  * ==========================================================================*/
-const ORD_SECS={req:"ordSecReq",ord:"ordSecOrd",drop:"ordSecDrop",po:"ordSecPo"};
+const ORD_SECS={req:"ordSecReq",ord:"ordSecOrd",drop:"ordSecDrop",po:"ordSecPo",hist:"ordSecHist"};
 function ordSetSec(k){
   if(!ORD_SECS[k])k="req";
   ORD.sec=k;
   for(const x in ORD_SECS)document.getElementById(ORD_SECS[x]).classList.toggle("hidden",x!==k);
   document.querySelectorAll("#ordSubTabs .pos-st").forEach(b=>b.classList.toggle("on",b.dataset.k===k));
   if(k==="po")renderPoCalc();
+  if(k==="hist")renderOrdHist();
 }
 function renderOrder(){
   const bar=document.getElementById("orderBar");if(!bar)return;
@@ -7137,6 +7155,158 @@ function renderReqBack(){
     {cls:"plan-tbl db-tbl",alwaysBand:true,
      empty:`<div class="insight">${q?"ไม่พบรายการที่ค้นหา":"✅ คำขอที่สั่งไม่ได้ในช่วงนี้ ตามครบแล้ว — ติ๊ก “แสดงตัวที่สั่ง/ได้ของแล้วด้วย” เพื่อดูย้อนหลัง"}</div>`});
   el.innerHTML=head+info+hero+bar+`<div class="psub" style="margin-bottom:6px">↕️ ${poSeqNote()}</div>`+tbl;
+}
+/* ============================================================================
+ * 📊 ประวัติการสั่งของ — ตารางรายวันทั้งเดือน (1st sale / 2nd sale)
+ *
+ * เจ้าของสั่ง 12 พ.ย. 69: ทำหน้าตาเหมือนไฟล์ Excel ที่เซลล์ดูแลศูนย์ส่งให้ทุกอาทิตย์
+ * *"เพื่อดูยอดสั่ง 1st sale และยอดขายออก 2nd sale เพื่อตาม track สถานะรายเดือน"*
+ * และระบุการจับคู่ข้อมูลมาเอง:
+ *   1st Order        = CON Confirm × 0.85      (การ์ดในหน้าภาพรวมสั่งของ)
+ *   1st Order − Drop = (CON Confirm × 0.85) − Drop Value
+ *   2nd              = ยอดขายรายวันของทั้งศูนย์ (DATA.daily รวมทุกสาย)
+ *
+ * ⚠️ ตัวเลข 1st เป็น **ประมาณการ** ตามสูตร −15% ที่เจ้าของใช้เอง ไม่ใช่ยอดจากใบแจ้งหนี้
+ *    ต้องเขียนกำกับไว้บนหน้าจอเสมอ ห้ามเอาไปใช้แทนยอดบัญชี
+ * ⚠️ ในไฟล์ของเซลล์ยังมีคอลัมน์ "BI Report (NIV) Delivery" ซึ่งเป็นยอดส่งจริงจากรายงาน BI
+ *    ของยูนิลีเวอร์ — **ไม่มีในข้อมูลที่เราอัพ** จึงไม่ได้ทำคอลัมน์นั้น (เจ้าของก็ไม่ได้จับคู่มา)
+ *    ถ้าวันหนึ่งมีไฟล์นั้น ค่อยเพิ่มเป็นคอลัมน์ใหม่ ห้ามเดาจากตัวเลขที่มีอยู่
+ * ⚠️ อ่านอย่างเดียวล้วน ๆ เหมือน Drop ค้าง — ไม่เขียน ORDERS/DATA เลย เดือนที่เลือกอยู่บน ORD
+ * ========================================================================== */
+const OH_DOW=["อา.","จ.","อ.","พ.","พฤ.","ศ.","ส."];
+function ohN(v){return (Math.round((+v||0)*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
+/* 1st ของวันนั้น — null = วันนั้นไม่มีใบสั่ง/ใบ Drop เลย (คนละเรื่องกับ "สั่ง 0 บาท") */
+function ohVal(d){
+  const day=((ORDERS&&ORDERS.data)||{})[d];
+  if(!day)return null;
+  const cv=Object.values(day.vals||{}).reduce((a,x)=>a+(+x.cv||0),0);
+  const drop=+(day.dropVal||0);
+  if(!cv&&!drop)return null;
+  const c85=cv*0.85;
+  return {cv:cv,c85:c85,drop:drop,net:c85-drop};
+}
+/* 2nd ของวันนั้น = ยอดขายรายวันรวมทุกสาย (ยอด 0 ก็คือข้อมูลจริง ห้ามเปลี่ยนเป็น null) */
+function ohSale(d){
+  const day=((DATA&&DATA.daily)||{})[d];
+  if(!day)return null;
+  return Object.keys(day).reduce((a,k)=>a+(+day[k]||0),0);
+}
+function ohMonths(){
+  const m={};
+  ((ORDERS&&ORDERS.dates)||[]).forEach(d=>{if(ohVal(d))m[String(d).slice(0,7)]=1;});
+  Object.keys((DATA&&DATA.daily)||{}).forEach(d=>{m[String(d).slice(0,7)]=1;});
+  return Object.keys(m).sort();
+}
+function ohRows(ym){
+  const p=String(ym||"").split("-"),y=+p[0],mo=+p[1];
+  if(!y||!mo)return [];
+  const n=new Date(y,mo,0).getDate(),out=[];
+  for(let i=1;i<=n;i++){
+    const d=y+"-"+String(mo).padStart(2,"0")+"-"+String(i).padStart(2,"0");
+    out.push({d:d,dow:new Date(d+"T00:00:00").getDay(),v:ohVal(d),s:ohSale(d)});
+  }
+  return out;
+}
+function ohSum(rows){
+  return rows.reduce((a,r)=>{
+    if(r.v){a.c85+=r.v.c85;a.drop+=r.v.drop;a.net+=r.v.net;a.nOrd++;}
+    if(r.s!==null){a.sale+=r.s;a.nSale++;}
+    return a;},{c85:0,drop:0,net:0,sale:0,nOrd:0,nSale:0});
+}
+/* วันทำงานที่ผ่านมาแล้ว (จ.–ส. · อาทิตย์ศูนย์ปิด) — ช่องซ้ายบนของไฟล์เจ้าของ */
+function ohWork(ym,rows){
+  const t=todayISO();
+  let last="";rows.forEach(r=>{if(r.v||r.s!==null)last=r.d;});
+  const cut=(ym===t.slice(0,7))?t:(last||"");
+  let tot=0,used=0;
+  rows.forEach(r=>{if(r.dow===0)return;tot++;if(cut&&r.d<=cut)used++;});
+  return {used:used,tot:tot};
+}
+function ohSetMon(v){ORD.hm=v;renderOrdHist();}
+function renderOrdHist(){
+  const el=document.getElementById("ohBody");if(!el)return;
+  const ms=ohMonths();
+  if(!ms.length){
+    el.innerHTML=`<div class="panel"><h3>📊 ประวัติการสั่งของ</h3>
+      <div class="insight">ยังไม่มีข้อมูล — อัพไฟล์ใบสั่ง/ใบ Drop และไฟล์ยอดขายรายวันก่อน แล้วตารางทั้งเดือนจะขึ้นที่นี่เอง</div></div>`;
+    return;}
+  if(!ORD.hm||ms.indexOf(ORD.hm)<0)ORD.hm=ms[ms.length-1];
+  const ym=ORD.hm,rows=ohRows(ym),tot=ohSum(rows),wk=ohWork(ym,rows);
+  const pct=tot.net>0?Math.round(tot.sale/tot.net*1000)/10:0;
+  const opt=ms.slice().reverse().map(m=>`<option value="${m}"${m===ym?" selected":""}>${anaEsc(cstYmTh(m))}</option>`).join("");
+  let h=`<div class="panel"><div class="controls" style="margin:0">
+      <div class="ctl"><label>เดือน</label><div class="dstep">
+        <button type="button" class="dstep-b" onclick="selStep('ohSel',-1)" title="เดือนก่อน">◀</button>
+        <select id="ohSel" data-rev="1" onchange="ohSetMon(this.value)">${opt}</select>
+        <button type="button" class="dstep-b" onclick="selStep('ohSel',1)" title="เดือนถัดไป">▶</button>
+      </div></div>
+      <div class="ctl"><label>วันทำงานผ่านมาแล้ว</label>
+        <div style="font-size:18px;font-weight:800;padding-top:4px">${wk.used} <span class="psub">/ ${wk.tot} วัน</span></div></div>
+      <div class="spacer"></div>
+      <div class="ctl"><label>&nbsp;</label><button class="btn-ghost" onclick="ohXlsx()">⬇️ Excel เดือนนี้</button></div>
+    </div></div>`;
+  h+=`<div class="cards">
+    <div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">1st · สั่งซื้อ (CON −15%)</div>
+      <div class="v" style="font-size:20px">${THBk(tot.c85)}</div><div class="s">${ohN(tot.c85)} บาท · ${tot.nOrd} วันที่สั่ง</div></div>
+    <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">หัก Drop</div>
+      <div class="v down" style="font-size:20px">${THBk(tot.drop)}</div><div class="s">${ohN(tot.drop)} บาท</div></div>
+    <div class="card"><div class="k">1st · หลังหัก Drop</div>
+      <div class="v" style="font-size:20px">${THBk(tot.net)}</div><div class="s">${ohN(tot.net)} บาท</div></div>
+    <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">2nd · ขายออกให้ร้านค้า</div>
+      <div class="v up" style="font-size:20px">${THBk(tot.sale)}</div><div class="s">${ohN(tot.sale)} บาท · ${tot.nSale} วันที่เปิดบิล</div></div>
+    <div class="card"><div class="k">2nd เทียบ 1st</div>
+      <div class="v" style="font-size:20px">${tot.net>0?pct+"%":"–"}</div><div class="s">ขายออก ÷ ซื้อเข้า (หลังหัก Drop)</div></div>
+  </div>`;
+  const row=r=>{
+    const cls=r.dow===0?" sun":(r.dow===6?" sat":"");
+    const no='<span class="psub">-</span>';
+    return `<tr class="oh-r${cls}">
+      <td class="oh-d">${fmtDayMon(r.d)}</td><td class="oh-w">${OH_DOW[r.dow]}</td>
+      <td>${r.v?ohN(r.v.c85):no}</td>
+      <td>${r.v&&r.v.drop?'<span class="down">'+ohN(r.v.drop)+'</span>':no}</td>
+      <td>${r.v?"<b>"+ohN(r.v.net)+"</b>":no}</td>
+      <td>${r.s===null?no:'<b class="up">'+ohN(r.s)+'</b>'}</td></tr>`;
+  };
+  h+=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h3>📊 ${anaEsc(cstYmTh(ym))} — รายวันทั้งเดือน</h3>
+      <div class="psub">หน้าตาเดียวกับไฟล์ที่เซลล์ดูแลศูนย์ส่งมาทุกอาทิตย์</div></div>
+    <div class="psub" style="margin-bottom:8px">
+      <b>1st</b> = ซื้อเข้าจากยูนิลีเวอร์ · <b>2nd</b> = ขายออกให้ร้านค้า<br>
+      <b>Order (CON −15%)</b> มาจากมูลค่า CON Confirm ของใบสั่งวันนั้น หัก 15% ตามที่ศูนย์ใช้ประมาณการ —
+      <b>เป็นตัวเลขประมาณการ ไม่ใช่ยอดจากใบแจ้งหนี้</b> · <b>หัก Drop</b> มาจาก Drop Value ในใบ Drop วันนั้น ·
+      <b>2nd</b> มาจากไฟล์ยอดขายรายวัน (รวมทุกสาย)
+    </div>
+    <div class="tblwrap"><table class="grp-tbl oh-tbl"><thead>
+      <tr><th rowspan="2">วันที่</th><th rowspan="2">วัน</th>
+          <th colspan="3" class="oh-g1">1st — ซื้อเข้าจากยูนิลีเวอร์</th>
+          <th rowspan="2" class="oh-g2">2nd — ขายออกให้ร้านค้า</th></tr>
+      <tr><th class="oh-g1">Order (CON −15%)</th><th class="oh-g1">หัก Drop</th><th class="oh-g1">Order − Drop</th></tr>
+      </thead><tbody>${rows.map(row).join("")}</tbody>
+      <tfoot><tr class="oh-tot"><td colspan="2">รวมทั้งเดือน</td>
+        <td>${ohN(tot.c85)}</td><td>${ohN(tot.drop)}</td><td><b>${ohN(tot.net)}</b></td>
+        <td><b>${ohN(tot.sale)}</b></td></tr></tfoot></table></div></div>`;
+  el.innerHTML=h;
+}
+/* ⬇️ ส่งต่อเป็น Excel — เจ้าของส่งไฟล์นี้ให้ทีมทุกอาทิตย์อยู่แล้ว */
+function ohXlsx(){
+  const ym=ORD.hm||(ohMonths().pop()||"");
+  const rows=ohRows(ym),tot=ohSum(rows),wk=ohWork(ym,rows);
+  const a=[["ประวัติการสั่งของ — BD DISTRIBUTION"],
+    ["เดือน",cstYmTh(ym),"","วันทำงานผ่านมาแล้ว",wk.used+" / "+wk.tot+" วัน"],
+    ["หมายเหตุ","1st Order = CON Confirm × 0.85 (ประมาณการ) · หัก Drop = Drop Value · 2nd = ยอดขายรายวันรวมทุกสาย"],
+    [""],
+    ["วันที่","วัน","1st Order (CON -15%)","หัก Drop","1st Order - Drop","2nd ขายออก"]];
+  rows.forEach(r=>a.push([fmtDate(r.d),OH_DOW[r.dow],
+    r.v?Math.round(r.v.c85*100)/100:"",r.v?Math.round(r.v.drop*100)/100:"",
+    r.v?Math.round(r.v.net*100)/100:"",r.s===null?"":Math.round(r.s*100)/100]));
+  a.push(["รวมทั้งเดือน","",Math.round(tot.c85*100)/100,Math.round(tot.drop*100)/100,
+    Math.round(tot.net*100)/100,Math.round(tot.sale*100)/100]);
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(a);
+  ws["!cols"]=[{wch:16},{wch:7},{wch:20},{wch:14},{wch:20},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws,"ประวัติการสั่งของ");
+  const out=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+  msDownload(new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),
+    "BD-order-history-"+ym+".xlsx");
 }
 /* search a product across ALL order days → its status per day (สั่ง/ได้/ดรอป). For sales & manager. */
 function renderOrderSearch(){
