@@ -478,6 +478,26 @@ code, never printed.
   change the other; the test compares both copies on every item in every round.
   The **📦 สต็อก** group has two tabs: `stock` (สต็อคปัจจุบัน, the daily stock file) and
   **`cstock` (🧊 สต็อคกลาง)** — stock the depot billed out in advance and still has to place.
+  `parseStock` reads **two different stock files** and must keep reading both: the depot's old
+  one, and **the new dcode system's `DataExtract*.xlsx`** (BD moved to dcode in Nov 26). The new
+  file is recognised by its **`ประเภทสต็อก` column**, which the old one does not have, and goes to
+  `parseStockDcode`; `STOCKD.src` says which (`"dcode"` / `"old"`) and the page labels itself from
+  it. Both land in the SAME `STOCKD.rows` shape, so every page that reads stock (`stkOf`, คำขอ,
+  Drop ค้าง, auto-PO) is untouched. **dcode renamed the two warehouses** — the owner's words:
+  *"จะเปลี่ยนชื่อจากคลัง Sales เป็น Sound และ Gift เป็น Free คือของขายและของแถมดังเดิม"* — so
+  `01-Sound` → `wh:"sale"` and `99-Free` → `wh:"gift"` (`DC_WH`); the internal codes are unchanged
+  and the screen shows both names (`🛒 คลังขาย (Sound)`). Four things are easy to get wrong:
+  **product codes are no longer all digits** — dcode has `G…` codes (fan give-aways, Off-Invoice,
+  VIP packs: 106 real rows in the first file), so the old `/^\d+$/` filter dropped them silently
+  and the count read 1520 instead of 1626; **คงเหลือปัจจุบัน is read from the file, never
+  recomputed** (closing − allocated matched in only 1552/1626 rows — the rest are case-breaks);
+  the file has **no pack size**, so `d` stays blank rather than guessed (deriving it was whole in
+  406/550 rows and agreed with the product name in 50); and columns are found by **exact header
+  text**, so a header dcode renames **throws and stores nothing** instead of writing zeros over
+  good stock. An unknown `ประเภทสต็อก` is kept in the sale warehouse and **reported**, never
+  dropped. Prove it with **`node test/browser/stockdc.test.cjs`** (27 checks, self-contained with
+  made-up figures; 29 with the real file via `DCODE_STOCK=/path/DataExtract.xlsx`, which never
+  enters the repo).
   **Everyone sees it** ("เพื่อให้ทางเซลล์ไปขายกันมา"), only the admin writes: every writing
   function tests `cstMgr()` itself, never relying on the button being hidden.
   The admin now **types the bill-cut slip in the app** (`cstNew`/`cstSlipSave`), not in Excel —

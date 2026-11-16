@@ -1446,8 +1446,8 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <div class="ctl"><label>ค้นหาสินค้า (พิมพ์คีย์เวิร์ด เช่น บรีส / 110 / อ)</label><input id="stockSearch" placeholder="🔍 พิมพ์ชื่อ/รหัส/ตัวเลข — เว้นวรรคเพื่อกรองหลายคำ" oninput="renderStock()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:230px"></div>
         <div class="ctl"><label>คลัง</label>
           <div class="seg" id="stockWh">
-            <button data-w="sale" class="on">🛒 คลังขาย</button>
-            <button data-w="gift">🎁 คลังแถม</button>
+            <button data-w="sale" class="on">🛒 คลังขาย (Sound)</button>
+            <button data-w="gift">🎁 คลังแถม (Free)</button>
           </div>
         </div>
         <div class="ctl"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="stockZero" onchange="renderStock()"> เฉพาะคงเหลือ ≤ 0 (หมด/ติดลบ)</label></div>
@@ -1763,7 +1763,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <input id="fileDrop" type="file" accept=".xlsx,.xlsm,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="stock">
-        <label class="drop up-stock" for="fileStock2">📦 <b>สต็อกสินค้า</b><small>อัพทุกวัน · ไฟล์ Stock ...xlsx (อัปเดตชื่อสินค้า+จำนวนคงเหลือ)</small></label>
+        <label class="drop up-stock" for="fileStock2">📦 <b>สต็อกสินค้า</b><small>อัพทุกวัน · ระบบใหม่ <b>dcode</b>: ไฟล์ <b>DataExtract...xlsx</b> (ใส่วันที่ท้ายชื่อไฟล์ด้วย เช่น DataExtract_161126) · ไฟล์ Stock แบบเดิมยังอัพได้เหมือนเดิม</small></label>
         <input id="fileStock2" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="cstock">
@@ -9430,14 +9430,19 @@ function renderSalesRequests(){
 let STK={wh:"sale"};
 document.getElementById("stockWh").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;STK.wh=b.dataset.w;setSeg("stockWh","w",STK.wh);renderStock();});
 function cspcTotal(s){const m=String(s||"").split("/");const cs=parseInt(m[0])||0,pc=parseInt(m[1])||0;return cs*1000+pc;} /* rough magnitude for sort */
-function stkSearchMatch(row,tokens){const hay=((row.n||"")+" "+row.c).toLowerCase();return tokens.every(t=>hay.indexOf(t)>=0);}
+/* ไฟล์ dcode มีหมวดหมู่/แบรนด์มาด้วย — ใส่ในคำค้นด้วย จะได้พิมพ์ "breeze" หรือ "hair care" หาได้ */
+function stkSearchMatch(row,tokens){
+  const hay=((row.n||"")+" "+row.c+" "+(row.br||"")+" "+(row.cat||"")).toLowerCase();
+  return tokens.every(t=>hay.indexOf(t)>=0);}
 function stkLow(iStr){const s=String(iStr==null?"":iStr).trim();if(!s)return false;const neg=s.indexOf("-")>=0;const m=s.match(/-?\d+/g)||[];const cs=parseInt(m[0])||0,pc=parseInt(m[1])||0;return neg||(cs===0&&pc===0)||cs<0||pc<0;}
 function renderStock(){
   const bar=document.getElementById("stockBar");if(!bar)return;
   const rows=(STOCKD&&STOCKD.rows)||[];
   if(!rows.length){bar.innerHTML="📦 สต็อกสินค้า · ศูนย์ BD";document.getElementById("stockCards").innerHTML="";
     document.getElementById("stockTable").innerHTML='<div class="insight">ยังไม่มีข้อมูลสต็อก — แอดมินอัพไฟล์สต็อกก่อน (ปุ่มอัพโหลด → 📦)</div>';return;}
-  bar.innerHTML=`📦 สต็อกสินค้า · ศูนย์ BD · ข้อมูล ณ <b>${STOCKD.date?fmtDate(STOCKD.date):"-"}</b>${STOCKD.up?` · 🕒 อัปเดตล่าสุด <b>${fmtDateTime(STOCKD.up)}</b>`:""} · ${STK.wh==="sale"?"🛒 คลังขาย":"🎁 คลังแถม"}`;
+  const dc=STOCKD&&STOCKD.src==="dcode";          /* ไฟล์ระบบใหม่ (dcode) หรือไฟล์เดิม */
+  bar.innerHTML=`📦 สต็อกสินค้า · ศูนย์ BD · ข้อมูล ณ <b>${STOCKD.date?fmtDate(STOCKD.date):"-"}</b>${STOCKD.up?` · 🕒 อัปเดตล่าสุด <b>${fmtDateTime(STOCKD.up)}</b>`:""} · ${
+    STK.wh==="sale"?"🛒 คลังขาย":"🎁 คลังแถม"}${dc?" ("+DC_WH_TH[STK.wh]+")":""}${dc?' <span class="psub">· ไฟล์ระบบ dcode</span>':""}`;
   const whRows=rows.filter(r=>r.wh===STK.wh);   /* file order preserved */
   const q=(document.getElementById("stockSearch").value||"").trim().toLowerCase();
   const tokens=q.split(/\s+/).filter(Boolean);
@@ -9457,8 +9462,97 @@ function renderStock(){
     return `<tr${low?' style="background:#FDF3F3"':''}><td>${r.c}</td><td style="text-align:left">${r.n||"-"}</td>${showVal?`<td style="text-align:right">${r.d||"-"}</td>`:""}<td style="text-align:right">${r.e||"-"}</td>${showVal?`<td style="text-align:right">${(r.j||0)>0?THB(r.j):"-"}</td>`:""}${showVal?`<td style="text-align:right">${(r.v||0)>0?THB(r.v):"-"}</td>`:""}<td style="text-align:right" class="${(r.po&&r.po!=="0"&&r.po!=="0/0")?'up':''}">${r.po||"-"}</td><td style="text-align:right">${r.h||"-"}</td><td style="text-align:right" class="${low?'down':''}"><b>${r.i||"-"}</b></td></tr>`;}).join("");
   const cols=5+(showVal?3:0);
   document.getElementById("stockTable").innerHTML=`<h3>รายการสต็อก — ${STK.wh==="sale"?"คลังขาย":"คลังแถม"}</h3>
-    <div class="psub">คอลัมน์: สต็อกจริง (E) · เปิดใบสั่งซื้อ (G = ของกำลังเข้าคลัง ยังไม่ได้ปรับเข้า) · รอตัดบิล/ใบสั่งขาย (H) · คงเหลือ (I) — รูปแบบ ลัง/ชิ้น${isMgr?" · ผู้จัดการเห็นเพิ่ม: ขนาดบรรจุ (D) · ต้นทุนต่อหีบ (J) · ต้นทุนรวม (F)":""} · เรียงตามไฟล์ · สูงสุด 800 แถว</div>
+    <div class="psub">${dc
+      ?`มาจากไฟล์ <b>dcode</b> — สต็อกจริง = <b>คงเหลือปิดวัน</b> · เปิดใบสั่งซื้อ = <b>อยู่ระหว่างการขนส่ง</b> (ของกำลังเข้าคลัง) · รอตัดบิล = <b>จัดสรรแล้ว</b> · คงเหลือ = <b>คงเหลือปัจจุบัน</b> (ตัวที่ขายได้จริง) — รูปแบบ ลัง/ชิ้น${
+        isMgr?" · ผู้จัดการเห็นเพิ่ม: ต้นทุนต่อหีบ · ต้นทุนรวม (ไฟล์ dcode ไม่มีขนาดบรรจุมาด้วย ช่องนี้จึงเป็น -)":""}`
+      :`คอลัมน์: สต็อกจริง (E) · เปิดใบสั่งซื้อ (G = ของกำลังเข้าคลัง ยังไม่ได้ปรับเข้า) · รอตัดบิล/ใบสั่งขาย (H) · คงเหลือ (I) — รูปแบบ ลัง/ชิ้น${
+        isMgr?" · ผู้จัดการเห็นเพิ่ม: ขนาดบรรจุ (D) · ต้นทุนต่อหีบ (J) · ต้นทุนรวม (F)":""}`} · เรียงตามไฟล์ · สูงสุด 800 แถว</div>
     <div style="overflow-x:auto"><table class="stk-tbl"><thead><tr><th style="text-align:left">รหัส</th><th style="text-align:left">สินค้า</th>${showVal?'<th style="text-align:right">ขนาดบรรจุ</th>':""}<th style="text-align:right">สต็อกจริง</th>${showVal?'<th style="text-align:right">ต้นทุนต่อหีบ</th>':""}${showVal?'<th style="text-align:right">ต้นทุนรวม</th>':""}<th style="text-align:right">เปิดใบสั่งซื้อ</th><th style="text-align:right">รอตัดบิล</th><th style="text-align:right">คงเหลือ</th></tr></thead><tbody>${rowsH||`<tr><td colspan="${cols}" style="text-align:center;color:var(--muted);padding:16px">ไม่พบสินค้าที่ค้นหา</td></tr>`}</tbody></table></div>`;
+}
+/* ============================================================================
+ * 📦 ไฟล์สต็อกของระบบใหม่ "dcode" (DataExtract.xlsx) — เจ้าของแจ้ง 16 พ.ย. 69
+ * *"ต่อไป BD จะใช้ระบบใหม่ คือ dcode … จะเปลี่ยนชื่อจากคลัง Sales เป็น Sound และ
+ *   Gift เป็น Free คือของขายและของแถมดังเดิม"*
+ *
+ * หัวตารางคนละชุดกับไฟล์เดิมทั้งใบ จึงแยกเป็นอีกตัวอ่าน แต่ **แปลงลงโครงเดิม**
+ * (`STOCKD.rows` = {c,n,wh,d,e,h,i,lo,st,v,j,po}) หน้าจอและทุกหน้าที่เรียก `stkOf`
+ * จึงไม่ต้องรู้เลยว่าไฟล์มาจากระบบไหน
+ *
+ * ⚠️ หาคอลัมน์ด้วย **ข้อความหัวตารางแบบตรงตัว** (ตัดช่องว่างก่อนเทียบ) ห้าม indexOf เด็ดขาด:
+ *    ในไฟล์มีคำว่า "คงเหลือ" อยู่ 4 คอลัมน์ (ปิดวัน ลัง/ชิ้น · ปัจจุบัน ลัง/ชิ้น)
+ *    และสะกดไม่เหมือนกันด้วย — "สต็อก" (ปิดวัน) กับ "สต๊อก" (ปัจจุบัน)
+ *    (บทเรียนเดียวกับคอลัมน์ "ผู้สั่งซื้อ (ID)" ของไฟล์ Ex.export)
+ * ⚠️ ไฟล์นี้ **ไม่มีคอลัมน์ขนาดบรรจุ** และคำนวณจาก มูลค่า ÷ ราคาถัวเฉลี่ย ไม่น่าเชื่อถือ
+ *    (วัดแล้ว: ลงตัวเป็นจำนวนเต็มแค่ 406/550 แถว และตรงกับที่อ่านจากชื่อสินค้าแค่ 50 แถว)
+ *    → ปล่อยว่างไว้ ห้ามเดา · ช่อง "ขนาดบรรจุ" จะขึ้น "-"
+ * ⚠️ ชื่อสินค้าในไฟล์เป็น "<รหัส>-<ชื่อจริง>-<ราคาต่อชิ้น>" ทั้ง 1,626 แถว → ตัดหัวท้ายออก
+ * ⚠️ ชื่อไฟล์ไม่มีวันที่ (DataExtract_1.xlsx) ระบบจึงลงวันที่ "วันนี้" ให้ และฟ้องไว้ในบันทึกการอัพ
+ * ==========================================================================*/
+const DC_WH={sound:"sale",free:"gift"};     /* ชื่อคลังใหม่ → รหัสคลังเดิมในระบบ */
+const DC_WH_TH={sale:"Sound",gift:"Free"};
+function dcStkName(v,code){
+  let t=String(v==null?"":v).trim();
+  if(code&&t.indexOf(code+"-")===0)t=t.slice(code.length+1);
+  return t.replace(/-\d+(\.\d+)?$/,"").trim();
+}
+function parseStockDcode(name,rows,hdr,H){
+  const nz=x=>String(x==null?"":x).replace(/\s+/g,"");
+  const HN=H.map(nz);
+  const col=t=>HN.indexOf(nz(t));
+  const need=t=>{const i=col(t);if(i<0)throw new Error('ไฟล์สต็อก dcode ไม่มีคอลัมน์ "'+t+'" — ถ้า dcode เปลี่ยนหัวตาราง ต้องแก้ตัวอ่านก่อน');return i;};
+  const cCode=need("รหัสสินค้า"),cName=need("ชื่อสินค้า"),cType=need("ประเภทสต็อก"),
+    cCat=col("หมวดหมู่"),cBr=col("แบรนด์"),cAvg=col("ราคาถัวเฉลี่ย"),
+    cVal=col("มูลค่าสต็อกคงเหลือปิดวัน"),
+    clCs=need("จำนวนลังคงเหลือปิดวัน"),clPc=need("จำนวนชิ้นคงเหลือปิดวัน"),
+    alCs=col("จำนวนลังที่จัดสรรแล้ว"),alPc=col("จำนวนชิ้นที่จัดสรรแล้ว"),
+    atCs=need("จำนวนสต๊อกคงเหลือปัจจุบัน (ลัง)"),atPc=need("จำนวนสต๊อกคงเหลือปัจจุบัน (ชิ้น)"),
+    trCs=col("อยู่ระหว่างการขนส่ง (ลัง)"),trPc=col("อยู่ระหว่างการขนส่ง (ชิ้น)");
+  const N=(r,i)=>{if(i<0)return 0;const v=parseFloat(String(r[i]==null?"":r[i]).replace(/,/g,""));return isNaN(v)?0:v;};
+  /* "ลัง/ชิ้น" แบบเดียวกับไฟล์เดิม · ศูนย์ทั้งคู่ในช่องที่เป็น "ส่วนเพิ่ม" = ปล่อยว่างให้ขึ้น "-" */
+  const QQ=(cs,pc,blank)=>((!cs&&!pc&&blank)?"":(cs+"/"+pc));
+  const out=[],names={},unk={};let nFree=0,skip=0;
+  for(let i=hdr+1;i<rows.length;i++){
+    const r=rows[i];if(!r)continue;
+    const code=String(r[cCode]==null?"":r[cCode]).trim();
+    if(!code)continue;
+    /* ⚠️ ห้ามกรองเอาเฉพาะรหัสตัวเลขล้วนแบบไฟล์เดิม — ระบบ dcode มีรหัสขึ้นต้นด้วย G ด้วย
+       (G0000009 พัดลมของแถม · G00000xx Off-Invoice · G00010xx ชุด VIP) รวม 106 แถวในไฟล์แรก
+       ทุกแถวมีของจริงอยู่ในคลัง ถ้ากรองทิ้งคือสต็อกหาย 106 รายการแบบเงียบ ๆ */
+    if(!/^[A-Za-z0-9][A-Za-z0-9._\-]*$/.test(code)){skip++;continue;}
+    const ty=String(r[cType]==null?"":r[cType]).toLowerCase();
+    let wh=null;
+    Object.keys(DC_WH).forEach(k=>{if(ty.indexOf(k)>=0)wh=DC_WH[k];});
+    if(!wh){wh="sale";unk[String(r[cType]||"(ว่าง)")]=(unk[String(r[cType]||"(ว่าง)")]||0)+1;}
+    if(wh==="gift")nFree++;
+    const nm=dcStkName(r[cName],code);
+    out.push({c:code,n:nm,wh:wh,d:"",
+      e:QQ(N(r,clCs),N(r,clPc)),
+      h:QQ(N(r,alCs),N(r,alPc),1),
+      i:QQ(N(r,atCs),N(r,atPc)),
+      lo:stkLow(QQ(N(r,atCs),N(r,atPc))),
+      st:"",
+      v:Math.round(N(r,cVal)*100)/100,
+      j:Math.round(N(r,cAvg)*100)/100,
+      po:QQ(N(r,trCs),N(r,trPc),1),
+      cat:cCat>=0?String(r[cCat]||"").trim():"",
+      br:cBr>=0?String(r[cBr]||"").trim():""});
+    if(nm&&!names[code])names[code]=nm;
+  }
+  if(!out.length)throw new Error("ไฟล์ dcode นี้ไม่มีแถวสินค้าที่อ่านได้เลย");
+  const fd=fnameDate(name),d=fd||todayISO();
+  STOCKD={date:d,rows:out,names:names,up:Date.now(),src:"dcode"};stkBust();
+  if(!ORDERS.names)ORDERS.names={};Object.keys(names).forEach(c=>{ORDERS.names[c]=names[c];});
+  ulog("✅ "+name+" (สต็อก ระบบ dcode) → "+out.length+" รายการ · ของขาย Sound "+
+    (out.length-nFree)+" / ของแถม Free "+nFree+" · ณ "+fmtDate(d));
+  if(!fd)ulog("&nbsp;&nbsp;↳ ⚠️ ชื่อไฟล์ไม่มีวันที่ ระบบจึงลงเป็นวันนี้ ("+fmtDate(d)+
+    ") — ถ้าเป็นไฟล์ของวันอื่น ให้ใส่วันที่ไว้ท้ายชื่อไฟล์ เช่น DataExtract_"+
+    d.slice(8,10)+d.slice(5,7)+d.slice(2,4)+".xlsx แล้วอัพใหม่");
+  if(skip)ulog("&nbsp;&nbsp;↳ ⚠️ ข้ามไป "+skip+" แถวที่ช่องรหัสสินค้าอ่านไม่ออก — เช็กไฟล์ด้วย");
+  const uk=Object.keys(unk);
+  if(uk.length)ulog("&nbsp;&nbsp;↳ ⚠️ พบประเภทสต็อกที่ยังไม่รู้จัก "+uk.map(k=>k+" ("+unk[k]+" แถว)").join(" · ")+
+    " — เก็บไว้ในคลังขายไปก่อน ยังไม่ได้ทิ้ง แจ้งให้แก้ตัวอ่านด้วย");
+  renderStock();if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
+  pgBust();syncToServer();
 }
 function parseStock(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
@@ -9466,6 +9560,9 @@ function parseStock(name,buf){
   let hdr=-1;for(let i=0;i<rows.length;i++){const r=(rows[i]||[]).map(x=>String(x||""));if(r.some(v=>v.indexOf("รหัสสินค้า")>=0)){hdr=i;break;}}
   if(hdr<0)throw new Error("ไม่พบหัวตาราง 'รหัสสินค้า' (ไม่ใช่ไฟล์สต็อก?)");
   const H=(rows[hdr]||[]).map(x=>String(x||""));
+  /* ไฟล์ระบบใหม่ (dcode) — รู้จักจากคอลัมน์ "ประเภทสต็อก" ซึ่งไฟล์เดิมไม่มี
+     ไฟล์เดิมยังอ่านได้เหมือนเดิมทุกประการ (ของเก่าที่อัพไว้แล้วต้องไม่พัง) */
+  if(H.map(x=>x.replace(/\s+/g,"")).indexOf("ประเภทสต็อก")>=0)return parseStockDcode(name,rows,hdr,H);
   const find=k=>H.findIndex(v=>v.indexOf(k)>=0);
   const cCode=find("รหัสสินค้า"),cName=find("คำอธิบาย"),
     cD=H.findIndex(v=>v.trim()==="จำนวนสต็อก"),cE=H.findIndex(v=>v.indexOf("CS/PC")>=0||v.indexOf("(CS")>=0),cVal=find("มูลค่า"),cCost=find("ราคาถัวเฉลี่ย"),
@@ -9480,7 +9577,7 @@ function parseStock(name,buf){
   }
   if(!out.length)throw new Error("ไม่พบรายการสินค้าในไฟล์สต็อก");
   const d=fnameDate(name)||new Date().toISOString().slice(0,10);
-  STOCKD={date:d,rows:out,names:names,up:Date.now()};stkBust();
+  STOCKD={date:d,rows:out,names:names,up:Date.now(),src:"old"};stkBust();
   if(!ORDERS.names)ORDERS.names={};Object.keys(names).forEach(c=>{ORDERS.names[c]=names[c];});
   ulog("✅ "+name+" (สต็อก) → "+out.length+" รายการ (ขาย "+out.filter(x=>x.wh==="sale").length+" / แถม "+out.filter(x=>x.wh==="gift").length+") · ณ "+fmtDate(d));
   renderStock();if(!document.getElementById("orderView").classList.contains("hidden"))renderOrder();
