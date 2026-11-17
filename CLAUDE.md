@@ -671,6 +671,36 @@ stock, daily/monthly sales, KPI, master, by-store, analytics). Filenames carry t
 (e.g. `Drop 25072026.xlsx`, `BD_250726.xlsx`). Parsers key data by date/month/line so uploads
 merge rather than replace.
 
+**BD moved to the dcode system in Nov 26, so two files now have two formats each** and both
+readers must keep working (`STOCKD.src` / the daily log line say which was read). Each new reader
+is picked by a header the old file does not have, finds every column by **header text** (never a
+fixed index), and **throws without storing anything** if a header it needs is gone — see the
+สต็อก section above for `parseStockDcode`, and below for `parseDailyDcode`.
+`parseDaily` dispatches to **`parseDailyDcode`** when the header row carries `(PJP Code)` and
+`(NIV)`. dcode's daily file (`Sales_16-17112026.xlsx`, sheet `Export`, 49 columns) is a
+**line-item bill list covering a date RANGE**, not one day, and the eight fields the dashboard
+uses map one-to-one onto the old file's fixed columns — the map is in the comment above
+`parseDailyDcode`, keep it in sync. Five things are easy to get wrong:
+**the money is `(NIV)`** (after every discount, before VAT — the old file's `r[15]`, stored as
+`niv`; `(GSV)` and `(Total Amount)` are also in the file and would both be wrong);
+**the date is `(Invoice Date)`, not `(Sales Order Creation Date)`** — dcode filters the export by
+invoice date (it says so in the file's last row), so a bill created on another day would otherwise
+be filed under a date the file does not cover and overwrite that day;
+**`(PJP Code)` 209697 is the line the whole app stores as `2096_97`** (KA97 — `FOCUS_MAP`,
+`FOCUS_ORDER`, `lib/accounts.js`, every stored month), so `dsLineKey` maps it back or KA97's sales
+appear as a brand-new line and its own rep cannot see them;
+**the last row is `Applied filters: …`, not data** (it records the range and is reported, not read);
+and because a dcode export **can be filtered**, the reader writes
+**per line and per shop, never "wipe the whole day"** — a file holding one line must not delete the
+other eleven lines' sales for that day. What it keeps instead of deleting is **reported** in the
+upload log, as are an unknown PJP code (kept under that code), a rep name that disagrees with
+`DATA.lines[].name` (never overwritten — CT12 changed rep), a document type other than `Sales`,
+and a last day equal to today (the export may be mid-day, so re-upload after the day closes).
+`DATA.lines[].emp` is filled only when empty. Prove it with
+**`node test/browser/dailydc.test.cjs`** (30 checks, self-contained with made-up figures; 33 with
+the real file via `DCODE_DAILY=/path/Sales_....xlsx`, which never enters the repo — the repo is
+public, so never commit the depot's real revenue).
+
 ## Working style
 Make small, verifiable changes. After editing the template, run `node build.cjs` and confirm it
 prints `OK server bytes=...` with no `ANCHOR NOT FOUND`. Commit template + `public/index.html`

@@ -1727,7 +1727,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
     </div>
     <div class="up-body">
       <div class="up-row" data-group="sales">
-        <label class="drop up-daily" for="fileDaily">📅 <b>ยอดขายรายวัน</b><small>อัพทุกวัน · ไฟล์รายการบิล เช่น Sales 02072026.xlsx</small></label>
+        <label class="drop up-daily" for="fileDaily">📅 <b>ยอดขายรายวัน</b><small>อัพทุกวัน · ระบบใหม่ <b>dcode</b>: ไฟล์ <b>Sales_16-17112026.xlsx</b> (ไฟล์เดียวได้หลายวัน ระบบแยกวันให้เอง) · ไฟล์รายการบิลแบบเดิมยังอัพได้เหมือนเดิม</small></label>
         <input id="fileDaily" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="sales">
@@ -14062,9 +14062,172 @@ function toYMD(dt){
     const p=new Date(dt);if(!isNaN(p))return p.getFullYear()+"-"+String(p.getMonth()+1).padStart(2,"0")+"-"+String(p.getDate()).padStart(2,"0");}
   return null;
 }
+/* ============================================================================
+ * 📅 ไฟล์ยอดขายรายวันของระบบใหม่ "dcode" (ชีท Export) — เจ้าของส่งมา 17 พ.ย. 69
+ *    ตัวอย่างชื่อไฟล์: Sales_16-17112026.xlsx  (ไฟล์เดียวมีได้หลายวัน)
+ *
+ * เป็น "รายการบิลรายบรรทัด" 49 คอลัมน์ ละเอียดกว่าไฟล์เดิมมาก แต่ของที่ dashboard
+ * ใช้จริงมีแค่ 8 ช่อง และเทียบกับไฟล์เดิมได้ตรงทุกช่อง:
+ *
+ *   ไฟล์เดิม (ตำแหน่งคอลัมน์)   ไฟล์ dcode (ชื่อหัวตาราง)
+ *   r[0]  รหัสสาย            →  (PJP Code)        ⚠️ ดู dsLineKey ข้างล่าง
+ *   r[1]  รหัสพนักงาน        →  (Salesman Code)
+ *   r[2]  ชื่อพนักงาน        →  (Salesman Name)
+ *   r[4]  รหัสร้าน           →  (Outlet Code)
+ *   r[5]  ชื่อร้าน           →  (Outlet Name)
+ *   r[7]  วันที่             →  (Invoice Date)    ⚠️ ไม่ใช่ (Sales Order Creation Date)
+ *   r[10] ลัง                →  (Sale Quantity in Aggr(CS))
+ *   r[11] ชิ้น               →  (Sale Quantity in Aggr(Pcs))
+ *   r[15] ยอดเงิน            →  (NIV)             ⚠️ ไม่ใช่ GSV และไม่ใช่ Total Amount
+ *
+ * ⚠️ ยอดเงินต้องเป็น NIV = หลังหักส่วนลดทุกชนิด ก่อน VAT — ตรวจกับไฟล์จริงแล้ว
+ *    NIV = GSV + ส่วนลดทั้ง 8 ช่อง ตรงเป๊ะทั้ง 603 แถว และ Total Amount = NIV × 1.07
+ *    ไฟล์เดิมเก็บช่องนี้ในชื่อ niv เหมือนกัน ตัวเลขบนเว็บจึงต่อกับของเดิมได้สนิท
+ * ⚠️ ใช้ (Invoice Date) ไม่ใช่วันที่สร้างใบสั่งซื้อ เพราะ dcode กรองไฟล์มาด้วยวันที่ใบแจ้งหนี้
+ *    (เขียนบอกไว้บรรทัดท้ายไฟล์) ถ้าใช้วันสร้างออเดอร์ บิลที่สร้างคนละวันกับวันออกใบแจ้งหนี้
+ *    (เจอ 3 แถวในไฟล์จริง) จะไปลงวันที่ไฟล์ไม่ได้ครอบคลุม แล้วทับยอดของวันนั้นทิ้ง
+ * ⚠️ แถวสุดท้ายไม่ใช่ข้อมูล เป็นบรรทัด "Applied filters: ..." ที่บอกช่วงวันที่กรองมา
+ * ==========================================================================*/
+
+/* รหัสสายในไฟล์ dcode เป็นเลข PJP ล้วน (209697) แต่ทั้งระบบเก็บสาย KA97 ด้วยคีย์ 2096_97
+   มาตั้งแต่ต้น — FOCUS_MAP · FOCUS_ORDER · รหัส login ใน lib/accounts.js · เป้าและยอดราย
+   เดือนที่อัพไว้แล้วทั้งหมด ถ้าไม่แปลงกลับ ยอดของ KA97 จะไปโผล่เป็น "สายใหม่" ชื่อ 209697
+   แยกออกจากประวัติเดิม และตัวเซลล์ KA97 เองจะมองไม่เห็นยอดตัวเอง (token เก็บ code 2096_97) */
+function dsLineKey(pjp){
+  const p=String(pjp==null?"":pjp).trim();
+  if(!p)return "";
+  if(FOCUS_MAP[p])return p;
+  const alt="2096_"+p.slice(-2);
+  return FOCUS_MAP[alt]?alt:p;
+}
+/* หาคอลัมน์จาก "ชื่ออังกฤษในวงเล็บท้ายหัวตาราง" — หัวตารางไทยในไฟล์นี้พิมพ์สระ ำ แบบแยก
+   (คําอธิบาย) เทียบตรงตัวไม่ได้ · ใช้วิธี "ลงท้ายด้วย (label)" ไม่ใช่ indexOf เพราะ
+   (Outlet Code) เป็นส่วนหนึ่งของ (Outlet Ship To Party Code) ได้ */
+function dsNorm(x){return String(x==null?"":x).replace(/\s+/g,"").toLowerCase();}
+function dsColOf(HN,label){
+  const t=dsNorm("("+label+")");
+  for(let i=0;i<HN.length;i++)if(HN[i].length>=t.length&&HN[i].slice(-t.length)===t)return i;
+  return -1;
+}
+function dsIsDcode(H){
+  const HN=(H||[]).map(dsNorm);
+  return dsColOf(HN,"PJP Code")>=0&&dsColOf(HN,"NIV")>=0;
+}
+function parseDailyDcode(name,rows,hdr,H){
+  const HN=H.map(dsNorm);
+  const col=l=>dsColOf(HN,l);
+  const need=l=>{const i=col(l);if(i<0)throw new Error('ไฟล์ยอดขาย dcode ไม่มีคอลัมน์ "('+l+')" — ถ้า dcode เปลี่ยนหัวตาราง ต้องแก้ตัวอ่านก่อน ยังไม่ได้เก็บอะไรลงระบบ');return i;};
+  const cPjp=need("PJP Code"),cDate=need("Invoice Date"),cShop=need("Outlet Code"),
+    cCs=need("Sale Quantity in Aggr(CS)"),cPc=need("Sale Quantity in Aggr(Pcs)"),cNiv=need("NIV"),
+    cEmp=col("Salesman Code"),cRep=col("Salesman Name"),cShopN=col("Outlet Name"),
+    cDoc=col("Document Type"),cOrd=col("Order Type"),cProd=col("Product Code");
+  const N=(r,i)=>{if(i<0)return 0;const v=parseFloat(String(r[i]==null?"":r[i]).replace(/,/g,""));return isNaN(v)?0:v;};
+  const S=(r,i)=>i<0?"":String(r[i]==null?"":r[i]).trim();
+  if(!STOREDAILY||typeof STOREDAILY!=="object")STOREDAILY={data:{}};
+  if(!STOREDAILY.data)STOREDAILY.data={};
+  const agg={},seenD={},dset=new Set(),unkLine={},docs={},ords={},nameDiff={},remap={},
+        shops={},prods={},fresh={};   /* fresh = ร้านที่อ่านได้จากไฟล์นี้ แยกวัน (ตัวแปรท้องถิ่น
+                                         ห้ามเอาไปแปะบน STOREDAILY ชั่วคราว เพราะนั่นคือ state ที่ sync) */
+  let nRow=0,skip=0,foot="";
+  for(let i=hdr+1;i<rows.length;i++){
+    const r=rows[i];if(!r)continue;
+    const a0=String(r[0]==null?"":r[0]);
+    if(/^applied\s*filters/i.test(a0)){foot=a0.replace(/\s+/g," ").trim();continue;} /* ท้ายไฟล์ ไม่ใช่ข้อมูล */
+    const pj=S(r,cPjp),dkey=toYMD(r[cDate]);
+    if(!pj||!dkey){if(pj||dkey||S(r,cShop))skip++;continue;}
+    const code=dsLineKey(pj);
+    if(code!==pj)remap[pj]=code;
+    if(!FOCUS_MAP[code])unkLine[pj]=(unkLine[pj]||0)+1;
+    if(!seenD[dkey]){seenD[dkey]=1;dset.add(dkey);}
+    const niv=N(r,cNiv);
+    (agg[dkey]=agg[dkey]||{});agg[dkey][code]=(agg[dkey][code]||0)+niv;
+    const rep=S(r,cRep),emp=S(r,cEmp);
+    if(!DATA.lines[code])addLine(code,rep||code,emp);
+    else{
+      /* ไม่เขียนทับชื่อที่ระบบเก็บไว้ — แค่รายงานให้เจ้าของรู้ว่าไฟล์บอกไม่ตรงกัน
+         (เช่น CT12 เปลี่ยนตัวเซลล์) · ส่วนรหัสพนักงานเติมให้เฉพาะตอนที่ยังว่าง */
+      const nm=String(rep).split("-")[0].replace(/[0-9]/g,"").trim();
+      const sys=String(DATA.lines[code].name||"").trim();
+      if(nm&&sys&&nm!==sys)nameDiff[code]=nm+" (ระบบเก็บ "+sys+")";
+      if(emp&&!DATA.lines[code].emp)DATA.lines[code].emp=emp;
+    }
+    const sc=S(r,cShop);
+    if(sc){
+      shops[sc]=1;
+      const fd=fresh[dkey]||(fresh[dkey]={});
+      const e=fd[sc]||(fd[sc]={l:code,n:"",cs:0,pc:0,niv:0});
+      e.cs+=N(r,cCs);e.pc+=N(r,cPc);e.niv+=niv;e.l=code;
+      const sn=S(r,cShopN);if(sn)e.n=sn;
+    }
+    if(cProd>=0){const pc=S(r,cProd);if(pc)prods[pc]=1;}
+    if(cDoc>=0){const d=S(r,cDoc)||"(ว่าง)";docs[d]=(docs[d]||0)+1;}
+    if(cOrd>=0){const o=S(r,cOrd)||"(ว่าง)";ords[o]=(ords[o]||0)+niv;}
+    nRow++;
+  }
+  if(!dset.size)throw new Error("ไฟล์ยอดขาย dcode นี้ไม่มีแถวที่อ่านได้เลย — ตรวจว่าคอลัมน์ (PJP Code) และ (Invoice Date) มีข้อมูล");
+  /* ---- เขียนลงระบบ: "แทนที่รายสาย/รายร้าน" ไม่ใช่ "ล้างทั้งวัน" ----------------
+     ไฟล์ dcode เลือกช่วงวันและ "กรอง" ได้ (ท้ายไฟล์บอกไว้ว่ากรองอะไรมา) ถ้าวันไหนเผลอ
+     ดึงมาแค่สายเดียว แล้วล้างทั้งวันแบบไฟล์เดิม ยอดของอีก 11 สายในวันนั้นจะหายเงียบ ๆ
+     จึงทับเฉพาะสาย/ร้านที่มีในไฟล์ ส่วนที่ไม่มีให้คงของเดิมไว้ แล้ว "รายงาน" ให้รู้ */
+  const kept=[];
+  Object.keys(agg).forEach(d=>{
+    const now=agg[d];Object.keys(now).forEach(c=>{now[c]=Math.round(now[c]*100)/100;});
+    const old=DATA.daily[d];
+    if(old&&typeof old==="object"){
+      const miss=Object.keys(old).filter(c=>!(c in now));
+      if(miss.length){
+        miss.forEach(c=>{now[c]=old[c];});
+        kept.push(fmtDate(d)+": "+miss.map(c=>(DATA.lines[c]&&DATA.lines[c].display)||c).join(" "));
+      }
+    }
+    DATA.daily[d]=now;
+  });
+  Object.keys(seenD).forEach(dk=>{
+    const dd=STOREDAILY.data[dk]||(STOREDAILY.data[dk]={}),fd=fresh[dk]||{};
+    Object.keys(fd).forEach(sc=>{
+      fd[sc].cs=Math.round(fd[sc].cs*10)/10;
+      fd[sc].pc=Math.round(fd[sc].pc*10)/10;
+      fd[sc].niv=Math.round(fd[sc].niv*100)/100;
+      dd[sc]=fd[sc];                 /* ทับเฉพาะร้านที่มีในไฟล์ ร้านอื่นของวันนั้นคงไว้ */
+    });
+  });
+  const perDay=[...dset].sort().map(d=>fmtDate(d)+" = "+THB(Object.values(DATA.daily[d]).reduce((a,b)=>a+b,0))).join(" · ");
+  ulog("✅ "+name+" (ยอดขายรายวัน · ระบบ dcode) → "+perDay);
+  ulog("&nbsp;&nbsp;↳ อ่าน "+nRow+" บรรทัด · "+Object.keys(shops).length+" ร้าน"+
+    (cProd>=0?" · "+Object.keys(prods).length+" รหัสสินค้า":"")+" · "+
+    [...dset].length+" วัน · ยอดที่ใช้คือ NIV (หลังหักส่วนลด ก่อน VAT) เหมือนไฟล์เดิม");
+  const rk=Object.keys(remap);
+  if(rk.length)ulog("&nbsp;&nbsp;↳ ℹ️ ไฟล์ใหม่ใช้รหัสสาย "+rk.map(k=>k+" → "+remap[k]+
+    ((FOCUS_MAP[remap[k]])?" ("+FOCUS_MAP[remap[k]]+")":"")).join(" · ")+
+    " ระบบแปลงให้เป็นสายเดิมแล้ว ยอดจึงไปรวมกับประวัติเก่าถูกสาย");
+  const nd=Object.keys(nameDiff);
+  if(nd.length)ulog("&nbsp;&nbsp;↳ ⚠️ ชื่อพนักงานในไฟล์ไม่ตรงกับที่ระบบเก็บไว้: "+
+    nd.map(c=>((DATA.lines[c]&&DATA.lines[c].display)||c)+" = "+nameDiff[c]).join(" · ")+
+    " — ยังไม่ได้แก้ให้ ถ้าเปลี่ยนตัวเซลล์จริงบอกได้ เดี๋ยวแก้ชื่อในระบบให้");
+  const uk=Object.keys(unkLine);
+  if(uk.length)ulog("&nbsp;&nbsp;↳ ⚠️ มีรหัสสายที่ระบบยังไม่รู้จัก "+uk.map(k=>k+" ("+unkLine[k]+" บรรทัด)").join(" · ")+
+    " — เก็บยอดไว้ให้แล้วในชื่อรหัสนั้น ไม่ได้ทิ้ง แต่จะยังไม่ขึ้นเป็นสายหลัก แจ้งให้เพิ่มด้วย");
+  if(kept.length)ulog("&nbsp;&nbsp;↳ ⚠️ วันที่เคยอัพไว้แล้วแต่ไฟล์นี้ไม่มีข้อมูลของบางสาย ระบบ<b>เก็บยอดเดิมไว้ ไม่ลบ</b> → "+
+    kept.join(" · ")+" — ถ้าไฟล์นี้ตั้งใจดึงมาแค่บางสาย ถือว่าถูกแล้ว");
+  const dk2=Object.keys(docs);
+  if(dk2.length>1||(dk2.length===1&&dk2[0].toLowerCase()!=="sales"))
+    ulog("&nbsp;&nbsp;↳ ⚠️ ไฟล์มีเอกสารมากกว่าประเภท Sales: "+dk2.map(k=>k+" ("+docs[k]+" บรรทัด)").join(" · ")+
+      " — ตอนนี้นับรวมหมดตามที่ไฟล์ให้มา ถ้ามีใบลดหนี้/คืนของ บอกด้วยจะได้แยกให้");
+  const ok2=Object.keys(ords);
+  if(ok2.length>1)ulog("&nbsp;&nbsp;↳ ℹ️ แยกตามช่องทางสั่ง: "+ok2.map(k=>k.replace(/\s*\(.*\)\s*/,"")+" "+THB(ords[k])).join(" · "));
+  const last=[...dset].sort().pop();
+  if(last===todayISO())ulog("&nbsp;&nbsp;↳ ⚠️ วันสุดท้ายในไฟล์คือ<b>วันนี้</b> ("+fmtDate(last)+
+    ") ยอดอาจยังไม่ครบวัน — พอปิดวันแล้วดึงไฟล์ใหม่มาอัพทับได้เลย ระบบจะอัปเดตให้เป็นยอดเต็มวัน");
+  if(skip)ulog("&nbsp;&nbsp;↳ ⚠️ ข้ามไป "+skip+" บรรทัดที่ไม่มีรหัสสายหรือวันที่ — เช็กไฟล์ด้วย");
+  if(foot)ulog("&nbsp;&nbsp;↳ ℹ️ เงื่อนไขที่ dcode กรองไฟล์นี้มา: "+foot.replace(/^Applied filters:\s*/i,""));
+  initKeys();render();syncToServer();
+}
 function parseDaily(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true});
+  /* ไฟล์ระบบใหม่ (dcode) — รู้จักจากหัวตาราง (PJP Code) + (NIV) ซึ่งไฟล์เดิมไม่มี
+     ไฟล์เดิมยังอ่านได้เหมือนเดิมทุกประการ (ยอดที่อัพไว้แล้วต้องไม่พัง) */
+  if(dsIsDcode(rows[0]))return parseDailyDcode(name,rows,0,rows[0]);
   const agg={};let dset=new Set();
   if(!STOREDAILY||typeof STOREDAILY!=="object")STOREDAILY={data:{}};if(!STOREDAILY.data)STOREDAILY.data={};
   const seenD={};
