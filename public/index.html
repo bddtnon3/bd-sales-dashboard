@@ -1787,9 +1787,9 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <input id="fileAna" type="file" accept=".xls,.xlsx" multiple class="hidden">
       </div>
       <div class="up-row" data-group="pjp">
-        <label class="drop" for="filePjpOut">🏪 <b>Master Outlet Data</b><small>ข้อมูลร้านค้าทั้งหมดของศูนย์ (ชื่อ · ที่อยู่ · พิกัด · Perfect Store) · อัพเดือนละครั้ง · ร้านเก่าไม่หาย ทับเฉพาะร้านที่มีในไฟล์</small></label>
+        <label class="drop" for="filePjpOut">🏪 <b>ร้านค้า + แผน PJP</b><small>ระบบใหม่ <b>dcode</b>: ไฟล์เดียวจบ <b>Outlet_Master__PJP_Report.xlsx</b> (ปุ่มนี้หรือปุ่มล่างก็ได้) · ไฟล์ Master Outlet แบบเดิมยังอัพได้ · อัพเดือนละครั้ง · ร้านเก่าไม่หาย ทับเฉพาะร้านที่มีในไฟล์</small></label>
         <input id="filePjpOut" type="file" accept=".xls,.xlsx" multiple class="hidden">
-        <label class="drop" for="filePjpPlan">🗺 <b>แผน PJP ประจำเดือน</b><small>ไฟล์ PJP_OCT2026.xlsx ฯลฯ · ไฟล์มี 12 วัน (2 อาทิตย์) ระบบสร้างรอบสอง (+14 วัน) ให้เอง · แผนเดือนอื่นไม่หาย</small></label>
+        <label class="drop" for="filePjpPlan">🗺 <b>แผน PJP ประจำเดือน</b><small>ระบบใหม่ <b>dcode</b>: อัพไฟล์ <b>Outlet_Master__PJP_Report.xlsx</b> ที่นี่ก็ได้ (ไฟล์เดียวได้ทั้งร้านค้าและแผน · ใส่เดือนปีท้ายชื่อไฟล์ถ้าอยากกางเดือนอื่น เช่น _122026) · ไฟล์ PJP แบบเดิมยังอัพได้ ระบบสร้างรอบสอง (+14 วัน) ให้เอง · แผนเดือนอื่นไม่หาย</small></label>
         <input id="filePjpPlan" type="file" accept=".xls,.xlsx" multiple class="hidden">
       </div>
       <!-- 🧾 DCODE ใช้ไฟล์ 2 ตัวที่มีช่องอัพอยู่แล้ว (Master Data ในกลุ่มสต็อก · Master Outlet ในกลุ่ม PJP)
@@ -4991,6 +4991,54 @@ function pjKeyPanel(){
       <button class="pl-save" style="flex:0 0 auto;padding:10px 20px" onclick="pjSaveKey()">บันทึก key</button>
     </div></div>`;
 }
+/* 🛑 ร้านในสายที่ "ยังไม่มีบิลเลย" — เจ้าของสั่งให้ขึ้นในรายงานของเซลล์ (17 พ.ย. 69)
+   *"ร้านที่ไม่ซื้อเลย ให้จับจากรหัสและชื่อร้านเอาเลย แล้วขึ้นใน report ของเซลล์ไว้เลย"*
+   ⚠️ นับเฉพาะช่วงตั้งแต่ DCODE_START เท่านั้น เพราะก่อนหน้านั้นเป็นข้อมูลระบบเก่าที่ไม่มี
+      ยอดรายร้านครบทุกวัน ถ้าเอามารวมจะฟ้องว่า "ไม่ซื้อ" ทั้งที่จริงแค่ไม่มีข้อมูล
+   ⚠️ รายชื่อร้านมาจาก PJP.out (Master) ไม่ใช่จากแผนของวันนั้น — ร้านที่หลุดแผนก็ต้องถูกนับ */
+function pjNoBuy(rt){
+  const P=pjOk(),bought={},sd=(STOREDAILY&&STOREDAILY.data)||{};
+  let days=0,first="",last="";
+  Object.keys(sd).sort().forEach(d=>{
+    if(d<DCODE_START)return;
+    days++;if(!first)first=d;last=d;
+    const dd=sd[d]||{};
+    Object.keys(dd).forEach(sc=>{if((dd[sc]||{}).niv)bought[sc]=1;});
+  });
+  const mine=Object.keys(P.out).filter(c=>P.out[c].rt===rt);
+  const no=mine.filter(c=>!bought[c]).sort((a,b)=>
+    String((P.out[a]||{}).n||"").localeCompare(String((P.out[b]||{}).n||""),"th"));
+  return {days:days,first:first,last:last,total:mine.length,no:no,ok:mine.length-no.length};
+}
+function pjNoBuyHtml(rt){
+  const r=pjNoBuy(rt),P=pjOk();
+  if(!r.total)return "";
+  const head=`<h3>🛑 ร้านที่ยังไม่มีบิลเลย · ${pjLineName(rt)}</h3>`;
+  if(!r.days)return `<div class="panel" style="margin-top:14px">${head}
+    <div class="insight">ยังไม่มียอดขายรายวันของระบบ dcode ในระบบ (dcode เริ่ม <b>${fmtDate(DCODE_START)}</b>)
+      — อัพไฟล์ยอดขายรายวันก่อน แล้วรายชื่อร้านที่ยังไม่เปิดบิลจะขึ้นที่นี่</div></div>`;
+  const all=PJ.nb===1;
+  const show=all?r.no:r.no.slice(0,24);
+  const rows=show.map(c=>{const o=P.out[c]||{};
+    return `<tr><td style="text-align:left"><b>${o.n||"(ไม่มีชื่อ)"}</b>
+      <span class="psub">รหัส ${c}</span></td><td style="text-align:left">${o.sd||o.d||""}</td>
+      <td style="text-align:left">${o.t||""}</td></tr>`;}).join("");
+  return `<div class="panel" style="margin-top:14px">${head}
+    <div class="psub">นับจากบิลจริงในระบบ dcode ตั้งแต่ <b>${fmtDate(r.first)}</b> ถึง <b>${fmtDate(r.last)}</b>
+      (${r.days} วันที่อัพแล้ว) · dcode เริ่มใช้ ${fmtDate(DCODE_START)} จึงยังไม่นับช่วงก่อนนั้น</div>
+    <div class="note" style="margin:8px 0">ร้านในสายทั้งหมด <b>${r.total.toLocaleString()}</b> ร้าน ·
+      เปิดบิลแล้ว <b class="up">${r.ok.toLocaleString()}</b> ·
+      <b class="down">ยังไม่มีบิลเลย ${r.no.length.toLocaleString()} ร้าน</b>
+      ${r.days<20?` <span class="psub">— เพิ่งอัพมา ${r.days} วัน ตัวเลขนี้จะแม่นขึ้นเมื่ออัพครบเดือน</span>`:""}</div>
+    ${r.no.length?`<div class="tblwrap"><table class="cst-rt"><thead><tr>
+        <th style="text-align:left">ร้าน</th><th style="text-align:left">พื้นที่</th>
+        <th style="text-align:left">ประเภทร้าน</th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${r.no.length>show.length?`<button type="button" class="pl-today" style="margin-top:8px"
+        onclick="PJ.nb=1;renderPjp()">▼ ดูทั้งหมด ${r.no.length.toLocaleString()} ร้าน</button>`:""}
+      ${all&&r.no.length>24?`<button type="button" class="pl-today" style="margin-top:8px"
+        onclick="PJ.nb=0;renderPjp()">▲ ย่อลง</button>`:""}`
+      :`<div class="insight up">เปิดบิลครบทุกร้านในสายแล้ว 🎉</div>`}</div>`;
+}
 function renderPjp(){
   const bar=document.getElementById("pjpBar");if(!bar)return;
   const P=pjOk();
@@ -5002,7 +5050,7 @@ function renderPjp(){
     document.getElementById("pjpCards").innerHTML="";
     {const w=document.getElementById("pjMapWrap");if(w)w.style.display="none";}
     document.getElementById("pjpBody").innerHTML=
-      `<div class="panel"><div class="insight">ยังไม่มีแผน PJP — ${pjIsMgr()?"อัพ 2 ไฟล์ก่อน: <b>Master Outlet Data</b> และ <b>PJP ประจำเดือน</b> (ปุ่มอัพโหลด → 🗺)":"รอผู้จัดการอัพไฟล์ PJP ของเดือนนี้"}</div></div>`+
+      `<div class="panel"><div class="insight">ยังไม่มีแผน PJP — ${pjIsMgr()?"ระบบใหม่ <b>dcode</b> รวมมาให้ไฟล์เดียว: <b>Outlet_Master__PJP_Report.xlsx</b> (ปุ่มอัพโหลด → 🗺 ปุ่มไหนก็ได้) · ไฟล์เก่าอัพ 2 ไฟล์ Master Outlet + PJP ประจำเดือน ก็ยังได้":"รอผู้จัดการอัพไฟล์ PJP ของเดือนนี้"}</div></div>`+
       pjKeyPanel();      /* ตั้งค่าแผนที่ได้ตั้งแต่ยังไม่มีข้อมูล */
     return;
   }
@@ -5081,7 +5129,8 @@ function renderPjp(){
          <h3>📋 ร้านของวัน${DOWF[new Date(ymd+"T00:00:00").getDay()]}ที่ ${fmtDate(ymd)} (${stops.length} ร้าน)${ymd===todayISO()?' <span class="pill g">วันนี้</span>':""}</h3>
          <button type="button" class="pl-today" onclick="PJ.open=${PJ.open?"false":"true"};renderPjp()">${PJ.open?"▲ พับเก็บ":"▼ กางดู"}</button>
        </div>
-       ${PJ.open?pjDayHtml(ymd,rt):`<div class="psub">พับเก็บไว้ — กดช่องวันในปฏิทิน หรือปุ่ม ▼ กางดู</div>`}</div>`);
+       ${PJ.open?pjDayHtml(ymd,rt):`<div class="psub">พับเก็บไว้ — กดช่องวันในปฏิทิน หรือปุ่ม ▼ กางดู</div>`}</div>`)
+    +pjNoBuyHtml(rt);
   if(key){if(PJMAP.state==="ready")pjMapDraw();else pjMapLoad();}
   /* กดวันในปฏิทินแล้วรายชื่อร้านอยู่ใต้จอ — บนมือถือจะเหมือนกดแล้วไม่มีอะไรเกิดขึ้น */
   if(PJ_SCROLL){PJ_SCROLL=0;
@@ -11719,10 +11768,205 @@ function pjSheet(buf){
   });
   return best||[];
 }
+/* ============================================================================
+ * 🗺 ไฟล์ PJP ของระบบใหม่ "dcode" — Master Outlet + แผน PJP รวมเป็น "ไฟล์เดียว"
+ *    (Outlet_Master__PJP_Report.xlsx · ชีท Export · 38 คอลัมน์) — 17 พ.ย. 69
+ *
+ * ของเดิมต้องอัพ 2 ไฟล์ (Master Outlet + แผน PJP) ของใหม่ไฟล์เดียวจบ ปุ่มอัพทั้งสองปุ่ม
+ * รับไฟล์นี้ได้เหมือนกัน และไฟล์เก่าทั้งสองแบบยังอัพได้ปกติ
+ *
+ * ⚠️ ไฟล์ใหม่ "ไม่มีคอลัมน์วันที่" เลย — วันวิ่งซ่อนอยู่ใน 2 คอลัมน์นี้ (กฎที่เจ้าของให้มา)
+ *    Section Code  `SC209616F204` → 6 ตัวท้าย = `16` `F2` `04`
+ *       2 ตัวแรก = เลขสายวิ่ง · 2 ตัวกลาง = รอบวิ่ง (ส่วนใหญ่ F2) · 2 ตัวท้าย = ช่องวันที่ 01-12
+ *    Section Name  `209616_THU` → ท้าย `_` คือวันในสัปดาห์
+ *    ช่อง 01-06 = จ-ส สัปดาห์ที่ 1 · ช่อง 07-12 = จ-ส สัปดาห์ที่ 2 (อาทิตย์ละ 6 วัน
+ *    12 วันครึ่งเดือน ครึ่งเดือนหลังวิ่งซ้ำ รวม 24 วัน) = หลักการ +14 วันเดิมเป๊ะ
+ *    ⇒ ตรวจกับไฟล์จริงแล้ว 2,888/2,900 แถว ทั้ง 3 ค่า (สายใน Section Code · สายในคอลัมน์ PJP ·
+ *      วันใน Section Name) ตรงกันหมด ที่เหลือ 12 แถวคือ `SCDUMMY02096` ร้านหลอกของระบบ ต้องตัดออก
+ *    ⇒ ยืนยันด้วยยอดขายจริง: 61 จาก 83 ร้านที่เปิดบิลวันจันทร์ 16 พ.ย. อยู่ช่อง 12 (เสาร์ 14 พ.ย.)
+ *      ซึ่งเป็นเสาร์ล่าสุดก่อนวันขึ้นระบบ — คือออเดอร์ค้างที่คีย์เข้าวันแรก ไม่ใช่แผนผิด
+ *      และถ้าวางปฏิทินแบบ "จันทร์แรกของเดือน" ช่อง 12 ตกวันที่ 14 พ.ย. พอดี (ถ้าวางแบบจันทร์
+ *      ก่อนวันที่ 1 จะตกช่อง 06 ซึ่งข้อมูลจริงมีแค่ 4 ร้าน) → ยึดจันทร์แรกของเดือน
+ * ⚠️ ไฟล์ใหม่ "ไม่มีคอลัมน์ลำดับการเยี่ยม" (ของเดิมมี) จึงใช้ลำดับแถวในไฟล์เป็นลำดับวิ่ง
+ * ⚠️ สายที่ใช้แค่ช่อง 01-06 (เทเลเซลล์ TL/CT19 รหัส F4 · 689 ร้าน) วิ่งซ้ำ "ทุกสัปดาห์"
+ *    ไม่ใช่ทุก 14 วัน ไม่งั้นครึ่งเดือนจะว่างเปล่า — ดูจากช่องวันที่สายนั้นใช้จริง ไม่ใช่จากรหัส F
+ * ⚠️ ร้านที่ไม่มีในไฟล์ "ห้ามลบ" (กฎเดิมของ Master) — ตัวอ่านแตะเฉพาะรหัสที่อยู่ในไฟล์
+ * ==========================================================================*/
+const DCODE_START="2026-11-17";        /* วันที่ BD เริ่มใช้ระบบ dcode (เจ้าของแจ้ง 17 พ.ย. 69) */
+const PJP_WEEK=["MON","TUE","WED","THU","FRI","SAT"];
+function pjIsDcode(H){
+  const HN=(H||[]).map(dsNorm);
+  return HN.indexOf(dsNorm("Section Code"))>=0&&HN.indexOf(dsNorm("Outlet Code"))>=0;
+}
+/* แกะ Section Code + Section Name → {สาย, รอบ, ช่องวัน, วันในสัปดาห์} · null = ไม่ใช่แถวแผนจริง */
+function pjSec(sc,sn){
+  const s=String(sc==null?"":sc).trim(),n=String(sn==null?"":sn).trim();
+  if(/dummy/i.test(s)||/dummy/i.test(n))return null;
+  const m=s.slice(-6).match(/^(\d{2})([A-Za-z]\d)(\d{2})$/);
+  if(!m)return null;
+  const idx=+m[3];
+  if(!(idx>=1&&idx<=12))return null;
+  return {ln:m[1],fq:m[2].toUpperCase(),idx:idx,wk:idx<=6?1:2,
+    day:(n.split("_")[1]||"").toUpperCase(),exp:PJP_WEEK[(idx-1)%6]};
+}
+/* ช่องวัน 01-12 → วันที่จริงของเดือน ym ("YYYY-MM")
+   ช่อง 1 = จันทร์แรกของเดือน · ไล่ จ-ส · สัปดาห์ 2 ขึ้นช่อง 7 · แล้วซ้ำทุก step วันจนหมดเดือน */
+/* รหัสรอบ 2 ตัวกลางของ Section Code (`F2` / `F4`) = วิ่งกี่ครั้งต่อเดือน
+   → วิ่งซ้ำทุก 28/N วัน · F2 = ทุก 14 วัน (หลักการเดิม) · F4 = ทุกสัปดาห์
+   ตรงกับไฟล์จริง: สาย F2 ใช้ช่อง 01-12 (12 ช่อง × 2 รอบ = 24 วัน/เดือน)
+   สายเทเลเซลล์ F4 ใช้แค่ช่อง 01-06 แล้ววิ่งซ้ำทุกสัปดาห์ (ถ้าใช้ 14 วัน ครึ่งเดือนจะว่าง)
+   รหัสที่ยังไม่รู้จัก → ตัดสินจากช่องวันที่สายนั้นใช้ (มีช่อง 07-12 = รอบ 14 วัน) */
+function pjStepOf(fq,idxs){
+  const m=String(fq||"").match(/^[A-Za-z](\d)$/),n=m?+m[1]:0;
+  if(n>=1&&n<=4)return Math.round(28/n);
+  return (idxs||[]).some(i=>i>6)?PJP_CYCLE:7;
+}
+function pjSlotDates(ym,step,reps){
+  const y=+ym.slice(0,4),mo=+ym.slice(5,7);
+  let d=new Date(Date.UTC(y,mo-1,1));
+  while(d.getUTCDay()!==1)d=new Date(d.getTime()+864e5);
+  const out={};
+  for(let i=1;i<=12;i++){
+    const base=d.getTime()+((Math.floor((i-1)/6)*7)+((i-1)%6))*864e5;
+    const arr=[];
+    for(let k=0;k<reps;k++){
+      const t=new Date(base+k*step*864e5);
+      if(t.getUTCFullYear()!==y||t.getUTCMonth()!==mo-1)break;
+      arr.push(t.toISOString().slice(0,10));
+    }
+    out[i]=arr;
+  }
+  return out;
+}
+function parsePjpDcode(name,rows,H){
+  const HN=H.map(dsNorm);
+  const col=t=>HN.indexOf(dsNorm(t));
+  const need=t=>{const i=col(t);if(i<0)throw new Error('ไฟล์ PJP ของ dcode ไม่มีคอลัมน์ "'+t+
+    '" — ถ้า dcode เปลี่ยนหัวตาราง ต้องแก้ตัวอ่านก่อน (ยังไม่ได้เก็บอะไรลงระบบ)');return i;};
+  const cCode=need("Outlet Code"),cName=need("Outlet Name"),cSec=need("Section Code"),
+    cSecN=need("Section Name"),cPjp=need("PJP"),
+    cLa=col("Coordinate latitude"),cLo=col("Coordinate longitude"),cSal=col("Salesman Name"),
+    cSub=col("Outlet Subtype Name"),cSt=col("Outlet Status"),cE=col("eRTM Flag/B2B Flag"),
+    cPh=col("Business Phone Number"),cAd=col("Address"),cRd=col("Street/Road"),
+    cPs=col("Perfect Store"),cPsd=col("Perfect Store Description"),cCity=col("City");
+  const S=(r,i)=>i<0?"":String(r[i]==null?"":r[i]).trim();
+  const P=pjOk(),now=Date.now();
+  const ym=guessMonth(name)||todayISO().slice(0,7);
+  const slot={},shopN={},lineShops={},freq={},unkLine={},badSec={},nameDiff={};
+  let nRow=0,dummy=0,skip=0,geo=0,secBad=0,foot="";
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];if(!r)continue;
+    const a0=S(r,0);
+    if(/^applied\s*filters/i.test(a0)){foot=a0.replace(/\s+/g," ").trim();continue;}
+    const code=S(r,cCode);
+    if(!/^[A-Za-z0-9]{4,}$/.test(code)){if(code)skip++;continue;}
+    const sec=pjSec(r[cSec],r[cSecN]);
+    if(!sec){dummy++;continue;}                       /* แถว DUMMY / section ที่อ่านไม่ออก */
+    const pjpRaw=S(r,cPjp).split("-")[0];
+    const line=dsLineKey(pjpRaw);
+    /* กางกฎออกตรวจ: สายใน Section Code · สายในคอลัมน์ PJP · วันใน Section Name ต้องตรงกัน */
+    if(sec.ln!==pjpRaw.slice(-2)||sec.day!==sec.exp){
+      secBad++;
+      if(Object.keys(badSec).length<6)badSec[S(r,cSec)+" / "+S(r,cSecN)+" / "+pjpRaw]=1;
+    }
+    if(!FOCUS_MAP[line])unkLine[pjpRaw]=(unkLine[pjpRaw]||0)+1;
+    ((slot[line]=slot[line]||{})[sec.idx]=slot[line][sec.idx]||[]).push(code);
+    (lineShops[line]=lineShops[line]||{})[code]=1;
+    (freq[line]=freq[line]||{})[sec.fq]=((freq[line]||{})[sec.fq]||0)+1;
+    /* ---- Master ร้านค้า: ไฟล์นี้เป็นแหล่งที่สมบูรณ์ที่สุด (พิกัดครบ 100%) ---- */
+    const o={n:S(r,cName),up:now,rt:line};
+    const g=(cLa>=0&&cLo>=0)?pjLatLng(r[cLa],r[cLo]):null;
+    if(g){o.la=Math.round(g.la*1e6)/1e6;o.lo=Math.round(g.lo*1e6)/1e6;geo++;}
+    const put=(k,ix)=>{const v=S(r,ix);if(v)o[k]=v;};
+    put("a",cAd);put("ph",cPh);put("t",cSub);put("ps",cPs);put("psd",cPsd);
+    put("e",cE);put("st",cSt);put("d",cCity);put("sd",cRd);
+    if(cSal>=0){const v=S(r,cSal);if(v){o.sal=v.replace(/^\d+-/,"").trim();o.emp=(v.split("-")[0]||"").trim();}}
+    if(pjpRaw)o.pj=pjpRaw;
+    o.sec=S(r,cSec);o.sday=sec.idx;                   /* เก็บช่องวันไว้ด้วย ใช้สร้างแผนเดือนถัดไปได้ */
+    const old=P.out[code];
+    if(old&&old.up!==now){                            /* ของที่ไฟล์นี้ไม่มี แต่ไฟล์อื่นเคยเติมไว้ ห้ามหาย */
+      if(o.la==null&&old.la!=null){o.la=old.la;o.lo=old.lo;}
+      ["a","ph","t","ps","psd","e","st","d","sd","sal","emp","pj","rt2"].forEach(k=>{
+        if(!o[k]&&old[k])o[k]=old[k];});
+      if(old.sal&&o.sal&&old.sal!==o.sal)nameDiff[line]=o.sal+" (ระบบเก็บ "+old.sal+")";
+    }
+    P.out[code]=o;shopN[code]=o.n;nRow++;
+  }
+  if(!nRow)throw new Error("ไม่พบรหัสร้านในไฟล์ PJP ของ dcode");
+  /* ---- กางช่องวันออกเป็นวันที่จริงของเดือน ---- */
+  const plan={},perLine={};
+  Object.keys(slot).forEach(line=>{
+    const idxs=Object.keys(slot[line]).map(Number).sort((a,b)=>a-b);
+    /* รอบ 14 วัน → กางแค่ 2 รอบต่อเดือน (24 วัน) = หลักการเดิมเป๊ะ
+       ห้ามบวก +28 เพิ่มเอง: วันทำงานที่ 25 ของเดือนจะได้ร้านชุดเดิมซ้ำแบบ "เดา"
+       ปล่อยว่างแล้วฟ้องไว้ ดีกว่าโชว์ร้านผิดให้เซลล์วิ่ง
+       รอบที่สั้นกว่านั้น (เทเลเซลล์ F4 = ทุกสัปดาห์) กางให้เต็มเดือน */
+    const fqs=Object.keys(freq[line]||{}).sort((a,b)=>freq[line][b]-freq[line][a]);
+    const step=pjStepOf(fqs[0],idxs);
+    const ds=pjSlotDates(ym,step,step>=PJP_CYCLE?2:6);
+    let nd=0;
+    idxs.forEach(i=>{
+      const codes=slot[line][i];
+      const row=codes.map((c,k)=>c+":"+(k+1)).join(",");
+      (ds[i]||[]).forEach(d=>{(plan[d]=plan[d]||{})[line]=row;nd++;});
+    });
+    perLine[line]={shops:Object.keys(lineShops[line]).length,days:idxs.length,
+      step:step,dates:nd,fq:Object.keys(freq[line]||{}).join(",")};
+  });
+  const dates=Object.keys(plan).sort();
+  if(!dates.length)throw new Error("กางวันที่จากช่องวันไม่ได้เลย — ตรวจคอลัมน์ Section Code");
+  dates.forEach(d=>{P.plan[d]=Object.assign({},P.plan[d]||{},plan[d]);});
+  P.cfg.outUp=now;P.cfg.outFile=name;P.cfg.planUp=now;P.cfg.planFile=name;
+  P.cfg.planMon=ym;P.cfg.src="dcode";P.cfg.dcodeStart=DCODE_START;
+  ulog("✅ "+name+" (Master ร้านค้า + แผน PJP ของ dcode · ไฟล์เดียว) → "+fmtMonth(ym)+
+    " · "+nRow.toLocaleString()+" ร้าน · มีพิกัด "+geo.toLocaleString()+
+    " ("+(geo/nRow*100).toFixed(1)+"%) · กางได้ "+dates.length+" วัน ("+fmtDate(dates[0])+"–"+
+    fmtDate(dates[dates.length-1])+")");
+  ulog("&nbsp;&nbsp;↳ ตรวจกฎ Section Code/Name: ตรงกัน "+(nRow-secBad).toLocaleString()+"/"+
+    nRow.toLocaleString()+" แถว"+(secBad?" · ⚠️ ไม่ตรง "+secBad+" แถว "+Object.keys(badSec).join(" · "):" ✅")+
+    (dummy?" · ข้ามแถว DUMMY/ไม่มีช่องวัน "+dummy+" แถว":""));
+  Object.keys(perLine).sort().forEach(l=>{const v=perLine[l];
+    ulog("&nbsp;&nbsp;&nbsp;&nbsp;· "+(((DATA.lines||{})[l]||{}).display||FOCUS_MAP[l]||l)+
+      " — "+v.shops.toLocaleString()+" ร้าน · "+v.days+" ช่องวัน · รอบ "+v.fq+
+      " → วิ่งซ้ำทุก "+v.step+" วัน ("+v.dates+" ช่องวันที่ในเดือนนี้)");});
+  const miss=Object.keys(FOCUS_MAP).filter(l=>!slot[l]);
+  if(miss.length)ulog("&nbsp;&nbsp;↳ ⚠️ สายที่ไม่มีแผนในไฟล์นี้: "+
+    miss.map(l=>FOCUS_MAP[l]).join(" · ")+" — ถ้าสายนี้ยังวิ่งอยู่ ให้เช็กไฟล์ที่ dcode ส่งมา");
+  /* วันทำงาน (จ-ส) ของเดือนที่ไม่มีแผนเลย — เกิดเมื่อเดือนนั้นมีวันทำงานเกิน 24 วัน */
+  {const y=+ym.slice(0,4),mo=+ym.slice(5,7),gap=[],days=[];
+   let full=0;
+   for(let dd=1;dd<=31;dd++){
+     const t=new Date(Date.UTC(y,mo-1,dd));
+     if(t.getUTCMonth()!==mo-1)break;
+     if(t.getUTCDay()===0)continue;                   /* อาทิตย์ = หยุด */
+     const k=t.toISOString().slice(0,10),n=Object.keys(plan[k]||{}).length;
+     days.push([k,n]);if(n>full)full=n;
+   }
+   /* วันที่มีสายครบน้อยกว่าวันปกติ = ยังขาดแผนของบางสาย (เช่น วันทำงานที่ 25 ของเดือน) */
+   days.forEach(([k,n])=>{if(n<full)gap.push(fmtDate(k)+(n?" ("+n+"/"+full+" สาย)":""));});
+   if(gap.length)ulog("&nbsp;&nbsp;↳ ℹ️ วันทำงานที่เดือนนี้ยังไม่มีแผน PJP: "+gap.join(" · ")+
+     " — แผนมี 24 วัน/เดือน (12 ช่อง × 2 รอบ) ตามหลักการเดิม ถ้าวันพวกนี้เซลล์วิ่งร้านชุดไหน บอกได้ เดี๋ยวใส่ให้");}
+  const uk=Object.keys(unkLine);
+  if(uk.length)ulog("&nbsp;&nbsp;↳ ⚠️ มีรหัสสายที่ระบบยังไม่รู้จัก "+
+    uk.map(k=>k+" ("+unkLine[k]+" ร้าน)").join(" · ")+" — เก็บไว้ให้แล้ว ไม่ได้ทิ้ง แจ้งให้เพิ่มด้วย");
+  const nd2=Object.keys(nameDiff);
+  if(nd2.length)ulog("&nbsp;&nbsp;↳ ⚠️ ชื่อเซลล์ในไฟล์ไม่ตรงกับที่ระบบเก็บไว้: "+
+    nd2.map(l=>(FOCUS_MAP[l]||l)+" = "+nameDiff[l]).join(" · "));
+  if(!guessMonth(name))ulog("&nbsp;&nbsp;↳ ℹ️ ชื่อไฟล์ไม่มีเดือน ระบบจึงกางแผนของเดือนนี้ ("+
+    fmtMonth(ym)+") — ถ้าต้องการเดือนอื่น ใส่เดือนปีท้ายชื่อไฟล์ เช่น Outlet_Master__PJP_Report_122026.xlsx");
+  if(skip)ulog("&nbsp;&nbsp;↳ ⚠️ ข้ามไป "+skip+" แถวที่รหัสร้านอ่านไม่ออก");
+  if(foot)ulog("&nbsp;&nbsp;↳ ℹ️ เงื่อนไขที่ dcode กรองไฟล์นี้มา: "+foot.replace(/^Applied filters:\s*/i,""));
+  PJ.d=null;
+  if(!document.getElementById("pjpView").classList.contains("hidden"))renderPjp();
+  if(!document.getElementById("dcodeView").classList.contains("hidden"))renderDcode();
+  syncToServer();
+}
 function parseOutlet(name,buf){
   const rows=pjSheet(buf);
   if(rows.length<2)throw new Error("ไฟล์ว่าง");
   const H=rows[0]||[];
+  /* ไฟล์ dcode รวม Master + PJP มาในไฟล์เดียว — ปุ่มไหนก็อัพได้ (รู้จักจาก Section Code) */
+  if(pjIsDcode(H))return parsePjpDcode(name,rows,H);
   const c={code:pjCol(H,["ลูกค้า","outlet code","customer"]),n:pjCol(H,["ชื่อ","outlet name"]),
     a:pjCol(H,["ถนน","ที่อยู่","street"]),lo:pjCol(H,["longitude"]),la:pjCol(H,["latitude"]),
     ph:pjCol(H,["โทรศั","มือถือ","phone"]),t:pjCol(H,["ชื่อประเภทย่อยของลูกค้า"]),
@@ -11796,6 +12040,8 @@ function parsePJP(name,buf){
   const rows=pjSheet(buf);
   if(rows.length<2)throw new Error("ไฟล์ว่าง");
   const H=rows[0]||[];
+  /* ไฟล์ dcode รวม Master + PJP มาในไฟล์เดียว — ปุ่มไหนก็อัพได้ (รู้จักจาก Section Code) */
+  if(pjIsDcode(H))return parsePjpDcode(name,rows,H);
   const c={code:pjCol(H,["เลขที่ลูกค้า"]),d:pjCol(H,["วันที่เข้าเยี่ยม"]),ord:pjCol(H,["ลำดับการเยี่ยม"]),
     rt:pjCol(H,["เส้นทางการขาย"]),f:pjCol(H,["ความถี่"]),n:pjCol(H,["ชื่อร้านค้า"]),
     la:pjCol(H,["latitude"]),lo:pjCol(H,["longitude"]),emp:pjCol(H,["พนักงานขาย"])};

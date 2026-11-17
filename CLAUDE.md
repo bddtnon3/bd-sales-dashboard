@@ -671,8 +671,9 @@ stock, daily/monthly sales, KPI, master, by-store, analytics). Filenames carry t
 (e.g. `Drop 25072026.xlsx`, `BD_250726.xlsx`). Parsers key data by date/month/line so uploads
 merge rather than replace.
 
-**BD moved to the dcode system in Nov 26, so two files now have two formats each** and both
-readers must keep working (`STOCKD.src` / the daily log line say which was read). Each new reader
+**BD moved to the dcode system in Nov 26 (`DCODE_START`, recorded at the owner's request so no
+report claims a shop "did not buy" in a period that has no dcode data), so three files now have two
+formats each** and both readers must keep working (`STOCKD.src` / the daily log line say which was read). Each new reader
 is picked by a header the old file does not have, finds every column by **header text** (never a
 fixed index), and **throws without storing anything** if a header it needs is gone — see the
 สต็อก section above for `parseStockDcode`, and below for `parseDailyDcode`.
@@ -700,6 +701,26 @@ and a last day equal to today (the export may be mid-day, so re-upload after the
 **`node test/browser/dailydc.test.cjs`** (30 checks, self-contained with made-up figures; 33 with
 the real file via `DCODE_DAILY=/path/Sales_....xlsx`, which never enters the repo — the repo is
 public, so never commit the depot's real revenue).
+`parseOutlet` **and** `parsePJP` both dispatch to **`parsePjpDcode`** when the header row carries
+`Section Code`, because dcode merges Master Outlet and the PJP plan into **one file**
+(`Outlet_Master__PJP_Report.xlsx`) — either upload button takes it, and both old files still work.
+That file has **no date column at all**: the visit day is encoded in `Section Code`
+(`SC209616F204` → last 6 = line `16`, round `F2`, **day slot `04`**) and cross-checked against
+`Section Name` (`209616_THU`). Slots 01-06 are Mon-Sat of week 1, 07-12 of week 2, and the calendar
+anchor is **the first Monday of the month** — both facts measured, not guessed: the three encodings
+agree on **2,888 of 2,888 real rows** (the other 12 are `SCDUMMY02096`, a fake outlet, which must be
+dropped), the line matches the sales file on **86 of 86 billed shops**, and 61 of the 83 shops billed
+on Monday 16 Nov sit in slot 12 = **Saturday 14 Nov** (the go-live backlog), which the first-Monday
+anchor predicts exactly and the alternative anchor does not. `F<N>` means **N visits a month, so
+repeat every 28/N days** (`pjStepOf`): F2 → the existing +14 rule, capped at **2 rounds = 24 days a
+month** (never invent a +28 round — report the uncovered working days instead), while the telesales
+line (`TL_HPC_219`, F4, 689 shops over slots 01-06 only) repeats **weekly** or half the month would
+be empty. The file has no visit-order column either, so row order is the order. Rules, the full
+validation and what the file is missing: `HANDOFF.md` §5. The rep's page also lists
+**🛑 ร้านที่ยังไม่มีบิลเลย** (`pjNoBuy`), which counts only from `DCODE_START` onward and takes the
+shop list from `PJP.out`, not from that day's plan. Prove it with
+**`node test/browser/pjpdc.test.cjs`** (32 checks; 34 with the real file via `DCODE_PJP=...`, which
+holds real customer names and never enters the repo).
 
 ## Working style
 Make small, verifiable changes. After editing the template, run `node build.cjs` and confirm it
