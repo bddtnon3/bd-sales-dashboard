@@ -639,11 +639,18 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (30 checks) plus the special-order cases in
-  `merge-safety`. Two more owner decisions, same day: the page carries its own
-  **➕ สร้างออเดอร์ใหม่** button (`spNewOrder`, manager only) because he could not find where to
-  open one — it jumps to the existing slip form (`switchTab("cstock")` → `cstSetSec("bill")` →
-  `cstNew()`) rather than duplicating a form that 229 tests already cover; and **the destination
+  with **`node test/browser/spord.test.cjs`** (37 checks) plus the special-order cases in
+  `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
+  `SP.ym`), then that month's orders, then one order's 6 steps — the owner asked for it so the
+  landing screen is not a long list; each month and slip card carries the count still waiting on
+  *your* team. It carries its own **➕ สร้างออเดอร์ใหม่** button (`spNewOrder`, manager only)
+  which renders **the existing `cstFormHtml()` inside this page**, never sending him back to
+  สต็อคกลาง (*"ไม่ต้องดึงกลับไปหน้าเก่าแล้ว"*); so the form's many `renderCStock()` buttons keep
+  working, `renderCStock` re-renders **this** page when `CURTAB==="spord"` (one way only — the
+  reverse call does not exist), `CST.sec` is forced to `"list"` so the old page cannot paint a
+  second copy of the same ids, and **`cstNew()` must run before the tab switch** or the render
+  sees `view:"new"` with no `CST.f` and reads it as "just saved". Saving lands on the new order.
+  And **the destination
   shops now come from the order numbers the reps key, not from an uploaded Ex.export file**
   (`spShops`/`spShopsHtml`, shown to every team) — *"ต่อจากนี้เราจะต้องให้เซลล์มาลงข้อมูลเองว่า
   กระจายไปร้านไหนบ้าง โดยการใส่เลขออเดอร์"*. Codes whose day has no sales file yet are counted and

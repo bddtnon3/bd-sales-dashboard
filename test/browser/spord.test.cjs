@@ -49,7 +49,7 @@ const K=(no)=>B1+'|'+no;
       'BDD0100000007':{s:'4862365',l:'209611',d:'2026-11-18',v:1709.38,c:3}}};
     PJP={out:{'4862383':{n:'พี่เทียร',rt:'209611'},'4862365':{n:'แม่จุก',rt:'209611'}},
          plan:{},done:{},cfg:{}};
-    SP={sid:'${B1}',q:'',busy:0};
+    SP={sid:'${B1}',q:'',busy:0,view:'slip',ym:'2026-11'};
   };
   window.__as=(role,code,name)=>{S.user={id:code||role,role:role,code:code,name:name};
     _switchTab(tabIsTeam(role)?'spord':'sales');};
@@ -79,7 +79,7 @@ const K=(no)=>B1+'|'+no;
 
  /* ---------- 2) เซลล์กรอกแค่รหัส ---------- */
  const s2=await ev(async()=>{__reset();__as('sales','209611','CT11 · ชลศิต');
-   _switchTab('spord');SP.sid='B20261118-01';renderSpord();
+   _switchTab('spord');SP.sid='B20261118-01';SP.view='slip';renderSpord();
    document.getElementById('spAddNo').value=' bdd0100000006 ';spAdd();await W();
    document.getElementById('spAddNo').value='BDD0100000007';spAdd();await W();
    const txt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
@@ -118,13 +118,13 @@ const K=(no)=>B1+'|'+no;
    __as('manager',null,'แอดมิน 1');SP.sid='B20261118-01';
    window.__prompt='ตรวจแล้ว';renderSpord();spTick(k,'s3',true);await W();
    o.s3=CSTOCK.sub[k].s3;
-   __as('wh',null,'ทีมคลัง 1');SP.sid='B20261118-01';renderSpord();
+   __as('wh',null,'ทีมคลัง 1');SP.sid='B20261118-01';SP.view='slip';renderSpord();
    o.whTodo=document.getElementById('spBody').textContent.replace(/\s+/g,' ').slice(0,60);
    spTick(k,'s4',true);await W();o.s4=CSTOCK.sub[k].s4;
    const before=window.__posts.length;
    spTick(k,'s3',false);await W();                   /* คลังลองยกเลิกขั้นของแอดมิน */
    o.whTriedS3={posts:window.__posts.length-before,s3ok:CSTOCK.sub[k].s3.ok};
-   __as('ds',null,'ทีมสายส่ง 1');SP.sid='B20261118-01';renderSpord();
+   __as('ds',null,'ทีมสายส่ง 1');SP.sid='B20261118-01';SP.view='slip';renderSpord();
    spTick(k,'s5',true);await W();o.s5=CSTOCK.sub[k].s5;
    __as('manager',null,'แอดมิน 1');SP.sid='B20261118-01';
    window.__prompt='ส่งเข้าร้านพี่เทียร';renderSpord();
@@ -149,7 +149,7 @@ const K=(no)=>B1+'|'+no;
 
  /* ---------- 6) ติ๊กข้ามขั้น ---------- */
  const skip=await ev(async()=>{
-   __as('ds',null,'ทีมสายส่ง 1');SP.sid='B20261118-01';renderSpord();
+   __as('ds',null,'ทีมสายส่ง 1');SP.sid='B20261118-01';SP.view='slip';renderSpord();
    const txt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    const k2='B20261118-01|BDD0100000007';
    return {txt:txt,stage:spStage(CSTOCK.sub[k2]),
@@ -159,7 +159,7 @@ const K=(no)=>B1+'|'+no;
 
  /* ---------- 7) กลุ่ม A / B ---------- */
  const grp=await ev(()=>{
-   __as('manager',null,'แอดมิน 1');SP.sid='B20261118-01';renderSpord();
+   __as('manager',null,'แอดมิน 1');SP.sid='B20261118-01';SP.view='slip';renderSpord();
    const a=document.getElementById('spBar').textContent.replace(/\s+/g,' ');
    spSetGrp('B');
    const bb=document.getElementById('spBar').textContent.replace(/\s+/g,' ');
@@ -173,7 +173,7 @@ const K=(no)=>B1+'|'+no;
 
  /* ---------- 8) ลบเลขที่กรอกผิด ---------- */
  const del=await ev(async()=>{
-   __as('sales','209611','CT11');SP.sid='B20261118-01';renderSpord();
+   __as('sales','209611','CT11');SP.sid='B20261118-01';SP.view='slip';renderSpord();
    const started='B20261118-01|BDD0100000006';     /* เดินงานไปแล้ว */
    const fresh='B20261118-01|BDD0100000007';       /* ยังไม่เริ่ม */
    const h=document.getElementById('spBody').innerHTML;
@@ -196,7 +196,7 @@ const K=(no)=>B1+'|'+no;
    CSTOCK.sub['B20261118-01|BDD0100000777']={sid:'B20261118-01',no:'BDD0100000777',
      ln:'209611',byName:'CT11',at:6,up:6};
    delete CSTOCK.subdel['B20261118-01|BDD0100000007'];
-   __as('manager',null,'แอดมิน 1');SP.sid='B20261118-01';renderSpord();
+   __as('manager',null,'แอดมิน 1');SP.sid='B20261118-01';SP.view='slip';renderSpord();
    o.mgr=document.getElementById('spNewBox').style.display;
    o.shops=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    __as('sales','209611','CT11');renderSpord();
@@ -205,21 +205,63 @@ const K=(no)=>B1+'|'+no;
    o.wh=document.getElementById('spNewBox').style.display;
    o.whShops=/ร้านปลายทาง/.test(document.getElementById('spBody').textContent);
    __as('manager',null,'แอดมิน 1');renderSpord();spNewOrder();
-   o.went={tab:CURTAB,sec:CST.sec,form:!!(CST.f&&CST.f.rows&&CST.f.rows.length),
-     shown:!document.getElementById('cstockView').classList.contains('hidden')};
+   o.went={tab:CURTAB,view:SP.view,form:!!(CST.f&&CST.f.rows&&CST.f.rows.length),
+     spShown:!document.getElementById('spordView').classList.contains('hidden'),
+     cstShown:!document.getElementById('cstockView').classList.contains('hidden'),
+     inputs:!!document.getElementById('spBody').querySelector('input,select'),
+     cstBill:(document.getElementById('cstBill')||{}).innerHTML||''};
    return o;});
  t('🔑 ปุ่ม ➕ สร้างออเดอร์ใหม่ โชว์ให้แอดมิน และซ่อนจากเซลล์/คลัง',
    mk.mgr===''&&mk.sales==='none'&&mk.wh==='none',
    JSON.stringify({mgr:mk.mgr,sales:mk.sales,wh:mk.wh}));
- t('🔑 กดแล้วพาไปฟอร์มกรอกใบออเดอร์ใหญ่ พร้อมแถวให้กรอกเลย',
-   mk.went.tab==='cstock'&&mk.went.sec==='bill'&&mk.went.form&&mk.went.shown,
-   JSON.stringify(mk.went));
+ /* เจ้าของสั่ง 18 พ.ย. 69 รอบสาม: *"พอกดเพิ่มออเดอร์ มันพากลับไปหน้าสต็อคกลาง
+    ทำให้มันเป็นสร้างหน้าใหม่ ในหมวดใหม่ได้เลย ไม่ต้องดึงกลับไปหน้าเก่าแล้ว"* */
+ t('🔑 กดแล้วฟอร์มเปิด "ในหน้าออเดอร์พิเศษ" ไม่เด้งกลับหน้าสต็อคกลางเดิม',
+   mk.went.tab==='spord'&&mk.went.view==='new'&&mk.went.form&&
+   mk.went.spShown&&!mk.went.cstShown&&mk.went.inputs,JSON.stringify(mk.went));
+ t('🛟 หน้าสต็อคกลางต้องไม่วาดฟอร์มซ้ำอีกชุด (id ซ้ำกันทั้งหน้า)',mk.went.cstBill==='');
  t('🔑 ร้านปลายทางมาจากเลขออเดอร์ที่เซลล์คีย์ ไม่ต้องอัพไฟล์รายชื่อร้าน',
    /ร้านปลายทางของใบนี้ \(2 ร้าน\)/.test(mk.shops)&&/พี่เทียร/.test(mk.shops)&&
    /แม่จุก/.test(mk.shops)&&/ไม่ต้องอัพไฟล์รายชื่อร้าน/.test(mk.shops)&&
    /อีก 1 เลข ยังไม่รู้ร้าน/.test(mk.shops)&&/BDD0100000777/.test(mk.shops),
    mk.shops.slice(mk.shops.indexOf('ร้านปลายทาง'),mk.shops.indexOf('ร้านปลายทาง')+120));
  t('ทีมคลัง/สายส่งก็เห็นร้านปลายทางด้วย (ไว้เช็กว่าของไปร้านไหน)',mk.whShops);
+
+ /* ---------- 8c) หน้าแรก = เลือกเดือนก่อน ---------- */
+ const nav=await ev(async()=>{
+   __reset();
+   CSTOCK.slips['B20261002-01']={id:'B20261002-01',d:'2026-10-02',at:1,up:1};
+   CSTOCK.sub['B20261118-01|BDD0100000006']={sid:'B20261118-01',no:'BDD0100000006',
+     ln:'209611',at:1,up:1};
+   __as('manager',null,'แอดมิน 1');
+   SP.view='mon';SP.ym='';SP.sid='';renderSpord();
+   const o={mon:document.getElementById('spBody').textContent.replace(/\s+/g,' '),
+            monBar:document.getElementById('spBar').textContent.replace(/\s+/g,' '),
+            slipBox:document.getElementById('spSlipBox').style.display};
+   spOpenMon('2026-11');
+   o.list=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.listBar=document.getElementById('spBar').textContent.replace(/\s+/g,' ');
+   spOpenSlip('B20261118-01');
+   o.slip=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.slipBox2=document.getElementById('spSlipBox').style.display;
+   spBack();o.back=SP.view+'|'+SP.ym;
+   spBack();o.back2=SP.view+'|'+SP.ym;
+   return o;});
+ t('🔑 เข้ามาหน้าแรกเจอ "เลือกเดือน" ก่อน ไม่ใช่รายการยาว ๆ',
+   /เลือกเดือนที่จะดู/.test(nav.monBar)&&/🗓 เลือกเดือน/.test(nav.mon)&&
+   /พ\.ย\. 2569/.test(nav.mon)&&/ต\.ค\. 2569/.test(nav.mon),nav.mon.slice(0,120));
+ t('...การ์ดเดือนบอกจำนวนใบและเลขออเดอร์ของเดือนนั้น',
+   /1ใบออเดอร์|1 ใบออเดอร์/.test(nav.mon.replace(/\s/g,' '))&&
+   /1 เลขออเดอร์/.test(nav.mon)&&/ค้างที่ทีมคุณ/.test(nav.mon),nav.mon.slice(0,150));
+ t('...ช่องเลือกใบซ่อนไว้ตอนอยู่หน้าเลือกเดือน (ไม่รกตา)',nav.slipBox==='none',nav.slipBox);
+ t('กดเดือน → เห็นรายการใบของเดือนนั้น พร้อมปุ่มกลับไปเลือกเดือนอื่น',
+   /พ\.ย\. 2569/.test(nav.listBar)&&/B20261118-01/.test(nav.list)&&
+   /เลือกเดือนอื่น/.test(nav.list)&&!/B20261002-01/.test(nav.list),nav.list.slice(0,140));
+ t('กดใบ → เข้าหน้า 6 ขั้นตอน พร้อมปุ่มกลับ และช่องเลือกใบโผล่',
+   /ภาพรวม 6 ขั้นตอน/.test(nav.slip)&&/กลับไปรายการใบ/.test(nav.slip)&&nav.slipBox2==='',
+   nav.slip.slice(0,100));
+ t('ปุ่มกลับไล่ถอยทีละชั้น: ใบ → รายการเดือน → เลือกเดือน',
+   nav.back==='mon|2026-11'&&nav.back2==='mon|',nav.back+' → '+nav.back2);
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

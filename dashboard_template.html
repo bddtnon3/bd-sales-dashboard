@@ -1503,7 +1503,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
           <div class="dstep"><button type="button" class="dstep-b" onclick="selStep('spSlip',-1)" title="ใบก่อนหน้า">◀</button>
           <select id="spSlip" data-rev="1" onchange="SP.sid=this.value;renderSpord()"></select>
           <button type="button" class="dstep-b" onclick="selStep('spSlip',1)" title="ใบถัดไป">▶</button></div></div>
-        <div class="ctl"><label>ค้นหา</label><input id="spQ" placeholder="🔍 เลขออเดอร์ / ชื่อร้าน / สาย"
+        <div class="ctl" id="spQBox"><label>ค้นหา</label><input id="spQ" placeholder="🔍 เลขออเดอร์ / ชื่อร้าน / สาย"
           oninput="SP.q=this.value;renderSpord()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:220px"></div>
         <div class="spacer"></div>
         <div class="ctl" id="spNewBox" style="display:none"><label>&nbsp;</label>
@@ -11538,7 +11538,10 @@ const SP_STEPS=[
   {k:"s4",ic:"📦",n:"คลังจัดของ",sh:"คลังจัดของ",role:"wh"},
   {k:"s5",ic:"🚚",n:"สายส่งส่งของ",sh:"ส่งของ",role:"ds"},
   {k:"s6",ic:"✅",n:"แอดมินปิดงาน",sh:"ปิดงาน",role:"manager"}];
-let SP={sid:"",q:"",busy:0};
+/* view: "mon" เลือกเดือน/เลือกใบ · "slip" เปิดใบเดียวดู 6 ขั้น · "new" ฟอร์มสร้างออเดอร์
+   เจ้าของสั่ง 18 พ.ย. 69: *"ปรับให้เข้ามาแต่แรก เลือกเป็นรายเดือนให้กดเลือกเข้าไปดูรายการเดือนนั้นๆ
+   ก่อน จะได้ไม่รกตาในช่วงแรก"* → หน้าแรกคือรายเดือนเสมอ */
+let SP={sid:"",q:"",busy:0,view:"mon",ym:""};
 function spOk(){const C=cstOk();if(!C.sub)C.sub={};if(!C.subdel)C.subdel={};return C;}
 function spRole(){return (S.user&&S.user.role)||"";}
 function spMgr(){return spRole()==="manager";}
@@ -11683,7 +11686,48 @@ function spBarHtml(sl){
    ปุ่มนี้พาไปที่ฟอร์มนั้นให้เลย ไม่ได้ทำฟอร์มซ้ำอีกชุด (ของเดิมมีเทส 229 ข้อคุมอยู่) */
 function spNewOrder(){
   if(!spMgr()){alert("เฉพาะแอดมินเท่านั้นที่เปิดออเดอร์ใหญ่ได้");return;}
-  switchTab("cstock");cstSetSec("bill");cstNew();
+  SP.view="new";
+  /* ⚠️ ต้องสร้างฟอร์ม (cstNew) ก่อนย้ายแท็บเสมอ — ถ้าย้ายก่อน renderSpord จะเห็น view="new"
+     ทั้งที่ยังไม่มี CST.f แล้วตีความว่า "เพิ่งกดบันทึกเสร็จ" แล้วเด้งไปใบล่าสุดแทน */
+  cstNew();              /* ใช้ฟอร์มกรอกตัวเดิมทั้งก้อน (มีเทส 229 ข้อคุมอยู่) ไม่ได้ทำฟอร์มซ้ำ */
+  CST.sec="list";        /* กันไม่ให้หน้าสต็อคกลางวาดฟอร์มซ้ำอีกชุด = id ซ้ำกันทั้งหน้า */
+  if(typeof CURTAB!=="undefined"&&CURTAB!=="spord")switchTab("spord");  /* กดจากที่ไหนก็มาหน้านี้ */
+  renderSpord();
+}
+/* ฟอร์มเดิมมีปุ่มที่เรียก renderCStock() อยู่เต็มไปหมด — ให้ renderCStock วนกลับมาวาดหน้านี้ให้
+   ปุ่มทุกปุ่มในฟอร์มจึงทำงานเหมือนเดิมทั้งสองหน้า โดยไม่ต้องไปแก้ onclick ทีละอัน */
+function spIsOpen(){return CURTAB==="spord";}
+function spBack(){
+  if(SP.view==="new"&&CST.f&&CST.f.rows&&CST.f.rows.some(r=>r.nm||r.code||+r.cs||+r.pc)&&
+     !confirm("ออกจากหน้ากรอก? ใบที่กรอกค้างไว้จะถูกเก็บเป็นฉบับร่าง กลับมากรอกต่อได้"))return;
+  if(SP.view==="slip"){SP.view="mon";SP.sid="";}
+  else if(SP.view==="new"){SP.view="mon";}
+  else SP.ym="";
+  renderSpord();
+}
+function spOpenMon(ym){SP.ym=ym;SP.view="mon";renderSpord();}
+function spOpenSlip(sid){SP.sid=sid;SP.view="slip";renderSpord();}
+/* เดือนของใบ (ใช้วันที่ตัดบิล ถ้าไม่มีใช้วันที่สร้าง) */
+function spYm(sl){
+  const d=String((sl&&sl.d)||"");
+  if(/^\d{4}-\d{2}/.test(d))return d.slice(0,7);
+  const at=(sl&&(sl.at||sl.up))||0;
+  return at?new Date(at).toISOString().slice(0,7):"ไม่ระบุ";
+}
+/* สรุปต่อเดือน: กี่ใบ · กี่เลขออเดอร์ · จบแล้วกี่เลข · ค้างที่ทีมของฉันกี่เลข */
+function spMonths(){
+  const role=spRole(),byM={};
+  spSlips().forEach(sl=>{
+    const m=spYm(sl),e=byM[m]||(byM[m]={ym:m,slips:0,sub:0,done:0,mine:0});
+    e.slips++;
+    spSubs(sl.id).forEach(r=>{
+      e.sub++;
+      if(spStage(r)>=SP_STEPS.length)e.done++;
+      const nx=spNext(r);
+      if(nx&&(nx.role===role||(role==="sales"&&r.ln===spMine()&&nx.role==="manager")))e.mine++;
+    });
+  });
+  return Object.keys(byM).sort().reverse().map(k=>byM[k]);
 }
 /* 🏪 ร้านปลายทางของใบนี้ — เจ้าของสั่ง 18 พ.ย. 69:
    *"จากเมื่อก่อนที่เราต้องอัพไฟล์เข้าไปว่าสินค้าจะกระจายเข้าไปร้านไหนบ้าง ต่อจากนี้เราจะต้องให้
@@ -11732,17 +11776,81 @@ function renderSpord(){
     sel.innerHTML=sls.map(x=>`<option value="${anaEsc(x.id)}"${x.id===SP.sid?" selected":""}>${
       SP_GRP[spGrpOf(x)].ic} ${anaEsc(x.id)}${x.d?" · "+fmtDate(x.d):""}</option>`).join("");
   }
-  const sl=spSlip(SP.sid);
-  bar.innerHTML=spBarHtml(sl);
   {const nb=document.getElementById("spNewBox");if(nb)nb.style.display=spMgr()?"":"none";}
   const body=document.getElementById("spBody");
   const secBox=document.getElementById("spSecBox");if(secBox)secBox.style.display="none";
+  /* กล่องเลือกใบ + ช่องค้นหา โผล่เฉพาะตอนเปิดใบเดียวอยู่ */
+  {const sb=document.getElementById("spSlipBox");if(sb)sb.style.display=(SP.view==="slip")?"":"none";
+   const qb=document.getElementById("spQBox");if(qb)qb.style.display=(SP.view==="slip")?"":"none";}
+
+  /* ---------- ฟอร์มสร้างออเดอร์ใหม่ (ใช้ฟอร์มเดิม วาดในหน้านี้) ---------- */
+  if(SP.view==="new"){
+    if(!spMgr()){SP.view="mon";}
+    else{
+      {const cb=document.getElementById("cstBill");if(cb)cb.innerHTML="";}  /* กัน id ซ้ำสองหน้า */
+      if(!CST.f){
+        /* เพิ่งกดบันทึกไป → เด้งเข้าใบที่เพิ่งสร้าง ไม่ใช่ค้างอยู่หน้าฟอร์มเปล่า */
+        const nw=sls.slice().sort((a,b)=>(b.up||b.at||0)-(a.up||a.at||0))[0];
+        if(nw){SP.sid=nw.id;SP.ym=spYm(nw);SP.view="slip";}
+        else SP.view="mon";
+      }else{
+        bar.innerHTML="📦 ออเดอร์พิเศษ · ➕ สร้างออเดอร์ใหม่";
+        body.innerHTML=`<div class="panel"><div class="cst-fb">
+            <button class="btn-ghost" onclick="spBack()">◀ กลับ</button>
+            <span class="psub">กรอกวันที่ · สินค้า · จำนวน · สายวิ่ง · ผู้รับผิดชอบ แล้วกดบันทึกครั้งเดียว
+              · ออกจากหน้านี้ได้ ใบที่กรอกค้างไว้ถูกเก็บเป็นฉบับร่างให้อัตโนมัติ</span></div></div>`
+          +cstFormHtml();
+        cstBillAfter();
+        return;
+      }
+    }
+  }
+  const sl=spSlip(SP.sid);
+  bar.innerHTML=spBarHtml(sl);
   if(!sls.length){
     body.innerHTML=`<div class="panel"><div class="insight">ยังไม่มีใบออเดอร์ใหญ่ — ${
       spMgr()?'กดปุ่ม <b>➕ สร้างออเดอร์ใหม่</b> มุมขวาบนได้เลย':
       'รอแอดมินเปิดใบออเดอร์ใหญ่ก่อน'}</div></div>`;
     return;
   }
+  /* ---------- หน้าแรก: เลือกเดือน แล้วเลือกใบ ---------- */
+  if(SP.view!=="slip"){
+    const ms=spMonths();
+    if(!SP.ym||!ms.some(m=>m.ym===SP.ym)){
+      bar.innerHTML="📦 ออเดอร์พิเศษ · เลือกเดือนที่จะดู";
+      body.innerHTML=`<div class="panel"><h3>🗓 เลือกเดือน</h3>
+        <div class="psub">กดเดือนที่ต้องการ แล้วค่อยเลือกใบออเดอร์</div>
+        <div class="cards" style="margin-top:10px">${ms.map(m=>`
+          <div class="card" style="cursor:pointer${m.mine?";border-top:3px solid var(--bad)":""}"
+               onclick="spOpenMon('${m.ym}')">
+            <div class="k">${m.ym==="ไม่ระบุ"?"ไม่ระบุเดือน":fmtMonth(m.ym)}</div>
+            <div class="v">${m.slips}</div><div class="s">ใบออเดอร์ · ${m.sub} เลขออเดอร์
+            ${m.mine?`<br><b class="down">ค้างที่ทีมคุณ ${m.mine}</b>`:(m.sub?`<br><span class="up">จบแล้ว ${m.done}/${m.sub}</span>`:"")}</div>
+          </div>`).join("")}</div></div>`;
+      return;
+    }
+    const inM=sls.filter(x=>spYm(x)===SP.ym);
+    bar.innerHTML=`📦 ออเดอร์พิเศษ · ${fmtMonth(SP.ym)} · <b>${inM.length}</b> ใบ`;
+    body.innerHTML=`<div class="panel">
+      <div class="cst-fb"><button class="btn-ghost" onclick="spBack()">◀ เลือกเดือนอื่น</button>
+        <span class="psub">กดที่ใบเพื่อเข้าไปดู/ทำงาน 6 ขั้นตอน</span></div></div>
+      <div class="panel" style="margin-top:14px">${inM.map(x=>{
+        const subs=spSubs(x.id),done=subs.filter(r=>spStage(r)>=SP_STEPS.length).length;
+        const mine=subs.filter(r=>{const nx=spNext(r);return nx&&nx.role===spRole();}).length;
+        const g=SP_GRP[spGrpOf(x)];
+        return `<div class="note" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+            margin:6px 0;cursor:pointer" onclick="spOpenSlip('${anaEsc(x.id)}')">
+          <b style="font-size:17px">${g.ic} ${anaEsc(x.id)}</b>
+          <span class="psub">${x.d?fmtDate(x.d):""} · ${anaEsc(g.n)}</span>
+          <span style="flex:1"></span>
+          <span class="pill${subs.length&&done===subs.length?" g":""}">${subs.length} เลขออเดอร์${
+            subs.length?" · จบ "+done:""}</span>
+          ${mine?`<span class="pill" style="background:var(--bad);color:#fff">งานของคุณ ${mine}</span>`:""}
+          <span class="psub">▶</span></div>`;}).join("")||
+        '<div class="insight">เดือนนี้ยังไม่มีใบออเดอร์</div>'}</div>`;
+    return;
+  }
+
   const q=spNo(SP.q);
   const hit=r=>{if(!q)return true;
     const o=spOrd(r.no);
@@ -11792,10 +11900,20 @@ function renderSpord(){
   }
   /* ร้านปลายทางให้ทุกทีมเห็น — คลัง/สายส่งใช้เช็กว่าของไปร้านไหน */
   h+=spShopsHtml(SP.sid);
+  h=`<div class="panel"><div class="cst-fb">
+      <button class="btn-ghost" onclick="spBack()">◀ กลับไปรายการใบ</button>
+      <span class="psub">${SP.ym&&SP.ym!=="ไม่ระบุ"?fmtMonth(SP.ym):""}</span></div></div>`+h;
   body.innerHTML=h;
 }
 function cstMgr(){return !!(S.user&&S.user.role==="manager");}
 function renderCStock(){
+  /* ฟอร์มกรอกใบ (cstFormHtml) ถูกใช้สองที่: หน้าสต็อคกลางเดิม และหน้า 📦 ออเดอร์พิเศษ
+     ปุ่มในฟอร์มทุกปุ่มเรียก renderCStock() จึงต้องวนกลับมาวาดหน้าออเดอร์พิเศษให้ด้วย
+     (ทางเดียว — renderSpord ไม่ได้เรียก renderCStock กลับ จึงไม่วนไม่รู้จบ) */
+  if(typeof CURTAB!=="undefined"&&CURTAB==="spord"&&typeof renderSpord==="function"){
+    const cb=document.getElementById("cstBill");if(cb)cb.innerHTML="";
+    renderSpord();return;
+  }
   const bar=document.getElementById("cstBar");if(!bar)return;
   const C=cstOk(),mgr=cstMgr();
   /* เซลล์เข้าหน้า 🧾 ใบตัดบิล ไม่ได้ แต่ดู 📊 รายงานย้อนหลังได้ (อ่านอย่างเดียวทั้งหน้า) */
