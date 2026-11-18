@@ -119,7 +119,7 @@ const K=(no)=>B1+'|'+no;
    window.__prompt='ตรวจแล้ว';renderSpord();spTick(k,'s3',true);await W();
    o.s3=CSTOCK.sub[k].s3;
    __as('wh',null,'ทีมคลัง 1');SP.sid='B20261118-01';SP.view='slip';renderSpord();
-   o.whTodo=document.getElementById('spBody').textContent.replace(/\s+/g,' ').slice(0,60);
+   o.whTodo=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    spTick(k,'s4',true);await W();o.s4=CSTOCK.sub[k].s4;
    const before=window.__posts.length;
    spTick(k,'s3',false);await W();                   /* คลังลองยกเลิกขั้นของแอดมิน */
@@ -136,7 +136,8 @@ const K=(no)=>B1+'|'+no;
    flow.s3.ok===1&&flow.s3.tx==='ตรวจแล้ว'&&flow.s3.byName==='แอดมิน 1',JSON.stringify(flow.s3));
  t('ขั้น 4 ทีมคลังเห็นงานที่ต้องทำและติ๊กได้',
    /งานที่ต้องทำ \(1\)/.test(flow.whTodo)&&flow.s4.ok===1&&flow.s4.byName==='ทีมคลัง 1',
-   flow.whTodo+' | '+JSON.stringify(flow.s4));
+   flow.whTodo.slice(flow.whTodo.indexOf('งานที่ต้องทำ'),flow.whTodo.indexOf('งานที่ต้องทำ')+40)+
+   ' | '+JSON.stringify(flow.s4));
  t('🔑 ทีมคลังแตะขั้นของแอดมินไม่ได้ (ไม่ยิงอะไรเลย และสถานะเดิมไม่เปลี่ยน)',
    flow.whTriedS3.posts===0&&flow.whTriedS3.s3ok===1,JSON.stringify(flow.whTriedS3));
  t('ขั้น 5 ทีมสายส่งติ๊กได้',flow.s5.ok===1&&flow.s5.byName==='ทีมสายส่ง 1',JSON.stringify(flow.s5));
@@ -262,6 +263,71 @@ const K=(no)=>B1+'|'+no;
    nav.slip.slice(0,100));
  t('ปุ่มกลับไล่ถอยทีละชั้น: ใบ → รายการเดือน → เลือกเดือน',
    nav.back==='mon|2026-11'&&nav.back2==='mon|',nav.back+' → '+nav.back2);
+
+ /* ---------- 8d) 12 เดือนเต็มปี + เลือกปี + สรุปลังครบ loop + ฟอร์มแบบย่อ ---------- */
+ const y12=await ev(()=>{
+   __reset();
+   CSTOCK.slips['B20250820-01']={id:'B20250820-01',d:'2025-08-20',at:1,up:1};
+   CSTOCK.lots['B20261118-01-r1']={id:'B20261118-01-r1',sl:'B20261118-01',d:'2026-11-18',
+     code:'111',nm:'สินค้าทดสอบ',cs:100,pc:0,clr:[],up:1};
+   CSTOCK.sub={
+     'B20261118-01|BDD0100000006':{sid:'B20261118-01',no:'BDD0100000006',ln:'209611',at:1,up:1,
+       s3:{ok:1,at:2},s4:{ok:1,at:3},s5:{ok:1,at:4}},
+     'B20261118-01|BDD0100000007':{sid:'B20261118-01',no:'BDD0100000007',ln:'209612',at:2,up:2},
+     'B20261118-01|BDD0100000777':{sid:'B20261118-01',no:'BDD0100000777',ln:'209613',at:3,up:3}};
+   STOREDAILY.ord['BDD0100000006'].cs=30;STOREDAILY.ord['BDD0100000006'].pc=2;
+   STOREDAILY.ord['BDD0100000007'].cs=25;STOREDAILY.ord['BDD0100000007'].pc=0;
+   __as('manager',null,'แอดมิน 1');
+   SP.view='mon';SP.ym='';SP.yr='';SP.sid='';renderSpord();
+   const o={n:document.querySelectorAll('#spBody .card').length,
+     txt:document.getElementById('spBody').textContent.replace(/\s+/g,' '),
+     years:[...document.querySelectorAll('#spBody select option')].map(x=>x.value).join(','),
+     yr:spYear()};
+   spStepYear(-1);
+   o.prev=spYear();o.prevTxt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.prevN=document.querySelectorAll('#spBody .card').length;
+   spSetYear('2026');spOpenMon('2026-11');spOpenSlip('B20261118-01');
+   o.cases=spCases('B20261118-01');
+   o.slip=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   return o;});
+ t('🔑 หน้าเลือกเดือนขึ้นครบ 12 เดือนเสมอ เดือนที่ไม่มีก็ขึ้น 0 รายการ',
+   y12.n===12&&/0 รายการ/.test(y12.txt)&&/ธ\.ค\. 2569/.test(y12.txt)&&/ม\.ค\. 2569/.test(y12.txt),
+   y12.n+' การ์ด');
+ t('...เดือนปัจจุบันมีป้ายกำกับให้เห็นง่าย',/เดือนนี้/.test(y12.txt));
+ t('🔑 เลือกปีได้บนหัวข้อ และ ◀ ▶ เลื่อนปีได้',
+   y12.years==='2026,2025'&&y12.yr==='2026'&&y12.prev==='2025'&&y12.prevN===12&&
+   /ส\.ค\. 2568/.test(y12.prevTxt),y12.years+' · กด ◀ → '+y12.prev);
+ t('🔑 สรุปว่าใบนี้ครบ loop กี่ลัง (ตัดบิล / เซลล์คีย์ / สายส่งส่งเสร็จ / ยังไม่กระจาย)',
+   y12.cases.cut===100&&y12.cases.keyed===55&&y12.cases.sent===30&&y12.cases.left===45&&
+   y12.cases.wait===1,JSON.stringify(y12.cases));
+ t('...และขึ้นบนหน้าใบให้ทุกทีมเห็น พร้อม % ครบ loop',
+   /ของในใบนี้ไปถึงไหนแล้ว/.test(y12.slip)&&/ครบ loop 30%/.test(y12.slip)&&
+   /รอไฟล์ยอดขาย/.test(y12.slip),
+   y12.slip.slice(y12.slip.indexOf('ของในใบนี้'),y12.slip.indexOf('ของในใบนี้')+130));
+
+ const lite=await ev(()=>{
+   __as('manager',null,'แอดมิน 1');spNewOrder();
+   const h=document.getElementById('spBody').innerHTML;
+   const txt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   const o={ths:[...document.querySelectorAll('#spBody thead th')].map(x=>x.textContent.trim()).join('|'),
+     ln:/cstRowSet\(0,'ln'/.test(h),own:/cstRowSet\(0,'own'/.test(h),
+     attach:/cstFormEx\(\)/.test(h),spread:/cstRowSpread/.test(h),
+     head:/ผู้รับผิดชอบ \(ทั้งใบ\)/.test(txt)};
+   /* หน้าสต็อคกลางเดิมต้องยังครบเหมือนเดิม */
+   CST.f=null;_switchTab('cstock');cstSetSec('bill');cstNew();
+   const h2=document.getElementById('cstBill').innerHTML;
+   o.oldTh=[...document.querySelectorAll('#cstBill thead th')].map(x=>x.textContent.trim()).join('|');
+   o.oldLn=/cstRowSet\(0,'ln'/.test(h2);o.oldAttach=/cstFormEx\(\)/.test(h2);
+   o.oldSpread=/cstRowSpread/.test(h2);
+   CST.f=null;_switchTab('spord');
+   return o;});
+ t('🔑 ฟอร์มในหน้าออเดอร์พิเศษ ไม่มีสายวิ่ง/ผู้รับผิดชอบต่อท้ายสินค้าแต่ละตัว',
+   !lite.ln&&!lite.own&&lite.ths.indexOf('สายวิ่ง')<0&&lite.ths.indexOf('ผู้รับผิดชอบ')<0,lite.ths);
+ t('...แต่ผู้รับผิดชอบ "ทั้งใบ" ตรงหัวออเดอร์ยังอยู่',lite.head);
+ t('...ปุ่มแนบไฟล์รายชื่อร้านถูกเอาออก (ร้านมาจากเลขออเดอร์แล้ว)',!lite.attach);
+ t('...ปุ่ม ⇉ กระจายทุกสาย ถูกเอาออกด้วย (ไม่มีคอลัมน์สายวิ่งแล้ว)',!lite.spread);
+ t('🛟 ฟอร์มหน้า 🧊 สต็อคกลาง (เดิม) ยังครบเหมือนเดิมทุกช่อง',
+   lite.oldLn&&lite.oldAttach&&lite.oldSpread&&lite.oldTh.indexOf('สายวิ่ง')>=0,lite.oldTh);
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

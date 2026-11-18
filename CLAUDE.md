@@ -639,17 +639,29 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (37 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (47 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
-  `SP.ym`), then that month's orders, then one order's 6 steps — the owner asked for it so the
-  landing screen is not a long list; each month and slip card carries the count still waiting on
-  *your* team. It carries its own **➕ สร้างออเดอร์ใหม่** button (`spNewOrder`, manager only)
+  `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
+  the landing screen is not a long list; each month and slip card carries the count still waiting on
+  *your* team. **`spMonths(yr)` always returns all twelve months of the chosen year** (a month with
+  nothing reads `0 รายการ`, dimmed; today's month is badged) with a **year picker and ◀ ▶** above —
+  the owner asked for exactly that, so never go back to listing only the months that have data.
+  **`spCases(sid)`** answers his question *"ออเดอร์นี้ … ครบ loop สายส่งส่งของเสร็จไปแล้วทั้งหมดกี่ลัง"*:
+  cases cut (from the slip's own rows) vs cases the reps have keyed vs cases whose **step 5 is
+  ticked** vs what is left — the keyed/sent figures come from `STOREDAILY.ord[no].cs`, so nobody
+  re-types a quantity that the daily sales file already states. It carries its own **➕ สร้างออเดอร์ใหม่** button (`spNewOrder`, manager only)
   which renders **the existing `cstFormHtml()` inside this page**, never sending him back to
   สต็อคกลาง (*"ไม่ต้องดึงกลับไปหน้าเก่าแล้ว"*); so the form's many `renderCStock()` buttons keep
   working, `renderCStock` re-renders **this** page when `CURTAB==="spord"` (one way only — the
   reverse call does not exist), `CST.sec` is forced to `"list"` so the old page cannot paint a
   second copy of the same ids, and **`cstNew()` must run before the tab switch** or the render
   sees `view:"new"` with no `CST.f` and reads it as "just saved". Saving lands on the new order.
+  On this page the form renders **lite** (`cstLite()`, true exactly when `CURTAB==="spord"`): no
+  per-row สายวิ่ง / ผู้รับผิดชอบ columns, no ⇉ spread, no 📎 attach-shop-file button — the owner
+  removed them because the reps' order numbers now carry the line and the destination — while
+  **ผู้รับผิดชอบ (ทั้งใบ) in the slip header stays**. It only hides inputs: `r.ln`/`r.own` remain
+  fields, old slips still show their line everywhere, and the สต็อคกลาง form keeps every column
+  (its 229 checks still pass).
   And **the destination
   shops now come from the order numbers the reps key, not from an uploaded Ex.export file**
   (`spShops`/`spShopsHtml`, shown to every team) — *"ต่อจากนี้เราจะต้องให้เซลล์มาลงข้อมูลเองว่า

@@ -10946,28 +10946,35 @@ function cstOptList(list,cur,blank){
     list.map(v=>`<option value="${anaEsc(v)}"${String(cur)===String(v)?" selected":""}>${anaEsc(v)}</option>`).join("");
 }
 /* แถบ "ปรับหลายแถวพร้อมกัน" — โผล่เมื่อมีแถวถูกติ๊ก */
+/* 🪶 ฟอร์มแบบย่อ — ใช้เฉพาะตอนกรอกจากหน้า 📦 ออเดอร์พิเศษ (เจ้าของสั่ง 18 พ.ย. 69)
+   *"หน้าที่แอดมินสร้างออเดอร์ ให้เอาปุ่มแนบไฟล์ร้านออก และเอารหัสสายวิ่งและผู้รับผิดชอบที่ต่อท้าย
+     สินค้าแต่ละตัวออกไป (แต่ตรงหัวออเดอร์ให้เก็บไว้) เพราะจะเป็นหน้าที่ของเซลล์แล้ว"*
+   ⚠️ ซ่อนเฉพาะ "ช่องกรอก" — ไม่ได้ลบฟิลด์ r.ln / r.own ทิ้ง ใบเก่าที่มีสายวิ่งอยู่แล้วยังแสดงผล
+      ได้เหมือนเดิมทุกหน้า และหน้า 🧊 สต็อคกลาง (เดิม) ยังมีคอลัมน์ครบ (เทส 229 ข้อยังผ่าน) */
+function cstLite(){return typeof CURTAB!=="undefined"&&CURTAB==="spord";}
 function cstBulkHtml(lines,owners){
-  const n=cstSelN();
-  if(!n)return `<div class="cst-bulk off">☑️ ติ๊กหน้าแถวที่ต้องการ แล้วปรับ <b>สายวิ่ง / ผู้รับผิดชอบ / จำนวน / สินค้า</b> ให้ทุกแถวที่ติ๊กได้ในครั้งเดียว</div>`;
+  const n=cstSelN(),lite=cstLite();
+  if(!n)return `<div class="cst-bulk off">☑️ ติ๊กหน้าแถวที่ต้องการ แล้วปรับ <b>${
+    lite?"จำนวน / สินค้า":"สายวิ่ง / ผู้รับผิดชอบ / จำนวน / สินค้า"}</b> ให้ทุกแถวที่ติ๊กได้ในครั้งเดียว</div>`;
   return `<div class="cst-bulk">
     <b>☑️ ติ๊กไว้ ${n} แถว</b>
-    <span class="cst-bg"><select id="cstBkLn">${cstOptList(lines,"","— เลือกสาย —")}</select>
+    ${lite?"":`<span class="cst-bg"><select id="cstBkLn">${cstOptList(lines,"","— เลือกสาย —")}</select>
       <button class="cst-x" onclick="cstBulk('ln',document.getElementById('cstBkLn').value)">ปรับสายวิ่ง</button></span>
     <span class="cst-bg"><select id="cstBkOwn">${cstOptList(owners,"","— เลือกผู้รับผิดชอบ —")}</select>
-      <button class="cst-x" onclick="cstBulk('own',document.getElementById('cstBkOwn').value)">ปรับผู้รับผิดชอบ</button></span>
+      <button class="cst-x" onclick="cstBulk('own',document.getElementById('cstBkOwn').value)">ปรับผู้รับผิดชอบ</button></span>`}
     <span class="cst-bg"><input id="cstBkCs" type="number" min="0" step="1" placeholder="ลัง" style="width:72px">
       <input id="cstBkPc" type="number" min="0" step="1" placeholder="ชิ้น" style="width:72px">
       <button class="cst-x" onclick="cstBulk('cs',document.getElementById('cstBkCs').value)">ปรับลัง</button>
       <button class="cst-x" onclick="cstBulk('pc',document.getElementById('cstBkPc').value)">ปรับชิ้น</button></span>
     <span class="cst-bg"><input id="cstBkCode" placeholder="รหัสสินค้า" style="width:110px" inputmode="numeric">
       <button class="cst-x" onclick="cstBulk('code',document.getElementById('cstBkCode').value)">ปรับสินค้า</button></span>
-    <button class="cst-x" onclick="cstBulkSpread()">⇉ กระจายทุกสาย</button>
+    ${lite?"":`<button class="cst-x" onclick="cstBulkSpread()">⇉ กระจายทุกสาย</button>`}
     <button class="cst-x" onclick="cstBulkDel()">🗑 ลบแถวที่ติ๊ก</button>
     <button class="cst-x" onclick="cstSelAll(false)">ล้างที่ติ๊ก</button>
   </div>`;
 }
 function cstFormHtml(){
-  const f=CST.f,lines=cstLines(),owners=cstOwners();
+  const f=CST.f,lines=cstLines(),owners=cstOwners(),lite=cstLite();
   const sel=cstSelN();
   const tot=f.rows.reduce((a,r)=>({cs:a.cs+(+r.cs||0),pc:a.pc+(+r.pc||0)}),{cs:0,pc:0});
   return `<div class="panel cst-form">
@@ -10987,7 +10994,7 @@ function cstFormHtml(){
       <th><input type="checkbox" title="ติ๊กทุกแถว" ${sel&&sel===f.rows.length?"checked":""}
         onchange="cstSelAll(this.checked)"></th>
       <th>#</th><th>รหัสสินค้า</th><th>ชื่อสินค้า (เชื่อม master data)</th><th>ลัง</th><th>ชิ้น</th>
-      <th>สายวิ่ง</th><th>ผู้รับผิดชอบ</th><th></th></tr></thead><tbody>
+      ${lite?"":"<th>สายวิ่ง</th><th>ผู้รับผิดชอบ</th>"}<th></th></tr></thead><tbody>
       ${f.rows.map((r,i)=>`<tr${r.sel?' class="on"':""}>
         <td class="n"><input type="checkbox" ${r.sel?"checked":""} onchange="cstSelTog(${i})"></td>
         <td class="n">${i+1}</td>
@@ -11001,14 +11008,16 @@ function cstFormHtml(){
              oninput="cstRowSet(${i},'cs',this.value)"></td>
         <td><input class="cst-in w-n" type="number" min="0" step="1" value="${r.pc===""||r.pc==null?"":+r.pc}"
              oninput="cstRowSet(${i},'pc',this.value)"></td>
-        <td><select class="cst-in w-ln" onchange="cstRowSet(${i},'ln',this.value)">${cstOptList(lines,r.ln,"— ไม่ระบุ —")}</select></td>
-        <td><select class="cst-in w-ow" onchange="cstRowSet(${i},'own',this.value)">${cstOptList(owners,r.own,"— ตามใบ —")}</select></td>
-        <td class="n"><button class="cst-x" title="กระจายสินค้าแถวนี้ให้ทุกสาย" onclick="cstRowSpread(${i})">⇉</button>
+        ${lite?"":`<td><select class="cst-in w-ln" onchange="cstRowSet(${i},'ln',this.value)">${cstOptList(lines,r.ln,"— ไม่ระบุ —")}</select></td>
+        <td><select class="cst-in w-ow" onchange="cstRowSet(${i},'own',this.value)">${cstOptList(owners,r.own,"— ตามใบ —")}</select></td>`}
+        <td class="n">${lite?"":`<button class="cst-x" title="กระจายสินค้าแถวนี้ให้ทุกสาย" onclick="cstRowSpread(${i})">⇉</button>`}
             <button class="cst-x" title="ลบแถวนี้" onclick="cstRowDel(${i})">🗑</button></td></tr>`).join("")}
     </tbody></table></div>
     <div class="cst-fb"><button class="btn-ghost" onclick="cstRowAdd()">＋ เพิ่มแถว</button>
       <button class="btn-ghost" onclick="cstRowAdd(5)">＋ เพิ่มทีเดียว 5 แถว</button>
-      <span class="psub">⇉ = คัดลอกสินค้าแถวนั้นให้ครบทุกสาย (${lines.length} สาย) แล้วแก้จำนวนรายสายได้</span></div>
+      <span class="psub">${lite
+        ?"สายวิ่งและร้านปลายทางมาจากเลขออเดอร์ที่เซลล์คีย์เข้ามาเอง ไม่ต้องกรอกตรงนี้"
+        :"⇉ = คัดลอกสินค้าแถวนั้นให้ครบทุกสาย ("+lines.length+" สาย) แล้วแก้จำนวนรายสายได้"}</span></div>
     <div class="cst-nb">
       <div><label>📝 Note ถึงคลัง</label>
         <textarea rows="2" placeholder="เช่น จัดของแยกไว้ รอเรียกส่ง" oninput="cstFormSet('nw',this.value)">${anaEsc(f.nw||"")}</textarea></div>
@@ -11018,11 +11027,13 @@ function cstFormHtml(){
     <div class="cst-fb">
       <button class="upload-btn" onclick="cstSlipSave()">💾 บันทึกใบตัดบิล</button>
       <button class="btn-ghost" onclick="cstFormExMan()">🏪 เลือกร้านที่ตัดบิลเข้า</button>
-      <button class="btn-ghost" onclick="cstFormEx()">📎 แนบไฟล์รายชื่อร้าน</button>
+      ${lite?"":`<button class="btn-ghost" onclick="cstFormEx()">📎 แนบไฟล์รายชื่อร้าน</button>`}
       <button class="btn-ghost" onclick="cstFormHide()">เก็บไว้ก่อน (ยังไม่บันทึก)</button>
       <button class="btn-ghost" onclick="cstFormClear()">ล้างใบนี้</button>
-      <span class="psub">บันทึกแล้วรายการจะขึ้นสถานะ <b>รอจัดส่ง · รอเคลียร์</b> ให้ทีมขายเห็นทันที${
-        f.sid?"":" · ไฟล์รายชื่อร้านแนบได้เลย ระบบจะบันทึกใบให้ก่อนแล้วค่อยแนบ"}</span>
+      <span class="psub">${lite
+        ?"บันทึกแล้วเซลล์จะเริ่มคีย์เลขออเดอร์เข้าใบนี้ได้ทันที"
+        :"บันทึกแล้วรายการจะขึ้นสถานะ <b>รอจัดส่ง · รอเคลียร์</b> ให้ทีมขายเห็นทันที"+
+          (f.sid?"":" · ไฟล์รายชื่อร้านแนบได้เลย ระบบจะบันทึกใบให้ก่อนแล้วค่อยแนบ")}</span>
     </div></div>`;
 }
 /* เปลี่ยนผู้รับผิดชอบของทั้งใบ — แถวที่ "ยังไม่ได้เลือกเป็นคนอื่นเอง" ต้องเปลี่ยนตามไปด้วย
@@ -11541,7 +11552,7 @@ const SP_STEPS=[
 /* view: "mon" เลือกเดือน/เลือกใบ · "slip" เปิดใบเดียวดู 6 ขั้น · "new" ฟอร์มสร้างออเดอร์
    เจ้าของสั่ง 18 พ.ย. 69: *"ปรับให้เข้ามาแต่แรก เลือกเป็นรายเดือนให้กดเลือกเข้าไปดูรายการเดือนนั้นๆ
    ก่อน จะได้ไม่รกตาในช่วงแรก"* → หน้าแรกคือรายเดือนเสมอ */
-let SP={sid:"",q:"",busy:0,view:"mon",ym:""};
+let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:""};
 function spOk(){const C=cstOk();if(!C.sub)C.sub={};if(!C.subdel)C.subdel={};return C;}
 function spRole(){return (S.user&&S.user.role)||"";}
 function spMgr(){return spRole()==="manager";}
@@ -11714,12 +11725,24 @@ function spYm(sl){
   const at=(sl&&(sl.at||sl.up))||0;
   return at?new Date(at).toISOString().slice(0,7):"ไม่ระบุ";
 }
-/* สรุปต่อเดือน: กี่ใบ · กี่เลขออเดอร์ · จบแล้วกี่เลข · ค้างที่ทีมของฉันกี่เลข */
-function spMonths(){
+/* ปีที่มีข้อมูล + ปีนี้ (เรียงใหม่สุดก่อน) — ใช้ทำปุ่มเลือกปีบนหัวข้อ */
+function spYears(){
+  const ys={};ys[todayISO().slice(0,4)]=1;
+  spSlips().forEach(sl=>{const m=spYm(sl);if(/^\d{4}/.test(m))ys[m.slice(0,4)]=1;});
+  return Object.keys(ys).sort().reverse();
+}
+/* สรุปต่อเดือน — เจ้าของสั่ง 18 พ.ย. 69: *"หน้าเลือกเดือน ทำให้ขึ้นครบทุกเดือนไปเลย
+   แล้วเดือนไหนไม่มีขึ้น 0 รายการ และเลือกปีบนหัวข้อได้"*
+   ⇒ คืนครบ 12 เดือนของปีที่เลือกเสมอ (เดือนที่ไม่มีใบก็คืนเลข 0) + ใบที่อ่านวันที่ไม่ออกแยกไว้ท้าย */
+function spMonths(yr){
   const role=spRole(),byM={};
+  const add=m=>byM[m]||(byM[m]={ym:m,slips:0,sub:0,done:0,mine:0});
+  const Y=String(yr||spYear());
+  for(let i=1;i<=12;i++)add(Y+"-"+String(i).padStart(2,"0"));
   spSlips().forEach(sl=>{
-    const m=spYm(sl),e=byM[m]||(byM[m]={ym:m,slips:0,sub:0,done:0,mine:0});
-    e.slips++;
+    const m=spYm(sl);
+    if(m!=="ไม่ระบุ"&&m.slice(0,4)!==Y)return;
+    const e=add(m);e.slips++;
     spSubs(sl.id).forEach(r=>{
       e.sub++;
       if(spStage(r)>=SP_STEPS.length)e.done++;
@@ -11727,7 +11750,37 @@ function spMonths(){
       if(nx&&(nx.role===role||(role==="sales"&&r.ln===spMine()&&nx.role==="manager")))e.mine++;
     });
   });
-  return Object.keys(byM).sort().reverse().map(k=>byM[k]);
+  const ks=Object.keys(byM).filter(k=>k!=="ไม่ระบุ").sort().reverse();
+  if(byM["ไม่ระบุ"]&&byM["ไม่ระบุ"].slips)ks.push("ไม่ระบุ");
+  return ks.map(k=>byM[k]);
+}
+function spYear(){
+  const ys=spYears();
+  if(SP.yr&&ys.indexOf(SP.yr)>=0)return SP.yr;
+  return ys[0]||todayISO().slice(0,4);
+}
+function spSetYear(y){SP.yr=String(y);SP.ym="";SP.view="mon";renderSpord();}
+function spStepYear(d){
+  const ys=spYears(),i=ys.indexOf(spYear());
+  /* ys เรียงใหม่→เก่า · ◀ = ปีเก่ากว่า = index มากขึ้น */
+  const j=i+(d<0?1:-1);
+  if(j>=0&&j<ys.length)spSetYear(ys[j]);
+}
+/* 📊 ครบ loop กี่ลัง — เจ้าของอยากรู้ว่า "ออเดอร์นี้ถูกตัดไปแล้วครบ loop สายส่งส่งของเสร็จไปแล้ว
+   ทั้งหมดกี่ลัง" · ตัดบิลไว้เท่าไหร่มาจากแถวสินค้าในใบ ส่วนที่กระจายออกไปมาจากจำนวนลังของ
+   "เลขออเดอร์ที่เซลล์คีย์" (ดัชนี STOREDAILY.ord) ไม่ได้ให้ใครมานั่งกรอกเลขซ้ำ */
+function spCases(sid){
+  const rows=(typeof cstSlipRows==="function")?cstSlipRows(sid):[];
+  const cut=rows.reduce((a,l)=>a+(+l.cs||0),0);
+  let keyed=0,sent=0,wait=0;
+  spSubs(sid).forEach(r=>{
+    const o=spOrd(r.no);
+    if(!o){wait++;return;}
+    const cs=+o.cs||0;keyed+=cs;
+    if(spOn(r,"s5"))sent+=cs;          /* สายส่งส่งของเสร็จแล้ว = จบ loop ของเลขนั้น */
+  });
+  const R=x=>Math.round(x*100)/100;
+  return {cut:R(cut),keyed:R(keyed),sent:R(sent),left:R(cut-keyed),wait:wait};
 }
 /* 🏪 ร้านปลายทางของใบนี้ — เจ้าของสั่ง 18 พ.ย. 69:
    *"จากเมื่อก่อนที่เราต้องอัพไฟล์เข้าไปว่าสินค้าจะกระจายเข้าไปร้านไหนบ้าง ต่อจากนี้เราจะต้องให้
@@ -11815,18 +11868,31 @@ function renderSpord(){
   }
   /* ---------- หน้าแรก: เลือกเดือน แล้วเลือกใบ ---------- */
   if(SP.view!=="slip"){
-    const ms=spMonths();
+    const yr=spYear(),ys=spYears(),ms=spMonths(yr);
     if(!SP.ym||!ms.some(m=>m.ym===SP.ym)){
-      bar.innerHTML="📦 ออเดอร์พิเศษ · เลือกเดือนที่จะดู";
-      body.innerHTML=`<div class="panel"><h3>🗓 เลือกเดือน</h3>
-        <div class="psub">กดเดือนที่ต้องการ แล้วค่อยเลือกใบออเดอร์</div>
-        <div class="cards" style="margin-top:10px">${ms.map(m=>`
-          <div class="card" style="cursor:pointer${m.mine?";border-top:3px solid var(--bad)":""}"
-               onclick="spOpenMon('${m.ym}')">
-            <div class="k">${m.ym==="ไม่ระบุ"?"ไม่ระบุเดือน":fmtMonth(m.ym)}</div>
-            <div class="v">${m.slips}</div><div class="s">ใบออเดอร์ · ${m.sub} เลขออเดอร์
+      const now=todayISO().slice(0,7);
+      bar.innerHTML=`📦 ออเดอร์พิเศษ · เลือกเดือนที่จะดู`+
+        `<span class="dci-src">ปี ${+yr+543}</span>`;
+      body.innerHTML=`<div class="panel">
+        <div class="cst-fb" style="align-items:center">
+          <h3 style="margin:0">🗓 เลือกเดือน</h3>
+          <span class="dstep"><button type="button" class="dstep-b" title="ปีก่อนหน้า"
+              ${ys.indexOf(yr)>=ys.length-1?"disabled":""} onclick="spStepYear(-1)">◀</button>
+            <select onchange="spSetYear(this.value)">${ys.map(y=>
+              `<option value="${y}"${y===yr?" selected":""}>ปี ${+y+543}</option>`).join("")}</select>
+            <button type="button" class="dstep-b" title="ปีถัดไป"
+              ${ys.indexOf(yr)<=0?"disabled":""} onclick="spStepYear(1)">▶</button></span>
+          <span class="psub">กดเดือนที่ต้องการ แล้วค่อยเลือกใบออเดอร์</span></div>
+        <div class="cards" style="margin-top:10px">${ms.map(m=>{
+          const none=!m.slips,cur=m.ym===now;
+          return `<div class="card" style="cursor:pointer${
+            m.mine?";border-top:3px solid var(--bad)":(cur?";border-top:3px solid var(--blue)":"")}${
+            none?";opacity:.55":""}" onclick="spOpenMon('${m.ym}')">
+            <div class="k">${m.ym==="ไม่ระบุ"?"ไม่ระบุเดือน":fmtMonth(m.ym)}${cur?' <span class="pill g">เดือนนี้</span>':""}</div>
+            <div class="v"${none?' style="color:var(--muted)"':""}>${m.slips}</div>
+            <div class="s">${none?"0 รายการ":"ใบออเดอร์ · "+m.sub+" เลขออเดอร์"}
             ${m.mine?`<br><b class="down">ค้างที่ทีมคุณ ${m.mine}</b>`:(m.sub?`<br><span class="up">จบแล้ว ${m.done}/${m.sub}</span>`:"")}</div>
-          </div>`).join("")}</div></div>`;
+          </div>`;}).join("")}</div></div>`;
       return;
     }
     const inM=sls.filter(x=>spYm(x)===SP.ym);
@@ -11898,7 +11964,22 @@ function renderSpord(){
     if(!all.length)h+=`<div class="panel" style="margin-top:14px"><div class="insight">
       ยังไม่มีเซลล์กรอกเลขออเดอร์ย่อยในใบนี้</div></div>`;
   }
-  /* ร้านปลายทางให้ทุกทีมเห็น — คลัง/สายส่งใช้เช็กว่าของไปร้านไหน */
+  /* ครบ loop กี่ลัง + ร้านปลายทาง — ทุกทีมเห็น */
+  {const c=spCases(SP.sid);
+   const pct=c.cut?Math.round(c.sent/c.cut*100):0;
+   h=`<div class="panel"><h3>📦 ของในใบนี้ไปถึงไหนแล้ว (นับเป็นลัง)</h3>
+     <div class="cards" style="margin-top:8px">
+       <div class="card"><div class="k">ตัดบิลไว้</div><div class="v">${c.cut.toLocaleString()}</div><div class="s">ลัง</div></div>
+       <div class="card"><div class="k">เซลล์คีย์ออเดอร์แล้ว</div><div class="v">${c.keyed.toLocaleString()}</div>
+         <div class="s">ลัง${c.wait?" · อีก "+c.wait+" เลขรอไฟล์ยอดขาย":""}</div></div>
+       <div class="card" style="border-top:3px solid var(--good)"><div class="k">สายส่งส่งเสร็จแล้ว</div>
+         <div class="v up">${c.sent.toLocaleString()}</div><div class="s">ลัง · ครบ loop ${pct}%</div></div>
+       <div class="card" style="border-top:3px solid ${c.left>0?"var(--warn)":"var(--good)"}">
+         <div class="k">ยังไม่ได้กระจาย</div><div class="v">${c.left.toLocaleString()}</div>
+         <div class="s">ลัง (ตัดบิลไว้ − ที่เซลล์คีย์)</div></div>
+     </div>
+     <div class="psub" style="margin-top:8px">จำนวนลังที่กระจายออกไปมาจาก<b>เลขออเดอร์ที่เซลล์คีย์</b>
+       เทียบกับไฟล์ยอดขายรายวัน — ไม่ต้องกรอกซ้ำ</div></div>`+h;}
   h+=spShopsHtml(SP.sid);
   h=`<div class="panel"><div class="cst-fb">
       <button class="btn-ghost" onclick="spBack()">◀ กลับไปรายการใบ</button>
@@ -14869,8 +14950,9 @@ function parseDailyDcode(name,rows,hdr,H){
     [cNo,cInv].forEach(ci=>{
       if(ci<0)return;const no=S(r,ci).toUpperCase();
       if(!no||no==="NA")return;
-      const o=ordx[no]||(ordx[no]={s:sc,l:code,d:dkey,v:0,c:0});
-      o.v+=niv;o.c++;if(sc)o.s=sc;o.l=code;o.d=dkey;
+      const o=ordx[no]||(ordx[no]={s:sc,l:code,d:dkey,v:0,c:0,cs:0,pc:0});
+      o.v+=niv;o.c++;o.cs+=N(r,cCs);o.pc+=N(r,cPc);
+      if(sc)o.s=sc;o.l=code;o.d=dkey;
     });
     if(cDoc>=0){const d=S(r,cDoc)||"(ว่าง)";docs[d]=(docs[d]||0)+1;}
     if(cOrd>=0){const o=S(r,cOrd)||"(ว่าง)";ords[o]=(ords[o]||0)+niv;}
@@ -14898,7 +14980,8 @@ function parseDailyDcode(name,rows,hdr,H){
      เพราะออเดอร์พิเศษที่เซลล์กรอกไว้เมื่อวานยังต้องดึงชื่อร้านขึ้นมาได้อยู่ */
   if(!STOREDAILY.ord)STOREDAILY.ord={};
   Object.keys(ordx).forEach(no=>{const o=ordx[no];
-    o.v=Math.round(o.v*100)/100;STOREDAILY.ord[no]=o;});
+    o.v=Math.round(o.v*100)/100;o.cs=Math.round(o.cs*100)/100;o.pc=Math.round(o.pc*100)/100;
+    STOREDAILY.ord[no]=o;});
   Object.keys(seenD).forEach(dk=>{
     const dd=STOREDAILY.data[dk]||(STOREDAILY.data[dk]={}),fd=fresh[dk]||{};
     Object.keys(fd).forEach(sc=>{
