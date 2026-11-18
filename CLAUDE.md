@@ -446,12 +446,17 @@ code, never printed.
   via `api/promoimg.js` — never into the state; the state keeps only the URL
   (`PROMO.items[id].imgs` for slides, `.reps` for the report a result was typed from).
   Rules: `HANDOFF.md` §5.
-  The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 7 groups,
+  The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 8 groups,
   each holding one or more pages, role-gated per page. Adding a page means adding it to that
   table — never add a hand-written `.tab` button back into the markup. Retiring a finished
   feature means removing its entry there and nothing else: the eB2B opening contest ended in
   Sep 26, so its group is commented out, while `ebView`, `renderEB`, `parseEB` and the stored
   `EB2B` data all stay and keep merging — put the line back and it returns with its history.
+  **🎁 โปรโมชั่น & เงินรางวัล is hidden the same way** (owner, 18 Nov 26: *"เอา tab โปรโมชั่น
+  เงินรางวัล ออกไปก่อน ตอนนี้ยังไม่ได้ใช้ แค่ซ่อนไว้ก็ได้ ให้ข้อมูลยังอยู่ ยังไม่ต้องลบ"*) —
+  `renderPromo`/`renderPromoRes`, `prRead`/`ocrRead`, `api/promoimg.js` and the stored `PROMO`
+  data all stay and keep merging; uncomment the group to bring it back with its history. The
+  dcode test counts the main site's groups, so that number moves with this list.
   **Every date / round / month picker carries ◀ ▶ step buttons** (`.dstep`, `selStep`/`dateStep`/
   `keyStep`/`ordStep`/`pjStep`) — the owner asked for the PJP one everywhere. ◀ always means
   *older* and ▶ *newer*, so a `<select>` whose options are filled newest-first (most of them, they
