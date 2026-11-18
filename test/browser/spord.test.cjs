@@ -62,16 +62,20 @@ const K=(no)=>B1+'|'+no;
    const o={};
    [['manager',null],['sales','209611'],['wh',null],['ds',null]].forEach(([r,c])=>{
      __as(r,c,r);o[r]={tab:CURTAB,groups:tabVisible().map(x=>x.g.k).join(','),
-       tabs:(tabVisible().filter(x=>x.g.k==='stock')[0]||{tabs:[]}).tabs.map(x=>x.t).join(',')};});
+       tabs:(tabVisible().filter(x=>x.g.k==='spord')[0]||{tabs:[]}).tabs.map(x=>x.t).join(','),
+       stock:(tabVisible().filter(x=>x.g.k==='stock')[0]||{tabs:[]}).tabs.map(x=>x.t).join(',')};});
    return o;});
  t('🔑 ทีมคลังเห็นได้กลุ่มเดียวทั้งเว็บ และเข้าหน้าออเดอร์พิเศษให้เลย',
-   who.wh.groups==='stock'&&who.wh.tabs==='spord'&&who.wh.tab==='spord',JSON.stringify(who.wh));
+   who.wh.groups==='spord'&&who.wh.tabs==='spord'&&who.wh.tab==='spord',JSON.stringify(who.wh));
  t('🔑 ทีมสายส่งก็เหมือนกัน — ไม่เห็นยอดขาย/ราคา/ต้นทุน',
-   who.ds.groups==='stock'&&who.ds.tabs==='spord',JSON.stringify(who.ds));
+   who.ds.groups==='spord'&&who.ds.tabs==='spord',JSON.stringify(who.ds));
  t('เซลล์ยังเห็นทุกกลุ่มเหมือนเดิม และเข้าหน้ายอดขายเป็นหน้าแรก',
    who.sales.tab==='sales'&&who.sales.groups.indexOf('sales')===0&&
-   who.sales.tabs==='stock,spord,cstock',JSON.stringify(who.sales));
- t('ผู้จัดการ/แอดมินเห็นครบเหมือนเดิม',who.manager.groups.split(',').length>=8,who.manager.groups);
+   who.sales.stock==='stock,cstock',JSON.stringify(who.sales));
+ t('🔑 ออเดอร์พิเศษเป็นหมวดใหญ่ของตัวเอง ไม่ได้อยู่ใต้สต็อกแล้ว',
+   who.manager.groups.indexOf('spord')>=0&&who.manager.stock==='stock,cstock'&&
+   who.manager.tabs==='spord',who.manager.groups+' | สต็อก: '+who.manager.stock);
+ t('ผู้จัดการ/แอดมินเห็นครบเหมือนเดิม',who.manager.groups.split(',').length>=9,who.manager.groups);
 
  /* ---------- 2) เซลล์กรอกแค่รหัส ---------- */
  const s2=await ev(async()=>{__reset();__as('sales','209611','CT11 · ชลศิต');
@@ -181,6 +185,41 @@ const K=(no)=>B1+'|'+no;
  t('เซลล์ลบเลขที่ยังไม่เริ่มเดินงานได้ (เขียน tombstone)',
    del.freshHasDel&&del.gone&&del.tomb&&del.posts===1,JSON.stringify(del));
  t('🔑 เลขที่เริ่มเดินงานแล้ว เซลล์ลบเองไม่ได้ (ไม่มีปุ่ม)',!del.startedHasDel);
+
+ /* ---------- 8b) ปุ่มสร้างออเดอร์ + ร้านปลายทางจากเลขที่เซลล์คีย์ ---------- */
+ const mk=await ev(()=>{
+   const o={};
+   /* เทสข้อก่อนหน้าลบเลขที่สองไปแล้ว — ใส่กลับเพื่อพิสูจน์ว่ารวมได้หลายร้าน
+      และเติมเลขที่ยังไม่มีในไฟล์ยอดขาย เพื่อดูว่ามันแยกเป็น "รอไฟล์" ไม่ใช่หายไปเฉย ๆ */
+   CSTOCK.sub['B20261118-01|BDD0100000007']={sid:'B20261118-01',no:'BDD0100000007',
+     ln:'209611',byName:'CT11',at:5,up:5};
+   CSTOCK.sub['B20261118-01|BDD0100000777']={sid:'B20261118-01',no:'BDD0100000777',
+     ln:'209611',byName:'CT11',at:6,up:6};
+   delete CSTOCK.subdel['B20261118-01|BDD0100000007'];
+   __as('manager',null,'แอดมิน 1');SP.sid='B20261118-01';renderSpord();
+   o.mgr=document.getElementById('spNewBox').style.display;
+   o.shops=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   __as('sales','209611','CT11');renderSpord();
+   o.sales=document.getElementById('spNewBox').style.display;
+   __as('wh',null,'ทีมคลัง 1');renderSpord();
+   o.wh=document.getElementById('spNewBox').style.display;
+   o.whShops=/ร้านปลายทาง/.test(document.getElementById('spBody').textContent);
+   __as('manager',null,'แอดมิน 1');renderSpord();spNewOrder();
+   o.went={tab:CURTAB,sec:CST.sec,form:!!(CST.f&&CST.f.rows&&CST.f.rows.length),
+     shown:!document.getElementById('cstockView').classList.contains('hidden')};
+   return o;});
+ t('🔑 ปุ่ม ➕ สร้างออเดอร์ใหม่ โชว์ให้แอดมิน และซ่อนจากเซลล์/คลัง',
+   mk.mgr===''&&mk.sales==='none'&&mk.wh==='none',
+   JSON.stringify({mgr:mk.mgr,sales:mk.sales,wh:mk.wh}));
+ t('🔑 กดแล้วพาไปฟอร์มกรอกใบออเดอร์ใหญ่ พร้อมแถวให้กรอกเลย',
+   mk.went.tab==='cstock'&&mk.went.sec==='bill'&&mk.went.form&&mk.went.shown,
+   JSON.stringify(mk.went));
+ t('🔑 ร้านปลายทางมาจากเลขออเดอร์ที่เซลล์คีย์ ไม่ต้องอัพไฟล์รายชื่อร้าน',
+   /ร้านปลายทางของใบนี้ \(2 ร้าน\)/.test(mk.shops)&&/พี่เทียร/.test(mk.shops)&&
+   /แม่จุก/.test(mk.shops)&&/ไม่ต้องอัพไฟล์รายชื่อร้าน/.test(mk.shops)&&
+   /อีก 1 เลข ยังไม่รู้ร้าน/.test(mk.shops)&&/BDD0100000777/.test(mk.shops),
+   mk.shops.slice(mk.shops.indexOf('ร้านปลายทาง'),mk.shops.indexOf('ร้านปลายทาง')+120));
+ t('ทีมคลัง/สายส่งก็เห็นร้านปลายทางด้วย (ไว้เช็กว่าของไปร้านไหน)',mk.whShops);
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

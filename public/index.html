@@ -1506,6 +1506,8 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <div class="ctl"><label>ค้นหา</label><input id="spQ" placeholder="🔍 เลขออเดอร์ / ชื่อร้าน / สาย"
           oninput="SP.q=this.value;renderSpord()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:220px"></div>
         <div class="spacer"></div>
+        <div class="ctl" id="spNewBox" style="display:none"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="spNewOrder()">➕ สร้างออเดอร์ใหม่</button></div>
       </div>
       <div class="panel" id="spBar" style="font-weight:700"></div>
       <div id="spBody"></div>
@@ -2926,9 +2928,13 @@ const TAB_GROUPS=[
   /* 📦 ออเดอร์พิเศษ (18 พ.ย. 69) — เพิ่มเป็นแท็บใหม่ "ข้าง ๆ" สต็อคกลางเดิม ไม่ได้รื้อของเก่า
      ใช้ใบตัดบิลชุดเดียวกัน (CSTOCK.slips/lots) แต่เพิ่มชั้น "ออเดอร์ย่อยรายร้าน" ขึ้นมา
      ทีมคลัง/สายส่งเห็นได้เฉพาะแท็บนี้แท็บเดียวทั้งเว็บ (role ระบุไว้ตรง ๆ) */
-  {k:"stock",nm:"📦 สต็อก",nmTeam:"📦 ออเดอร์พิเศษ",tabs:[
+  /* 📦 ออเดอร์พิเศษ — เจ้าของสั่งแยกออกมาเป็น "หมวดใหญ่" ของตัวเอง 18 พ.ย. 69
+     *"ช่วยโยกหมวดออเดอร์พิเศษแยกออกมาจากสต็อค ให้เป็นหมวดใหญ่ชื่อว่า ออเดอร์พิเศษ ได้เลย"*
+     ทีมคลัง/สายส่งเห็นได้หมวดนี้หมวดเดียวทั้งเว็บ (role ระบุไว้ตรง ๆ ใน tabOk) */
+  {k:"spord",nm:"📦 ออเดอร์พิเศษ",tabs:[
+    {t:"spord",nm:"ออเดอร์พิเศษ",role:["manager","sales","wh","ds"]}]},
+  {k:"stock",nm:"📦 สต็อก",tabs:[
     {t:"stock",nm:"สต็อคปัจจุบัน",role:["manager","sales"]},
-    {t:"spord",nm:"📦 ออเดอร์พิเศษ",role:["manager","sales","wh","ds"]},
     {t:"cstock",nm:"🧊 สต็อคกลาง (เดิม)",role:["manager","sales"]}]},
   /* 💰 ราคา & ทุน — สองไฟล์ที่ Unilever ส่งมาทุกเดือน
      "price" = ไฟล์หัวเสือ (ราคาที่ศูนย์เสนอขายลูกค้า) ทุกคนในศูนย์ดูได้ และลูกค้าดูได้จาก
@@ -2969,7 +2975,7 @@ function tabOk(x){
    สต็อค ปฏิทิน แค่ 4 ตัวนี้ก็พอ เอาให้ข้อมูลเหมือนเดิมให้หมดนะ และเพิ่มหัวข้อนึงเข้าไปหน่อย
    นั่นคือ DCODE"*) — แท็บย่อยในกลุ่มยังอยู่ครบเหมือนเว็บเดิม ไม่ได้ตัดอะไรออก
    เว็บเดิม = ทุกกลุ่มเหมือนเดิมทุกอย่าง ยกเว้นกลุ่มที่ติด site:"admin" (DCODE) */
-const ADMIN_SITE_GROUPS=["sales","order","stock","plan","dcode"];
+const ADMIN_SITE_GROUPS=["sales","order","spord","stock","plan","dcode"];
 function tabGrpOnSite(g){
   if(BD_SITE==="admin")return ADMIN_SITE_GROUPS.indexOf(g.k)>=0;
   return g.site!=="admin";
@@ -11690,6 +11696,50 @@ function spBarHtml(sl){
         spGrpOf(sl)===k?" on":""}" onclick="spSetGrp('${k}')">${SP_GRP[k].ic} ${SP_GRP[k].n}</button>`).join(" ")+
       `</div>`:"");
 }
+/* ➕ สร้างออเดอร์ใหญ่ใบใหม่ — เจ้าของบอกว่า "ไม่รู้ไปเพิ่มตรงไหน เจอแต่ report"
+   ฟอร์มกรอกใบตัดบิลยังเป็นตัวเดิมที่ใช้มาตลอด (cstNew ในหน้า 🧊 สต็อคกลาง → 🧾 ใบตัดบิล)
+   ปุ่มนี้พาไปที่ฟอร์มนั้นให้เลย ไม่ได้ทำฟอร์มซ้ำอีกชุด (ของเดิมมีเทส 229 ข้อคุมอยู่) */
+function spNewOrder(){
+  if(!spMgr()){alert("เฉพาะแอดมินเท่านั้นที่เปิดออเดอร์ใหญ่ได้");return;}
+  switchTab("cstock");cstSetSec("bill");cstNew();
+}
+/* 🏪 ร้านปลายทางของใบนี้ — เจ้าของสั่ง 18 พ.ย. 69:
+   *"จากเมื่อก่อนที่เราต้องอัพไฟล์เข้าไปว่าสินค้าจะกระจายเข้าไปร้านไหนบ้าง ต่อจากนี้เราจะต้องให้
+     เซลล์มาลงข้อมูลเองว่ากระจายไปร้านไหนบ้าง โดยการใส่เลขออเดอร์"*
+   ⇒ รายชื่อร้านมาจาก "เลขออเดอร์ที่เซลล์คีย์" → ดัชนี STOREDAILY.ord ไม่ใช่จากไฟล์ Ex.export อีก
+   ⚠️ เลขที่ยังไม่ได้อัพไฟล์ยอดขายของวันนั้น ยังไม่รู้ร้าน ต้องนับแยกและบอกว่า "รอไฟล์" */
+function spShops(sid){
+  const map={},wait=[];
+  spSubs(sid).forEach(r=>{
+    const o=spOrd(r.no);
+    if(!o||!o.s){wait.push(r.no);return;}
+    const e=map[o.s]||(map[o.s]={c:o.s,n:spShop(o.s)||("ร้าน "+o.s),v:0,n0:0,ln:r.ln,nos:[]});
+    e.v+=(+o.v||0);e.n0+=(+o.c||0);e.nos.push(r.no);
+  });
+  const rows=Object.keys(map).map(k=>map[k]).sort((a,b)=>b.v-a.v);
+  return {rows:rows,wait:wait};
+}
+function spShopsHtml(sid){
+  const g=spShops(sid);
+  if(!g.rows.length&&!g.wait.length)return "";
+  const tot=g.rows.reduce((a,b)=>a+b.v,0);
+  return `<div class="panel" style="margin-top:14px">
+    <h3>🏪 ร้านปลายทางของใบนี้ (${g.rows.length} ร้าน)</h3>
+    <div class="psub">มาจากเลขออเดอร์ที่เซลล์คีย์เข้ามา — ไม่ต้องอัพไฟล์รายชื่อร้านแล้ว</div>
+    ${g.rows.length?`<div class="tblwrap"><table class="cst-rt"><thead><tr>
+      <th style="text-align:left">ร้าน</th><th>สาย</th><th>เลขออเดอร์</th><th>รายการ</th><th>ยอด</th>
+      </tr></thead><tbody>${g.rows.map(r=>`<tr>
+        <td style="text-align:left"><b>${anaEsc(r.n)}</b> <span class="psub">รหัส ${anaEsc(r.c)}</span></td>
+        <td>${anaEsc(((DATA.lines||{})[r.ln]||{}).display||FOCUS_MAP[r.ln]||r.ln||"")}</td>
+        <td style="font-family:ui-monospace,monospace">${r.nos.map(anaEsc).join("<br>")}</td>
+        <td>${r.n0}</td><td>${THB(r.v)}</td></tr>`).join("")}
+      <tr><td style="text-align:left"><b>รวม</b></td><td></td><td></td><td></td>
+        <td><b>${THB(tot)}</b></td></tr></tbody></table></div>`:""}
+    ${g.wait.length?`<div class="note" style="margin-top:8px;color:var(--mid)">⏳ อีก ${g.wait.length} เลข
+      ยังไม่รู้ร้าน เพราะยังไม่ได้อัพไฟล์ยอดขายของวันนั้น — ${g.wait.slice(0,6).map(anaEsc).join(" · ")}${
+      g.wait.length>6?" …":""}<br>พออัพไฟล์แล้วชื่อร้านจะขึ้นเองทั้งหมด ไม่ต้องคีย์ซ้ำ</div>`:""}
+  </div>`;
+}
 function renderSpord(){
   const bar=document.getElementById("spBar");if(!bar)return;
   const C=spOk(),role=spRole(),sls=spSlips();
@@ -11702,11 +11752,12 @@ function renderSpord(){
   }
   const sl=spSlip(SP.sid);
   bar.innerHTML=spBarHtml(sl);
+  {const nb=document.getElementById("spNewBox");if(nb)nb.style.display=spMgr()?"":"none";}
   const body=document.getElementById("spBody");
   const secBox=document.getElementById("spSecBox");if(secBox)secBox.style.display="none";
   if(!sls.length){
     body.innerHTML=`<div class="panel"><div class="insight">ยังไม่มีใบออเดอร์ใหญ่ — ${
-      spMgr()?'แอดมินเปิดใบใหม่ได้ที่แท็บ <b>🧊 สต็อคกลาง (เดิม)</b> → 🧾 ใบตัดบิล → ➕ ตัดบิลใหม่':
+      spMgr()?'กดปุ่ม <b>➕ สร้างออเดอร์ใหม่</b> มุมขวาบนได้เลย':
       'รอแอดมินเปิดใบออเดอร์ใหญ่ก่อน'}</div></div>`;
     return;
   }
@@ -11757,6 +11808,8 @@ function renderSpord(){
     if(!all.length)h+=`<div class="panel" style="margin-top:14px"><div class="insight">
       ยังไม่มีเซลล์กรอกเลขออเดอร์ย่อยในใบนี้</div></div>`;
   }
+  /* ร้านปลายทางให้ทุกทีมเห็น — คลัง/สายส่งใช้เช็กว่าของไปร้านไหน */
+  h+=spShopsHtml(SP.sid);
   body.innerHTML=h;
 }
 function cstMgr(){return !!(S.user&&S.user.role==="manager");}

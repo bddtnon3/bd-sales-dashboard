@@ -135,12 +135,13 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
    const top=[...document.querySelectorAll('#tabTop .tab')].map(b=>b.dataset.grp);
    const subs={};top.forEach(k=>{const g=TAB_GROUPS.filter(x=>x.k===k)[0];subs[k]=g.tabs.filter(tabOk).map(x=>x.t);});
    return {top:top,subs:subs};});
- t('🛠 เว็บแอดมินมีแค่ ยอดขาย · การสั่งของ · สต็อก · ปฏิทิน + DCODE (เรียงตามนี้)',
-   tabsA.top.join(',')==='sales,order,stock,plan,dcode',tabsA.top.join(','));
+ /* 18 พ.ย. 69: ออเดอร์พิเศษแยกออกมาเป็นหมวดใหญ่ของตัวเอง และอยู่บนเว็บแอดมินด้วย */
+ t('🛠 เว็บแอดมินมีแค่ ยอดขาย · การสั่งของ · ออเดอร์พิเศษ · สต็อก · ปฏิทิน + DCODE (เรียงตามนี้)',
+   tabsA.top.join(',')==='sales,order,spord,stock,plan,dcode',tabsA.top.join(','));
  t('...แท็บย่อยในกลุ่มยังอยู่ครบเหมือนเว็บเดิม ("เอาให้ข้อมูลเหมือนเดิมให้หมด")',
    tabsA.subs.sales.join(',')==='sales,ana'&&tabsA.subs.order.join(',')==='order,pos'&&
-   /* 18 พ.ย. 69: กลุ่มสต็อกเพิ่มแท็บ 📦 ออเดอร์พิเศษ (spord) ระหว่างสองแท็บเดิม */
-   tabsA.subs.stock.join(',')==='stock,spord,cstock'&&tabsA.subs.plan.join(',')==='plan'&&tabsA.subs.dcode.join(',')==='dcode',
+   tabsA.subs.stock.join(',')==='stock,cstock'&&tabsA.subs.spord.join(',')==='spord'&&
+   tabsA.subs.plan.join(',')==='plan'&&tabsA.subs.dcode.join(',')==='dcode',
    JSON.stringify(tabsA.subs));
  const pagesA=await ev(()=>{const bad=[];
    ['sales','ana','order','pos','stock','spord','cstock','plan','dcode'].forEach(k=>{
@@ -165,8 +166,8 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  t('เว็บเดิม: ประตูแอดมินไม่มีผล — เซลล์ล็อกอินเว็บเดิมได้ตามปกติ',tabsM.gate===true);
  /* 18 พ.ย. 69: เจ้าของสั่งซ่อนกลุ่ม "promo" (โปรโมชั่น & เงินรางวัล) ไว้ก่อน ยังไม่ลบข้อมูล
     → เหลือ 8 กลุ่มบนเว็บเดิม · ถ้าเอาแท็บโปรกลับมา ให้ใส่ promo คืนในบรรทัดนี้ */
- t('เว็บเดิม: กลุ่มแท็บเหมือนเดิมทุกกลุ่ม (8 กลุ่ม) ไม่มี DCODE',
-   tabsM.m.join(',')==='sales,pjp,kpi,order,stock,price,plan,shop',tabsM.m.join(','));
+ t('เว็บเดิม: กลุ่มแท็บเหมือนเดิมทุกกลุ่ม (9 กลุ่ม) ไม่มี DCODE',
+   tabsM.m.join(',')==='sales,pjp,kpi,order,spord,stock,price,plan,shop',tabsM.m.join(','));
  t('เว็บเดิม: เซลล์ก็ไม่เห็น DCODE',tabsM.s.indexOf('dcode')<0&&tabsM.s.length>=8,tabsM.s.join(','));
  t('เว็บเดิม: กดไปกลุ่ม DCODE ไม่ได้ (อยู่บนเว็บแอดมินเท่านั้น)',tabsM.cur!=='dcode',tabsM.cur);
  t('เว็บเดิม: ธงยังเป็น "main" และชื่อเว็บเดิม',tabsM.site==='main'&&tabsM.title==='BD Sales Dashboard',tabsM.site+' | '+tabsM.title);
@@ -209,8 +210,8 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  const g3=await ev(()=>({app:!document.getElementById('app').classList.contains('hidden'),T:TOKEN,
    who:document.getElementById('uName').textContent,tok:localStorage.getItem('bd_token'),
    tabs:[...document.querySelectorAll('#tabTop .tab')].map(b=>b.dataset.grp).join(',')}));
- t('🔓 บัญชี admin1 (สิทธิ์ manager) เข้าเว็บแอดมินได้ แล้วเห็น 5 กลุ่ม',
-   g3.app&&g3.T==='MGR.TOKEN'&&g3.tabs==='sales,order,stock,plan,dcode',JSON.stringify(g3)+' '+dialogs.join(' | '));
+ t('🔓 บัญชี admin1 (สิทธิ์ manager) เข้าเว็บแอดมินได้ แล้วเห็น 6 กลุ่ม',
+   g3.app&&g3.T==='MGR.TOKEN'&&g3.tabs==='sales,order,spord,stock,plan,dcode',JSON.stringify(g3)+' '+dialogs.join(' | '));
  t('...ล็อกอินชุดเดียวกับเว็บเดิม (/api/login + /api/data ตัวเดียวกัน)',
    API.calls.indexOf('/api/login')>=0&&API.calls.indexOf('/api/data')>=0,API.calls.join(' '));
  /* เจ้าของสั่ง: "ใช้รหัสแอดมินเข้าได้เท่านั้นนะ ที่ตั้งไว้ 4 คน รวมถึง manager ด้วย เข้าได้หมด" */

@@ -14,7 +14,7 @@ the app UI; the sales team sees everything live. Features (all are tabs in one p
 earns from them).
 **ราคา & ทุน** (the two monthly Unilever price files: the หัวเสือ quote prices the depot sells at —
 also published to shop customers as a public catalogue — and the BUM cost file, manager-only).
-The pages sit in **9 top-level tab groups** on the main site (`TAB_GROUPS`/`renderTabs`), several of
+The pages sit in **9 top-level tab groups** on the main site (one of them **📦 ออเดอร์พิเศษ**) (`TAB_GROUPS`/`renderTabs`), several of
 which open a row of sub-tabs. The per-page keys (`CURTAB`) did not change when the grouping was added —
 see `HANDOFF.md` §5 before touching the tab bar. A 10th group, **🧾 DCODE**, carries `site:"admin"` and
 exists only on the **admin site** (`/admin`, see "Admin site + DCODE" below).
@@ -454,7 +454,7 @@ code, never printed.
   via `api/promoimg.js` — never into the state; the state keeps only the URL
   (`PROMO.items[id].imgs` for slides, `.reps` for the report a result was typed from).
   Rules: `HANDOFF.md` §5.
-  The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 8 groups,
+  The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 9 groups,
   each holding one or more pages, role-gated per page. Adding a page means adding it to that
   table — never add a hand-written `.tab` button back into the markup. Retiring a finished
   feature means removing its entry there and nothing else: the eB2B opening contest ended in
@@ -619,7 +619,9 @@ code, never printed.
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
   with **`node test/browser/cstock.test.cjs`** (229 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
-  A third tab, **`spord` (📦 ออเดอร์พิเศษ)**, carries the owner's Nov-26 order: special orders run
+**📦 ออเดอร์พิเศษ (`spord`) is its own top-level group**, not a tab under สต็อก — the owner moved it
+  out on 18 Nov 26 (*"โยกหมวดออเดอร์พิเศษแยกออกมาจากสต็อค ให้เป็นหมวดใหญ่"*) and it is on the admin
+  site too (`ADMIN_SITE_GROUPS`). It carries the owner's Nov-26 order: special orders run
   through **6 steps and 4 teams** — 1 admin opens the big order, 2 the rep types **only the order
   code**, 3 admin checks the picking list (tick + note), 4 ทีมคลัง picks (tick), 5 ทีมสายส่ง
   delivers (tick), 6 admin closes it (where it went / how much is left). It is a **new page beside
@@ -637,8 +639,16 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (25 checks) plus the special-order cases in
-  `merge-safety`. Rules: `HANDOFF.md` §5.
+  with **`node test/browser/spord.test.cjs`** (30 checks) plus the special-order cases in
+  `merge-safety`. Two more owner decisions, same day: the page carries its own
+  **➕ สร้างออเดอร์ใหม่** button (`spNewOrder`, manager only) because he could not find where to
+  open one — it jumps to the existing slip form (`switchTab("cstock")` → `cstSetSec("bill")` →
+  `cstNew()`) rather than duplicating a form that 229 tests already cover; and **the destination
+  shops now come from the order numbers the reps key, not from an uploaded Ex.export file**
+  (`spShops`/`spShopsHtml`, shown to every team) — *"ต่อจากนี้เราจะต้องให้เซลล์มาลงข้อมูลเองว่า
+  กระจายไปร้านไหนบ้าง โดยการใส่เลขออเดอร์"*. Codes whose day has no sales file yet are counted and
+  listed separately as **"ยังไม่รู้ร้าน … รอไฟล์"**, never dropped from the list.
+  Rules: `HANDOFF.md` §5.
   Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
   map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales
   slots. An unmapped tab now shows every group instead of the wrong one, and the cstock test walks
