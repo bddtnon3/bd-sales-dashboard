@@ -45,7 +45,7 @@ const server = {
   MASTER: { items: { m1: "a", m2: "b" } },
   ANALYTICS: { months: ["2026-06"], lines: { CT11: {} }, data: { CT11: { g: 1 } } },
   STOREPROD: { months: ["2026-06"], cat: { c1: {} }, stores: { s1: {} }, data: { CT11: {} } },
-  STOREDAILY: { data: { "2026-07-28": { st: 1 } } },
+  STOREDAILY: { data: { "2026-07-28": { st: 1 } }, ord: {} },   // ord = ดัชนีเลขออเดอร์ (ออเดอร์พิเศษ)
   PSTORE: { rounds: { "2026-06-30": { asof: "2026-06-30", bm: 6, rows: [["CT_HPC_211", "1", "r", "N", 1, "G", "", "", 1, 0, "", 0.01]] } } },
 };
 
@@ -1140,6 +1140,116 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
         Object.keys(c6.KPI.data).length === 2);
   check("looksEmpty: บันทึกที่มีแต่สต็อคกลาง ยังไม่นับว่าเป็นข้อมูลจริง (เหมือน PLAN/PROMO)",
         looksEmpty({ DATA: {}, CSTOCK: srv.CSTOCK }) === true);
+
+  /* ------------------------------------------------------------------
+   * 📦 ออเดอร์พิเศษ (CSTOCK.sub / subdel) — เจ้าของสั่ง 18 พ.ย. 69
+   * ออเดอร์ย่อย 1 ใบ มี 4 ทีมเขียนคนละขั้น คนละเวลา คนละเครื่อง
+   *   s3 แอดมินตรวจ · s4 คลังจัดของ · s5 สายส่งส่งของ · s6 แอดมินปิดงาน
+   * ถ้า merge แบบ newest-wins ทั้งเรคอร์ด แท็บเซลล์ที่เปิดค้างไว้ตั้งแต่เช้า
+   * จะลบการติ๊กของคลัง/สายส่งทิ้งทันทีที่บันทึกอะไรก็ตาม
+   * ------------------------------------------------------------------ */
+  const SK = B1 + "|BDD0100000006";
+  const SK2 = B1 + "|BDD0100000007";
+  const subSrv = JSON.parse(JSON.stringify(m5));
+  subSrv.CSTOCK.sub = {
+    [SK]: { sid: B1, no: "BDD0100000006", ln: "209611", by: "ct11", byName: "CT11 · ชลศิต",
+            at: 10000, up: 10400,
+            s3: { ok: 1, by: "admin1", byName: "แอดมิน 1", at: 10200, tx: "ตรวจแล้ว" },
+            s4: { ok: 1, by: "wh1", byName: "ทีมคลัง 1", at: 10300 },
+            s5: { ok: 1, by: "ds1", byName: "ทีมสายส่ง 1", at: 10400 } },
+    [SK2]: { sid: B1, no: "BDD0100000007", ln: "209612", by: "ct12", byName: "CT12", at: 10100, up: 10100 },
+  };
+  subSrv.CSTOCK.subdel = {};
+
+  // แท็บรุ่นก่อนมีฟีเจอร์นี้เลย (ไม่มี sub ในก้อนที่ส่งมา)
+  const preSub = JSON.parse(JSON.stringify(base));
+  preSub.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, up: 10500 };
+  const u1 = mergeState(subSrv, preSub);
+  check("🛟 แท็บรุ่นก่อนมีออเดอร์พิเศษ บันทึกทับแล้วออเดอร์ย่อยยังอยู่ครบ",
+        Object.keys(u1.CSTOCK.sub || {}).length === 2 && u1.CSTOCK.sub[SK].s5.byName === "ทีมสายส่ง 1",
+        JSON.stringify(Object.keys(u1.CSTOCK.sub || {})));
+
+  // 🔑 แท็บเซลล์ที่เปิดค้างไว้ตั้งแต่ก่อนคลัง/สายส่งติ๊ก — บันทึกทับต้องไม่ลบการติ๊ก
+  const staleSales = JSON.parse(JSON.stringify(base));
+  staleSales.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, subdel: {},
+    sub: { [SK]: { sid: B1, no: "BDD0100000006", ln: "209611", by: "ct11", byName: "CT11 · ชลศิต",
+                   at: 10000, up: 10600 } },   // up ใหม่กว่า แต่ไม่มี s3/s4/s5 เลย
+    up: 10600 };
+  const u2 = mergeState(u1, staleSales);
+  check("🔑 แท็บเซลล์ที่ไม่เห็นการติ๊กของคลัง/สายส่ง บันทึกทับแล้วการติ๊กต้องไม่หาย",
+        !!u2.CSTOCK.sub[SK].s3 && !!u2.CSTOCK.sub[SK].s4 && !!u2.CSTOCK.sub[SK].s5 &&
+        u2.CSTOCK.sub[SK].s4.byName === "ทีมคลัง 1",
+        JSON.stringify(Object.keys(u2.CSTOCK.sub[SK])));
+
+  // คลังกับสายส่งติ๊กพร้อมกันคนละเครื่อง — ต้องได้ทั้งคู่
+  const whTab = JSON.parse(JSON.stringify(base));
+  whTab.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, subdel: {},
+    sub: { [SK2]: { sid: B1, no: "BDD0100000007", ln: "209612", at: 10100, up: 11000,
+                    s4: { ok: 1, by: "wh2", byName: "ทีมคลัง 2", at: 11000 } } }, up: 11000 };
+  const dsTab = JSON.parse(JSON.stringify(base));
+  dsTab.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, subdel: {},
+    sub: { [SK2]: { sid: B1, no: "BDD0100000007", ln: "209612", at: 10100, up: 11010,
+                    s5: { ok: 1, by: "ds2", byName: "ทีมสายส่ง 2", at: 11010 } } }, up: 11010 };
+  const u3 = mergeState(mergeState(u2, whTab), dsTab);
+  check("🔑 คลังกับสายส่งติ๊กคนละเครื่องพร้อมกัน → อยู่ครบทั้งสองขั้น",
+        u3.CSTOCK.sub[SK2].s4.byName === "ทีมคลัง 2" && u3.CSTOCK.sub[SK2].s5.byName === "ทีมสายส่ง 2",
+        JSON.stringify(u3.CSTOCK.sub[SK2]));
+
+  // ยกเลิกติ๊ก = ok:0 ทับ (ไม่ลบคีย์) แท็บเก่าจึงปลุกกลับมาไม่ได้
+  const untick = JSON.parse(JSON.stringify(base));
+  untick.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, subdel: {},
+    sub: { [SK]: { sid: B1, no: "BDD0100000006", ln: "209611", at: 10000, up: 12000,
+                   s4: { ok: 0, by: "wh1", byName: "ทีมคลัง 1", at: 12000 } } }, up: 12000 };
+  const u4 = mergeState(u3, untick);
+  check("ยกเลิกติ๊กขั้นคลังได้ (ok:0) และขั้นอื่นไม่กระทบ",
+        u4.CSTOCK.sub[SK].s4.ok === 0 && u4.CSTOCK.sub[SK].s5.ok === 1);
+  const staleTick = JSON.parse(JSON.stringify(base));
+  staleTick.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, subdel: {},
+    sub: { [SK]: { sid: B1, no: "BDD0100000006", ln: "209611", at: 10000, up: 10300,
+                   s4: { ok: 1, by: "wh1", byName: "ทีมคลัง 1", at: 10300 } } }, up: 10300 };
+  const u5 = mergeState(u4, staleTick);
+  check("🛟 แท็บเก่าที่ยังเห็นติ๊กเดิม บันทึกทับแล้วการยกเลิกต้องไม่ถูกปลุกกลับ",
+        u5.CSTOCK.sub[SK].s4.ok === 0, JSON.stringify(u5.CSTOCK.sub[SK].s4));
+
+  // เซลล์กรอกเลขผิดแล้วลบ = tombstone · แท็บเก่าปลุกกลับไม่ได้ แต่กรอกใหม่ได้
+  const killSub = JSON.parse(JSON.stringify(base));
+  killSub.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {},
+    subdel: { [SK2]: 13000 }, up: 13000 };
+  const u6 = mergeState(u5, killSub);
+  check("เซลล์ลบเลขที่กรอกผิดได้ (tombstone)", !u6.CSTOCK.sub[SK2] && !!u6.CSTOCK.subdel[SK2]);
+  const reviveSub = JSON.parse(JSON.stringify(base));
+  reviveSub.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, subdel: {},
+    sub: { [SK2]: { sid: B1, no: "BDD0100000007", ln: "209612", at: 10100, up: 10100 } }, up: 10100 };
+  check("🛟 แท็บเก่าปลุกเลขที่ลบแล้วกลับมาไม่ได้",
+        !mergeState(u6, reviveSub).CSTOCK.sub[SK2]);
+  const redoSub = JSON.parse(JSON.stringify(base));
+  redoSub.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, subdel: {},
+    sub: { [SK2]: { sid: B1, no: "BDD0100000007", ln: "209612", at: 14000, up: 14000 } }, up: 14000 };
+  const u7 = mergeState(u6, redoSub);
+  check("...แต่กรอกเลขเดิมเข้ามาใหม่ (ใหม่กว่า tombstone) ต้องได้", !!u7.CSTOCK.sub[SK2]);
+  check("ออเดอร์พิเศษไม่ไปกวนใบตัดบิล/ลอต/ไฟล์ร้านของเดิม",
+        !!u7.CSTOCK.slips[B1] && !!u7.CSTOCK.ex[B1] && !!u7.CSTOCK.lots[B1 + "-r1"]);
+
+  /* 📇 ดัชนีเลขออเดอร์จากไฟล์ยอดขาย (STOREDAILY.ord) — ใช้แปลงเลขเป็นชื่อร้าน/ยอด
+     ⚠️ mergeState สร้าง STOREDAILY ใหม่จากรายชื่อช่อง ถ้าลืมใส่ ord ดัชนีหายทั้งก้อน */
+  const ordSrv = JSON.parse(JSON.stringify(u7));
+  ordSrv.STOREDAILY = { data: { "2026-11-17": { "4862383": { l: "209611", niv: 100 } } },
+    ord: { BDD0100000006: { s: "4862383", l: "209611", d: "2026-11-17", v: 351.47, c: 4 } } };
+  const preOrd = JSON.parse(JSON.stringify(base));
+  preOrd.STOREDAILY = { data: { "2026-11-18": { "4862365": { l: "209611", niv: 50 } } } };
+  const o1 = mergeState(ordSrv, preOrd);
+  check("🛟 แท็บที่ไม่มีดัชนีเลขออเดอร์ บันทึกทับแล้วดัชนีไม่หาย",
+        !!(o1.STOREDAILY.ord || {}).BDD0100000006 &&
+        o1.STOREDAILY.ord.BDD0100000006.v === 351.47,
+        JSON.stringify(Object.keys(o1.STOREDAILY.ord || {})));
+  check("...และยอดรายร้านของทั้งสองวันอยู่ครบ",
+        !!o1.STOREDAILY.data["2026-11-17"] && !!o1.STOREDAILY.data["2026-11-18"]);
+  const ordNew = JSON.parse(JSON.stringify(base));
+  ordNew.STOREDAILY = { data: {}, ord: { BDD0100000099: { s: "4862999", l: "209613", d: "2026-11-18", v: 9, c: 1 } } };
+  const o2 = mergeState(o1, ordNew);
+  check("อัพไฟล์ยอดขายวันใหม่ → เลขออเดอร์ของวันเก่ายังค้นหาได้อยู่",
+        Object.keys(o2.STOREDAILY.ord).sort().join(",") === "BDD0100000006,BDD0100000099",
+        Object.keys(o2.STOREDAILY.ord).join(","));
 }
 
 console.log("TEST 22 — product master: every upload takes effect, no code is ever lost (DCODE, 10 Nov 26)");

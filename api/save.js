@@ -58,6 +58,28 @@ function newestByAt(server, client) {
 // ไฟล์ร้าน (file/rows/n/val) กับร้านที่คีย์เอง (man) ของใบเดียวกัน ถูกบันทึกคนละเวลาคนละแท็บ:
 // แอดมินคีย์ร้านเองจากแท็บที่ยังไม่เห็นไฟล์ หรืออัพไฟล์จากแท็บที่ยังไม่เห็นร้านที่คีย์ไว้
 // ทั้งสองกรณีห้ามให้อีกฝั่งหาย จึงเอาฝั่งที่ใหม่กว่าเป็นตัวตั้ง แล้วดึงส่วนที่ขาดจากอีกฝั่งมาเติม
+// 📦 ออเดอร์พิเศษ — ออเดอร์ย่อยใบเดียวมี 4 ทีมเขียนคนละขั้นคนละเวลา จึงรวมทีละขั้น
+// ฐานของเรคอร์ด (เลขออเดอร์ · สาย · คนกรอก) เอาฝั่งที่ใหม่กว่า ส่วนขั้น s3-s6 เทียบ at ของขั้นนั้นเอง
+const SUB_STEPS = ["s3", "s4", "s5", "s6"];
+function subStamp(r) {
+  let t = (r && (r.up || r.at)) || 0;
+  for (const k of SUB_STEPS) { const v = r && r[k]; if (v && v.at > t) t = v.at; }
+  return t;
+}
+function mergeSubOne(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const base = ((b.up || b.at || 0) >= (a.up || a.at || 0)) ? b : a;
+  const out = Object.assign({}, base);
+  for (const k of SUB_STEPS) {
+    const x = a[k], y = b[k];
+    if (!x && !y) { delete out[k]; continue; }
+    if (!x) { out[k] = y; continue; }
+    if (!y) { out[k] = x; continue; }
+    out[k] = ((y.at || 0) >= (x.at || 0)) ? y : x;
+  }
+  return out;
+}
 function mergeExOne(a, b) {
   if (!a) return b;
   if (!b) return a;
@@ -160,7 +182,11 @@ function mergeState(server, c) {
   const ANALYTICS = { months: unionArr(sA.months, cA.months), lines: keyMerge(sA.lines, cA.lines), data: keyMerge(sA.data, cA.data) };
   const sP = s.STOREPROD || {}, cP = c.STOREPROD || {};
   const STOREPROD = { months: unionArr(sP.months, cP.months), cat: keyMerge(sP.cat, cP.cat), stores: keyMerge(sP.stores, cP.stores), data: keyMerge(sP.data, cP.data) };
-  const STOREDAILY = { data: keyMerge((s.STOREDAILY && s.STOREDAILY.data), (c.STOREDAILY && c.STOREDAILY.data)) };
+  // ord = ดัชนี "เลขออเดอร์ของแอพ dcode → ร้าน/สาย/ยอด" ที่สร้างตอนอ่านไฟล์ยอดขายรายวัน
+  // ใช้ให้ออเดอร์พิเศษดึงชื่อร้านกับยอดขึ้นมาเองจากเลขออเดอร์ที่เซลล์พิมพ์
+  // ⚠️ ต้องอยู่ในลิสต์นี้ ไม่งั้น mergeState สร้าง STOREDAILY ใหม่แล้วดัชนีหายทั้งก้อน
+  const STOREDAILY = { data: keyMerge((s.STOREDAILY && s.STOREDAILY.data), (c.STOREDAILY && c.STOREDAILY.data)),
+                       ord: keyMerge((s.STOREDAILY && s.STOREDAILY.ord), (c.STOREDAILY && c.STOREDAILY.ord)) };
   // Perfect Store rounds are keyed by round date: union — a client without PSTORE
   // (old browser tab) or without some round can never erase rounds the server has.
   // Deleting a wrongly-uploaded round therefore needs an explicit tombstone (PSTORE.del),
@@ -313,6 +339,19 @@ function mergeState(server, c) {
   // newest-wins ทั้งก้อนจะทำให้ฝั่งที่ส่งมาแบบไม่มีอีกส่วน กินอีกส่วนหายไปเลย — จึงรวมทีละส่วน
   for (const k of Object.keys(csEx)) csEx[k] = mergeExOne((sCs.ex || {})[k], (cCs.ex || {})[k]);
   const csSdel = keyMerge(sCs.sdel, cCs.sdel);
+  // 📦 ออเดอร์พิเศษ (18 พ.ย. 69): ออเดอร์ย่อย 1 ใบ ถูกเขียนโดย 4 ทีม "คนละเวลาคนละเครื่อง"
+  //   s2 เซลล์กรอกเลข · s3 แอดมินตรวจใบจัดของ · s4 คลังจัดของ · s5 สายส่งส่งของ · s6 แอดมินปิดงาน
+  // ⚠️ ถ้า merge แบบ newest-wins ทั้งเรคอร์ด แท็บเซลล์ที่เปิดค้างไว้ตั้งแต่เช้าจะลบการติ๊ก
+  //    ของคลัง/สายส่งทิ้งทันทีที่เซฟอะไรก็ตาม (บทเรียนเดียวกับ mergeExOne ของไฟล์ร้านปลายทาง)
+  //    จึงรวม "ทีละขั้น" โดยดู at ของแต่ละขั้นเอง · การยกเลิกติ๊กเขียน ok:0 ไม่ใช่ลบคีย์
+  const csSub = newestByUp(sCs.sub, cCs.sub);
+  for (const k of Object.keys(csSub)) csSub[k] = mergeSubOne((sCs.sub || {})[k], (cCs.sub || {})[k]);
+  const csSubDel = keyMerge(sCs.subdel, cCs.subdel);
+  for (const k of Object.keys(csSubDel)) {
+    const it = csSub[k];
+    if (it && subStamp(it) > csSubDel[k]) delete csSubDel[k];      // กรอกเลขกลับเข้ามาใหม่หลังลบ
+    else delete csSub[k];
+  }
   for (const k of Object.keys(csSdel)) {
     const sl = csSlips[k], ex = csEx[k];
     const newer = Math.max((sl && (sl.up || sl.at)) || 0, (ex && (ex.up || ex.at)) || 0);
@@ -320,6 +359,7 @@ function mergeState(server, c) {
     else { delete csSlips[k]; delete csEx[k]; }
   }
   const CSTOCK = { lots: csLots, del: csDel, slips: csSlips, sdel: csSdel, ex: csEx,
+                   sub: csSub, subdel: csSubDel,
                    up: Math.max(sCs.up || 0, cCs.up || 0) };
 
   return {

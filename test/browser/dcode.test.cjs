@@ -139,10 +139,11 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
    tabsA.top.join(',')==='sales,order,stock,plan,dcode',tabsA.top.join(','));
  t('...แท็บย่อยในกลุ่มยังอยู่ครบเหมือนเว็บเดิม ("เอาให้ข้อมูลเหมือนเดิมให้หมด")',
    tabsA.subs.sales.join(',')==='sales,ana'&&tabsA.subs.order.join(',')==='order,pos'&&
-   tabsA.subs.stock.join(',')==='stock,cstock'&&tabsA.subs.plan.join(',')==='plan'&&tabsA.subs.dcode.join(',')==='dcode',
+   /* 18 พ.ย. 69: กลุ่มสต็อกเพิ่มแท็บ 📦 ออเดอร์พิเศษ (spord) ระหว่างสองแท็บเดิม */
+   tabsA.subs.stock.join(',')==='stock,spord,cstock'&&tabsA.subs.plan.join(',')==='plan'&&tabsA.subs.dcode.join(',')==='dcode',
    JSON.stringify(tabsA.subs));
  const pagesA=await ev(()=>{const bad=[];
-   ['sales','ana','order','pos','stock','cstock','plan','dcode'].forEach(k=>{
+   ['sales','ana','order','pos','stock','spord','cstock','plan','dcode'].forEach(k=>{
      try{_switchTab(k);if(document.getElementById(k+'View').classList.contains('hidden'))bad.push(k+':ซ่อนอยู่');}
      catch(e){bad.push(k+':'+e.message);}});
    _switchTab('sales');return bad;});

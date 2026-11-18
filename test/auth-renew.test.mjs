@@ -113,8 +113,36 @@ for (const n of [1, 2, 3, 4]) {
   t("..." + u + " ได้ token ที่ตรวจผ่าน และ role อยู่ใน token ไม่ใช่ใน body เฉย ๆ",
     !!claims2 && claims2.role === "manager" && claims2.u === u, JSON.stringify(claims2 && claims2.u));
 }
-t("🛟 เพิ่มบัญชีแอดมินแล้วบัญชีเดิมยังอยู่ครบ (manager + เซลล์ 12 สาย + แอดมิน 4 คน)",
-  Object.keys(ACCOUNTS).length === 17 && ACCOUNTS.manager.role === "manager" &&
+/* ---------- 7b) ทีมคลัง / ทีมสายส่ง (เจ้าของสั่ง 18 พ.ย. 69 · ทีมละ 4 บัญชี) ----------
+   role ใหม่ wh / ds — ไม่ใช่ manager และไม่ใช่ sales
+   ⚠️ สองทีมนี้ "ต้องไม่" ได้สิทธิ์ manager ติดมาด้วย ไม่งั้นจะเซฟ state ทั้งก้อนได้
+      (api/save.js รับแต่ manager) และจะเห็นต้นทุน/ราคาทั้งเว็บ */
+for (const [pre, role, label] of [["wh", "wh", "ทีมคลัง"], ["ds", "ds", "ทีมสายส่ง"]]) {
+  for (const n of [1, 2, 3, 4]) {
+    const u = pre + n, p = "bd@" + pre + n;
+    const ok = await call(login, { body: { user: u, pass: p } });
+    t("ล็อกอิน " + u + " (" + label + " " + n + ") ได้",
+      ok.code === 200 && ok.body && ok.body.ok === true, ok.code);
+    t("..." + u + " ได้ role " + role + " ไม่ใช่ manager/sales",
+      ok.body && ok.body.role === role, ok.body && ok.body.role);
+    const wrong = await call(login, { body: { user: u, pass: p + "x" } });
+    t("..." + u + " ใส่รหัสผิดเข้าไม่ได้", wrong.code === 401, wrong.code);
+    const cl = verify((ok.body || {}).token || "");
+    t("..." + u + " role อยู่ใน token (เซิร์ฟเวอร์เชื่อ token ไม่ใช่ body)",
+      !!cl && cl.role === role && cl.u === u, JSON.stringify(cl && cl.role));
+  }
+}
+t("🛟 ทีมคลัง/สายส่งไม่มีรหัสสาย (code) ติดมา — กรอกเลขออเดอร์แทนเซลล์ไม่ได้",
+  [1, 2, 3, 4].every(n => !ACCOUNTS["wh" + n].code && !ACCOUNTS["ds" + n].code));
+t("🛟 ไม่มีบัญชีไหนได้ role manager เพิ่มจาก 5 คนเดิม",
+  Object.keys(ACCOUNTS).filter(k => ACCOUNTS[k].role === "manager").length === 5,
+  Object.keys(ACCOUNTS).filter(k => ACCOUNTS[k].role === "manager").join(","));
+t("🛟 รหัสผ่านของ 8 บัญชีใหม่ไม่ซ้ำกันเองและไม่ซ้ำของเดิม",
+  new Set(Object.keys(ACCOUNTS).map(k => ACCOUNTS[k].pass)).size === Object.keys(ACCOUNTS).length,
+  Object.keys(ACCOUNTS).length + " บัญชี");
+
+t("🛟 เพิ่มบัญชีแอดมินแล้วบัญชีเดิมยังอยู่ครบ (manager + เซลล์ 12 สาย + แอดมิน 4 + คลัง 4 + สายส่ง 4)",
+  Object.keys(ACCOUNTS).length === 25 && ACCOUNTS.manager.role === "manager" &&
   ACCOUNTS.ct11.role === "sales", Object.keys(ACCOUNTS).length + " บัญชี");
 t("🛟 แอดมินทั้ง 4 คนมีรหัสไม่ซ้ำกัน และไม่ซ้ำกับ manager",
   new Set([1, 2, 3, 4].map(n => ACCOUNTS["admin" + n].pass).concat([ACCOUNTS.manager.pass])).size === 5,

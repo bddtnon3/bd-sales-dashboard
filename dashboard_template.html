@@ -1492,6 +1492,25 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div id="cstBody"></div>
     </div>
 
+    <!-- 📦 ออเดอร์พิเศษ (18 พ.ย. 69) — 6 ขั้นตอน 4 ทีม
+         1 แอดมินเปิดใบใหญ่ · 2 เซลล์กรอกเลขออเดอร์ย่อย · 3 แอดมินตรวจใบจัดของ
+         4 คลังจัดของ · 5 สายส่งส่งของ · 6 แอดมินปิดงาน
+         ใช้ใบตัดบิลชุดเดิม (CSTOCK.slips/lots) ไม่ได้รื้อหน้าสต็อคกลางเดิม -->
+    <div id="spordView" class="hidden">
+      <div class="controls">
+        <div class="ctl" id="spSecBox"><label>หน้าจอ</label><div class="seg" id="spSec"></div></div>
+        <div class="ctl" id="spSlipBox"><label>ใบออเดอร์ใหญ่</label>
+          <div class="dstep"><button type="button" class="dstep-b" onclick="selStep('spSlip',-1)" title="ใบก่อนหน้า">◀</button>
+          <select id="spSlip" data-rev="1" onchange="SP.sid=this.value;renderSpord()"></select>
+          <button type="button" class="dstep-b" onclick="selStep('spSlip',1)" title="ใบถัดไป">▶</button></div></div>
+        <div class="ctl"><label>ค้นหา</label><input id="spQ" placeholder="🔍 เลขออเดอร์ / ชื่อร้าน / สาย"
+          oninput="SP.q=this.value;renderSpord()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:220px"></div>
+        <div class="spacer"></div>
+      </div>
+      <div class="panel" id="spBar" style="font-weight:700"></div>
+      <div id="spBody"></div>
+    </div>
+
     <div id="posView" class="hidden">
       <div class="controls">
         <div class="ctl"><label>หมวดวิเคราะห์</label>
@@ -2166,7 +2185,15 @@ const ACCOUNTS={"manager":{pass:"bd@admin",role:"manager",name:"ผู้จั�
   "admin1":{pass:"bd@admin1",role:"manager",name:"แอดมิน 1 · คีย์ตัดบิล"},
   "admin2":{pass:"bd@admin2",role:"manager",name:"แอดมิน 2 · คีย์ข้อมูลร้าน"},
   "admin3":{pass:"bd@admin3",role:"manager",name:"แอดมิน 3"},
-  "admin4":{pass:"bd@admin4",role:"manager",name:"แอดมิน 4"}};
+  "admin4":{pass:"bd@admin4",role:"manager",name:"แอดมิน 4"},
+  "wh1":{pass:"bd@wh1",role:"wh",name:"ทีมคลัง 1"},
+  "wh2":{pass:"bd@wh2",role:"wh",name:"ทีมคลัง 2"},
+  "wh3":{pass:"bd@wh3",role:"wh",name:"ทีมคลัง 3"},
+  "wh4":{pass:"bd@wh4",role:"wh",name:"ทีมคลัง 4"},
+  "ds1":{pass:"bd@ds1",role:"ds",name:"ทีมสายส่ง 1"},
+  "ds2":{pass:"bd@ds2",role:"ds",name:"ทีมสายส่ง 2"},
+  "ds3":{pass:"bd@ds3",role:"ds",name:"ทีมสายส่ง 3"},
+  "ds4":{pass:"bd@ds4",role:"ds",name:"ทีมสายส่ง 4"}};
 DATA.focus_order.forEach(code=>{
   const d=DATA.lines[code];
   ACCOUNTS[d.display.toLowerCase()]={pass:d.display.toLowerCase()+"@bd",role:"sales",code:code,name:d.display+" · "+d.name};
@@ -2296,14 +2323,18 @@ function doLogin(){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   document.getElementById("uName").textContent=acc.name;
-  document.getElementById("uRole").textContent=acc.role==="manager"?"เห็นข้อมูลทุกสาย":"เซลล์";
-  document.getElementById("uAv").textContent=(acc.role==="manager"?"M":acc.name.substring(0,2)).toUpperCase();
+  document.getElementById("uRole").textContent=acc.role==="manager"?"เห็นข้อมูลทุกสาย":
+    (acc.role==="wh"?"ทีมคลัง":(acc.role==="ds"?"ทีมสายส่ง":"เซลล์"));
+  document.getElementById("uAv").textContent=(acc.role==="manager"?"M":
+    (acc.role==="wh"?"คล":(acc.role==="ds"?"สส":acc.name.substring(0,2)))).toUpperCase();
   /* sales default to own line view; manager sees team */
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
   document.querySelectorAll(".sales-only").forEach(e=>e.style.display=acc.role==="sales"?"":"none");
   initKeys();render();initKPI();initOrder();initAnalytics();initPlan();initPromo();initPjp();navReset();
-  _switchTab("sales");   /* never leave the previous user's tab (incl. manager-only ones) open */
+  /* ⚠️ ทีมคลัง/สายส่งเปิดหน้ายอดขายไม่ได้ — ถ้าเด้งไปแท็บ sales เหมือนคนอื่น จะเห็นหน้าที่
+     ไม่มีสิทธิ์ดูค้างอยู่ (ปุ่มแท็บซ่อนแล้วก็จริง แต่ตัว view ยังโผล่) จึงพาไปหน้าของทีมตัวเอง */
+  _switchTab(tabIsTeam(acc.role)?"spord":"sales");
 }
 function logout(){S.user=null;_switchTab("sales");document.getElementById("app").classList.add("hidden");
   document.getElementById("login").classList.remove("hidden");
@@ -2874,9 +2905,13 @@ const TAB_GROUPS=[
           "ให้รายการออเดอร์ขึ้นไปเป็นสถานะรอจัดส่ง รอเคลียร์ เพื่อให้ทางเซลล์ไปขายกันมา"
           ของที่ค้างอยู่จึงต้องอยู่ในมือเซลล์ ส่วนการ "กรอก/แก้/ลบ" ยังเป็นของแอดมินคนเดียว
           (cstMgr ในทุกปุ่ม) */
-  {k:"stock",nm:"📦 สต็อก",tabs:[
-    {t:"stock",nm:"สต็อคปัจจุบัน"},
-    {t:"cstock",nm:"🧊 สต็อคกลาง"}]},
+  /* 📦 ออเดอร์พิเศษ (18 พ.ย. 69) — เพิ่มเป็นแท็บใหม่ "ข้าง ๆ" สต็อคกลางเดิม ไม่ได้รื้อของเก่า
+     ใช้ใบตัดบิลชุดเดียวกัน (CSTOCK.slips/lots) แต่เพิ่มชั้น "ออเดอร์ย่อยรายร้าน" ขึ้นมา
+     ทีมคลัง/สายส่งเห็นได้เฉพาะแท็บนี้แท็บเดียวทั้งเว็บ (role ระบุไว้ตรง ๆ) */
+  {k:"stock",nm:"📦 สต็อก",nmTeam:"📦 ออเดอร์พิเศษ",tabs:[
+    {t:"stock",nm:"สต็อคปัจจุบัน",role:["manager","sales"]},
+    {t:"spord",nm:"📦 ออเดอร์พิเศษ",role:["manager","sales","wh","ds"]},
+    {t:"cstock",nm:"🧊 สต็อคกลาง (เดิม)",role:["manager","sales"]}]},
   /* 💰 ราคา & ทุน — สองไฟล์ที่ Unilever ส่งมาทุกเดือน
      "price" = ไฟล์หัวเสือ (ราคาที่ศูนย์เสนอขายลูกค้า) ทุกคนในศูนย์ดูได้ และลูกค้าดูได้จาก
                ลิงก์สาธารณะ /pricelist.html
@@ -2900,7 +2935,18 @@ const TAB_GROUPS=[
      {k:"eb",nm:"🏆 แข่งขันเปิด eB2B",tabs:[{t:"eb",nm:"แข่งขันเปิด eB2B"}]}, */
 ];
 function tabRole(){return (S.user&&S.user.role)||"";}
-function tabOk(x){return !x.role||x.role===tabRole();}
+/* 🚚 ทีมคลัง (wh) และทีมสายส่ง (ds) — role ใหม่ 18 พ.ย. 69
+   ⚠️ ของเดิม tabOk ปล่อยผ่าน "ทุกแท็บที่ไม่ได้ระบุ role" ถ้าไม่กันตรงนี้ ทีมคลังจะเห็น
+      ยอดขาย ราคา ต้นทุน ครบทั้งเว็บทันทีที่เปิดบัญชีให้ · สองทีมนี้เห็นได้หน้าเดียวเท่านั้น
+   role ในตาราง TAB_GROUPS รับได้ทั้งค่าเดียว ("manager") และหลายค่า (["manager","wh"]) */
+const TEAM_ROLES=["wh","ds"];
+function tabIsTeam(r){return TEAM_ROLES.indexOf(r||tabRole())>=0;}
+function tabOk(x){
+  const r=tabRole();
+  if(Array.isArray(x.role))return x.role.indexOf(r)>=0;
+  if(tabIsTeam(r))return x.role===r;          /* ทีมใหม่: ต้องระบุชื่อ role ไว้ตรง ๆ เท่านั้น */
+  return !x.role||x.role===r;
+}
 /* 🛠 เว็บแอดมินเอาแค่ 4 หัวข้อ + DCODE (เจ้าของสั่ง: *"เวปแอดมินจะเอาแค่หัวข้อ ยอดขาย การสั่งของ
    สต็อค ปฏิทิน แค่ 4 ตัวนี้ก็พอ เอาให้ข้อมูลเหมือนเดิมให้หมดนะ และเพิ่มหัวข้อนึงเข้าไปหน่อย
    นั่นคือ DCODE"*) — แท็บย่อยในกลุ่มยังอยู่ครบเหมือนเว็บเดิม ไม่ได้ตัดอะไรออก
@@ -2953,7 +2999,8 @@ function renderTabs(){
   if(!top||!sub)return;
   const cur=tabGroupOf(CURTAB),vis=tabVisible();
   top.innerHTML=vis.map(x=>{
-    const nm=(tabRole()==="sales"&&x.g.nmSales)?x.g.nmSales:x.g.nm;
+    const nm=(tabIsTeam()&&x.g.nmTeam)?x.g.nmTeam:
+             ((tabRole()==="sales"&&x.g.nmSales)?x.g.nmSales:x.g.nm);
     return `<button type="button" class="tab${x.g.k===cur.k?" on":""}" data-grp="${x.g.k}" onclick="switchGroup('${x.g.k}')">${nm}${x.g.badge?'<span id="planBadge"></span>':""}</button>`;
   }).join("");
   const mine=((vis.filter(x=>x.g.k===cur.k)[0])||{tabs:[]}).tabs;
@@ -2984,6 +3031,7 @@ function _switchTab(t){
   document.getElementById("orderView").classList.toggle("hidden",t!=="order");
   document.getElementById("stockView").classList.toggle("hidden",t!=="stock");
   document.getElementById("cstockView").classList.toggle("hidden",t!=="cstock");
+  document.getElementById("spordView").classList.toggle("hidden",t!=="spord");
   document.getElementById("posView").classList.toggle("hidden",t!=="pos");
   document.getElementById("dciView").classList.toggle("hidden",t!=="dci");
   document.getElementById("leadView").classList.toggle("hidden",t!=="lead");
@@ -3004,6 +3052,7 @@ function _switchTab(t){
   if(t==="order")renderOrder();
   if(t==="stock")renderStock();
   if(t==="cstock")renderCStock();
+  if(t==="spord")renderSpord();
   if(t==="pos")renderPOS();
   if(t==="dci")renderDCI();
   if(t==="lead")ldRefresh();
@@ -11464,6 +11513,234 @@ function cstRepXlsx(){
   msDownload(new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),
     "BD-cstock-report-"+y+".xlsx");
 }
+/* ============================================================================
+ * 📦 ออเดอร์พิเศษ — 6 ขั้นตอน 4 ทีม (เจ้าของสั่ง 18 พ.ย. 69)
+ *   1 แอดมินเปิดใบออเดอร์ใหญ่ (ใช้ฟอร์มใบตัดบิลเดิม — ไม่ได้รื้อของเก่า)
+ *   2 เซลล์กรอก "เลขออเดอร์ย่อย" ของสายตัวเอง — พิมพ์แค่รหัส ระบบดึงชื่อร้าน+ยอดมาให้
+ *   3 แอดมินตรวจที่ไปในใบจัดของ (ติ๊ก + โน๊ต)
+ *   4 ทีมคลังจัดของ (ติ๊ก)   5 ทีมสายส่งส่งของ (ติ๊ก)   6 แอดมินปิดงาน (ที่ไป/ค้างเท่าไหร่)
+ *
+ * ⚠️ หน้านี้ "ไม่ได้แทน" สต็อคกลางเดิม — ใช้ CSTOCK.slips/lots ชุดเดียวกัน เพิ่มแค่ชั้น
+ *    CSTOCK.sub (ออเดอร์ย่อยรายร้าน) ขึ้นมา ของเก่าทุกใบจึงยังอยู่ครบและคำนวณเหมือนเดิม
+ * ⚠️ ทุกการเขียนของเซลล์/คลัง/สายส่งไปทาง api/spord.js ทีละคีย์เดียว ไม่ใช่เซฟทั้ง state
+ *    (role wh/ds ส่ง state ทั้งก้อนไม่ได้อยู่แล้ว — api/save.js รับแต่ manager)
+ * ⚠️ ยกเลิกติ๊กเขียน ok:0 ทับ ไม่ลบคีย์ — ลบคีย์จะโดน union ฝั่งเซิร์ฟเวอร์เอากลับมา
+ * ==========================================================================*/
+const SP_GRP={A:{ic:"🧾",n:"ตัดบิลแล้ว ยังไม่ส่งของ"},B:{ic:"🚚",n:"ส่งของแล้ว ยังไม่ตัดบิล"}};
+const SP_STEPS=[
+  {k:"s3",ic:"🔎",n:"แอดมินตรวจใบจัดของ",sh:"ตรวจใบจัดของ",role:"manager"},
+  {k:"s4",ic:"📦",n:"คลังจัดของ",sh:"คลังจัดของ",role:"wh"},
+  {k:"s5",ic:"🚚",n:"สายส่งส่งของ",sh:"ส่งของ",role:"ds"},
+  {k:"s6",ic:"✅",n:"แอดมินปิดงาน",sh:"ปิดงาน",role:"manager"}];
+let SP={sid:"",q:"",busy:0};
+function spOk(){const C=cstOk();if(!C.sub)C.sub={};if(!C.subdel)C.subdel={};return C;}
+function spRole(){return (S.user&&S.user.role)||"";}
+function spMgr(){return spRole()==="manager";}
+function spMine(){return (S.user&&S.user.code)||"";}
+function spNo(v){return String(v==null?"":v).trim().toUpperCase().replace(/\s+/g,"");}
+/* เลขออเดอร์ → ร้าน/สาย/ยอด จากไฟล์ยอดขายรายวัน (ดัชนีสร้างตอน parseDailyDcode)
+   คืน null เมื่อยังไม่ได้อัพไฟล์ของวันนั้น — ต้องขึ้นว่า "รอไฟล์ยอดขาย" ไม่ใช่ขึ้นว่าเลขผิด */
+function spOrd(no){return ((typeof STOREDAILY!=="undefined"&&STOREDAILY&&STOREDAILY.ord)||{})[spNo(no)]||null;}
+function spShop(sc){
+  if(!sc)return "";
+  const o=(pjOk().out||{})[sc];if(o&&o.n)return o.n;
+  const sp=((typeof STOREPROD!=="undefined"&&STOREPROD&&STOREPROD.stores)||{})[sc];
+  if(sp&&sp.n)return sp.n;
+  return "";
+}
+/* ใบออเดอร์ใหญ่ที่ยังไม่ถูกลบ เรียงใหม่สุดก่อน */
+function spSlips(){
+  const C=spOk(),sd=C.sdel||{};
+  return Object.keys(C.slips||{}).filter(id=>!sd[id])
+    .map(id=>Object.assign({id:id},C.slips[id]))
+    .sort((a,b)=>String(b.d||"").localeCompare(String(a.d||""))||String(b.id).localeCompare(String(a.id)));
+}
+/* คืนสำเนาที่มี id ติดมาด้วย (แถบบนต้องโชว์เลขใบ) — การแก้ค่าจริงต้องแก้ที่ C.slips[sid] */
+function spSlip(sid){const C=spOk(),x=(C.slips||{})[sid];return x?Object.assign({id:sid},x):null;}
+function spGrpOf(sl){return (sl&&sl.g==="B")?"B":"A";}      /* ใบเก่าทั้งหมด = กลุ่ม A */
+function spSubs(sid){
+  const C=spOk(),dd=C.subdel||{};
+  return Object.keys(C.sub||{}).filter(k=>!dd[k]&&C.sub[k]&&C.sub[k].sid===sid)
+    .map(k=>Object.assign({key:k},C.sub[k]))
+    .sort((a,b)=>(a.at||0)-(b.at||0));
+}
+function spOn(r,k){return !!(r&&r[k]&&r[k].ok);}
+/* ขั้นที่ "ทำไปแล้ว" ต้องนับแบบต่อเนื่องจากต้น — ติ๊กขั้น 5 โดยที่ขั้น 4 ยังไม่ติ๊ก ไม่นับว่าเดินไปถึง */
+function spStage(r){let n=0;for(const st of SP_STEPS){if(!spOn(r,st.k))break;n++;}return n;}
+function spNext(r){return SP_STEPS[spStage(r)]||null;}
+/* งานของ "ทีมฉัน" ที่ค้างอยู่ = ขั้นถัดไปเป็นขั้นของ role นี้ */
+function spTodo(sid,role){
+  return spSubs(sid).filter(r=>{const nx=spNext(r);return nx&&nx.role===role;});
+}
+function spCanTick(st){
+  const r=spRole();
+  if(st.role==="manager")return r==="manager";
+  return r===st.role;
+}
+/* ---------- เขียนลงเซิร์ฟเวอร์: ทีละคีย์เดียวผ่าน api/spord.js ---------- */
+async function spPush(body,ok){
+  if(SP.busy)return;
+  if(typeof TOKEN==="undefined"||!TOKEN){alert("โหมดไฟล์เดียว ยังบันทึกไม่ได้");return;}
+  SP.busy=1;renderSpord();
+  try{
+    const r=await bdPost("/api/spord",body);
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+    if(ok)ok();
+  }catch(ex){
+    alert("บันทึกไม่สำเร็จ: "+ex.message+"\n\nข้อมูลยังไม่ถูกเปลี่ยน ลองใหม่อีกครั้งได้เลย");
+  }finally{SP.busy=0;renderSpord();}
+}
+function spAdd(){
+  const el=document.getElementById("spAddNo");if(!el)return;
+  const no=spNo(el.value);
+  const sid=SP.sid;
+  if(!sid){alert("เลือกใบออเดอร์ใหญ่ก่อน");return;}
+  if(!no){alert("ใส่เลขออเดอร์ก่อน เช่น BDD0100000123");return;}
+  const C=spOk();
+  if(C.sub[spKeyOf(sid,no)]&&!(C.subdel||{})[spKeyOf(sid,no)]){alert("เลขนี้กรอกไว้ในใบนี้แล้ว");return;}
+  spPush({act:"add",sid:sid,no:no},()=>{
+    const k=spKeyOf(sid,no),ln=spMgr()?(spMine()||""):spMine();
+    C.sub[k]={sid:sid,no:no,ln:ln,by:(S.user&&S.user.id)||"",byName:(S.user&&S.user.name)||"",at:Date.now(),up:Date.now()};
+    if(C.subdel)delete C.subdel[k];
+    el.value="";
+  });
+}
+function spKeyOf(sid,no){return sid+"|"+spNo(no);}
+function spDel(key){
+  const C=spOk(),r=C.sub[key];if(!r)return;
+  if(!confirm("ลบเลขออเดอร์ "+r.no+" ออกจากใบนี้?"))return;
+  spPush({act:"del",sid:r.sid,no:r.no},()=>{delete C.sub[key];(C.subdel=C.subdel||{})[key]=Date.now();});
+}
+function spTick(key,stepK,on){
+  const C=spOk(),r=C.sub[key];if(!r)return;
+  const st=SP_STEPS.filter(x=>x.k===stepK)[0];if(!st||!spCanTick(st))return;
+  let tx="",left=null;
+  if(on&&stepK==="s3"){tx=prompt("โน๊ตถึงคลัง/สายส่ง (ไม่ใส่ก็ได้)","")||"";if(tx===null)return;}
+  if(on&&stepK==="s6"){
+    tx=prompt("ปิดงานออเดอร์ "+r.no+"\n\nของไปที่ไหน? (ร้าน / หมายเหตุ)","")||"";
+    const lv=prompt("จำนวนที่ยังค้างอยู่ในคลัง (ลัง) — ไม่มีให้ใส่ 0","0");
+    if(lv===null)return;
+    left=parseFloat(String(lv).replace(/,/g,""));if(!isFinite(left)||left<0)left=0;
+  }
+  const body={act:"step",sid:r.sid,no:r.no,step:stepK,v:on?1:0};
+  if(tx)body.tx=tx;if(left!==null)body.left=left;
+  spPush(body,()=>{
+    const rec={ok:on?1:0,by:(S.user&&S.user.id)||"",byName:(S.user&&S.user.name)||"",at:Date.now()};
+    if(tx)rec.tx=tx;if(left!==null)rec.left=left;
+    r[stepK]=rec;r.up=Date.now();
+  });
+}
+/* ---------- หน้าจอ ---------- */
+function spRow(r,opt){
+  const o=spOrd(r.no),nm=o?(spShop(o.s)||("ร้าน "+o.s)):"";
+  const stage=spStage(r),nx=spNext(r);
+  const pills=SP_STEPS.map(st=>{const on=spOn(r,st.k);
+    return `<span class="pj-kp ${on?"ok":"nd"}" title="${st.n}${on&&r[st.k].byName?" · "+anaEsc(r[st.k].byName):""}">${st.ic}${on?"✓":""}</span>`;}).join("");
+  const info=o?`<span class="psub">${anaEsc(nm)} · ${o.c} รายการ · ${THB(o.v)}</span>`
+    :`<span class="psub" style="color:var(--mid)">⏳ รอไฟล์ยอดขายของวันนั้น แล้วชื่อร้านจะขึ้นเอง</span>`;
+  const ln=r.ln?((DATA.lines||{})[r.ln]||{}).display||FOCUS_MAP[r.ln]||r.ln:"";
+  const btn=(opt&&opt.tick)?SP_STEPS.filter(st=>spCanTick(st)&&(opt.only?st.k===opt.only:true)).map(st=>{
+    const on=spOn(r,st.k);
+    return `<button type="button" class="pl-today${on?" on":""}" ${SP.busy?"disabled":""}
+      onclick="spTick('${r.key}','${st.k}',${on?"false":"true"})">${on?"✓ ":""}${st.ic} ${st.sh}</button>`;}).join(" "):"";
+  const can=spMgr()||(spRole()==="sales"&&r.ln===spMine());
+  const del=(opt&&opt.del&&can&&stage===0)?`<button type="button" class="pl-today" style="color:var(--bad)"
+      ${SP.busy?"disabled":""} onclick="spDel('${r.key}')">🗑</button>`:"";
+  return `<div class="note" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0">
+    <b style="font-size:19px;font-family:ui-monospace,monospace">${anaEsc(r.no)}</b>
+    ${ln?`<span class="pill">${anaEsc(ln)}</span>`:""}
+    ${info}<span style="flex:1"></span>${pills}${btn}${del}</div>`;
+}
+/* แอดมินสลับว่าใบนี้อยู่กลุ่มไหน — ใบเก่าทุกใบเริ่มที่ A (ตัดบิลแล้ว ยังไม่ส่งของ) ตามของเดิม
+   เก็บเป็นช่อง g บนใบเดิม ไม่ได้สร้าง section ใหม่ จึง merge ปลอดภัยอยู่แล้ว (ใบ merge ทั้งเรคอร์ด) */
+function spSetGrp(g){
+  if(!spMgr())return;
+  const C=spOk(),sl=C.slips[SP.sid];if(!sl)return;
+  sl.g=(g==="B")?"B":"A";sl.up=Date.now();
+  renderSpord();if(typeof renderCStock==="function")renderCStock();syncToServer();
+}
+function spBarHtml(sl){
+  if(!sl)return "📦 ออเดอร์พิเศษ";
+  const g=SP_GRP[spGrpOf(sl)];
+  const subs=spSubs(sl.id),done=subs.filter(r=>spStage(r)>=SP_STEPS.length).length;
+  return `📦 ออเดอร์พิเศษ · ${g.ic} <b>${g.n}</b> · ใบ <b>${anaEsc(sl.id)}</b>`+
+    (sl.d?` · ${fmtDate(sl.d)}`:"")+
+    ` <span class="dci-src">ออเดอร์ย่อย ${subs.length} เลข · จบแล้ว ${done}</span>`+
+    (spMgr()?`<div style="margin-top:8px;font-weight:400"><span class="psub">กลุ่ม:</span> `+
+      Object.keys(SP_GRP).map(k=>`<button type="button" class="pl-today${
+        spGrpOf(sl)===k?" on":""}" onclick="spSetGrp('${k}')">${SP_GRP[k].ic} ${SP_GRP[k].n}</button>`).join(" ")+
+      `</div>`:"");
+}
+function renderSpord(){
+  const bar=document.getElementById("spBar");if(!bar)return;
+  const C=spOk(),role=spRole(),sls=spSlips();
+  /* กล่องเลือกใบ */
+  const sel=document.getElementById("spSlip");
+  if(sel){
+    if(!SP.sid||!sls.some(x=>x.id===SP.sid))SP.sid=(sls[0]||{}).id||"";
+    sel.innerHTML=sls.map(x=>`<option value="${anaEsc(x.id)}"${x.id===SP.sid?" selected":""}>${
+      SP_GRP[spGrpOf(x)].ic} ${anaEsc(x.id)}${x.d?" · "+fmtDate(x.d):""}</option>`).join("");
+  }
+  const sl=spSlip(SP.sid);
+  bar.innerHTML=spBarHtml(sl);
+  const body=document.getElementById("spBody");
+  const secBox=document.getElementById("spSecBox");if(secBox)secBox.style.display="none";
+  if(!sls.length){
+    body.innerHTML=`<div class="panel"><div class="insight">ยังไม่มีใบออเดอร์ใหญ่ — ${
+      spMgr()?'แอดมินเปิดใบใหม่ได้ที่แท็บ <b>🧊 สต็อคกลาง (เดิม)</b> → 🧾 ใบตัดบิล → ➕ ตัดบิลใหม่':
+      'รอแอดมินเปิดใบออเดอร์ใหญ่ก่อน'}</div></div>`;
+    return;
+  }
+  const q=spNo(SP.q);
+  const hit=r=>{if(!q)return true;
+    const o=spOrd(r.no);
+    return (r.no.indexOf(q)>=0)||(String(r.ln||"").toUpperCase().indexOf(q)>=0)||
+      (o&&String(spShop(o.s)).toUpperCase().indexOf(q)>=0);};
+  let all=spSubs(SP.sid).filter(hit);
+  let h="";
+  if(role==="sales"){
+    const mineRows=all.filter(r=>r.ln===spMine());
+    h+=`<div class="panel"><h3>✍️ กรอกเลขออเดอร์ของสายคุณ</h3>
+      <div class="psub">พิมพ์แค่ <b>เลขออเดอร์จากแอพ</b> (เช่น BDD0100000123) ระบบจะขึ้นชื่อร้านกับยอดให้ตรวจเอง</div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <input id="spAddNo" placeholder="BDD0100000123" style="padding:11px 13px;border:1.5px solid var(--line);
+          border-radius:9px;font-size:18px;font-family:ui-monospace,monospace;min-width:220px;flex:1"
+          onkeydown="if(event.key==='Enter')spAdd()">
+        <button class="upload-btn" ${SP.busy?"disabled":""} onclick="spAdd()">➕ เพิ่มเลขนี้</button></div></div>
+      <div class="panel" style="margin-top:14px"><h3>📋 ออเดอร์ของฉันในใบนี้ (${mineRows.length})</h3>
+      ${mineRows.length?mineRows.map(r=>spRow(r,{del:true})).join(""):'<div class="insight">ยังไม่ได้กรอกเลขออเดอร์ในใบนี้</div>'}</div>`;
+  }else if(role==="wh"||role==="ds"){
+    const st=SP_STEPS.filter(x=>x.role===role)[0];
+    const todo=all.filter(r=>{const nx=spNext(r);return nx&&nx.k===st.k;});
+    const done=all.filter(r=>spOn(r,st.k));
+    h+=`<div class="panel"><h3>${st.ic} งานที่ต้องทำ (${todo.length})</h3>
+      <div class="psub">ติ๊กยืนยันทีละเลข — ดูที่ <b>เลขออเดอร์</b> เป็นหลัก ชื่อร้านกับยอดไว้ตรวจให้ตรง</div>
+      ${todo.length?todo.map(r=>spRow(r,{tick:true,only:st.k})).join(""):'<div class="insight up">ไม่มีงานค้างในใบนี้ 🎉</div>'}</div>
+      <div class="panel" style="margin-top:14px"><h3>✓ ทำไปแล้ว (${done.length})</h3>
+      ${done.length?done.map(r=>spRow(r,{tick:true,only:st.k})).join(""):'<div class="psub">ยังไม่มี</div>'}</div>`;
+  }else{
+    /* แอดมิน / ผู้จัดการ — เห็นครบทุกขั้น */
+    const byStage={};all.forEach(r=>{const n=spStage(r);(byStage[n]=byStage[n]||[]).push(r);});
+    h+=`<div class="panel"><h3>📊 ภาพรวม 6 ขั้นตอน</h3><div class="psub">
+      ขั้น 1 แอดมินเปิดใบ · ขั้น 2 เซลล์กรอกเลข · แล้วไล่ไปทีละขั้นตามนี้</div>
+      <div class="tblwrap"><table class="cst-rt"><thead><tr><th style="text-align:left">ขั้นตอน</th>
+      <th>ทำแล้ว</th><th>ยังค้าง</th></tr></thead><tbody>`+
+      SP_STEPS.map((st,i)=>{const okN=all.filter(r=>spOn(r,st.k)).length;
+        return `<tr><td style="text-align:left">${st.ic} ${i+3}. ${st.n}</td>
+          <td><b class="up">${okN}</b></td><td>${all.length-okN}</td></tr>`;}).join("")+
+      `</tbody></table></div></div>`;
+    for(let n=0;n<=SP_STEPS.length;n++){
+      const rows=byStage[n]||[];if(!rows.length)continue;
+      const nx=SP_STEPS[n];
+      h+=`<div class="panel" style="margin-top:14px"><h3>${nx?nx.ic+" รอ"+nx.n:"✅ จบงานแล้ว"} (${rows.length})</h3>
+        ${rows.map(r=>spRow(r,{tick:true,del:true})).join("")}</div>`;
+    }
+    if(!all.length)h+=`<div class="panel" style="margin-top:14px"><div class="insight">
+      ยังไม่มีเซลล์กรอกเลขออเดอร์ย่อยในใบนี้</div></div>`;
+  }
+  body.innerHTML=h;
+}
 function cstMgr(){return !!(S.user&&S.user.role==="manager");}
 function renderCStock(){
   const bar=document.getElementById("cstBar");if(!bar)return;
@@ -14372,13 +14649,18 @@ function parseDailyDcode(name,rows,hdr,H){
   const cPjp=need("PJP Code"),cDate=need("Invoice Date"),cShop=need("Outlet Code"),
     cCs=need("Sale Quantity in Aggr(CS)"),cPc=need("Sale Quantity in Aggr(Pcs)"),cNiv=need("NIV"),
     cEmp=col("Salesman Code"),cRep=col("Salesman Name"),cShopN=col("Outlet Name"),
-    cDoc=col("Document Type"),cOrd=col("Order Type"),cProd=col("Product Code");
+    cDoc=col("Document Type"),cOrd=col("Order Type"),cProd=col("Product Code"),
+    /* 📦 ออเดอร์พิเศษ: เก็บดัชนี "เลขออเดอร์ → ร้าน/สาย/ยอด" ไว้ด้วย
+       ตรวจกับไฟล์จริงแล้ว 1 เลขออเดอร์ = 1 ร้าน = 1 ใบแจ้งหนี้ = 1 สาย = 1 วัน ครบทั้ง 89 เลข
+       เซลล์จึงพิมพ์แค่เลขเดียว ระบบขึ้นชื่อร้าน+ยอดให้ตรวจได้เอง
+       รับทั้งเลขคำสั่งซื้อ (BDD01…) และเลขใบแจ้งหนี้ (BDD09…) เพราะคนละทีมเรียกคนละเลข */
+    cNo=col("Order Number"),cInv=col("Invoice Number");
   const N=(r,i)=>{if(i<0)return 0;const v=parseFloat(String(r[i]==null?"":r[i]).replace(/,/g,""));return isNaN(v)?0:v;};
   const S=(r,i)=>i<0?"":String(r[i]==null?"":r[i]).trim();
   if(!STOREDAILY||typeof STOREDAILY!=="object")STOREDAILY={data:{}};
   if(!STOREDAILY.data)STOREDAILY.data={};
   const agg={},seenD={},dset=new Set(),unkLine={},docs={},ords={},nameDiff={},remap={},
-        shops={},prods={},fresh={};   /* fresh = ร้านที่อ่านได้จากไฟล์นี้ แยกวัน (ตัวแปรท้องถิ่น
+        shops={},prods={},fresh={},ordx={};   /* fresh = ร้านที่อ่านได้จากไฟล์นี้ แยกวัน (ตัวแปรท้องถิ่น
                                          ห้ามเอาไปแปะบน STOREDAILY ชั่วคราว เพราะนั่นคือ state ที่ sync) */
   let nRow=0,skip=0,foot="";
   for(let i=hdr+1;i<rows.length;i++){
@@ -14412,6 +14694,13 @@ function parseDailyDcode(name,rows,hdr,H){
       const sn=S(r,cShopN);if(sn)e.n=sn;
     }
     if(cProd>=0){const pc=S(r,cProd);if(pc)prods[pc]=1;}
+    /* ดัชนีเลขออเดอร์ — รวมยอดและจำนวนรายการของเลขนั้น ๆ */
+    [cNo,cInv].forEach(ci=>{
+      if(ci<0)return;const no=S(r,ci).toUpperCase();
+      if(!no||no==="NA")return;
+      const o=ordx[no]||(ordx[no]={s:sc,l:code,d:dkey,v:0,c:0});
+      o.v+=niv;o.c++;if(sc)o.s=sc;o.l=code;o.d=dkey;
+    });
     if(cDoc>=0){const d=S(r,cDoc)||"(ว่าง)";docs[d]=(docs[d]||0)+1;}
     if(cOrd>=0){const o=S(r,cOrd)||"(ว่าง)";ords[o]=(ords[o]||0)+niv;}
     nRow++;
@@ -14434,6 +14723,11 @@ function parseDailyDcode(name,rows,hdr,H){
     }
     DATA.daily[d]=now;
   });
+  /* ดัชนีเลขออเดอร์: รวมเข้าของเดิม ไม่ล้างทิ้ง — ไฟล์ของวันใหม่ต้องไม่ลบเลขของวันเก่า
+     เพราะออเดอร์พิเศษที่เซลล์กรอกไว้เมื่อวานยังต้องดึงชื่อร้านขึ้นมาได้อยู่ */
+  if(!STOREDAILY.ord)STOREDAILY.ord={};
+  Object.keys(ordx).forEach(no=>{const o=ordx[no];
+    o.v=Math.round(o.v*100)/100;STOREDAILY.ord[no]=o;});
   Object.keys(seenD).forEach(dk=>{
     const dd=STOREDAILY.data[dk]||(STOREDAILY.data[dk]={}),fd=fresh[dk]||{};
     Object.keys(fd).forEach(sc=>{
@@ -14446,7 +14740,8 @@ function parseDailyDcode(name,rows,hdr,H){
   const perDay=[...dset].sort().map(d=>fmtDate(d)+" = "+THB(Object.values(DATA.daily[d]).reduce((a,b)=>a+b,0))).join(" · ");
   ulog("✅ "+name+" (ยอดขายรายวัน · ระบบ dcode) → "+perDay);
   ulog("&nbsp;&nbsp;↳ อ่าน "+nRow+" บรรทัด · "+Object.keys(shops).length+" ร้าน"+
-    (cProd>=0?" · "+Object.keys(prods).length+" รหัสสินค้า":"")+" · "+
+    (cProd>=0?" · "+Object.keys(prods).length+" รหัสสินค้า":"")+
+    (Object.keys(ordx).length?" · "+Object.keys(ordx).length+" เลขออเดอร์":"")+" · "+
     [...dset].length+" วัน · ยอดที่ใช้คือ NIV (หลังหักส่วนลด ก่อน VAT) เหมือนไฟล์เดิม");
   const rk=Object.keys(remap);
   if(rk.length)ulog("&nbsp;&nbsp;↳ ℹ️ ไฟล์ใหม่ใช้รหัสสาย "+rk.map(k=>k+" → "+remap[k]+

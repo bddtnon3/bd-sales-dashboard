@@ -229,9 +229,16 @@ or requests double. Prove it with **`node test/auth-renew.test.mjs`** (15 checks
 
 ## Accounts
 `lib/accounts.js` is the only real account list (passwords never reach the browser; any one can be
-overridden with `PASS_<USER>`). It holds `manager`, the 12 sales lines, and **`admin1`…`admin4`**
+overridden with `PASS_<USER>`). It holds `manager`, the 12 sales lines, **`admin1`…`admin4`**, and —
+since 18 Nov 26 — **`wh1`…`wh4` (ทีมคลัง, role `wh`)** and **`ds1`…`ds4` (ทีมสายส่ง, role `ds`)**,
+same `bd@<user>` scheme. Those two roles are **neither `manager` nor `sales`**: they cannot save
+state at all (`api/save.js` takes only `manager`) and the only thing they can do is tick their own
+step of a special order through `api/spord.js`. `tabOk` therefore **denies a team role every tab
+that does not name it** — the old rule let any ungated tab through, which would have shown the
+warehouse the whole site — and they land on `spord`, not `sales`, at login. 25 accounts in all
 (`bd@admin1`…`bd@admin4` — the owner set the scheme himself and asked for it to run 1-4 in step, so
-**keep adding them as `admin<N>`/`bd@admin<N>`**, never a one-off name). admin 1 keys the bill-cut
+**keep adding them as `admin<N>`/`bd@admin<N>`**, never a one-off name; the same goes for
+`wh<N>`/`ds<N>`). admin 1 keys the bill-cut
 and admin 2 keys where the bills went; 3 and 4 were added on 6 Nov 26 with no job named yet, so
 their display names are deliberately plain.
 All four are **role `manager`**, which is what they had before as shared users of the `manager`
@@ -239,9 +246,10 @@ login; the gain is that every record now says **who keyed it** (`by`/`byName`). 
 `ACCOUNTS` block in the template is only for the standalone build, and `build.cjs` replaces it by
 matching that exact text — change one and you must change **all three** (`lib/accounts.js`, the
 template block, `build.cjs`) or the build fails with `ANCHOR NOT FOUND`.
-Prove logins with **`node test/auth-renew.test.mjs`** (34 checks — all four log in, a wrong
-password is still refused, the 12 sales lines stay role `sales`, and no password is in
-`public/index.html`).
+Prove logins with **`node test/auth-renew.test.mjs`** (69 checks — all four admins and all eight
+team accounts log in, a wrong password is still refused, the 12 sales lines stay role `sales`, the
+team accounts carry no `code` so they cannot key an order for a rep, role `manager` stays at
+exactly 5 accounts, and no password is in `public/index.html`).
 
 ## Secrets
 `BLOB_READ_WRITE_TOKEN` and the auth signing secret live only in **Vercel env vars** — never in
@@ -611,6 +619,26 @@ code, never printed.
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
   with **`node test/browser/cstock.test.cjs`** (229 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
+  A third tab, **`spord` (📦 ออเดอร์พิเศษ)**, carries the owner's Nov-26 order: special orders run
+  through **6 steps and 4 teams** — 1 admin opens the big order, 2 the rep types **only the order
+  code**, 3 admin checks the picking list (tick + note), 4 ทีมคลัง picks (tick), 5 ทีมสายส่ง
+  delivers (tick), 6 admin closes it (where it went / how much is left). It is a **new page beside
+  the existing สต็อคกลาง, not a rewrite of it**: same `CSTOCK.slips`/`lots`, plus one new keyed map
+  `CSTOCK.sub["sid|ORDERNO"]` (with `CSTOCK.subdel` tombstones) and a `g:"A"|"B"` flag on the slip
+  for the two groups the owner named (ตัดบิลแล้วยังไม่ส่ง / ส่งแล้วยังไม่ตัดบิล; an old slip with no
+  flag reads as A). **One sub-order record is written by four teams at four different times**, so
+  `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
+  let a rep's tab that has been open since morning erase the warehouse's and the driver's ticks, the
+  same trap `mergeExOne` fixed. Un-ticking writes `ok:0`, never a key delete. Every write by a rep,
+  the warehouse or a driver goes through **`api/spord.js`**, one key per call, with the step→role
+  table checked **on the server**, not by hiding the button. The rep types the code alone because
+  `parseDailyDcode` also builds **`STOREDAILY.ord`**, an index of dcode's order and invoice numbers
+  → shop / line / value / item count (measured on the real file: 1 order = 1 shop = 1 invoice = 1
+  line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
+  explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
+  file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
+  with **`node test/browser/spord.test.cjs`** (25 checks) plus the special-order cases in
+  `merge-safety`. Rules: `HANDOFF.md` §5.
   Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
   map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales
   slots. An unmapped tab now shows every group instead of the wrong one, and the cstock test walks

@@ -1,0 +1,198 @@
+/* 📦 ออเดอร์พิเศษ — 6 ขั้นตอน 4 ทีม (เจ้าของสั่ง 18 พ.ย. 69)
+   *"จะเพิ่มทีมที่จะใช้งานคือ ทีมคลัง และทีมสายส่ง … ให้ทำงานด้วยเลขออเดอร์เดี่ยวๆที่ส่งมาจากเซลล์
+     เพื่อไม่ให้พวกเค้างง และให้เลขออเดอร์เดี่ยวขึ้นโชว์ชื่อร้าน และจำนวนออเดอร์เพื่อตรวจสอบได้
+     แต่ให้ข้อมูลโชว์เน้นแค่รหัส ก็พอ"*
+   เทสต์ครอบ: ทีมคลัง/สายส่งเห็นได้หน้าเดียวทั้งเว็บ · เซลล์กรอกแค่รหัสแล้วชื่อร้าน+ยอดขึ้นเอง ·
+   เลขที่ยังไม่มีไฟล์ยอดขายต้องขึ้น "รอไฟล์" ไม่ใช่บอกว่าเลขผิด · ติ๊กข้ามขั้นไม่ได้ ·
+   ทีมหนึ่งติ๊กขั้นของอีกทีมไม่ได้ · ทุกการเขียนไปทาง api/spord.js ทีละคีย์ ไม่ใช่เซฟทั้ง state
+   ⛔ ชื่อร้าน/เลขออเดอร์ในเทสต์สมมติขึ้นเอง — รีโปเป็นสาธารณะ
+   ต้องติดตั้งก่อน: npm i --no-save playwright-core */
+const fs=require('fs');const path=require('path');
+const {chromium}=require('playwright-core');
+const ROOT=path.resolve(__dirname,'..','..');
+const PAGE=path.join(ROOT,'public','index.html');
+const BROWSER=require('./_chrome.cjs').chromePath();
+
+const B1='B20261118-01';
+const K=(no)=>B1+'|'+no;
+
+(async()=>{
+ const b=await chromium.launch({executablePath:BROWSER,args:['--no-sandbox']});
+ const pg=await (await b.newContext({viewport:{width:1280,height:950}})).newPage();
+ const errs=[];pg.on('pageerror',e=>errs.push(String(e)));
+ await pg.setContent(fs.readFileSync(PAGE,'utf8'),{waitUntil:'domcontentloaded'});
+ const A=[];const t=(n,c,x)=>A.push([!!c,n,x===undefined?'':String(x)]);
+ const ev=(f,a)=>pg.evaluate(f,a);
+
+ await pg.evaluate(`
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  window.Chart=function(){return{destroy(){}}};
+  window.ulog=()=>{};window.syncToServer=()=>{window.__sync++};
+  window.alert=m=>{window.__alert=m};window.confirm=()=>true;
+  window.prompt=(q,d)=>(window.__prompt===undefined?(d||''):window.__prompt);
+  window.W=()=>new Promise(r=>setTimeout(r,30));
+  TOKEN='t';
+  /* ทุกการเขียนของเซลล์/คลัง/สายส่งต้องไปทาง api/spord.js — ดักไว้ดูว่าส่งอะไรไปบ้าง */
+  window.bdPost=(u,b)=>{window.__posts.push({u:u,b:b});
+    return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true})});};
+  window.__reset=()=>{
+    window.__posts=[];window.__sync=0;window.__alert='';window.__prompt=undefined;
+    DATA.lines={};DATA.focus_order=[];
+    Object.keys(FOCUS_MAP).forEach(c=>{DATA.lines[c]={display:FOCUS_MAP[c],
+      type:FOCUS_MAP[c].indexOf('KA')===0?'KA':'CT',focus:true,name:'',emp:''};});
+    DATA.daily={};DATA.targets={};DATA.monthly={'2026-11':{}};
+    CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},sub:{},subdel:{},up:0};
+    CSTOCK.slips['${B1}']={d:'2026-11-18',by:'admin1',byName:'แอดมิน 1',at:1,up:1};
+    STOREDAILY={data:{},ord:{
+      'BDD0100000006':{s:'4862383',l:'209611',d:'2026-11-18',v:351.47,c:4},
+      'BDD0100000007':{s:'4862365',l:'209611',d:'2026-11-18',v:1709.38,c:3}}};
+    PJP={out:{'4862383':{n:'พี่เทียร',rt:'209611'},'4862365':{n:'แม่จุก',rt:'209611'}},
+         plan:{},done:{},cfg:{}};
+    SP={sid:'${B1}',q:'',busy:0};
+  };
+  window.__as=(role,code,name)=>{S.user={id:code||role,role:role,code:code,name:name};
+    _switchTab(tabIsTeam(role)?'spord':'sales');};
+  window.__reset();
+ `);
+ const body=()=>ev(()=>document.getElementById('spBody').textContent.replace(/\s+/g,' '));
+
+ /* ---------- 1) ใครเห็นอะไร ---------- */
+ const who=await ev(()=>{
+   const o={};
+   [['manager',null],['sales','209611'],['wh',null],['ds',null]].forEach(([r,c])=>{
+     __as(r,c,r);o[r]={tab:CURTAB,groups:tabVisible().map(x=>x.g.k).join(','),
+       tabs:(tabVisible().filter(x=>x.g.k==='stock')[0]||{tabs:[]}).tabs.map(x=>x.t).join(',')};});
+   return o;});
+ t('🔑 ทีมคลังเห็นได้กลุ่มเดียวทั้งเว็บ และเข้าหน้าออเดอร์พิเศษให้เลย',
+   who.wh.groups==='stock'&&who.wh.tabs==='spord'&&who.wh.tab==='spord',JSON.stringify(who.wh));
+ t('🔑 ทีมสายส่งก็เหมือนกัน — ไม่เห็นยอดขาย/ราคา/ต้นทุน',
+   who.ds.groups==='stock'&&who.ds.tabs==='spord',JSON.stringify(who.ds));
+ t('เซลล์ยังเห็นทุกกลุ่มเหมือนเดิม และเข้าหน้ายอดขายเป็นหน้าแรก',
+   who.sales.tab==='sales'&&who.sales.groups.indexOf('sales')===0&&
+   who.sales.tabs==='stock,spord,cstock',JSON.stringify(who.sales));
+ t('ผู้จัดการ/แอดมินเห็นครบเหมือนเดิม',who.manager.groups.split(',').length>=8,who.manager.groups);
+
+ /* ---------- 2) เซลล์กรอกแค่รหัส ---------- */
+ const s2=await ev(async()=>{__reset();__as('sales','209611','CT11 · ชลศิต');
+   _switchTab('spord');SP.sid='B20261118-01';renderSpord();
+   document.getElementById('spAddNo').value=' bdd0100000006 ';spAdd();await W();
+   document.getElementById('spAddNo').value='BDD0100000007';spAdd();await W();
+   const txt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   return {posts:window.__posts.map(p=>p.u+' '+JSON.stringify(p.b)),
+     keys:Object.keys(CSTOCK.sub),rec:CSTOCK.sub['B20261118-01|BDD0100000006'],
+     txt:txt,sync:window.__sync,box:document.getElementById('spAddNo').value};});
+ t('เซลล์กรอกเลข → ยิงไป /api/spord ทีละคีย์ (ไม่ใช่เซฟ state ทั้งก้อน)',
+   s2.posts.length===2&&s2.posts.every(p=>p.indexOf('/api/spord')===0)&&s2.sync===0,
+   s2.posts.join(' | '));
+ t('พิมพ์ตัวเล็ก/มีช่องว่าง ระบบแปลงเป็นตัวใหญ่ให้เอง',
+   s2.keys.join(',')==='B20261118-01|BDD0100000006,B20261118-01|BDD0100000007',s2.keys.join(','));
+ t('เก็บสายของเซลล์คนที่กรอกไว้บนเรคอร์ด',s2.rec&&s2.rec.ln==='209611',JSON.stringify(s2.rec&&s2.rec.ln));
+ t('🔑 กรอกแค่รหัส แล้วชื่อร้าน + จำนวนรายการ + ยอด ขึ้นมาให้ตรวจเอง',
+   /BDD0100000006/.test(s2.txt)&&/พี่เทียร/.test(s2.txt)&&/4 รายการ/.test(s2.txt)&&/฿351/.test(s2.txt),
+   s2.txt.slice(s2.txt.indexOf('BDD0100000006'),s2.txt.indexOf('BDD0100000006')+70));
+ t('กรอกเสร็จช่องพิมพ์ว่างให้เลย (กรอกตัวถัดไปได้ทันที)',s2.box==='',JSON.stringify(s2.box));
+
+ /* ---------- 3) เลขที่ยังไม่มีไฟล์ยอดขาย ---------- */
+ const nf=await ev(async()=>{
+   document.getElementById('spAddNo').value='BDD0199999999';spAdd();await W();
+   return document.getElementById('spBody').textContent.replace(/\s+/g,' ');});
+ t('🔑 เลขที่ยังไม่ได้อัพไฟล์ยอดขาย → บอก "รอไฟล์" ไม่ใช่บอกว่าเลขผิด',
+   /รอไฟล์ยอดขาย/.test(nf)&&/BDD0199999999/.test(nf),
+   nf.slice(nf.indexOf('BDD0199999999'),nf.indexOf('BDD0199999999')+80));
+ await ev(async()=>{spDel('B20261118-01|BDD0199999999');await W();});
+
+ /* ---------- 4) กรอกซ้ำ ---------- */
+ const dup=await ev(async()=>{const n=window.__posts.length;
+   document.getElementById('spAddNo').value='BDD0100000006';spAdd();await W();
+   return {alert:window.__alert,posts:window.__posts.length-n};});
+ t('กรอกเลขซ้ำในใบเดิม → เตือน ไม่ยิงซ้ำ',/แล้ว/.test(dup.alert)&&dup.posts===0,dup.alert);
+
+ /* ---------- 5) ไล่ 6 ขั้น ---------- */
+ const flow=await ev(async()=>{
+   const k='B20261118-01|BDD0100000006',o={};
+   __as('manager',null,'แอดมิน 1');SP.sid='B20261118-01';
+   window.__prompt='ตรวจแล้ว';renderSpord();spTick(k,'s3',true);await W();
+   o.s3=CSTOCK.sub[k].s3;
+   __as('wh',null,'ทีมคลัง 1');SP.sid='B20261118-01';renderSpord();
+   o.whTodo=document.getElementById('spBody').textContent.replace(/\s+/g,' ').slice(0,60);
+   spTick(k,'s4',true);await W();o.s4=CSTOCK.sub[k].s4;
+   const before=window.__posts.length;
+   spTick(k,'s3',false);await W();                   /* คลังลองยกเลิกขั้นของแอดมิน */
+   o.whTriedS3={posts:window.__posts.length-before,s3ok:CSTOCK.sub[k].s3.ok};
+   __as('ds',null,'ทีมสายส่ง 1');SP.sid='B20261118-01';renderSpord();
+   spTick(k,'s5',true);await W();o.s5=CSTOCK.sub[k].s5;
+   __as('manager',null,'แอดมิน 1');SP.sid='B20261118-01';
+   window.__prompt='ส่งเข้าร้านพี่เทียร';renderSpord();
+   spTick(k,'s6',true);await W();o.s6=CSTOCK.sub[k].s6;
+   o.stage=spStage(CSTOCK.sub[k]);
+   o.admin=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   return o;});
+ t('ขั้น 3 แอดมินตรวจ — เก็บโน๊ตและชื่อคนตรวจ',
+   flow.s3.ok===1&&flow.s3.tx==='ตรวจแล้ว'&&flow.s3.byName==='แอดมิน 1',JSON.stringify(flow.s3));
+ t('ขั้น 4 ทีมคลังเห็นงานที่ต้องทำและติ๊กได้',
+   /งานที่ต้องทำ \(1\)/.test(flow.whTodo)&&flow.s4.ok===1&&flow.s4.byName==='ทีมคลัง 1',
+   flow.whTodo+' | '+JSON.stringify(flow.s4));
+ t('🔑 ทีมคลังแตะขั้นของแอดมินไม่ได้ (ไม่ยิงอะไรเลย และสถานะเดิมไม่เปลี่ยน)',
+   flow.whTriedS3.posts===0&&flow.whTriedS3.s3ok===1,JSON.stringify(flow.whTriedS3));
+ t('ขั้น 5 ทีมสายส่งติ๊กได้',flow.s5.ok===1&&flow.s5.byName==='ทีมสายส่ง 1',JSON.stringify(flow.s5));
+ t('ขั้น 6 แอดมินปิดงาน — เก็บที่ไปของสินค้าและจำนวนที่ยังค้าง',
+   flow.s6.ok===1&&flow.s6.tx==='ส่งเข้าร้านพี่เทียร'&&flow.s6.left===0,JSON.stringify(flow.s6));
+ t('เดินครบ 4 ขั้นแล้วนับว่าจบงาน',flow.stage===4,flow.stage);
+ t('แอดมินเห็นภาพรวมทุกขั้น และแยกกองตามขั้นที่ค้าง',
+   /ภาพรวม 6 ขั้นตอน/.test(flow.admin)&&/จบงานแล้ว \(1\)/.test(flow.admin)&&
+   /รอแอดมินตรวจใบจัดของ/.test(flow.admin),flow.admin.slice(0,90));
+
+ /* ---------- 6) ติ๊กข้ามขั้น ---------- */
+ const skip=await ev(async()=>{
+   __as('ds',null,'ทีมสายส่ง 1');SP.sid='B20261118-01';renderSpord();
+   const txt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   const k2='B20261118-01|BDD0100000007';
+   return {txt:txt,stage:spStage(CSTOCK.sub[k2]),
+     todoHas7:/BDD0100000007/.test(txt.slice(0,txt.indexOf('ทำไปแล้ว')))};});
+ t('🔑 เลขที่แอดมินยังไม่ตรวจ ไม่โผล่ในงานของสายส่ง (กันติ๊กข้ามขั้น)',
+   !skip.todoHas7&&skip.stage===0,'stage='+skip.stage);
+
+ /* ---------- 7) กลุ่ม A / B ---------- */
+ const grp=await ev(()=>{
+   __as('manager',null,'แอดมิน 1');SP.sid='B20261118-01';renderSpord();
+   const a=document.getElementById('spBar').textContent.replace(/\s+/g,' ');
+   spSetGrp('B');
+   const bb=document.getElementById('spBar').textContent.replace(/\s+/g,' ');
+   __as('wh',null,'ทีมคลัง 1');renderSpord();
+   const canWh=/spSetGrp/.test(document.getElementById('spBar').innerHTML);
+   return {a:a,b:bb,g:CSTOCK.slips['B20261118-01'].g,canWh:canWh};});
+ t('ใบเก่าทุกใบเริ่มที่กลุ่ม A (ตัดบิลแล้ว ยังไม่ส่งของ)',/ตัดบิลแล้ว ยังไม่ส่งของ/.test(grp.a),grp.a.slice(0,60));
+ t('แอดมินสลับใบไปกลุ่ม B (ส่งของแล้ว ยังไม่ตัดบิล) ได้',
+   grp.g==='B'&&/ส่งของแล้ว ยังไม่ตัดบิล/.test(grp.b),grp.b.slice(0,70));
+ t('🛟 ทีมคลังสลับกลุ่มไม่ได้ (ไม่มีปุ่มให้)',!grp.canWh);
+
+ /* ---------- 8) ลบเลขที่กรอกผิด ---------- */
+ const del=await ev(async()=>{
+   __as('sales','209611','CT11');SP.sid='B20261118-01';renderSpord();
+   const started='B20261118-01|BDD0100000006';     /* เดินงานไปแล้ว */
+   const fresh='B20261118-01|BDD0100000007';       /* ยังไม่เริ่ม */
+   const h=document.getElementById('spBody').innerHTML;
+   const n=window.__posts.length;
+   spDel(fresh);await W();
+   return {startedHasDel:h.indexOf("spDel('"+started+"')")>=0,
+     freshHasDel:h.indexOf("spDel('"+fresh+"')")>=0,
+     gone:!CSTOCK.sub[fresh],tomb:!!(CSTOCK.subdel||{})[fresh],posts:window.__posts.length-n};});
+ t('เซลล์ลบเลขที่ยังไม่เริ่มเดินงานได้ (เขียน tombstone)',
+   del.freshHasDel&&del.gone&&del.tomb&&del.posts===1,JSON.stringify(del));
+ t('🔑 เลขที่เริ่มเดินงานแล้ว เซลล์ลบเองไม่ได้ (ไม่มีปุ่ม)',!del.startedHasDel);
+
+ /* ---------- 9) ไม่มีใบใหญ่ ---------- */
+ const none=await ev(()=>{__reset();CSTOCK.slips={};
+   __as('wh',null,'ทีมคลัง 1');renderSpord();
+   return document.getElementById('spBody').textContent.replace(/\s+/g,' ');});
+ t('ยังไม่มีใบออเดอร์ใหญ่ → บอกให้รอแอดมิน ไม่ใช่หน้าว่าง',
+   /รอแอดมินเปิดใบออเดอร์ใหญ่/.test(none),none.slice(0,80));
+
+ let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
+ const re=errs.filter(e=>!/localStorage/.test(e));
+ if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}
+ await b.close();
+ console.log('\n'+(bad?bad+' FAILED of '+A.length:'ALL PASS ('+A.length+' checks)'));
+ process.exit(bad?1:0);
+})();
