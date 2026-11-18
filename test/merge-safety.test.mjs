@@ -1054,8 +1054,29 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
         b5.CSTOCK.slips[B1].nw === "ส่งคลัง 2 รอบ" && b5.CSTOCK.ex[B1].n === 61,
         b5.CSTOCK.slips[B1].nw + " / " + b5.CSTOCK.ex[B1].n);
 
+  // 🔑 หมวดออเดอร์ (g = A ตัดบิลแล้วยังไม่ส่ง / B ส่งแล้วยังไม่ตัดบิล) อยู่บน "ตัวใบเอง"
+  //    ไม่ได้เป็น section ใหม่ จึงไป merge รวมกับใบทั้งเรคอร์ด — แท็บเก่าที่เปิดค้างไว้ตั้งแต่
+  //    ก่อนมีช่องนี้ บันทึกทับด้วย up ที่เก่ากว่า ต้องไม่ดันใบกลุ่ม B กลับไปเป็นกลุ่ม A
+  const grpB = JSON.parse(JSON.stringify(base));
+  grpB.CSTOCK = { lots: {}, del: {},
+    slips: { [B1]: { id: B1, d: "2026-11-04", own: "Supervisor", g: "B",
+                     nw: "ส่งคลัง 2 รอบ", ng: "ลัดดาวัลย์", up: 7000 } },
+    sdel: {}, ex: {}, up: 7000 };
+  const b5b = mergeState(b5, grpB);
+  check("ตั้งใบเป็นกลุ่ม 'ส่งของแล้ว ยังไม่ตัดบิล' ได้", b5b.CSTOCK.slips[B1].g === "B");
+  const oldTabNoG = JSON.parse(JSON.stringify(base));
+  oldTabNoG.CSTOCK = { lots: {}, del: {},
+    slips: { [B1]: { id: B1, d: "2026-11-04", own: "Supervisor",
+                     nw: "ส่งคลัง 2 รอบ", ng: "ลัดดาวัลย์", up: 2000 } },
+    sdel: {}, ex: {}, up: 2000 };
+  const b5c = mergeState(b5b, oldTabNoG);
+  check("🛟 แท็บเก่าที่ยังไม่รู้จักช่องหมวด บันทึกทับ → ใบกลุ่ม B ไม่ถูกดันกลับเป็น A",
+        b5c.CSTOCK.slips[B1].g === "B", String(b5c.CSTOCK.slips[B1].g));
+  check("🛟 ...และไฟล์ร้าน/แถวสินค้าของใบนั้นก็ยังอยู่ครบ",
+        !!b5c.CSTOCK.ex[B1] && !!b5c.CSTOCK.lots[B1 + "-r1"] && !!b5c.CSTOCK.lots[B1 + "-r2"]);
+
   // ลบใบทั้งใบ = tombstone ของใบ + ไฟล์ร้านของใบนั้นต้องไปด้วย
-  const killBill = JSON.parse(JSON.stringify(b5));
+  const killBill = JSON.parse(JSON.stringify(b5c));
   delete killBill.CSTOCK.slips[B2];
   killBill.CSTOCK.sdel = { [B2]: 8000 };
   const b6 = mergeState(b5, killBill);

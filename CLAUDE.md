@@ -62,7 +62,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (247 checks against the real `api/save.js` and the
+  running **`node test/merge-safety.test.mjs`** (262 checks against the real `api/save.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
@@ -628,7 +628,13 @@ code, never printed.
   the existing สต็อคกลาง, not a rewrite of it**: same `CSTOCK.slips`/`lots`, plus one new keyed map
   `CSTOCK.sub["sid|ORDERNO"]` (with `CSTOCK.subdel` tombstones) and a `g:"A"|"B"` flag on the slip
   for the two groups the owner named (ตัดบิลแล้วยังไม่ส่ง / ส่งแล้วยังไม่ตัดบิล; an old slip with no
-  flag reads as A). **One sub-order record is written by four teams at four different times**, so
+  flag reads as A). **The group is picked in the create form itself** (`cstGrpHtml`/`cstSetGrp`/
+  `cstFormGrp`, owner 18 Nov 26) — it used to be settable only from the slip header after saving.
+  It is a field on the slip, not a new section, so it merges with the whole record; `cstSlipEdit`
+  must read it back or re-saving a group-B slip silently drops it to A. `.pl-today.on` had no style
+  at all, so the header's own group toggle never showed which half was selected — the rule now
+  paints it, and the step-tick buttons with it.
+  **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
   let a rep's tab that has been open since morning erase the warehouse's and the driver's ticks, the
   same trap `mergeExOne` fixed. Un-ticking writes `ok:0`, never a key delete. Every write by a rep,
@@ -639,7 +645,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (47 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (54 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

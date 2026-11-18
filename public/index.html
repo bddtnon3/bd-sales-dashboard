@@ -311,6 +311,10 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cst-frow label{font-size:11.5px;color:var(--muted);font-weight:700}
 .cst-frow input,.cst-frow select{padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;
   font-size:14px;font-family:inherit;background:#fff}
+/* 🧾/🚚 เลือกหมวดออเดอร์ตั้งแต่ตอนสร้างใบ (เจ้าของสั่ง 18 พ.ย. 69) */
+.cst-grp{margin:10px 0 2px;padding:10px 12px;border:1.5px solid var(--line);border-radius:11px;background:var(--blue-soft)}
+.cst-grp label{display:block;font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:6px}
+.cst-grpb{display:flex;gap:8px;flex-wrap:wrap}
 .cst-lb{display:block;font-size:11.5px;color:var(--muted);font-weight:700;margin:10px 0 3px}
 .cst-tw{overflow-x:auto;margin-top:8px;-webkit-overflow-scrolling:touch}
 .cst-ft{width:100%;border-collapse:collapse;font-size:13px;min-width:860px}
@@ -795,6 +799,10 @@ tr.rc-on>td:first-child{box-shadow:inset 5px 0 0 #D64545,inset 0 1px 0 #E58E8E,i
 .pl-mon{font-size:15.5px;font-weight:800;min-width:132px;text-align:center}
 .pl-today{border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:8px 13px;font-size:13px;font-weight:700;color:var(--blue)}
 .pl-today:hover{background:var(--blue-soft)}
+/* ⚠️ .pl-today.on ไม่เคยมีสไตล์มาก่อน ปุ่มเลือกหมวดบนหัวใบจึงดูไม่ออกว่าเลือกอันไหนอยู่
+   (ปุ่มติ๊กขั้นตอนในออเดอร์พิเศษก็ใช้ .on เหมือนกัน ติ๊กแล้วจะเข้มขึ้นให้เห็นชัด) */
+.pl-today.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.pl-today.on:hover{background:var(--blue-dark)}
 .pl-add{background:var(--blue);color:#fff;border:none;border-radius:9px;padding:10px 16px;font-size:13.5px;font-weight:800;white-space:nowrap}
 .pl-add:hover{background:var(--blue-dark)}
 /* ⚠️ minmax(0,1fr) ไม่ใช่ 1fr — "1fr" คือ minmax(auto,1fr) ป้ายงานที่ตั้ง white-space:nowrap
@@ -10523,7 +10531,7 @@ function cstNew(){
   if(!cstMgr())return;
   if(CST.f&&CST.f.rows.some(r=>r.nm||r.code||+r.cs||+r.pc)&&
      !confirm("เริ่มใบใหม่? ใบที่กรอกค้างอยู่จะถูกล้าง"))return;
-  const f={sid:"",d:todayISO(),own:CST_SUP,nw:"",ng:"",seq:0,rows:[]};
+  const f={sid:"",d:todayISO(),own:CST_SUP,g:"A",nw:"",ng:"",seq:0,rows:[]};
   f.rows.push(cstRowKey(f,cstRowNew("",f.own)));
   CST.f=f;CST.fRest=0;CST.sec="bill";cstDraftSave();renderCStock();
 }
@@ -10531,7 +10539,8 @@ function cstSlipEdit(sid){
   if(!cstMgr())return;
   const C=cstOk(),s=C.slips[sid];if(!s)return;
   const rows=cstSlipRows(sid);let mx=0;
-  const f={sid:sid,d:s.d||"",own:s.own||"",nw:s.nw||"",ng:s.ng||"",seq:0,rows:[]};
+  /* g ต้องอ่านกลับมาด้วย ไม่งั้นแก้ใบกลุ่ม B แล้วเซฟ ใบจะเด้งกลับไปกลุ่ม A */
+  const f={sid:sid,d:s.d||"",own:s.own||"",g:(s.g==="B")?"B":"A",nw:s.nw||"",ng:s.ng||"",seq:0,rows:[]};
   rows.forEach(l=>{const m=String(l.id||"").slice(String(sid).length+1).match(/^r(\d+)$/);
     if(m)mx=Math.max(mx,+m[1]);});
   f.seq=mx;
@@ -10548,6 +10557,22 @@ function cstFormHide(){CST.f=null;CST.fRest=0;renderCStock();}   /* ฉบับ
 function cstFormClear(){
   if(!confirm("ล้างใบที่กรอกค้างไว้ทิ้ง?"))return;
   CST.f=null;CST.fRest=0;cstDraftWipe();renderCStock();
+}
+/* ---------- 🧾/🚚 หมวดออเดอร์ ----------
+   เจ้าของสั่ง 18 พ.ย. 69: *"ช่วยปรับให้เลือกว่าออเดอร์ใหม่นี้เป็นหมวด ตัดบิลยังไม่ส่งของ
+   และ ส่งของแล้วยังไม่ตัดบิล"* — เดิมเลือกได้เฉพาะหลังบันทึกใบแล้ว (spSetGrp บนหัวใบ)
+   ⚠️ เก็บเป็นช่อง g บนใบเดิม ไม่ได้สร้าง section ใหม่ · ใบเก่าที่ไม่มี g อ่านเป็น A เหมือนเดิม
+   ⚠️ ใช้ SP_GRP ชุดเดียวกับหน้าออเดอร์พิเศษ ชื่อหมวดจะได้ไม่มีทางเพี้ยนกันสองที่ */
+function cstFormGrp(f){return (f&&f.g==="B")?"B":"A";}
+function cstSetGrp(g){const f=CST.f;if(!f)return;f.g=(g==="B")?"B":"A";cstDraftSave();renderCStock();}
+function cstGrpHtml(f){
+  const cur=cstFormGrp(f);
+  return `<div class="cst-grp"><label>หมวดออเดอร์ — ใบนี้เป็นแบบไหน</label>
+    <div class="cst-grpb">${Object.keys(SP_GRP).map(k=>`<button type="button" class="pl-today${
+      cur===k?" on":""}" onclick="cstSetGrp('${k}')">${SP_GRP[k].ic} ${SP_GRP[k].n}</button>`).join("")}</div>
+    <div class="psub" style="margin-top:6px">${cur==="B"
+      ?"🚚 ของออกจากคลังไปแล้ว รอตัดบิลตามทีหลัง"
+      :"🧾 ตัดบิลไว้แล้ว ของยังอยู่ที่คลัง รอจัดส่ง"} · เปลี่ยนทีหลังได้ที่หัวใบในหน้าออเดอร์พิเศษ</div></div>`;
 }
 function cstFormSet(k,v){const f=CST.f;if(!f)return;f[k]=v;cstDraftLater();}
 function cstRowSet(i,k,v){const f=CST.f;if(!f||!f.rows[i])return;f.rows[i][k]=v;cstDraftLater();}
@@ -10725,6 +10750,7 @@ function cstSlipSave(){
   });
   gone.forEach(l=>{delete C.lots[l.id];C.del[l.id]=now;});
   C.slips[sid]=Object.assign({},C.slips[sid]||{},{id:sid,d:d,own:String(f.own||"").trim(),
+    g:cstFormGrp(f),
     nw:String(f.nw||""),ng:String(f.ng||""),by:uid,byName:who,
     at:(C.slips[sid]&&C.slips[sid].at)||now,up:now});
   if(C.sdel[sid]&&C.sdel[sid]<now)delete C.sdel[sid];
@@ -10999,6 +11025,7 @@ function cstFormHtml(){
     <div class="cst-fh"><h3>${f.sid?("✏️ แก้ไขใบตัดบิล "+anaEsc(f.sid)):"🧾 ใบตัดบิลใหม่"}</h3>
       <div class="psub">กรอกในเว็บได้เลย ไม่ต้องผ่าน Excel · ระบบเก็บเป็นฉบับร่างในเครื่องให้ตลอด กดออกแล้วกลับมากรอกต่อได้</div></div>
     ${CST.fRest?`<div class="rq-note">📝 กู้ใบที่กรอกค้างไว้กลับมาให้แล้ว — ตรวจแล้วกด <b>บันทึกใบตัดบิล</b> ได้เลย</div>`:""}
+    ${cstGrpHtml(f)}
     <div class="cst-frow">
       <div class="ctl"><label>วันที่ตัดบิล</label>
         <input id="cstFD" type="date" value="${anaEsc(f.d||"")}" onchange="cstFormSet('d',this.value);cstDHint()">
@@ -11868,7 +11895,7 @@ function renderSpord(){
         bar.innerHTML="📦 ออเดอร์พิเศษ · ➕ สร้างออเดอร์ใหม่";
         body.innerHTML=`<div class="panel"><div class="cst-fb">
             <button class="btn-ghost" onclick="spBack()">◀ กลับ</button>
-            <span class="psub">กรอกวันที่ · สินค้า · จำนวน · สายวิ่ง · ผู้รับผิดชอบ แล้วกดบันทึกครั้งเดียว
+            <span class="psub">เลือกหมวด · วันที่ · สินค้า · จำนวน แล้วกดบันทึกครั้งเดียว
               · ออกจากหน้านี้ได้ ใบที่กรอกค้างไว้ถูกเก็บเป็นฉบับร่างให้อัตโนมัติ</span></div></div>`
           +cstFormHtml();
         cstBillAfter();

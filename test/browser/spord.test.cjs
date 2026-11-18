@@ -329,6 +329,50 @@ const K=(no)=>B1+'|'+no;
  t('🛟 ฟอร์มหน้า 🧊 สต็อคกลาง (เดิม) ยังครบเหมือนเดิมทุกช่อง',
    lite.oldLn&&lite.oldAttach&&lite.oldSpread&&lite.oldTh.indexOf('สายวิ่ง')>=0,lite.oldTh);
 
+ /* ---------- 8ข) เลือกหมวดออเดอร์ตั้งแต่ตอนสร้างใบ ----------
+    เจ้าของสั่ง: *"ช่วยปรับให้เลือกว่าออเดอร์ใหม่นี้เป็นหมวด ตัดบิลยังไม่ส่งของ
+    และ ส่งของแล้วยังไม่ตัดบิล"* — เดิมเลือกได้เฉพาะหลังบันทึกใบแล้ว */
+ const gq=await ev(()=>{
+   __reset();__as('manager',null,'แอดมิน 1');spNewOrder();
+   const el=()=>document.getElementById('spBody');
+   const txt=()=>el().textContent.replace(/\s+/g,' ');
+   const o={};
+   o.has=/ตัดบิลแล้ว ยังไม่ส่งของ/.test(txt())&&/ส่งของแล้ว ยังไม่ตัดบิล/.test(txt());
+   o.defA=cstFormGrp(CST.f);
+   o.onA=/class="pl-today on" onclick="cstSetGrp\('A'\)/.test(el().innerHTML);
+   cstSetGrp('B');
+   o.nowB=cstFormGrp(CST.f);
+   o.onB=/class="pl-today on" onclick="cstSetGrp\('B'\)/.test(el().innerHTML);
+   o.hint=/ของออกจากคลังไปแล้ว รอตัดบิลตามทีหลัง/.test(txt());
+   /* บันทึกจริง → ต้องลงไปอยู่บนใบ และหัวใบต้องขึ้นหมวดนั้น */
+   CST.f.rows[0].code='1001';CST.f.rows[0].nm='สินค้าทดสอบ';CST.f.rows[0].cs=5;
+   const sid=cstSlipSave();
+   o.sid=sid;o.saved=(CSTOCK.slips[sid]||{}).g;
+   o.bar=spBarHtml(spSlip(sid)).replace(/\s+/g,' ');
+   /* กลับมาแก้ใบเดิมแล้วเซฟใหม่ ต้องไม่เด้งกลับเป็น A */
+   cstSlipEdit(sid);o.reload=cstFormGrp(CST.f);
+   cstSlipSave();o.again=(CSTOCK.slips[sid]||{}).g;
+   /* ใบเก่าที่ยังไม่เคยมีช่อง g อ่านเป็นกลุ่ม A เหมือนเดิม */
+   o.oldSlip=spGrpOf(CSTOCK.slips['B20261118-01']);
+   /* ฟอร์มหน้าสต็อคกลางเดิมก็เลือกหมวดได้เหมือนกัน (ใบเดียวกันคนละหน้า) */
+   CST.f=null;_switchTab('cstock');cstSetSec('bill');cstNew();
+   o.old=/cstSetGrp\('B'\)/.test(document.getElementById('cstBill').innerHTML);
+   CST.f=null;_switchTab('spord');
+   return o;});
+ t('🔑 ฟอร์มสร้างออเดอร์ให้เลือกหมวดได้ทั้งสองแบบ ตั้งแต่ยังไม่บันทึก',gq.has);
+ t('...ใบใหม่เริ่มที่ "ตัดบิลแล้ว ยังไม่ส่งของ" และปุ่มที่เลือกอยู่เข้มให้เห็นชัด',
+   gq.defA==='A'&&gq.onA,gq.defA+' · ปุ่มเข้ม='+gq.onA);
+ t('...กดเลือก "ส่งของแล้ว ยังไม่ตัดบิล" แล้วปุ่มและคำอธิบายเปลี่ยนตาม',
+   gq.nowB==='B'&&gq.onB&&gq.hint,gq.nowB+' · ปุ่มเข้ม='+gq.onB+' · คำอธิบาย='+gq.hint);
+ t('🔑 บันทึกแล้วหมวดติดไปกับใบจริง และขึ้นบนหัวใบให้ทุกทีมเห็น',
+   gq.saved==='B'&&/🚚/.test(gq.bar)&&/ส่งของแล้ว ยังไม่ตัดบิล/.test(gq.bar),
+   gq.sid+' → g='+gq.saved);
+ t('🛟 กลับมาแก้ใบกลุ่ม B แล้วเซฟใหม่ ต้องไม่เด้งกลับเป็นกลุ่ม A',
+   gq.reload==='B'&&gq.again==='B','อ่านกลับ='+gq.reload+' · เซฟซ้ำ='+gq.again);
+ t('🛟 ใบเก่าที่ไม่มีช่องหมวด ยังอ่านเป็น "ตัดบิลแล้ว ยังไม่ส่งของ" เหมือนเดิม',
+   gq.oldSlip==='A',gq.oldSlip);
+ t('...ฟอร์มในหน้า 🧊 สต็อคกลาง ก็เลือกหมวดได้เหมือนกัน (ใบชุดเดียวกัน)',gq.old);
+
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};
    __as('wh',null,'ทีมคลัง 1');renderSpord();
