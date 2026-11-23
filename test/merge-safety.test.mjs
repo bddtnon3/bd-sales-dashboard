@@ -1325,5 +1325,44 @@ console.log("TEST 22 — product master: every upload takes effect, no code is e
         p2.PJP.out["2488705"].pj === "401842", JSON.stringify(p2.PJP.out["2488705"]));
 }
 
+console.log("TEST 29 — ✅ \"รอบนี้ไม่มีของ Drop เลย\" (แอดมินยืนยันเอง เมื่อยูนิลีเวอร์ไม่ส่งไฟล์มา)");
+{
+  /* noDrop เป็นช่องบนเรคอร์ด "วัน" เดียวกับ dropped/dropVal — ไม่ได้เป็น section ใหม่
+     ORDERS.data merge ทีละวัน (keyMerge) วันที่ฝั่งไหนมีอยู่ฝั่งเดียวจึงต้องอยู่ครบทั้งสองฝั่ง */
+  const base = JSON.parse(JSON.stringify(server));
+  const nd = JSON.parse(JSON.stringify(base));
+  nd.ORDERS = { dates: ["2026-11-20"], data: {
+    "2026-11-20": { rounds: { main: { "1001": 10 } }, dropped: {}, hasResult: true,
+                    dropVal: 0, dropLines: [],
+                    noDrop: { at: 5000, by: "admin1", byName: "แอดมิน 1" } } },
+    names: {}, cat: {}, catN: {} };
+  const n1 = mergeState(base, nd);
+  check("ยืนยันว่าไม่มีของ Drop แล้วบันทึกขึ้นเซิร์ฟเวอร์ได้",
+        !!n1.ORDERS.data["2026-11-20"].noDrop &&
+        n1.ORDERS.data["2026-11-20"].hasResult === true &&
+        n1.ORDERS.data["2026-11-20"].dropVal === 0,
+        JSON.stringify(n1.ORDERS.data["2026-11-20"].noDrop));
+  check("🛟 วันเก่าที่เคยอัพไว้ยังอยู่ครบ", !!n1.ORDERS.data["2026-07-28"] && n1.ORDERS.dates.length === 3,
+        n1.ORDERS.dates.join(","));
+  /* แท็บอื่นที่เปิดค้างไว้ตั้งแต่ก่อนมีปุ่มนี้ บันทึกวันอื่น → วันที่ยืนยันไว้ต้องไม่หาย */
+  const other = JSON.parse(JSON.stringify(base));
+  other.ORDERS = { dates: ["2026-11-21"], data: { "2026-11-21": { rounds: { main: { "1002": 2 } } } },
+                   names: {}, cat: {}, catN: {} };
+  const n2 = mergeState(n1, other);
+  check("🛟 แท็บเก่าบันทึกวันอื่น → การยืนยัน \"ไม่มีของ Drop\" ไม่หาย",
+        !!n2.ORDERS.data["2026-11-20"].noDrop && !!n2.ORDERS.data["2026-11-21"],
+        n2.ORDERS.dates.join(","));
+  /* อัพใบ Drop จริงทีหลัง = วันเดียวกันถูกเขียนใหม่ทั้งเรคอร์ด ต้องไม่เหลือ noDrop ค้าง */
+  const real = JSON.parse(JSON.stringify(base));
+  real.ORDERS = { dates: ["2026-11-20"], data: {
+    "2026-11-20": { rounds: { main: { "1001": 10 } }, dropped: { "1001": { o: 10, d: 7, q: 3 } },
+                    hasResult: true, dropVal: 555.5, dropLines: [{ code: "1001", o: 10, d: 7, q: 3 }] } },
+    names: {}, cat: {}, catN: {} };
+  const n3 = mergeState(n2, real);
+  check("อัพใบ Drop จริงทีหลัง → ขึ้นรายการ drop และไม่เหลือการยืนยันค้าง",
+        !n3.ORDERS.data["2026-11-20"].noDrop && n3.ORDERS.data["2026-11-20"].dropVal === 555.5,
+        JSON.stringify(n3.ORDERS.data["2026-11-20"].noDrop || null));
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

@@ -464,6 +464,10 @@ main.wide{max-width:1560px}
 .filechips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .filechip{display:inline-flex;align-items:center;gap:8px;background:var(--blue-soft);border:1px solid var(--line);border-radius:20px;padding:5px 6px 5px 12px;font-size:12.5px;font-weight:600}
 .filechip.drop{background:#FBE9E9}
+.filechip.ok{background:#E7F6EE}
+/* ✅ ยืนยันว่ารอบนี้ไม่มีของ Drop — อยู่ในกล่องไฟล์ของแอดมิน ใต้ชิปไฟล์ */
+.nodrop{margin-top:10px;padding:10px 12px;border:1.5px dashed var(--line);border-radius:11px;background:#FAFBFD}
+.nodrop .psub{margin-bottom:8px}
 .filechip button{border:none;background:#fff;color:var(--bad);width:20px;height:20px;border-radius:50%;font-weight:800;line-height:1;cursor:pointer}
 .filechip button:hover{background:var(--bad);color:#fff}
 /* ordering status chips */
@@ -2035,7 +2039,11 @@ let KPI = __KPIDATA__;
       dropped:{code:…}|null,           ⚠️ สองรูปแบบ: {o,d,q} (parseDrop ปัจจุบัน) และ "ตัวเลขล้วน"
                                        ของรุ่นเก่า ซึ่งบางวันเป็น 0 = ไม่รู้จำนวน
                                        อ่านด้วย dropO/dropD/dropQ เท่านั้น ห้ามอ่าน .q ตรง ๆ
-      hasResult:bool,                  = "อัพใบ Drop ของวันนี้แล้ว" เท่านั้น · true ได้ทั้งที่ rounds ว่าง
+      hasResult:bool,                  = "รู้ผลของวันนี้แล้ว" · true ได้ทั้งที่ rounds ว่าง
+      noDrop:{at,by,byName}|null,      แอดมินยืนยันเองว่า "รอบนี้ไม่มีของ Drop เลย" (ยูนิลีเวอร์
+                                       ไม่ส่งไฟล์มาในรอบที่ไม่มีของ drop) · ตอนติ๊กจะตั้ง
+                                       dropped={} + hasResult=true ให้ด้วย หน้าอื่นจึงไม่ต้อง
+                                       รู้จักช่องนี้เลย อ่านเหมือนใบ Drop ที่ไม่มีรายการ
       dropVal:number, dropLines:[…],   เฉพาะวันที่อัพหลังมีฟีเจอร์นี้ · วันเก่าไม่มี
       vals:{round:{ov,cv}}}}}          มูลค่าใบสั่ง / CON Confirm                               */
 let ORDERS = __ORDERDATA__;
@@ -6818,11 +6826,12 @@ function renderOrder(){
   const totDrop=dCodes.reduce((s,c)=>s+(dropQ(dropped[c])||ordered[c]||0),0);   /* จำนวนที่ดรอปจริง (Q) */
   const totRecv=recvCodes.reduce((s,c)=>s+(ordered[c]||0),0)+dCodes.reduce((s,c)=>s+dropD(dropped[c]),0); /* ได้ครบ + ได้บางส่วน */
   const recvCount=recvCodes.length+partialCodes.length;
-  const st=d.hasResult;
+  const st=d.hasResult,nodrop=!!d.noDrop;
   bar.innerHTML=`🛒 การสั่งของ · ศูนย์ BD · วันสั่ง <b>${fmtDate(ORD.date)}</b>`;
   const chip=(t,ok)=>`<span class="ochip ${ok?'done':'wait'}">${t} ${ok?'✓':'…'}</span>`;
   document.getElementById("orderStatus").innerHTML=`<div class="panel" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
-    ${chip("📝 สั่งแล้ว",true)}<span class="oarrow">→</span>${chip("📧 ส่ง Unilever",true)}<span class="oarrow">→</span>${chip(st?"🌙 ได้ผลแล้ว":"⏳ รอผล Unilever (ตอบช่วงเย็น)",st)}</div>`;
+    ${chip("📝 สั่งแล้ว",true)}<span class="oarrow">→</span>${chip("📧 ส่ง Unilever",true)}<span class="oarrow">→</span>${chip(
+      nodrop?"🌙 ได้ผลแล้ว · ไม่มีของ Drop":(st?"🌙 ได้ผลแล้ว":"⏳ รอผล Unilever (ตอบช่วงเย็น)"),st)}</div>`;
   const isMgrO=S.user&&S.user.role==="manager";
   const dv=Object.values(d.vals||{}).reduce((a,x)=>({ov:a.ov+(x.ov||0),cv:a.cv+(x.cv||0)}),{ov:0,cv:0});
   const _conf=dv.cv||0,_c85=_conf*0.85,_drop=(d.dropVal||0),_net=_c85-_drop;   /* ประมาณการหลังหัก 15% แล้วลบ Drop */
@@ -6844,7 +6853,12 @@ function renderOrder(){
   const q=(document.getElementById("orderSearch").value||"").trim().toLowerCase();
   const match=c=>!q||c.includes(q)||oname(c).toLowerCase().includes(q);
   const dropEl=document.getElementById("orderDrop");
-  if(!st){dropEl.innerHTML='<div class="note">⏳ ยังไม่ได้อัพไฟล์ Drop ของวันนี้ — รายการ drop จะขึ้นเมื่ออัพไฟล์ชื่อ "Drop DDMMYYYY"</div>';}
+  /* 3 สถานะ ไม่ใช่ 2 — "ยังไม่รู้ผล" กับ "รู้แล้วว่าไม่มีของ drop" ต้องอ่านออกต่างกัน
+     ถ้าไม่แยก หน้านี้จะขึ้นตารางเปล่าซึ่งดูเหมือนระบบพัง (เจ้าของสั่ง 23 พ.ย. 69) */
+  if(nodrop){dropEl.innerHTML=`<div class="note" style="border-left:4px solid var(--good)">✅ <b>รอบนี้ไม่มีของ Drop เลย</b> — ได้ของครบทุกรายการที่สั่ง`+
+    `<div class="psub" style="margin-top:4px">แอดมินยืนยันเอง เพราะรอบที่ไม่มีของ Drop ยูนิลีเวอร์จะไม่ส่งไฟล์มาให้`+
+    (d.noDrop.byName?" · โดย "+anaEsc(d.noDrop.byName):"")+(d.noDrop.at?" · "+fmtDateTime(d.noDrop.at):"")+`</div></div>`;}
+  else if(!st){dropEl.innerHTML='<div class="note">⏳ ยังไม่ได้อัพไฟล์ Drop ของวันนี้ — รายการ drop จะขึ้นเมื่ออัพไฟล์ชื่อ "Drop DDMMYYYY"</div>';}
   else{
     const dv2=ORD.dropView==='excel'?'excel':'sum';
     const rawAll=d.dropLines||[];
@@ -7433,12 +7447,22 @@ function renderOrderManage(day){
   const isM=S.user&&S.user.role==="manager";
   const R=(day&&day.rounds)||{};const rk=Object.keys(R);
   const head=`<h3>🗂️ ไฟล์ที่อัพของ ${fmtDate(ORD.date)} (แอดมิน)</h3><div class="psub">กด ✕ เพื่อลบถ้าอัพผิดไฟล์ — ลบแล้วบันทึกอัตโนมัติ</div>`;
-  const fill=(id,chips)=>{const el=document.getElementById(id);if(!el)return;
+  const fill=(id,chips,extra)=>{const el=document.getElementById(id);if(!el)return;
     el.style.display=isM?"":"none";
     if(!isM){el.innerHTML="";return;}
-    el.innerHTML=head+`<div class="filechips">${chips||'<span class="psub">ยังไม่มีไฟล์ของวันนี้</span>'}</div>`;};
+    el.innerHTML=head+`<div class="filechips">${chips||'<span class="psub">ยังไม่มีไฟล์ของวันนี้</span>'}</div>`+(extra||"");};
   fill("orderManage",rk.map(r=>`<span class="filechip">📄 ใบสั่ง <b>${r}</b> · ${Object.keys(R[r]).length} รายการ <button title="ลบ" onclick="deleteRound('${ORD.date}','${r}')">✕</button></span>`).join(""));
-  fill("orderManageDrop",(day&&day.dropped)?`<span class="filechip drop">❌ ใบ Drop · ${Object.keys(day.dropped).length} รายการ <button title="ลบ" onclick="deleteDrop('${ORD.date}')">✕</button></span>`:"");
+  /* ❌ ใบ Drop มีได้ 3 สถานะ ไม่ใช่ 2: มีไฟล์ · แอดมินยืนยันว่ารอบนี้ไม่มีของ drop · ยังไม่รู้ผล
+     (เจ้าของสั่ง 23 พ.ย. 69 — รอบที่ไม่มีของ drop ยูนิลีเวอร์ไม่ส่งไฟล์มา สถานะเลยค้างที่ "รอผล") */
+  const nd=ordNoDropOf(ORD.date),dn=(day&&day.dropped)?Object.keys(day.dropped).length:0;
+  const hasFile=!!(day&&day.hasResult)&&!nd;
+  fill("orderManageDrop",
+    hasFile?`<span class="filechip drop">❌ ใบ Drop · ${dn} รายการ <button title="ลบ" onclick="deleteDrop('${ORD.date}')">✕</button></span>`
+    :(nd?`<span class="filechip ok">✅ ยืนยันแล้ว: รอบนี้ไม่มีของ Drop เลย${nd.byName?" · "+anaEsc(nd.byName):""}${
+        nd.at?" · "+fmtDateTime(nd.at):""} <button title="ยกเลิกการยืนยัน" onclick="ordNoDrop('${ORD.date}',0)">✕</button></span>`:""),
+    (hasFile||nd)?"":`<div class="nodrop">
+      <div class="psub">รอบไหนที่<b>ไม่มีของ Drop เลย</b> ยูนิลีเวอร์จะไม่ส่งไฟล์มาให้ สถานะเลยค้างอยู่ที่ "รอผล" — กดยืนยันตรงนี้แทนการอัพไฟล์</div>
+      <button class="upload-btn" onclick="ordNoDrop('${ORD.date}',1)">✅ รอบนี้ไม่มีของ Drop เลย</button></div>`);
 }
 function deleteRound(date,round){
   if(!confirm("ลบใบสั่งรอบ "+round+" ของวัน "+fmtDate(date)+" ?"))return;
@@ -7447,8 +7471,49 @@ function deleteRound(date,round){
 }
 function deleteDrop(date){
   if(!confirm("ลบใบ Drop ของวัน "+fmtDate(date)+" ?"))return;
-  const day=ORDERS.data[date];if(day){day.dropped=null;day.hasResult=false;day.dropVal=0;day.dropLines=null;}
+  const day=ORDERS.data[date];if(day){day.dropped=null;day.hasResult=false;day.dropVal=0;day.dropLines=null;delete day.noDrop;}
   cleanupOrderDate(date);renderOrder();syncToServer();
+}
+/* ============================================================================
+ * ✅ "รอบนี้ไม่มีของ Drop เลย" — เจ้าของสั่ง 23 พ.ย. 69
+ *   *"บางรอบก็ไม่มีสินค้า drop เลย เค้าจะไม่ส่งไฟล์มาให้ แต่สถานะในเวปเราก็จะไม่ขึ้น
+ *     ช่วยทำปุ่มให้ติ๊กหน่อย … ใกล้ๆปุ่มอัพใบดรอปของวันนั้นๆ"*
+ *   "ไม่มีไฟล์" เดิมมีความหมายเดียวคือ "ยังไม่รู้ผล" ซึ่งคนละเรื่องกับ "รู้แล้วว่าไม่มีของ drop"
+ *   ทั้งเว็บเลยค้างอยู่ที่ ⏳ รอผล Unilever ทั้งที่ของมาครบแล้ว
+ *
+ * ⚠️ ติ๊กแล้วเก็บเป็น dropped={} + hasResult=true ซึ่งอ่านได้เหมือน "ใบ Drop ที่ไม่มีรายการ"
+ *    ทุกหน้าที่อ่าน drop (ค้นหาสถานะ, คำขอสินค้า, Drop ค้าง, ประวัติการสั่งของ) จึงถูกต้อง
+ *    ตั้งแต่แรกโดยไม่ต้องรู้จักช่อง noDrop เลย — ห้ามไปเพิ่มเงื่อนไข noDrop ในหน้าพวกนั้น
+ * ⚠️ วันที่มีใบ Drop อยู่แล้ว "ห้ามติ๊ก" ต้องกด ✕ ลบไฟล์ก่อน ไม่งั้นปุ่มเดียวจะลบรายการ drop
+ *    ที่อัพมาแล้วทิ้งเงียบ ๆ (กฎข้อ 1 ของโปรเจกต์: ข้อมูลเดิมห้ามหาย)
+ * ⚠️ อัพใบ Drop จริงทีหลัง ต้องล้าง noDrop ทิ้ง (parseDrop + ทาง kind==="drop") ไม่งั้นหน้าจอ
+ *    จะขึ้นทั้ง "ไม่มีของ drop" และรายการ drop พร้อมกัน
+ * ⚠️ ORDERS.data merge ทั้งเรคอร์ดต่อวัน (keyMerge) ช่องนี้จึงอยู่บนวันเดียวกับ dropVal/dropLines
+ *    ไม่ได้สร้าง section ใหม่
+ * ========================================================================== */
+function ordNoDropOf(date){const d=((ORDERS&&ORDERS.data)||{})[date];return (d&&d.noDrop)||null;}
+function ordNoDrop(date,on){
+  if(!(S.user&&S.user.role==="manager")){alert("เฉพาะผู้จัดการ/แอดมินเท่านั้น");return;}
+  if(!ORDERS.data)ORDERS.data={};
+  if(on){
+    const d=ORDERS.data[date]||(ORDERS.data[date]={rounds:{},dropped:null,hasResult:false});
+    if(!d.rounds)d.rounds={};
+    const n=d.dropped?Object.keys(d.dropped).length:0;
+    if(d.hasResult&&!d.noDrop){
+      alert("วันนี้อัพใบ Drop ไว้แล้ว ("+n+" รายการ)\n\nถ้าจะยืนยันว่ารอบนี้ไม่มีของ Drop เลย ให้กด ✕ ลบไฟล์นั้นออกก่อน");return;}
+    if(!confirm("ยืนยันว่ารอบวันที่ "+fmtDate(date)+" ไม่มีของ Drop เลยใช่ไหม?\n\nสถานะจะขึ้นว่า \"ได้ผลแล้ว\" และนับว่าได้ของครบทุกรายการ"))return;
+    d.dropped={};d.hasResult=true;d.dropVal=0;d.dropLines=[];
+    d.noDrop={at:Date.now(),by:(S.user&&(S.user.code||S.user.id))||"",byName:(S.user&&S.user.name)||""};
+    if(!ORDERS.dates)ORDERS.dates=[];
+    if(!ORDERS.dates.includes(date)){ORDERS.dates.push(date);ORDERS.dates.sort();initOrder();}
+    ulog("✅ ยืนยัน: วัน "+fmtDate(date)+" ไม่มีของ Drop เลย");
+  }else{
+    const day=ORDERS.data[date];if(!day||!day.noDrop)return;
+    if(!confirm("ยกเลิกการยืนยัน \"ไม่มีของ Drop\" ของวัน "+fmtDate(date)+" ?\n\nสถานะจะกลับไปเป็น \"รอผล Unilever\""))return;
+    delete day.noDrop;day.dropped=null;day.hasResult=false;day.dropVal=0;day.dropLines=null;
+    cleanupOrderDate(date);
+  }
+  renderOrder();syncToServer();
 }
 function cleanupOrderDate(date){
   const day=ORDERS.data[date];if(!day)return;
@@ -7755,7 +7820,7 @@ async function parseOrderForm(name,buf,kind){
   }
   const day=ORDERS.data[date]||(ORDERS.data[date]={rounds:{},dropped:null,hasResult:false});
   if(!day.rounds)day.rounds={};
-  if(kind==="drop"){day.dropped=items;day.hasResult=true;
+  if(kind==="drop"){day.dropped=items;day.hasResult=true;delete day.noDrop;
     ulog("✅ "+name+" (ใบ Drop) → drop "+Object.keys(items).length+" รายการ · วัน "+fmtDate(date));}
   else{const rm=name.match(/\(add(\d+)\)/i);const round=rm?("add"+rm[1]):"main";day.rounds[round]=items;
     saveFlags();
@@ -12146,6 +12211,7 @@ function parseDrop(name,buf){
   if(!ORDERS.data)ORDERS.data={};if(!ORDERS.dates)ORDERS.dates=[];if(!ORDERS.names)ORDERS.names={};
   const day=ORDERS.data[date]||(ORDERS.data[date]={rounds:{},dropped:null,hasResult:false});if(!day.rounds)day.rounds={};
   day.dropped=items;day.hasResult=true;day.dropVal=Math.round(dropVal*100)/100;day.dropLines=lines;   /* มูลค่ารวม + ทุกบรรทัดดิบ (สลับดูแบบ Excel) */
+  delete day.noDrop;    /* อัพไฟล์จริงแล้ว ต้องล้างการยืนยัน "ไม่มีของ Drop" ทิ้ง ไม่งั้นขึ้นพร้อมกันสองอย่าง */
   Object.keys(dropNames).forEach(c=>{if(!ORDERS.names[c])ORDERS.names[c]=dropNames[c];});
   if(!ORDERS.dates.includes(date))ORDERS.dates.push(date);ORDERS.dates.sort();
   ulog("✅ "+name+" (ใบ Drop) → drop "+Object.keys(items).length+" รายการ · วัน "+fmtDate(date));

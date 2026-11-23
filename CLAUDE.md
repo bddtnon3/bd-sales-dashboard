@@ -62,7 +62,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (262 checks against the real `api/save.js` and the
+  running **`node test/merge-safety.test.mjs`** (266 checks against the real `api/save.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
@@ -422,6 +422,23 @@ code, never printed.
   **`node test/browser/dropback.test.cjs`** (45 checks, needs `npm i --no-save playwright-core`);
   it asserts among other things that the four order-data blobs are byte-identical before and after
   every control is exercised. Rules: `HANDOFF.md` §5.
+  **A missing Drop file means two different things** and the app used to know only one of them:
+  Unilever sends no file at all in a round with no drops, so the page sat at ⏳ รอผล Unilever for
+  ever (owner, 23 Nov 26: *"บางรอบก็ไม่มีสินค้า drop เลย เค้าจะไม่ส่งไฟล์มาให้ แต่สถานะในเวปเราก็จะ
+  ไม่ขึ้น ช่วยทำปุ่มให้ติ๊กหน่อย"*). The admin now confirms it himself with a button **inside the
+  ❌ ใบ Drop admin box, beside that day's file chip** (`ordNoDrop`/`ordNoDropOf`), which stores
+  `ORDERS.data[d].noDrop = {at,by,byName}` **and sets `dropped={}` + `hasResult=true` + `dropVal=0`**
+  — so every page that reads drops (the product search, คำขอสินค้า, Drop ค้าง, ประวัติการสั่งของ)
+  is already right without knowing the field exists; **never add a `noDrop` branch to those pages**.
+  Only the Drop tab and the status chip read it, to say *"ไม่มีของ Drop"* instead of showing an
+  empty table that reads as a broken page. Three rules: a day that **already has a Drop file cannot
+  be ticked** (the ✕ must delete the file first, or one button would silently drop real rows);
+  uploading a real file afterwards **clears `noDrop`** (both writers — `parseDrop` and the
+  `kind==="drop"` path — plus `deleteDrop`); and the tick is manager-only **in the function**, not
+  by hiding the button. `noDrop` is a field on the day record, which `mergeState` merges whole
+  (`keyMerge` per date), so it is not a new section. Prove it with
+  **`node test/browser/nodrop.test.cjs`** (33 checks, self-contained) plus the `noDrop` cases in
+  `merge-safety`.
   The auto-PO calculator (`poBuild`/`renderPoCalc`) and `MINSTOCK` (minimum stock per code) have
   rules that are easy to get wrong — read `HANDOFF.md` §5 before touching either. The calculator
   is strictly READ-ONLY over ORDERS/POSTATUS/STOCKD/REQUESTS.
