@@ -14,7 +14,7 @@ the app UI; the sales team sees everything live. Features (all are tabs in one p
 earns from them).
 **ราคา & ทุน** (the two monthly Unilever price files: the หัวเสือ quote prices the depot sells at —
 also published to shop customers as a public catalogue — and the BUM cost file, manager-only).
-The pages sit in **9 top-level tab groups** on the main site (one of them **📦 ออเดอร์พิเศษ**) (`TAB_GROUPS`/`renderTabs`), several of
+The pages sit in **10 top-level tab groups** on the main site (one of them **📦 ออเดอร์พิเศษ**) (`TAB_GROUPS`/`renderTabs`), several of
 which open a row of sub-tabs. The per-page keys (`CURTAB`) did not change when the grouping was added —
 see `HANDOFF.md` §5 before touching the tab bar. A 10th group, **🧾 DCODE**, carries `site:"admin"` and
 exists only on the **admin site** (`/admin`, see "Admin site + DCODE" below).
@@ -62,7 +62,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (266 checks against the real `api/save.js` and the
+  running **`node test/merge-safety.test.mjs`** (271 checks against the real `api/save.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
@@ -231,11 +231,15 @@ or requests double. Prove it with **`node test/auth-renew.test.mjs`** (15 checks
 `lib/accounts.js` is the only real account list (passwords never reach the browser; any one can be
 overridden with `PASS_<USER>`). It holds `manager`, the 12 sales lines, **`admin1`…`admin4`**, and —
 since 18 Nov 26 — **`wh1`…`wh4` (ทีมคลัง, role `wh`)** and **`ds1`…`ds4` (ทีมสายส่ง, role `ds`)**,
-same `bd@<user>` scheme. Those two roles are **neither `manager` nor `sales`**: they cannot save
-state at all (`api/save.js` takes only `manager`) and the only thing they can do is tick their own
-step of a special order through `api/spord.js`. `tabOk` therefore **denies a team role every tab
-that does not name it** — the old rule let any ungated tab through, which would have shown the
-warehouse the whole site — and they land on `spord`, not `sales`, at login. 25 accounts in all
+and — since 24 Nov 26 — **`sup` (หัวหน้าเซลล์, role `sup`, one account: the owner said *"เพิ่ม sup
+แอคเค้าเดียวพอ"*)**, same `bd@<user>` scheme. Those three roles are **neither `manager` nor `sales`**: they cannot save
+state at all (`api/save.js` takes only `manager`); `wh`/`ds` can only tick their own step of a
+special order through `api/spord.js`, and `sup` can only write one promotion at a time through
+**`api/promo.js`** (plus a slide through `api/promoimg.js`). `tabOk` therefore **denies a team role
+every tab that does not name it** — the old rule let any ungated tab through, which would have shown
+the warehouse the whole site — so a tab a team role must see needs an explicit `role:[…]` array, as
+the two promotion tabs now carry. Each lands on its own page at login, not `sales` (`TEAM_HOME`:
+`wh`/`ds` → `spord`, `sup` → `promo`). 26 accounts in all
 (`bd@admin1`…`bd@admin4` — the owner set the scheme himself and asked for it to run 1-4 in step, so
 **keep adding them as `admin<N>`/`bd@admin<N>`**, never a one-off name; the same goes for
 `wh<N>`/`ds<N>`). admin 1 keys the bill-cut
@@ -246,8 +250,8 @@ login; the gain is that every record now says **who keyed it** (`by`/`byName`). 
 `ACCOUNTS` block in the template is only for the standalone build, and `build.cjs` replaces it by
 matching that exact text — change one and you must change **all three** (`lib/accounts.js`, the
 template block, `build.cjs`) or the build fails with `ANCHOR NOT FOUND`.
-Prove logins with **`node test/auth-renew.test.mjs`** (69 checks — all four admins and all eight
-team accounts log in, a wrong password is still refused, the 12 sales lines stay role `sales`, the
+Prove logins with **`node test/auth-renew.test.mjs`** (74 checks — all four admins, all eight
+team accounts and the supervisor log in, a wrong password is still refused, the 12 sales lines stay role `sales`, the
 team accounts carry no `code` so they cannot key an order for a rep, role `manager` stays at
 exactly 5 accounts, and no password is in `public/index.html`).
 
@@ -453,7 +457,33 @@ code, never printed.
   so the click-to-copy handler still fires, and never steal arrows from an input) are easy to
   undo by accident: read `HANDOFF.md` §5 first.
   The **🎁 โปรโมชั่น & เงินรางวัล** tab group (`renderPromo`/`renderPromoRes`) holds the monthly
-  Unilever promotions and the per-route results. Seven promotion types share one record shape
+  Unilever promotions and the per-route results. **It tracks each promotion against the dcode daily
+  sales file** (owner, 24 Nov 26: *"ผมจะให้ supervisor ประจำศูนย์ เข้ามากรอกทุกต้นเดือนข้อมูลรหัสสินค้า
+  ในแต่ละโปรโมชั่น เพื่อให้ระบบตามแทรคยอดขายรายสาย และจำนวนการกระจายของแต่ละโปรโมชั่นได้"*): the
+  supervisor types each promotion's **main codes and free-goods codes** (`prod[].k` = `"m"`/`"f"`;
+  an old record with no `k` reads as main), its **date range** (`d1`/`d2`, empty = the whole month)
+  and a **minimum pieces per shop** (`min`), and `pmTrack` then reports per line — pieces, cases,
+  free goods, shops reached, and **shops that bought at least `min`** (the owner chose that
+  definition of "กระจายสำเร็จ"). Four rules, each measured against the owner's real file
+  (`Sales_15-23112026.xlsx`, 7,902 rows, 8 days) before it was written:
+  **free goods are a different column** (`Free Quantity in Aggr.CS/PC`) — 713 rows are free-goods
+  only, with sale qty and NIV at 0, so reading the sale column loses them entirely;
+  **(day·line·code·shop) is 7,810 tuples in 8 days**, about one per row, so the index stores
+  **only codes that are in some promotion** (`pmCodeSet`) — never every code, or the snapshot grows
+  by megabytes a month and hits Vercel's request cap;
+  **shops are counted distinct over the whole range** (151 of 7,674 code·shop pairs buy on more
+  than one day), never by summing daily shop counts; and
+  `PROMO.sales` is keyed **`"YYYY-MM-DD|lineKey"`**, the granularity one upload writes, so a
+  filtered export covering one line cannot delete the other eleven lines' readings — the same rule
+  `parseDailyDcode` follows for `DATA.daily`. What is **not** known is said out loud: days in the
+  range with no sales file yet, and codes added after the file was uploaded (which need that
+  period re-uploaded), are both listed on the card rather than rendered as a silent 0.
+  `api/promo.js` writes **one `PROMO.items[id]` per call**, rebuilds the record field by field
+  (so nothing unexpected can be smuggled into the state), takes `by`/`byName` from the verified
+  claims, **never touches `PROMO.sales`** — a promotion must not be able to delete a month of sales
+  readings — and only a `manager` may delete. Prove it with
+  **`node test/browser/promotrk.test.cjs`** (34 checks, self-contained with made-up codes; 37 with
+  the real file via `DCODE_DAILY=/path/Sales_....xlsx`, which never enters the repo). Seven promotion types share one record shape
   (`PRO_TYPE`); every monthly report, whatever the promotion, reduces to the same row —
   route → PJP/Base · Target · Actual · %Achieve · money — so results are stored once as
   `PROMO.res["promoId|routeCode|lineKey"]`. The manager ingests a report by **pasting the table
@@ -477,11 +507,11 @@ code, never printed.
   feature means removing its entry there and nothing else: the eB2B opening contest ended in
   Sep 26, so its group is commented out, while `ebView`, `renderEB`, `parseEB` and the stored
   `EB2B` data all stay and keep merging — put the line back and it returns with its history.
-  **🎁 โปรโมชั่น & เงินรางวัล is hidden the same way** (owner, 18 Nov 26: *"เอา tab โปรโมชั่น
-  เงินรางวัล ออกไปก่อน ตอนนี้ยังไม่ได้ใช้ แค่ซ่อนไว้ก็ได้ ให้ข้อมูลยังอยู่ ยังไม่ต้องลบ"*) —
-  `renderPromo`/`renderPromoRes`, `prRead`/`ocrRead`, `api/promoimg.js` and the stored `PROMO`
-  data all stay and keep merging; uncomment the group to bring it back with its history. The
-  dcode test counts the main site's groups, so that number moves with this list.
+  **🎁 โปรโมชั่น & เงินรางวัล was hidden the same way on 18 Nov 26 and brought back on 24 Nov 26**
+  with the tracker above — nothing had to be restored, because hiding only ever removed the entry
+  from this table. Its two pages carry an explicit `role:["manager","sales","sup"]` array, which
+  `tabOk` needs for a team role to see them at all. The dcode test counts the main site's groups,
+  so that number moves with this list.
   **Every date / round / month picker carries ◀ ▶ step buttons** (`.dstep`, `selStep`/`dateStep`/
   `keyStep`/`ordStep`/`pjStep`) — the owner asked for the PJP one everywhere. ◀ always means
   *older* and ▶ *newer*, so a `<select>` whose options are filled newest-first (most of them, they
@@ -728,7 +758,10 @@ code, never printed.
 - `api/*.js` — Vercel serverless functions (ESM): `login`, `data` (read newest non-empty blob),
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write),
   `apply` (PUBLIC shop application → its own `bd-lead-*` blob), `leads` (manager-only read).
-- `api/promoimg.js` — manager-only upload of one promotion slide to its own `bd-promoimg-*`
+- `api/promo.js` — the supervisor (`sup`) writes ONE promotion per call (`PROMO.items[id]`), or the
+  manager deletes one (`PROMO.del[id]`). It rebuilds the record from known fields only and must
+  never write `PROMO.sales`.
+- `api/promoimg.js` — manager/supervisor upload of one promotion slide to its own `bd-promoimg-*`
   blob (prefix in `lib/snapshot.js`). It never reads, merges or writes `bd-data-*`; only the URL
   it returns is saved into the state, by an ordinary manager save.
 - `api/pjpvisit.js` — a salesperson records one visit to one shop on one day. Writes exactly

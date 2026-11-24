@@ -164,10 +164,10 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
    return {m:m,s:s,site:BD_SITE,title:document.title,cur:CURTAB,gate:siteRoleOk('sales','ct11'),
      link:document.getElementById('siteLink').getAttribute('href')};});
  t('เว็บเดิม: ประตูแอดมินไม่มีผล — เซลล์ล็อกอินเว็บเดิมได้ตามปกติ',tabsM.gate===true);
- /* 18 พ.ย. 69: เจ้าของสั่งซ่อนกลุ่ม "promo" (โปรโมชั่น & เงินรางวัล) ไว้ก่อน ยังไม่ลบข้อมูล
-    → เหลือ 8 กลุ่มบนเว็บเดิม · ถ้าเอาแท็บโปรกลับมา ให้ใส่ promo คืนในบรรทัดนี้ */
- t('เว็บเดิม: กลุ่มแท็บเหมือนเดิมทุกกลุ่ม (9 กลุ่ม) ไม่มี DCODE',
-   tabsM.m.join(',')==='sales,pjp,kpi,order,spord,stock,price,plan,shop',tabsM.m.join(','));
+ /* 18 พ.ย. 69 ซ่อนกลุ่ม "promo" ไว้ก่อน · 24 พ.ย. 69 เจ้าของสั่งเอากลับมา → 10 กลุ่มบนเว็บเดิม
+    ตัวเลขนี้ขยับตาม TAB_GROUPS ทุกครั้งที่เพิ่ม/ซ่อนกลุ่ม */
+ t('เว็บเดิม: กลุ่มแท็บเหมือนเดิมทุกกลุ่ม (10 กลุ่ม) ไม่มี DCODE',
+   tabsM.m.join(',')==='sales,pjp,kpi,promo,order,spord,stock,price,plan,shop',tabsM.m.join(','));
  t('เว็บเดิม: เซลล์ก็ไม่เห็น DCODE',tabsM.s.indexOf('dcode')<0&&tabsM.s.length>=8,tabsM.s.join(','));
  t('เว็บเดิม: กดไปกลุ่ม DCODE ไม่ได้ (อยู่บนเว็บแอดมินเท่านั้น)',tabsM.cur!=='dcode',tabsM.cur);
  t('เว็บเดิม: ธงยังเป็น "main" และชื่อเว็บเดิม',tabsM.site==='main'&&tabsM.title==='BD Sales Dashboard',tabsM.site+' | '+tabsM.title);

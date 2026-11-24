@@ -1364,5 +1364,50 @@ console.log("TEST 29 — ✅ \"รอบนี้ไม่มีของ Drop �
         JSON.stringify(n3.ORDERS.data["2026-11-20"].noDrop || null));
 }
 
+console.log("TEST 30 — 🎁 ดัชนียอดขายของโปรโมชั่น (PROMO.sales) ที่ parseDailyDcode เก็บไว้");
+{
+  const base = JSON.parse(JSON.stringify(server));
+  /* คีย์ "วัน|สาย" = หน่วยเดียวกับที่ไฟล์ยอดขายหนึ่งใบเขียน */
+  const up1 = JSON.parse(JSON.stringify(base));
+  up1.PROMO = { items: { p1: { m: "2026-11", type: "combo", name: "คอมโบ พ.ย.", up: 1000, at: 1000 } }, res: {}, del: {},
+    sales: {
+      "2026-11-10|209611": { up: 1000, p: { 90000001: { cs: 0, pc: 4, fc: 0, fp: 0, niv: 400, sh: { S1: 4 } } } },
+      "2026-11-10|209612": { up: 1000, p: { 90000001: { cs: 1, pc: 12, fc: 0, fp: 0, niv: 1200, sh: { S3: 12 } } } },
+    } };
+  const m1 = mergeState(base, up1);
+  check("🎁 อัพไฟล์ยอดขายแล้วดัชนีของโปรฯ ถูกบันทึก",
+        Object.keys(m1.PROMO.sales).length === 2 && m1.PROMO.sales["2026-11-10|209611"].p["90000001"].pc === 4,
+        Object.keys(m1.PROMO.sales).join(" "));
+
+  /* 🛟 แท็บที่เปิดค้างไว้ตั้งแต่ก่อนมีฟีเจอร์นี้ (ไม่มี sales เลย) บันทึกทับ */
+  const oldTab = JSON.parse(JSON.stringify(base));
+  oldTab.PROMO = { items: { p1: { m: "2026-11", type: "combo", name: "คอมโบ พ.ย.", up: 900, at: 900 } }, res: {}, del: {} };
+  const m2 = mergeState(m1, oldTab);
+  check("🛟 แท็บเก่าที่ไม่รู้จักดัชนีนี้ บันทึกทับ → ยอดที่เก็บไว้ไม่หาย",
+        Object.keys(m2.PROMO.sales).length === 2, Object.keys(m2.PROMO.sales).join(" "));
+
+  /* 🛟 ไฟล์ที่กรองมาแค่สายเดียว ต้องทับได้แค่คีย์ของสายนั้น */
+  const oneLine = JSON.parse(JSON.stringify(base));
+  oneLine.PROMO = { items: {}, res: {}, del: {},
+    sales: { "2026-11-10|209611": { up: 5000, p: { 90000001: { cs: 0, pc: 9, fc: 0, fp: 0, niv: 900, sh: { S2: 9 } } } } } };
+  const m3 = mergeState(m2, oneLine);
+  check("🛟 ไฟล์ที่ดึงมาแค่สายเดียว ทับได้แค่ \"วัน|สาย\" นั้น",
+        m3.PROMO.sales["2026-11-10|209611"].p["90000001"].pc === 9 &&
+        m3.PROMO.sales["2026-11-10|209612"].p["90000001"].pc === 12,
+        Object.keys(m3.PROMO.sales).join(" "));
+
+  /* 🔑 ลบโปรโมชั่นทิ้ง ต้องไม่พายอดขายของวันนั้นไปด้วย (คนละเรื่องกัน) */
+  const kill = JSON.parse(JSON.stringify(m3));
+  delete kill.PROMO.items.p1;
+  kill.PROMO.del = { p1: 9000 };
+  const m4 = mergeState(m3, kill);
+  check("🔑 ลบโปรฯ ทิ้งแล้ว ยอดขายรายวันที่เก็บไว้ยังอยู่ (ไม่ใช่ข้อมูลของใบโปร)",
+        !m4.PROMO.items.p1 && !!m4.PROMO.del.p1 && Object.keys(m4.PROMO.sales).length === 2,
+        Object.keys(m4.PROMO.sales).join(" "));
+  check("🛟 ...และยอดขาย/สต็อก/ใบสั่งของเดิมไม่ถูกแตะ",
+        Object.keys(m4.DATA.monthly).length === 2 && m4.ORDERS.dates.length === 2 &&
+        m4.STOCKD.rows.length === 3);
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

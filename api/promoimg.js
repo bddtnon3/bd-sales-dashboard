@@ -30,7 +30,10 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method not allowed" });
   const claims = verify(bearer(req));
   if (!claims) return res.status(401).json({ error: "unauthorized" });
-  if (claims.role !== "manager") return res.status(403).json({ error: "เฉพาะผู้จัดการเท่านั้น" });
+  // หัวหน้าเซลล์ (sup) แนบสไลด์ของโปรได้ด้วย — เจ้าของสั่ง 24 พ.ย. 69 ให้เป็นคนกรอกโปรโมชั่น
+  // และ "ยังคงแนบรูปได้เหมือนเดิม" · บัญชีอื่น (เซลล์/คลัง/สายส่ง) ยังแนบไม่ได้
+  if (claims.role !== "manager" && claims.role !== "sup")
+    return res.status(403).json({ error: "เฉพาะผู้จัดการ/แอดมิน และหัวหน้าเซลล์เท่านั้น" });
   if (!process.env.BLOB_READ_WRITE_TOKEN) return res.status(500).json({ error: "ยังไม่ได้ตั้งค่า Blob storage" });
 
   let body = req.body;

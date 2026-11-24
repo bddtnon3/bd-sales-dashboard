@@ -1643,11 +1643,13 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
           </div>
         </div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+        <!-- ⚠️ ไม่ใช้ .admin-upload (manager เท่านั้น) เพราะหัวหน้าเซลล์ก็ต้องกรอกได้
+             renderPromo เป็นคนเปิด/ปิดสองปุ่มนี้ตาม pmCanEdit() ทุกครั้งที่วาดหน้า -->
+        <div class="ctl" id="pmAttachCtl" style="display:none"><label>&nbsp;</label>
           <label class="pl-today" style="cursor:pointer;display:inline-block">📎 แนบสไลด์
             <input type="file" accept="image/*" multiple style="display:none" onchange="pmAttach(this)"></label>
         </div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
+        <div class="ctl" id="pmAddCtl" style="display:none"><label>&nbsp;</label>
           <button class="pl-add" onclick="pmOpen(null)">＋ เพิ่มโปรโมชั่น</button>
         </div>
       </div>
@@ -2108,12 +2110,18 @@ let PLAN = __PLANDATA__;
                pay:[{label,pcs,colors,growth,sm,sup}],cond:[],detail:[{k,v}],pts,
                by,byName,at,up}},
     res:{"promoId|routeCode|lineKey":{pjp,tgt,act,money,up,by}},
-    del:{id:ts}}
+    del:{id:ts},
+    sales:{"YYYY-MM-DD|lineKey":{up,p:{รหัสสินค้า:{cs,pc,fc,fp,niv,sh:{รหัสร้าน:ชิ้น}}}}}}
    m = เดือนของโปร (YYYY-MM) · type = ชนิดโปร 7 แบบ (ดู PRO_TYPE)
    lineKey = "" สำหรับโปรที่มีเส้นเดียว หรือรหัสเซ็ต/สเต็ป (HC1, BWPC1, …)
    ⚠️ รูปสไลด์เก็บเป็น blob แยก (bd-promoimg-*) เก็บแค่ URL ที่นี่ — ห้ามยัดรูปลง state
       ก้อน state ใหญ่หลาย MB อยู่แล้ว ใส่รูปเข้าไปจะชน request cap ของ Vercel (~4.5MB)
-   ⚠️ ลบต้องเป็น tombstone ใน del เหมือน PLAN/PSTORE ไม่ใช่ลบ key */
+   ⚠️ ลบต้องเป็น tombstone ใน del เหมือน PLAN/PSTORE ไม่ใช่ลบ key
+   ⚠️ sales = ดัชนียอดขายรายวัน/รายสาย "เฉพาะรหัสสินค้าที่อยู่ในโปรสักตัว" (pmCodeSet)
+      parseDailyDcode เป็นคนเขียน · คีย์ "วัน|สาย" คือหน่วยเดียวกับที่ไฟล์หนึ่งใบเขียน
+      ไฟล์ที่กรองมาแค่สายเดียวจึงทับได้แค่สายนั้น ไม่ลบของอีก 11 สาย
+      ห้ามเก็บทุกรหัส — วัดจากไฟล์จริง 8 วันมี 7,810 แถว (วัน|สาย|รหัส|ร้าน) ถ้าเก็บหมด
+      ก้อน state จะโตเดือนละหลาย MB แล้วชน request cap ของ Vercel */
 let PROMO = __PROMODATA__;
 /* ============================================================================
  * PJP — แผนการเข้าเยี่ยมร้านของเซลล์ (อัพเดือนละครั้ง 2 ไฟล์)
@@ -2211,7 +2219,8 @@ const ACCOUNTS={"manager":{pass:"bd@admin",role:"manager",name:"ผู้จั�
   "ds1":{pass:"bd@ds1",role:"ds",name:"ทีมสายส่ง 1"},
   "ds2":{pass:"bd@ds2",role:"ds",name:"ทีมสายส่ง 2"},
   "ds3":{pass:"bd@ds3",role:"ds",name:"ทีมสายส่ง 3"},
-  "ds4":{pass:"bd@ds4",role:"ds",name:"ทีมสายส่ง 4"}};
+  "ds4":{pass:"bd@ds4",role:"ds",name:"ทีมสายส่ง 4"},
+  "sup":{pass:"bd@sup",role:"sup",name:"หัวหน้าเซลล์ (Supervisor)"}};
 DATA.focus_order.forEach(code=>{
   const d=DATA.lines[code];
   ACCOUNTS[d.display.toLowerCase()]={pass:d.display.toLowerCase()+"@bd",role:"sales",code:code,name:d.display+" · "+d.name};
@@ -2341,10 +2350,8 @@ function doLogin(){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   document.getElementById("uName").textContent=acc.name;
-  document.getElementById("uRole").textContent=acc.role==="manager"?"เห็นข้อมูลทุกสาย":
-    (acc.role==="wh"?"ทีมคลัง":(acc.role==="ds"?"ทีมสายส่ง":"เซลล์"));
-  document.getElementById("uAv").textContent=(acc.role==="manager"?"M":
-    (acc.role==="wh"?"คล":(acc.role==="ds"?"สส":acc.name.substring(0,2)))).toUpperCase();
+  document.getElementById("uRole").textContent=ROLE_TH[acc.role]||"เซลล์";
+  document.getElementById("uAv").textContent=(ROLE_AV[acc.role]||acc.name.substring(0,2)).toUpperCase();
   /* sales default to own line view; manager sees team */
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
@@ -2352,7 +2359,7 @@ function doLogin(){
   initKeys();render();initKPI();initOrder();initAnalytics();initPlan();initPromo();initPjp();navReset();
   /* ⚠️ ทีมคลัง/สายส่งเปิดหน้ายอดขายไม่ได้ — ถ้าเด้งไปแท็บ sales เหมือนคนอื่น จะเห็นหน้าที่
      ไม่มีสิทธิ์ดูค้างอยู่ (ปุ่มแท็บซ่อนแล้วก็จริง แต่ตัว view ยังโผล่) จึงพาไปหน้าของทีมตัวเอง */
-  _switchTab(tabIsTeam(acc.role)?"spord":"sales");
+  _switchTab(tabHome(acc.role));
 }
 function logout(){S.user=null;_switchTab("sales");document.getElementById("app").classList.add("hidden");
   document.getElementById("login").classList.remove("hidden");
@@ -2904,15 +2911,14 @@ const TAB_GROUPS=[
     {t:"kpi",nm:"eB2B & Self Ordering"},
     {t:"ps",nm:"⭐ Perfect Store"},
     {t:"dci",nm:"📈 DCI Score ศูนย์"}]},
-  /* 🎁 โปรโมชั่น & เงินรางวัล — เจ้าของสั่งซ่อน 18 พ.ย. 69: *"เอา tab โปรโมชั่น เงินรางวัล
-     ออกไปก่อน ตอนนี้ยังไม่ได้ใช้ แค่ซ่อนไว้ก็ได้ ให้ข้อมูลยังอยู่ ยังไม่ต้องลบ"*
-     เอาออกเฉพาะ "ทางเข้า" เหมือนตอนเอาแท็บแข่งขัน eB2B ออก — ตัวหน้าจอ (renderPromo/
-     renderPromoRes) ตัวอ่าน (prRead/ocrRead) และ **ข้อมูล PROMO ที่บันทึกไว้แล้ว** ยังอยู่ครบ
-     และยัง merge ตามปกติใน api/save.js (merge-safety มีเคสของ PROMO อยู่ ห้ามเอาออก)
-     จะเอากลับมาใช้ เอาบรรทัดนี้ออกจากคอมเมนต์อย่างเดียว ข้อมูลเก่ากลับมาครบ:
+  /* 🎁 โปรโมชั่น & เงินรางวัล — ซ่อนไว้ 18 พ.ย. 69 แล้วเจ้าของสั่งเอากลับมา 24 พ.ย. 69
+     พร้อมของใหม่: หัวหน้าเซลล์กรอกรหัสสินค้าของแต่ละโปร แล้วระบบแทรคยอดรายสาย + การกระจาย
+     จากไฟล์ยอดขายรายวันของ dcode ให้เอง (ดู pmTrack / PROMO.sales)
+     ⚠️ role ต้องเขียนเป็น "อาเรย์" ตรงนี้ เพราะ sup เป็น team role — tabOk ปฏิเสธทุกแท็บ
+        ที่ไม่ระบุชื่อ role ไว้ตรง ๆ (กฎเดิมที่กันไม่ให้ทีมคลังเห็นทั้งเว็บ) */
   {k:"promo",nm:"🎁 โปรโมชั่น & เงินรางวัล",tabs:[
-    {t:"promo",nm:"โปรเดือนนี้"},
-    {t:"promores",nm:"💰 ผลงาน & เงินรางวัล"}]}, */
+    {t:"promo",nm:"โปรเดือนนี้",role:["manager","sales","sup"]},
+    {t:"promores",nm:"💰 ผลงาน & เงินรางวัล",role:["manager","sales","sup"]}]},
   {k:"order",nm:"🛒 การสั่งของ",tabs:[
     {t:"order",nm:"ภาพรวมสั่งของ"},
     {t:"pos",nm:"📊 วิเคราะห์การสั่งของ",role:"manager"}]},
@@ -2961,8 +2967,15 @@ function tabRole(){return (S.user&&S.user.role)||"";}
    ⚠️ ของเดิม tabOk ปล่อยผ่าน "ทุกแท็บที่ไม่ได้ระบุ role" ถ้าไม่กันตรงนี้ ทีมคลังจะเห็น
       ยอดขาย ราคา ต้นทุน ครบทั้งเว็บทันทีที่เปิดบัญชีให้ · สองทีมนี้เห็นได้หน้าเดียวเท่านั้น
    role ในตาราง TAB_GROUPS รับได้ทั้งค่าเดียว ("manager") และหลายค่า (["manager","wh"]) */
-const TEAM_ROLES=["wh","ds"];
+/* ทีมที่ไม่ใช่ manager/sales — "เห็นเฉพาะแท็บที่ระบุชื่อ role ไว้ตรง ๆ" (ดู tabOk)
+   และต้องลงจอดที่หน้าของทีมตัวเอง ไม่ใช่หน้ายอดขายซึ่งไม่มีสิทธิ์ดู
+   sup = หัวหน้าเซลล์ประจำศูนย์ (เจ้าของสั่ง 24 พ.ย. 69) กรอกโปรโมชั่นอย่างเดียว */
+const TEAM_ROLES=["wh","ds","sup"];
+const TEAM_HOME={wh:"spord",ds:"spord",sup:"promo"};
+const ROLE_TH={manager:"เห็นข้อมูลทุกสาย",wh:"ทีมคลัง",ds:"ทีมสายส่ง",sup:"หัวหน้าเซลล์",sales:"เซลล์"};
+const ROLE_AV={manager:"M",wh:"คล",ds:"สส",sup:"หน"};
 function tabIsTeam(r){return TEAM_ROLES.indexOf(r||tabRole())>=0;}
+function tabHome(r){return TEAM_HOME[r||tabRole()]||"sales";}
 function tabOk(x){
   const r=tabRole();
   if(Array.isArray(x.role))return x.role.indexOf(r)>=0;
@@ -4192,8 +4205,9 @@ let PM={m:null,scope:"all",open:null,edit:null,form:null,busy:false};
 let PR={m:null,scope:"all",paste:null};
 
 /* ---------- อ่านข้อมูล ---------- */
-function pmOk(){if(!PROMO||typeof PROMO!=="object")PROMO={items:{},res:{},del:{}};
-  if(!PROMO.items)PROMO.items={};if(!PROMO.res)PROMO.res={};if(!PROMO.del)PROMO.del={};return PROMO;}
+function pmOk(){if(!PROMO||typeof PROMO!=="object")PROMO={items:{},res:{},del:{},sales:{}};
+  if(!PROMO.items)PROMO.items={};if(!PROMO.res)PROMO.res={};if(!PROMO.del)PROMO.del={};
+  if(!PROMO.sales)PROMO.sales={};return PROMO;}
 function pmAll(){
   const P=pmOk();
   return Object.keys(P.items).filter(id=>P.items[id]&&P.items[id].name&&!P.del[id])
@@ -4229,6 +4243,95 @@ function pmLines(it){return (it.lines&&it.lines.length)?it.lines:[{k:"",label:""
 function pmImgs(it){
   if(it&&it.imgs&&it.imgs.length)return it.imgs;
   return (it&&it.img)?[it.img]:[];
+}
+/* ============================================================================
+ * 📊 แทรคโปรโมชั่นจากไฟล์ยอดขายรายวัน (เจ้าของสั่ง 24 พ.ย. 69)
+ *   *"ไฟล์ยอดรายวันนี้มันจะละเอียดขึ้นมาก โดยแบ่งตามร้านและรายสายเซลล์เลย โดยผมจะให้
+ *     supervisor ประจำศูนย์ เข้ามากรอกทุกต้นเดือนข้อมูลรหัสสินค้าในแต่ละโปรโมชั่น
+ *     เพื่อให้ระบบตามแทรคยอดขายรายสาย และจำนวนการกระจายของแต่ละโปรโมชั่นได้"*
+ *
+ * วัดจากไฟล์จริง Sales_15-23112026.xlsx (7,902 แถว · 8 วัน) ก่อนออกแบบ:
+ *   • ของแถมอยู่ "คนละคอลัมน์" กับของขาย — (Free Quantity in Aggr.CS/PC)
+ *     713 แถวเป็นของแถมล้วน (ขาย 0 · NIV 0) · 1,878 แถวมีทั้งขายและแถม
+ *     → รหัส "ตัวหลัก" นับจากคอลัมน์ขาย · รหัส "ตัวแถม" นับจากคอลัมน์ของแถม
+ *   • (วัน|สาย|รหัส|ร้าน) = 7,810 ชุด ใน 8 วัน ≈ 1 แถว 1 ชุด เก็บทุกรหัสไม่ไหว
+ *     จึงเก็บเฉพาะรหัสที่อยู่ในโปรสักตัว (pmCodeSet)
+ *   • (รหัส,ร้าน) ที่ซื้อซ้ำข้ามวันมี 151 จาก 7,674 ชุด — น้อยแต่มีจริง
+ *     การนับร้านจึงต้องนับ "ร้านไม่ซ้ำ" ทั้งช่วง ไม่ใช่บวกจำนวนร้านรายวัน
+ * ⚠️ READ-ONLY ล้วน — ฟังก์ชันในส่วนนี้ไม่เขียนอะไรเลย คนเขียนคือ parseDailyDcode
+ * ==========================================================================*/
+function pmSalesKey(ymd,line){return ymd+"|"+line;}
+/* รหัสสินค้าทุกตัวที่อยู่ในโปรสักใบ (ทั้งตัวหลักและตัวแถม) — ตัวกรองตอนอ่านไฟล์ยอดขาย */
+function pmCodeSet(){
+  const P=pmOk(),out={};
+  Object.keys(P.items).forEach(id=>{
+    if(P.del[id])return;
+    const it=P.items[id];if(!it)return;
+    (it.prod||[]).forEach(x=>{const c=String(x&&x.c||"").trim();if(c)out[c]=1;});
+  });
+  return out;
+}
+/* ช่วงวันของโปร — ไม่ได้ใส่ไว้ก็ใช้ทั้งเดือนของโปรนั้น (ใบเก่าทุกใบจึงยังอ่านได้) */
+function pmRange(it){
+  const ok=d=>/^\d{4}-\d{2}-\d{2}$/.test(String(d||""));
+  if(ok(it&&it.d1)&&ok(it&&it.d2))return {a:it.d1,b:it.d2,own:true};
+  const m=String((it&&it.m)||"");
+  if(!/^\d{4}-\d{2}$/.test(m))return null;
+  const y=+m.slice(0,4),mo=+m.slice(5,7);
+  const last=new Date(y,mo,0).getDate();
+  return {a:m+"-01",b:m+"-"+String(last).padStart(2,"0"),own:false};
+}
+function pmProdOf(it,free){
+  return (it&&it.prod||[]).filter(x=>x&&x.c&&((String(x.k||"")==="f")===!!free));
+}
+/* ยอดจริงของโปรหนึ่งใบ แยกรายสาย — อ่านจาก PROMO.sales ล้วน ๆ
+   คืน {rows:{สาย:{pc,cs,fpc,fcs,niv,shops,qual}}, days:{have,miss[]}, codes:{miss[]}} */
+function pmTrack(it){
+  const P=pmOk(),R=pmRange(it);
+  if(!R)return null;
+  const main={},free={};
+  pmProdOf(it,false).forEach(x=>main[x.c]=1);
+  pmProdOf(it,true).forEach(x=>free[x.c]=1);
+  if(!Object.keys(main).length&&!Object.keys(free).length)return null;
+  const min=Math.max(1,+it.min||1);
+  const rows={},shopSet={},seen={},dHave={},dAll=[];
+  for(let d=R.a;d<=R.b;d=dayShift(d,1)){dAll.push(d);if(dAll.length>400)break;}
+  Object.keys(P.sales||{}).forEach(k=>{
+    const i=k.indexOf("|");if(i<0)return;
+    const d=k.slice(0,i),ln=k.slice(i+1);
+    if(d<R.a||d>R.b)return;
+    dHave[d]=1;
+    const rec=P.sales[k],pp=(rec&&rec.p)||{};
+    Object.keys(pp).forEach(c=>{
+      const isM=main[c],isF=free[c];
+      if(!isM&&!isF)return;
+      seen[c]=1;
+      const e=pp[c]||{},row=rows[ln]||(rows[ln]={pc:0,cs:0,fpc:0,fcs:0,niv:0,shops:0,qual:0});
+      if(isM){row.pc+=+e.pc||0;row.cs+=+e.cs||0;row.niv+=+e.niv||0;}
+      if(isF){row.fpc+=+e.fp||0;row.fcs+=+e.fc||0;}
+      /* ร้านไม่ซ้ำทั้งช่วง + จำนวนชิ้นสะสมต่อร้าน (ใช้ตัดสิน "ซื้อครบขั้นต่ำ") */
+      if(isM){
+        const sm=shopSet[ln]||(shopSet[ln]={});
+        const sh=(e.sh&&typeof e.sh==="object")?e.sh:{};
+        Object.keys(sh).forEach(sc=>{sm[sc]=(sm[sc]||0)+(+sh[sc]||0);});
+      }
+    });
+  });
+  Object.keys(rows).forEach(ln=>{
+    const sm=shopSet[ln]||{},ks=Object.keys(sm);
+    rows[ln].shops=ks.length;
+    rows[ln].qual=ks.filter(sc=>sm[sc]>=min).length;
+    rows[ln].pc=Math.round(rows[ln].pc*100)/100;
+    rows[ln].cs=Math.round(rows[ln].cs*100)/100;
+    rows[ln].fpc=Math.round(rows[ln].fpc*100)/100;
+    rows[ln].fcs=Math.round(rows[ln].fcs*100)/100;
+    rows[ln].niv=Math.round(rows[ln].niv*100)/100;
+  });
+  const today=todayISO();
+  const miss=dAll.filter(d=>!dHave[d]&&d<=today);
+  const codeMiss=Object.keys(main).concat(Object.keys(free)).filter(c=>!seen[c]);
+  return {rows:rows,min:min,range:R,days:{all:dAll.length,have:Object.keys(dHave).length,miss:miss},
+          codes:{main:Object.keys(main).length,free:Object.keys(free).length,miss:codeMiss}};
 }
 function pmResKey(id,route,line){return id+"|"+route+"|"+(line||"");}
 function pmResOf(id,route,line){return pmOk().res[pmResKey(id,route,line)]||null;}
@@ -5216,6 +5319,11 @@ function renderPromo(){
   if(!PM.m||ms.indexOf(PM.m)<0)PM.m=ms.length?ms[ms.length-1]:PM.m;
   pmFillMonths("pmMonth",PM.m);
   const mgr=!!(S.user&&S.user.role==="manager");
+  const canEd=pmCanEdit();
+  /* ปุ่มเพิ่ม/แนบสไลด์เปิดให้ทั้งผู้จัดการและหัวหน้าเซลล์ — เช็กทุกครั้งที่วาดหน้า
+     ไม่ได้ผูกกับ .admin-upload ที่ตั้งครั้งเดียวตอนล็อกอิน (sup ไม่ใช่ manager) */
+  ["pmAddCtl","pmAttachCtl"].forEach(id=>{const el=document.getElementById(id);
+    if(el)el.style.display=canEd?"":"none";});
   const me=(S.user&&S.user.code)||"";
   const list=PM.m?pmOfMonth(PM.m):[];
   const byType={};list.forEach(it=>{(byType[it.type]=byType[it.type]||[]).push(it);});
@@ -5223,7 +5331,7 @@ function renderPromo(){
   document.getElementById("pmBar").innerHTML=
     `🎁 โปรโมชั่น & เงินรางวัล · <b>${PM.m?fmtMonth(PM.m):"-"}</b> · ${list.length} โปรโมชั่น`+
     (PM.scope!=="all"?` · เฉพาะสาย ${PM.scope.toUpperCase()}`:"")+
-    `<span class="dci-src">${mgr?"กด ＋ เพิ่มโปรโมชั่น เพื่อใส่โปรของเดือนใหม่ · แนบรูปสไลด์จาก Unilever ได้เลย":
+    `<span class="dci-src">${canEd?"กด ＋ เพิ่มโปรโมชั่น เพื่อใส่โปรของเดือนใหม่ · ใส่รหัสสินค้าแล้วระบบจะแทรคยอดรายสายให้เอง":
       "กดการ์ดใบไหนก็ได้เพื่อดูรายละเอียดเต็ม พร้อมรูปสไลด์จาก Unilever"} · กดชื่อโปรเพื่อดูเป้าและผลงานของสายคุณ</span>`;
 
   /* การ์ดสรุปหัวหน้า */
@@ -5294,15 +5402,71 @@ function pmCardHtml(it,me){
       (it.pts?`<div class="pm-row"><span>คะแนน</span><b>${anaEsc(it.pts)}</b></div>`:"")+
     `</div>`+mine+`</button>`;
 }
+/* ตารางยอดจริงรายสายของโปรหนึ่งใบ — อ่านจาก PROMO.sales ที่ parseDailyDcode เก็บไว้
+   ⚠️ แยกให้ออกระหว่าง "ยังไม่มีข้อมูล" กับ "ขายได้ 0" — วันที่ยังไม่ได้อัพไฟล์ต้องบอกตรง ๆ
+      ว่ายังไม่ได้อัพ ไม่ใช่โชว์ 0 ให้เข้าใจผิดว่าสายนั้นขายไม่ได้เลย */
+function pmTrackHtml(it,me){
+  const t=pmTrack(it);
+  if(!t)return `<h4>📊 ยอดขายจริงตามรหัสสินค้า</h4>`+
+    `<div class="note">ยังไม่ได้ใส่รหัสสินค้าของโปรนี้ — ${pmCanEdit()
+      ?'กด <b>✏️ แก้ไข</b> แล้วใส่รหัสตัวหลัก (และของแถมถ้ามี) ระบบจะเริ่มนับยอดให้เองจากไฟล์ยอดขายรายวัน'
+      :"รอหัวหน้าเซลล์ใส่รหัสสินค้า"}</div>`;
+  const hasFree=t.codes.free>0;
+  const routes=pmRoutes(it.ch||"both");
+  const keys=routes.filter(c=>t.rows[c]).concat(Object.keys(t.rows).filter(c=>routes.indexOf(c)<0));
+  const tot={pc:0,cs:0,fpc:0,fcs:0,niv:0,shops:0,qual:0};
+  const rows=keys.map(c=>{
+    const r=t.rows[c];
+    tot.pc+=r.pc;tot.cs+=r.cs;tot.fpc+=r.fpc;tot.fcs+=r.fcs;tot.niv+=r.niv;tot.shops+=r.shops;tot.qual+=r.qual;
+    return `<tr${c===me?' style="background:#F2F7FF"':""}><td><b>${anaEsc(pmLineName(c))}</b></td>`+
+      `<td><b>${r.pc.toLocaleString()}</b></td><td>${r.cs?r.cs.toLocaleString():"-"}</td>`+
+      (hasFree?`<td>${r.fpc?r.fpc.toLocaleString():"-"}</td>`:"")+
+      `<td>${r.shops.toLocaleString()}</td>`+
+      `<td><b class="up">${r.qual.toLocaleString()}</b></td>`+
+      `<td>${r.niv?THB(r.niv):"-"}</td></tr>`;
+  });
+  const head=[{h:"สาย"},{h:"ขาย (ชิ้น)"},{h:"ขาย (ลัง)"}]
+    .concat(hasFree?[{h:"🎁 ของแถม (ชิ้น)"}]:[])
+    .concat([{h:"ร้านที่ซื้อ"},{h:"ร้านที่กระจายสำเร็จ"},{h:"ยอด NIV"}]);
+  const R=t.range;
+  let h=`<h4>📊 ยอดขายจริงตามรหัสสินค้า <span class="psub" style="font-weight:400">· ${
+    fmtDate(R.a)} – ${fmtDate(R.b)}${R.own?"":" (ทั้งเดือน)"}</span></h4>`;
+  h+=`<div class="psub" style="margin-bottom:6px">นับ <b>ร้านที่กระจายสำเร็จ</b> = ร้านที่ซื้อตัวหลักครบ <b>${
+    t.min.toLocaleString()} ชิ้น</b> ขึ้นไปในช่วงนี้ (นับร้านไม่ซ้ำทั้งช่วง)`+
+    (hasFree?" · ของแถมอ่านจากคอลัมน์ \"ปริมาณของแถม\" ในไฟล์ ไม่ใช่คอลัมน์ขาย":"")+`</div>`;
+  if(rows.length){
+    rows.push(`<tr style="background:#F7F9FC"><td><b>รวมทั้งศูนย์</b></td>`+
+      `<td><b>${(Math.round(tot.pc*100)/100).toLocaleString()}</b></td>`+
+      `<td>${tot.cs?(Math.round(tot.cs*100)/100).toLocaleString():"-"}</td>`+
+      (hasFree?`<td>${tot.fpc?(Math.round(tot.fpc*100)/100).toLocaleString():"-"}</td>`:"")+
+      `<td>${tot.shops.toLocaleString()}</td><td><b class="up">${tot.qual.toLocaleString()}</b></td>`+
+      `<td>${tot.niv?THB(tot.niv):"-"}</td></tr>`);
+    h+=grpTable(head,[{title:"",rows:rows}],{alwaysBand:false});
+  }else{
+    h+=`<div class="note">ยังไม่มียอดของรหัสสินค้าในโปรนี้เลยในช่วงที่เลือก — อัพไฟล์ยอดขายรายวันของช่วงนี้ก่อน แล้วตัวเลขจะขึ้นเอง</div>`;
+  }
+  /* สิ่งที่ยัง "ไม่รู้" ต้องบอก ไม่ใช่ปล่อยให้ตัวเลขดูเหมือนครบแล้ว */
+  const warn=[];
+  if(t.days.miss.length)warn.push("ยังไม่ได้อัพไฟล์ยอดขายของ <b>"+t.days.miss.length+" วัน</b> ในช่วงนี้ ("+
+    t.days.miss.slice(0,6).map(fmtDate).join(" · ")+(t.days.miss.length>6?" …":"")+") ตัวเลขจึงยังไม่ครบ");
+  if(t.codes.miss.length)warn.push("มี <b>"+t.codes.miss.length+" รหัส</b> ที่ยังไม่เจอยอดเลย ("+
+    t.codes.miss.slice(0,6).map(anaEsc).join(" · ")+(t.codes.miss.length>6?" …":")")+
+    ") — ถ้าเพิ่งเพิ่มรหัสนี้ทีหลัง ให้อัพไฟล์ยอดขายของช่วงนี้ซ้ำอีกครั้ง ระบบจะเก็บย้อนให้");
+  if(warn.length)h+=`<div class="note" style="margin-top:8px">⚠️ `+warn.join("<br>")+`</div>`;
+  return h;
+}
 function pmDetailHtml(it,me){
   const T=PRO_TYPE[it.type]||PRO_TYPE.flash;
   const mgr=!!(S.user&&S.user.role==="manager");
+  const canEd=pmCanEdit();
   let h=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">`+
     `<div><h3 style="color:${T.c}">${T.ic} ${anaEsc(it.name)}</h3>`+
-    `<div class="psub">${T.nm} · ${fmtMonth(it.m)}${it.ch&&it.ch!=="both"?" · สาย "+anaEsc(it.ch):""}${
+    `<div class="psub">${T.nm} · ${fmtMonth(it.m)}${
+      (it.d1&&it.d2)?" · 📅 "+fmtDate(it.d1)+" – "+fmtDate(it.d2):""}${
+      it.ch&&it.ch!=="both"?" · สาย "+anaEsc(it.ch):""}${
       it.grp?" · "+anaEsc(PRO_GRP[it.grp]||it.grp):""}</div></div>`+
     `<div style="display:flex;gap:8px">`+
-      (mgr?`<button type="button" class="pl-today" onclick="pmOpen('${it.id}')">✏️ แก้ไข</button>`:"")+
+      (canEd?`<button type="button" class="pl-today" onclick="pmOpen('${it.id}')">✏️ แก้ไข</button>`:"")+
       `<button type="button" class="pl-today" onclick="pmToggle('${it.id}')">ปิด</button></div></div>`;
   h+=`<div class="pm-det" style="margin-top:14px">`;
   /* เป้าหมาย */
@@ -5333,8 +5497,11 @@ function pmDetailHtml(it,me){
   if(it.pts)h+=`<h4>🎫 คะแนน U-Bonus</h4><div class="insight">${anaEsc(it.pts)}</div>`;
   /* สินค้า */
   if((it.prod||[]).length){
-    h+=`<h4>🛒 สินค้าในโปรโมชั่น (${it.prod.length} รายการ)</h4><div class="pm-items">`+
-      it.prod.map(p=>`<span class="pm-item">${anaEsc(p.c||"")}${p.n?` <span>${anaEsc(p.n)}</span>`:""}</span>`).join("")+`</div>`;
+    const pm=pmProdOf(it,false),pf=pmProdOf(it,true);
+    const chip=p=>`<span class="pm-item">${anaEsc(p.c||"")}${p.n?` <span>${anaEsc(p.n)}</span>`:""}</span>`;
+    h+=`<h4>🛒 สินค้าในโปรโมชั่น (${it.prod.length} รายการ)</h4>`;
+    if(pm.length)h+=`<div class="psub">ตัวหลัก — ตัวที่ต้องขายให้ถึงเป้า</div><div class="pm-items">`+pm.map(chip).join("")+`</div>`;
+    if(pf.length)h+=`<div class="psub" style="margin-top:8px">🎁 ของแถม</div><div class="pm-items">`+pf.map(chip).join("")+`</div>`;
   }
   /* รายละเอียดโปร */
   if((it.detail||[]).length){
@@ -5345,6 +5512,8 @@ function pmDetailHtml(it,me){
     h+=`<h4>⚠️ เงื่อนไข</h4><ul class="pm-cond">`+it.cond.map(c=>`<li>${anaEsc(c)}</li>`).join("")+`</ul>`;
   }
   if(it.note)h+=`<h4>📝 หมายเหตุ</h4><div class="pm-sub" style="font-size:13.5px">${anaEsc(it.note)}</div>`;
+  /* 📊 ยอดขายจริงจากไฟล์ยอดขายรายวัน — ของใหม่ 24 พ.ย. 69 */
+  h+=pmTrackHtml(it,me);
   /* ผลงานรายสาย */
   const routes=pmRoutes(it.ch||"both");
   const rows=[];
@@ -5937,7 +6106,7 @@ function pmSeedLoad(){
 /* แนบสไลด์ทีละหลายไฟล์ — จับคู่จากชื่อไฟล์ที่เก็บไว้ใน imgFile ของแต่ละโปร
    (เจ้าของได้ไฟล์มาเป็นโฟลเดอร์ชื่อเดิมจาก Unilever จึงเลือกทั้งโฟลเดอร์ทีเดียวได้) */
 async function pmAttach(inp){
-  if(!(S.user&&S.user.role==="manager")){alert("เฉพาะผู้จัดการเท่านั้น");return;}
+  if(!pmCanEdit()){alert("เฉพาะผู้จัดการ/แอดมิน และหัวหน้าเซลล์เท่านั้น");return;}
   const files=(inp&&inp.files)?[].slice.call(inp.files):[];
   if(!files.length)return;
   pmOk();
@@ -5969,12 +6138,19 @@ async function pmAttach(inp){
 
 /* ---------- ฝั่งผู้จัดการ: เพิ่ม / แก้ไข / ลบโปรโมชั่น ---------- */
 function pmBlank(){
-  return {name:"",type:"combo",m:PM.m||plYm(todayISO()),ch:"CT",grp:"",img:"",
+  const m=PM.m||plYm(todayISO());
+  return {name:"",type:"combo",m:m,ch:"CT",grp:"",img:"",
     tgtPct:"",tgtStores:"",tgtNote:"",supMoney:"",pts:"",note:"",imgs:[],
-    prodText:"",condText:"",dInvoice:"",dShop:"",dMech:"",
+    d1:"",d2:"",min:"",
+    prodText:"",freeText:"",condText:"",dInvoice:"",dShop:"",dMech:"",
     lines:[],pay:[]};
 }
-function pmProdText(prod){return (prod||[]).map(p=>(p.c||"")+(p.n?" "+p.n:"")).join("\n");}
+function pmProdText(prod,free){return (prod||[]).filter(p=>p&&p.c&&((String(p.k||"")==="f")===!!free))
+  .map(p=>(p.c||"")+(p.n?" "+p.n:"")).join("\n");}
+/* ใครแก้โปรโมชั่นได้ — ผู้จัดการ/แอดมิน และหัวหน้าเซลล์ (เจ้าของสั่ง 24 พ.ย. 69)
+   ⚠️ ทุกปุ่มที่เขียนข้อมูลต้องเรียกตัวนี้เอง ไม่ใช่พึ่งว่าปุ่มถูกซ่อน (กฎเดียวกับ cstMgr)
+   ⚠️ ฝั่งเซิร์ฟเวอร์ตรวจซ้ำอีกชั้นที่ api/promo.js — sup ส่ง state ทั้งก้อนไม่ได้เลย */
+function pmCanEdit(){const r=(S.user&&S.user.role)||"";return r==="manager"||r==="sup";}
 /* รับได้ทั้ง "รหัส ชื่อสินค้า" บรรทัดละตัว และบรรทัดที่เป็นรหัสคั่นด้วยจุลภาค (สไลด์ Unilever เขียนแบบนี้) */
 function pmParseProd(txt){
   const out=[],seen={};
@@ -5992,14 +6168,15 @@ function pmParseProd(txt){
   return out;
 }
 function pmOpen(id){
-  if(!(S.user&&S.user.role==="manager")){alert("เฉพาะผู้จัดการเท่านั้น");return;}
+  if(!pmCanEdit()){alert("เฉพาะผู้จัดการ/แอดมิน และหัวหน้าเซลล์เท่านั้น");return;}
   const cur=id?(pmOk().items[id]||null):null;
   if(id&&!cur)return;
   PM.edit=id||null;
   PM.form=cur?{
     name:cur.name||"",type:cur.type||"combo",m:cur.m||PM.m,ch:cur.ch||"CT",grp:cur.grp||"",img:"",imgs:pmImgs(cur).slice(),
     tgtPct:cur.tgtPct||"",tgtStores:cur.tgtStores||"",tgtNote:cur.tgtNote||"",supMoney:cur.supMoney||"",pts:cur.pts||"",note:cur.note||"",
-    prodText:pmProdText(cur.prod),condText:(cur.cond||[]).join("\n"),
+    d1:cur.d1||"",d2:cur.d2||"",min:cur.min||"",
+    prodText:pmProdText(cur.prod,false),freeText:pmProdText(cur.prod,true),condText:(cur.cond||[]).join("\n"),
     dInvoice:((cur.detail||[]).filter(d=>d.k==="Invoice")[0]||{}).v||"",
     dShop:((cur.detail||[]).filter(d=>d.k==="Shoptype")[0]||{}).v||"",
     dMech:((cur.detail||[]).filter(d=>d.k==="Mechanic")[0]||{}).v||"",
@@ -6012,9 +6189,16 @@ function pmFset(k,v){if(PM.form)PM.form[k]=v;}
 function pmFtype(t){PM.form.type=t;pmDraw();}
 function pmFch(c){PM.form.ch=c;pmDraw();}
 function pmFgrp(g){PM.form.grp=(PM.form.grp===g?"":g);pmDraw();}
+function pmFullMonth(){
+  pmGrab();const F=PM.form;if(!F)return;
+  const m=String(F.m||"");
+  if(!/^\d{4}-\d{2}$/.test(m)){alert("เลือกเดือนของโปรก่อนนะครับ");return;}
+  const last=new Date(+m.slice(0,4),+m.slice(5,7),0).getDate();
+  F.d1=m+"-01";F.d2=m+"-"+String(last).padStart(2,"0");pmDraw();
+}
 function pmGrab(){                      /* เก็บค่าที่พิมพ์ค้างไว้ก่อนวาดใหม่ ไม่ให้หายตอนกดปุ่ม */
   const F=PM.form;if(!F)return;
-  ["name","tgtPct","tgtStores","tgtNote","supMoney","pts","note","prodText","condText","dInvoice","dShop","dMech","m"].forEach(k=>{
+  ["name","tgtPct","tgtStores","tgtNote","supMoney","pts","note","prodText","freeText","condText","dInvoice","dShop","dMech","m","d1","d2","min"].forEach(k=>{
     const el=document.getElementById("pmf_"+k);if(el)F[k]=el.value;
   });
   F.lines.forEach((L,i)=>["k","mech","free","tgtPct","cap"].forEach(k=>{
@@ -6059,6 +6243,14 @@ function pmDraw(){
     </div>
     <div class="pl-f"><label>กลุ่มสินค้า (กดซ้ำเพื่อยกเลิก)</label><div class="pl-chips">${
       Object.keys(PRO_GRP).map(g=>`<button type="button" class="pl-cb${F.grp===g?" on":""}" onclick="pmGrab();pmFgrp('${g}')">${g} · ${PRO_GRP[g]}</button>`).join("")}</div></div>
+    <div class="pl-f" style="background:var(--blue-soft);border-radius:11px;padding:10px 12px">
+      <label>📅 ช่วงวันที่ของโปรโมชั่น — ระบบจะนับยอดขายเฉพาะในช่วงนี้</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <span class="psub">ตั้งแต่</span><input type="date" id="pmf_d1" style="width:auto;flex:0 0 auto" value="${anaEsc(F.d1||"")}">
+        <span class="psub">ถึง</span><input type="date" id="pmf_d2" style="width:auto;flex:0 0 auto" value="${anaEsc(F.d2||"")}">
+        <button type="button" class="pl-cb" onclick="pmFullMonth()">ใช้ทั้งเดือน</button>
+      </div>
+      <div class="psub" style="margin-top:6px">ไม่ใส่ = นับทั้งเดือนที่เลือกไว้ข้างบน</div></div>
     <div class="pl-2">
       <div class="pl-f"><label>เป้า % ของร้านในเขต</label><input id="pmf_tgtPct" value="${anaEsc(F.tgtPct)}" placeholder="35"></div>
       <div class="pl-f"><label>เป้าจำนวนร้าน (ทั้งประเทศ)</label><input id="pmf_tgtStores" value="${anaEsc(F.tgtStores)}" placeholder="15000"></div>
@@ -6083,8 +6275,16 @@ function pmDraw(){
       <button type="button" class="pl-cb" style="margin-top:8px" onclick="pmAddPay()">＋ เพิ่มขั้น</button></div>`:""}
     ${F.type==="hit"?`<div class="pl-f"><label>คะแนน U-Bonus</label>
       <input id="pmf_pts" maxlength="120" value="${anaEsc(F.pts)}" placeholder="5 คะแนน/ชิ้น · CAP 12 ชิ้น/ร้านค้า · ปิด 95% จึงได้เงิน"></div>`:""}
-    <div class="pl-f"><label>สินค้าในโปรโมชั่น — บรรทัดละ "รหัส ชื่อสินค้า" หรือวางรหัสคั่นด้วยจุลภาคก็ได้</label>
-      <textarea id="pmf_prodText" style="min-height:92px" placeholder="65711451 โอโมลิควิดซันซายน์ ลดอับ FO15&#10;64333524, 64312782, 68875414">${anaEsc(F.prodText)}</textarea></div>
+    <div class="pl-f" style="border:1.5px solid var(--blue);border-radius:11px;padding:10px 12px">
+      <label>🛒 รหัสสินค้า <b>ตัวหลัก</b> (ตัวที่ต้องขายให้ถึงเป้า) — บรรทัดละ "รหัส ชื่อสินค้า" หรือวางรหัสคั่นด้วยจุลภาคก็ได้</label>
+      <textarea id="pmf_prodText" style="min-height:92px" placeholder="65711451 โอโมลิควิดซันซายน์ ลดอับ FO15&#10;64333524, 64312782, 68875414">${anaEsc(F.prodText)}</textarea>
+      <label style="margin-top:10px">🎁 รหัส <b>ของแถม</b> (บางโปรไม่มีก็เว้นว่างไว้)</label>
+      <textarea id="pmf_freeText" style="min-height:62px" placeholder="64829046 โอโมน้ำ พิงค์ ฟลอรัล FO15">${anaEsc(F.freeText||"")}</textarea>
+      <div class="pl-2" style="margin-top:10px">
+        <div class="pl-f"><label>ขั้นต่ำต่อร้าน (ชิ้น) — ร้านที่ซื้อครบเท่านี้ถึงนับว่ากระจายสำเร็จ</label>
+          <input id="pmf_min" value="${anaEsc(F.min||"")}" placeholder="6"></div>
+        <div class="pl-f" style="align-self:flex-end"><div class="psub">เว้นว่าง = ซื้อกี่ชิ้นก็นับเป็น 1 ร้าน<br>ยอดของตัวหลักอ่านจากคอลัมน์ "ปริมาณการขาย" · ของแถมอ่านจากคอลัมน์ "ปริมาณของแถม"</div></div>
+      </div></div>
     <div class="pl-2">
       <div class="pl-f"><label>Invoice</label><input id="pmf_dInvoice" value="${anaEsc(F.dInvoice)}" placeholder="REBATE"></div>
       <div class="pl-f"><label>Shoptype</label><input id="pmf_dShop" value="${anaEsc(F.dShop)}" placeholder="M&amp;P"></div>
@@ -6094,7 +6294,7 @@ function pmDraw(){
       <textarea id="pmf_condText" style="min-height:76px" placeholder="นับเป็นสี ไม่นับรหัส เช่นถ้าสีแดงมี 2 รหัส ขายเข้าทั้ง 2 รหัสนับ 1 สี">${anaEsc(F.condText)}</textarea></div>
     <div class="pl-f"><label>หมายเหตุ</label><textarea id="pmf_note" style="min-height:60px">${anaEsc(F.note)}</textarea></div>
     <div class="pl-mf"><button type="button" class="pl-save" onclick="pmSaveForm()">${PM.edit?"บันทึกการแก้ไข":"เพิ่มโปรโมชั่น"}</button>
-      ${PM.edit?`<button type="button" class="ps-del" onclick="pmDelete('${PM.edit}')">🗑 ลบ</button>`:""}</div>
+      ${(PM.edit&&S.user&&S.user.role==="manager")?`<button type="button" class="ps-del" onclick="pmDelete('${PM.edit}')">🗑 ลบ</button>`:""}</div>
     <div class="pl-hint">บันทึกแล้วทุกคนเห็นทันทีที่รีเฟรชหน้าเว็บ · ผลงานรายสายใส่ทีหลังได้ที่แท็บ <b>💰 ผลงาน & เงินรางวัล</b></div>
   </div></div>`;
 }
@@ -6153,11 +6353,16 @@ async function pmUpImg(inp){
 }
 function pmNum(v){const n=parseFloat(String(v==null?"":v).replace(/[,\s%฿]/g,""));return isFinite(n)?n:"";}
 function pmSaveForm(){
+  if(!pmCanEdit()){alert("เฉพาะผู้จัดการ/แอดมิน และหัวหน้าเซลล์เท่านั้น");return;}
   pmGrab();
   const F=PM.form;if(!F)return;
   const name=String(F.name||"").trim();
   if(!name){alert("ใส่ชื่อโปรโมชั่นก่อนนะครับ");return;}
   if(!/^\d{4}-\d{2}$/.test(String(F.m||""))){alert("เลือกเดือนของโปรโมชั่นก่อนนะครับ");return;}
+  const dOk=d=>/^\d{4}-\d{2}-\d{2}$/.test(String(d||""));
+  const d1=dOk(F.d1)?F.d1:"",d2=dOk(F.d2)?F.d2:"";
+  if((d1&&!d2)||(d2&&!d1)){alert("ใส่ช่วงวันที่ให้ครบทั้งวันเริ่มและวันจบ หรือเว้นว่างทั้งคู่เพื่อใช้ทั้งเดือน");return;}
+  if(d1&&d2&&d1>d2){alert("วันเริ่มต้องไม่เกินวันจบนะครับ");return;}
   pmOk();
   const id=PM.edit||("m"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
   const old=PM.edit?Object.assign({},PROMO.items[id]):null;
@@ -6171,7 +6376,11 @@ function pmSaveForm(){
     imgs:(F.imgs||[]).slice(0,12),img:"",imgFile:(old&&old.imgFile)||[],tgtPct:pmNum(F.tgtPct),tgtStores:pmNum(F.tgtStores),
     tgtNote:String(F.tgtNote||"").slice(0,200),supMoney:pmNum(F.supMoney),pts:String(F.pts||"").slice(0,160),
     note:String(F.note||"").slice(0,1000),
-    prod:pmParseProd(F.prodText).slice(0,400),
+    d1:d1,d2:d2,min:Math.max(0,pmNum(F.min)||0),
+    /* ตัวหลักกับตัวแถมเก็บรวมใน prod เหมือนเดิม แยกด้วย k:"f" — ใบเก่าที่ไม่มี k อ่านเป็นตัวหลัก
+       (ไม่ได้ทำ section ใหม่ ข้อมูลเดิมจึงไม่ต้องแปลงอะไรเลย) */
+    prod:pmParseProd(F.prodText).map(x=>Object.assign({},x,{k:"m"})).slice(0,400)
+      .concat(pmParseProd(F.freeText).map(x=>Object.assign({},x,{k:"f"})).slice(0,100)),
     cond:String(F.condText||"").split("\n").map(x=>x.trim()).filter(Boolean).slice(0,30),
     detail:detail,
     lines:(F.lines||[]).map(L=>({k:String(L.k||"").trim(),mech:String(L.mech||"").trim(),
@@ -6180,13 +6389,26 @@ function pmSaveForm(){
     pay:(F.pay||[]).map(p=>({label:String(p.label||"").trim(),pcs:pmNum(p.pcs),colors:pmNum(p.colors),
       growth:pmNum(p.growth),sm:pmNum(p.sm),sup:pmNum(p.sup)}))
       .filter(p=>p.label||p.sm||p.sup||p.pcs),
-    by:old?(old.by||"manager"):"manager",byName:(S.user&&S.user.name)||"",
+    by:old?(old.by||""):((S.user&&(S.user.id||S.user.code))||""),byName:(S.user&&S.user.name)||"",
     at:old&&old.at?old.at:Date.now(),up:Date.now(),
   };
   PROMO.items[id]=it;
   if(PROMO.del)delete PROMO.del[id];
   PM.m=it.m;PM.open=id;pmClose();
-  renderPromo();syncToServer();
+  renderPromo();pmPush(id,it);
+}
+/* บันทึกขึ้นเซิร์ฟเวอร์ — ผู้จัดการเซฟทั้งก้อนเหมือนเดิม ส่วนหัวหน้าเซลล์ (sup) ส่งได้ทีละใบ
+   ผ่าน api/promo.js เพราะ api/save.js รับเฉพาะ role manager (กฎเดิม ไม่ได้แก้) */
+async function pmPush(id,it){
+  const r=(S.user&&S.user.role)||"";
+  if(r!=="sup"){syncToServer();return;}
+  if(typeof TOKEN==="undefined"||!TOKEN)return;
+  try{
+    const res=await bdPost("/api/promo",{act:"save",id:id,item:it});
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok||!j.ok)throw new Error(j.error||("HTTP "+res.status));
+    toast("บันทึกโปรโมชั่นแล้ว");
+  }catch(ex){alert("บันทึกขึ้นเซิร์ฟเวอร์ไม่สำเร็จ: "+(ex&&ex.message||ex)+"\n\nข้อมูลที่กรอกยังอยู่บนหน้าจอ ลองกดบันทึกอีกครั้ง");}
 }
 function pmDelete(id){
   if(!(S.user&&S.user.role==="manager")){alert("เฉพาะผู้จัดการเท่านั้น");return;}
@@ -14995,6 +15217,9 @@ function parseDailyDcode(name,rows,hdr,H){
     cCs=need("Sale Quantity in Aggr(CS)"),cPc=need("Sale Quantity in Aggr(Pcs)"),cNiv=need("NIV"),
     cEmp=col("Salesman Code"),cRep=col("Salesman Name"),cShopN=col("Outlet Name"),
     cDoc=col("Document Type"),cOrd=col("Order Type"),cProd=col("Product Code"),
+    /* 🎁 โปรโมชั่น: ของแถมอยู่คนละคอลัมน์กับของขาย — วัดจากไฟล์จริงแล้ว 713 แถวเป็นของแถมล้วน
+       (ขาย 0 · NIV 0) ถ้าอ่านจากคอลัมน์ขายอย่างเดียว ของแถมจะหายทั้งหมด */
+    cFc=col("Free Quantity in Aggr.CS"),cFp=col("Free Quantity in Aggr.PC"),
     /* 📦 ออเดอร์พิเศษ: เก็บดัชนี "เลขออเดอร์ → ร้าน/สาย/ยอด" ไว้ด้วย
        ตรวจกับไฟล์จริงแล้ว 1 เลขออเดอร์ = 1 ร้าน = 1 ใบแจ้งหนี้ = 1 สาย = 1 วัน ครบทั้ง 89 เลข
        เซลล์จึงพิมพ์แค่เลขเดียว ระบบขึ้นชื่อร้าน+ยอดให้ตรวจได้เอง
@@ -15007,6 +15232,11 @@ function parseDailyDcode(name,rows,hdr,H){
   const agg={},seenD={},dset=new Set(),unkLine={},docs={},ords={},nameDiff={},remap={},
         shops={},prods={},fresh={},ordx={};   /* fresh = ร้านที่อ่านได้จากไฟล์นี้ แยกวัน (ตัวแปรท้องถิ่น
                                          ห้ามเอาไปแปะบน STOREDAILY ชั่วคราว เพราะนั่นคือ state ที่ sync) */
+  /* เก็บยอด "เฉพาะรหัสที่อยู่ในโปรโมชั่นสักใบ" ไว้ให้หน้าโปรฯ แทรค — ดูเหตุผลที่ pmTrack
+     ถ้าเก็บทุกรหัส ก้อน state จะโตเดือนละหลาย MB (วัดแล้ว 7,810 ชุด ต่อ 8 วัน) */
+  const pmWant=(typeof pmCodeSet==="function")?pmCodeSet():{};
+  const pmAny=Object.keys(pmWant).length>0;
+  const pmBuf={};let pmRows=0;
   let nRow=0,skip=0,foot="";
   for(let i=hdr+1;i<rows.length;i++){
     const r=rows[i];if(!r)continue;
@@ -15038,7 +15268,13 @@ function parseDailyDcode(name,rows,hdr,H){
       e.cs+=N(r,cCs);e.pc+=N(r,cPc);e.niv+=niv;e.l=code;
       const sn=S(r,cShopN);if(sn)e.n=sn;
     }
-    if(cProd>=0){const pc=S(r,cProd);if(pc)prods[pc]=1;}
+    if(cProd>=0){const pc=S(r,cProd);if(pc)prods[pc]=1;
+      if(pmAny&&pc&&pmWant[pc]){
+        const k=dkey+"|"+code,b2=pmBuf[k]||(pmBuf[k]={}),e=b2[pc]||(b2[pc]={cs:0,pc:0,fc:0,fp:0,niv:0,sh:{}});
+        e.cs+=N(r,cCs);e.pc+=N(r,cPc);e.fc+=N(r,cFc);e.fp+=N(r,cFp);e.niv+=niv;
+        if(sc)e.sh[sc]=(e.sh[sc]||0)+N(r,cPc);
+        pmRows++;
+      }}
     /* ดัชนีเลขออเดอร์ — รวมยอดและจำนวนรายการของเลขนั้น ๆ */
     [cNo,cInv].forEach(ci=>{
       if(ci<0)return;const no=S(r,ci).toUpperCase();
@@ -15075,6 +15311,19 @@ function parseDailyDcode(name,rows,hdr,H){
   Object.keys(ordx).forEach(no=>{const o=ordx[no];
     o.v=Math.round(o.v*100)/100;o.cs=Math.round(o.cs*100)/100;o.pc=Math.round(o.pc*100)/100;
     STOREDAILY.ord[no]=o;});
+  /* 🎁 ดัชนีโปรโมชั่น — คีย์ "วัน|สาย" คือหน่วยเดียวกับที่ไฟล์หนึ่งใบเขียน ไฟล์ที่กรองมา
+     แค่สายเดียวจึงทับได้แค่สายนั้น (กฎเดียวกับ DATA.daily ข้างบน) */
+  if(pmAny&&typeof pmOk==="function"){
+    const P=pmOk(),now2=Date.now();
+    Object.keys(pmBuf).forEach(k=>{
+      const pp=pmBuf[k];
+      Object.keys(pp).forEach(c=>{const e=pp[c];
+        e.cs=Math.round(e.cs*1000)/1000;e.pc=Math.round(e.pc*100)/100;
+        e.fc=Math.round(e.fc*1000)/1000;e.fp=Math.round(e.fp*100)/100;
+        e.niv=Math.round(e.niv*100)/100;});
+      P.sales[k]={up:now2,p:pp};
+    });
+  }
   Object.keys(seenD).forEach(dk=>{
     const dd=STOREDAILY.data[dk]||(STOREDAILY.data[dk]={}),fd=fresh[dk]||{};
     Object.keys(fd).forEach(sc=>{
@@ -15088,7 +15337,8 @@ function parseDailyDcode(name,rows,hdr,H){
   ulog("✅ "+name+" (ยอดขายรายวัน · ระบบ dcode) → "+perDay);
   ulog("&nbsp;&nbsp;↳ อ่าน "+nRow+" บรรทัด · "+Object.keys(shops).length+" ร้าน"+
     (cProd>=0?" · "+Object.keys(prods).length+" รหัสสินค้า":"")+
-    (Object.keys(ordx).length?" · "+Object.keys(ordx).length+" เลขออเดอร์":"")+" · "+
+    (Object.keys(ordx).length?" · "+Object.keys(ordx).length+" เลขออเดอร์":"")+
+    (pmAny?" · 🎁 เก็บยอดให้โปรโมชั่น "+pmRows+" บรรทัด ("+Object.keys(pmWant).length+" รหัสที่อยู่ในโปร)":"")+" · "+
     [...dset].length+" วัน · ยอดที่ใช้คือ NIV (หลังหักส่วนลด ก่อน VAT) เหมือนไฟล์เดิม");
   const rk=Object.keys(remap);
   if(rk.length)ulog("&nbsp;&nbsp;↳ ℹ️ ไฟล์ใหม่ใช้รหัสสาย "+rk.map(k=>k+" → "+remap[k]+

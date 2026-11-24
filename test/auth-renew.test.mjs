@@ -132,6 +132,19 @@ for (const [pre, role, label] of [["wh", "wh", "ทีมคลัง"], ["ds", 
       !!cl && cl.role === role && cl.u === u, JSON.stringify(cl && cl.role));
   }
 }
+/* ---------- 7c) หัวหน้าเซลล์ sup (เจ้าของสั่ง 24 พ.ย. 69 · "เพิ่ม sup แอคเค้าเดียวพอ") ---------- */
+{
+  const bad = await call(login, { body: { user: "sup", pass: "ผิด" } });
+  t("🛟 sup: รหัสผิดยังเข้าไม่ได้", bad.code === 401, bad.code);
+  const ok = await call(login, { body: { user: "sup", pass: "bd@sup" } });
+  t("หัวหน้าเซลล์ (sup) ล็อกอินได้", ok.code === 200 && !!(ok.body || {}).token, ok.code);
+  const cl = verify((ok.body || {}).token || "");
+  t("...role sup อยู่ใน token (เซิร์ฟเวอร์เชื่อ token ไม่ใช่ body)",
+    !!cl && cl.role === "sup" && cl.u === "sup", JSON.stringify(cl && cl.role));
+  t("🛟 sup ไม่มีรหัสสาย (code) — ไม่ได้ถูกนับเป็นเซลล์สายใดสายหนึ่ง", !ACCOUNTS.sup.code);
+  t("🛟 sup ไม่ใช่ role manager — ส่ง state ทั้งก้อนผ่าน api/save.js ไม่ได้",
+    ACCOUNTS.sup.role === "sup");
+}
 t("🛟 ทีมคลัง/สายส่งไม่มีรหัสสาย (code) ติดมา — กรอกเลขออเดอร์แทนเซลล์ไม่ได้",
   [1, 2, 3, 4].every(n => !ACCOUNTS["wh" + n].code && !ACCOUNTS["ds" + n].code));
 t("🛟 ไม่มีบัญชีไหนได้ role manager เพิ่มจาก 5 คนเดิม",
@@ -141,8 +154,8 @@ t("🛟 รหัสผ่านของ 8 บัญชีใหม่ไม่
   new Set(Object.keys(ACCOUNTS).map(k => ACCOUNTS[k].pass)).size === Object.keys(ACCOUNTS).length,
   Object.keys(ACCOUNTS).length + " บัญชี");
 
-t("🛟 เพิ่มบัญชีแอดมินแล้วบัญชีเดิมยังอยู่ครบ (manager + เซลล์ 12 สาย + แอดมิน 4 + คลัง 4 + สายส่ง 4)",
-  Object.keys(ACCOUNTS).length === 25 && ACCOUNTS.manager.role === "manager" &&
+t("🛟 เพิ่มบัญชีแล้วของเดิมยังอยู่ครบ (manager + เซลล์ 12 + แอดมิน 4 + คลัง 4 + สายส่ง 4 + หัวหน้าเซลล์ 1)",
+  Object.keys(ACCOUNTS).length === 26 && ACCOUNTS.manager.role === "manager" &&
   ACCOUNTS.ct11.role === "sales", Object.keys(ACCOUNTS).length + " บัญชี");
 t("🛟 แอดมินทั้ง 4 คนมีรหัสไม่ซ้ำกัน และไม่ซ้ำกับ manager",
   new Set([1, 2, 3, 4].map(n => ACCOUNTS["admin" + n].pass).concat([ACCOUNTS.manager.pass])).size === 5,

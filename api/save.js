@@ -291,7 +291,15 @@ function mergeState(server, c) {
       for (const rk of Object.keys(prRes)) if (rk.slice(0, k.length + 1) === k + "|") delete prRes[rk];
     }
   }
-  const PROMO = { items: prItems, res: prRes, del: prDel };
+  // `sales` is the per-day, per-line product index the promotion tracker reads (owner 24 Nov 26:
+  // the supervisor keys each promotion's product codes, the app tracks the sales and the shop
+  // spread from the dcode daily file). Keyed "YYYY-MM-DD|lineKey", which is exactly the
+  // granularity one upload writes, so a filtered export covering one line on one day replaces
+  // only that record and never the other eleven lines' — the same rule parseDailyDcode follows
+  // for DATA.daily. It is NOT touched by the `del` tombstones above: those are promotion ids,
+  // and a deleted promotion must not take a day's sales reading with it.
+  const prSales = newestByUp(sPr.sales, cPr.sales);
+  const PROMO = { items: prItems, res: prRes, del: prDel, sales: prSales };
 
   // PJP — the monthly visit plan.
   //   out  : one record per outlet, newest upload of THAT outlet wins. A Master file that no

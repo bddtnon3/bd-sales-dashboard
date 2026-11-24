@@ -54,7 +54,7 @@ s = must(s, "let CSTOCK = __CSTOCKDATA__;", "CSTOCK decl")
 
 // PROMO — โปรโมชั่น & เงินรางวัล: ว่างตอนเริ่ม ของจริงมาจาก /api/data
 s = must(s, "let PROMO = __PROMODATA__;", "PROMO decl")
-  .replace("let PROMO = __PROMODATA__;", "let PROMO = {items:{},res:{},del:{}};");
+  .replace("let PROMO = __PROMODATA__;", "let PROMO = {items:{},res:{},del:{},sales:{}};");
 
 // accounts -> server side
 const ACC_BLOCK = `/* ====================== ACCOUNTS ====================== */
@@ -71,7 +71,8 @@ const ACCOUNTS={"manager":{pass:"bd@admin",role:"manager",name:"ผู้จั�
   "ds1":{pass:"bd@ds1",role:"ds",name:"ทีมสายส่ง 1"},
   "ds2":{pass:"bd@ds2",role:"ds",name:"ทีมสายส่ง 2"},
   "ds3":{pass:"bd@ds3",role:"ds",name:"ทีมสายส่ง 3"},
-  "ds4":{pass:"bd@ds4",role:"ds",name:"ทีมสายส่ง 4"}};
+  "ds4":{pass:"bd@ds4",role:"ds",name:"ทีมสายส่ง 4"},
+  "sup":{pass:"bd@sup",role:"sup",name:"หัวหน้าเซลล์ (Supervisor)"}};
 DATA.focus_order.forEach(code=>{
   const d=DATA.lines[code];
   ACCOUNTS[d.display.toLowerCase()]={pass:d.display.toLowerCase()+"@bd",role:"sales",code:code,name:d.display+" · "+d.name};
@@ -89,10 +90,8 @@ function doLogin(){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   document.getElementById("uName").textContent=acc.name;
-  document.getElementById("uRole").textContent=acc.role==="manager"?"เห็นข้อมูลทุกสาย":
-    (acc.role==="wh"?"ทีมคลัง":(acc.role==="ds"?"ทีมสายส่ง":"เซลล์"));
-  document.getElementById("uAv").textContent=(acc.role==="manager"?"M":
-    (acc.role==="wh"?"คล":(acc.role==="ds"?"สส":acc.name.substring(0,2)))).toUpperCase();
+  document.getElementById("uRole").textContent=ROLE_TH[acc.role]||"เซลล์";
+  document.getElementById("uAv").textContent=(ROLE_AV[acc.role]||acc.name.substring(0,2)).toUpperCase();
   /* sales default to own line view; manager sees team */
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
@@ -100,7 +99,7 @@ function doLogin(){
   initKeys();render();initKPI();initOrder();initAnalytics();initPlan();initPromo();initPjp();navReset();
   /* ⚠️ ทีมคลัง/สายส่งเปิดหน้ายอดขายไม่ได้ — ถ้าเด้งไปแท็บ sales เหมือนคนอื่น จะเห็นหน้าที่
      ไม่มีสิทธิ์ดูค้างอยู่ (ปุ่มแท็บซ่อนแล้วก็จริง แต่ตัว view ยังโผล่) จึงพาไปหน้าของทีมตัวเอง */
-  _switchTab(tabIsTeam(acc.role)?"spord":"sales");
+  _switchTab(tabHome(acc.role));
 }
 function logout(){S.user=null;_switchTab("sales");document.getElementById("app").classList.add("hidden");
   document.getElementById("login").classList.remove("hidden");
@@ -125,10 +124,8 @@ async function afterLogin(){
   const acc=S.user;
   document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");
   document.getElementById("uName").textContent=acc.name;
-  document.getElementById("uRole").textContent=acc.role==="manager"?"เห็นข้อมูลทุกสาย":
-    (acc.role==="wh"?"ทีมคลัง":(acc.role==="ds"?"ทีมสายส่ง":"เซลล์"));
-  document.getElementById("uAv").textContent=(acc.role==="manager"?"M":
-    (acc.role==="wh"?"คล":(acc.role==="ds"?"สส":(acc.name||"").substring(0,2)))).toUpperCase();
+  document.getElementById("uRole").textContent=ROLE_TH[acc.role]||"เซลล์";
+  document.getElementById("uAv").textContent=(ROLE_AV[acc.role]||(acc.name||"").substring(0,2)).toUpperCase();
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
   document.querySelectorAll(".sales-only").forEach(e=>e.style.display=acc.role==="sales"?"":"none");
@@ -140,12 +137,12 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},meta:{},del:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};DCI=d.DCI||{periods:[],data:{}};MINSTOCK=d.MINSTOCK||{man:{}};PLAN=d.PLAN||{items:{},done:{},del:{}};PROMO=d.PROMO||{items:{},res:{},del:{}};PJP=d.PJP||{out:{},plan:{},done:{},cfg:{}};CSTOCK=d.CSTOCK||{lots:{},del:{},slips:{},sdel:{},ex:{},up:0};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},meta:{},del:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};DCI=d.DCI||{periods:[],data:{}};MINSTOCK=d.MINSTOCK||{man:{}};PLAN=d.PLAN||{items:{},done:{},del:{}};PROMO=d.PROMO||{items:{},res:{},del:{},sales:{}};PJP=d.PJP||{out:{},plan:{},done:{},cfg:{}};CSTOCK=d.CSTOCK||{lots:{},del:{},slips:{},sdel:{},ex:{},up:0};}
     LEADSRAW=[];LEADSLOADED=false;   /* shop applications are re-fetched per session */
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();initPlan();initPromo();initPjp();navReset();
     try{cstImport();}catch(e){console.error("cstImport",e);}   /* นำเข้าลอตเก่า 4 ใบ ครั้งเดียว (ดูหมายเหตุที่ cstImpDefs) */
-    _switchTab(tabIsTeam()?"spord":"sales");   /* never leave the previous user's tab (incl. manager-only ones) open */
+    _switchTab(tabHome());   /* never leave the previous user's tab (incl. manager-only ones) open */
   }catch(ex){alert("โหลดข้อมูลจากเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
 }
 function logout(){S.user=null;TOKEN=null;_switchTab("sales");localStorage.removeItem("bd_token");localStorage.removeItem("bd_user");
