@@ -170,6 +170,58 @@ const P_NONE  ='โอโมน้ำซากุระโรแมนซ์';
  t('...สลับดูกลุ่มโปรเพิ่ม และกลุ่มใกล้หมดได้',
    /ไม่ต้องรีบสั่งตุน/.test(ui.add)&&/เขียนช่วงวันของโปรไว้เอง/.test(ui.end));
 
+ /* ---------- 6ข) 🔑 ใบที่อัพไว้ก่อนระบบจะอ่านโปรเป็น ต้องบอก ไม่ใช่โชว์ 0 ----------
+    เจ้าของเจอเอง 25 พ.ย. 69: อัพใบสองใบไว้ก่อนแล้ว เปิดหน้ามาเห็น 0 ทุกช่อง */
+ const old=await ev(()=>{
+   const keep=JSON.parse(JSON.stringify(POSTATUS));
+   POSTATUS={dates:['2026-11-24','2026-11-25'],data:{
+     '2026-11-24':{up:1,file:'a.xlsm',items:{'90000001':{p:'6F1'}},all:'90000001'},
+     '2026-11-25':{up:2,file:'b.xlsm',items:{'90000001':{}},all:'90000001'}}};
+   PE={a:'',b:'',kind:'all',only:'gone',q:'',pi:null};
+   renderPromoEnd();
+   const t=document.getElementById('peBody').textContent.replace(/\s+/g,' ');
+   const o={warn:/อัพไว้ก่อนที่ระบบจะอ่านโปรเป็น/.test(t),
+     how:/อัพใบเดิมซ้ำอีกครั้งเดียว/.test(t),
+     keepData:/ข้อมูลเดิมไม่หาย/.test(t),
+     hasPmOld:peHasPm(psDay('2026-11-25'))};
+   POSTATUS=keep;renderPromoEnd();
+   o.noWarnNow=!/อัพไว้ก่อนที่ระบบจะอ่านโปรเป็น/
+     .test(document.getElementById('peBody').textContent);
+   return o;});
+ t('🔑 ใบที่อัพไว้ก่อนระบบจะอ่านโปรเป็น ต้องขึ้นเตือน ไม่ใช่โชว์ 0 เฉย ๆ',
+   old.warn&&old.hasPmOld===false,JSON.stringify(old));
+ t('...และบอกวิธีแก้ (อัพใบเดิมซ้ำครั้งเดียว) พร้อมย้ำว่าข้อมูลเดิมไม่หาย',
+   old.how&&old.keepData);
+ t('🛟 ใบที่อ่านด้วยตัวอ่านใหม่แล้ว ต้องไม่ขึ้นเตือนนี้',old.noWarnNow);
+
+ /* ---------- 6ค) 💰 เทียบส่วนลดสองรอบจากไฟล์ราคา ---------- */
+ const pr=await ev(()=>{
+   /* ไฟล์ราคาจำลอง: รอบ A มีส่วนลด รอบ B ไม่มี (= โปรหมด) และตรงข้าม */
+   PRICE={loaded:true,err:'',bum:null,hs:{rounds:['Nov\'26','Dec\'26'],items:{
+     '90000001':{m:[[1000,1020,100,250,80,80,100,90,'FTR'],[1000,1020,100,0,80,80,100,90,'']],ip:1},
+     '90000002':{m:[[900,918,90,0,70,70,90,80,''],[900,918,90,120,70,70,90,80,'']],ip:1},
+     '90000003':{m:[[800,816,80,60,60,60,80,70,''],[800,816,80,20,60,60,80,70,'']],ip:1},
+     '90000004':{m:[[700,714,70,30,50,50,70,60,''],[700,714,70,30,50,50,70,60,'']],ip:1}}}};
+   PE.pi=0;PE.only='pr';PE.q='';
+   const d=pePrDiff(0,1);
+   renderPromoEnd();
+   const t=document.getElementById('peBody').textContent.replace(/\s+/g,' ');
+   return {gone:d.gone.map(x=>x.c),add:d.add.map(x=>x.c),down:d.down.map(x=>x.c),
+     up:d.up.map(x=>x.c),rounds:pePrRounds(),
+     shows:/ส่วนลดหายรอบหน้า/.test(t)&&/รู้ได้ตั้งแต่ก่อนได้ใบสั่งวันที่ 25/.test(t),
+     warnsOnOff:/รวม on-invoice กับ rebate ไว้ด้วยกัน/.test(t)};});
+ t('🔑 ไฟล์ราคาหัวเสือมีหลายรอบในไฟล์เดียว — เทียบรอบต่อรอบได้',
+   pr.rounds.length===2,pr.rounds.join(' → '));
+ t('🔑 บอกได้ว่ารอบหน้าส่วนลดตัวไหนหาย (รู้ก่อนได้ใบวันที่ 25)',
+   pr.gone.join(',')==='90000001',pr.gone.join(','));
+ t('...ตัวไหนเพิ่งมีส่วนลดรอบหน้า',pr.add.join(',')==='90000002',pr.add.join(','));
+ t('...ตัวไหนส่วนลดลดลง (60 → 20)',pr.down.join(',')==='90000003',pr.down.join(','));
+ t('🛟 ตัวที่ส่วนลดเท่าเดิม ต้องไม่ขึ้นในลิสต์ไหนเลย',
+   pr.gone.concat(pr.add,pr.down,pr.up).indexOf('90000004')<0);
+ t('...หน้าบอกว่านี่คือทางที่รู้ก่อนได้ใบวันที่ 25',pr.shows);
+ t('🛟 ...และบอกตรง ๆ ว่า W% ของหัวเสือรวม on-invoice กับ rebate ไว้ด้วยกัน (ไม่เคลมเกินข้อมูล)',
+   pr.warnsOnOff);
+
  /* ---------- 7) 🛟 อ่านอย่างเดียว ---------- */
  const ro=await ev(()=>{
    const snap=()=>JSON.stringify({P:POSTATUS,O:ORDERS,S:STOCKD,R:REQUESTS});
@@ -178,6 +230,7 @@ const P_NONE  ='โอโมน้ำซากุระโรแมนซ์';
    ['all','on','off','ftr'].forEach(k=>peSetKind(k));
    peQ('90000001');peQ('');
    peSetB('2026-11-25');peSetA('2026-11-24');
+   peSetOnly('pr');peSetPi(0);
    peSetOnly('gone');peSetKind('all');
    return {same:snap()===before,sync:window.__sync-s0};});
  t('🛟 กดทุกปุ่มบนหน้านี้แล้ว ข้อมูลไม่ขยับแม้แต่ไบต์เดียว',ro.same);

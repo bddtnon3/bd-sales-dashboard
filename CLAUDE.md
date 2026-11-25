@@ -389,8 +389,22 @@ code, never printed.
   promo, and the parsing happens at read time — so improving `poPromo` later re-reads old rounds
   correctly without re-uploading, the same rule as `poClosedKind`. Measured on the real forms:
   ~850 codes and ~60 KB per round. The page is **strictly read-only** over POSTATUS/ORDERS/STOCKD
-  with its state on the non-synced `PE`. Prove it with
-  **`node test/browser/promoend.test.cjs`** (29 checks, self-contained with made-up codes; 32 with
+  with its state on the non-synced `PE`.
+  **A round uploaded before the promo reader existed holds no `pm` at all, and the page must SAY
+  SO** (`peHasPm`) — the owner opened it the day it shipped, saw `0 · 0 · 0 · 0`, and asked
+  *"ไฟล์อยู่นี้ ว่าแต่ทำไมในเวปไม่ขึ้นเลย"*. Re-reading at read time cannot help here: the text was
+  never stored, so the only fix is re-uploading that day's blank form once. The banner names the
+  rounds affected and says the data is not lost. **A silent 0 on this page always means that**, so
+  never render one.
+  A fifth chip, **💰 เทียบจากไฟล์ราคา** (`pePrRounds`/`pePrDiff`/`pePrHtml`), answers the same
+  question **before** the 25th arrives: the หัวเสือ file carries four round blocks at once, so
+  comparing block *i* to *i+1* says which codes lose their W% discount next round. Measured on the
+  owner's real file (1,355 items, Nov'26 · Dec'26 · Jan'27 · Feb'27): **131 lose the discount and
+  44 gain one** across the 25 Nov cut — close to the order forms' 113/31, which is the cross-check.
+  It reads `PRICE` only (never part of the synced state) and must keep saying out loud that
+  **หัวเสือ's W% merges on-invoice and rebate** — only BUM splits them — rather than claiming more
+  than the file holds. Prove it with
+  **`node test/browser/promoend.test.cjs`** (39 checks, self-contained with made-up codes; 42 with
   the real forms via `ORDER_BLANK_A=…/ใบ24.xlsm ORDER_BLANK_B=…/ใบ25.xlsm`, which never enter the repo).
   **การสั่งของ** has six sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO /
   **📅 รายการสั่งก่อนหมดโปร** /

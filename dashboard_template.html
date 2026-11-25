@@ -7510,7 +7510,7 @@ function renderReqBack(){
  * ⚠️ อ่านอย่างเดียวล้วน ๆ เหมือนตัวคำนวณ PO — ไม่เขียน POSTATUS/ORDERS/PRICE เลย
  *    ตัวเลือกบนหน้าอยู่บน PE ซึ่งไม่ sync
  * ==========================================================================*/
-let PE={a:"",b:"",kind:"all",only:"gone",q:""};
+let PE={a:"",b:"",kind:"all",only:"gone",q:"",pi:null};
 function peRounds(){return psDates().slice().sort();}
 /* รอบที่เอามาเทียบ — ใหม่สุด vs รอบก่อนหน้าที่ "คนละเดือน" ถ้ามี (โปรตัดรอบวันที่ 25) */
 function pePick(){
@@ -7566,6 +7566,40 @@ function peEnding(day,days){
   out.sort((x,y)=>String(x.p.wEnd).localeCompare(String(y.p.wEnd))||String(x.c).localeCompare(String(y.c)));
   return out;
 }
+/* รอบนี้ถูกอ่านด้วยตัวอ่านที่รู้จักโปรหรือยัง — ใบที่อัพก่อน 25 พ.ย. 69 ไม่มีข้อความโปรเก็บไว้
+   ⚠️ ต้องบอกออกมาตรง ๆ ไม่ใช่โชว์ 0 ให้เข้าใจผิดว่า "เดือนนี้ไม่มีโปรหายเลย" */
+function peHasPm(day){
+  const it=(day&&day.items)||{};
+  for(const c in it)if(it[c]&&it[c].pm)return true;
+  return false;
+}
+/* ---------- 💰 เทียบจากไฟล์ราคาหัวเสือ (รู้ก่อนได้ใบวันที่ 25) ----------
+   ไฟล์หัวเสือหนึ่งไฟล์มีหลายรอบในตัว (ไฟล์ล่าสุดมี Nov'26 · Dec'26 · Jan'27 · Feb'27)
+   ส่วนลดต่อหีบของแต่ละรอบอยู่ในช่อง W% และ TPR — รอบไหน W% หายไป = โปรตัวนั้นหมด
+   ⚠️ W% ของหัวเสือ = BUM (W%On + W%Rebate) รวมกัน การแยก on/off มีแต่ในไฟล์ BUM (ดู HANDOFF §ราคา)
+      หน้านี้จึงบอกว่า "ส่วนลดหาย/เพิ่ม" ไม่ได้เคลมว่าเป็น on หรือ off invoice
+   ⚠️ อ่านอย่างเดียว ไม่แตะ PRICE */
+function pePrRounds(){return (typeof prRounds==="function")?prRounds():[];}
+function pePrDiff(i,j){
+  const out={gone:[],add:[],up:[],down:[]};
+  const hs=(typeof PRICE!=="undefined"&&PRICE&&PRICE.hs)||null;
+  if(!hs||!hs.items||i<0||j<0)return out;
+  Object.keys(hs.items).forEach(code=>{
+    const it=hs.items[code],a=prM(it,i),b=prM(it,j);
+    if(!a&&!b)return;
+    const wa=a?(+a.w||0):0,wb=b?(+b.w||0):0;
+    const ta=a?(+a.tpr||0):0,tb=b?(+b.tpr||0):0;
+    const ra=String((a&&a.rem)||""),rb=String((b&&b.rem)||"");
+    const row={c:code,wa:wa,wb:wb,ta:ta,tb:tb,ra:ra,rb:rb};
+    if(wa>0&&wb<=0)out.gone.push(row);
+    else if(wa<=0&&wb>0)out.add.push(row);
+    else if(wa>0&&wb>0&&Math.abs(wa-wb)>=0.01){(wb<wa?out.down:out.up).push(row);}
+  });
+  const srt=(x,y)=>(y.wa-y.wb)-(x.wa-x.wb)||String(x.c).localeCompare(String(y.c));
+  out.gone.sort((x,y)=>y.wa-x.wa);out.add.sort((x,y)=>y.wb-x.wb);
+  out.down.sort(srt);out.up.sort((x,y)=>(y.wb-y.wa)-(x.wb-x.wa));
+  return out;
+}
 /* ---------- หน้าจอ ---------- */
 function peSel(id,vals,cur,fn){
   return `<div class="dstep"><button type="button" class="dstep-b" onclick="selStep('${id}',-1)" title="รอบก่อนหน้า">◀</button>`+
@@ -7588,6 +7622,53 @@ function peTable(rows,mode,empty){
   return grpTable([{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"รอบก่อน",a:"l"},{h:"รอบใหม่",a:"l"},{h:"สต็อกคงเหลือ"}],
     [{title:"",rows:rows.map(r=>peRow(r,mode))}],{alwaysBand:false});
 }
+/* 💰 เทียบส่วนลดสองรอบจากไฟล์หัวเสือ — ทางเดียวที่ "รู้ก่อนได้ใบวันที่ 25" ครบทุกรหัส */
+function pePrHtml(){
+  if(typeof PRICE==="undefined")return `<div class="insight">หน้านี้ยังอ่านไฟล์ราคาไม่ได้</div>`;
+  if(!PRICE.loaded){if(typeof prLoad==="function")prLoad();
+    return `<div class="insight">⏳ กำลังโหลดไฟล์ราคา…</div>`;}
+  if(PRICE.err)return `<div class="note">อ่านไฟล์ราคาไม่ได้: ${anaEsc(PRICE.err)}</div>`;
+  const rs=pePrRounds();
+  if(rs.length<2)return `<div class="note">ยังไม่มีไฟล์ราคาหัวเสือที่มีหลายรอบในระบบ
+    — อัพที่ปุ่ม <b>📤 อัพโหลดไฟล์</b> → หมวด <b>💰 ราคา & ทุน</b> → <b>🏷 ไฟล์หัวเสือ</b>
+    <br>ไฟล์หัวเสือหนึ่งไฟล์มีหลายรอบในตัว (เช่น Nov'26 · Dec'26 · Jan'27 · Feb'27) หน้านี้จะเทียบรอบต่อรอบให้เอง</div>`;
+  let i=(PE.pi==null)?Math.max(0,(typeof prNowIdx==="function"?prNowIdx():0)):PE.pi;
+  if(i>=rs.length-1)i=rs.length-2;
+  if(i<0)i=0;
+  const j=i+1;
+  const d=pePrDiff(i,j);
+  const q=PE.q.trim().toLowerCase();
+  const f=arr=>arr.filter(r=>!q||(r.c+" "+(oname(r.c)||"")).toLowerCase().indexOf(q)>=0);
+  const gone=f(d.gone),add=f(d.add),down=f(d.down),up=f(d.up);
+  const B=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const row=r=>`<tr><td>${anaEsc(r.c)}</td><td style="text-align:left">${anaEsc(oname(r.c)||"")}</td>`+
+    `<td>${r.wa?B(r.wa):"-"}</td><td>${r.wb?B(r.wb):"-"}</td>`+
+    `<td class="${r.wb<r.wa?"down":(r.wb>r.wa?"up":"")}"><b>${(r.wb-r.wa>0?"+":"")+B(r.wb-r.wa)}</b></td>`+
+    `<td style="text-align:left">${anaEsc([r.ra&&("รอบนี้ "+r.ra),r.rb&&("รอบหน้า "+r.rb)].filter(Boolean).join(" · "))}</td></tr>`;
+  const tbl=(rows,empty)=>rows.length?grpTable(
+    [{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"ส่วนลด "+anaEsc(rs[i])+" (฿/หีบ)"},{h:"ส่วนลด "+anaEsc(rs[j])+" (฿/หีบ)"},{h:"ต่าง"},{h:"หมายเหตุในไฟล์",a:"l"}],
+    [{title:"",rows:rows.map(row)}],{alwaysBand:false}):`<div class="insight">${empty}</div>`;
+  const pick=`<div class="ctl"><label>เทียบรอบไฟล์ราคา</label><div class="dstep">`+
+    `<button type="button" class="dstep-b" onclick="peSetPi(${i-1})" ${i<=0?"disabled":""} title="รอบก่อนหน้า">◀</button>`+
+    `<select onchange="peSetPi(+this.value)">`+
+    rs.slice(0,-1).map((l,k)=>`<option value="${k}"${k===i?" selected":""}>${anaEsc(l)} → ${anaEsc(rs[k+1])}</option>`).join("")+
+    `</select><button type="button" class="dstep-b" onclick="peSetPi(${i+1})" ${i>=rs.length-2?"disabled":""} title="รอบถัดไป">▶</button></div></div>`;
+  return `<div class="controls" style="margin:0 0 10px">${pick}</div>`+
+    `<div class="rq-note">💰 อ่านจาก<b>ไฟล์ราคาหัวเสือ</b> ซึ่งมีหลายรอบอยู่ในไฟล์เดียว —
+      <b>รู้ได้ตั้งแต่ก่อนได้ใบสั่งวันที่ 25</b> ว่ารอบหน้าส่วนลดตัวไหนหาย
+      <br>⚠️ ช่อง W% ของหัวเสือ<b>รวม on-invoice กับ rebate ไว้ด้วยกัน</b> (การแยกสองอย่างนี้มีแต่ในไฟล์ BUM)
+      หน้านี้จึงบอกแค่ว่า "ส่วนลดหาย/เพิ่ม" ไม่ได้เคลมว่าเป็นแบบไหน</div>`+
+    `<div class="cards">
+      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">🔻 ส่วนลดหายรอบหน้า</div><div class="v down">${gone.length}</div><div class="s">มีส่วนลดใน ${anaEsc(rs[i])} แต่ ${anaEsc(rs[j])} ไม่มี</div></div>
+      <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">📉 ส่วนลดลดลง</div><div class="v">${down.length}</div><div class="s">ยังมีแต่ได้น้อยลง</div></div>
+      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">🆕 ส่วนลดเพิ่มรอบหน้า</div><div class="v up">${add.length}</div><div class="s">รอบหน้าค่อยซื้อคุ้มกว่า</div></div>
+      <div class="card"><div class="k">📈 ส่วนลดเพิ่มขึ้น</div><div class="v">${up.length}</div><div class="s">ยังมีและได้มากขึ้น</div></div>
+    </div>`+
+    `<h4>🔻 ส่วนลดหายรอบหน้า — พวกนี้ควรสั่งตุนช่วงวันที่ 21-24</h4>`+tbl(gone,"ไม่มีตัวไหนส่วนลดหายระหว่างสองรอบนี้")+
+    `<h4>📉 ส่วนลดลดลง</h4>`+tbl(down,"ไม่มีตัวไหนส่วนลดลดลง")+
+    `<h4>🆕 ส่วนลดเพิ่มรอบหน้า — ยังไม่ต้องรีบตุน</h4>`+tbl(add,"ไม่มีตัวไหนได้ส่วนลดใหม่");
+}
+function peSetPi(i){PE.pi=i;renderPromoEnd();}
 function renderPromoEnd(){
   const el=document.getElementById("peBody");if(!el)return;
   const ds=peRounds();
@@ -7622,6 +7703,21 @@ function renderPromoEnd(){
       <b>FTR</b> = ราคาพิเศษเฉพาะช่วง<br>
       อ่านจากข้อความที่ Unilever เขียนไว้ในใบสั่งเอง — หน้านี้<b>ไม่แก้ไขข้อมูลใด ๆ</b>
     </div></div>`;
+  /* ⚠️ ใบที่อัพไว้ "ก่อน" ระบบจะรู้จักอ่านโปร จะไม่มีข้อความโปรเก็บไว้เลย → ทุกช่องเป็น 0
+     ต้องบอกออกมาตรง ๆ ไม่ใช่ปล่อยให้อ่านว่าเดือนนี้ไม่มีโปรหายสักตัว (เจ้าของเจอเอง 25 พ.ย. 69) */
+  const oldA=a&&!peHasPm(aD),oldB=!peHasPm(bD);
+  if(oldA||oldB){
+    const miss=[];if(oldA)miss.push(fmtDate(a));if(oldB)miss.push(fmtDate(b));
+    const fn=d=>"..._HPC_"+d.slice(8,10)+d.slice(5,7)+d.slice(2,4)+".xlsm";
+    h+=`<div class="panel" style="border-top:3px solid var(--warn)">
+      <h3>⚠️ ใบรอบนี้อัพไว้ก่อนที่ระบบจะอ่านโปรเป็น</h3>
+      <div class="note">ใบของ <b>${miss.join(" และ ")}</b> ถูกอ่านด้วยตัวอ่านรุ่นก่อน ซึ่งยังไม่ได้เก็บข้อความโปรไว้
+        ตัวเลขข้างล่างจึงขึ้นเป็น 0 ทั้งที่จริง ๆ มีโปรเปลี่ยน
+        <br><br><b>วิธีแก้ — อัพใบเดิมซ้ำอีกครั้งเดียว</b> ที่ปุ่ม <b>📤 อัพโหลดไฟล์</b> มุมขวาบน
+        → หมวด <b>🛒 การสั่งของ</b> → ช่อง <b>🔎 ใบเปล่า — ดูโปรฯ ก่อนสั่ง</b>
+        ${miss.map(x=>`<br>&nbsp;&nbsp;• ไฟล์ของ ${x} (ชื่อลงท้าย <code>${fn(x===fmtDate(a)?a:b)}</code>)`).join("")}
+        <br><br>อัพแล้วตัวเลขจะขึ้นเองทันที ข้อมูลเดิมไม่หาย — เป็นการอ่านไฟล์เดิมซ้ำเฉย ๆ</div></div>`;
+  }
   if(!a){
     h+=`<div class="panel"><div class="note">มีใบอยู่รอบเดียว (${fmtDate(b)}) — ยังเทียบไม่ได้
       <br>อัพใบของอีกรอบหนึ่ง (เช่นใบวันที่ 24 ก่อนตัดรอบ) แล้วหน้านี้จะบอกได้ทันทีว่าโปรตัวไหนหายไป</div></div>`;
@@ -7634,7 +7730,8 @@ function renderPromoEnd(){
     </div>`;
     h+=`<div class="panel"><div class="pos-subtabs" style="margin-bottom:10px">${
       tab("gone","🔻","โปรหมดไปแล้ว",gone.length)+tab("add","🆕","โปรเพิ่มเข้ามา",add.length)+
-      tab("chg","🔀","เปลี่ยนเงื่อนไข",chg.length)+tab("end","⏳","ใบบอกว่าใกล้หมด",end.length)}</div>`;
+      tab("chg","🔀","เปลี่ยนเงื่อนไข",chg.length)+tab("end","⏳","ใบบอกว่าใกล้หมด",end.length)+
+      `<button type="button" class="pos-st${PE.only==="pr"?" on":""}" onclick="peSetOnly('pr')">💰 เทียบจากไฟล์ราคา</button>`}</div>`;
     if(PE.only==="gone"){
       h+=`<div class="rq-note">🔻 ของพวกนี้<b>หมดโปรไปแล้ว</b>ในรอบ ${fmtDate(b)} — เดือนหน้าถ้าเห็นตัวไหนอยู่ในลิสต์นี้ตั้งแต่ก่อนวันที่ 25 ให้<b>สั่งตุนช่วงวันที่ 21-24</b> ก่อนโปรตัด</div>`+
         peTable(gone,"gone","ไม่มีตัวไหนหมดโปรระหว่างสองรอบนี้");
@@ -7644,6 +7741,8 @@ function renderPromoEnd(){
     }else if(PE.only==="chg"){
       h+=`<div class="rq-note">🔀 ยังมีโปรอยู่ แต่<b>เงื่อนไขเปลี่ยน</b> — ดูว่าของเดิมคุ้มกว่าไหม ถ้าคุ้มกว่าให้สั่งตุนก่อนตัดรอบ</div>`+
         peTable(chg,"chg","เงื่อนไขโปรไม่เปลี่ยนเลยระหว่างสองรอบนี้");
+    }else if(PE.only==="pr"){
+      h+=pePrHtml();
     }else{
       h+=`<div class="rq-note">⏳ ใบสั่งรอบ ${fmtDate(b)} <b>เขียนช่วงวันของโปรไว้เอง</b> — พวกนี้รู้ล่วงหน้าได้เลยว่าจะหมดวันไหน ไม่ต้องรอเทียบรอบ</div>`;
       h+=end.length?grpTable([{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"โปรที่ได้",a:"l"},{h:"ช่วงที่ใบเขียนไว้"},{h:"หมดวันที่"},{h:"เหลืออีก"}],
@@ -14387,6 +14486,9 @@ function prAfterLoad(){
   const a=document.getElementById("priceView"),b=document.getElementById("costView");
   if(a&&!a.classList.contains("hidden")&&typeof renderPrice==="function")renderPrice();
   if(b&&!b.classList.contains("hidden")&&typeof renderCost==="function")renderCost();
+  /* 📅 หน้ารายการสั่งก่อนหมดโปร ก็อ่านไฟล์ราคาด้วย (เทียบรอบล่วงหน้าก่อนวันที่ 25) */
+  const c=document.getElementById("ordSecPe");
+  if(c&&!c.classList.contains("hidden")&&typeof renderPromoEnd==="function")renderPromoEnd();
 }
 async function prLoad(force){
   if(_prLoading)return;
