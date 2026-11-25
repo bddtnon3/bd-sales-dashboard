@@ -415,7 +415,7 @@ code, never printed.
   since?" passes `incl=true` to `dbChase`, because a rep asks in the morning and the depot orders
   the same afternoon — Drop ค้าง must keep its strict `>`. Read-only over
   ORDERS/POSTATUS/STOCKD/REQUESTS like its twin. Prove it with
-  **`node test/browser/reqback.test.cjs`** (26 checks, self-contained).
+  **`node test/browser/reqback.test.cjs`** (30 checks, self-contained).
   The first one opens with **🔁 Drop ค้าง** (`renderDropBack`/`dbScan`/`dbChase`/`dbBlock`): everything
   Unilever dropped in the last 3/5/7/14 days that has still not arrived, with a re-order prompt. It
   is **strictly read-only** over ORDERS/POSTATUS/STOCKD/REQUESTS (same rule as the auto-PO
@@ -440,7 +440,17 @@ code, never printed.
   uploading a real file afterwards **clears `noDrop`** (both writers — `parseDrop` and the
   `kind==="drop"` path — plus `deleteDrop`); and the tick is manager-only **in the function**, not
   by hiding the button. `noDrop` is a field on the day record, which `mergeState` merges whole
-  (`keyMerge` per date), so it is not a new section. Prove it with
+  (`keyMerge` per date), so it is not a new section.
+  **A blank form uploaded today must beat the round the centre last ordered on** (`poRoundFor`,
+  owner 25 Nov 26: *"ผมอัพของวันที่ 25 ผมต้องการให้หน้าการสั่งของเซลล์ ขึ้นอัพเดตด้วยเลยในวันนั้นๆ"*).
+  In the morning the centre has not ordered yet, so `ordServedAt` returned yesterday's round and it
+  won over the form just uploaded. The rule now prefers a POSTATUS round that is **newer than
+  `served` and not after the request date** — which leaves the original case (rep asks on the 16th,
+  centre orders on the 17th) alone, because the replacement must be ≤ the request date. It carries
+  the **same `PO_NEAR_DAYS` distance guard** as the fallback branch; without it a form left over
+  from months ago answers today's question (the reqback suite catches exactly that). Uploading a
+  blank form also repaints the open pages (`psRefresh`). Prove it with
+  **`node test/browser/reqback.test.cjs`** (30 checks). Prove the Drop tick with
   **`node test/browser/nodrop.test.cjs`** (33 checks, self-contained) plus the `noDrop` cases in
   `merge-safety`.
   The auto-PO calculator (`poBuild`/`renderPoCalc`) and `MINSTOCK` (minimum stock per code) have
@@ -664,7 +674,7 @@ code, never printed.
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
-  with **`node test/browser/cstock.test.cjs`** (236 checks; it must load the page over a real origin,
+  with **`node test/browser/cstock.test.cjs`** (239 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
 **📦 ออเดอร์พิเศษ (`spord`) is its own top-level group**, not a tab under สต็อก — the owner moved it
   out on 18 Nov 26 (*"โยกหมวดออเดอร์พิเศษแยกออกมาจากสต็อค ให้เป็นหมวดใหญ่"*) and it is on the admin
@@ -729,6 +739,12 @@ code, never printed.
   now carries a **category chip bar** (`#upCats`, `UP_CATS`/`upSetCat`/`upPaint`) with a
   **📂 ทุกหมวด** chip; the chips are built from the `data-group` values actually present in the
   modal, so a new slot with a new group appears by itself once its name is in `UP_CATS`.
+  **A retired slot is hidden, never deleted** (`data-off="1"` + `hidden`, skipped by `upRows`):
+  ยอดรายร้าน, แข่งขันเปิด eB2B and the สต็อคกลาง Excel form went on 25 Nov 26, and PJP collapsed to
+  one slot because dcode merged Master Outlet and the plan into one file — *"ช่วยปรับเอาปุ่มที่ไม่
+  จำเป็นแล้ว ออกไปหน่อยนะ แต่ให้ข้อมูลยังคงอยู่เหมือนเดิม"*. The `<input>` stays in the page
+  (`handleTyped` binds to it at load) and every parser and stored section is untouched, so undoing
+  it is removing two attributes.
   It still **opens on the current tab's category** (`UP_TAB`) so the daily routine is no slower,
   and that chip is marked *· หน้านี้*. Never let an unmapped tab fall through to `"sales"` — it did
   once, and the cstock-tab upload button opened the daily-sales slots; an unmapped tab now opens on

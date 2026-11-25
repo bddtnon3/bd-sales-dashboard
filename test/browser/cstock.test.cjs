@@ -314,20 +314,32 @@ function seed(a){
    /* 🔑 และดูทุกหมวดพร้อมกันได้ */
    upSetCat('');
    o.allVis=[...new Set(V().map(r=>r.dataset.group))];
+   o.allLabels=V().map(r=>[...r.querySelectorAll('label b')].map(x=>x.textContent).join(' + '));
    o.allTitle=document.getElementById('upTitle').textContent;
+   upSetCat('pjp');
+   o.pjpLabels=V().map(r=>[...r.querySelectorAll('label b')].map(x=>x.textContent).join(' + '));
+   o.inputsKept=['fileStore','fileEB','fileCStock','filePjpPlan'].every(id=>!!document.getElementById(id));
    closeUpload();return o;});
  t('🔧 กดอัพโหลดในแท็บสต็อคกลาง → เริ่มที่หมวดสต็อคกลาง ไม่ใช่ยอดขาย',
    up.vis.length>0&&up.vis.every(g=>g==='cstock'),up.vis.join(',')||'(ไม่มี)');
- t('...เห็นช่องอัพของสต็อคกลาง: ไฟล์ร้านที่ตัดบิลเข้า + ฟอร์ม Excel วิธีเดิม',
-   up.labels.length===2&&/ร้านที่ตัดบิลเข้า/.test(up.labels[0])&&/สต็อคกลาง/.test(up.labels[1]),
-   up.labels.join(' | '));
+ /* 25 พ.ย. 69 ฟอร์ม Excel แบบเดิมถูกเอาออก เหลือช่องเดียวคือไฟล์ร้านที่ตัดบิลเข้า */
+ t('...เห็นช่องอัพของสต็อคกลาง: ไฟล์ร้านที่ตัดบิลเข้า',
+   up.labels.length===1&&/ร้านที่ตัดบิลเข้า/.test(up.labels[0]),up.labels.join(' | '));
  t('...และหัวกล่องบอกว่าเป็นไฟล์สต็อคกลาง',/สต็อคกลาง/.test(up.title),up.title);
  t('...บรรทัดรองไม่บอกว่ามาจาก Unilever (ไฟล์นี้แอดมินถือเอง)',
    !/Unilever/.test(up.sub)&&/ใบตัดบิล/.test(up.sub),up.sub);
  t('...ไม่มีช่อง "ยอดขายรายวัน" โผล่มาให้อัพผิดช่อง',
    !up.labels.some(x=>/ยอดขายรายวัน/.test(x)),up.labels.join(' | '));
- t('🔑 มีแถบหมวดให้กดเลือก ครบทุกหมวดที่มีช่องอัพ + ปุ่ม "ทุกหมวด"',
-   up.cats.length>=13&&/ทุกหมวด/.test(up.cats[0])&&up.cats.some(x=>/ราคา/.test(x)),up.cats.join(' | '));
+ t('🔑 มีแถบหมวดให้กดเลือก ครบทุกหมวดที่ยังใช้อยู่ + ปุ่ม "ทุกหมวด"',
+   up.cats.length>=12&&/ทุกหมวด/.test(up.cats[0])&&up.cats.some(x=>/ราคา/.test(x)),up.cats.join(' | '));
+ /* 25 พ.ย. 69 เจ้าของสั่งเอาช่องที่เลิกใช้ออก — แต่ข้อมูลและตัวอ่านต้องยังอยู่ */
+ t('🔑 ช่องอัพที่เลิกใช้แล้วไม่โผล่ให้กดอีก (ยอดรายร้าน · แข่งขันเปิด eB2B · ฟอร์ม Excel สต็อคกลาง)',
+   up.allLabels.join('|').indexOf('ยอดรายร้าน')<0&&up.allLabels.join('|').indexOf('แข่งขันเปิด eB2B')<0&&
+   up.allLabels.join('|').indexOf('ฟอร์ม Excel')<0,up.allLabels.join(' | ').slice(0,150));
+ t('🛟 ...แต่ช่องกรอกไฟล์ยังอยู่ในหน้า (ตัวอ่านยังผูก event ไว้ ข้อมูลเดิมไม่หาย)',
+   up.inputsKept,'fileStore/fileEB/fileCStock/filePjpPlan');
+ t('🔑 PJP เหลือช่องเดียว — dcode รวมร้านค้ากับแผนเป็นไฟล์เดียวแล้ว',
+   up.pjpLabels.length===1&&/ไฟล์เดียวจบ/.test(up.pjpLabels[0]),up.pjpLabels.join(' | '));
  t('...หมวดของแท็บที่เปิดอยู่ถูกเลือกไว้ให้ และติดป้าย "หน้านี้"',
    /สต็อคกลาง/.test(up.onCat)&&up.here.length===1&&/สต็อคกลาง/.test(up.here[0]),
    up.onCat+' · ป้าย: '+up.here.join(','));
@@ -336,7 +348,7 @@ function seed(a){
    up.priceLabels.some(x=>/หัวเสือ/.test(x))&&up.priceLabels.some(x=>/BUM/.test(x)),
    up.priceLabels.join(' | '));
  t('🔑 กด "ทุกหมวด" แล้วเห็นช่องอัพของทุกหมวดพร้อมกัน',
-   up.allVis.length>=12&&/อัพโหลดไฟล์/.test(up.allTitle),up.allVis.join(','));
+   up.allVis.length>=11&&/อัพโหลดไฟล์/.test(up.allTitle),up.allVis.join(','));
  /* กันพลาดแบบเดิมอีก: ทุกแท็บที่แมปหมวดไว้ ต้องเปิดมาตรงหมวดของตัวเอง ไม่ใช่หมวดมั่ว */
  const cover=await ev(()=>{
    const groups=[...new Set([...document.querySelectorAll('#modal .up-row')].map(r=>r.dataset.group))];

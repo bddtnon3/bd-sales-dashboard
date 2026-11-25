@@ -1744,16 +1744,22 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <label class="drop up-month" for="fileMonth">🎯 <b>ยอดรายเดือน + เป้าหมาย</b><small>อัพเดือนละครั้ง · ไฟล์สรุปเป้า/ยอด เช่น Sales 072026.xlsx</small></label>
         <input id="fileMonth" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
-      <div class="up-row" data-group="sales">
-        <label class="drop up-store" for="fileStore">🏪 <b>ยอดรายร้าน (by store)</b><small>ไม่จำเป็นแล้ว — ไฟล์ 🧪 ยอดขายรายกลุ่ม/แบรนด์ สร้างยอดรายร้านให้เองอัตโนมัติ · เก็บไว้เผื่อกรณีพิเศษ</small></label>
+      <!-- 🗑 ยอดรายร้าน (by store) — เจ้าของสั่งเอาปุ่มออก 25 พ.ย. 69 เพราะไฟล์ 🧪 วิเคราะห์เชิงลึก
+           สร้างยอดรายร้านให้เองแล้ว  ⚠️ เอาออกแค่ "ทางเข้า" — ข้อมูล STORE ที่อัพไว้ยังอยู่ครบ
+           ตัวอ่าน parseStore ยังอยู่ และ input ยังอยู่ (handleTyped ผูก event ไว้ตอนโหลดหน้า)
+           เอากลับมาใช้: เอา hidden ออกจาก div นี้อย่างเดียว -->
+      <div class="up-row hidden" data-group="sales" data-off="1">
+        <label class="drop up-store" for="fileStore">🏪 <b>ยอดรายร้าน (by store)</b><small>ไม่ใช้แล้ว — ไฟล์ 🧪 ยอดขายรายกลุ่ม/แบรนด์ สร้างยอดรายร้านให้เองอัตโนมัติ</small></label>
         <input id="fileStore" type="file" accept=".xls,.xlsx" multiple class="hidden">
       </div>
       <div class="up-row" data-group="kpi">
         <label class="drop up-kpi" for="fileKPI">🎯 <b>eB2B & Self Ordering (Incentive)</b><small>อัพรายสัปดาห์ · ไฟล์ Salesman Incentive_DTT_...xlsx · เก็บแยกเป็น "ณ วันที่" ไม่ทับรอบเก่า</small></label>
         <input id="fileKPI" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
-      <div class="up-row" data-group="eb">
-        <label class="drop up-eb" for="fileEB">🏆 <b>แข่งขันเปิด eB2B</b><small>อัพทุกครั้งที่ได้ไฟล์ใหม่ · ไฟล์ Migration_Report_File_data_as_of_..._2026.xlsx · <b>ไฟล์ใหญ่ ~30MB ใช้เวลา 30–60 วิ</b> อย่าเพิ่งปิดหน้าจอ</small></label>
+      <!-- 🗑 แข่งขันเปิด eB2B — การแข่งจบไปตั้งแต่ ก.ย. 69 แท็บถูกซ่อนไปก่อนแล้ว
+           เจ้าของสั่งเอาปุ่มอัพออกด้วย 25 พ.ย. 69  ⚠️ ข้อมูล EB2B ที่อัพไว้ยังอยู่ครบและยัง merge ปกติ -->
+      <div class="up-row hidden" data-group="eb" data-off="1">
+        <label class="drop up-eb" for="fileEB">🏆 <b>แข่งขันเปิด eB2B</b><small>การแข่งจบไปแล้ว (ก.ย. 69) — ข้อมูลเดิมยังอยู่ครบ</small></label>
         <input id="fileEB" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="ps">
@@ -1780,8 +1786,10 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <label class="drop up-stock" for="fileCStockEx">🏪 <b>ร้านที่ตัดบิลเข้า</b><small>ไฟล์ <b>Ex.export.xlsx</b> (รอบเดียว) หรือ <b>ไฟล์สรุป Stock ของแอดมิน 2</b> (หลายลอตในไฟล์เดียว ระบบแยกให้เอง) · <b>แนบทีหลังได้</b> จับคู่ใบตัดบิลจากวันที่ให้อัตโนมัติ</small></label>
         <input id="fileCStockEx" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
-      <div class="up-row" data-group="cstock">
-        <label class="drop up-stock" for="fileCStock">🧊 <b>สต็อคกลาง — ฟอร์ม Excel (วิธีเดิม)</b><small>ไม่ต้องใช้แล้ว ให้กรอกในเว็บที่แท็บ 🧾 ใบตัดบิล · เก็บไว้เผื่อไฟล์เก่าที่ยังกรอกค้างอยู่</small></label>
+      <!-- 🗑 ฟอร์ม Excel สต็อคกลางแบบเดิม — ตั้งแต่ 4 พ.ย. 69 กรอกในเว็บแล้ว (🧾 ใบตัดบิล)
+           ⚠️ ลอตที่อัพมาจากไฟล์เดิมยังอยู่ครบ ตัวอ่าน parseCStock ยังอยู่ -->
+      <div class="up-row hidden" data-group="cstock" data-off="1">
+        <label class="drop up-stock" for="fileCStock">🧊 <b>สต็อคกลาง — ฟอร์ม Excel (วิธีเดิม)</b><small>ไม่ใช้แล้ว ให้กรอกในเว็บที่แท็บ 🧾 ใบตัดบิล</small></label>
         <input id="fileCStock" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="stock">
@@ -1796,10 +1804,14 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <label class="drop up-ana" for="fileAna">🧪 <b>ยอดขายรายกลุ่ม/แบรนด์/สินค้า</b><small>อัพเดือนละครั้ง · ไฟล์ Sales 1-2 2026.xls ฯลฯ · <b>อัพทีละไฟล์</b> (ไฟล์ใหญ่ ~60MB ใช้เวลา 20-40 วิ) ระบบรวมเดือนให้เอง</small></label>
         <input id="fileAna" type="file" accept=".xls,.xlsx" multiple class="hidden">
       </div>
+      <!-- 🗺 PJP — dcode รวม Master Outlet กับแผน PJP เป็นไฟล์เดียวแล้ว (Outlet_Master__PJP_Report.xlsx)
+           เจ้าของสั่ง 25 พ.ย. 69 ให้เหลือช่องเดียว  ⚠️ ทั้งสองช่องเข้าตัวอ่านชุดเดียวกันอยู่แล้ว
+           (parseOutlet / parsePJP ต่างก็ส่งต่อให้ parsePjpDcode เมื่อเจอหัว Section Code)
+           ช่องเดิม filePjpPlan ยังอยู่แบบซ่อน เพราะ handleTyped ผูก event ไว้ และไฟล์ PJP
+           แบบเก่า (คนละไฟล์กับ Master) ยังอัพได้ถ้าวันหนึ่งต้องย้อนกลับไปใช้ -->
       <div class="up-row" data-group="pjp">
-        <label class="drop" for="filePjpOut">🏪 <b>ร้านค้า + แผน PJP</b><small>ระบบใหม่ <b>dcode</b>: ไฟล์เดียวจบ <b>Outlet_Master__PJP_Report.xlsx</b> (ปุ่มนี้หรือปุ่มล่างก็ได้) · ไฟล์ Master Outlet แบบเดิมยังอัพได้ · อัพเดือนละครั้ง · ร้านเก่าไม่หาย ทับเฉพาะร้านที่มีในไฟล์</small></label>
+        <label class="drop" for="filePjpOut">🏪🗺 <b>ร้านค้า + แผน PJP (ไฟล์เดียวจบ)</b><small>ระบบใหม่ <b>dcode</b>: <b>Outlet_Master__PJP_Report.xlsx</b> ไฟล์เดียวได้ทั้งรายชื่อร้านและแผนเยี่ยม · อัพเดือนละครั้ง · ใส่เดือนปีท้ายชื่อไฟล์ถ้าอยากกางเดือนอื่น เช่น _122026 · ร้านเก่าและแผนเดือนอื่นไม่หาย · ไฟล์ Master Outlet / PJP แบบเดิมก็ยังอัพช่องนี้ได้</small></label>
         <input id="filePjpOut" type="file" accept=".xls,.xlsx" multiple class="hidden">
-        <label class="drop" for="filePjpPlan">🗺 <b>แผน PJP ประจำเดือน</b><small>ระบบใหม่ <b>dcode</b>: อัพไฟล์ <b>Outlet_Master__PJP_Report.xlsx</b> ที่นี่ก็ได้ (ไฟล์เดียวได้ทั้งร้านค้าและแผน · ใส่เดือนปีท้ายชื่อไฟล์ถ้าอยากกางเดือนอื่น เช่น _122026) · ไฟล์ PJP แบบเดิมยังอัพได้ ระบบสร้างรอบสอง (+14 วัน) ให้เอง · แผนเดือนอื่นไม่หาย</small></label>
         <input id="filePjpPlan" type="file" accept=".xls,.xlsx" multiple class="hidden">
       </div>
       <!-- 🧾 DCODE ใช้ไฟล์ 2 ตัวที่มีช่องอัพอยู่แล้ว (Master Data ในกลุ่มสต็อก · Master Outlet ในกลุ่ม PJP)
@@ -8030,6 +8042,11 @@ async function parseOrderForm(name,buf,kind){
   if(blank){
     const n=saveFlags();
     ulog("✅ "+name+" (ใบเปล่าดูโปรฯ) → รอบ "+fmtDate(date)+" · อ่านสถานะ "+n+" รายการ · <b>ไม่แตะข้อมูลการสั่งของ</b> — พอสั่งเสร็จแล้วอัพ BD_"+date.slice(8,10)+date.slice(5,7)+date.slice(2,4)+" ฝั่งใบสั่งของ จำนวนจะขึ้นมาเอง");
+    /* 🔄 วาดหน้าที่อ่านสถานะสินค้าใหม่ทันที — เจ้าของแจ้ง 25 พ.ย. 69 ว่าอัพใบเปล่าของวันที่ 25
+       แล้วหน้าการสั่งของยังขึ้นสถานะของรอบเก่า (ดูเหตุผลเพิ่มที่ poRoundFor)
+       ⚠️ ไม่ย้าย ORD.date และไม่แตะ ORDERS เลย — ใบเปล่าคือ "สถานะสินค้า" ไม่ใช่ใบสั่ง */
+    ulog("&nbsp;&nbsp;↳ 🔄 หน้าคำขอสินค้า / การสั่งของ อัพเดตสถานะรอบ "+fmtDate(date)+" ให้แล้ว เซลล์เห็นทันทีที่รีเฟรช");
+    if(typeof psRefresh==="function")psRefresh();
     pgBust();syncToServer();return;
   }
   const day=ORDERS.data[date]||(ORDERS.data[date]={rounds:{},dropped:null,hasResult:false});
@@ -8064,6 +8081,15 @@ const PS_SEC=[
   {k:"k",icon:"🆕",title:"รหัสสินค้าใหม่",color:"#2B6CB0",
    sub:'รหัสนี้คือรหัส<b>ใหม่</b> — บางตัวยังไม่เปิดให้สั่ง ต้องสั่งรหัสเดิมไปก่อน ดูคอลัมน์ขวา'}];
 /* Always derive the list from the stored days, so a stale POSTATUS.dates can never hide a day. */
+/* วาดทุกหน้าที่อ่าน "สถานะสินค้าจากใบสั่ง" (POSTATUS) ใหม่ — ใช้หลังอัพใบเปล่า/ใบสั่ง
+   เรียกเฉพาะหน้าที่เปิดอยู่จริง เพื่อไม่ให้ไปปลุก render ของหน้าที่ยังไม่ได้ใช้ */
+function psRefresh(){
+  const vis=id=>{const el=document.getElementById(id);return el&&!el.classList.contains("hidden");};
+  try{
+    if(vis("orderView")&&typeof renderOrder==="function")renderOrder();
+    if(vis("posView")&&typeof renderPOS==="function")renderPOS();
+  }catch(e){console.error("psRefresh",e);}
+}
 function psDates(){return Object.keys(((POSTATUS&&POSTATUS.data)||{})).sort();}
 function psDay(d){return ((POSTATUS&&POSTATUS.data)||{})[d]||null;}
 /* how many cases the centre actually ordered that day, across every round */
@@ -8541,7 +8567,19 @@ function ordServedAt(reqDate){const rs=ordRoundsFor(reqDate);return rs.length?rs
 function poRoundFor(reqDate){
   const ds=psDates();if(!ds.length)return null;
   const served=ordServedAt(reqDate);
-  if(served&&ds.indexOf(served)>=0)return served;     /* 1) ใบของรอบที่ศูนย์สั่งจริง */
+  /* ⚠️ ใบที่ "ใหม่กว่ารอบที่สั่งไปแล้ว และยังไม่เลยวันที่ถาม" ต้องชนะ — เจ้าของแจ้ง 25 พ.ย. 69:
+     *"ผมอัพของวันที่ 25 ผมต้องการให้หน้าการสั่งของเซลล์ ขึ้นอัพเดตด้วยเลยในวันนั้นๆ"*
+     ตอนเช้าของวันที่ 25 ศูนย์ยังไม่ได้สั่ง ordServedAt จึงคืนรอบวันที่ 24 แล้วชนะใบเปล่าของวันที่ 25
+     ที่เพิ่งอัพ ทั้งที่ใบวันที่ 25 คือสถานะล่าสุดจริง ๆ
+     ⚠️ ไม่กระทบเคสเดิมที่ served อยู่ "หลัง" วันที่ถาม (เซลล์ขอวันที่ 16 ศูนย์สั่งวันที่ 17)
+        เพราะตัวที่จะมาแทนต้อง <= วันที่ถาม จึงไม่มีทางใหม่กว่า served ในเคสนั้น */
+  const upto=ds.filter(d=>d<=reqDate);
+  const fresh=upto.length?upto[upto.length-1]:null;
+  if(served&&ds.indexOf(served)>=0&&!(fresh&&fresh>served))return served;  /* 1) ใบของรอบที่ศูนย์สั่งจริง */
+  /* ⚠️ ต้องติดกฎระยะเดียวกับข้อ 3 ด้วย ไม่งั้นใบเก่าค้างปีจะถูกหยิบมาตอบคำขอของวันนี้
+     (เทสต์ reqback ข้อ "วันที่ยังไม่ได้อัพใบสั่ง ห้ามเดา" จับได้ตอนลืมใส่) */
+  if(fresh&&(!served||fresh>served)&&poDayGap(fresh,reqDate)<=PO_NEAR_DAYS)
+    return fresh;                                    /* 1ข) ใบที่เพิ่งอัพของวันนี้ ใหม่กว่า */
   if(ds.indexOf(reqDate)>=0)return reqDate;           /* 2) ใบตรงวันคำขอ */
   const after=ds.filter(d=>d>=reqDate);               /* 3) ใบถัดไปข้างหน้า แล้วค่อยถอยหลัง */
   const cand=after.length?after[0]:ds[ds.length-1];
@@ -15093,10 +15131,14 @@ const UP_TAB={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",
 const UP_SUB={cstock:"ไฟล์ที่แอดมินถือเอง — ไฟล์ร้านที่ตัดบิลเข้า (Ex.export) หรือฟอร์ม Excel แบบเดิม · การตัดบิลใหม่ให้กรอกที่แท็บ 🧾 ใบตัดบิล",
   price:"สองไฟล์ราคาที่ Unilever ส่งมาทุกเดือน — เก็บแยกจากข้อมูลยอดขาย ไม่กระทบกัน"};
 let UP={cat:null};
-/* หมวดที่มีช่องอัพอยู่จริง เรียงตาม UP_CATS */
+/* หมวดที่ยังใช้งานอยู่จริง เรียงตาม UP_CATS
+   ⚠️ แถวที่ติด data-off="1" คือช่องอัพที่เลิกใช้แล้ว (เจ้าของสั่งเอาปุ่มออก 25 พ.ย. 69)
+      — "เอาออกแค่ทางเข้า" เหมือนตอนเอาแท็บ eB2B/โปรโมชั่นออก ข้อมูลและตัวอ่านยังอยู่ครบ
+      เอากลับมาใช้: เอา class="hidden" กับ data-off ออกจากแถวนั้นอย่างเดียว */
+function upRows(){return [...document.querySelectorAll("#modal .up-row")].filter(el=>!el.dataset.off);}
 function upGroups(){
   const have={};
-  document.querySelectorAll("#modal .up-row").forEach(el=>{if(el.dataset.group)have[el.dataset.group]=1;});
+  upRows().forEach(el=>{if(el.dataset.group)have[el.dataset.group]=1;});
   return Object.keys(UP_CATS).filter(k=>have[k]);
 }
 function upPaint(){
@@ -15109,8 +15151,10 @@ function upPaint(){
   const sub=document.getElementById("upSub");
   if(sub)sub.textContent=(g&&UP_SUB[g])||(g?"เลือกไฟล์ .xlsx/.xls จาก Unilever — อัปเดตทันที"
     :"กดเลือกหมวดด้านบนเพื่อกรอง หรืออัพจากช่องไหนก็ได้ในรายการนี้เลย");
-  document.querySelectorAll("#modal .up-row").forEach(el=>{
-    el.style.display=(!g||el.dataset.group===g)?"":"none";});
+  /* ช่องที่เลิกใช้ ปิดด้วย display:none ตรง ๆ ด้วย ไม่ใช่พึ่ง class เฉย ๆ
+     จะได้ไม่มีทางมีใครอ่าน DOM แล้วเข้าใจว่ามันยังโผล่อยู่ */
+  document.querySelectorAll("#modal .up-row[data-off]").forEach(el=>{el.style.display="none";});
+  upRows().forEach(el=>{el.style.display=(!g||el.dataset.group===g)?"":"none";});
 }
 function upSetCat(k){UP.cat=k||null;upPaint();}
 function openUpload(g){
