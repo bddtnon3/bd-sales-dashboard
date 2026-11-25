@@ -317,6 +317,27 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   font-size:13px;text-align:right}
 .sp-kt input:focus{border-color:var(--blue);outline:none}
 .sp-kt tr.lnh>td{background:#eef3fb;font-weight:800;text-align:left}
+ 
+.sp-rc{border:1.5px solid var(--line);border-radius:13px;padding:13px 14px;margin:10px 0;background:#fff}
+.sp-rc.on{border-color:var(--blue);box-shadow:0 2px 10px rgba(33,106,212,.08)}
+.sp-rn{font-weight:800;font-size:15.5px;line-height:1.35}
+.sp-rg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:11px}
+.sp-rf label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px}
+.sp-rf input{width:100%;padding:13px 12px;border:1.6px solid var(--line);border-radius:11px;
+  font-size:17px;font-weight:700;text-align:right;-webkit-appearance:none;appearance:none;background:#fff}
+.sp-rf input:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 3px rgba(33,106,212,.12)}
+.sp-rsum{margin-top:9px;font-size:13.5px;font-weight:800;color:var(--blue)}
+.sp-jobs{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.sp-job{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1.5px solid var(--line);
+  border-radius:12px;background:#fff;cursor:pointer;text-align:left}
+.sp-job.on{border-color:var(--blue);border-left-width:4px}
+.sp-job.done{background:#f4fbf6}
+.sp-jd{font-weight:800;font-size:15px;min-width:118px}
+.sp-js{flex:1;font-size:13px}
+.sp-save{position:sticky;bottom:0;z-index:5;background:linear-gradient(to top,#fff 70%,rgba(255,255,255,0));
+  padding:12px 0 6px;margin-top:4px}
+.sp-save button{width:100%;padding:15px;font-size:16.5px;border-radius:12px}
+@media(max-width:640px){.sp-kt input{font-size:16px;width:66px;padding:7px 6px}}
 .sp-ok{color:var(--good);font-weight:700}
 .sp-bad{color:var(--bad);font-weight:700}
 .sp-warn{color:#8a6500;font-weight:700}
@@ -11660,11 +11681,21 @@ function spSlipCodes(sid){
   return out;
 }
  
+ 
+const SP_SIDE={D:"CT",A:"KA",B:"KA"};
+function spLineSide(ln){return String(ln||"").toUpperCase().indexOf("KA")===0?"KA":"CT";}
+function spTypeLines(g){
+  const side=SP_SIDE[g]||"CT";
+  return FOCUS_ORDER.map(k=>FOCUS_MAP[k]).filter(Boolean).filter(x=>spLineSide(x)===side);
+}
 function spSlipLines(sid){
-  const s={};spSlipRows(sid).forEach(l=>{const v=String(l.ln||"").trim();if(v)s[v]=1;});
-  const got=Object.keys(s);
-  if(got.length)return got.sort((a,b)=>FOCUS_ORDER.indexOf(spLnKey(a))-FOCUS_ORDER.indexOf(spLnKey(b)));
-  return FOCUS_ORDER.map(k=>FOCUS_MAP[k]).filter(Boolean);
+  const base=spTypeLines(spGrpOf(spSlip(sid))),seen={};
+  base.forEach(x=>{seen[x]=1;});
+  const extra=[];
+  spSlipRows(sid).forEach(l=>{const v=String(l.ln||"").trim();
+    if(v&&!seen[v]){seen[v]=1;extra.push(v);}});
+  extra.sort((a,b)=>FOCUS_ORDER.indexOf(spLnKey(a))-FOCUS_ORDER.indexOf(spLnKey(b)));
+  return base.concat(extra);
 }
 function spLnKey(disp){
   const d=String(disp||"").toUpperCase();
@@ -11681,17 +11712,29 @@ function spDayHas(r){
   return false;
 }
 function spDays(sid){
-  const C=spKeyOk(),s={};
+  const C=spKeyOk(),s={},mine=spMineOnly()?spMyLine():"";
   const scan=m=>Object.keys(m||{}).forEach(k=>{
     const p=k.split("|");if(p[0]!==sid||!p[1])return;
+    if(mine&&p[2]&&p[2]!==mine)return;       
     if(spDayHas(m[k]))s[p[1]]=1;});
-  scan(C.key);scan(C.gin);scan(spRepOk().rep);
+  scan(C.key);if(!mine)scan(C.gin);scan(spRepOk().rep);
   return Object.keys(s).sort();
 }
 function spDay(sid){
   if(SP.day)return SP.day;
   const ds=spDays(sid);
-  return ds.length?ds[ds.length-1]:todayISO();
+  if(!ds.length)return todayISO();
+   
+  if(spMineOnly()){
+    const t=todayISO();
+    if(ds.indexOf(t)>=0)return t;
+    const open=spRepJobs(sid,spMyLine()).filter(x=>!x.done).map(x=>x.d).sort();
+    if(open.length){
+      const past=open.filter(d=>d<=t);
+      return past.length?past[past.length-1]:open[0];
+    }
+  }
+  return ds[ds.length-1];
 }
 function spSetDay(v){SP.day=v||"";renderSpord();}
  
@@ -11722,7 +11765,8 @@ function spTabsOn(sl){
 function spSec(){
   const ks=spTabsOn().map(x=>x.k);
   if(ks.indexOf(SP.sec)>=0)return SP.sec;
-  if(SP_TABS.some(x=>x.off&&x.k===SP.sec))return SP.sec;
+  if(SP_TABS.some(x=>x.off&&x.k===SP.sec))return SP.sec;    
+  if(spRole()==="sales"&&ks.indexOf("rep")>=0)return "rep";
   return ks[0]||"rep";
 }
 function spSetSec(v){spNavPush();SP.sec=v;renderSpord();}
@@ -12026,11 +12070,41 @@ function spShop(sc){
   return "";
 }
  
+function spMineOnly(){return spRole()==="sales"&&!!spMyLine();}
+function spSlipHasMe(sid){
+  const ln=spMyLine();if(!ln)return false;
+  const hit=m=>Object.keys(m||{}).some(k=>{const p=k.split("|");
+    return p[0]===sid&&p[2]===ln&&spDayHas(m[k]);});
+  return hit(spKeyOk().key)||hit(spRepOk().rep);
+}
+ 
+function spRepJobs(sid,ln){
+  const got={};
+  const scan=(m,isT)=>Object.keys(m||{}).forEach(k=>{
+    const p=k.split("|");if(p[0]!==sid||p[2]!==ln||!p[1])return;
+    const r=m[k];if(!spDayHas(r))return;
+    const e=got[p[1]]||(got[p[1]]={d:p[1],tc:0,tp:0,rc:0,rp:0,has:0,done:0,at:0,n:0});
+    const it=r.it||{};
+    Object.keys(it).forEach(c=>{const v=it[c]||{};
+      if(isT){e.tc+=(+v.sc||0)+(+v.fc||0);e.tp+=(+v.sp||0)+(+v.fp||0);}
+      else{e.rc+=(+v.sc||0)+(+v.fc||0);e.rp+=(+v.sp||0)+(+v.fp||0);}});
+    if(isT)e.has=1;else{e.done=1;e.at=r.at||0;e.n=+r.n||0;}
+  });
+  scan(spKeyOk().key,1);scan(spRepOk().rep,0);
+  return Object.keys(got).map(d=>got[d])
+    .sort((a,b)=>String(b.d).localeCompare(String(a.d)));
+}
+ 
 function spSlips(){
   const C=spOk(),sd=C.sdel||{};
   return Object.keys(C.slips||{}).filter(id=>!sd[id])
     .map(id=>Object.assign({id:id},C.slips[id]))
     .sort((a,b)=>String(b.d||"").localeCompare(String(a.d||""))||String(b.id).localeCompare(String(a.id)));
+}
+ 
+function spSlipsView(){
+  const a=spSlips();
+  return spMineOnly()?a.filter(x=>spSlipHasMe(x.id)):a;
 }
  
 function spSlip(sid){const C=spOk(),x=(C.slips||{})[sid];return x?Object.assign({id:sid},x):null;}
@@ -12205,7 +12279,12 @@ function spNavBack(){
 }
 function spOpenMon(ym){spNavPush();SP.ym=ym;SP.view="mon";renderSpord();}
  
-function spFirstSec(sid){const v=spTabsOn(spSlip(sid));return (v[0]||{}).k||"rep";}
+ 
+function spFirstSec(sid){
+  const v=spTabsOn(spSlip(sid));
+  if(spRole()==="sales"&&v.some(x=>x.k==="rep"))return "rep";
+  return (v[0]||{}).k||"rep";
+}
 function spOpenSlip(sid){spNavPush();SP.sid=sid;SP.view="slip";SP.day="";SP.sec=spFirstSec(sid);renderSpord();}
  
 function spYm(sl){
@@ -12226,7 +12305,7 @@ function spMonths(yr){
   const add=m=>byM[m]||(byM[m]={ym:m,slips:0,sub:0,done:0,mine:0});
   const Y=String(yr||spYear());
   for(let i=1;i<=12;i++)add(Y+"-"+String(i).padStart(2,"0"));
-  spSlips().forEach(sl=>{
+  spSlipsView().forEach(sl=>{
     const m=spYm(sl);
     if(m!=="ไม่ระบุ"&&m.slice(0,4)!==Y)return;
     const e=add(m);e.slips++;
@@ -12900,12 +12979,16 @@ function renderSpord(){
     const ip=document.getElementById("spPinIn");if(ip)try{ip.focus();}catch(e){}
     return;
   }
-  const C=spOk(),role=spRole(),sls=spSlips();
+  const C=spOk(),role=spRole(),sls=spSlipsView();
    
+   
+  const keepSid=SP.view==="slip"&&SP.sid&&spSlip(SP.sid);
   const sel=document.getElementById("spSlip");
   if(sel){
-    if(!SP.sid||!sls.some(x=>x.id===SP.sid))SP.sid=(sls[0]||{}).id||"";
-    sel.innerHTML=sls.map(x=>`<option value="${anaEsc(x.id)}"${x.id===SP.sid?" selected":""}>${
+    if(!keepSid&&(!SP.sid||!sls.some(x=>x.id===SP.sid)))SP.sid=(sls[0]||{}).id||"";
+    const opt=sls.slice();
+    if(keepSid&&!sls.some(x=>x.id===SP.sid))opt.unshift(Object.assign({id:SP.sid},spSlip(SP.sid)));
+    sel.innerHTML=opt.map(x=>`<option value="${anaEsc(x.id)}"${x.id===SP.sid?" selected":""}>${
       SP_GRP[spGrpOf(x)].ic} ${anaEsc(spSlipTitle(x.id,18)||x.id)}${x.d?" · "+fmtDate(x.d):""}</option>`).join("");
   }
   {const nb=document.getElementById("spNewBox");if(nb)nb.style.display=spMgr()?"":"none";}
@@ -12949,10 +13032,13 @@ function renderSpord(){
   }
   const sl=spSlip(SP.sid);
   bar.innerHTML=spBarHtml(sl);
-  if(!sls.length){
-    body.innerHTML=`<div class="panel"><div class="insight">ยังไม่มีใบออเดอร์ใหญ่ — ${
-      spMgr()?'กดปุ่ม <b>➕ สร้างออเดอร์ใหม่</b> มุมขวาบนได้เลย':
-      'รอแอดมินเปิดใบออเดอร์ใหญ่ก่อน'}</div></div>`;
+  if(!sls.length&&!keepSid){
+     
+    const mine=spMineOnly()&&spSlips().length;
+    body.innerHTML=`<div class="panel"><div class="insight">${mine
+      ? "ยังไม่มีงานที่ต้องคีย์ของสาย <b>"+anaEsc(spMyLine())+"</b> — รอหัวหน้าเซลล์ตั้งจำนวนให้ก่อน"
+      : ("ยังไม่มีใบออเดอร์ใหญ่ — "+(spMgr()
+          ?'กดปุ่ม <b>➕ สร้างออเดอร์ใหม่</b> มุมขวาบนได้เลย':'รอแอดมินเปิดใบออเดอร์ใหญ่ก่อน'))}</div></div>`;
     return;
   }
    
@@ -13017,7 +13103,8 @@ function renderSpord(){
       const chip=(k,t)=>`<button type="button" class="tab2${sec===k?" on":""}" onclick="spSetSec('${k}')">${t}</button>`;
       {const tb=document.getElementById("spTabs");
        if(tb){tb.innerHTML=spTabsOn(slNow).map(x=>chip(x.k,x.lb)).join("");tb.style.display="";}}
-      const withDay=SP_DAYTABS.indexOf(sec)>=0;    
+       
+      const withDay=SP_DAYTABS.indexOf(sec)>=0&&!(sec==="rep"&&spRole()==="sales");
       let H=`<div class="panel"><div class="cst-fb">
           <button class="btn-ghost" onclick="spBack()">◀ กลับไปรายการใบ</button>
           <span class="psub">${SP.ym&&SP.ym!=="ไม่ระบุ"?fmtMonth(SP.ym):""}</span></div>
@@ -13224,8 +13311,9 @@ function spRepTabHtml(sid,ymd){
     ใบนี้ยังไม่มีรายการสินค้า — ให้แอดมินแก้ใบออเดอร์ใส่สินค้าก่อน</div></div>`;
   const isSales=spRole()==="sales", myLn=spMyLine();
   const tr=spTrack(sid,ymd);
-  return (isSales?spRepMineHtml(sid,ymd):"")+
-    spTrackHtml(sid,ymd,isSales?tr.filter(x=>x.ln===myLn):tr)+
+   
+  return (isSales?spRepHomeHtml(sid)+spRepMineHtml(sid,ymd)
+                 :spTrackHtml(sid,ymd,tr))+
     `<div id="spHistBox" class="hidden"><div class="panel" style="margin-top:12px">
       <div class="cst-fb"><h3 id="spHistTitle" style="margin:0"></h3>
         <span style="flex:1"></span>
@@ -13235,6 +13323,34 @@ function spRepTabHtml(sid,ymd){
  
 function spHasTgt(sid){return spGrpOf(spSlip(sid))==="D";}
  
+ 
+function spRepHomeHtml(sid){
+  const ln=spMyLine();if(!ln)return "";
+  const jobs=spRepJobs(sid,ln),cur=spDay(sid),today=todayISO();
+  const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  if(!jobs.length)return `<div class="panel"><h3>📋 งานของสาย ${anaEsc(ln)}</h3>
+    <div class="insight" style="margin-top:8px">ใบนี้ยังไม่มีวันที่ต้องคีย์ของสายคุณ —
+    รอหัวหน้าเซลล์ตั้งจำนวนให้ก่อน</div></div>`;
+  const wait=jobs.filter(x=>!x.done).length;
+  return `<div class="panel"><h3>📋 งานของสาย ${anaEsc(ln)}</h3>
+    <div class="psub">${wait?("ยังไม่ได้คีย์ <b>"+wait+"</b> วัน"):"คีย์ครบทุกวันแล้ว"}
+      · กดที่วันเพื่อกรอก</div>
+    <div class="sp-jobs">${jobs.map(x=>{
+      const ahead=x.d>today;
+      const st=x.done
+        ? (x.has&&x.rc>=x.tc?'<span class="sp-ok">✓ คีย์ครบตามเป้า</span>'
+            :(x.has?'<span class="sp-bad">คีย์แล้ว ยังไม่ถึงเป้า</span>':'<span class="sp-ok">✓ คีย์แล้ว</span>'))
+        : '<span class="sp-warn">ยังไม่ได้คีย์</span>';
+      return `<button type="button" class="sp-job${x.d===cur?" on":""}${x.done?" done":""}"
+          onclick="spSetDay('${x.d}')">
+        <span class="sp-jd">${fmtDate(x.d)}${ahead?' <span class="pill">ล่วงหน้า</span>':""}</span>
+        <span class="sp-js">${st}${x.has?'<span class="psub" style="display:block">เป้า '+
+          N(x.tc)+" ลัง"+(x.tp?" + "+N(x.tp)+" ชิ้น":"")+
+          (x.done?" · คีย์ "+N(x.rc)+" ลัง":"")+"</span>":
+          (x.done?'<span class="psub" style="display:block">คีย์ '+N(x.rc)+" ลัง</span>":"")}</span>
+        <span class="cst-ar">▶</span></button>`;}).join("")}</div></div>`;
+}
+ 
 function spRepMineHtml(sid,ymd){
   const ln=spMyLine();
   if(!ln)return `<div class="panel"><div class="insight">
@@ -13243,34 +13359,38 @@ function spRepMineHtml(sid,ymd){
   const tg=spHasTgt(sid);
   const tgt=(spKeyByLine(sid,ymd)[ln]||{}).it||{};
   const can=spRepCan(ln,rec),left=spRepLeft(rec);
-  const rows=codes.map(c=>{
+  const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const cards=codes.map(c=>{
     const v=it[c.code]||{},g=tgt[c.code]||{};
     const gc=(+g.sc||0)+(+g.fc||0),gp=(+g.sp||0)+(+g.fp||0);
-    const inp=(k,val)=>can
-      ? `<input type="number" min="0" step="any" id="spR_${anaEsc(ln)}_${anaEsc(c.code)}_${k}"
+    const tot=(+v.sc||0)+(+v.fc||0),totp=(+v.sp||0)+(+v.fp||0);
+    const fld=(k,lab,val)=>`<div class="sp-rf"><label>${lab}</label>${can
+      ? `<input type="number" inputmode="decimal" min="0" step="any" autocomplete="off"
+           id="spR_${anaEsc(ln)}_${anaEsc(c.code)}_${k}"
            value="${val?anaEsc(String(val)):""}" placeholder="0">`
-      : (val?String(val):"-");
-    return `<tr><td class="l">${anaEsc(c.nm||oname(c.code)||"")||'<span style="color:var(--muted)">(ไม่มีชื่อ)</span>'}
-        <span class="psub" style="display:block">รหัส ${anaEsc(c.code)}</span></td>
-      ${tg?`<td><b>${gc||"-"}</b>${gp?'<span class="psub" style="display:block">+'+gp+' ชิ้น</span>':""}</td>`:""}
-      <td>${inp("sc",v.sc)}</td><td>${inp("sp",v.sp)}</td>
-      <td>${inp("fc",v.fc)}</td><td>${inp("fp",v.fp)}</td>
-      <td>${((+v.sc||0)+(+v.fc||0))||"-"}</td></tr>`;
-  }).join("");
+      : `<div style="padding:13px 12px;text-align:right;font-size:17px;font-weight:700">${val?anaEsc(String(val)):"-"}</div>`}</div>`;
+    return `<div class="sp-rc${tot||totp?" on":""}">
+      <div class="sp-rn">${anaEsc(c.nm||oname(c.code)||("รหัส "+c.code))}</div>
+      <div class="psub">รหัส ${anaEsc(c.code)}${
+        tg&&(gc||gp)?" · เป้า <b>"+N(gc)+" ลัง</b>"+(gp?" + "+N(gp)+" ชิ้น":""):""}</div>
+      <div class="sp-rg">
+        ${fld("sc","ขาย (ลัง)",v.sc)}${fld("sp","ขาย (ชิ้น)",v.sp)}
+        ${fld("fc","แถม (ลัง)",v.fc)}${fld("fp","แถม (ชิ้น)",v.fp)}</div>
+      ${tot||totp?`<div class="sp-rsum">รวม ${N(tot)} ลัง${totp?" + "+N(totp)+" ชิ้น":""}</div>`:""}
+    </div>`;
+  }).join("")||`<div class="insight">ใบนี้ยังไม่มีสินค้า</div>`;
   return `<div class="panel" style="margin-top:12px;border-top:3px solid var(--blue)">
-    <h3>✍️ สายของฉัน · ${anaEsc(ln)} — จำนวนที่คีย์จริง</h3>
+    <h3>✍️ กรอกจำนวนที่คีย์จริง · ${fmtDate(ymd)}</h3>
     <div class="psub">${can
-      ? "กรอกจำนวนที่คีย์ไปจริงของวันนี้ แล้วกด <b>💾 บันทึก</b> · <b>แก้ได้อีก "+left+" ครั้ง</b>"
+      ? "ใส่จำนวนที่คีย์ไปจริง แล้วกดปุ่มบันทึกด้านล่าง · <b>แก้ได้อีก "+left+" ครั้ง</b>"
       : (rec?"<b>บันทึกครบจำนวนครั้งที่แก้ได้แล้ว</b> — ถ้าต้องแก้อีก แจ้งผู้จัดการ"
-            :"บัญชีนี้กรอกจำนวนของสายนี้ไม่ได้")}
+            :"ดูอย่างเดียว")}
       ${rec?` · ล่าสุด ${fmtDateTime(rec.at)}`:""}</div>
-    <div class="cst-fb" style="margin-top:10px">
-      ${can?`<button class="upload-btn" onclick="spRepLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกจำนวนที่คีย์</button>`:""}
-      ${rec?`<button class="btn-ghost" onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">🕘 ดูประวัติการกรอก</button>`:""}</div>
-    <div class="tblwrap sp-freeze" style="margin-top:10px"><table class="sp-kt">
-      <thead><tr><th class="l">สินค้า</th>${tg?"<th>เป้า (ลัง)</th>":""}
-        <th>ขาย (ลัง)</th><th>ขาย (ชิ้น)</th><th>แถม (ลัง)</th><th>แถม (ชิ้น)</th><th>รวม (ลัง)</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="'+(tg?7:6)+'" class="l">ใบนี้ยังไม่มีสินค้า</td></tr>'}</tbody></table></div>
+    ${rec?`<div class="cst-fb" style="margin-top:10px">
+      <button class="btn-ghost" onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">🕘 ดูประวัติการกรอก</button></div>`:""}
+    ${cards}
+    ${can?`<div class="sp-save"><button class="upload-btn"
+      onclick="spRepLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกจำนวนที่คีย์</button></div>`:""}
   </div>`;
 }
  

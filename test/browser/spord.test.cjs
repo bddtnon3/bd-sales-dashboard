@@ -203,13 +203,14 @@ const ORIGIN='https://bd-spord.test/';
  const noTgt=await ev(()=>{
    CSTOCK.slips['B20261118-01'].g='A';
    __as('sales','209611','CT11 · เซลล์');SP.sec='rep';SP.day='2026-11-22';renderSpord();
-   const ths=[...document.querySelectorAll('#spBody .sp-kt thead th')].map(x=>x.textContent.trim());
+   const ths=[...document.querySelectorAll('#spBody .sp-rf label')].map(x=>x.textContent.trim());
    const tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    CSTOCK.slips['B20261118-01'].g='D';
    return {ths:ths,tx:tx};});
  t('🔑 ใบที่ไม่มีขั้นซุปจด ไม่มีช่อง "เป้า" ให้เข้าใจผิดว่าใครลืมตั้งเป้า',
    !noTgt.ths.some(x=>/เป้า/.test(x))&&!/ยังไม่ได้ตั้งเป้า/.test(noTgt.tx)&&
-   noTgt.ths.some(x=>/ขาย \(ลัง\)/.test(x)),noTgt.ths.join(' | '));
+   !/· เป้า/.test(noTgt.tx)&&noTgt.ths.some(x=>/ขาย \(ลัง\)/.test(x)),
+   noTgt.ths.join(' | '));
 
 
  /* ---------- 0.7) แท็บใหม่ · ปุ่มย้อนกลับ · ชิปวันที่ · freeze หัวตาราง ---------- */
@@ -1439,6 +1440,84 @@ const ORIGIN='https://bd-spord.test/';
    wheel.wheel&&wheel.n===12&&wheel.scrolls!=='visible'&&wheel.top,JSON.stringify(wheel));
  t('🛟 ...แต่ลำดับยังเป็น ม.ค.→ธ.ค. เหมือนเดิม เลื่อนขึ้นดูเดือนก่อนหน้าได้',
    /-01$/.test(wheel.first||''),wheel.first);
+
+ /* ================================================================
+  * 15) 👤 flow ของเซลล์ + แยกสาย CT/KA ตามประเภทใบ (เจ้าของสั่ง 26 พ.ย. 69)
+  *   *"ตัวกระจาย มีแค่สาย CT · ตัดบิลส่งของ/ส่งของตัดบิล มีแค่สาย KA"*
+  *   *"ให้เห็นเฉพาะที่ sup ตั้งไว้ให้คีย์เท่านั้น … เห็นไปถึงวันข้างหน้าได้"*
+  *   *"flow ใช้งานมุ่งตรงไปที่แค่หมวดเซลล์คีย์เท่านั้นพอ หมวดอื่นดูได้ แต่แก้ไขไม่ได้"*
+  * ================================================================ */
+ const side=await ev(()=>{
+   __reset();
+   CSTOCK.lots['B20261118-01-s0']={id:'B20261118-01-s0',sl:'B20261118-01',d:'2026-11-18',
+     code:'AAA1',nm:'ครีมทาผิว เอ',cs:40,pc:0,sq:0,ln:'CT11',clr:[],up:1};
+   __as('manager',null,'แอดมิน 1');
+   const o={};
+   CSTOCK.slips['B20261118-01'].g='D';o.d=spSlipLines('B20261118-01');
+   CSTOCK.slips['B20261118-01'].g='A';o.a=spSlipLines('B20261118-01');
+   CSTOCK.slips['B20261118-01'].g='B';o.b=spSlipLines('B20261118-01');
+   return o;});
+ t('🔑 ใบตัวกระจายให้กรอกเฉพาะสาย CT',
+   side.d.every(x=>/^CT/.test(x))&&side.d.length===9&&side.d[0]==='CT11',side.d.join(','));
+ t('🔑 ใบตัดบิลรอส่ง / ส่งแล้วรอตัดบิล ให้กรอกเฉพาะสาย KA',
+   side.a.slice(0,3).join(',')==='KA97,KA98,KA99'&&
+   side.b.slice(0,3).join(',')==='KA97,KA98,KA99'&&
+   !side.a.slice(0,3).some(x=>/^CT/.test(x)),side.a.join(',')+' | '+side.b.join(','));
+ /* ใบ KA ที่มี lots เป็นสาย CT ต้องไม่ทำให้สายนั้นหายไปจากจอ (ข้อมูลที่คีย์ไปแล้วจะมองไม่เห็น) */
+ t('🛟 ...แต่สายที่ใบระบุมาเองต้องไม่หาย ต่อท้ายไว้เสมอ',
+   side.a.indexOf('CT11')>=0&&side.a.indexOf('CT11')>side.a.indexOf('KA99'),side.a.join(','));
+
+ const rep2=await ev(async()=>{
+   __reset();
+   CSTOCK.slips['B20261102-01']={id:'B20261102-01',d:'2026-11-02',at:1,up:1,g:'D'};
+   [['AAA1','ครีมทาผิว เอ',40],['BBB1','เซรั่ม เอ็กซ์',20]].forEach((p,i)=>{
+     const id='B20261118-01-r'+i;
+     CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],
+       cs:p[2],pc:0,sq:i,ln:'CT11',clr:[],up:1};});
+   CSTOCK.slips['B20261118-01'].g='D';
+   /* ซุปตั้งเป้าสามวัน: เมื่อวาน · วันนี้ · ข้ามสัปดาห์ไปอีก 9 วัน (สายอื่นหนึ่งวัน) */
+   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10);};
+   if(!CSTOCK.key)CSTOCK.key={};if(!CSTOCK.rep)CSTOCK.rep={};
+   const K=(d,ln,sc)=>{CSTOCK.key['B20261118-01|'+d+'|'+ln]=
+     {it:{'AAA1':{sc:sc,sp:0,fc:0,fp:0}},by:'sup',byName:'หัวหน้าเซลล์',at:1000};};
+   K(T(-1),'CT11',5);K(T(0),'CT11',6);K(T(9),'CT11',7);K(T(0),'CT12',8);
+   CSTOCK.rep['B20261118-01|'+T(-1)+'|CT11']={it:{'AAA1':{sc:5,sp:0,fc:0,fp:0}},
+     by:'209611',byName:'CT11',at:2000,n:1,h:[{at:2000,n:1}]};
+   __as('sales','209611','CT11 · เซลล์');_switchTab('spord');
+   const o={T9:T(9),T0:T(0)};
+   SP.view='mon';SP.ym='';SP.sid='';SP.day='';renderSpord();
+   o.monTx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   spOpenMon('2026-11');
+   o.list=[...document.querySelectorAll('#spBody .cst-grp')].length;
+   spOpenSlip('B20261118-01');
+   o.sec=SP.sec;
+   o.chips=[...document.querySelectorAll('#spTabs .tab2')].map(x=>x.textContent.trim());
+   o.jobs=[...document.querySelectorAll('#spBody .sp-job .sp-jd')].map(x=>x.textContent.trim());
+   o.tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.cards=document.querySelectorAll('#spBody .sp-rc').length;
+   o.inputs=[...document.querySelectorAll('#spBody .sp-rc input')]
+     .map(x=>x.getAttribute('inputmode')).join(',');
+   o.noTable=document.querySelectorAll('#spBody .sp-kt').length;
+   o.days=spDays('B20261118-01');
+   /* ผู้จัดการยังเห็นทุกใบเหมือนเดิม */
+   __as('manager',null,'แอดมิน 1');SP.view='mon';SP.ym='2026-11';renderSpord();
+   o.mgrList=[...document.querySelectorAll('#spBody .cst-grp')].length;
+   return o;});
+ t('🔑 เซลล์เห็นเฉพาะใบที่หัวหน้าเซลล์ตั้งงานให้สายตัวเอง',
+   rep2.list===1&&rep2.mgrList===2,'เซลล์เห็น '+rep2.list+' ใบ · ผู้จัดการเห็น '+rep2.mgrList+' ใบ');
+ t('🔑 เปิดใบแล้วเซลล์ลงที่หมวด "เซลล์คีย์" ทันที ไม่ต้องหาเอง',
+   rep2.sec==='rep'&&rep2.chips.length>=3,rep2.sec+' | '+rep2.chips.join(' | '));
+ t('🔑 เห็นงานย้อนหลังและวันข้างหน้าที่ซุปตั้งไว้ข้ามสัปดาห์',
+   rep2.jobs.length===3&&rep2.jobs.some(x=>/ล่วงหน้า/.test(x))&&
+   rep2.days.length===3,rep2.jobs.join(' | '));
+ t('🔒 ...แต่ไม่เห็นวันของสายอื่น (ซุปตั้งเป้า CT12 ไว้ในวันเดียวกัน)',
+   rep2.days.indexOf(rep2.T0)>=0&&rep2.days.length===3,rep2.days.join(','));
+ t('🔑 หน้ากรอกเป็นการ์ดต่อสินค้า กรอกบนมือถือได้ ไม่ใช่ตารางกว้าง ๆ',
+   rep2.cards===2&&rep2.noTable===0&&/decimal/.test(rep2.inputs)&&
+   rep2.inputs.split(',').every(x=>x==='decimal'),
+   rep2.cards+' การ์ด · inputmode='+rep2.inputs);
+ t('🔑 ...และบอกเป้าที่ซุปตั้งไว้บนการ์ด',/เป้า/.test(rep2.tx)&&/ครีมทาผิว เอ/.test(rep2.tx),
+   rep2.tx.slice(rep2.tx.indexOf('ครีมทาผิว'),rep2.tx.indexOf('ครีมทาผิว')+70));
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

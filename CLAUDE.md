@@ -890,6 +890,28 @@ code, never printed.
   **The entry tables freeze their header** (`.tblwrap.sp-freeze`): the wrapper scrolls in both axes
   and `thead th` is `position:sticky;top:0` with an **opaque** background — sticky against the page
   instead would pin the header over the first row, which is why it was removed once before.
+  **Each slip type belongs to one side of the depot** (`SP_SIDE`/`spTypeLines`, owner 26 Nov 26:
+  *"ตัวกระจาย จะมีแค่สาย CT และอีกสองรูปแบบ ตัดบิลส่งของ ส่งของตัดบิล มีแค่สาย KA จะได้ไม่งง"*):
+  🎯 ตัวกระจาย offers the **9 CT lines**, 🧾/🚚 the **3 KA lines**. He named the exception himself —
+  *"ยกเว้นในส่วนของคลังส่งออก ออเดอร์สร้างจาก KA อาจจะคีย์เข้า CT เป็นตัวกระจายได้"* — and that page
+  never goes through `spSlipLines`: it reads the line off the allocation file and the lots. **A line
+  the slip's own lots name is always appended**, even when it is on the other side, or work already
+  keyed would vanish from the screen while the data sat in the state.
+  **👤 The rep's whole flow is one screen** (owner, 26 Nov 26: *"ให้เห็นเฉพาะที่ sup ตั้งไว้ให้คีย์
+  เท่านั้น … flow ใช้งานมุ่งตรงไปที่แค่หมวดเซลล์คีย์เท่านั้นพอ หมวดอื่นดูได้ แต่แก้ไขไม่ได้"*).
+  `spSlipsView` shows a `sales` account **only the slips carrying work for their line** (`spSlipHasMe`)
+  and `spDays` only their own line's days — but `spSlips()` itself is **not** filtered and a slip
+  already open is never ejected (`keepSid`), because this is screen tidying, not a permission; writes
+  are still checked in `api/spord.js`. An empty list for a rep must say *"ยังไม่มีงานที่ต้องคีย์ของ
+  สายคุณ"*, never "there are no orders". `spFirstSec`/`spSec` land a rep on **② เซลล์คีย์**, where
+  `spRepHomeHtml` lists every day the supervisor set — **past and future** (he sets targets weeks
+  ahead, so no picker is ever capped at today) — and `spDay` opens on **today, else the nearest
+  un-keyed day**, never the furthest future one. The day picker is hidden there, since that list is
+  the picker.
+  **The rep's entry is cards, not a table** (`spRepMineHtml`): the team keys from Android phones, so
+  each product is a card with four large fields; `inputmode="decimal"` brings up the number pad and
+  the fields are ≥16px, or a mobile browser zooms in on focus and the page jumps. The save button is
+  sticky at the foot of the card list. The 7-column table is what made this unusable on a phone.
   **👤 Each rep owns their own line's daily figure** (owner, 26 Nov 26). The flow he set:
   ① the supervisor types each line's **target** for that day (`CSTOCK.key`, unchanged) → ② exports it
   as Excel/PDF to send the reps (`spTgtXlsx`/`spTgtPrint`) → ③ **the rep logs in with their own line's
@@ -1019,7 +1041,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (178 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (187 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1032,7 +1054,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (178 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (187 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
