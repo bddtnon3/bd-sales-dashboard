@@ -450,7 +450,7 @@ const K=(no)=>B1+'|'+no;
        'Sale Allocated (CS)','Sale Allocated (SHR)','Sale Allocated (PC)',
        'Free Allocated (CS)','Free Allocated (SHR)','Free Allocated (PC)'];
      const row=(pj,pn,gin,code,nm,sc,fc,xc)=>[46341,'15389839','บีดี','2096',pj,pn,'CT','T1','ร้าน','sub',
-       gin,'INV1','ORD1','B2B',code,nm,12,sc,0,0,fc,0,0,xc,0,0,fc,0,0];
+       gin,'INV1','BDD0100000111','B2B',code,nm,12,sc,0,0,fc,0,0,xc,0,0,fc,0,0];
      const A=[H,
        row('209611','CT_HPC_211','77','64849613','โอโมน้ำ ซากุระ',5,1,5),
        row('209611','CT_HPC_211','77','65456729','บรีสเอกเซล',2,0,2),   /* ตั้งใจให้ไม่ตรงกับที่เซลล์คีย์ (3) */
@@ -561,6 +561,111 @@ const K=(no)=>B1+'|'+no;
    guard.threw&&guard.kept,guard.msg||'');
  t('🔒 เซลล์ธรรมดาเขียนฝั่งเซลล์/ฝั่งแอดมินไม่ได้ (เช็คในฟังก์ชัน ไม่ใช่แค่ซ่อนปุ่ม)',
    guard.salesBlocked&&guard.salesGinBlocked);
+
+ /* ================================================================
+  * 11) หน่วย ลัง/แพ็ค/ชิ้น · มูลค่า · ปุ่มยกเลิก · เอกสาร Excel/PDF
+  *     เจ้าของสั่ง 26 พ.ย. 69
+  * ================================================================ */
+ const unit=await ev(()=>({
+   /* แกะ "แพ็คละกี่ชิ้น" จากชื่อ โดยบังคับให้คูณแล้วเท่ากับ Pack Size พอดี */
+   ok288:alShrink('โอโมน้ำ ซากุระ โรแมนซ์ 24X12X30มล',288),
+   ok36:alShrink('บรีสเอกเซล 20B 6X6X160 กรัม',36),
+   no:alShrink('โอโมน้ำ พิงค์ ฟลอรัล FO39 12X530มล',12),
+   noQ:alShrink('อะไรก็ไม่รู้ 6X6',0),
+   /* 1 ลัง 30 ชิ้น ของลังละ 288 */
+   split:alSplit(alPcs({cs:1,sh:0,pc:30},288,12),288),
+   /* 3 แพ็ค ของแพ็คละ 6 = 18 ชิ้น */
+   pack:alPcs({cs:0,sh:3,pc:0},36,6),
+   /* มีแพ็คแต่ไม่รู้ขนาดแพ็ค → null ห้ามเดาเป็น 1 */
+   unknown:alPcs({cs:0,sh:3,pc:0},36,null),
+   txtUnknown:alQtyTxt({cs:0,sh:3,pc:0},36,null).sub,
+ }));
+ t('🔑 แกะ "แพ็คละกี่ชิ้น" จากชื่อสินค้า โดยคูณแล้วต้องเท่ากับ Pack Size พอดี',
+   unit.ok288===12&&unit.ok36===6,JSON.stringify({a:unit.ok288,b:unit.ok36}));
+ t('🛟 ชื่อที่คูณไม่ลงตัว / ไม่มี Pack Size → ไม่รู้ขนาดแพ็ค (ไม่เดา)',
+   unit.no===null&&unit.noQ===null,JSON.stringify({no:unit.no,noQ:unit.noQ}));
+ t('🔑 แปลงจำนวนเป็น ลัง + ชิ้น จาก Pack Size (ช่อง Q) ได้',
+   unit.split&&unit.split.cs===1&&unit.split.pc===30&&unit.split.pcs===318,
+   JSON.stringify(unit.split));
+ t('🔑 นับหน่วย "แพ็ค" เข้าไปด้วย (3 แพ็ค ของแพ็คละ 6 = 18 ชิ้น)',unit.pack===18,unit.pack);
+ t('🛟 มีแพ็คแต่ไม่รู้ขนาดแพ็ค → ไม่แปลง และบอกบนจอว่าไม่รู้',
+   unit.unknown===null&&/ไม่รู้ขนาดแพ็ค/.test(unit.txtUnknown),
+   JSON.stringify({u:unit.unknown,t:unit.txtUnknown}));
+
+ const val=await ev(async()=>{
+   __slip();__as('manager',null,'แอดมิน 1');_switchTab('spord');
+   /* ไฟล์ราคาหัวเสือจำลอง: WS LP ต่อ "หีบ" · NTT ต่อ "ชิ้น" (วัดจากไฟล์จริง) */
+   PRICE={loaded:true,err:'',bum:null,hs:{rounds:["Nov'26"],items:{
+     '64849613':{m:[[900,918,0,0,16,16.5,20,0,'']]},
+     '65456729':{m:[[360,370,0,0,12,12.5,15,0,'']]}}}};
+   /* ดัชนีเลขออเดอร์จากไฟล์ยอดขาย — ของจริงที่ใช้คิด NIV/GSV */
+   STOREDAILY.ord['BDD0100000111']={s:'4862383',l:'209611',d:'2026-11-20',v:5000,g:7000,c:3,cs:2,pc:0};
+   parseAlloc('alloc.xlsx',__alBuf());
+   SP.sec='adm';SP.day='2026-11-20';renderSpord();
+   document.getElementById('spGinIn').value='77';
+   await spGinGo('B20261118-01','2026-11-20');
+   const cmp=spCmp('B20261118-01','2026-11-20');
+   const o={ords:(CSTOCK.gin['B20261118-01|2026-11-20'].ords||[]).slice(),
+     sum:cmp.sum,row:cmp.rows.filter(r=>r.code==='65456729'&&r.ln==='CT11')[0]};
+   o.txt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   return o;});
+ t('🔑 เก็บ "เลขออเดอร์" ของ GIN นั้นไว้ (ใช้ดึงยอดขายจริง)',
+   val.ords.length>0,JSON.stringify(val.ords));
+ t('🔑 ยอดขายจริง NIV/GSV ดึงจากไฟล์ยอดขายด้วยเลขออเดอร์ ไม่ใช่ประเมิน',
+   val.sum.rNiv===5000&&val.sum.rGsv===7000&&val.sum.ordHit===1,
+   JSON.stringify({niv:val.sum.rNiv,gsv:val.sum.rGsv,hit:val.sum.ordHit}));
+ t('🔑 ราคาหีบใช้ WS LP ต่อหีบ · ราคาชิ้นใช้ NTT ต่อชิ้น (คนละหน่วย)',
+   Math.round(val.row.gsv)===720&&Math.round(val.row.niv)===288&&val.row.qS.pcs===24,
+   JSON.stringify({code:val.row.code,pcs:val.row.qS&&val.row.qS.pcs,gsv:val.row.gsv,niv:val.row.niv}));
+ t('🛟 หน้าบอกชัดว่าสองยอดนี้คนละคำถาม (ยอดในใบ = ประเมิน · ยอดจริง = ทั้งออเดอร์)',
+   /ยอดสินค้าในใบนี้/.test(val.txt)&&/ยอดขายจริงทั้งออเดอร์/.test(val.txt)&&
+   /รวมสินค้าตัวอื่นที่ไม่ได้อยู่ในใบนี้ด้วย/.test(val.txt));
+
+ const doc=await ev(()=>{
+   const R=spRepRows('B20261118-01','2026-11-20');
+   window.__printed=0;window.print=()=>{window.__printed=1};
+   spRepPrint('B20261118-01','2026-11-20');
+   return {rows:R.body.length,cols:R.head.length,
+     name:spRepName('B20261118-01','2026-11-20','xlsx'),
+     printed:!!window.__printed,
+     pr:document.getElementById('prArea').textContent.replace(/\s+/g,' ').slice(0,400),
+     meta:spRepMeta('B20261118-01','2026-11-20',spCmp('B20261118-01','2026-11-20'),
+       spGinRec('B20261118-01','2026-11-20')).map(x=>x[0]).filter(Boolean)};});
+ t('🔑 ดึงผลตรวจออกเป็นเอกสารได้ (ตารางมีครบทุกแถว)',doc.rows>0&&doc.cols===19,
+   doc.rows+' แถว · '+doc.cols+' คอลัมน์');
+ t('🔑 ...และสั่งพิมพ์ PDF ได้ โดยมีหัวเรื่องกับเลข GIN ในเอกสาร',
+   doc.printed&&/ผลตรวจใบจัดของ/.test(doc.pr)&&/GIN/.test(doc.pr),doc.pr.slice(0,90));
+ t('🛟 ชื่อไฟล์ต้องเป็น ASCII ล้วน (Chromium ตัดชื่อไฟล์ไทยทิ้งทั้งนามสกุล)',
+   /^[\x20-\x7E]+\.xlsx$/.test(doc.name),doc.name);
+ t('...ใบสรุปบอกที่มาของตัวเลขและจำนวนเลขออเดอร์ที่ดึงได้',
+   doc.meta.indexOf('มูลค่าขายจริง NIV')>=0&&doc.meta.indexOf('รอไฟล์ยอดขาย')>=0&&
+   doc.meta.indexOf('หมายเหตุ')>=0,doc.meta.join(' | ').slice(0,140));
+
+ const undo=await ev(async()=>{
+   CSTOCK.key['B20261118-01|2026-11-20|CT11']={it:{'64849613':{sc:1,sp:0,fc:0,fp:0}},at:1};
+   const before=window.__posts.length;
+   await spGinUndo('B20261118-01','2026-11-20');
+   return {gone:!spGinRec('B20261118-01','2026-11-20'),
+     raw:(CSTOCK.gin['B20261118-01|2026-11-20']||{}).del,
+     keyKept:!!CSTOCK.key['B20261118-01|2026-11-20|CT11'],
+     post:window.__posts[window.__posts.length-1],
+     sent:window.__posts.length>before,
+     txt:document.getElementById('spBody').textContent.replace(/\s+/g,' ')};});
+ t('🔑 ยกเลิกผลตรวจของวันนั้นได้ (เจ้าของทดลองไปสองวัน)',undo.gone&&undo.sent);
+ t('🛟 ...เขียน del:1 ทับ ไม่ใช่ลบคีย์ (ลบคีย์แล้วแท็บเก่า union กลับมา)',
+   undo.raw===1,String(undo.raw));
+ t('🛟 ...และจำนวนที่ฝั่งเซลล์กรอกไว้ ต้องไม่หายไปด้วย',undo.keyKept);
+ t('...ส่งผ่าน api/spord ด้วย act:"gin" + del:1',
+   undo.post&&undo.post.u==='/api/spord'&&undo.post.b.act==='gin'&&undo.post.b.del===1,
+   JSON.stringify(undo.post&&undo.post.b.del));
+ t('...หน้ากลับไปบอกว่ายังไม่ได้บันทึกผลตรวจ',/ยังไม่ได้บันทึกผลตรวจ/.test(undo.txt));
+
+ const noAdm=await ev(async()=>{
+   __as('sup',null,'หัวหน้าเซลล์');
+   const before=window.__posts.length;
+   await spGinUndo('B20261118-01','2026-11-20');
+   return window.__posts.length===before;});
+ t('🔒 หัวหน้าเซลล์ยกเลิกผลตรวจของแอดมินไม่ได้',noAdm);
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

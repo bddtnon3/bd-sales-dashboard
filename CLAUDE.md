@@ -809,7 +809,30 @@ code, never printed.
   its own array**: product codes are all-digit strings, so returning `Object.keys(map)` made the
   engine sort them numerically and the list stopped matching the slip's own order. On a phone each
   product is a full-width row with the name unclipped, because the name is what they choose by.
-  Prove it with **`node test/browser/spord.test.cjs`** (79 checks) plus the `key`/`gin` cases in
+  Three things the owner asked for on 26 Nov 26 after testing it live:
+  **① Undo.** `spGinUndo` writes `del:1` over the day's record — **never a key delete**, which a
+  stale tab would union straight back (the `ok:0` / `v:0` rule), and the supervisor's figures for
+  that day are untouched.
+  **② Quantities as ลัง + ชิ้น, and money.** The file gives `Pack Size` (Q) but **not how many
+  pieces are in a แพ็ค (SHR)**, and **51.5% of rows (5,369/10,428) use that unit**, so it cannot be
+  ignored. `alShrink` reads it out of the product name and **only accepts a pair that multiplies to
+  Pack Size exactly** (`24X12X30มล` + Q 288 → 12; `6X6X160 กรัม` + Q 36 → 6). Measured: **all
+  5,369 rows that use แพ็ค resolve, 100%**, and the 239 codes it cannot resolve never use the unit.
+  A row it still cannot convert is **reported, never guessed at 1**.
+  **Money is two different questions and the page must not blur them.** The allocation file has
+  **no money column at all**, so: *ยอดสินค้าในใบนี้* is an **estimate** from the หัวเสือ price file —
+  and note **WS LP is per case while NTT is per piece** (measured: WS 900/case of 36, NTT 16.40,
+  RSP 20), which cost one wrong version where NIV came out 36× too small. *ยอดขายจริงทั้งออเดอร์* is
+  **real**, read from `STOREDAILY.ord` by matching the allocation file's **Order Number** (column M)
+  — 1,401 of 1,645 numbers matched the owner's real sales file, the rest being the day the sales
+  file did not cover. That total **includes products outside the slip**, so the page says so.
+  `parseDailyDcode` now also stores `g` (GSV) on the order index; a file uploaded before that says
+  so and asks for one re-upload rather than showing 0.
+  **③ The day's check exports** to Excel (`spRepXlsx`, สรุป + รายการ sheets) or PDF through the
+  browser's own print (`spRepPrint` into `#prArea`). Both read `spCmp`, so the document and the
+  screen can never disagree, and the filename stays ASCII (`fnAscii` — Chromium drops a Thai
+  `a.download` name *and* its extension).
+  Prove it with **`node test/browser/spord.test.cjs`** (98 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -822,7 +845,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (79 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (98 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

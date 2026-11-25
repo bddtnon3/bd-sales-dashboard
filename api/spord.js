@@ -136,8 +136,12 @@ export default async function handler(req, res) {
           };
         }
         C.gin[key] = {
+          // ยกเลิกผลตรวจ = เขียน del:1 ทับ ไม่ใช่ลบคีย์ (ลบแล้วแท็บเก่า union กลับมา)
+          del: body.del ? 1 : 0,
           g: gins, rows,
           dd: (Array.isArray(body.dd) ? body.dd : []).map(YMD).filter(Boolean).slice(0, 60),
+          // เลขออเดอร์ของ GIN นั้น — ใช้ดึง GSV/NIV จริงจากดัชนีไฟล์ยอดขาย (วันละ 3-4 GIN ~50 เลข)
+          ords: (Array.isArray(body.ords) ? body.ords : []).map((x) => NO(x)).filter(Boolean).slice(0, 600),
           miss: (Array.isArray(body.miss) ? body.miss : []).map((x) => S(x, 30)).filter(Boolean).slice(0, 50),
           file: S(body.file, 160), by: uid || role, byName: who, at: now,
         };

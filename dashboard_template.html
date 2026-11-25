@@ -12524,7 +12524,7 @@ const SP_STEPS=[
  *    แต่ "ผลตรวจที่บันทึกแล้ว" อยู่ใน CSTOCK.gin จึงอ่านย้อนหลังได้โดยไม่ต้องอัพซ้ำ
  * ==========================================================================*/
 const AL_H={d:"Order Creation Date",pj:"PJP Code",pn:"PJP Name",gin:"GIN No.",
-  code:"Product Code",nm:"Product Description",pk:"Pack Size",
+  code:"Product Code",nm:"Product Description",pk:"Pack Size",no:"Order Number",inv:"Invoice No.",
   sc:"Sale Order (CS)",ss:"Sale Order (SHR)",sp:"Sale Order (PC)",
   fc:"Free Order (CS)",fs:"Free Order (SHR)",fp:"Free Order (PC)",
   xc:"Sale Allocated (CS)",xs:"Sale Allocated (SHR)",xp:"Sale Allocated (PC)",
@@ -12573,8 +12573,14 @@ function parseAlloc(name,buf){
     if(!gin){noGin++;continue;}
     const ln=alLine(x[col.pj],x[col.pn]), dd=alDate(x[col.d]);
     if(dd)days[dd]=(days[dd]||0)+1;
-    const G=g[gin]||(g[gin]={n:0,d:{},ln:{}});
+    const G=g[gin]||(g[gin]={n:0,d:{},ln:{},o:{}});
     G.n++;if(dd)G.d[dd]=1;
+    /* 🔑 ไฟล์มีช่อง Order Number (M) และ Invoice No. (L) ซึ่งเป็นเลขเดียวกับไฟล์ยอดขาย
+       วัดกับของจริง: เลขออเดอร์ในใบจัดของ 1,645 เลข เจอในไฟล์ยอดขาย 1,401 (85.2%)
+       ที่เหลือคือออเดอร์ของวันที่ 24 ซึ่งไฟล์ยอดขายรอบนั้นยังไม่ครอบ
+       ⇒ ใช้ดึง **GSV/NIV ตัวจริง** จาก STOREDAILY.ord แทนการประเมินจากไฟล์ราคา */
+    const on=String(x[col.no]==null?"":x[col.no]).trim().toUpperCase();
+    if(on&&on!=="NA")G.o[on]=1;
     const L=G.ln[ln]||(G.ln[ln]={});
     const it=L[code]||(L[code]={sc:0,ss:0,sp:0,fc:0,fs:0,fp:0,xc:0,xs:0,xp:0,yc:0,ys:0,yp:0,
       nm:String(x[col.nm]||"").trim(),pk:alNum(x[col.pk])});
@@ -12593,14 +12599,85 @@ function parseAlloc(name,buf){
   if(typeof renderSpord==="function"&&CURTAB==="spord")renderSpord();
   return ALLOC;
 }
+/* ---------- แปลงหน่วยของไฟล์คลัง: ลัง / แพ็ค / ชิ้น → ชิ้นรวม → ลัง + เศษ ----------
+   เจ้าของสั่ง 26 พ.ย. 69: *"จำนวนสินค้าที่ขึ้น แจกแจงหน่อยว่าเป็นกี่ลัง.. ชิ้น...
+   โดยคำนวนจาก packsize column Q"*
+
+   🔑 ไฟล์บอกขนาดลัง (Pack Size, ช่อง Q) แต่ **ไม่บอกว่าแพ็คละกี่ชิ้น** และ
+      **51.5% ของแถว (5,369/10,428) ใช้หน่วยแพ็ค** จึงข้ามไม่ได้
+   🔑 ขนาดแพ็คแกะจากชื่อสินค้าได้ โดยบังคับให้ **คูณกันแล้วเท่ากับ Pack Size พอดี**
+      (`24X12X30มล` + Q=288 → 24×12=288 → แพ็คละ 12 · `6X6X160 กรัม` + Q=36 → แพ็คละ 6)
+      วัดกับไฟล์จริง: แถวที่ใช้หน่วยแพ็คทั้ง **5,369/5,369 แถว แกะได้ครบ 100%**
+      ส่วนรหัสที่แกะไม่ได้ 239 รหัส **ไม่มีแถวไหนใช้หน่วยแพ็คเลย** จึงไม่กระทบ
+   ⚠️ ถ้าคูณไม่ลงตัว = ไม่รู้ขนาดแพ็ค → คืน null แล้ว **รายงานออกมา** ห้ามเดาว่าแพ็คละ 1 */
+function alShrink(nm,pk){
+  const q=+pk||0;if(q<=0)return null;
+  const re=/(\d+)\s*[Xx×]\s*(\d+)/g;let m,best=null;
+  const t=String(nm||"");
+  while((m=re.exec(t))){
+    const a=+m[1],b=+m[2];
+    if(b>1&&a*b===q)best=b;
+  }
+  return best;
+}
+/* ชิ้นรวมของชุด {cs,sh,pc} — คืน null เมื่อมีแพ็คแต่ไม่รู้ขนาดแพ็ค (ห้ามเดา) */
+function alPcs(o,pk,shr){
+  const q=+pk||0;if(q<=0)return null;
+  const cs=+((o&&o.cs)||0),sh=+((o&&o.sh)||0),pc=+((o&&o.pc)||0);
+  if(sh&&!shr)return null;
+  return cs*q+sh*(shr||0)+pc;
+}
+/* ชิ้นรวม → "N ลัง M ชิ้น" */
+function alSplit(pcs,pk){
+  const q=+pk||0;
+  if(pcs==null||q<=0)return null;
+  return {cs:Math.floor(pcs/q),pc:Math.round((pcs%q)*100)/100,pcs:pcs};
+}
+function alQtyTxt(o,pk,shr){
+  const pcs=alPcs(o,pk,shr),sp=alSplit(pcs,pk);
+  const raw=[o&&o.cs?o.cs+" ลัง":"",o&&o.sh?o.sh+" แพ็ค":"",o&&o.pc?o.pc+" ชิ้น":""]
+    .filter(Boolean).join(" + ");
+  if(!sp)return {txt:raw||"0",sub:(o&&o.sh)?'<span class="down">ไม่รู้ขนาดแพ็ค</span>':"",pcs:null};
+  const main=[sp.cs?sp.cs+" ลัง":"",sp.pc?sp.pc+" ชิ้น":""].filter(Boolean).join(" ")||"0";
+  return {txt:main,sub:raw&&raw!==main?raw:"",pcs:pcs};
+}
+/* ---------- มูลค่า — ไฟล์ใบจัดของ **ไม่มีช่องมูลค่าเลย** ----------
+   เจ้าของถามถึง GSV / NIV · ไฟล์มีแค่ A-AD และไม่มีช่องเงินสักช่อง
+   จึงประเมินจาก **ไฟล์ราคาหัวเสือ** ของรอบที่ครอบวันนั้น (รอบ 25 → 24 ตาม prWindow):
+     GSV ≈ WS LP ต่อหีบ · NIV ≈ NTT ต่อหีบ (NTT อ่านจากไฟล์ ห้ามคำนวณเอง — กฎเดิม §ราคา)
+   ⚠️ ต้องเขียนบนหน้าว่าเป็น "ประเมินจากไฟล์ราคา" ไม่ใช่ตัวเลขจากใบจัดของ
+   ⚠️ รหัสที่ไม่มีในไฟล์ราคา → ไม่รู้ราคา **นับแยกและบอก** ห้ามคิดเป็น 0 */
+function alRoundAt(ymd){
+  const rs=(typeof prRounds==="function")?prRounds():[];
+  for(let i=0;i<rs.length;i++){
+    const w=(typeof prWindow==="function")?prWindow(rs[i]):null;
+    if(w&&ymd>=w.from&&ymd<=w.to)return {i:i,lab:rs[i]};
+  }
+  let best=-1;
+  rs.forEach((l,i)=>{const w=prWindow(l);if(w&&w.to<ymd)best=i;});
+  return best>=0?{i:best,lab:rs[best]}:null;
+}
+/* ⚠️ ในไฟล์หัวเสือ **WS LP เป็นราคาต่อหีบ แต่ NTT เป็นราคาต่อชิ้น** — วัดจากไฟล์จริง:
+   บรีสเพาเวอร์ 240G · WS LP 900 ต่อหีบ · Pack/CS 36 · NTT 16.40 · Floor 16.5 · RSP 20
+   เคยคิด NTT เป็นต่อหีบ ทำให้มูลค่าออกมาน้อยกว่าความจริง 36 เท่า จับได้ตอนเทียบ GSV 490 กับ NIV 8 */
+function alPrice(code,ri){
+  if(ri==null||ri<0)return null;
+  const it=((typeof PRICE!=="undefined"&&PRICE&&PRICE.hs&&PRICE.hs.items)||{})[code];
+  if(!it)return null;
+  const m=(typeof prM==="function")?prM(it,ri):null;
+  if(!m||!m.ws)return null;
+  return {wsCs:+m.ws||0,nttPc:+m.ntt||0};
+}
+
 /* รวมตัวเลขของ GIN ที่แอดมินระบุ ออกมาเป็นรายสาย·รายรหัส (เฉพาะรหัสที่อยู่ในใบนั้น) */
 function alPick(gins,codes){
-  const out={rows:{},dd:{},miss:[],n:0};
+  const out={rows:{},dd:{},miss:[],n:0,ords:{}};
   if(!ALLOC)return out;
   (gins||[]).forEach(gs=>{
     const G=ALLOC.g[String(gs).trim()];
     if(!G){out.miss.push(String(gs).trim());return;}
     Object.keys(G.d).forEach(d=>{out.dd[d]=1;});
+    Object.keys(G.o||{}).forEach(o=>{out.ords[o]=1;});
     Object.keys(G.ln).forEach(ln=>{
       Object.keys(G.ln[ln]).forEach(code=>{
         if(codes&&codes.length&&codes.indexOf(code)<0)return;
@@ -12612,6 +12689,7 @@ function alPick(gins,codes){
     });
   });
   out.dd=Object.keys(out.dd).sort();
+  out.ords=Object.keys(out.ords).sort();
   return out;
 }
 
@@ -12627,7 +12705,12 @@ function spAdmOk(){return spRole()==="manager";}
 function spKeyOk(){const C=cstOk();if(!C.key)C.key={};if(!C.gin)C.gin={};return C;}
 function spKk(sid,ymd,ln){return sid+"|"+ymd+"|"+ln;}
 function spKeyRec(sid,ymd,ln){return (spKeyOk().key||{})[spKk(sid,ymd,ln)]||null;}
-function spGinRec(sid,ymd){return (spKeyOk().gin||{})[sid+"|"+ymd]||null;}
+/* ⚠️ การยกเลิกผลตรวจเขียน del:1 ทับ **ไม่ใช่ลบคีย์** — ลบคีย์แล้วแท็บที่เปิดค้างจะ union
+   กลับมาให้เอง (บทเรียนเดียวกับ ok:0 ของการติ๊ก และ v:0 ของการบันทึกเยี่ยมร้าน) */
+function spGinRec(sid,ymd){
+  const r=(spKeyOk().gin||{})[sid+"|"+ymd]||null;
+  return (r&&r.del)?null:r;
+}
 /* สินค้าในใบออเดอร์ — อ่านจาก lots ของใบนั้น (ชื่อ+จำนวน เหมือนหน้าสต็อคกลาง) */
 function spSlipRows(sid){
   const C=cstOk();
@@ -12726,13 +12809,13 @@ async function spGinSave(sid,ymd,gins){
   const pick=alPick(gins,codes);
   const C=spKeyOk(),k=sid+"|"+ymd;
   const old=C.gin[k]?JSON.parse(JSON.stringify(C.gin[k])):null;
-  const rec={g:gins,rows:pick.rows,dd:pick.dd,miss:pick.miss,
+  const rec={g:gins,rows:pick.rows,dd:pick.dd,miss:pick.miss,ords:pick.ords,
     file:(ALLOC&&ALLOC.file)||"",by:(S.user&&S.user.id)||"",
     byName:(S.user&&S.user.name)||"",at:Date.now()};
   C.gin[k]=rec;renderSpord();
   try{
     const r=await bdPost("/api/spord",{act:"gin",sid:sid,d:ymd,gin:gins,rows:pick.rows,
-      dd:pick.dd,miss:pick.miss,file:rec.file});
+      dd:pick.dd,miss:pick.miss,ords:pick.ords,file:rec.file});
     if(!r||!r.ok)throw new Error((r&&r.error)||"บันทึกไม่สำเร็จ");
     toast("บันทึกผลตรวจแล้ว · "+fmtDate(ymd));
     return true;
@@ -12740,6 +12823,27 @@ async function spGinSave(sid,ymd,gins){
     if(old)C.gin[k]=old;else delete C.gin[k];
     renderSpord();
     alert("บันทึกไม่สำเร็จ: "+e.message+"\nข้อมูลเดิมยังอยู่ครบ ลองใหม่อีกครั้ง");
+    return false;
+  }
+}
+/* 🗑 ย้อนกลับผลตรวจของวันนั้น (เจ้าของขอ 26 พ.ย. 69 — ทดลองไปสองวัน อยากลบทิ้ง) */
+async function spGinUndo(sid,ymd){
+  if(!spAdmOk()){alert("ฝั่งแอดมิน แก้ได้เฉพาะแอดมิน/ผู้จัดการ");return false;}
+  if(!confirm("ยกเลิกผลตรวจของวันที่ "+fmtDate(ymd)+" ?\n\nจำนวนที่ฝั่งเซลล์กรอกไว้ยังอยู่ครบ ลบเฉพาะผลตรวจของแอดมินวันนี้"))return false;
+  const C=spKeyOk(),k=sid+"|"+ymd;
+  const old=C.gin[k]?JSON.parse(JSON.stringify(C.gin[k])):null;
+  C.gin[k]={g:[],rows:{},dd:[],miss:[],file:"",del:1,
+    by:(S.user&&S.user.id)||"",byName:(S.user&&S.user.name)||"",at:Date.now()};
+  renderSpord();
+  try{
+    const r=await bdPost("/api/spord",{act:"gin",sid:sid,d:ymd,gin:[],rows:{},dd:[],miss:[],file:"",del:1});
+    if(!r||!r.ok)throw new Error((r&&r.error)||"ยกเลิกไม่สำเร็จ");
+    toast("ยกเลิกผลตรวจแล้ว · "+fmtDate(ymd));
+    return true;
+  }catch(e){
+    if(old)C.gin[k]=old;else delete C.gin[k];
+    renderSpord();
+    alert("ยกเลิกไม่สำเร็จ: "+e.message+"\nผลตรวจเดิมยังอยู่ครบ");
     return false;
   }
 }
@@ -12781,9 +12885,46 @@ function spCmp(sid,ymd){
     else if(r.kTot.cs===r.aTot.cs&&r.kTot.pc===r.aTot.pc&&!r.aTot.sh)r.st="ok";
     else r.st="diff";
   });
+  /* หน่วยและมูลค่า — ไฟล์ใบจัดของไม่มีช่องเงิน จึงประเมินจากไฟล์ราคาหัวเสือของรอบนั้น */
+  const rd=alRoundAt(ymd);
+  const sum={sGsv:0,sNiv:0,fNiv:0,pcsS:0,pcsF:0,noPrice:0,noShr:0,csS:0,csF:0,
+    rGsv:0,rNiv:0,ordN:0,ordHit:0,ordWait:0,rNoGsv:0};
+  /* 💵 มูลค่า "ตัวจริง" — ไฟล์ใบจัดของไม่มีช่องเงินเลย แต่มีเลข Order Number ซึ่งเป็นเลข
+     เดียวกับไฟล์ยอดขายรายวัน (ดัชนี STOREDAILY.ord เก็บ NIV ไว้แล้ว และ GSV ตั้งแต่ 26 พ.ย. 69)
+     ⇒ ดึงของจริงมาใช้ ดีกว่าประเมินจากไฟล์ราคา
+     ⚠️ เลขที่ยังไม่มีไฟล์ยอดขายของวันนั้น ต้องนับแยกว่า "รอไฟล์" ห้ามคิดเป็น 0 */
+  ((g&&g.ords)||[]).forEach(no=>{
+    sum.ordN++;
+    const o=(typeof spOrd==="function")?spOrd(no):null;
+    if(!o){sum.ordWait++;return;}
+    sum.ordHit++;
+    sum.rNiv+=(+o.v||0);
+    if(o.g)sum.rGsv+=(+o.g||0);else sum.rNoGsv++;
+  });
+  rows.forEach(r=>{
+    r.shr=alShrink(r.nm||(r.a&&r.a.nm)||"",r.pk);
+    r.qS=r.a?alQtyTxt(r.aSale,r.pk,r.shr):null;
+    r.qF=r.a?alQtyTxt(r.aFree,r.pk,r.shr):null;
+    r.qT=r.a?alQtyTxt(r.aTot,r.pk,r.shr):null;
+    r.qK=r.k?alQtyTxt({cs:r.kTot.cs,sh:0,pc:r.kTot.pc},r.pk,r.shr):null;
+    const pz=alPrice(r.code,rd?rd.i:-1);
+    r.pz=pz;
+    if(r.a){
+      if(!pz)sum.noPrice++;
+      if((r.aTot.sh||0)&&!r.shr)sum.noShr++;
+      const ps=r.qS?r.qS.pcs:null,pf=r.qF?r.qF.pcs:null;
+      if(ps!=null){sum.pcsS+=ps;if(r.pk>0)sum.csS+=ps/r.pk;}
+      if(pf!=null){sum.pcsF+=pf;if(r.pk>0)sum.csF+=pf/r.pk;}
+      if(pz&&r.pk>0){
+        /* WS LP ต่อหีบ · NTT ต่อชิ้น — หน่วยคนละอย่าง อย่าหารด้วย pack ทั้งคู่ */
+        if(ps!=null){r.gsv=pz.wsCs*ps/r.pk;r.niv=pz.nttPc*ps;sum.sGsv+=r.gsv;sum.sNiv+=r.niv;}
+        if(pf!=null){r.fNiv=pz.nttPc*pf;sum.fNiv+=r.fNiv;}
+      }
+    }
+  });
   rows.sort((a,b)=>String(a.ln).localeCompare(String(b.ln))||String(a.code).localeCompare(String(b.code)));
   const n={ok:0,diff:0,noKey:0,noAlloc:0};rows.forEach(r=>{n[r.st]++;});
-  return {rows:rows,n:n,gin:g,keyedLines:Object.keys(keyed).length};
+  return {rows:rows,n:n,gin:g,keyedLines:Object.keys(keyed).length,sum:sum,round:rd};
 }
 
 function spRole(){return (S.user&&S.user.role)||"";}
@@ -13431,6 +13572,11 @@ function spAdmHtml(sid){
         g.dd.length>1||g.dd[0]!==ymd?' <b class="down">(ไม่ตรงกับวันที่เลือก — เลข GIN เดียวกินได้หลายวัน)</b>':""}`:""}
       ${g.byName?` · บันทึกโดย ${anaEsc(g.byName)}`:""}${g.at?" "+fmtDateTime(g.at):""}
       ${miss?`<br><b class="down">⚠️ ไม่พบเลข GIN ในไฟล์: ${(g.miss||[]).map(anaEsc).join(" · ")}</b>`:""}</div>
+    <div class="cst-fb" style="margin-top:10px">
+      <button class="btn-ghost" onclick="spRepXlsx('${anaEsc(sid)}','${ymd}')">⬇️ Excel</button>
+      <button class="btn-ghost" onclick="spRepPrint('${anaEsc(sid)}','${ymd}')">🖨 PDF / พิมพ์</button>
+      ${can?`<span style="flex:1"></span><button class="btn-ghost" style="color:var(--bad)"
+        onclick="spGinUndo('${anaEsc(sid)}','${ymd}')">🗑 ยกเลิกผลตรวจวันนี้</button>`:""}</div>
     <div class="cards" style="margin-top:10px">
       <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">ตรงกัน</div>
         <div class="v up">${cmp.n.ok}</div><div class="s">รายการ</div></div>
@@ -13442,24 +13588,160 @@ function spAdmHtml(sid){
         <div class="v">${cmp.n.noAlloc}</div><div class="s">รายการ</div></div>
     </div>`;
   const B=n=>(Math.round((+n||0)*100)/100).toLocaleString();
-  const qty=o=>o?[o.cs?B(o.cs)+" ลัง":"",o.sh?B(o.sh)+" แพ็ค":"",o.pc?B(o.pc)+" ชิ้น":""]
-    .filter(Boolean).join(" + ")||"0":"-";
-  const ST={ok:['<span class="sp-ok">✓ ตรง</span>',1],diff:['<span class="sp-bad">✗ ไม่ตรง</span>',0],
-    noKey:['<span class="sp-warn">เซลล์ไม่ได้คีย์</span>',2],noAlloc:['<span class="sp-warn">คลังไม่ได้จัด</span>',3]};
+  const M=n=>n==null?'<span style="color:var(--muted)">-</span>'
+    :(Math.round((+n||0)*100)/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  const qcell=q=>q?`${anaEsc(q.txt)}${q.sub?'<span class="psub" style="display:block">'+anaEsc(q.sub)+'</span>':""}`:"-";
+  const ST={ok:'<span class="sp-ok">✓ ตรง</span>',diff:'<span class="sp-bad">✗ ไม่ตรง</span>',
+    noKey:'<span class="sp-warn">เซลล์ไม่ได้คีย์</span>',noAlloc:'<span class="sp-warn">คลังไม่ได้จัด</span>'};
   const rows=cmp.rows.map(r=>`<tr>
     <td class="l"><b>${anaEsc(r.ln)}</b></td>
-    <td class="l">${anaEsc(r.nm||oname(r.code)||"")}<span class="psub" style="display:block">รหัส ${anaEsc(r.code)}</span></td>
-    <td class="l">${r.k?qty({cs:r.kTot.cs,pc:r.kTot.pc}):"-"}</td>
-    <td class="l">${qty(r.aTot)}</td>
-    <td>${ST[r.st][0]}${r.allocDiff?'<br><span class="psub down">คลังจัดจริงไม่เท่าที่สั่ง: '+qty(r.aAll)+'</span>':""}</td></tr>`).join("");
-  h+=`<div class="tblwrap" style="margin-top:12px"><table class="sp-kt">
-    <thead><tr><th class="l">สาย</th><th class="l">สินค้า</th><th class="l">เซลล์คีย์ (ขาย+แถม)</th>
-      <th class="l">คลังจัดออก (ขาย+แถม)</th><th>ผล</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="5" class="l">ไม่มีรายการ</td></tr>'}</tbody></table></div>
+    <td class="l">${anaEsc(r.nm||oname(r.code)||"")}<span class="psub" style="display:block">รหัส ${anaEsc(r.code)}${
+      r.pk?" · ลังละ "+B(r.pk)+" ชิ้น":""}${r.shr?" · แพ็คละ "+B(r.shr):""}</span></td>
+    <td class="l">${r.k?qcell(r.qK):"-"}</td>
+    <td class="l">${qcell(r.qS)}</td>
+    <td class="l">${qcell(r.qF)}</td>
+    <td>${M(r.gsv)}</td><td>${M(r.niv)}</td><td>${M(r.fNiv)}</td>
+    <td>${ST[r.st]}${r.allocDiff&&r.qT?'<br><span class="psub down">คลังจัดจริงไม่เท่าที่สั่ง</span>':""}</td></tr>`).join("");
+  const S=cmp.sum||{};
+  h+=`<div class="cards" style="margin-top:12px">
+      <div class="card"><div class="k">ขายออกไป</div><div class="v">${B(Math.round(S.csS*100)/100)}</div>
+        <div class="s">ลัง · ${B(S.pcsS)} ชิ้น</div></div>
+      <div class="card"><div class="k">ของแถม</div><div class="v">${B(Math.round(S.csF*100)/100)}</div>
+        <div class="s">ลัง · ${B(S.pcsF)} ชิ้น</div></div>
+      <div class="card" style="border-top:3px solid var(--blue)"><div class="k">💰 ยอดสินค้าในใบนี้</div>
+        <div class="v" style="font-size:20px">${M(S.sNiv)}</div>
+        <div class="s">ราคาชิ้น · ราคาหีบ ${M(S.sGsv)} · แถม ${M(S.fNiv)}</div></div>
+      <div class="card"><div class="k">📄 ยอดขายจริงทั้งออเดอร์</div>
+        <div class="v" style="font-size:20px">${S.ordHit?M(S.rNiv):'<span style="color:var(--muted)">-</span>'}</div>
+        <div class="s">${S.ordHit?("NIV · GSV "+(S.rNoGsv>=S.ordHit?"ยังไม่มี":M(S.rGsv))+" · "+S.ordHit+"/"+S.ordN+" เลขออเดอร์")
+          :"ยังไม่มีไฟล์ยอดขายของวันนี้"}</div></div>
+    </div>
+    <div class="psub" style="margin-top:8px">
+      💵 <b>ไฟล์ใบจัดของไม่มีช่องมูลค่าเลย</b> — สองการ์ดนี้ตอบคนละคำถาม อย่าสับสนกัน
+      <br>• <b>ยอดสินค้าในใบนี้</b> = นับเฉพาะสินค้าที่อยู่ในใบออเดอร์ใบนี้ ตีราคาจาก
+      <b>ไฟล์ราคาหัวเสือ</b>${cmp.round?" รอบ <b>"+anaEsc(cmp.round.lab)+"</b>":""}
+      (ราคาหีบ = WS LP · ราคาชิ้น = NTT) — เป็นการ<b>ประเมิน</b>
+      <br>• <b>ยอดขายจริงทั้งออเดอร์</b> = ของจริงจาก<b>ไฟล์ยอดขายรายวัน</b> จับคู่ด้วย<b>เลขออเดอร์</b>
+      ในใบจัดของ — <b>รวมสินค้าตัวอื่นที่ไม่ได้อยู่ในใบนี้ด้วย</b> จึงสูงกว่าเป็นปกติ
+      ${S.ordWait?'<br><b class="down">⚠️ อีก '+S.ordWait+' เลขยังไม่มีไฟล์ยอดขายของวันนั้น — ยอดจริงจะขึ้นเองเมื่ออัพไฟล์ (ไม่ได้นับเป็น 0)</b>':""}
+      ${(S.ordHit&&S.rNoGsv)?'<br><b class="down">⚠️ '+S.rNoGsv+' เลขมาจากไฟล์ยอดขายที่อัพไว้ก่อนระบบจะเก็บ GSV — อัพไฟล์วันนั้นซ้ำอีกครั้ง แล้ว GSV จะขึ้นเอง</b>':""}
+      ${!cmp.round?'<br><b class="down">— ยังไม่มีไฟล์ราคาหัวเสือ จึงยังประเมินยอดในใบไม่ได้</b>':""}
+      ${S.noPrice?'<br><b class="down">⚠️ มี '+S.noPrice+' รายการที่ไม่มีในไฟล์ราคา จึงไม่ได้ประเมินมูลค่า (ไม่ได้นับเป็น 0)</b>':""}
+      ${S.noShr?'<br><b class="down">⚠️ มี '+S.noShr+' รายการที่ใช้หน่วยแพ็ค แต่แกะขนาดแพ็คจากชื่อไม่ได้ จึงยังแปลงเป็นลัง/ชิ้นไม่ได้</b>':""}
+    </div>
+    <div class="tblwrap" style="margin-top:12px"><table class="sp-kt">
+    <thead><tr><th class="l">สาย</th><th class="l">สินค้า</th><th class="l">เซลล์คีย์</th>
+      <th class="l">คลังจัด · ขาย</th><th class="l">คลังจัด · แถม</th>
+      <th>ราคาหีบ×จำนวน</th><th>ราคาชิ้น×จำนวน</th><th>มูลค่าแถม</th><th>ผล</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="9" class="l">ไม่มีรายการ</td></tr>'}</tbody></table></div>
     <div class="psub" style="margin-top:8px">อ่านช่อง <b>Sale Order</b> กับ <b>Free Order</b> ของไฟล์ตามที่เจ้าของระบุ
-      · ถ้าช่อง <b>Allocated</b> (ของที่คลังจัดจริง) ไม่เท่ากัน จะขึ้นเตือนใต้ผลให้เห็นด้วย</div></div>`;
+      · จำนวนแปลงเป็น <b>ลัง + ชิ้น</b> จาก Pack Size ของไฟล์ (ช่อง Q) และขนาดแพ็คที่แกะจากชื่อสินค้า</div></div>`;
   return h;
 }
+/* ---------- 📄 เอกสารผลตรวจรายวัน — Excel / PDF ----------
+   เจ้าของสั่ง 26 พ.ย. 69: *"เมื่อกรอกครบ โดยปกติจะมีวันละสามถึงสี่ GIN แอดมินจะสามารถดึงข้อมูล
+   ทั้งหมดออกมาเป็นไฟล์ Excel หรือ PDF เพื่อเก็บไว้เป็นเอกสารตามแทรกต่อรายวันได้"*
+   ⚠️ สองทางนี้อ่านจาก spCmp ตัวเดียวกับบนจอ ตัวเลขในเอกสารกับบนจอจึงต่างกันไม่ได้
+   ⚠️ ชื่อไฟล์ต้องเป็น ASCII ล้วน — Chromium ตัดชื่อไฟล์ที่ไม่ใช่ ASCII ทิ้งพร้อมนามสกุล
+      (บทเรียนเดิมจาก fnAscii ในหน้าร้านใหม่) */
+function spRepRows(sid,ymd){
+  const cmp=spCmp(sid,ymd),g=cmp.gin||{};
+  const R2=n=>Math.round((+n||0)*100)/100;
+  const head=["สาย","รหัสสินค้า","ชื่อสินค้า","ลังละ(ชิ้น)","แพ็คละ(ชิ้น)",
+    "เซลล์คีย์ ลัง","เซลล์คีย์ ชิ้น",
+    "คลังขาย ลัง","คลังขาย แพ็ค","คลังขาย ชิ้น","ขายรวม(ชิ้น)",
+    "คลังแถม ลัง","คลังแถม แพ็ค","คลังแถม ชิ้น","แถมรวม(ชิ้น)",
+    "ราคาหีบ x จำนวน","ราคาชิ้น x จำนวน","มูลค่าแถม(ประเมิน)","ผล"];
+  const ST={ok:"ตรง",diff:"ไม่ตรง",noKey:"เซลล์ไม่ได้คีย์",noAlloc:"คลังไม่ได้จัด"};
+  const body=cmp.rows.map(r=>[r.ln,r.code,r.nm||(typeof oname==="function"?oname(r.code):"")||"",
+    R2(r.pk),r.shr||"",
+    r.k?R2(r.kTot.cs):"",r.k?R2(r.kTot.pc):"",
+    r.aSale?R2(r.aSale.cs):"",r.aSale?R2(r.aSale.sh):"",r.aSale?R2(r.aSale.pc):"",
+    (r.qS&&r.qS.pcs!=null)?R2(r.qS.pcs):"",
+    r.aFree?R2(r.aFree.cs):"",r.aFree?R2(r.aFree.sh):"",r.aFree?R2(r.aFree.pc):"",
+    (r.qF&&r.qF.pcs!=null)?R2(r.qF.pcs):"",
+    r.gsv!=null?R2(r.gsv):"",r.niv!=null?R2(r.niv):"",r.fNiv!=null?R2(r.fNiv):"",
+    ST[r.st]||r.st]);
+  return {cmp:cmp,g:g,head:head,body:body};
+}
+function spRepMeta(sid,ymd,cmp,g){
+  const sl=spSlip(sid)||{},S=cmp.sum||{};
+  const R2=n=>Math.round((+n||0)*100)/100;
+  return [
+    ["ใบออเดอร์พิเศษ",sid],
+    ["วันที่ตัดบิล",sl.d?fmtDate(sl.d):"-"],
+    ["วันที่ตรวจ",fmtDate(ymd)],
+    ["เลข GIN",((g.g||[]).join(", "))||"-"],
+    ["วันที่ในไฟล์ของ GIN นี้",((g.dd||[]).map(fmtDate).join(", "))||"-"],
+    ["ไฟล์ใบจัดของ",g.file||"-"],
+    ["บันทึกโดย",(g.byName||g.by||"-")+(g.at?" · "+fmtDateTime(g.at):"")],
+    [""],
+    ["ตรงกัน",cmp.n.ok],["ไม่ตรง",cmp.n.diff],
+    ["คลังจัด แต่เซลล์ไม่ได้คีย์",cmp.n.noKey],["เซลล์คีย์ แต่คลังไม่ได้จัด",cmp.n.noAlloc],
+    [""],
+    ["ขายออกไป (ลัง)",R2(S.csS)],["ขายออกไป (ชิ้น)",R2(S.pcsS)],
+    ["ของแถม (ลัง)",R2(S.csF)],["ของแถม (ชิ้น)",R2(S.pcsF)],
+    ["เลขออเดอร์ในรอบนี้",S.ordN],["ดึงยอดขายจริงได้",S.ordHit],["รอไฟล์ยอดขาย",S.ordWait],
+    ["มูลค่าขายจริง NIV",S.ordHit?R2(S.rNiv):""],
+    ["มูลค่าขายจริง GSV",(S.ordHit&&S.rNoGsv<S.ordHit)?R2(S.rGsv):""],
+    [""],
+    ["ประเมินจากไฟล์ราคา: ราคาหีบรวม",R2(S.sGsv)],["ประเมินจากไฟล์ราคา: ราคาชิ้นรวม",R2(S.sNiv)],
+    ["ประเมินมูลค่าของแถม",R2(S.fNiv)],
+    [""],
+    ["หมายเหตุ","NIV/GSV จริง ดึงจากไฟล์ยอดขายรายวัน จับคู่ด้วยเลขออเดอร์ในใบจัดของ"],
+    ["","ช่องมูลค่ารายสินค้า เป็นการประเมินจากไฟล์ราคาหัวเสือ"+
+      (cmp.round?" รอบ "+cmp.round.lab:" (ยังไม่มีไฟล์ราคา)")],
+    ["",S.noPrice?("ไม่มีราคาในไฟล์ "+S.noPrice+" รายการ — ไม่ได้คิดมูลค่า ไม่ได้นับเป็น 0"):""],
+    ["",S.noShr?("แกะขนาดแพ็คไม่ได้ "+S.noShr+" รายการ — ยังแปลงเป็นลัง/ชิ้นไม่ได้"):""],
+  ];
+}
+function spRepName(sid,ymd,ext){
+  const fn=(typeof fnAscii==="function")?fnAscii:(x=>String(x).replace(/[^\x20-\x7E]/g,"_"));
+  return fn("AllocCheck_"+sid+"_"+ymd)+"."+ext;
+}
+function spRepXlsx(sid,ymd){
+  const g=spGinRec(sid,ymd);
+  if(!g){alert("วันนี้ยังไม่ได้บันทึกผลตรวจ");return;}
+  const R=spRepRows(sid,ymd);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(spRepMeta(sid,ymd,R.cmp,R.g)),"สรุป");
+  const ws=XLSX.utils.aoa_to_sheet([R.head].concat(R.body));
+  ws["!cols"]=R.head.map((h,i)=>({wch:i===2?34:(i<=1?13:12)}));
+  XLSX.utils.book_append_sheet(wb,ws,"รายการ");
+  XLSX.writeFile(wb,spRepName(sid,ymd,"xlsx"));
+}
+function spRepPrint(sid,ymd){
+  const g=spGinRec(sid,ymd);
+  if(!g){alert("วันนี้ยังไม่ได้บันทึกผลตรวจ");return;}
+  const el=document.getElementById("prArea");if(!el)return;
+  const R=spRepRows(sid,ymd),cmp=R.cmp,S=cmp.sum||{},sl=spSlip(sid)||{};
+  const B=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const M=n=>n===""||n==null?"":(+n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  const td=(v,i)=>`<td style="border:1px solid #999;padding:3px 5px;${i>=3?"text-align:right":""}">${anaEsc(String(v==null?"":v))}</td>`;
+  el.innerHTML=`<div style="font-family:sans-serif;font-size:12px">
+    <h2 style="margin:0 0 4px">ผลตรวจใบจัดของ (Allocation) — ${anaEsc(sid)}</h2>
+    <div style="margin-bottom:8px">วันที่ตรวจ <b>${fmtDate(ymd)}</b> ·
+      ตัดบิล ${sl.d?fmtDate(sl.d):"-"} ·
+      GIN <b>${anaEsc((R.g.g||[]).join(", ")||"-")}</b> ·
+      บันทึกโดย ${anaEsc(R.g.byName||R.g.by||"-")}</div>
+    <table style="border-collapse:collapse;margin-bottom:10px">
+      <tr>${[["ตรงกัน",cmp.n.ok],["ไม่ตรง",cmp.n.diff],["คลังจัด เซลล์ไม่คีย์",cmp.n.noKey],
+        ["เซลล์คีย์ คลังไม่จัด",cmp.n.noAlloc],["ขาย (ลัง)",B(S.csS)],["แถม (ลัง)",B(S.csF)],
+        ["NIV จริง",S.ordHit?M(S.rNiv):"-"],["GSV จริง",(S.ordHit&&S.rNoGsv<S.ordHit)?M(S.rGsv):"-"],
+        ["เลขออเดอร์",S.ordHit+"/"+S.ordN]].map(x=>
+        `<td style="border:1px solid #999;padding:4px 8px"><div style="font-size:10px">${anaEsc(x[0])}</div>
+          <b style="font-size:14px">${anaEsc(String(x[1]))}</b></td>`).join("")}</tr></table>
+    <table style="border-collapse:collapse;width:100%">
+      <thead><tr>${R.head.map(h=>`<th style="border:1px solid #999;padding:3px 5px;background:#eee;font-size:10px">${anaEsc(h)}</th>`).join("")}</tr></thead>
+      <tbody>${R.body.map(r=>`<tr>${r.map(td).join("")}</tr>`).join("")}</tbody></table>
+    <div style="margin-top:8px;font-size:10px;color:#555">
+      NIV/GSV จริง ดึงจากไฟล์ยอดขายรายวันด้วยเลขออเดอร์${S.ordWait?" · รอไฟล์ยอดขายอีก "+S.ordWait+" เลข":""}
+      · ช่องมูลค่ารายสินค้าเป็นการประเมินจากไฟล์ราคาหัวเสือ${cmp.round?" รอบ "+anaEsc(cmp.round.lab):" (ยังไม่มีไฟล์ราคา)"}
+      ${S.noPrice?" · ไม่มีราคา "+S.noPrice+" รายการ":""}${S.noShr?" · แกะขนาดแพ็คไม่ได้ "+S.noShr+" รายการ":""}
+      <br>พิมพ์เมื่อ ${fmtDateTime(Date.now())}</div></div>`;
+  try{window.print();}catch(e){}
+}
+
 function spUpAlloc(){
   const el=document.getElementById("fileAlloc");
   if(el)el.click();else alert("ไม่พบช่องอัพไฟล์");
@@ -16461,6 +16743,9 @@ function parseDailyDcode(name,rows,hdr,H){
   const need=l=>{const i=col(l);if(i<0)throw new Error('ไฟล์ยอดขาย dcode ไม่มีคอลัมน์ "('+l+')" — ถ้า dcode เปลี่ยนหัวตาราง ต้องแก้ตัวอ่านก่อน ยังไม่ได้เก็บอะไรลงระบบ');return i;};
   const cPjp=need("PJP Code"),cDate=need("Invoice Date"),cShop=need("Outlet Code"),
     cCs=need("Sale Quantity in Aggr(CS)"),cPc=need("Sale Quantity in Aggr(Pcs)"),cNiv=need("NIV"),
+    /* GSV มีในไฟล์อยู่แล้ว แต่เดิมไม่ได้เก็บ — ใช้ตอนตรวจใบจัดของ (ออเดอร์พิเศษ)
+       หาแบบไม่บังคับ ไฟล์เก่าที่ไม่มีช่องนี้ต้องอ่านได้เหมือนเดิม */
+    cGsv=col("GSV"),
     cEmp=col("Salesman Code"),cRep=col("Salesman Name"),cShopN=col("Outlet Name"),
     cDoc=col("Document Type"),cOrd=col("Order Type"),cProd=col("Product Code"),
     /* 🎁 โปรโมชั่น: ของแถมอยู่คนละคอลัมน์กับของขาย — วัดจากไฟล์จริงแล้ว 713 แถวเป็นของแถมล้วน
@@ -16525,8 +16810,9 @@ function parseDailyDcode(name,rows,hdr,H){
     [cNo,cInv].forEach(ci=>{
       if(ci<0)return;const no=S(r,ci).toUpperCase();
       if(!no||no==="NA")return;
-      const o=ordx[no]||(ordx[no]={s:sc,l:code,d:dkey,v:0,c:0,cs:0,pc:0});
+      const o=ordx[no]||(ordx[no]={s:sc,l:code,d:dkey,v:0,c:0,cs:0,pc:0,g:0});
       o.v+=niv;o.c++;o.cs+=N(r,cCs);o.pc+=N(r,cPc);
+      if(cGsv>=0)o.g=(+o.g||0)+N(r,cGsv);
       if(sc)o.s=sc;o.l=code;o.d=dkey;
     });
     if(cDoc>=0){const d=S(r,cDoc)||"(ว่าง)";docs[d]=(docs[d]||0)+1;}
@@ -16556,6 +16842,7 @@ function parseDailyDcode(name,rows,hdr,H){
   if(!STOREDAILY.ord)STOREDAILY.ord={};
   Object.keys(ordx).forEach(no=>{const o=ordx[no];
     o.v=Math.round(o.v*100)/100;o.cs=Math.round(o.cs*100)/100;o.pc=Math.round(o.pc*100)/100;
+    if(o.g)o.g=Math.round(o.g*100)/100;
     STOREDAILY.ord[no]=o;});
   /* 🎁 ดัชนีโปรโมชั่น — คีย์ "วัน|สาย" คือหน่วยเดียวกับที่ไฟล์หนึ่งใบเขียน ไฟล์ที่กรองมา
      แค่สายเดียวจึงทับได้แค่สายนั้น (กฎเดียวกับ DATA.daily ข้างบน) */
