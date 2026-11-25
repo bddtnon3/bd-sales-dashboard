@@ -212,7 +212,7 @@ const ORIGIN='https://bd-spord.test/';
    /* เข้าหน้าใบผ่านทางปกติ: เลือกเดือน -> เลือกใบ */
    SP.view='mon';SP.ym='';SP.hist=[];renderSpord();
    spOpenMon('2026-11');spOpenSlip('B20261118-01');
-   o.chipsMgr=[...document.querySelectorAll('#spBody .pos-st')].map(x=>x.textContent.trim());
+   o.chipsMgr=[...document.querySelectorAll('#spBody .tab2')].map(x=>x.textContent.trim());
    /* ปุ่มย้อนกลับต้องถอยในหมวดนี้ ไม่ใช่กระโดดออกไปแท็บอื่น */
    o.backShown=document.getElementById('backBtn').style.display!=='none';
    spSetSec('out');o.outTxt=tx();
@@ -224,7 +224,7 @@ const ORIGIN='https://bd-spord.test/';
    o.rptMgr=tx();
    /* หัวหน้าเซลล์ไม่เห็นแท็บรายงาน และเปิดตรง ๆ ก็ไม่ได้ */
    __as('sup',null,'หัวหน้าเซลล์');SP.view='slip';SP.sid='B20261118-01';SP.sec='rpt';renderSpord();
-   o.chipsSup=[...document.querySelectorAll('#spBody .pos-st')].map(x=>x.textContent.trim());
+   o.chipsSup=[...document.querySelectorAll('#spBody .tab2')].map(x=>x.textContent.trim());
    o.rptSup=tx();
    return o;});
  t('🔑 ในใบมีแท็บ 4 ขั้นตอน + รายงาน (ผู้จัดการ) + ของเดิม',
@@ -273,6 +273,49 @@ const ORIGIN='https://bd-spord.test/';
    frz.has&&frz.pos==='sticky'&&frz.top==='0px'&&frz.oy!=='visible',JSON.stringify(frz));
  t('🛟 ...และมีพื้นหลังทึบ ไม่ให้แถวทะลุขึ้นมาเห็นผ่านหัวตาราง',
    !!frz.bg&&frz.bg!=='rgba(0, 0, 0, 0)',frz.bg);
+
+
+ /* ---------- 0.8) 🏷 ประเภทใบ 3 แบบ + หัวเรื่องเป็นชื่อสินค้าแทนรหัส ---------- */
+ const tag=await ev(()=>{
+   __reset();
+   [['64849613','โอโมน้ำ ซากุระ',120],['65456729','บรีสเอกเซล',80],['90000003','สบู่',20]]
+     .forEach((p,i)=>{const id='B20261118-01-g'+i;
+       CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],
+         cs:p[2],pc:0,sq:i,clr:[],up:1};});
+   __as('manager',null,'ผู้จัดการ');_switchTab('spord');
+   const o={};
+   o.types=Object.keys(SP_GRP);
+   /* ใบเก่าที่ไม่มีธง = ตัดบิลรอส่ง (ข้อมูลเดิมไม่ต้องย้าย) */
+   o.oldDefault=spGrpOf(CSTOCK.slips['B20261118-01']);
+   o.oldB=spGrpOf({g:'B'});
+   o.newD=spGrpOf({g:'D'});
+   o.junk=spGrpOf({g:'ZZ'});
+   /* หัวเรื่อง = สินค้าที่มีจำนวนมากที่สุดก่อน */
+   o.title=spSlipTitle('B20261118-01');
+   o.top=spSlipTop('B20261118-01',2).map(x=>x.code);
+   /* ใบที่ยังไม่มีสินค้า ต้องถอยไปใช้รหัส ไม่ใช่ช่องว่าง */
+   CSTOCK.slips['EMPTY-1']={d:'2026-11-18',at:1,up:1};
+   o.empty=spSlipTitle('EMPTY-1');
+   /* การ์ดในรายการเดือน + กล่องเลือกใบ ต้องขึ้นชื่อสินค้า และติดแท็กประเภท */
+   SP.view='mon';SP.ym='2026-11';renderSpord();
+   o.card=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.tagEl=!!document.querySelector('#spBody .sp-tag');
+   o.opt=[...document.querySelectorAll('#spSlip option')].map(x=>x.textContent.trim()).join(' | ');
+   return o;});
+ t('🔑 ประเภทใบมี 3 แบบ: ตัวกระจาย / ตัดบิลรอส่ง / ส่งแล้วรอตัดบิล',
+   tag.types.join(',')==='D,A,B',tag.types.join(','));
+ t('🛟 ข้อมูลเก่าไม่ต้องย้าย — ใบที่ไม่มีธงยังเป็นตัดบิลรอส่ง และ B ยังเป็นส่งแล้วรอตัดบิล',
+   tag.oldDefault==='A'&&tag.oldB==='B'&&tag.newD==='D'&&tag.junk==='A',
+   JSON.stringify(tag));
+ t('🔑 หัวเรื่องใบเป็นชื่อสินค้าหลัก + จำนวนลัง (เรียงจากมากไปน้อย สองตัวแรก)',
+   /โอโมน้ำ ซากุระ 120 ลัง/.test(tag.title)&&/บรีสเอกเซล 80 ลัง/.test(tag.title)&&
+   tag.top.join(',')==='64849613,65456729'&&/อีก 1/.test(tag.title),tag.title);
+ t('🛟 ใบที่ยังไม่มีสินค้า ถอยไปใช้รหัสใบ ไม่ใช่ขึ้นช่องว่าง',tag.empty==='',tag.empty);
+ t('🔑 การ์ดในรายการเดือนขึ้นชื่อสินค้า พร้อมแท็กประเภท และยังมีรหัสใบไว้อ้างอิง',
+   /โอโมน้ำ ซากุระ 120 ลัง/.test(tag.card)&&/ตัดบิลรอส่ง/.test(tag.card)&&
+   /B20261118-01/.test(tag.card)&&tag.tagEl,tag.card.slice(0,110));
+ t('🔑 กล่องเลือกใบก็ขึ้นชื่อสินค้า ไม่ใช่รหัสเปล่า ๆ',
+   /โอโม/.test(tag.opt),tag.opt.slice(0,90));
 
  /* ---------- 1) ใครเห็นอะไร ---------- */
  const who=await ev(()=>{
@@ -389,9 +432,9 @@ const ORIGIN='https://bd-spord.test/';
    __as('wh',null,'ทีมคลัง 1');renderSpord();
    const canWh=/spSetGrp/.test(document.getElementById('spBar').innerHTML);
    return {a:a,b:bb,g:CSTOCK.slips['B20261118-01'].g,canWh:canWh};});
- t('ใบเก่าทุกใบเริ่มที่กลุ่ม A (ตัดบิลแล้ว ยังไม่ส่งของ)',/ตัดบิลแล้ว ยังไม่ส่งของ/.test(grp.a),grp.a.slice(0,60));
- t('แอดมินสลับใบไปกลุ่ม B (ส่งของแล้ว ยังไม่ตัดบิล) ได้',
-   grp.g==='B'&&/ส่งของแล้ว ยังไม่ตัดบิล/.test(grp.b),grp.b.slice(0,70));
+ t('ใบเก่าทุกใบเริ่มที่กลุ่ม A (ตัดบิลรอส่ง)',/ตัดบิลรอส่ง/.test(grp.a),grp.a.slice(0,60));
+ t('แอดมินสลับใบไปกลุ่ม B (ส่งแล้วรอตัดบิล) ได้',
+   grp.g==='B'&&/ส่งแล้วรอตัดบิล/.test(grp.b),grp.b.slice(0,70));
  t('🛟 ทีมคลังสลับกลุ่มไม่ได้ (ไม่มีปุ่มให้)',!grp.canWh);
 
  /* ---------- 8) ลบเลขที่กรอกผิด ---------- */
@@ -570,7 +613,7 @@ const ORIGIN='https://bd-spord.test/';
    const el=()=>document.getElementById('spBody');
    const txt=()=>el().textContent.replace(/\s+/g,' ');
    const o={};
-   o.has=/ตัดบิลแล้ว ยังไม่ส่งของ/.test(txt())&&/ส่งของแล้ว ยังไม่ตัดบิล/.test(txt());
+   o.has=/ตัวกระจาย/.test(txt())&&/ตัดบิลรอส่ง/.test(txt())&&/ส่งแล้วรอตัดบิล/.test(txt());
    o.defA=cstFormGrp(CST.f);
    o.onA=/class="pl-today on" onclick="cstSetGrp\('A'\)/.test(el().innerHTML);
    cstSetGrp('B');
@@ -592,17 +635,17 @@ const ORIGIN='https://bd-spord.test/';
    o.old=/cstSetGrp\('B'\)/.test(document.getElementById('cstBill').innerHTML);
    CST.f=null;_switchTab('spord');
    return o;});
- t('🔑 ฟอร์มสร้างออเดอร์ให้เลือกหมวดได้ทั้งสองแบบ ตั้งแต่ยังไม่บันทึก',gq.has);
- t('...ใบใหม่เริ่มที่ "ตัดบิลแล้ว ยังไม่ส่งของ" และปุ่มที่เลือกอยู่เข้มให้เห็นชัด',
+ t('🔑 ฟอร์มสร้างออเดอร์ให้เลือกประเภทได้ครบทั้งสามแบบ ตั้งแต่ยังไม่บันทึก',gq.has);
+ t('...ใบใหม่เริ่มที่ "ตัดบิลรอส่ง" และปุ่มที่เลือกอยู่เข้มให้เห็นชัด',
    gq.defA==='A'&&gq.onA,gq.defA+' · ปุ่มเข้ม='+gq.onA);
- t('...กดเลือก "ส่งของแล้ว ยังไม่ตัดบิล" แล้วปุ่มและคำอธิบายเปลี่ยนตาม',
+ t('...กดเลือก "ส่งแล้วรอตัดบิล" แล้วปุ่มและคำอธิบายเปลี่ยนตาม',
    gq.nowB==='B'&&gq.onB&&gq.hint,gq.nowB+' · ปุ่มเข้ม='+gq.onB+' · คำอธิบาย='+gq.hint);
  t('🔑 บันทึกแล้วหมวดติดไปกับใบจริง และขึ้นบนหัวใบให้ทุกทีมเห็น',
-   gq.saved==='B'&&/🚚/.test(gq.bar)&&/ส่งของแล้ว ยังไม่ตัดบิล/.test(gq.bar),
+   gq.saved==='B'&&/🚚/.test(gq.bar)&&/ส่งแล้วรอตัดบิล/.test(gq.bar),
    gq.sid+' → g='+gq.saved);
  t('🛟 กลับมาแก้ใบกลุ่ม B แล้วเซฟใหม่ ต้องไม่เด้งกลับเป็นกลุ่ม A',
    gq.reload==='B'&&gq.again==='B','อ่านกลับ='+gq.reload+' · เซฟซ้ำ='+gq.again);
- t('🛟 ใบเก่าที่ไม่มีช่องหมวด ยังอ่านเป็น "ตัดบิลแล้ว ยังไม่ส่งของ" เหมือนเดิม',
+ t('🛟 ใบเก่าที่ไม่มีช่องหมวด ยังอ่านเป็น "ตัดบิลรอส่ง" เหมือนเดิม',
    gq.oldSlip==='A',gq.oldSlip);
  t('...ฟอร์มในหน้า 🧊 สต็อคกลาง ก็เลือกหมวดได้เหมือนกัน (ใบชุดเดียวกัน)',gq.old);
 
@@ -687,7 +730,7 @@ const ORIGIN='https://bd-spord.test/';
    __slip();__as('sup',null,'หัวหน้าเซลล์');_switchTab('spord');renderSpord();
    const o={};
    const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
-   o.chips=[...document.querySelectorAll('#spBody .pos-st')].map(x=>x.textContent.trim());
+   o.chips=[...document.querySelectorAll('#spBody .tab2')].map(x=>x.textContent.trim());
    o.showsName=/โอโมน้ำ ซากุระ/.test(tx())&&/รหัส 64849613/.test(tx());
    o.hasInputs=!!document.getElementById('spK_CT11_64849613_sc');
    /* sup กรอกแล้วบันทึก */

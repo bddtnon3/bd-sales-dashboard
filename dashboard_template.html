@@ -544,6 +544,11 @@ main.wide{max-width:1560px}
   border:1px solid var(--line);border-radius:11px;
   overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .tabs2::-webkit-scrollbar{display:none}
+.sp-tabs{margin:10px 0 0}
+/* 🏷 แท็กประเภทของใบออเดอร์ — ให้เห็นจุดประสงค์ของใบทันทีโดยไม่ต้องอ่านรหัส */
+.sp-tag{display:inline-block;background:var(--blue-soft);color:var(--blue);border:1px solid var(--blue);
+  border-radius:999px;padding:1px 10px;font-size:12px;font-weight:800;white-space:nowrap;margin-left:6px;
+  vertical-align:middle}
 .tab2{background:none;border:none;padding:8px 15px;border-radius:8px;font-size:13.5px;font-weight:700;
   color:var(--muted);white-space:nowrap;flex:0 0 auto}
 .tab2:hover{color:var(--blue)}
@@ -11473,16 +11478,15 @@ function cstFormClear(){
    และ ส่งของแล้วยังไม่ตัดบิล"* — เดิมเลือกได้เฉพาะหลังบันทึกใบแล้ว (spSetGrp บนหัวใบ)
    ⚠️ เก็บเป็นช่อง g บนใบเดิม ไม่ได้สร้าง section ใหม่ · ใบเก่าที่ไม่มี g อ่านเป็น A เหมือนเดิม
    ⚠️ ใช้ SP_GRP ชุดเดียวกับหน้าออเดอร์พิเศษ ชื่อหมวดจะได้ไม่มีทางเพี้ยนกันสองที่ */
-function cstFormGrp(f){return (f&&f.g==="B")?"B":"A";}
-function cstSetGrp(g){const f=CST.f;if(!f)return;f.g=(g==="B")?"B":"A";cstDraftSave();renderCStock();}
+function cstFormGrp(f){const g=f&&f.g;return SP_GRP[g]?g:"A";}
+function cstSetGrp(g){const f=CST.f;if(!f)return;f.g=SP_GRP[g]?g:"A";cstDraftSave();renderCStock();}
 function cstGrpHtml(f){
   const cur=cstFormGrp(f);
   return `<div class="cst-grp"><label>หมวดออเดอร์ — ใบนี้เป็นแบบไหน</label>
     <div class="cst-grpb">${Object.keys(SP_GRP).map(k=>`<button type="button" class="pl-today${
       cur===k?" on":""}" onclick="cstSetGrp('${k}')">${SP_GRP[k].ic} ${SP_GRP[k].n}</button>`).join("")}</div>
-    <div class="psub" style="margin-top:6px">${cur==="B"
-      ?"🚚 ของออกจากคลังไปแล้ว รอตัดบิลตามทีหลัง"
-      :"🧾 ตัดบิลไว้แล้ว ของยังอยู่ที่คลัง รอจัดส่ง"} · เปลี่ยนทีหลังได้ที่หัวใบในหน้าออเดอร์พิเศษ</div></div>`;
+    <div class="psub" style="margin-top:6px">${SP_GRP[cur].ic} ${anaEsc(SP_GRP[cur].d)}
+      · เปลี่ยนทีหลังได้ที่หัวใบในหน้าออเดอร์พิเศษ</div></div>`;
 }
 function cstFormSet(k,v){const f=CST.f;if(!f)return;f[k]=v;cstDraftLater();}
 function cstRowSet(i,k,v){const f=CST.f;if(!f||!f.rows[i])return;f.rows[i][k]=v;cstDraftLater();}
@@ -12506,7 +12510,22 @@ function cstRepXlsx(){
  *    (role wh/ds ส่ง state ทั้งก้อนไม่ได้อยู่แล้ว — api/save.js รับแต่ manager)
  * ⚠️ ยกเลิกติ๊กเขียน ok:0 ทับ ไม่ลบคีย์ — ลบคีย์จะโดน union ฝั่งเซิร์ฟเวอร์เอากลับมา
  * ==========================================================================*/
-const SP_GRP={A:{ic:"🧾",n:"ตัดบิลแล้ว ยังไม่ส่งของ"},B:{ic:"🚚",n:"ส่งของแล้ว ยังไม่ตัดบิล"}};
+/* ==========================================================================
+ * 🏷 ประเภทของใบออเดอร์ใหญ่ — 3 แบบ (เจ้าของสั่งกลับมา 26 พ.ย. 69)
+ *   D ตัวกระจาย      — หัวหน้าเซลล์เป็นคนเปิด ต้องกระจายเข้าหลายร้าน
+ *   A ตัดบิลรอส่ง     — เซลล์เป็นคนเปิด (เช่นใบที่ผู้รับผิดชอบเป็น KA97) ตัดบิลแล้วของยังอยู่คลัง
+ *   B ส่งแล้วรอตัดบิล — เหมือน A แต่ของออกไปก่อน แล้วค่อยตัดบิลตามทีหลัง
+ *
+ * 🔑 **ไม่ต้องย้ายข้อมูลเก่าเลย** — A กับ B คือสองกลุ่มเดิมที่ใช้มาตั้งแต่ 18 พ.ย. 69
+ *    เปลี่ยนแค่ชื่อที่โชว์ ส่วน D เป็นของใหม่ · ใบเก่าที่ไม่มีธง `g` ยังอ่านเป็น A เหมือนเดิม
+ * ⚠️ ห้ามสลับความหมายของตัวอักษร A/B ภายหลัง ใบที่บันทึกไว้แล้วจะเปลี่ยนประเภทเองทันที
+ * ==========================================================================*/
+const SP_GRP={
+  D:{ic:"🎯",n:"ตัวกระจาย",d:"หัวหน้าเซลล์เปิดใบ แล้วต้องกระจายเข้าหลายร้าน"},
+  A:{ic:"🧾",n:"ตัดบิลรอส่ง",d:"ตัดบิลไว้แล้ว ของยังอยู่ที่คลัง รอจัดส่ง"},
+  B:{ic:"🚚",n:"ส่งแล้วรอตัดบิล",d:"ของออกจากคลังไปแล้ว รอตัดบิลตามทีหลัง"},
+};
+const SP_GRPKS=Object.keys(SP_GRP);
 const SP_STEPS=[
   {k:"s3",ic:"🔎",n:"แอดมินตรวจใบจัดของ",sh:"ตรวจใบจัดของ",role:"manager"},
   {k:"s4",ic:"📦",n:"คลังจัดของ",sh:"คลังจัดของ",role:"wh"},
@@ -13180,7 +13199,7 @@ function spSlips(){
 }
 /* คืนสำเนาที่มี id ติดมาด้วย (แถบบนต้องโชว์เลขใบ) — การแก้ค่าจริงต้องแก้ที่ C.slips[sid] */
 function spSlip(sid){const C=spOk(),x=(C.slips||{})[sid];return x?Object.assign({id:sid},x):null;}
-function spGrpOf(sl){return (sl&&sl.g==="B")?"B":"A";}      /* ใบเก่าทั้งหมด = กลุ่ม A */
+function spGrpOf(sl){const g=sl&&sl.g;return SP_GRP[g]?g:"A";}   /* ใบเก่าที่ไม่มีธง = ตัดบิลรอส่ง */
 function spSubs(sid){
   const C=spOk(),dd=C.subdel||{};
   return Object.keys(C.sub||{}).filter(k=>!dd[k]&&C.sub[k]&&C.sub[k].sid===sid)
@@ -13292,9 +13311,10 @@ function spBarHtml(sl){
   if(!sl)return "📦 ออเดอร์พิเศษ"+spLockBtn();
   const g=SP_GRP[spGrpOf(sl)];
   const subs=spSubs(sl.id),done=subs.filter(r=>spStage(r)>=SP_STEPS.length).length;
-  return `📦 ออเดอร์พิเศษ · ${g.ic} <b>${g.n}</b> · ใบ <b>${anaEsc(sl.id)}</b>`+
-    (sl.d?` · ${fmtDate(sl.d)}`:"")+
-    ` <span class="dci-src">ออเดอร์ย่อย ${subs.length} เลข · จบแล้ว ${done}</span>`+spLockBtn()+
+  const ttl=spSlipTitle(sl.id,30);
+  return `📦 <b>${anaEsc(ttl||sl.id)}</b> <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>`+
+    `<span class="dci-src">${anaEsc(sl.id)}${sl.d?" · "+fmtDate(sl.d):""}`+
+    (subs.length?` · ออเดอร์ย่อย ${subs.length} เลข · จบแล้ว ${done}`:"")+`</span>`+spLockBtn()+
     (spMgr()?`<div style="margin-top:8px;font-weight:400"><span class="psub">กลุ่ม:</span> `+
       Object.keys(SP_GRP).map(k=>`<button type="button" class="pl-today${
         spGrpOf(sl)===k?" on":""}" onclick="spSetGrp('${k}')">${SP_GRP[k].ic} ${SP_GRP[k].n}</button>`).join(" ")+
@@ -13390,6 +13410,29 @@ function spMonths(yr){
    เพราะเวลาทีมเราเลือกดู เราดูจากข้อมูลตรงนี้"* — จึงต้องเห็นตั้งแต่ยังไม่กดเข้าไป
    ⚠️ เปอร์เซ็นต์มาจาก lots ชุดเดียวกับสต็อคกลาง (cstPct/cstLeft) ตัวเลขสองหน้าจึงตรงกันเสมอ */
 const SP_MAXITEM=10;          /* เกินนี้ย่อเป็น "…และอีก N รายการ" กันการ์ดยาวเกินบนมือถือ */
+/* ==========================================================================
+ * 🏷 ชื่อที่ใช้เรียกใบออเดอร์ — เอา "สินค้าหลัก + จำนวนลัง" ไม่ใช่รหัสใบ
+ *   เจ้าของสั่ง 26 พ.ย. 69: *"ช่วยเปลี่ยนให้รหัสที่ขึ้นโชว์ให้กลายเป็นขึ้นโชว์ชื่อสินค้าหลัก
+ *   และจำนวนลัง ... ถ้ามีสินค้าหลายรายการให้หยิบมาแค่หนึ่งถึงสองรายการที่มีจำนวนเยอะ
+ *   เวลาทุกคนที่เข้ามาดูจะได้รู้ว่าตามออร์เดอร์ของสินค้าชุดไหนอยู่ ไม่ต้องดูจากรหัสมันงง"*
+ * 🔑 เรียงตามจำนวนลังมาก→น้อย แล้วหยิบมาสองตัวแรก · รหัสใบยังโชว์เป็นบรรทัดเล็กไว้อ้างอิง
+ *    (แอดมินยังต้องใช้รหัสคุยกับคลัง) แต่ไม่ใช่หัวเรื่องอีกต่อไป
+ * ⚠️ ใบที่ยังไม่มีสินค้า ต้องถอยไปใช้รหัสใบ ไม่ใช่ขึ้นช่องว่าง
+ * ==========================================================================*/
+function spSlipTop(sid,n){
+  return spSlipCodes(sid).slice()
+    .sort((a,b)=>(+b.cs||0)-(+a.cs||0)||(+b.pc||0)-(+a.pc||0))
+    .slice(0,n||2);
+}
+function spSlipTitle(sid,max){
+  const all=spSlipCodes(sid), top=spSlipTop(sid,2);
+  if(!top.length)return "";
+  const N=v=>(Math.round((+v||0)*100)/100).toLocaleString();
+  const cut=t=>{const m=max||26;const x=String(t||"");return x.length>m?x.slice(0,m-1)+"…":x;};
+  const part=top.map(c=>cut(c.nm||oname(c.code)||("รหัส "+c.code))+" "+N(c.cs)+" ลัง");
+  const more=all.length-top.length;
+  return part.join(" + ")+(more>0?" +อีก "+more:"");
+}
 function spSlipCard(x){
   const g=SP_GRP[spGrpOf(x)];
   const rows=spSlipRows(x.id);
@@ -13410,9 +13453,10 @@ function spSlipCard(x){
   return `<div class="cst-grp" style="border-left-color:${cstPctCol(pct)};cursor:pointer"
       onclick="spOpenSlip('${anaEsc(x.id)}')">
     <div class="cst-gh">
-      <div class="cst-t"><b>${g.ic} ${x.d?fmtDate(x.d):"-"}</b>
-        <span class="psub">${anaEsc(x.id)} · ${codes.length} สินค้า · ${N(cs)} ลัง${
-          x.own?" · 👤 "+anaEsc(x.own):""} · ${anaEsc(g.n)}</span></div>
+      <div class="cst-t"><b>${anaEsc(spSlipTitle(x.id)||x.id)}</b>
+        <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>
+        <span class="psub">${x.d?fmtDate(x.d):"-"} · ${anaEsc(x.id)} · ${codes.length} สินค้า · ${N(cs)} ลัง${
+          x.own?" · 👤 "+anaEsc(x.own):""}</span></div>
       <div class="cst-n">${cstPctPill(pct,left,cs)}
         <span class="psub">✍️ คีย์แล้ว ${days.length} วัน · 🔎 ตรวจแล้ว ${gn} วัน</span></div>
       <span class="cst-ar">▶</span></div>
@@ -13729,7 +13773,7 @@ function renderSpord(){
   if(sel){
     if(!SP.sid||!sls.some(x=>x.id===SP.sid))SP.sid=(sls[0]||{}).id||"";
     sel.innerHTML=sls.map(x=>`<option value="${anaEsc(x.id)}"${x.id===SP.sid?" selected":""}>${
-      SP_GRP[spGrpOf(x)].ic} ${anaEsc(x.id)}${x.d?" · "+fmtDate(x.d):""}</option>`).join("");
+      SP_GRP[spGrpOf(x)].ic} ${anaEsc(spSlipTitle(x.id,18)||x.id)}${x.d?" · "+fmtDate(x.d):""}</option>`).join("");
   }
   {const nb=document.getElementById("spNewBox");if(nb)nb.style.display=spMgr()?"":"none";}
   const body=document.getElementById("spBody");
@@ -13823,17 +13867,19 @@ function renderSpord(){
       const g=SP_GRP[spGrpOf(slNow)];
       const rows=spSlipCodes(SP.sid);
       const cs=rows.reduce((a,r)=>a+(+r.cs||0),0);
-      bar.innerHTML=`📦 ${g.ic} <b>${anaEsc(SP.sid)}</b>`+
-        `<span class="dci-src">${slNow.d?fmtDate(slNow.d):""} · ${anaEsc(g.n)} · ${rows.length} สินค้า · ${
+      bar.innerHTML=`📦 <b>${anaEsc(spSlipTitle(SP.sid,30)||SP.sid)}</b>`+
+        ` <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>`+
+        `<span class="dci-src">${anaEsc(SP.sid)}${slNow.d?" · "+fmtDate(slNow.d):""} · ${rows.length} สินค้า · ${
           (Math.round(cs*100)/100).toLocaleString()} ลัง</span>`;
       const sec=spSec();
-      const chip=(k,t)=>`<button type="button" class="pos-st${sec===k?" on":""}" onclick="spSetSec('${k}')">${t}</button>`;
+      /* แถวแท็บแบบเดียวกับแท็บย่อยของหมวดอื่น (.tabs2) — แถวเดียว เลื่อนซ้ายขวาได้
+         เจ้าของสั่ง 26 พ.ย. 69: *"อยากได้รูปแบบที่วงสี่เหลี่ยมไว้ ... อยากให้มันขึ้นเลื่อนดูได้"* */
+      const chip=(k,t)=>`<button type="button" class="tab2${sec===k?" on":""}" onclick="spSetSec('${k}')">${t}</button>`;
       const withDay=SP_DAYTABS.indexOf(sec)>=0;   /* สามหน้าแรกทำงานเป็นรายวัน อีกสองหน้าดูทั้งใบ */
       let H=`<div class="panel"><div class="cst-fb">
           <button class="btn-ghost" onclick="spBack()">◀ กลับไปรายการใบ</button>
           <span class="psub">${SP.ym&&SP.ym!=="ไม่ระบุ"?fmtMonth(SP.ym):""}</span></div>
-        <div class="pos-subtabs" style="margin-top:10px">${
-          spTabsOn().map(x=>chip(x.k,x.nm)).join("")}</div>
+        <div class="tabs2 sp-tabs">${spTabsOn().map(x=>chip(x.k,x.nm)).join("")}</div>
         ${withDay?`<div class="controls" style="margin:10px 0 0">${spDayPick(SP.sid)}</div>`:""}</div>`;
       if(sec==="key"){body.innerHTML=H+spKeyHtml(SP.sid);return;}
       if(sec==="rep"){body.innerHTML=H+spRepTabHtml(SP.sid);return;}

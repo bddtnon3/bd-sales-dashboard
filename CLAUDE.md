@@ -785,6 +785,17 @@ code, never printed.
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
   with **`node test/browser/cstock.test.cjs`** (239 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
+  **A slip is named by its goods, not its code** (`spSlipTitle`/`spSlipTop`, owner 26 Nov 26:
+  *"ขึ้นโชว์ชื่อสินค้าหลักและจำนวนลัง … ไม่ต้องดูจากรหัสมันงง"*): the month cards, the slip picker
+  and the page header all lead with the **top one or two products by case count** and keep the slip
+  id as a small reference line, because admins still quote it to the warehouse. A slip with no
+  products falls back to the id rather than rendering blank.
+  **An order carries one of three purposes** (`SP_GRP`, brought back 26 Nov 26) shown as a `.sp-tag`
+  on every card and header: **🎯 ตัวกระจาย** (the supervisor opens it; it has to reach many shops),
+  **🧾 ตัดบิลรอส่ง** and **🚚 ส่งแล้วรอตัดบิล**. **No data was migrated and none needs to be** — `A`
+  and `B` keep exactly the meaning they have had since 18 Nov 26 and only their labels changed, `D`
+  is the new one, and a slip with no flag still reads as `A`. Never reassign what a letter means:
+  every stored slip would silently change type.
   **The slip page is five tabs in work order** (`SP_TABS`, owner 26 Nov 26): **① ✍️ ซุปจด** (the
   supervisor's per-line target) · **② 📲 เซลล์คีย์** (the rep records what they actually keyed; the
   supervisor watches the chase table here) · **③ 🔎 แอดมินตรวจ** (GIN vs keyed) · **④ 🚚 คลังส่งออก** ·
@@ -939,7 +950,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (127 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (133 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -952,7 +963,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (127 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (133 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
