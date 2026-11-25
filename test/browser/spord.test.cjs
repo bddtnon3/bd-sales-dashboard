@@ -387,6 +387,45 @@ const K=(no)=>B1+'|'+no;
    gq.oldSlip==='A',gq.oldSlip);
  t('...ฟอร์มในหน้า 🧊 สต็อคกลาง ก็เลือกหมวดได้เหมือนกัน (ใบชุดเดียวกัน)',gq.old);
 
+ /* ---------- 8e) 🔑 การ์ดใบในรายการเดือน ต้องโชว์สินค้าและจำนวน ----------
+    เจ้าของ 25 พ.ย. 69: *"ปรับให้ขึ้นโชว์สินค้าและจำนวนด้วย ว่าล็อตนี้ตัดสินค้าอะไรจำนวนเท่าไหร่
+    เพราะเวลาทีมเราเลือกดู เราดูจากข้อมูลตรงนี้"* — ต้องเห็นตั้งแต่ยังไม่กดเข้าไป */
+ const card=await ev(()=>{
+   __reset();CSTOCK.lots={};
+   /* รหัสเรียงลงมาจากมากไปน้อย เพื่อจับบั๊ก Object.keys เรียงคีย์ตัวเลขเอง */
+   [['64849613','โอโมน้ำ ซากุระ',60,0],['22222222','คอมฟอร์ท อินโนเซนท์',50,20],
+    ['11111111','ซันไลต์ มะนาว',40,0]].forEach((p,i)=>{
+     const id='B20261118-01-r'+i;
+     CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],
+       cs:p[2],pc:0,sq:i,clr:p[3]?[{d:'2026-11-19',cs:p[3],to:'ร้าน'}]:[],up:1};});
+   CSTOCK.slips['B20261118-01'].own='Supervisor';
+   __as('manager',null,'แอดมิน 1');
+   SP.view='mon';SP.ym='2026-11';SP.sid='';renderSpord();
+   const el=document.querySelector('#spBody .cst-grp');
+   const tx=el?el.textContent.replace(/\s+/g,' '):'';
+   return {tx:tx,
+     items:[...document.querySelectorAll('#spBody .sp-it b')].map(x=>x.textContent.trim()),
+     qty:[...document.querySelectorAll('#spBody .sp-it i')].map(x=>x.textContent.trim()),
+     bar:!!document.querySelector('#spBody .cst-grp .cst-bar'),
+     brd:el?el.style.borderLeftColor:'',
+     news:document.querySelectorAll('#spBody button.upload-btn').length,
+     ctlHid:(document.querySelector('#spordView > .controls')||{}).style.display,
+     body:document.getElementById('spBody').textContent.replace(/\s+/g,' ')};});
+ t('🔑 การ์ดใบโชว์ "สินค้าอะไร จำนวนเท่าไหร่" ตั้งแต่ยังไม่กดเข้าไป',
+   card.items.length===3&&/โอโมน้ำ ซากุระ/.test(card.items[0])&&
+   card.qty[0]==='60 ลัง',JSON.stringify({i:card.items,q:card.qty}));
+ t('🔑 ...เรียงตามลำดับในใบ ไม่ใช่เรียงตามเลขรหัส',
+   card.items.join(' | ')==='โอโมน้ำ ซากุระ | คอมฟอร์ท อินโนเซนท์ | ซันไลต์ มะนาว',
+   card.items.join(' | '));
+ t('🔑 ...และหน้าตาเหมือนใบในหน้าสต็อคกลาง (แถบสีซ้าย + แถบเปอร์เซ็นต์ + pill)',
+   card.bar&&!!card.brd&&/ส่งออกแล้ว/.test(card.tx),card.brd);
+ t('...หัวใบบอกจำนวนสินค้า ยอดลัง และผู้รับผิดชอบ',
+   /3 สินค้า/.test(card.tx)&&/150 ลัง/.test(card.tx)&&/Supervisor/.test(card.tx),
+   card.tx.slice(0,120));
+ t('🛟 ปุ่ม "สร้างออเดอร์ใหม่" มีปุ่มเดียว ไม่ซ้ำสองที่',card.news===1,card.news+' ปุ่ม');
+ t('🛟 ...และแถบควบคุมด้านบนที่ว่างเปล่าถูกซ่อนตอนอยู่หน้ารายการใบ',
+   card.ctlHid==='none',card.ctlHid);
+
  /* ================================================================
   * 10) 2 ขั้นตอน: ฝั่งเซลล์คีย์รายวัน + ฝั่งแอดมินตรวจกับไฟล์ allocation
   *     เจ้าของสั่ง 25 พ.ย. 69 — ย่อจาก 6 ขั้นเหลือ 2

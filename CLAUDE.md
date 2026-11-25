@@ -801,7 +801,15 @@ code, never printed.
   `manager`), checked **on the server**: everyone may look, each side edits only its own, the manager
   edits everything. The month picker now runs **January → December down the page** with one row per
   month (`.sp-mon`), which is what the owner asked for after calling the old grid *"ไม่สวยเลย"*.
-  Prove it with **`node test/browser/spord.test.cjs`** (73 checks) plus the `key`/`gin` cases in
+  **The month's slip list is the screen the team picks from**, so each card is built like a
+  สต็อคกลาง slip (`spSlipCard`, sharing `cstPct`/`cstPctCol`/`cstPctPill`/`cstPctBar`, so the two
+  pages can never show a different percentage) **and lists the products and quantities inline**
+  — the owner asked for that in as many words: *"ปรับให้ขึ้นโชว์สินค้าและจำนวนด้วย ว่าล็อตนี้ตัด
+  สินค้าอะไรจำนวนเท่าไหร่ เพราะเวลาทีมเราเลือกดู เราดูจากข้อมูลตรงนี้"*. **`spSlipCodes` must keep
+  its own array**: product codes are all-digit strings, so returning `Object.keys(map)` made the
+  engine sort them numerically and the list stopped matching the slip's own order. On a phone each
+  product is a full-width row with the name unclipped, because the name is what they choose by.
+  Prove it with **`node test/browser/spord.test.cjs`** (79 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -814,7 +822,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (73 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (79 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

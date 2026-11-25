@@ -291,6 +291,18 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .sp-ma{color:var(--muted);font-size:13px}
 @media(max-width:640px){.sp-mon{flex-wrap:wrap;gap:8px}.sp-mn,.sp-mv{min-width:0}
   .sp-ms{flex-basis:100%}}
+/* รายการสินค้าในการ์ดใบออเดอร์ — ชิปห่อบรรทัด ไม่ใช่ตารางยาว ๆ (มือถืออ่านง่ายกว่า) */
+.sp-items{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px 12px}
+.sp-it{display:inline-flex;align-items:baseline;gap:6px;background:#f4f7fb;
+  border:1px solid var(--line);border-radius:8px;padding:4px 9px;font-size:13px;max-width:100%}
+.sp-it b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px}
+.sp-it i{font-style:normal;font-weight:800;color:var(--blue);white-space:nowrap}
+.sp-it.more{background:transparent;border-style:dashed;color:var(--muted)}
+/* มือถือ: แถวละตัว ชื่อซ้าย จำนวนขวา — ชื่อสินค้าต้องอ่านครบ ไม่ตัดด้วย … เพราะทีมใช้ชื่อนี้เลือกใบ */
+@media(max-width:640px){
+  .sp-it{flex:1 1 100%;justify-content:space-between;gap:10px}
+  .sp-it b{white-space:normal;overflow:visible;max-width:none}
+}
 /* ตารางคีย์รายวันของหัวหน้าเซลล์ + ตารางเทียบของแอดมิน */
 .sp-kt{width:100%;border-collapse:collapse;font-size:13px}
 .sp-kt th,.sp-kt td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:center}
@@ -12641,14 +12653,18 @@ function spSlipRows(sid){
 }
 /* รวมรหัสสินค้าในใบ (ไม่ซ้ำ) พร้อมชื่อและยอดที่ตัดบิลไว้ */
 function spSlipCodes(sid){
-  const by={};
+  /* ⚠️ ห้ามคืนค่าด้วย Object.keys(map) — รหัสสินค้าเป็นสตริงตัวเลขล้วน จาวาสคริปต์จะเรียง
+     คีย์แบบตัวเลขจากน้อยไปมากเอง ลำดับสินค้าบนจอจึงไม่ตรงกับลำดับในใบตัดบิล
+     (เห็นชัดตอนเจ้าของดูรายการใบ 25 พ.ย. 69) — เก็บลำดับไว้ในอาเรย์เอง */
+  const by={},out=[];
   spSlipRows(sid).forEach(l=>{
     const c=String(l.code||"").trim();if(!c)return;
-    const t=by[c]||(by[c]={code:c,nm:l.nm||"",cs:0,pc:0});
+    let t=by[c];
+    if(!t){t=by[c]={code:c,nm:l.nm||"",cs:0,pc:0};out.push(t);}
     t.cs+=(+l.cs||0);t.pc+=(+l.pc||0);
     if(!t.nm&&l.nm)t.nm=l.nm;
   });
-  return Object.keys(by).map(c=>by[c]);
+  return out;
 }
 /* สายที่ใบนี้เกี่ยวข้อง — จาก lots ก่อน ถ้าไม่มีก็ใช้สายหลักทั้งหมด */
 function spSlipLines(sid){
@@ -12989,6 +13005,41 @@ function spMonths(yr){
   if(byM["ไม่ระบุ"]&&byM["ไม่ระบุ"].slips)ks.push("ไม่ระบุ");
   return ks.map(k=>byM[k]);
 }
+/* การ์ดใบออเดอร์ในรายการเดือน — หน้าตาเดียวกับใบในหน้า 🧊 สต็อคกลาง
+   (แถบสีซ้าย · pill ความคืบหน้า · แถบเปอร์เซ็นต์) บวก **รายการสินค้าและจำนวน**
+   เจ้าของสั่ง 25 พ.ย. 69: *"ปรับให้ขึ้นโชว์สินค้าและจำนวนด้วย ว่าล็อตนี้ตัดสินค้าอะไรจำนวนเท่าไหร่
+   เพราะเวลาทีมเราเลือกดู เราดูจากข้อมูลตรงนี้"* — จึงต้องเห็นตั้งแต่ยังไม่กดเข้าไป
+   ⚠️ เปอร์เซ็นต์มาจาก lots ชุดเดียวกับสต็อคกลาง (cstPct/cstLeft) ตัวเลขสองหน้าจึงตรงกันเสมอ */
+const SP_MAXITEM=10;          /* เกินนี้ย่อเป็น "…และอีก N รายการ" กันการ์ดยาวเกินบนมือถือ */
+function spSlipCard(x){
+  const g=SP_GRP[spGrpOf(x)];
+  const rows=spSlipRows(x.id);
+  const codes=spSlipCodes(x.id);
+  const cs=rows.reduce((a,l)=>a+(+l.cs||0),0);
+  const left=rows.reduce((a,l)=>a+cstLeft(l),0);
+  const pct=cstPct(cs,left);
+  const days=spDays(x.id), gn=days.filter(d=>spGinRec(x.id,d)).length;
+  const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const shown=codes.slice(0,SP_MAXITEM);
+  const more=codes.length-shown.length;
+  const items=codes.length
+    ? `<div class="sp-items">${shown.map(c=>`<span class="sp-it">
+         <b>${anaEsc(c.nm||oname(c.code)||("รหัส "+c.code))}</b>
+         <i>${N(c.cs)} ลัง${c.pc?" + "+N(c.pc)+" ชิ้น":""}</i></span>`).join("")}${
+         more>0?`<span class="sp-it more">…และอีก ${more} รายการ</span>`:""}</div>`
+    : `<div class="psub" style="margin-top:6px">ใบนี้ยังไม่มีรายการสินค้า</div>`;
+  return `<div class="cst-grp" style="border-left-color:${cstPctCol(pct)};cursor:pointer"
+      onclick="spOpenSlip('${anaEsc(x.id)}')">
+    <div class="cst-gh">
+      <div class="cst-t"><b>${g.ic} ${x.d?fmtDate(x.d):"-"}</b>
+        <span class="psub">${anaEsc(x.id)} · ${codes.length} สินค้า · ${N(cs)} ลัง${
+          x.own?" · 👤 "+anaEsc(x.own):""} · ${anaEsc(g.n)}</span></div>
+      <div class="cst-n">${cstPctPill(pct,left,cs)}
+        <span class="psub">✍️ คีย์แล้ว ${days.length} วัน · 🔎 ตรวจแล้ว ${gn} วัน</span></div>
+      <span class="cst-ar">▶</span></div>
+    ${cstPctBar(pct)}
+    ${items}</div>`;
+}
 function spMonKeyed(ym){
   const C=spKeyOk(),s={};
   Object.keys(C.key||{}).forEach(k=>{const p=k.split("|");
@@ -13081,7 +13132,11 @@ function renderSpord(){
   const secBox=document.getElementById("spSecBox");if(secBox)secBox.style.display="none";
   /* กล่องเลือกใบ + ช่องค้นหา โผล่เฉพาะตอนเปิดใบเดียวอยู่ */
   {const sb=document.getElementById("spSlipBox");if(sb)sb.style.display=(SP.view==="slip")?"":"none";
-   const qb=document.getElementById("spQBox");if(qb)qb.style.display=(SP.view==="slip")?"":"none";}
+   const qb=document.getElementById("spQBox");if(qb)qb.style.display=(SP.view==="slip")?"":"none";
+   /* ตอนอยู่หน้าเลือกเดือน/รายการใบ ไม่มีอะไรในแถบนี้เลยนอกจากปุ่มสร้าง — ซ่อนทั้งแถบ
+      แล้วเอาปุ่มไปไว้ในหัวรายการใบแทน ไม่งั้นเป็นกล่องเปล่า ๆ ลอยอยู่ (เห็นชัดบนมือถือ) */
+   const cb=document.querySelector("#spordView > .controls");
+   if(cb)cb.style.display=(SP.view==="slip")?"":"none";}
 
   /* ---------- ฟอร์มสร้างออเดอร์ใหม่ (ใช้ฟอร์มเดิม วาดในหน้านี้) ---------- */
   if(SP.view==="new"){
@@ -13129,7 +13184,8 @@ function renderSpord(){
               `<option value="${y}"${y===yr?" selected":""}>ปี ${+y+543}</option>`).join("")}</select>
             <button type="button" class="dstep-b" title="ปีถัดไป"
               ${ys.indexOf(yr)<=0?"disabled":""} onclick="spStepYear(1)">▶</button></span>
-          <span class="psub">กดเดือนที่ต้องการ แล้วค่อยเลือกใบออเดอร์</span></div>
+          <span class="psub">กดเดือนที่ต้องการ แล้วค่อยเลือกใบออเดอร์</span>
+          ${spMgr()?'<span style="flex:1"></span><button class="upload-btn" onclick="spNewOrder()">➕ สร้างออเดอร์ใหม่</button>':""}</div>
         <div class="sp-mons">${ms.map(m=>{
           const none=!m.slips,cur=m.ym===now;
           const kn=spMonKeyed(m.ym),gn=spMonGin(m.ym);
@@ -13150,20 +13206,7 @@ function renderSpord(){
         <span class="psub">กดที่ใบเพื่อเข้าไปกรอก/ตรวจ</span>
         ${spMgr()?'<span style="flex:1"></span><button class="upload-btn" onclick="spNewOrder()">➕ สร้างออเดอร์ใหม่</button>':""}
         </div></div>
-      <div class="panel" style="margin-top:14px">${inM.map(x=>{
-        const g=SP_GRP[spGrpOf(x)];
-        const rows=spSlipCodes(x.id);
-        const cs=rows.reduce((a,r)=>a+(+r.cs||0),0);
-        const days=spDays(x.id), gn=days.filter(d=>spGinRec(x.id,d)).length;
-        return `<div class="note" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;
-            margin:6px 0;cursor:pointer" onclick="spOpenSlip('${anaEsc(x.id)}')">
-          <b style="font-size:17px">${g.ic} ${anaEsc(x.id)}</b>
-          <span class="psub">${x.d?fmtDate(x.d):""} · ${anaEsc(g.n)} · ${rows.length} สินค้า · ${
-            (Math.round(cs*100)/100).toLocaleString()} ลัง</span>
-          <span style="flex:1"></span>
-          <span class="pill">✍️ คีย์แล้ว ${days.length} วัน</span>
-          <span class="pill${gn&&gn===days.length?" g":""}">🔎 ตรวจแล้ว ${gn} วัน</span>
-          <span class="psub">▶</span></div>`;}).join("")||
+      <div class="panel" style="margin-top:14px">${inM.map(x=>spSlipCard(x)).join("")||
         '<div class="insight">เดือนนี้ยังไม่มีใบออเดอร์</div>'}</div>`;
     return;
   }
