@@ -128,6 +128,7 @@ const ORIGIN='https://bd-spord.test/';
      const id='B20261118-01-k'+i;
      CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],
        cs:20,pc:0,sq:i,ln:i?'CT12':'CT11',up:1};});
+   CSTOCK.slips['B20261118-01'].g='D';   /* ขั้นซุปจดมีเฉพาะใบ 🎯 ตัวกระจาย */
    /* ซุปตั้งเป้าให้ CT11 */
    __as('sup',null,'หัวหน้าเซลล์');_switchTab('spord');
    SP.sid='B20261118-01';SP.view='slip';SP.sec='key';SP.day='2026-11-20';renderSpord();
@@ -197,6 +198,18 @@ const ORIGIN='https://bd-spord.test/';
    rep.supSeesTrack&&rep.trk&&rep.trk.tgt.cs===11&&rep.trk.rep.cs===12&&rep.trk.st==='over',
    JSON.stringify(rep.trk&&{tgt:rep.trk.tgt.cs,rep:rep.trk.rep.cs,st:rep.trk.st}));
  t('🔑 ซุปดึงเป้าออกเป็นไฟล์ส่งให้เซลล์ได้',rep.supExport);
+ /* ใบ A/B ไม่มีขั้นซุปจด ⇒ หน้าเซลล์คีย์ต้องไม่มีช่อง "เป้า / ยังขาด / ผล" ให้เข้าใจผิด
+    ว่ามีใครลืมตั้งเป้า (เจ้าของสั่ง 26 พ.ย. 69 ให้ใบสองแบบนี้เริ่มที่เซลล์เลย) */
+ const noTgt=await ev(()=>{
+   CSTOCK.slips['B20261118-01'].g='A';
+   __as('sales','209611','CT11 · เซลล์');SP.sec='rep';SP.day='2026-11-22';renderSpord();
+   const ths=[...document.querySelectorAll('#spBody .sp-kt thead th')].map(x=>x.textContent.trim());
+   const tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   CSTOCK.slips['B20261118-01'].g='D';
+   return {ths:ths,tx:tx};});
+ t('🔑 ใบที่ไม่มีขั้นซุปจด ไม่มีช่อง "เป้า" ให้เข้าใจผิดว่าใครลืมตั้งเป้า',
+   !noTgt.ths.some(x=>/เป้า/.test(x))&&!/ยังไม่ได้ตั้งเป้า/.test(noTgt.tx)&&
+   noTgt.ths.some(x=>/ขาย \(ลัง\)/.test(x)),noTgt.ths.join(' | '));
 
 
  /* ---------- 0.7) แท็บใหม่ · ปุ่มย้อนกลับ · ชิปวันที่ · freeze หัวตาราง ---------- */
@@ -212,7 +225,18 @@ const ORIGIN='https://bd-spord.test/';
    /* เข้าหน้าใบผ่านทางปกติ: เลือกเดือน -> เลือกใบ */
    SP.view='mon';SP.ym='';SP.hist=[];renderSpord();
    spOpenMon('2026-11');spOpenSlip('B20261118-01');
-   o.chipsMgr=[...document.querySelectorAll('#spBody .tab2')].map(x=>x.textContent.trim());
+   /* ใบนี้ไม่มีธงกลุ่ม = 🧾 ตัดบิลรอส่ง (A) → ไม่มีขั้น "ซุปจด" */
+   o.chipsMgr=[...document.querySelectorAll('#spTabs .tab2')].map(x=>x.textContent.trim());
+   o.secA=SP.sec;
+   /* แถบแท็บต้องอยู่ "เหนือ" เนื้อหน้า ไม่ใช่ฝังอยู่ในแผงกลางหน้า */
+   o.tabsTop=!!(document.getElementById('spTabs').compareDocumentPosition(
+     document.getElementById('spBody'))&Node.DOCUMENT_POSITION_FOLLOWING);
+   o.tabsInBody=document.querySelectorAll('#spBody .tab2').length;
+   /* สลับใบเป็น 🎯 ตัวกระจาย แล้วขั้นซุปจดต้องโผล่มาเป็นขั้นแรก */
+   spSetGrp('D');
+   o.gD=CSTOCK.slips['B20261118-01'].g;
+   o.chipsD=[...document.querySelectorAll('#spTabs .tab2')].map(x=>x.textContent.trim());
+   spSetGrp('A');
    /* ปุ่มย้อนกลับต้องถอยในหมวดนี้ ไม่ใช่กระโดดออกไปแท็บอื่น */
    o.backShown=document.getElementById('backBtn').style.display!=='none';
    spSetSec('out');o.outTxt=tx();
@@ -224,21 +248,37 @@ const ORIGIN='https://bd-spord.test/';
    o.rptMgr=tx();
    /* หัวหน้าเซลล์ไม่เห็นแท็บรายงาน และเปิดตรง ๆ ก็ไม่ได้ */
    __as('sup',null,'หัวหน้าเซลล์');SP.view='slip';SP.sid='B20261118-01';SP.sec='rpt';renderSpord();
-   o.chipsSup=[...document.querySelectorAll('#spBody .tab2')].map(x=>x.textContent.trim());
+   o.chipsSup=[...document.querySelectorAll('#spTabs .tab2')].map(x=>x.textContent.trim());
    o.rptSup=tx();
    return o;});
- t('🔑 ในใบมีแท็บ 4 ขั้นตอน + รายงาน (ผู้จัดการ) + ของเดิม',
-   tabs.chipsMgr.length===6&&/รายงาน/.test(tabs.chipsMgr[4]),tabs.chipsMgr.join(' | '));
+ /* เจ้าของสั่ง 26 พ.ย. 69: ใบตัดบิลรอส่ง/ส่งแล้วรอตัดบิล เริ่มที่เซลล์ ไม่มีใครมาจดเป้าให้ก่อน
+    ส่วนใบตัวกระจาย หัวหน้าเซลล์เป็นคนเปิดใบ จึงต้องมีขั้นซุปจดนำหน้า */
+ t('🔑 ใบตัดบิลรอส่ง/ส่งแล้วรอตัดบิล มี 3 ขั้น (เซลล์คีย์ → แอดมินตรวจ → คลังส่งออก) + รายงาน',
+   tabs.chipsMgr.length===4&&/เซลล์คีย์/.test(tabs.chipsMgr[0])&&
+   /แอดมินตรวจ/.test(tabs.chipsMgr[1])&&/คลังส่งออก/.test(tabs.chipsMgr[2])&&
+   /รายงาน/.test(tabs.chipsMgr[3])&&!tabs.chipsMgr.some(c=>/ซุปจด/.test(c))&&
+   tabs.secA==='rep',tabs.chipsMgr.join(' | ')+' · เปิดมาที่ '+tabs.secA);
+ t('🔑 ใบ 🎯 ตัวกระจาย มี 4 ขั้น เริ่มที่ ① ซุปจด',
+   tabs.gD==='D'&&tabs.chipsD.length===5&&/① ✍️ ซุปจด/.test(tabs.chipsD[0])&&
+   /② 📲 เซลล์คีย์/.test(tabs.chipsD[1])&&/③ 🔎 แอดมินตรวจ/.test(tabs.chipsD[2])&&
+   /④ 🚚 คลังส่งออก/.test(tabs.chipsD[3]),tabs.chipsD.join(' | '));
+ /* เจ้าของสั่ง 26 พ.ย. 69: *"เอาหมวดเลขออเดอร์ออกไปได้เลย มันซ้ำกับหมวดคลังส่งออกแล้ว"* */
+ t('🔑 หมวด 🧾 เลขออเดอร์ ไม่อยู่บนแถบแท็บแล้วทั้งสองประเภท',
+   !tabs.chipsMgr.some(c=>/เลขออเดอร์/.test(c))&&!tabs.chipsD.some(c=>/เลขออเดอร์/.test(c)),
+   tabs.chipsMgr.concat(tabs.chipsD).join(' | '));
+ /* เจ้าของสั่ง 26 พ.ย. 69: *"เอากรอบในนั้นขยับขึ้นมาอยู่ด้านบนให้เห็นชัดชัด"* */
+ t('🔑 แถบแท็บอยู่บนสุดของหน้า เหนือเนื้อหน้า (ไม่ต้องเลื่อนจอลงไปหา)',
+   tabs.tabsTop&&tabs.tabsInBody===0,'ใน spBody เหลือ '+tabs.tabsInBody+' ปุ่ม');
  t('🔑 ④ คลังส่งออก โชว์ของที่ตัดบิลไว้ของใบนี้ (ระบบเดิมของสต็อคกลาง)',
    /คลังส่งออก/.test(tabs.outTxt)&&/ตัดบิลไว้/.test(tabs.outTxt)&&/ยังค้าง/.test(tabs.outTxt),
    tabs.outTxt.slice(0,90));
  t('🔑 ปุ่มย้อนกลับถอยทีละหน้าในหมวดนี้ ไม่กระโดดออกไปแท็บอื่น',
-   tabs.backShown&&tabs.afterBack1.tab==='spord'&&tabs.afterBack1.sec==='key'&&
+   tabs.backShown&&tabs.afterBack1.tab==='spord'&&tabs.afterBack1.sec==='rep'&&
    tabs.afterBack2.tab==='spord'&&tabs.afterBack2.view==='mon'&&
    tabs.afterBack3.tab==='spord',
    JSON.stringify([tabs.afterBack1,tabs.afterBack2,tabs.afterBack3]));
  t('🔒 รายงานเปิดได้เฉพาะผู้จัดการ',
-   /รายงานใบนี้/.test(tabs.rptMgr)&&tabs.chipsSup.length===5&&
+   /รายงานใบนี้/.test(tabs.rptMgr)&&tabs.chipsSup.length===3&&
    !tabs.chipsSup.some(c=>/รายงาน/.test(c))&&!/รายงานใบนี้/.test(tabs.rptSup),
    tabs.chipsSup.join(' | '));
 
@@ -262,6 +302,7 @@ const ORIGIN='https://bd-spord.test/';
    [['64849613','โอโม'],['65456729','บรีส']].forEach((p,i)=>{
      const id='B20261118-01-f'+i;
      CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],cs:9,pc:0,sq:i,up:1};});
+   CSTOCK.slips['B20261118-01'].g='D';      /* ขั้นซุปจดมีเฉพาะใบ 🎯 ตัวกระจาย */
    __as('sup',null,'หัวหน้าเซลล์');_switchTab('spord');
    SP.view='slip';SP.sid='B20261118-01';SP.sec='key';SP.day='2026-11-20';renderSpord();
    const w=document.querySelector('#spBody .tblwrap.sp-freeze');
@@ -509,6 +550,7 @@ const ORIGIN='https://bd-spord.test/';
    o.listBar=document.getElementById('spBar').textContent.replace(/\s+/g,' ');
    spOpenSlip('B20261118-01');
    o.slip=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.slipTabs=document.getElementById('spTabs').textContent.replace(/\s+/g,' ');
    o.slipBox2=document.getElementById('spSlipBox').style.display;
    spBack();o.back=SP.view+'|'+SP.ym;
    spBack();o.back2=SP.view+'|'+SP.ym;
@@ -525,8 +567,8 @@ const ORIGIN='https://bd-spord.test/';
    /พ\.ย\. 2569/.test(nav.listBar)&&/B20261118-01/.test(nav.list)&&
    /เลือกเดือนอื่น/.test(nav.list)&&!/B20261002-01/.test(nav.list),nav.list.slice(0,140));
  t('กดใบ → เข้าหน้าใบ พร้อมปุ่มกลับ และช่องเลือกใบโผล่',
-   /ซุปจด/.test(nav.slip)&&/กลับไปรายการใบ/.test(nav.slip)&&nav.slipBox2==='',
-   nav.slip.slice(0,100));
+   /เซลล์คีย์/.test(nav.slipTabs)&&/กลับไปรายการใบ/.test(nav.slip)&&nav.slipBox2==='',
+   nav.slipTabs.slice(0,100)+' | '+nav.slip.slice(0,60));
  t('ปุ่มกลับไล่ถอยทีละชั้น: ใบ → รายการเดือน → เลือกเดือน',
    nav.back==='mon|2026-11'&&nav.back2==='mon|',nav.back+' → '+nav.back2);
 
@@ -670,7 +712,10 @@ const ORIGIN='https://bd-spord.test/';
      qty:[...document.querySelectorAll('#spBody .sp-it i')].map(x=>x.textContent.trim()),
      bar:!!document.querySelector('#spBody .cst-grp .cst-bar'),
      brd:el?el.style.borderLeftColor:'',
-     news:document.querySelectorAll('#spBody button.upload-btn').length,
+     news:[...document.querySelectorAll('#spBody button.upload-btn')]
+       .filter(b=>/สร้างออเดอร์ใหม่/.test(b.textContent)).length,
+     alloc:[...document.querySelectorAll('#spBody button.upload-btn')]
+       .filter(b=>/ไฟล์ใบจัดของ/.test(b.textContent)).length,
      ctlHid:(document.querySelector('#spordView > .controls')||{}).style.display,
      body:document.getElementById('spBody').textContent.replace(/\s+/g,' ')};});
  t('🔑 การ์ดใบโชว์ "สินค้าอะไร จำนวนเท่าไหร่" ตั้งแต่ยังไม่กดเข้าไป',
@@ -685,6 +730,10 @@ const ORIGIN='https://bd-spord.test/';
    /3 สินค้า/.test(card.tx)&&/150 ลัง/.test(card.tx)&&/Supervisor/.test(card.tx),
    card.tx.slice(0,120));
  t('🛟 ปุ่ม "สร้างออเดอร์ใหม่" มีปุ่มเดียว ไม่ซ้ำสองที่',card.news===1,card.news+' ปุ่ม');
+ /* เจ้าของสั่ง 26 พ.ย. 69: *"ย้ายปุ่มอัพไฟล์ Allocate ขึ้นไปด้านบนข้างปุ่มสร้างออร์เดอร์ใหม่เลย
+    เพราะไฟล์นี้อัพทีเดียวใช้ได้ทั้งระบบ"* — เดิมซ่อนอยู่ในแท็บแอดมินตรวจของแต่ละใบ */
+ t('🔑 ปุ่มอัพไฟล์ใบจัดของอยู่ข้างปุ่มสร้างออเดอร์ใหม่ ปุ่มเดียวเหมือนกัน',
+   card.alloc===1,card.alloc+' ปุ่ม');
  t('🛟 ...และแถบควบคุมด้านบนที่ว่างเปล่าถูกซ่อนตอนอยู่หน้ารายการใบ',
    card.ctlHid==='none',card.ctlHid);
 
@@ -700,6 +749,8 @@ const ORIGIN='https://bd-spord.test/';
        const id='B20261118-01-r'+i;
        CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],
          cs:p[2],pc:0,sq:i,ln:i?'CT12':'CT11',up:1};});
+     /* ใบนี้เป็น 🎯 ตัวกระจาย — เป็นประเภทเดียวที่มีขั้น "ซุปจด" ให้หัวหน้าเซลล์ตั้งเป้า */
+     CSTOCK.slips['B20261118-01'].g='D';
      SP.sid='B20261118-01';SP.view='slip';SP.ym='2026-11';SP.day='2026-11-20';SP.sec='key';
    };
    /* ไฟล์ allocation จำลอง — โครงเดียวกับไฟล์จริง (หัวตารางตรงตัว)
@@ -730,7 +781,7 @@ const ORIGIN='https://bd-spord.test/';
    __slip();__as('sup',null,'หัวหน้าเซลล์');_switchTab('spord');renderSpord();
    const o={};
    const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
-   o.chips=[...document.querySelectorAll('#spBody .tab2')].map(x=>x.textContent.trim());
+   o.chips=[...document.querySelectorAll('#spTabs .tab2')].map(x=>x.textContent.trim());
    o.showsName=/โอโมน้ำ ซากุระ/.test(tx())&&/รหัส 64849613/.test(tx());
    o.hasInputs=!!document.getElementById('spK_CT11_64849613_sc');
    /* sup กรอกแล้วบันทึก */
@@ -750,9 +801,8 @@ const ORIGIN='https://bd-spord.test/';
    return o;});
  /* 5 ขั้นตอนเรียงตามลำดับงาน + ของเดิมท้ายสุด (รายงานเห็นเฉพาะผู้จัดการ จึงไม่อยู่ในชุดของ sup) */
  t('🔑 หน้าใบมีแท็บครบตามลำดับงาน และของเดิมยังอยู่ท้ายสุด',
-   two.chips.length===5&&/ซุปจด/.test(two.chips[0])&&/เซลล์คีย์/.test(two.chips[1])&&
-   /แอดมินตรวจ/.test(two.chips[2])&&/คลังส่งออก/.test(two.chips[3])&&
-   /เลขออเดอร์/.test(two.chips[4]),two.chips.join(' | '));
+   two.chips.length===4&&/ซุปจด/.test(two.chips[0])&&/เซลล์คีย์/.test(two.chips[1])&&
+   /แอดมินตรวจ/.test(two.chips[2])&&/คลังส่งออก/.test(two.chips[3]),two.chips.join(' | '));
  t('🔑 ใบออเดอร์โชว์ชื่อสินค้า ไม่ใช่รหัสเปล่า ๆ (เจ้าของบอกว่า "ขึ้นแค่รหัสมันตามดูยาก")',
    two.showsName);
  t('🔑 หัวหน้าเซลล์กรอก ขาย/แถม เป็น ลัง+ชิ้น ได้ทุกสาย',two.hasInputs);
@@ -980,6 +1030,97 @@ const ORIGIN='https://bd-spord.test/';
    await spGinUndo('B20261118-01','2026-11-20');
    return window.__posts.length===before;});
  t('🔒 หัวหน้าเซลล์ยกเลิกผลตรวจของแอดมินไม่ได้',noAdm);
+
+ /* ================================================================
+  * 12) 🚚 คลังส่งออก ของใบ 🎯 ตัวกระจาย = รายงานจากไฟล์ใบจัดของ (เจ้าของสั่ง 26 พ.ย. 69)
+  *   *"ให้ใช้ไฟล์ที่แอดมิน up เข้าไป … ระบบขึ้นรายงานได้เลยว่าคลังส่งออกไปแล้วทั้งหมดกี่ลัง
+  *     โดยถ้านับจากไฟล์ allocate แล้ว คำนวณมา ไม่ต้องรอซุปจดหรือเซลล์คีย์"*
+  * ================================================================ */
+ const dist=await ev(async()=>{
+   __slip();                                  /* ใบ 🎯 ตัวกระจาย · โอโม 40 ลัง + บรีส 30 ลัง */
+   __as('manager',null,'แอดมิน 1');_switchTab('spord');
+   parseAlloc('alloc.xlsx',__alBuf());
+   /* แอดมินตรวจสองวัน — GIN 77 และ 78 (คนละวัน) ทั้งที่ยังไม่มีใครคีย์หรือจดเป้าเลย */
+   SP.sec='adm';SP.day='2026-11-20';renderSpord();
+   document.getElementById('spGinIn').value='77';
+   await spGinGo('B20261118-01','2026-11-20');await W();
+   SP.day='2026-11-21';renderSpord();
+   document.getElementById('spGinIn').value='78';
+   await spGinGo('B20261118-01','2026-11-21');await W();
+   const o={keyed:Object.keys(CSTOCK.key).length};
+   /* ไฟล์หลุดจากหน่วยความจำ (รีเฟรชหน้า) — รายงานต้องยังอ่านได้จากผลตรวจที่บันทึกไว้ */
+   ALLOC=null;
+   const p0=window.__posts.length,s0=window.__sync;
+   SP.sec='out';renderSpord();
+   o.tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.sum=spAllOut('B20261118-01');
+   o.before=JSON.stringify({lots:CSTOCK.lots,clr:Object.keys(CSTOCK.lots).map(k=>CSTOCK.lots[k].clr)});
+   o.posts=window.__posts.length-p0;o.sync=window.__sync-s0;
+   /* ใบ A ต้องยังเป็นระบบกรอกมือแบบเดิมทุกอย่าง */
+   CSTOCK.slips['B20261118-01'].g='A';renderSpord();
+   o.aTx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.aBulk=!!document.querySelector('#spBody .cst-bulk');
+   CSTOCK.slips['B20261118-01'].g='D';renderSpord();
+   o.after=JSON.stringify({lots:CSTOCK.lots,clr:Object.keys(CSTOCK.lots).map(k=>CSTOCK.lots[k].clr)});
+   o.dBulk=!!document.querySelector('#spBody .cst-bulk');
+   return o;});
+ /* ไฟล์จำลอง: GIN 77 → โอโม CT11 5+1 ลัง · บรีส CT11 2 ลัง · โอโม CT12 2 ลัง   (ลังละ 12 ชิ้น)
+    GIN 78 → โอโม KA97 9 ลัง  ⇒ รวม 19 ลัง จาก 70 ลังที่ตัดบิลไว้ = 27% */
+ t('🔑 คลังส่งออกของใบตัวกระจาย คิดจากไฟล์ใบจัดของล้วน ๆ ไม่ต้องรอซุปจด/เซลล์คีย์',
+   dist.keyed===0&&Math.round(dist.sum.out)===19&&dist.sum.cut===70,
+   JSON.stringify({keyed:dist.keyed,out:dist.sum.out,cut:dist.sum.cut}));
+ t('🔑 ...ขึ้นเป็นรายงาน: ตัดบิลไว้ / คลังจัดออกแล้ว / ยังไม่ได้จัด / วันที่ตรวจ',
+   /คลังจัดออกแล้ว/.test(dist.tx)&&/ตัดบิลไว้ในใบนี้/.test(dist.tx)&&
+   /ยังไม่ได้จัด/.test(dist.tx)&&/วันที่ตรวจแล้ว/.test(dist.tx)&&/27%/.test(dist.tx),
+   dist.tx.slice(0,150));
+ t('🔑 ...อ่านจากผลตรวจที่บันทึกไว้ ไม่ต้องอัพไฟล์ซ้ำ (รีเฟรชแล้วตัวเลขยังอยู่)',
+   dist.sum.days.length===2&&dist.sum.gins.join(',')==='77,78',
+   JSON.stringify({d:dist.sum.days.map(x=>x.d),g:dist.sum.gins}));
+ t('🔑 ...แยกรายสินค้าและรายสายให้ตรวจว่าตรงกับที่ตัดบิลไว้ไหม',
+   /โอโมน้ำ ซากุระ/.test(dist.tx)&&/แยกตามสาย/.test(dist.tx)&&
+   dist.sum.lines.length===3&&dist.sum.prod.length===2,
+   JSON.stringify({ln:dist.sum.lines.map(x=>x.ln),pd:dist.sum.prod.map(x=>x.code)}));
+ t('🛟 หน้านี้อ่านอย่างเดียว — ไม่แตะ lots/การเคลียร์ ไม่ยิง และไม่ sync',
+   dist.before===dist.after&&dist.posts===0&&dist.sync===0,
+   'posts='+dist.posts+' sync='+dist.sync);
+ t('🛟 ใบ A/B ยังใช้ระบบกรอกมือของสต็อคกลางเหมือนเดิมทุกอย่าง',
+   dist.aBulk&&!dist.dBulk&&/ยังค้าง/.test(dist.aTx),
+   'A มีแถบติ๊ก='+dist.aBulk+' · D มี='+dist.dBulk);
+ /* การ์ดในรายการเดือนกับหน้าในใบต้องตอบคำถามเดียวกันด้วยเลขเดียวกัน
+    (ไม่งั้นการ์ดขึ้น 0% ทั้งที่กดเข้าไปแล้วขึ้น 27% — เป็นคนละคำตอบในจอเดียวกัน) */
+ const same=await ev(()=>{
+   const o={};
+   CSTOCK.slips['B20261118-01'].g='D';
+   o.d=spSent('B20261118-01');
+   SP.view='mon';SP.ym='2026-11';renderSpord();
+   o.card=(document.querySelector('#spBody .cst-grp')||{textContent:''})
+     .textContent.replace(/\s+/g,' ');
+   CSTOCK.slips['B20261118-01'].g='A';
+   o.a=spSent('B20261118-01');
+   CSTOCK.slips['B20261118-01'].g='D';
+   return o;});
+ t('🛟 การ์ดในรายการเดือนใช้เลขชุดเดียวกับหน้าคลังส่งออก (ห้ามขึ้นคนละเปอร์เซ็นต์)',
+   Math.round(same.d.out)===19&&same.d.src==='alloc'&&/51 \/ 70 ลัง/.test(same.card),
+   JSON.stringify(same.d)+' | '+same.card.slice(0,90));
+ t('🛟 ใบ A/B ยังนับจากการเคลียร์มือเหมือนเดิม (ยังไม่เคลียร์ = ค้างทั้งใบ)',
+   same.a.src==='lots'&&same.a.out===0&&same.a.left===70,JSON.stringify(same.a));
+ const dist0=await ev(()=>{
+   __slip();__as('manager',null,'แอดมิน 1');_switchTab('spord');
+   SP.sec='out';renderSpord();
+   return document.getElementById('spBody').textContent.replace(/\s+/g,' ');});
+ t('🛟 ยังไม่มีผลตรวจสักวัน → บอกให้ไปใส่เลข GIN ก่อน ไม่ใช่ขึ้น 0 เงียบ ๆ',
+   /ยังไม่มีผลตรวจของใบนี้/.test(dist0)&&/แอดมินตรวจ/.test(dist0)&&!/0%/.test(dist0),
+   dist0.slice(0,140));
+ /* หมวดที่พักไว้ต้องยังเปิดได้ด้วยโค้ดเดิม — ใส่บรรทัดกลับเข้า SP_TABS เมื่อไหร่ก็กลับมาพร้อมประวัติ */
+ const old=await ev(()=>{
+   __reset();CSTOCK.sub['B20261118-01|BDD0100000006']={sid:'B20261118-01',no:'BDD0100000006',
+     ln:'209611',at:1,up:1};
+   __as('manager',null,'แอดมิน 1');SP.view='slip';SP.sid='B20261118-01';SP.sec='old';renderSpord();
+   return {tx:document.getElementById('spBody').textContent.replace(/\s+/g,' '),
+           chips:[...document.querySelectorAll('#spTabs .tab2')].map(x=>x.textContent.trim())};});
+ t('🛟 หมวดเลขออเดอร์ถอดแค่ปุ่ม — หน้าและข้อมูลเดิมยังเรียกขึ้นมาได้ครบ',
+   /BDD0100000006/.test(old.tx)&&!old.chips.some(c=>/เลขออเดอร์/.test(c)),
+   old.chips.join(' | '));
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

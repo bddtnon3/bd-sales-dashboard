@@ -533,7 +533,8 @@ main.wide{max-width:1560px}
   border:1px solid var(--line);border-radius:11px;
   overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .tabs2::-webkit-scrollbar{display:none}
-.sp-tabs{margin:10px 0 0}
+ 
+.sp-tabs{margin:-8px 0 14px}
  
 .sp-tag{display:inline-block;background:var(--blue-soft);color:var(--blue);border:1px solid var(--blue);
   border-radius:999px;padding:1px 10px;font-size:12px;font-weight:800;white-space:nowrap;margin-left:6px;
@@ -1491,6 +1492,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
 
     
     <div id="spordView" class="hidden">
+      <div class="tabs2 sp-tabs" id="spTabs" style="display:none"></div>
       <div class="controls">
         <div class="ctl" id="spSecBox"><label>หน้าจอ</label><div class="seg" id="spSec"></div></div>
         <div class="ctl" id="spSlipBox"><label>ใบออเดอร์ใหญ่</label>
@@ -1500,6 +1502,8 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <div class="ctl" id="spQBox"><label>ค้นหา</label><input id="spQ" placeholder="🔍 เลขออเดอร์ / ชื่อร้าน / สาย"
           oninput="SP.q=this.value;renderSpord()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:220px"></div>
         <div class="spacer"></div>
+        <div class="ctl" id="spAlBox" style="display:none"><label id="spAlLab">&nbsp;</label>
+          <button class="upload-btn" onclick="spUpAlloc()">📥 ไฟล์ใบจัดของ</button></div>
         <div class="ctl" id="spNewBox" style="display:none"><label>&nbsp;</label>
           <button class="upload-btn" onclick="spNewOrder()">➕ สร้างออเดอร์ใหม่</button></div>
       </div>
@@ -11617,17 +11621,29 @@ function spDay(sid){
 }
 function spSetDay(v){SP.day=v||"";renderSpord();}
  
+const SP_NUM=["①","②","③","④","⑤","⑥"];
 const SP_TABS=[
-  {k:"key",nm:"① ✍️ ซุปจด"},
-  {k:"rep",nm:"② 📲 เซลล์คีย์"},
-  {k:"adm",nm:"③ 🔎 แอดมินตรวจ"},
-  {k:"out",nm:"④ 🚚 คลังส่งออก"},
-  {k:"rpt",nm:"📊 รายงาน",mgr:1},
-  {k:"old",nm:"🧾 เลขออเดอร์"},
+  {k:"key",ic:"✍️",nm:"ซุปจด",grp:"D"},
+  {k:"rep",ic:"📲",nm:"เซลล์คีย์"},
+  {k:"adm",ic:"🔎",nm:"แอดมินตรวจ"},
+  {k:"out",ic:"🚚",nm:"คลังส่งออก"},
+  {k:"rpt",ic:"📊",nm:"รายงาน",mgr:1,nonum:1},
+  {k:"old",ic:"🧾",nm:"เลขออเดอร์",off:1,nonum:1},
 ];
 const SP_DAYTABS=["key","rep","adm"];
-function spTabsOn(){return SP_TABS.filter(x=>!x.mgr||spMgr());}
-function spSec(){const ks=spTabsOn().map(x=>x.k);return ks.indexOf(SP.sec)>=0?SP.sec:"key";}
+function spTabsOn(sl){
+  const g=spGrpOf(sl===undefined?spSlip(SP.sid):sl);
+  let n=0;
+  return SP_TABS.filter(x=>!x.off&&(!x.mgr||spMgr())&&(!x.grp||x.grp===g))
+    .map(x=>Object.assign({},x,{lb:(x.nonum?"":SP_NUM[n++]+" ")+x.ic+" "+x.nm}));
+}
+ 
+function spSec(){
+  const ks=spTabsOn().map(x=>x.k);
+  if(ks.indexOf(SP.sec)>=0)return SP.sec;
+  if(SP_TABS.some(x=>x.off&&x.k===SP.sec))return SP.sec;
+  return ks[0]||"rep";
+}
 function spSetSec(v){spNavPush();SP.sec=v;renderSpord();}
  
 function spKeySum(sid,ymd){
@@ -12034,7 +12050,7 @@ function spRow(r,opt){
 function spSetGrp(g){
   if(!spMgr())return;
   const C=spOk(),sl=C.slips[SP.sid];if(!sl)return;
-  sl.g=(g==="B")?"B":"A";sl.up=Date.now();
+  sl.g=SP_GRP[g]?g:"A";sl.up=Date.now();    
   renderSpord();if(typeof renderCStock==="function")renderCStock();syncToServer();
 }
  
@@ -12091,7 +12107,9 @@ function spNavBack(){
   return true;
 }
 function spOpenMon(ym){spNavPush();SP.ym=ym;SP.view="mon";renderSpord();}
-function spOpenSlip(sid){spNavPush();SP.sid=sid;SP.view="slip";SP.day="";SP.sec="key";renderSpord();}
+ 
+function spFirstSec(sid){const v=spTabsOn(spSlip(sid));return (v[0]||{}).k||"rep";}
+function spOpenSlip(sid){spNavPush();SP.sid=sid;SP.view="slip";SP.day="";SP.sec=spFirstSec(sid);renderSpord();}
  
 function spYm(sl){
   const d=String((sl&&sl.d)||"");
@@ -12148,8 +12166,8 @@ function spSlipCard(x){
   const g=SP_GRP[spGrpOf(x)];
   const rows=spSlipRows(x.id);
   const codes=spSlipCodes(x.id);
-  const cs=rows.reduce((a,l)=>a+(+l.cs||0),0);
-  const left=rows.reduce((a,l)=>a+cstLeft(l),0);
+  const sn=spSent(x.id);
+  const cs=sn.cut,left=sn.left;
   const pct=cstPct(cs,left);
   const days=spDays(x.id), gn=days.filter(d=>spGinRec(x.id,d)).length;
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
@@ -12235,10 +12253,14 @@ function spRptMoney(sid,ymd){
 function spRptRows(sid){
   const lots=(typeof cstSlipRows==="function")?cstSlipRows(sid):[];
   const R=x=>Math.round(x*100)/100;
+   
+  const alloc=spGrpOf(spSlip(sid))==="D"?(()=>{const m={};
+    spAllOut(sid).days.forEach(x=>{m[x.d]=(m[x.d]||0)+x.cs;});return m;})():null;
   return spRptDays(sid).map(d=>{
     const cut=lots.filter(l=>l.d===d).reduce((a,l)=>a+(+l.cs||0),0);
     let out=0;
-    lots.forEach(l=>((l.clr)||[]).forEach(c=>{if(c&&c.d===d)out+=(+c.cs||0);}));
+    if(alloc)out=alloc[d]||0;
+    else lots.forEach(l=>((l.clr)||[]).forEach(c=>{if(c&&c.d===d)out+=(+c.cs||0);}));
     const rp=spRepByLine(sid,d);
     let keyed=0;Object.keys(rp).forEach(ln=>{const it=(rp[ln]||{}).it||{};
       Object.keys(it).forEach(c=>{const v=it[c]||{};keyed+=(+v.sc||0)+(+v.fc||0);});});
@@ -12256,8 +12278,8 @@ function spRptHtml(sid){
   const rows=spRptRows(sid),lots=(typeof cstSlipRows==="function")?cstSlipRows(sid):[];
   const R=x=>(Math.round(x*100)/100).toLocaleString();
   const B=x=>x==null?'<span style="color:var(--muted)">—</span>':THB(x);
-  const cut=lots.reduce((a,l)=>a+(+l.cs||0),0);
-  const left=lots.reduce((a,l)=>a+cstLeft(l),0);
+  const sn=spSent(sid);
+  const cut=sn.cut,left=sn.left;
   const keyed=rows.reduce((a,r)=>a+r.keyed,0);
   const niv=rows.reduce((a,r)=>a+(r.niv||0),0), gsv=rows.reduce((a,r)=>a+(r.gsv||0),0);
   const haveMoney=rows.some(r=>r.niv!=null);
@@ -12306,7 +12328,132 @@ function spRptHtml(sid){
 }
 
  
+ 
+function spAllOut(sid){
+  const C=spKeyOk(),codes=spSlipCodes(sid);
+  const nmOf={},cutOf={},order={};
+  codes.forEach((c,i)=>{nmOf[c.code]=c.nm||"";cutOf[c.code]=+c.cs||0;order[c.code]=i;});
+  const by={},lines={},days=[],gset={};
+  let noPk=0,noShr=0;
+  Object.keys(C.gin||{}).forEach(k=>{
+    const p=k.split("|");if(p[0]!==sid||!p[1])return;
+    const r=C.gin[k];if(!r||r.del)return;
+    const rows=r.rows||{},ks=Object.keys(rows),gs=(r.g||[]).slice();
+    if(!ks.length&&!gs.length)return;
+    const day={d:p[1],g:gs,n:ks.length,at:r.at||0,by:r.byName||r.by||"",cs:0};
+    days.push(day);
+    gs.forEach(x=>{gset[x]=1;});
+    ks.forEach(kk=>{
+      const a=rows[kk]||{},pp=kk.split("|"),ln=pp[0],code=pp[1];
+      const pk=+a.pk||0,nm=nmOf[code]||a.nm||"";
+      const shr=alShrink(nm,pk);
+      const sale={cs:+a.sc||0,sh:+a.ss||0,pc:+a.sp||0};
+      const free={cs:+a.fc||0,sh:+a.fs||0,pc:+a.fp||0};
+      const ps=alPcs(sale,pk,shr),pf=alPcs(free,pk,shr);
+      if(!pk)noPk++;else if((sale.sh||free.sh)&&!shr)noShr++;
+      const t=by[code]||(by[code]={code:code,nm:nm,pk:pk,sCs:0,fCs:0,un:0,
+        raw:{cs:0,sh:0,pc:0},cut:cutOf[code]||0,i:order[code]==null?9e6:order[code]});
+      if(!t.nm&&nm)t.nm=nm;
+      if(!t.pk&&pk)t.pk=pk;
+      t.raw.cs+=sale.cs+free.cs;t.raw.sh+=sale.sh+free.sh;t.raw.pc+=sale.pc+free.pc;
+      const L=lines[ln]||(lines[ln]={ln:ln,cs:0,n:0,un:0});
+      L.n++;
+      if(ps!=null&&pk>0){t.sCs+=ps/pk;L.cs+=ps/pk;day.cs+=ps/pk;}else{t.un++;L.un++;}
+      if(pf!=null&&pk>0){t.fCs+=pf/pk;L.cs+=pf/pk;day.cs+=pf/pk;}
+      else if(free.cs||free.sh||free.pc){t.un++;L.un++;}
+    });
+  });
+  const prod=codes.map(c=>by[c.code]||{code:c.code,nm:c.nm||"",pk:0,sCs:0,fCs:0,un:0,
+    raw:{cs:0,sh:0,pc:0},cut:+c.cs||0,i:order[c.code]});
+  Object.keys(by).forEach(c=>{if(order[c]==null)prod.push(by[c]);});
+  const out=prod.reduce((a,t)=>a+t.sCs+t.fCs,0);
+  const cut=prod.reduce((a,t)=>a+(+t.cut||0),0);
+  days.sort((a,b)=>String(a.d).localeCompare(String(b.d)));
+  const lnArr=Object.keys(lines).map(k=>lines[k])
+    .sort((a,b)=>FOCUS_ORDER.indexOf(spLnKey(a.ln))-FOCUS_ORDER.indexOf(spLnKey(b.ln)));
+  return {prod:prod,lines:lnArr,days:days,gins:Object.keys(gset),
+    out:out,cut:cut,noPk:noPk,noShr:noShr};
+}
+ 
+function spSent(sid){
+  const lots=(typeof cstSlipRows==="function")?cstSlipRows(sid):[];
+  const cut=lots.reduce((a,l)=>a+(+l.cs||0),0);
+  if(spGrpOf(spSlip(sid))==="D"){
+    const o=spAllOut(sid);
+    return {cut:cut,out:o.out,left:Math.max(0,cut-o.out),src:"alloc"};
+  }
+  const left=lots.reduce((a,l)=>a+cstLeft(l),0);
+  return {cut:cut,out:Math.max(0,cut-left),left:left,src:"lots"};
+}
+function spOutAllocHtml(sid){
+  const o=spAllOut(sid);
+  const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const head=`<div class="panel">
+    <h3>🚚 คลังส่งออก — คลังจัดของออกไปแล้วกี่ลัง</h3>
+    <div class="psub">นับจากไฟล์ใบจัดของตามเลข GIN ที่แอดมินตรวจไว้ · ใบแบบ
+      <b>${SP_GRP.D.ic} ${SP_GRP.D.n}</b> ดูที่ของคลังตรงกับที่เซลล์คีย์หรือไม่เป็นหลัก</div>`;
+  if(!o.days.length)return head+`<div class="insight" style="margin-top:10px">
+    ยังไม่มีผลตรวจของใบนี้ — ให้แอดมินไปที่แท็บ <b>🔎 แอดมินตรวจ</b> ใส่เลข GIN ของแต่ละวันก่อน
+    แล้วตัวเลขตรงนี้จะขึ้นเองทั้งหมด</div></div>`;
+  const pct=o.cut>0?Math.round(o.out/o.cut*100):0;
+  const bar=Math.max(0,Math.min(100,pct));
+  const diff=o.out-o.cut;
+  let h=head+`<div class="cards" style="margin-top:10px">
+    <div class="card"><div class="k">ตัดบิลไว้ในใบนี้</div><div class="v">${N(o.cut)}</div><div class="s">ลัง</div></div>
+    <div class="card" style="border-top:3px solid ${cstPctCol(bar)}"><div class="k">คลังจัดออกแล้ว</div>
+      <div class="v">${N(o.out)}</div><div class="s">ลัง · ${pct}% ของที่ตัดบิล</div></div>
+    <div class="card" style="border-top:3px solid ${diff<0?"var(--warn)":"var(--good)"}">
+      <div class="k" style="${diff<0?"color:#8a6500":""}">${diff<0?"ยังไม่ได้จัด":"จัดเกินที่ตัดบิล"}</div>
+      <div class="v">${N(Math.abs(diff))}</div><div class="s">ลัง</div></div>
+    <div class="card"><div class="k">วันที่ตรวจแล้ว</div><div class="v">${o.days.length}</div>
+      <div class="s">${o.gins.length} เลข GIN</div></div>
+  </div>${cstPctBar(bar)}`;
+  if(o.noPk||o.noShr)h+=`<div class="note" style="margin-top:8px;color:var(--mid)">⚠️ มี ${
+    o.noPk+o.noShr} แถวที่แปลงเป็นลังไม่ได้ (${o.noPk?"ไม่รู้ขนาดบรรจุ "+o.noPk+" แถว":""}${
+    o.noPk&&o.noShr?" · ":""}${o.noShr?"ไม่รู้ขนาดแพ็ค "+o.noShr+" แถว":""}) —
+    จำนวนรวมด้านบนยังไม่ได้รวมแถวเหล่านี้</div>`;
+  h+=`</div>`;
+   
+   
+  h+=`<div class="panel" style="margin-top:12px"><h3>📦 รายสินค้า</h3>
+    <div class="tblwrap"><table class="cst-rt"><thead><tr>
+      <th style="text-align:left">สินค้า</th><th>ตัดบิลไว้</th><th>คลังจัดออกแล้ว</th>
+      <th>ส่วนต่าง</th></tr></thead><tbody>${
+    o.prod.map(t=>{
+      const tot=t.sCs+t.fCs,d=tot-(+t.cut||0);
+      const col=Math.abs(d)<0.005?"var(--good)":(d<0?"#8a6500":"var(--blue)");
+      return `<tr><td style="text-align:left"><b>${anaEsc(t.nm||oname(t.code)||("รหัส "+t.code))}</b>
+          <span class="psub" style="display:block">รหัส ${anaEsc(t.code)}${
+            t.pk?" · ลังละ "+N(t.pk)+" ชิ้น":' · <span class="down">ไม่รู้ขนาดบรรจุ</span>'}</span></td>
+        <td>${N(t.cut)}</td>
+        <td><b>${N(tot)}</b>${(t.sCs||t.fCs)?'<span class="psub" style="display:block">ขาย '+
+          N(t.sCs)+(t.fCs?" · แถม "+N(t.fCs):"")+"</span>":""}</td>
+        <td style="color:${col}"><b>${Math.abs(d)<0.005?"ตรง":(d>0?"+":"")+N(d)}</b></td></tr>`;
+    }).join("")}
+    <tr><td style="text-align:left"><b>รวม</b></td><td><b>${N(o.cut)}</b></td>
+      <td><b>${N(o.out)}</b></td><td><b>${N(diff)}</b></td></tr></tbody></table></div></div>`;
+   
+  if(o.lines.length)h+=`<div class="panel" style="margin-top:12px"><h3>🚚 แยกตามสาย</h3>
+    <div class="tblwrap"><table class="cst-rt"><thead><tr>
+      <th style="text-align:left">สาย</th><th>รายการ</th><th>จัดออกแล้ว (ลัง)</th></tr></thead><tbody>${
+    o.lines.map(l=>`<tr><td style="text-align:left"><b>${anaEsc(
+        ((DATA.lines||{})[l.ln]||{}).display||FOCUS_MAP[spLnKey(l.ln)]||l.ln)}</b></td>
+      <td>${l.n}</td><td><b>${N(l.cs)}</b>${l.un?' <span class="psub">('+l.un+' แถวแปลงไม่ได้)</span>':""}</td></tr>`).join("")}
+    </tbody></table></div></div>`;
+   
+  h+=`<div class="panel" style="margin-top:12px"><h3>📅 วันที่ที่นับรวมไว้</h3>
+    <div class="tblwrap"><table class="cst-rt"><thead><tr>
+      <th style="text-align:left">วันที่</th><th>เลข GIN</th><th>รายการ</th><th>บันทึกโดย</th>
+      </tr></thead><tbody>${o.days.map(d=>`<tr>
+        <td style="text-align:left"><b>${fmtDate(d.d)}</b></td>
+        <td style="font-family:ui-monospace,monospace">${(d.g||[]).map(anaEsc).join(" · ")||"-"}</td>
+        <td>${d.n}</td><td>${anaEsc(d.by||"-")}${d.at?'<span class="psub" style="display:block">'+
+          fmtDateTime(d.at)+"</span>":""}</td></tr>`).join("")}</tbody></table></div></div>`;
+  return h;
+}
 function spOutHtml(sid){
+   
+  if(spGrpOf(spSlip(sid))==="D")return spOutAllocHtml(sid);
   const mgr=(typeof cstMgr==="function")?cstMgr():spMgr();
   const rows=(typeof cstSlipRows==="function")?cstSlipRows(sid):[];
   if(!rows.length)return `<div class="panel"><div class="insight">
@@ -12431,7 +12578,7 @@ function renderSpord(){
    
   if(!spPinOk()){
     bar.innerHTML="";bar.style.display="none";
-    const hide=["spSlipBox","spQBox","spSecBox","spNewBox"];
+    const hide=["spSlipBox","spQBox","spSecBox","spNewBox","spAlBox","spTabs"];
     hide.forEach(id=>{const e=document.getElementById(id);if(e)e.style.display="none";});
     {const cb=document.querySelector("#spordView > .controls");if(cb)cb.style.display="none";}
     const b0=document.getElementById("spBody");if(b0)b0.innerHTML=spPinHtml();
@@ -12447,11 +12594,16 @@ function renderSpord(){
       SP_GRP[spGrpOf(x)].ic} ${anaEsc(spSlipTitle(x.id,18)||x.id)}${x.d?" · "+fmtDate(x.d):""}</option>`).join("");
   }
   {const nb=document.getElementById("spNewBox");if(nb)nb.style.display=spMgr()?"":"none";}
+   
+  {const ab=document.getElementById("spAlBox");if(ab)ab.style.display=spAdmOk()?"":"none";
+   const al=document.getElementById("spAlLab");if(al)al.innerHTML=spAlLabel();}
+   
+  {const tb=document.getElementById("spTabs");if(tb){tb.innerHTML="";tb.style.display="none";}}
   const body=document.getElementById("spBody");
   const secBox=document.getElementById("spSecBox");if(secBox)secBox.style.display="none";
    
   {const sb=document.getElementById("spSlipBox");if(sb)sb.style.display=(SP.view==="slip")?"":"none";
-   const qb=document.getElementById("spQBox");if(qb)qb.style.display=(SP.view==="slip")?"":"none";
+   const qb=document.getElementById("spQBox");if(qb)qb.style.display="none";
     
    const cb=document.querySelector("#spordView > .controls");
    if(cb)cb.style.display=(SP.view==="slip")?"":"none";}
@@ -12503,7 +12655,8 @@ function renderSpord(){
             <button type="button" class="dstep-b" title="ปีถัดไป"
               ${ys.indexOf(yr)<=0?"disabled":""} onclick="spStepYear(1)">▶</button></span>
           <span class="psub">กดเดือนที่ต้องการ แล้วค่อยเลือกใบออเดอร์</span>
-          ${spMgr()?'<span style="flex:1"></span><button class="upload-btn" onclick="spNewOrder()">➕ สร้างออเดอร์ใหม่</button>':""}</div>
+          <span style="flex:1"></span>${spAlBtnHtml()}${
+            spMgr()?'<button class="upload-btn" onclick="spNewOrder()">➕ สร้างออเดอร์ใหม่</button>':""}</div>
         <div class="sp-mons">${ms.map(m=>{
           const none=!m.slips,cur=m.ym===now;
           const kn=spMonKeyed(m.ym),gn=spMonGin(m.ym);
@@ -12522,7 +12675,8 @@ function renderSpord(){
     body.innerHTML=`<div class="panel">
       <div class="cst-fb"><button class="btn-ghost" onclick="spBack()">◀ เลือกเดือนอื่น</button>
         <span class="psub">กดที่ใบเพื่อเข้าไปกรอก/ตรวจ</span>
-        ${spMgr()?'<span style="flex:1"></span><button class="upload-btn" onclick="spNewOrder()">➕ สร้างออเดอร์ใหม่</button>':""}
+        <span style="flex:1"></span>${spAlBtnHtml()}${
+          spMgr()?'<button class="upload-btn" onclick="spNewOrder()">➕ สร้างออเดอร์ใหม่</button>':""}
         </div></div>
       <div class="panel" style="margin-top:14px">${inM.map(x=>spSlipCard(x)).join("")||
         '<div class="insight">เดือนนี้ยังไม่มีใบออเดอร์</div>'}</div>`;
@@ -12543,11 +12697,12 @@ function renderSpord(){
       const sec=spSec();
        
       const chip=(k,t)=>`<button type="button" class="tab2${sec===k?" on":""}" onclick="spSetSec('${k}')">${t}</button>`;
+      {const tb=document.getElementById("spTabs");
+       if(tb){tb.innerHTML=spTabsOn(slNow).map(x=>chip(x.k,x.lb)).join("");tb.style.display="";}}
       const withDay=SP_DAYTABS.indexOf(sec)>=0;    
       let H=`<div class="panel"><div class="cst-fb">
           <button class="btn-ghost" onclick="spBack()">◀ กลับไปรายการใบ</button>
           <span class="psub">${SP.ym&&SP.ym!=="ไม่ระบุ"?fmtMonth(SP.ym):""}</span></div>
-        <div class="tabs2 sp-tabs">${spTabsOn().map(x=>chip(x.k,x.nm)).join("")}</div>
         ${withDay?`<div class="controls" style="margin:10px 0 0">${spDayPick(SP.sid)}</div>`:""}</div>`;
       if(sec==="key"){body.innerHTML=H+spKeyHtml(SP.sid);return;}
       if(sec==="rep"){body.innerHTML=H+spRepTabHtml(SP.sid);return;}
@@ -12760,11 +12915,14 @@ function spRepTabHtml(sid,ymd){
       <div id="spHistBody" style="margin-top:10px"></div></div></div>`;
 }
  
+function spHasTgt(sid){return spGrpOf(spSlip(sid))==="D";}
+ 
 function spRepMineHtml(sid,ymd){
   const ln=spMyLine();
   if(!ln)return `<div class="panel"><div class="insight">
     บัญชีนี้ไม่มีรหัสสาย จึงกรอกจำนวนของสายไหนไม่ได้</div></div>`;
   const codes=spSlipCodes(sid),rec=spRepRec(sid,ymd,ln),it=(rec&&rec.it)||{};
+  const tg=spHasTgt(sid);
   const tgt=(spKeyByLine(sid,ymd)[ln]||{}).it||{};
   const can=spRepCan(ln,rec),left=spRepLeft(rec);
   const rows=codes.map(c=>{
@@ -12776,7 +12934,7 @@ function spRepMineHtml(sid,ymd){
       : (val?String(val):"-");
     return `<tr><td class="l">${anaEsc(c.nm||oname(c.code)||"")||'<span style="color:var(--muted)">(ไม่มีชื่อ)</span>'}
         <span class="psub" style="display:block">รหัส ${anaEsc(c.code)}</span></td>
-      <td><b>${gc||"-"}</b>${gp?'<span class="psub" style="display:block">+'+gp+' ชิ้น</span>':""}</td>
+      ${tg?`<td><b>${gc||"-"}</b>${gp?'<span class="psub" style="display:block">+'+gp+' ชิ้น</span>':""}</td>`:""}
       <td>${inp("sc",v.sc)}</td><td>${inp("sp",v.sp)}</td>
       <td>${inp("fc",v.fc)}</td><td>${inp("fp",v.fp)}</td>
       <td>${((+v.sc||0)+(+v.fc||0))||"-"}</td></tr>`;
@@ -12792,9 +12950,9 @@ function spRepMineHtml(sid,ymd){
       ${can?`<button class="upload-btn" onclick="spRepLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกจำนวนที่คีย์</button>`:""}
       ${rec?`<button class="btn-ghost" onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">🕘 ดูประวัติการกรอก</button>`:""}</div>
     <div class="tblwrap sp-freeze" style="margin-top:10px"><table class="sp-kt">
-      <thead><tr><th class="l">สินค้า</th><th>เป้า (ลัง)</th>
+      <thead><tr><th class="l">สินค้า</th>${tg?"<th>เป้า (ลัง)</th>":""}
         <th>ขาย (ลัง)</th><th>ขาย (ชิ้น)</th><th>แถม (ลัง)</th><th>แถม (ชิ้น)</th><th>รวม (ลัง)</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="7" class="l">ใบนี้ยังไม่มีสินค้า</td></tr>'}</tbody></table></div>
+      <tbody>${rows||'<tr><td colspan="'+(tg?7:6)+'" class="l">ใบนี้ยังไม่มีสินค้า</td></tr>'}</tbody></table></div>
   </div>`;
 }
  
@@ -12806,12 +12964,14 @@ const SP_TRK={ok:['<span class="sp-ok">✓ ครบเป้า</span>',"var(--
 function spTrackHtml(sid,ymd,tr){
   tr=tr||spTrack(sid,ymd);
   const one=spRole()==="sales";           
+  const tg=spHasTgt(sid);
   const show=tr.filter(x=>x.has||x.done);
   if(!show.length)return `<div class="panel" style="margin-top:12px">
-    <h3>📋 ติดตามการคีย์รายสาย</h3>
-    <div class="insight" style="margin-top:8px">ยังไม่ได้ตั้งเป้าของวันนี้</div></div>`;
+    <h3>📋 ${tg?"ติดตามการคีย์รายสาย":"จำนวนที่เซลล์คีย์"}</h3>
+    <div class="insight" style="margin-top:8px">${tg?"ยังไม่ได้ตั้งเป้าของวันนี้"
+      :"ยังไม่มีสายไหนคีย์จำนวนของวันนี้"}</div></div>`;
   const n={ok:0,short:0,over:0,wait:0};show.forEach(x=>{if(n[x.st]!=null)n[x.st]++;});
-  const cards=one?"":`<div class="cards" style="margin-top:10px">
+  const cards=(one||!tg)?"":`<div class="cards" style="margin-top:10px">
       <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">ครบเป้า</div>
         <div class="v up">${n.ok}</div><div class="s">สาย</div></div>
       <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">ยังขาด</div>
@@ -12822,19 +12982,19 @@ function spTrackHtml(sid,ymd,tr){
     </div>`;
   const rows=show.map(x=>`<tr>
     <td class="l"><b>${anaEsc(x.ln)}</b></td>
-    <td>${x.tgt.cs||"-"}${x.tgt.pc?'<span class="psub" style="display:block">+'+x.tgt.pc+' ชิ้น</span>':""}</td>
+    ${tg?`<td>${x.tgt.cs||"-"}${x.tgt.pc?'<span class="psub" style="display:block">+'+x.tgt.pc+' ชิ้น</span>':""}</td>`:""}
     <td>${x.done?`<button class="btn-ghost" style="padding:2px 9px;font-weight:700"
         onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(x.ln)}')">${x.rep.cs||0}</button>`:"-"}</td>
-    <td>${x.st==="short"?'<b class="down">'+x.left+'</b>':(x.st==="over"?'<b class="up">+'+(-x.left)+'</b>':"-")}</td>
-    <td>${SP_TRK[x.st][0]}</td>
+    ${tg?`<td>${x.st==="short"?'<b class="down">'+x.left+'</b>':(x.st==="over"?'<b class="up">+'+(-x.left)+'</b>':"-")}</td>
+    <td>${SP_TRK[x.st][0]}</td>`:""}
     <td class="l">${x.rec?`<span class="psub">${anaEsc(x.rec.byName||x.rec.by||"")} · ${fmtDateTime(x.rec.at)}${
       x.n?" · แก้ไป "+(x.n-1)+" ครั้ง":""}</span>`:'<span class="psub">—</span>'}</td></tr>`).join("");
   return `<div class="panel" style="margin-top:12px">
-    <h3>📋 ${one?"สรุปของสายฉัน":"ติดตามการคีย์รายสาย"} · ${fmtDate(ymd)}</h3>
+    <h3>📋 ${one?"สรุปของสายฉัน":(tg?"ติดตามการคีย์รายสาย":"จำนวนที่เซลล์คีย์")} · ${fmtDate(ymd)}</h3>
     ${cards}
     <div class="tblwrap" style="margin-top:10px"><table class="sp-kt">
-      <thead><tr><th class="l">สาย</th><th>เป้า (ลัง)</th><th>คีย์จริง (ลัง)</th><th>ยังขาด</th>
-        <th>ผล</th><th class="l">กรอกเมื่อ</th></tr></thead>
+      <thead><tr><th class="l">สาย</th>${tg?"<th>เป้า (ลัง)</th>":""}<th>คีย์จริง (ลัง)</th>${
+        tg?"<th>ยังขาด</th><th>ผล</th>":""}<th class="l">กรอกเมื่อ</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div class="psub" style="margin-top:8px">กดที่ตัวเลข <b>คีย์จริง</b> เพื่อดูประวัติการกรอก</div>
   </div>`;
@@ -12895,15 +13055,16 @@ function spAdmHtml(sid){
   const g=spGinRec(sid,ymd),cmp=spCmp(sid,ymd);
   const haveFile=!!ALLOC;
   let h=`<div class="panel"><h3>🔎 ฝั่งแอดมิน — ตรวจของที่คลังจัดออก วันที่ ${fmtDate(ymd)}</h3>
-    <div class="psub">อัพไฟล์ <b>Order Allocation Report</b> ของคลัง แล้วใส่ <b>เลข GIN</b> ของวันนั้น</div>`;
+    <div class="psub">ใส่ <b>เลข GIN</b> ของวันนั้น แล้วกดตรวจ · ไฟล์ใบจัดของอัพที่ปุ่ม
+      <b>📥 ไฟล์ใบจัดของ</b> ด้านบนของหน้า ทีเดียวใช้ได้ทุกใบทุกวัน</div>`;
   if(!can)h+=`<div class="insight" style="margin-top:10px">ดูอย่างเดียว</div>`;
   else{
+     
     h+=`<div class="cst-fb" style="margin-top:10px">
-      <button class="upload-btn" onclick="spUpAlloc()">📥 อัพไฟล์ใบจัดของ (allocation)</button>
       ${haveFile?`<span class="psub">✅ อ่านไฟล์ <b>${anaEsc(ALLOC.file)}</b> แล้ว ·
         ${ALLOC.n.toLocaleString()} แถว · ${ALLOC.gins.length} เลข GIN ·
         ${anaEsc(ALLOC.days[0]||"")} ถึง ${anaEsc(ALLOC.days[ALLOC.days.length-1]||"")}</span>`
-        :`<span class="psub">ยังไม่ได้อัพไฟล์ในเครื่องนี้</span>`}</div>
+        :`<span class="psub">ยังไม่ได้อัพไฟล์ในเครื่องนี้ — กด <b>📥 ไฟล์ใบจัดของ</b> ด้านบน</span>`}</div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
         <label class="psub" style="min-width:120px">เลข GIN ของวันนี้</label>
         <input id="spGinIn" value="${anaEsc(((g&&g.g)||[]).join(", "))}"
@@ -13106,6 +13267,18 @@ function spRepPrint(sid,ymd){
 function spUpAlloc(){
   const el=document.getElementById("fileAlloc");
   if(el)el.click();else alert("ไม่พบช่องอัพไฟล์");
+}
+ 
+function spAlLabel(){
+  if(!ALLOC)return "ยังไม่ได้อัพไฟล์";
+  return "✅ "+ALLOC.n.toLocaleString()+" แถว · "+ALLOC.gins.length+" GIN";
+}
+function spAlBtnHtml(){
+  if(!spAdmOk())return "";
+  return `<button class="upload-btn" onclick="spUpAlloc()">📥 ไฟล์ใบจัดของ</button>`+
+    `<span class="psub">${ALLOC?"✅ อ่านไฟล์ <b>"+anaEsc(ALLOC.file)+"</b> แล้ว · "+
+      ALLOC.n.toLocaleString()+" แถว · "+ALLOC.gins.length+" เลข GIN":
+      "อัพไฟล์ทีเดียว ใช้ได้ทุกใบทุกวัน"}</span>`;
 }
 function spGinGo(sid,ymd){
   const el=document.getElementById("spGinIn");

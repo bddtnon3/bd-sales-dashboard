@@ -796,12 +796,35 @@ code, never printed.
   and `B` keep exactly the meaning they have had since 18 Nov 26 and only their labels changed, `D`
   is the new one, and a slip with no flag still reads as `A`. Never reassign what a letter means:
   every stored slip would silently change type.
-  **The slip page is five tabs in work order** (`SP_TABS`, owner 26 Nov 26): **① ✍️ ซุปจด** (the
-  supervisor's per-line target) · **② 📲 เซลล์คีย์** (the rep records what they actually keyed; the
-  supervisor watches the chase table here) · **③ 🔎 แอดมินตรวจ** (GIN vs keyed) · **④ 🚚 คลังส่งออก** ·
-  **📊 รายงาน** (manager only), with 🧾 เลขออเดอร์ kept last. Everyone may *open* every tab; who may
-  *write* is checked inside each function. Only the first three are per-day, so `spDayPick` is
-  hidden on the other two (`SP_DAYTABS`).
+  **The slip page's tabs depend on the slip's type** (`SP_TABS`/`spTabsOn`, owner 26 Nov 26):
+  🎯 ตัวกระจาย runs **① ✍️ ซุปจด → ② 📲 เซลล์คีย์ → ③ 🔎 แอดมินตรวจ → ④ 🚚 คลังส่งออก**, while
+  🧾 ตัดบิลรอส่ง and 🚚 ส่งแล้วรอตัดบิล **start at the rep** — *"เริ่มสร้างเซลล์"* — so they run
+  **เซลล์คีย์ → แอดมินตรวจ → คลังส่งออก** with no target step. **📊 รายงาน** is appended for the
+  manager. The step numbers are therefore computed from what is actually shown, never written into
+  a label. A slip with no ซุปจด step must also **drop the เป้า / ยังขาด / ผล columns** (`spHasTgt`),
+  or the rep's page reads as if someone forgot to set a target. The tab row is drawn into
+  **`#spTabs`, the first element of the view** — the same `.tabs2` row the other groups' sub-tabs
+  use, so it sits under the main tab bar instead of inside a panel halfway down the page
+  (*"เอากรอบในนั้นขยับขึ้นมาอยู่ด้านบนให้เห็นชัดชัด"*). `spOpenSlip` lands on the first tab that slip
+  really has, never a hard-coded `"key"`. **🧾 เลขออเดอร์ is retired** (*"มันซ้ำกับหมวดคลังส่งออกแล้ว"*)
+  the same way a retired upload slot is: `off:1` keeps it out of the row while `spSec` still opens it
+  and `spOldHtml`/`CSTOCK.sub`/`subdel` keep working, so putting the line back restores it with its
+  history. Everyone may *open* every tab; who may *write* is checked inside each function. Only the
+  first three are per-day, so `spDayPick` is hidden on the others (`SP_DAYTABS`).
+  **For 🎯 ตัวกระจาย, ④ คลังส่งออก is a report read out of the allocation file, not a form**
+  (`spAllOut`/`spOutAllocHtml`, owner 26 Nov 26: *"ให้ใช้ไฟล์ที่แอดมิน up เข้าไป … ระบบขึ้นรายงาน
+  ได้เลยว่าคลังส่งออกไปแล้วทั้งหมดกี่ลัง … ไม่ต้องรอซุปจดหรือเซลล์คีย์ เพราะเป้าหมายของออเดอร์แบบนี้
+  คือการ match ข้อมูลออเดอร์ที่เซลล์คีย์ กับคลังจัดของให้ตรงกัน"*). It reads the **stored** checks
+  (`CSTOCK.gin[sid|date].rows`), not the file held in memory, so it reads back without re-uploading;
+  it needs no target and no keyed figure; it converts ลัง/แพ็ค/ชิ้น through `alPcs` and **reports the
+  rows it cannot convert instead of guessing 1**; and it is **strictly read-only** over CSTOCK. ใบ A/B
+  keep the manual สต็อคกลาง clearing exactly as before, and a D slip's lots are untouched — they are
+  still on 🧊 สต็อคกลาง. **`spSent(sid)` is the one answer to "how many cases have left the
+  warehouse"** (allocation for D, lot clearings for A/B); the month card, the tab and the manager
+  report all call it, or a card shows 0% while the tab inside shows 27%.
+  **The 📥 allocation upload sits at the top beside ➕ สร้างออเดอร์ใหม่** (`spAlBtnHtml`/`#spAlBox`),
+  not inside one slip's admin tab — *"ไฟล์นี้อัปทีเดียวใช้ได้ทั้งระบบ"*. It is the one exception to
+  the single-upload-button rule, because `ALLOC` is never stored in the state.
   **④ คลังส่งออก is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
@@ -950,7 +973,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (133 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (148 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -963,7 +986,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (133 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (148 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
