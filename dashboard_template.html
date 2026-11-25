@@ -1831,7 +1831,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <input id="fileStock2" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="spord">
-        <label class="drop up-stock" for="fileAlloc">📥 <b>ใบจัดของจากคลัง (Allocation)</b><small>ไฟล์ <b>Order_Allocation_Report…xlsx</b> · ใช้ตรวจว่าคลังจัดของตรงกับที่เซลล์คีย์ไหม · <b>อยู่ในเครื่องนี้เท่านั้น</b> ไม่ได้เก็บขึ้นเซิร์ฟเวอร์ (เก็บเฉพาะผลตรวจที่กดบันทึก)</small></label>
+        <label class="drop up-stock" for="fileAlloc">📥 <b>ใบจัดของจากคลัง (Allocation)</b><small>ไฟล์ <b>Order_Allocation_Report…xlsx</b> · ใช้ตรวจว่าคลังจัดของตรงกับที่เซลล์คีย์ไหม </small></label>
         <input id="fileAlloc" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="cstock">
@@ -1880,7 +1880,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="up-row" data-group="price">
         <label class="drop" for="filePriceHS">🏷 <b>ไฟล์หัวเสือ (Huasuer)</b><small>ราคาที่ศูนย์เสนอขายลูกค้า — NTT · Floor · RSP ปกติ/โปร · มีหลายรอบในไฟล์เดียว · <b>ลูกค้าเห็นไฟล์นี้</b> ผ่านลิงก์แคตาลอค</small></label>
         <input id="filePriceHS" type="file" accept=".xls,.xlsx" class="hidden">
-        <label class="drop" for="filePriceBUM">🔒 <b>ไฟล์ BUM</b><small>ต้นทุนที่ศูนย์ได้จากบริษัท (Cat Fee · S% · รีเบท) — ใช้เทียบว่าควรสั่งตุนรอบนี้หรือรอรอบหน้า · <b>เฉพาะผู้จัดการ ลูกค้าไม่เห็นเด็ดขาด</b></small></label>
+        <label class="drop" for="filePriceBUM">🔒 <b>ไฟล์ BUM</b><small>ไฟล์ <b>BUM_DT_…xlsx</b></small></label>
         <input id="filePriceBUM" type="file" accept=".xls,.xlsx" class="hidden">
       </div>
       <div class="log" id="uplog"></div>
@@ -7743,7 +7743,7 @@ function peKindHtml(r){
 /* 📕 หน้าจอฝั่ง BUM */
 function peBumHtml(){
   if(typeof PRICE==="undefined")return `<div class="insight">หน้านี้ยังอ่านไฟล์ราคาไม่ได้</div>`;
-  if(!peBumOk())return `<div class="insight">🔒 ไฟล์ BUM เป็นต้นทุนของศูนย์ — เปิดได้เฉพาะผู้จัดการ<br>
+  if(!peBumOk())return `<div class="insight">🔒 หน้านี้เปิดได้เฉพาะผู้จัดการ<br>
     เซลล์ดูได้ที่ปุ่ม <b>🔻 โปรหมดไปแล้ว</b> ซึ่งอ่านจากใบสั่งแทน</div>`;
   if(!PRICE.loaded){if(typeof prLoad==="function")prLoad();return `<div class="insight">⏳ กำลังโหลดไฟล์ราคา…</div>`;}
   if(PRICE.err)return `<div class="note">อ่านไฟล์ราคาไม่ได้: ${anaEsc(PRICE.err)}</div>`;
@@ -11915,7 +11915,7 @@ function cstFormHtml(){
   const tot=f.rows.reduce((a,r)=>({cs:a.cs+(+r.cs||0),pc:a.pc+(+r.pc||0)}),{cs:0,pc:0});
   return `<div class="panel cst-form">
     <div class="cst-fh"><h3>${f.sid?("✏️ แก้ไขใบตัดบิล "+anaEsc(f.sid)):"🧾 ใบตัดบิลใหม่"}</h3>
-      <div class="psub">กรอกในเว็บได้เลย ไม่ต้องผ่าน Excel · ระบบเก็บเป็นฉบับร่างในเครื่องให้ตลอด กดออกแล้วกลับมากรอกต่อได้</div></div>
+      <div class="psub">กรอกในเว็บได้เลย ไม่ต้องผ่าน Excel · กดออกแล้วกลับมากรอกต่อได้</div></div>
     ${CST.fRest?`<div class="rq-note">📝 กู้ใบที่กรอกค้างไว้กลับมาให้แล้ว — ตรวจแล้วกด <b>บันทึกใบตัดบิล</b> ได้เลย</div>`:""}
     ${cstGrpHtml(f)}
     <div class="cst-frow">
@@ -12626,8 +12626,7 @@ function parseAlloc(name,buf){
       "</b> · NIV รวม <b>"+Math.round(tn).toLocaleString()+"</b> (ใช้ตัวเลขจากไฟล์ ไม่ต้องประเมินจากไฟล์ราคา)"
       :"<br><b class='down'>💵 ไฟล์นี้ไม่มีช่อง "+onone.join(" / ")+"</b> — จะประเมินมูลค่าจากไฟล์ราคาหัวเสือแทน")+
     (sl.length?"<br><span class='psub'>สถานะออเดอร์: "+sl.join(" · ")+"</span>":"")+
-    "<br><span class='psub'>ไฟล์นี้อยู่ในเครื่องนี้เท่านั้น ยังไม่ได้บันทึกขึ้นเซิร์ฟเวอร์ — "+
-    "เข้าไปที่ใบออเดอร์ แล้วใส่เลข GIN ของแต่ละวันเพื่อบันทึกผลตรวจ</span>");
+    "<br><span class='psub'>เข้าไปที่ใบออเดอร์ แล้วใส่เลข GIN ของแต่ละวันเพื่อบันทึกผลตรวจ</span>");
   if(typeof renderSpord==="function"&&CURTAB==="spord")renderSpord();
   return ALLOC;
 }
@@ -12818,7 +12817,7 @@ function spKeyByLine(sid,ymd){
 }
 /* ---------- บันทึก (ผ่าน api/spord.js — sup ส่ง state ทั้งก้อนไม่ได้) ---------- */
 async function spKeySave(sid,ymd,ln,it){
-  if(!spSupOk()){alert("ฝั่งเซลล์ แก้ได้เฉพาะหัวหน้าเซลล์ (sup) กับผู้จัดการ");return false;}
+  if(!spSupOk()){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return false;}
   const k=spKk(sid,ymd,ln);
   const C=spKeyOk();
   const old=C.key[k]?JSON.parse(JSON.stringify(C.key[k])):null;
@@ -12838,7 +12837,7 @@ async function spKeySave(sid,ymd,ln,it){
   }
 }
 async function spGinSave(sid,ymd,gins){
-  if(!spAdmOk()){alert("ฝั่งแอดมิน แก้ได้เฉพาะแอดมิน/ผู้จัดการ");return false;}
+  if(!spAdmOk()){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return false;}
   const codes=spSlipCodes(sid).map(x=>x.code);
   const pick=alPick(gins,codes);
   const C=spKeyOk(),k=sid+"|"+ymd;
@@ -12864,7 +12863,7 @@ async function spGinSave(sid,ymd,gins){
 }
 /* 🗑 ย้อนกลับผลตรวจของวันนั้น (เจ้าของขอ 26 พ.ย. 69 — ทดลองไปสองวัน อยากลบทิ้ง) */
 async function spGinUndo(sid,ymd){
-  if(!spAdmOk()){alert("ฝั่งแอดมิน แก้ได้เฉพาะแอดมิน/ผู้จัดการ");return false;}
+  if(!spAdmOk()){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return false;}
   if(!confirm("ยกเลิกผลตรวจของวันที่ "+fmtDate(ymd)+" ?\n\nจำนวนที่ฝั่งเซลล์กรอกไว้ยังอยู่ครบ ลบเฉพาะผลตรวจของแอดมินวันนี้"))return false;
   const C=spKeyOk(),k=sid+"|"+ymd;
   const old=C.gin[k]?JSON.parse(JSON.stringify(C.gin[k])):null;
@@ -13488,9 +13487,7 @@ function renderSpord(){
           chip("key","① ✍️ ฝั่งเซลล์ — คีย์รายวัน")+
           chip("adm","② 🔎 ฝั่งแอดมิน — ตรวจกับใบจัดของ")+
           chip("old","🧾 เลขออเดอร์ (ของเดิม)")}</div>
-        <div class="controls" style="margin:10px 0 0">${spDayPick(SP.sid)}</div>
-        <div class="psub" style="margin-top:6px">ทุกฝ่ายเข้ามาดูได้หมด แต่<b>แก้ได้เฉพาะส่วนของตัวเอง</b>
-          — ฝั่งเซลล์ = หัวหน้าเซลล์ (sup) · ฝั่งแอดมิน = แอดมิน · ผู้จัดการแก้ได้ทั้งหมด</div></div>`;
+        <div class="controls" style="margin:10px 0 0">${spDayPick(SP.sid)}</div></div>`;
       if(sec==="key"){body.innerHTML=H+spKeyHtml(SP.sid);return;}
       if(sec==="adm"){body.innerHTML=H+spAdmHtml(SP.sid);return;}
       body.innerHTML=H+spOldHtml();return;
@@ -13636,9 +13633,7 @@ function spKeyHtml(sid){
   return `<div class="panel">
     <h3>✍️ ฝั่งเซลล์ — จำนวนที่เซลล์คีย์วันที่ ${fmtDate(ymd)}</h3>
     <div class="psub">${can?"กรอกทีละสาย แล้วกด <b>💾 บันทึกสายนี้</b> — กรอกเฉพาะช่องที่มี ปล่อยว่างได้":
-      "ดูอย่างเดียว — กรอกได้เฉพาะหัวหน้าเซลล์ (sup) กับผู้จัดการ"}
-      <br>ตอนสรุปขึ้นใบใหญ่ <b>รวมของขายกับของแถมเข้าด้วยกัน</b> ตามที่เจ้าของสั่ง — ที่แยกไว้ตรงนี้
-      เพื่อให้ตรวจกับไฟล์คลังได้</div>
+      "ดูอย่างเดียว"}</div>
     <div class="cards" style="margin-top:10px">
       <div class="card"><div class="k">ขายวันนี้</div><div class="v">${T.sc.toLocaleString()}</div>
         <div class="s">ลัง${T.sp?" + "+T.sp+" ชิ้น":""}</div></div>
@@ -13669,11 +13664,8 @@ function spAdmHtml(sid){
   const g=spGinRec(sid,ymd),cmp=spCmp(sid,ymd);
   const haveFile=!!ALLOC;
   let h=`<div class="panel"><h3>🔎 ฝั่งแอดมิน — ตรวจของที่คลังจัดออก วันที่ ${fmtDate(ymd)}</h3>
-    <div class="psub">อัพไฟล์ <b>Order Allocation Report</b> ของคลัง แล้วใส่ <b>เลข GIN</b> ของวันนั้น
-      ระบบจะเทียบกับจำนวนที่เซลล์คีย์ให้เอง
-      <br>⚠️ ไฟล์ allocation <b>อยู่ในเครื่องนี้เท่านั้น</b> ไม่ได้เก็บขึ้นเซิร์ฟเวอร์ —
-      แต่<b>ผลตรวจที่กดบันทึกแล้ว</b> เก็บไว้ ดูย้อนหลังได้โดยไม่ต้องอัพซ้ำ</div>`;
-  if(!can)h+=`<div class="insight" style="margin-top:10px">ดูอย่างเดียว — แก้ได้เฉพาะแอดมิน/ผู้จัดการ</div>`;
+    <div class="psub">อัพไฟล์ <b>Order Allocation Report</b> ของคลัง แล้วใส่ <b>เลข GIN</b> ของวันนั้น</div>`;
+  if(!can)h+=`<div class="insight" style="margin-top:10px">ดูอย่างเดียว</div>`;
   else{
     h+=`<div class="cst-fb" style="margin-top:10px">
       <button class="upload-btn" onclick="spUpAlloc()">📥 อัพไฟล์ใบจัดของ (allocation)</button>
@@ -13751,27 +13743,22 @@ function spAdmHtml(sid){
           :"ยังไม่มีไฟล์ยอดขายของวันนี้"}</div></div>
     </div>
     <div class="psub" style="margin-top:8px">
-      ${FF?'💵 <b>ตัวเลขเงินมาจากไฟล์ใบจัดของเอง</b> (ช่อง GSV และ NIV ท้ายไฟล์) ไม่ใช่การประเมิน'
-         :'💵 <b class="down">ไฟล์ใบจัดของที่อัพไว้รอบนี้ไม่มีช่อง GSV / NIV</b> จึงยัง<b>ประเมิน</b>จาก'+
-          '<b>ไฟล์ราคาหัวเสือ</b>'+(cmp.round?" รอบ <b>"+anaEsc(cmp.round.lab)+"</b>":"")+
-          ' (ราคาหีบ = WS LP · ราคาชิ้น = NTT) — อัพไฟล์ใบจัดของรุ่นใหม่แล้วจะเป็นตัวเลขจริง'}
-      <br>• <b>ยอดสินค้าในใบนี้</b> = นับ<b>เฉพาะสินค้าที่อยู่ในใบออเดอร์ใบนี้</b>
-      <br>• <b>ยอดทั้งออเดอร์</b> = ยอดของทุกเลขออเดอร์ในรอบนี้ จับคู่กับ<b>ไฟล์ยอดขายรายวัน</b>
-      ด้วย<b>เลขออเดอร์</b> — <b>รวมสินค้าตัวอื่นที่ไม่ได้อยู่ในใบนี้ด้วย</b> จึงสูงกว่าเป็นปกติ
-      <br>• <b>มูลค่าของแถม</b> ยังเป็นการ<b>ประเมิน</b>เสมอ เพราะไฟล์ลงเงินของแถมเป็น 0 (ให้ฟรี จึงไม่มีรายได้)
-      ${S.ordWait?'<br><b class="down">⚠️ อีก '+S.ordWait+' เลขยังไม่มีไฟล์ยอดขายของวันนั้น — ยอดจะขึ้นเองเมื่ออัพไฟล์ (ไม่ได้นับเป็น 0)</b>':""}
-      ${(S.ordHit&&S.rNoGsv)?'<br><b class="down">⚠️ '+S.rNoGsv+' เลขมาจากไฟล์ยอดขายที่อัพไว้ก่อนระบบจะเก็บ GSV — อัพไฟล์วันนั้นซ้ำอีกครั้ง แล้ว GSV จะขึ้นเอง</b>':""}
-      ${S.noMoney?'<br><b class="down">⚠️ มี '+S.noMoney+' รายการที่คลังจัดของแล้วแต่ไฟล์ยังไม่ลงเงิน (ปกติคือยังไม่ออกบิล) — ไม่ได้นับเป็น 0</b>':""}
-      ${(!FF&&!cmp.round)?'<br><b class="down">— ยังไม่มีไฟล์ราคาหัวเสือ จึงยังประเมินยอดในใบไม่ได้</b>':""}
-      ${S.noPrice?'<br><b class="down">⚠️ มี '+S.noPrice+' รายการที่ไม่มีในไฟล์ราคา จึงยังไม่ได้'+(FF?"ประเมินมูลค่าของแถม":"ประเมินมูลค่า")+' (ไม่ได้นับเป็น 0)</b>':""}
-      ${S.noShr?'<br><b class="down">⚠️ มี '+S.noShr+' รายการที่ใช้หน่วยแพ็ค แต่แกะขนาดแพ็คจากชื่อไม่ได้ จึงยังแปลงเป็นลัง/ชิ้นไม่ได้</b>':""}
+      • <b>ยอดสินค้าในใบนี้</b> = เฉพาะสินค้าที่อยู่ในใบออเดอร์ใบนี้
+      <br>• <b>ยอดทั้งออเดอร์</b> = ยอดของทุกเลขออเดอร์ในรอบนี้ <b>รวมสินค้าตัวอื่นด้วย</b> จึงสูงกว่าเป็นปกติ
+      ${FF?"":'<br><b class="down">⚠️ ไฟล์ใบจัดของรอบนี้ไม่มีช่อง GSV / NIV — ตัวเลขเงินเป็นค่าประเมิน</b>'}
+      ${S.ordWait?'<br><b class="down">⚠️ อีก '+S.ordWait+' เลขยังไม่มีไฟล์ยอดขายของวันนั้น — ยอดจะขึ้นเองเมื่ออัพไฟล์</b>':""}
+      ${(S.ordHit&&S.rNoGsv)?'<br><b class="down">⚠️ '+S.rNoGsv+' เลขยังไม่มี GSV — อัพไฟล์ยอดขายวันนั้นซ้ำอีกครั้ง</b>':""}
+      ${S.noMoney?'<br><b class="down">⚠️ มี '+S.noMoney+' รายการที่คลังจัดแล้วแต่ไฟล์ยังไม่ลงเงิน</b>':""}
+      ${(!FF&&!cmp.round)?'<br><b class="down">— ยังไม่มีไฟล์ราคา จึงยังคิดยอดในใบไม่ได้</b>':""}
+      ${S.noPrice?'<br><b class="down">⚠️ มี '+S.noPrice+' รายการที่ไม่มีราคาในไฟล์</b>':""}
+      ${S.noShr?'<br><b class="down">⚠️ มี '+S.noShr+' รายการที่แปลงเป็นลัง/ชิ้นไม่ได้</b>':""}
     </div>
     <div class="tblwrap" style="margin-top:12px"><table class="sp-kt">
     <thead><tr><th class="l">สาย</th><th class="l">สินค้า</th><th class="l">เซลล์คีย์</th>
       <th class="l">คลังจัด · ขาย</th><th class="l">คลังจัด · แถม</th>
       <th>GSV${FF?"":" (ประเมิน)"}</th><th>NIV${FF?"":" (ประเมิน)"}</th><th>มูลค่าแถม (ประเมิน)</th><th>ผล</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="9" class="l">ไม่มีรายการ</td></tr>'}</tbody></table></div>
-    <div class="psub" style="margin-top:8px">อ่านช่อง <b>Sale Order</b> กับ <b>Free Order</b> ของไฟล์ตามที่เจ้าของระบุ
+    <div class="psub" style="margin-top:8px">อ่านช่อง <b>Sale Order</b> กับ <b>Free Order</b> ของไฟล์
       · จำนวนแปลงเป็น <b>ลัง + ชิ้น</b> จาก Pack Size ของไฟล์ (ช่อง Q) และขนาดแพ็คที่แกะจากชื่อสินค้า
       ${FF?"· เงินอ่านจากช่อง <b>GSV</b> และ <b>NIV</b> ท้ายไฟล์":""}</div></div>`;
   return h;
@@ -15841,7 +15828,7 @@ function renderPrice(){
   const mgr=S.user&&S.user.role==="manager";
   let h="";
   if(mgr)h+='<div class="panel"><h3>🔗 ลิงก์แคตาลอคสำหรับลูกค้า</h3>'+
-    '<div class="psub">ส่งลิงก์นี้ให้ลูกค้าดูราคาเองได้ · <b>หน้านี้เห็นแค่ไฟล์หัวเสือ ไม่มีทางเห็นต้นทุนของศูนย์</b> เพราะต้นทุนอยู่คนละที่เก็บและคนละ API</div>'+
+    '<div class="psub">ส่งลิงก์นี้ให้ลูกค้าดูราคาเองได้ · <b>หน้านี้เห็นแค่ราคาขาย ไม่เห็นต้นทุน</b></div>'+
     '<div class="pr-link"><code id="prLink">'+location.origin+PR_LINK+'</code>'+
     '<button class="pj-b" onclick="prCopyLink()">📋 ก๊อปลิงก์</button>'+
     '<a class="pj-b" href="'+PR_LINK+'" target="_blank" rel="noopener">เปิดดู</a></div></div>';

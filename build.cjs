@@ -3,12 +3,146 @@
 // Deploy = commit public/index.html (+ template) and push to main; Vercel auto-deploys.
 const fs = require("fs");
 const path = require("path");
+const vm = require("vm");
 const ROOT = __dirname;
 const tpl = fs.readFileSync(path.join(ROOT, "dashboard_template.html"), "utf8");
 
 function must(str, needle, label) {
   if (str.indexOf(needle) < 0) { throw new Error("ANCHOR NOT FOUND: " + label); }
   return str;
+}
+
+/* ==========================================================================
+ * 🔒 ลอกคอมเมนต์ออกจากทุกไฟล์ที่ส่งขึ้นเว็บจริง (เจ้าของสั่ง 26 พ.ย. 69)
+ *   *"ข้อมูลที่ผมคุยกับคุณผมไม่ต้องการให้คนใช้เว็บรู้เลย ... ข้อมูลบริษัทภายในที่
+ *     เกี่ยวกับการบริหารเบื้องลึกที่มีแค่คุณกับผมเท่านั้นที่รู้ได้ ... ลบมันทั้งหมด"*
+ *
+ * ทำไมต้องมีขั้นนี้: ไฟล์ที่ deploy เคยพ่วงคอมเมนต์ไป ~186 KB รวม **คำพูดของเจ้าของ
+ * ที่ยกมาอ้างไว้ 54 แห่ง** ตัวเลขที่วัดได้ทั้งหมด และเหตุผลเบื้องหลังทุกข้อ —
+ * ใครกด "ดูซอร์ส" ในเบราว์เซอร์ก็อ่านได้หมด รวมถึงหน้าแคตาลอคที่ลูกค้าเปิดดู
+ *
+ * 🔑 คอมเมนต์ยังอยู่ครบใน **ไฟล์ต้นฉบับ** (dashboard_template.html, src/*.html)
+ *    ตัดเฉพาะตอนเขียนลง public/ — เอกสารสำหรับคนดูแลโค้ดจึงไม่หาย
+ * ⚠️ ตัวตัดต้องรู้จักสตริง / เทมเพลต / regex ไม่งั้นจะกิน URL ที่มี // หรือ regex
+ *    ที่มี /* เข้าไปด้วย — ตัดเสร็จแล้วจึง **parse ซ้ำ** ถ้าพังให้ build ล้มทันที
+ *    (หลักเดียวกับ ANCHOR NOT FOUND) และเทสเบราว์เซอร์ทุกชุดรันบนไฟล์ที่ตัดแล้ว
+ * ==========================================================================*/
+const JS_KW = new Set(["return", "typeof", "instanceof", "in", "of", "new", "delete",
+  "void", "case", "do", "else", "yield", "await", "throw"]);
+
+function stripJs(src) {
+  let out = "", i = 0, prev = "", word = "";
+  const n = src.length, st = [{ t: "code", b: 0 }];
+  const emit = (t) => {
+    out += t;
+    for (let k = t.length - 1; k >= 0; k--) if (!/\s/.test(t[k])) { prev = t[k]; break; }
+  };
+  while (i < n) {
+    const m = st[st.length - 1], c = src[i];
+    if (m.t === "tpl") {                       // ข้างในเทมเพลตเป็นข้อความล้วน
+      if (c === "\\") { out += src.substr(i, 2); i += 2; continue; }
+      if (c === "`") { emit(c); i++; st.pop(); word = ""; continue; }
+      if (c === "$" && src[i + 1] === "{") { emit("${"); i += 2; st.push({ t: "code", b: 0 }); word = ""; continue; }
+      out += c; i++; continue;
+    }
+    const c2 = src[i + 1];
+    if (c === "/" && c2 === "/") { while (i < n && src[i] !== "\n") i++; continue; }
+    if (c === "/" && c2 === "*") { const e = src.indexOf("*/", i + 2); i = e < 0 ? n : e + 2; out += " "; continue; }
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < n) { if (src[j] === "\\") { j += 2; continue; } if (src[j] === c) { j++; break; } j++; }
+      emit(src.slice(i, j)); word = ""; i = j; continue;
+    }
+    if (c === "`") { emit(c); i++; st.push({ t: "tpl" }); word = ""; continue; }
+    if (c === "/") {
+      // regex หรือเครื่องหมายหาร — ดูจากโทเคนก่อนหน้า
+      let ok;
+      if (!prev) ok = true;
+      else if (/[A-Za-z0-9_$]/.test(prev)) ok = JS_KW.has(word);
+      else if (prev === ")" || prev === "]") ok = false;
+      else ok = true;
+      if (ok) {
+        let j = i + 1, cls = false, closed = false;
+        while (j < n) {
+          const d = src[j];
+          if (d === "\\") { j += 2; continue; }
+          if (d === "\n") break;               // regex ข้ามบรรทัดไม่ได้ = เดาผิด
+          if (cls) { if (d === "]") cls = false; j++; continue; }
+          if (d === "[") { cls = true; j++; continue; }
+          if (d === "/") { j++; closed = true; break; }
+          j++;
+        }
+        if (closed) {
+          while (j < n && /[a-z]/i.test(src[j])) j++;
+          emit(src.slice(i, j)); word = ""; i = j; continue;
+        }
+      }
+      emit(c); i++; word = ""; continue;
+    }
+    if (/[A-Za-z0-9_$]/.test(c)) {
+      let j = i; while (j < n && /[A-Za-z0-9_$]/.test(src[j])) j++;
+      const w = src.slice(i, j); emit(w); word = w; i = j; continue;
+    }
+    if (c === "{") { m.b++; emit(c); word = ""; i++; continue; }
+    if (c === "}") {
+      if (m.b === 0 && st.length > 1) { emit(c); st.pop(); word = ""; i++; continue; }
+      m.b--; emit(c); word = ""; i++; continue;
+    }
+    if (/\s/.test(c)) { out += c; i++; continue; }
+    emit(c); word = ""; i++;
+  }
+  return out;
+}
+
+function stripCss(src) {
+  let out = "", i = 0; const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    if (c === "/" && src[i + 1] === "*") { const e = src.indexOf("*/", i + 2); i = e < 0 ? n : e + 2; out += " "; continue; }
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < n) { if (src[j] === "\\") { j += 2; continue; } if (src[j] === c) { j++; break; } j++; }
+      out += src.slice(i, j); i = j; continue;
+    }
+    out += c; i++;
+  }
+  return out;
+}
+
+/* ตัดคอมเมนต์ทั้งเอกสาร: HTML ข้างนอก · CSS ใน <style> · JS ใน <script>
+   แล้ว parse สคริปต์ทุกก้อนซ้ำ — พังเมื่อไหร่ build ต้องล้ม ไม่ใช่ปล่อยไฟล์เสียขึ้นเว็บ */
+function cleanDoc(html, label) {
+  const low = html.toLowerCase();
+  const dropHtml = (t) => t.replace(/<!--[\s\S]*?-->/g, "");
+  let out = "", i = 0, scripts = 0;
+  while (i < html.length) {
+    const a = low.indexOf("<script", i), b = low.indexOf("<style", i);
+    let at = -1, kind = "";
+    if (a >= 0 && (b < 0 || a < b)) { at = a; kind = "script"; }
+    else if (b >= 0) { at = b; kind = "style"; }
+    if (at < 0) { out += dropHtml(html.slice(i)); break; }
+    out += dropHtml(html.slice(i, at));
+    const gt = html.indexOf(">", at);
+    const end = kind === "script" ? "</script>" : "</style>";
+    const close = gt < 0 ? -1 : low.indexOf(end, gt);
+    if (gt < 0 || close < 0) { out += html.slice(at); break; }
+    const body = html.slice(gt + 1, close);
+    let clean;
+    if (kind === "script") {
+      clean = stripJs(body);
+      if (body.trim()) {
+        scripts++;
+        try { new vm.Script(clean); }
+        catch (e) { throw new Error("STRIP BROKE JS in " + label + ": " + e.message); }
+      }
+    } else clean = stripCss(body);
+    out += html.slice(at, gt + 1) + clean + end;
+    i = close + end.length;
+  }
+  // ด่านสุดท้าย: ห้ามมีคำพูดที่ยกมาอ้าง (*"…"*) หรือคอมเมนต์ HTML หลงเหลือ
+  if (/\*"[^"]{10,}"\s*\*/.test(out)) throw new Error("STRIP MISSED a quoted note in " + label);
+  if (/<!--/.test(out)) throw new Error("STRIP MISSED an HTML comment in " + label);
+  return { text: out, scripts };
 }
 
 // ---------- SERVER ----------
@@ -174,9 +308,15 @@ s = must(s, "function syncToServer(){} /* stub for standalone; overridden by API
   .replace("function syncToServer(){} /* stub for standalone; overridden by API build */", "/* syncToServer in API section */");
 
 if (/__[A-Z]+DATA__/.test(s)) throw new Error("server: leftover data placeholder");
+
+// 🔒 ตัดคอมเมนต์ออกก่อนเขียนลง public/ — ต้นฉบับยังมีครบ
+const raw = s.length;
+const cleaned = cleanDoc(s, "index.html");
+s = cleaned.text;
 fs.writeFileSync(path.join(ROOT, "public", "index.html"), s);
 
-console.log("OK server bytes=" + s.length + " -> public/index.html");
+console.log("OK server bytes=" + s.length + " -> public/index.html" +
+  "  (ตัดคอมเมนต์ " + Math.round((raw - s.length) / 1024) + " KB · ตรวจสคริปต์ " + cleaned.scripts + " ก้อน)");
 
 // ---------- ADMIN SITE (/admin) ----------
 // เจ้าของสั่ง 10 พ.ย. 69: แยกเว็บแอดมินออกจากเว็บทีมขาย แต่ข้อมูลยังเชื่อมกัน
@@ -190,3 +330,16 @@ const a = s.replace(SITE_FLAG, 'const BD_SITE="admin";').replace(TITLE, "<title>
 fs.writeFileSync(path.join(ROOT, "public", "admin.html"), a);
 
 console.log("OK admin bytes=" + a.length + " -> public/admin.html");
+
+// ---------- หน้าสาธารณะที่เขียนมือ: src/*.html -> public/*.html (ตัดคอมเมนต์เหมือนกัน) ----------
+// หน้าแคตาลอคเป็นหน้าที่ "ลูกค้า" เปิดดู คอมเมนต์ในนั้นเคยอธิบายวิธีคิดกำไร/ต้นทุน
+// และกลไกโปรฝั่งศูนย์ไว้ด้วย จึงต้องไม่ติดไปกับไฟล์ที่เสิร์ฟ
+for (const name of ["pricelist.html", "join.html"]) {
+  const src = path.join(ROOT, "src", name);
+  if (!fs.existsSync(src)) throw new Error("ANCHOR NOT FOUND: src/" + name);
+  const r = fs.readFileSync(src, "utf8");
+  const c = cleanDoc(r, name);
+  fs.writeFileSync(path.join(ROOT, "public", name), c.text);
+  console.log("OK " + name + " bytes=" + c.text.length + " -> public/" + name +
+    "  (ตัดคอมเมนต์ " + Math.round((r.length - c.text.length) / 1024) + " KB)");
+}

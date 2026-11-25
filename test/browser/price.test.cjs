@@ -215,7 +215,9 @@ if(MISSING.length){
      return /\?/.test(prPct(g))&&!/80/.test(prPct(g));}),'ok');
 
  /* ---- สูตรในหน้าแคตาลอคสาธารณะ (ไฟล์คนละไฟล์) ต้องให้เลขเดียวกันทุกรายการ ---- */
- const pub=fs.readFileSync(path.join(ROOT,'public','pricelist.html'),'utf8');
+ /* ⚠️ อ่านจาก src/ ไม่ใช่ public/ — ไฟล์ใน public ถูกตัดคอมเมนต์ตอน build
+    และหมุดปิดท้าย "ส่วนที่คัดลอก" เป็นคอมเมนต์ จึงเหลืออยู่แค่ในไฟล์ต้นฉบับ */
+ const pub=fs.readFileSync(path.join(ROOT,'src','pricelist.html'),'utf8');
  const blk=pub.slice(pub.indexOf('var PR_MON='),pub.indexOf('/* ======================= จบส่วนที่คัดลอก'));
  const twin=await ev(a2=>{
    /* โหลดสูตรของหน้าสาธารณะมาในชื่อ pub* แล้วเทียบกับของแอปทุกรายการทุกรอบ */

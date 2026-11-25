@@ -582,6 +582,11 @@ const ORIGIN='https://bd-spord.test/';
    /* หัวหน้าเซลล์เข้ามาดูฝั่งแอดมินได้ แต่แก้ไม่ได้ */
    __as('sup',null,'หัวหน้าเซลล์');SP.sec='adm';renderSpord();
    o.supRead=/ดูอย่างเดียว/.test(tx())&&!document.getElementById('spGinIn');
+   /* ไฟล์ allocation ต้องไม่ถูกส่งขึ้นเซิร์ฟเวอร์ — ตรวจของจริง ไม่ใช่ตรวจว่าหน้าเขียนบอก */
+   o.allocSynced=JSON.stringify(window.__posts).indexOf('Order Allocation')>=0||
+     Object.keys(CSTOCK).indexOf('alloc')>=0;
+   o.ginRowKeys=[...new Set((window.__posts||[]).filter(p=>p.b&&p.b.act==='gin')
+     .flatMap(p=>Object.keys(p.b.rows||{})))];
    return o;});
  t('🔑 อ่านไฟล์ allocation ของคลังได้ (หาคอลัมน์จากหัวตาราง ไม่ใช่ตำแหน่ง)',
    adm.n===4&&adm.gins.join(',')==='77,78',adm.n+' แถว · GIN '+adm.gins.join(','));
@@ -596,8 +601,12 @@ const ORIGIN='https://bd-spord.test/';
    adm.cmp.n.ok===1&&adm.cmp.n.diff===1&&adm.cmp.n.noKey===1,JSON.stringify(adm.cmp.n));
  t('🛟 เลข GIN ที่ไม่มีในไฟล์ ต้องฟ้อง ไม่ใช่เงียบ',
    adm.miss.join(',')==='999'&&/ไม่พบเลข GIN ในไฟล์/.test(adm.missTxt),adm.miss.join(','));
- t('🛟 ไฟล์ allocation ไม่ถูกเก็บขึ้นเซิร์ฟเวอร์ (หน้าบอกไว้ชัด)',
-   /ไม่ได้เก็บขึ้นเซิร์ฟเวอร์/.test(adm.txt));
+ /* ⚠️ ของเดิมเคยตรวจว่า "หน้าเขียนบอก" — เลิกเขียนบอกแล้ว (ข้อมูลภายใน) จึงตรวจของจริงแทน:
+    ไฟล์ทั้งก้อนต้องไม่ถูกส่งขึ้นเซิร์ฟเวอร์ ส่งขึ้นเฉพาะผลสรุปของรหัสที่อยู่ในใบนั้น */
+ t('🛟 ไฟล์ allocation ไม่ถูกส่งขึ้นเซิร์ฟเวอร์ — ส่งแค่ผลตรวจของรหัสในใบนี้',
+   !adm.allocSynced&&adm.ginRowKeys.length>0&&
+   adm.ginRowKeys.every(k=>/^(CT|KA)\d\d\|\d+$/.test(k)),
+   JSON.stringify(adm.ginRowKeys));
  t('🔒 หัวหน้าเซลล์ดูฝั่งแอดมินได้ แต่แก้ไม่ได้',adm.supRead);
 
  const guard=await ev(async()=>{
@@ -676,7 +685,7 @@ const ORIGIN='https://bd-spord.test/';
    JSON.stringify({niv:val.sum.rNiv,gsv:val.sum.rGsv,hit:val.sum.ordHit}));
  t('🛟 หน้าบอกชัดว่าสองยอดนี้คนละคำถาม (ยอดในใบ · ยอดทั้งออเดอร์)',
    /ยอดสินค้าในใบนี้/.test(val.txt)&&/ยอดทั้งออเดอร์/.test(val.txt)&&
-   /รวมสินค้าตัวอื่นที่ไม่ได้อยู่ในใบนี้ด้วย/.test(val.txt));
+   /รวมสินค้าตัวอื่นด้วย/.test(val.txt));
 
  /* ---------- 💵 เงินในไฟล์ใบจัดของ (ช่อง GSV / NIV ท้ายไฟล์) ----------
     เจ้าของทักเมื่อ 26 พ.ย. 69: *"ทำไมไฟล์ allocate จะไม่มีอยู่สองช่องสุดท้ายด้านหลังนี้ไง"*
@@ -687,11 +696,11 @@ const ORIGIN='https://bd-spord.test/';
  t('🔑 ...ตัวเลขรายสินค้าก็มาจากไฟล์ (ไม่ใช่ WS LP x จำนวน)',
    val.row.gsv===800&&val.row.niv===610&&val.row.est===0,
    JSON.stringify({gsv:val.row.gsv,niv:val.row.niv,est:val.row.est}));
- t('🛟 ...และหน้าเว็บบอกว่าเงินมาจากไฟล์ ไม่ได้ปล่อยให้เข้าใจว่าประเมิน',
-   /ตัวเลขเงินมาจากไฟล์ใบจัดของเอง/.test(val.txt)&&!/ยังไม่มีช่อง/.test(val.txt),
+ t('🛟 ...ไฟล์มีช่องเงิน จึงไม่ขึ้นคำเตือนว่าเป็นค่าประเมิน',
+   !/ไม่มีช่อง GSV \/ NIV/.test(val.txt)&&/จากไฟล์/.test(val.txt),
    val.txt.slice(0,80));
- t('🛟 มูลค่าของแถมยังเป็น "ประเมิน" เสมอ เพราะไฟล์ลงเงินของแถมเป็น 0 (ให้ฟรี)',
-   /มูลค่าของแถม/.test(val.txt)&&/ประเมิน/.test(val.txt));
+ t('🛟 มูลค่าของแถมยังติดป้าย "ประเมิน" ไว้ (ไฟล์ลงเงินของแถมเป็น 0)',
+   /มูลค่าแถม\(ประเมิน\)/.test(val.txt));
 
  const doc=await ev(()=>{
    const R=spRepRows('B20261118-01','2026-11-20');
@@ -748,7 +757,8 @@ const ORIGIN='https://bd-spord.test/';
    oldf.n.ok+oldf.n.diff+oldf.n.noKey+oldf.n.noAlloc>0&&!oldf.alloc,
    JSON.stringify(oldf.n));
  t('🛟 ...และหน้าบอกว่าไฟล์นี้ไม่มีช่องเงิน จึงยังประเมินจากไฟล์ราคา (ไม่ขึ้น 0 เงียบ ๆ)',
-   oldf.src==='price'&&/ไม่มีช่อง GSV \/ NIV/.test(oldf.txt),oldf.txt.slice(0,160));
+   oldf.src==='price'&&/ไม่มีช่อง GSV \/ NIV/.test(oldf.txt)&&/ค่าประเมิน/.test(oldf.txt),
+   oldf.txt.slice(0,160));
  /* เมื่อต้องประเมิน หน่วยราคาต้องถูก: WS LP ต่อ "หีบ" · NTT ต่อ "ชิ้น" (เคยพลาด 36 เท่า) */
  t('🛟 ...เวลาประเมิน ราคาหีบใช้ WS LP ต่อหีบ · ราคาชิ้นใช้ NTT ต่อชิ้น (คนละหน่วย)',
    oldf.row&&Math.round(oldf.row.gsv)===720&&Math.round(oldf.row.niv)===288&&

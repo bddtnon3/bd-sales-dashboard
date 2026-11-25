@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ราคาสินค้ายูนิลีเวอร์ · บริษัท บีดี ดิสทริบิวชั่น จำกัด</title>
+<meta name="description" content="ราคาสินค้ายูนิลีเวอร์สำหรับร้านค้าในพื้นที่นนทบุรี — ราคาที่ศูนย์เสนอขาย ราคาแนะนำขายปลีก และราคาช่วงโปรโมชั่น พร้อมกำไรที่ร้านได้">
+<meta property="og:title" content="ราคาสินค้ายูนิลีเวอร์ · BD Distribution">
+<meta property="og:description" content="ราคาที่ศูนย์เสนอขาย · ราคาแนะนำขาย · ราคาช่วงโปร พร้อมกำไรที่ร้านได้">
+<meta property="og:image" content="/img/products.jpg">
+<link rel="icon" href="/img/bd-mark.png">
+<!--
+  ============================================================================
+  แคตาลอคราคาสาธารณะ — ลูกค้าเปิดดูได้โดยไม่ต้องล็อกอิน
+
+  ⚠️⚠️ หน้านี้อ่านข้อมูลจาก /api/pricelist เท่านั้น ⚠️⚠️
+  /api/pricelist อ่าน blob ที่ขึ้นต้นด้วย bd-pricehs-* (ไฟล์หัวเสือ) อย่างเดียว
+  ต้นทุนของศูนย์ (ไฟล์ BUM) อยู่ใน bd-pricebum-* ซึ่ง endpoint นั้น "เอื้อมไม่ถึง"
+  ไม่ใช่แค่ซ่อน — เจ้าของย้ำสองครั้ง:
+     "ชีทที่ลูกค้าเห็นจะมีแค่หัวเสือเท่านั้น ชีท Bum จะไม่ให้ลูกค้าเห็นเด็ดขาด สำคัญมาก ห้ามลืม"
+  ห้ามเพิ่ม fetch ไปที่ /api/price, /api/data หรือ endpoint อื่นในไฟล์นี้เด็ดขาด
+
+  ไฟล์นี้เขียนด้วยมือ (เหมือน public/join.html) — build.cjs ไม่ได้สร้างให้
+  ============================================================================
+-->
+<style>
+:root{
+  --uni:#1F36C7; --uni-dark:#101C86; --uni-soft:#EEF1FF; --uni-line:#D8DEFB;
+  --ink:#141A2E; --muted:#666F85; --line:#E4E8F2; --bg:#F7F9FE; --white:#fff;
+  --good:#1E9E5A; --good-soft:#EAF7EF; --gold:#C8901A; --gold-soft:#FFF8E8; --bad:#D64545;
+  --shadow:0 1px 3px rgba(16,28,134,.07),0 10px 34px rgba(16,28,134,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun','Segoe UI',system-ui,sans-serif;color:var(--ink);background:var(--bg);
+  -webkit-font-smoothing:antialiased;line-height:1.55}
+img{max-width:100%;display:block}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px}
+
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
+.hd{max-width:980px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px}
+.hd img{width:44px;height:44px;object-fit:contain;flex:none}
+.hd .nm{font-weight:800;font-size:15.5px;letter-spacing:-.2px;line-height:1.25}
+.hd .sb{font-size:11.5px;color:var(--muted);line-height:1.3}
+.hd a.join{margin-left:auto;background:var(--uni);color:#fff;text-decoration:none;border-radius:999px;
+  padding:9px 17px;font-size:13.5px;font-weight:700;white-space:nowrap}
+.hd a.join:hover{background:var(--uni-dark)}
+
+/* ---------- แถบหัวเรื่อง + รอบราคา ---------- */
+.top{padding:22px 0 4px}
+.top h1{font-size:25px;line-height:1.3;letter-spacing:-.4px;font-weight:800}
+.top h1 b{color:var(--uni)}
+.top p{color:var(--muted);font-size:14px;margin-top:6px}
+.rnd{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.rnd .lb{font-size:12.5px;font-weight:800;color:var(--muted);margin-right:2px}
+.rnd button{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:10px 18px;
+  font:700 15.5px/1.2 inherit;color:var(--muted);cursor:pointer}
+.rnd button.on{background:var(--uni);border-color:var(--uni);color:#fff}
+.win{margin-top:10px;background:var(--uni-soft);border:1px solid var(--uni-line);border-radius:12px;
+  padding:12px 16px;font-size:15px;color:var(--uni-dark);font-weight:600;line-height:1.6}
+.win b{font-weight:800}
+
+/* ---------- ตัวกรอง ---------- */
+/* ⚠️ แถบค้นหา **ไม่ตรึง** โดยตั้งใจ — ของที่ต้องเห็นตลอดเวลาคือ "หัวคอลัมน์" ไม่ใช่ช่องค้นหา
+   (ค้นครั้งเดียว แต่ต้องรู้ตลอดว่าเลขคอลัมน์ไหนคืออะไร) และถ้าตรึงสองแถบซ้อนกัน
+   ต้องมานั่งคำนวณระยะ top ให้พอดีกันเอง ซึ่งพังทันทีที่แถบใดแถบหนึ่งสูงเปลี่ยน */
+.filt{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 0;
+  background:var(--bg);padding:10px 0 11px;border-bottom:1px solid var(--line)}
+.filt input,.filt select{border:1.5px solid var(--line);border-radius:11px;padding:13px 15px;
+  font:600 16.5px/1 inherit;color:var(--ink);background:#fff;min-width:0}
+.filt input{flex:1 1 230px}
+.filt input:focus,.filt select:focus{outline:none;border-color:var(--uni)}
+.cnt{font-size:14.5px;color:var(--muted);padding:12px 2px 0;font-weight:600}
+
+/* ---------- รายการสินค้า ---------- */
+.cat{margin:26px 0 10px;font-size:16px;font-weight:800;color:var(--uni);
+  display:flex;align-items:center;gap:9px}
+.cat:after{content:"";flex:1;height:1px;background:var(--uni-line)}
+/* ---------- ตารางราคา ----------
+   เจ้าของสั่ง 19 ต.ค. 69 (รอบแก้): *"ทำให้มันโชว์ผลเป็นช่องเรียงตามแนวนอนเหมือนเดิม แต่แค่ปรับให้
+   แต่ละสินค้ามันมีตารางในแนวตั้ง ให้แนวสายตามันไล่ดูลงมาจากด้านบนได้"*
+   คือ **คงกล่องราคาเรียงแนวนอนของแต่ละสินค้าไว้ แต่คอลัมน์ต้องตรงกันทุกแถว**
+   ของเดิมเป็นการ์ด flex-wrap กล่องจึงเลื่อนไปมาตามจำนวนกล่องที่มี (บางตัวมีช่วงโปร บางตัวไม่มี)
+   เจ้าของขีดเส้นแดงให้ดู 4 เส้นว่ามันไม่ตรงกัน — แก้ด้วย **ตารางจริง** คอลัมน์จึงตรึงตำแหน่ง
+   กวาดตาลงมาตามคอลัมน์เดียวได้ทั้งหน้า และหัวตารางค้างบนสุดไว้ให้รู้ว่าคอลัมน์ไหนคืออะไร
+   จอแคบกว่า 760px ตารางกางเป็นการ์ด (ดู @media ท้ายไฟล์) เพราะ 6 คอลัมน์ไม่มีทางลงจอมือถือ */
+/* ⚠️ ห้ามใส่ overflow:hidden ที่กรอบนี้ — ตัวครอบที่ตัด/เลื่อนได้จะทำให้ position:sticky
+   ของหัวตารางตายทันที (หัวตารางจะเลื่อนหายไปกับหน้า) มุมโค้งจึงไปทำที่ช่องมุมแทน */
+.wrapt{background:#fff;border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 1px 2px rgba(16,28,134,.04)}
+.pl-tbl thead th:first-child{border-top-left-radius:15px}
+.pl-tbl thead th:last-child{border-top-right-radius:15px}
+.pl-tbl tbody tr:last-child td{border-bottom:none}
+.pl-tbl{width:100%;border-collapse:collapse}
+/* ---------- ตัวกรองแบรนด์ + หัวตารางกดเรียงได้ ---------- */
+/* ⚠️ จอแคบซ่อนหัวตาราง (ดู @media) จึงกดหัวคอลัมน์เพื่อเรียงไม่ได้
+   ต้องมีช่องเลือกการเรียงให้ด้วย ไม่งั้นลูกค้าที่เปิดจากมือถือใช้ฟังก์ชันนี้ไม่ได้เลย
+   จอใหญ่ซ่อนช่องนี้ เพราะกดที่หัวคอลัมน์ได้ตรงกว่า */
+.sortsel{display:none;margin-top:12px;align-items:center;gap:10px}
+.sortsel label{font-size:15px;font-weight:700;color:var(--muted);flex:0 0 auto}
+.sortsel select{flex:1 1 auto;border:1.5px solid var(--line);border-radius:11px;padding:12px 14px;
+  font:700 15.5px/1 inherit;color:var(--ink);background:#fff;min-width:0}
+.bbar{margin-top:12px}
+.bbtn{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px 16px;
+  font:700 16px/1 inherit;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:9px}
+.bbtn:hover{border-color:var(--uni)}
+.bbtn .cnt2{background:var(--uni);color:#fff;border-radius:999px;padding:3px 10px;font-size:13.5px}
+.bpan{display:none;margin-top:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.bpan.on{display:block}
+.bchips{display:flex;flex-wrap:wrap;gap:9px}
+.bchip{background:var(--bg);border:1.5px solid var(--line);border-radius:999px;padding:10px 16px;
+  font:700 15.5px/1.2 inherit;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.bchip small{color:var(--muted);font-weight:700}
+.bchip.on{background:var(--uni);border-color:var(--uni);color:#fff}
+.bchip.on small{color:#fff;opacity:.8}
+.bpan .act{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+.bpan .act button{background:none;border:none;color:var(--uni);font:700 15px/1 inherit;cursor:pointer;
+  text-decoration:underline;padding:4px}
+.sorted{background:var(--uni)!important;color:#fff!important}
+.sorted small{color:#fff!important;opacity:.8}
+.pl-tbl th.sv{cursor:pointer;user-select:none}
+.pl-tbl th.sv:hover{background:var(--uni-line)}
+.pl-tbl th .ar{display:block;font-size:15px;line-height:1;margin-top:3px;opacity:.45}
+.pl-tbl th.sorted .ar{opacity:1}
+.sortnote{background:var(--uni-soft);border:1px solid var(--uni-line);border-radius:12px;
+  padding:11px 15px;margin-top:12px;font-size:15px;color:var(--uni-dark);font-weight:700;
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+.sortnote button{background:#fff;border:1.5px solid var(--uni-line);border-radius:10px;
+  padding:8px 14px;font:700 14.5px/1 inherit;color:var(--uni);cursor:pointer}
+.pl-tbl th{position:sticky;top:65px;z-index:20;background:var(--uni-soft);color:var(--uni-dark);
+  font-size:13.5px;font-weight:800;text-align:right;padding:12px 14px;line-height:1.35;
+  border-bottom:2px solid var(--uni-line);white-space:nowrap}
+.pl-tbl th:first-child{text-align:left}
+.pl-tbl th small{display:block;font-size:11.5px;font-weight:700;opacity:.75}
+.pl-tbl td{padding:14px;border-bottom:1px solid var(--line);text-align:right;vertical-align:middle;
+  font-variant-numeric:tabular-nums}
+.pl-tbl td:first-child{text-align:left}
+.pl-tbl tr.prow:hover td{background:var(--bg)}
+/* คอลัมน์ตัวเลข — ตรึงความกว้างไว้ ตัวเลขจึงอยู่ตรงกันทุกแถวจริงๆ */
+.pl-tbl .cnum{width:132px}
+.pl-tbl .nmcell b{font-size:18px;font-weight:800;display:block;line-height:1.35}
+.pl-tbl .nmcell .sz{font-size:15px;color:var(--muted);margin-top:3px;line-height:1.6}
+/* รหัสสินค้า — ตัวเลขเรียงหลักและเข้มกว่าข้อความรอบๆ เพราะลูกค้าต้องอ่านออกเสียงบอกเซลล์ */
+.pl-tbl .nmcell .code{font-variant-numeric:tabular-nums;font-weight:800;color:var(--ink)}
+.pl-tbl .nmcell .br{display:inline-block;font-size:12px;font-weight:800;background:var(--bg);
+  color:var(--muted);border-radius:999px;padding:2px 10px;margin-top:6px}
+.pl-tbl .v{font-size:25px;font-weight:800;line-height:1.15;display:block}
+.pl-tbl .u{display:block;font-size:14px;font-weight:700;margin-top:3px;opacity:.85}
+.pl-tbl .c-cost .v{color:var(--uni-dark)}
+.pl-tbl .c-gain .v,.pl-tbl .c-gain .u{color:var(--good)}
+.pl-tbl .c-pro .v,.pl-tbl .c-pro .u{color:var(--gold)}
+.pl-tbl .c-pro{background:var(--gold-soft)}
+.pl-tbl .c-gain{background:var(--good-soft)}
+.pl-tbl .c-cost{background:var(--uni-soft)}
+.pl-tbl .dash{font-size:20px;color:var(--line);font-weight:700}
+.pl-tbl .ask{font-size:16px;color:var(--muted);font-weight:700}
+.pl-tbl tr.catrow td{background:#fff;border-bottom:1px solid var(--uni-line);
+  padding:20px 14px 8px;font-size:16px;font-weight:800;color:var(--uni);text-align:left}
+.pl-tbl tr.noterow td{padding:0 14px 13px;border-bottom:1px solid var(--line);text-align:left;
+  font-size:14px;line-height:1.6}
+.pl-tbl tr.noterow:hover td{background:none}
+.nt-pk{color:var(--gold);font-weight:700;background:var(--gold-soft);border-radius:9px;
+  padding:7px 12px;display:inline-block}
+.nt-muted{color:var(--muted)}
+.more{display:block;width:100%;margin:18px 0 0;background:#fff;border:1.5px solid var(--uni-line);
+  border-radius:12px;padding:14px;font:800 14.5px/1 inherit;color:var(--uni);cursor:pointer}
+.more:hover{background:var(--uni-soft)}
+.empty{background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px 18px;text-align:center;
+  color:var(--muted);font-size:14px}
+.note{background:var(--gold-soft);border:1px solid #F0DFB4;border-radius:12px;padding:14px 17px;
+  font-size:14.5px;color:#7A5A10;margin-top:22px;line-height:1.7}
+
+footer{background:#fff;border-top:1px solid var(--line);margin-top:36px;padding:26px 0 32px}
+.fgrid{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.fgrid img{width:92px;object-fit:contain}
+.fgrid .co{flex:1 1 260px;font-size:12.5px;color:var(--muted);line-height:1.65}
+.fgrid .co b{color:var(--ink);font-size:14px;display:block}
+.fgrid .co .en{font-size:11px;letter-spacing:.3px;margin-bottom:4px}
+.fhrs{font-size:12.5px;color:var(--muted);line-height:1.65}
+.fhrs b{color:var(--ink);display:block;font-size:13px}
+.fnote{border-top:1px solid var(--line);margin-top:20px;padding-top:16px;display:flex;
+  justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+
+/* ---------- จอแคบ: ตารางกางเป็นการ์ด ----------
+   6 คอลัมน์ไม่มีทางลงจอ 390px — เปลี่ยนทุกช่องเป็นบรรทัด "ป้ายซ้าย · ตัวเลขขวา"
+   ป้ายดึงมาจาก data-l ของช่องนั้น จึงใช้ HTML ชุดเดียวกับจอใหญ่ ไม่ต้องเขียนสองแบบ */
+@media(max-width:760px){
+  .wrapt{border:none;background:none;box-shadow:none;overflow:visible}
+  .pl-tbl,.pl-tbl tbody,.pl-tbl tr,.pl-tbl td{display:block;width:auto}
+  .pl-tbl thead{display:none}
+  .pl-tbl tr.prow{background:#fff;border:1px solid var(--line);border-radius:16px;
+    padding:16px 15px 8px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,28,134,.04)}
+  .pl-tbl tr.prow td{border:none;padding:0;text-align:left}
+  .pl-tbl td.nmcell{padding-bottom:12px;border-bottom:1px solid var(--line)!important}
+  .pl-tbl td.cnum{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+    width:auto;border-radius:12px;padding:10px 13px;margin-top:8px}
+  .pl-tbl td.cnum:before{content:attr(data-l);font-size:14.5px;font-weight:700;color:var(--muted);
+    flex:0 0 auto;white-space:nowrap}
+  .pl-tbl td.c-cost:before{color:var(--uni-dark)}
+  .pl-tbl td.c-gain:before{color:var(--good)}
+  .pl-tbl td.c-pro:before{color:var(--gold)}
+  .pl-tbl td.cnum>div{text-align:right}
+  .pl-tbl .v{font-size:24px}
+  .pl-tbl tr.catrow{padding:0;margin:26px 0 10px}
+  .pl-tbl tr.catrow td{border:none;background:none;padding:0}
+  .pl-tbl tr.noterow{padding:0 2px;margin:-8px 0 14px}
+  .pl-tbl tr.noterow td{border:none;padding:0}
+  .top h1{font-size:21px}
+  .filt{top:62px}
+  .pl-tbl th{position:static}
+  .sortsel{display:flex}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd">
+    <img src="/img/bd-mark.png" alt="BD">
+    <div>
+      <div class="nm">บริษัท บีดี ดิสทริบิวชั่น จำกัด</div>
+      <div class="sb">ผู้จัดจำหน่ายสินค้ายูนิลีเวอร์ · พื้นที่นนทบุรี</div>
+    </div>
+    <a class="join" href="/join.html">สมัครเป็นร้านค้า</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="top">
+    <h1>ราคาสินค้า<b>ยูนิลีเวอร์</b> สำหรับร้านค้า</h1>
+    <p>ราคาที่ศูนย์เสนอขาย (รวม VAT แล้ว) · ราคาแนะนำให้ร้านตั้งขาย · และกำไรที่ร้านจะได้</p>
+    <div class="rnd" id="rnd"></div>
+    <div class="win" id="win" style="display:none"></div>
+  </div>
+
+  <div class="filt">
+    <input id="q" type="search" placeholder="🔍 ค้นหาชื่อสินค้า / แบรนด์ / รหัส" autocomplete="off">
+    <select id="cat"><option value="all">ทุกหมวดสินค้า</option></select>
+  </div>
+  <div class="sortsel">
+    <label for="sortS">เรียงลำดับ</label>
+    <select id="sortS"></select>
+  </div>
+  <div class="bbar">
+    <button type="button" class="bbtn" id="bBtn">เลือกแบรนด์ ▾</button>
+    <div class="bpan" id="bPan">
+      <div class="bchips" id="bChips"></div>
+      <div class="act"><button type="button" id="bAll">ดูทุกแบรนด์</button></div>
+    </div>
+  </div>
+  <div class="cnt" id="cnt"></div>
+  <div id="list"></div>
+
+  <div class="note" id="foot" style="display:none">
+    📌 <b>ราคานี้เป็นราคาแนะนำ</b> อาจเปลี่ยนตามรอบของบริษัทยูนิลีเวอร์ · ราคาที่ศูนย์เสนอขายรวม VAT แล้ว ·
+    สินค้าบางรายการมีจำนวนจำกัดหรือสั่งขั้นต่ำเป็นหีบ · สั่งซื้อหรือสอบถามเพิ่มเติม ติดต่อเซลล์ประจำสายของร้านท่าน
+    หรือติดต่อศูนย์ในเวลาทำการ
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="fgrid">
+      <img src="/img/bd-logo.png" alt="BD Distribution">
+      <div class="co">
+        <b>บริษัท บีดี ดิสทริบิวชั่น จำกัด</b>
+        <div class="en">BD DISTRIBUTION COMPANY LIMITED</div>
+        เลขทะเบียนนิติบุคคล 0105536070028<br>
+        39/12-13 หมู่ที่ 4 ถนน 345 ตำบลละหาร<br>
+        อำเภอบางบัวทอง จังหวัดนนทบุรี 11110
+      </div>
+      <div class="fhrs">
+        <b>เวลาทำการ</b>
+        08.00 – 17.00 น.<br>
+        จันทร์ – เสาร์<br>
+        <span style="color:var(--bad)">หยุดทุกวันอาทิตย์</span>
+      </div>
+    </div>
+    <div class="fnote">
+      <span>© บริษัท บีดี ดิสทริบิวชั่น จำกัด · ผู้จัดจำหน่ายสินค้ายูนิลีเวอร์ พื้นที่นนทบุรี</span>
+      <span>เครื่องหมายการค้าทั้งหมดเป็นของยูนิลีเวอร์</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================================
+ * สูตรคิดราคา — **คัดลอกมาจาก dashboard_template.html แบบคำต่อคำ**
+ *
+ * ทำไมต้องคัดลอก: หน้านี้เป็นไฟล์เดี่ยว เปิดได้โดยไม่ต้องล็อกอิน จะ import
+ * จากแอปหลักไม่ได้ (และไม่ควร — ยิ่งเชื่อมกันยิ่งมีโอกาสหลุดต้นทุนออกมา)
+ *
+ * ⚠️ ถ้าแก้สูตรตรงนี้ ต้องแก้ใน dashboard_template.html ให้เหมือนกันด้วย
+ *    test/browser/price.test.cjs เทียบผลลัพธ์ของสองฝั่งทุกรายการ ถ้าคลาดกันเทสต์จะฟ้อง
+ * ==========================================================================*/
+var PR_MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function prRoundOf(lab){
+  var m=String(lab||"").match(/([A-Za-z]{3})[A-Za-z]*'?\s*(\d{2,4})/);
+  if(!m)return null;
+  var mo=PR_MON[m[1].toLowerCase()];if(!mo)return null;
+  var y=+m[2];if(y<100)y+=2000;
+  return {y:y,m:mo};
+}
+/* ช่วงวันที่จริงของรอบ: วันที่ 25 ของเดือนก่อน → วันที่ 24 ของเดือนที่ตั้งชื่อ
+   (โปรโมชั่น on-invoice ของยูนิลีเวอร์ตัดรอบวันที่ 25 ไม่ใช่วันที่ 1) */
+function prWindow(lab){
+  var r=prRoundOf(lab);if(!r)return null;
+  var p=function(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+  return {from:p(new Date(r.y,r.m-2,25)),to:p(new Date(r.y,r.m-1,24)),lab:lab};
+}
+/* ชื่อสินค้าที่โชว์ — ต้องเป็นชื่อเดียวกับที่ใช้ในระบบสั่งของ ไม่ใช่แค่ช่อง "สูตร/สี"
+   ไฟล์หัวเสือแยกชื่อเป็น 4 ช่อง ถ้าโชว์แค่ช่องสูตรจะได้คำว่า "สีเขียว" ลอยๆ อ่านไม่รู้เรื่อง
+   it.o = ชื่อจากระบบสั่งของ เก็บติดมากับไฟล์ตอนผู้จัดการอัพ (90.6% ของรายการมี)
+   ที่เหลือประกอบเอง: แบรนด์ + สูตร + ขนาด
+   ⚠️ ต้องเหมือนกับ prCompose/prName ใน dashboard_template.html — เทสต์เทียบสองที่อยู่ */
+function prCompose(it){
+  if(!it)return "";
+  var p=[it.b,it.v||it.n,it.s].filter(Boolean);
+  var s=p.join(" ").replace(/\s+/g," ").trim();
+  return s||it.n||it.v||"";
+}
+function prName(code,it){
+  var o=(it&&it.o)||"";
+  return o?{nm:o,src:"ord"}:{nm:prCompose(it),src:"file"};
+}
+var PR_F=["ws","rt","tpr","w","ntt","fl","rspN","rspP","rem"];
+function prM(it,i){
+  var a=(it&&it.m&&it.m[i])||null;if(!a)return null;
+  var o={};PR_F.forEach(function(k,j){o[k]=a[j];});
+  o.tot=Math.round((o.tpr+o.w)*100)/100;
+  return o;
+}
+/* RSP บางรายการเป็น "ราคายกแพ็ค" ไม่ใช่ราคาชิ้น — โชว์ RSP ตามไฟล์ แต่คูณทุนด้วย Inner Pack
+   และต้องดูทีละราคา: มี 31 รายการที่ RSP ปกติเป็นราคาชิ้น แต่ RSP ช่วงโปรเป็นแพ็ค 3 ชิ้น */
+function prPackBuy(it,m,promo){
+  if(!it||!m||!m.ntt)return 1;
+  var rsp=promo?m.rspP:m.rspN;
+  if(!rsp)return 1;
+  return (it.ip>1&&rsp/m.ntt>2.5)?it.ip:1;
+}
+function prMargin(it,m,promo){
+  if(!it||!m)return null;
+  var rsp=promo?m.rspP:m.rspN;
+  if(!rsp||!m.ntt)return null;
+  var k=prPackBuy(it,m,promo);
+  var cost=m.ntt*k;
+  var o={rsp:rsp,cost:cost,k:k,baht:rsp-cost,pct:(rsp-cost)/rsp*100};
+  /* คูณ Inner Pack แล้วยังสูงกว่าทุนเกิน 2.5 เท่า = เทียบหน่วยไม่ลง ไม่ใช่กำไรจริง
+     → ไม่ประกาศตัวเลขกำไรให้ลูกค้า ดีกว่าประกาศผิด */
+  if(cost>0&&rsp/cost>2.5)o.unsure=true;
+  return o;
+}
+function prHide(it,m){
+  if(!it||!m)return "no-data";
+  if(!m.ws||!m.ntt)return "no-price";
+  if(/เลิกขาย/.test(it.nt||""))return "stopped";
+  var g=prMargin(it,m,false);
+  if(g&&g.pct<0)return "loss";
+  return "";
+}
+/* ======================= จบส่วนที่คัดลอก ======================= */
+
+/* ---------- ชื่อหมวดภาษาไทย ----------
+   ไฟล์ของ Unilever ใช้ตัวย่อในบ้าน (FAB SOL · PW · H&H · U-Pro) ลูกค้าร้านค้าอ่านไม่ออก
+   ชื่อไทยด้านล่างตั้งจาก **แบรนด์จริงที่อยู่ในหมวดนั้น** ไม่ได้เดาจากตัวย่อ:
+     FAB SOL = BREEZE 137 + OMO 92        FAB SEN = COMFORT 135
+     H&H     = SUNLIGHT 45 + VIM + DOMEX  HAIR    = SUNSILK · DOVE · CLEAR · TRESEMME
+     PW      = LUX 59 + DOVE + VASELINE   BODY    = VASELINE 104 + CITRA 51
+     FACE    = POND'S 57 + VASELINE       DEO     = REXONA · AXE · DOVE
+     FOODS   = KNORR 91 + BESTFOODS 27    U-Pro   = ของ "PROF" ขนาดใหญ่ (3.5L / 4.5KG)
+   ถ้า Unilever เพิ่มหมวดใหม่ที่ไม่มีในตารางนี้ จะโชว์ตัวย่อเดิมไปก่อน ไม่พัง */
+var CAT_TH={
+  "FAB SOL":"ผงซักฟอก & น้ำยาซักผ้า",
+  "FAB SEN":"น้ำยาปรับผ้านุ่ม",
+  "H&H":"น้ำยาล้างจาน & ทำความสะอาดบ้าน",
+  "HAIR":"แชมพู & ครีมนวดผม",
+  "PW":"สบู่ & ครีมอาบน้ำ",
+  "BODY":"โลชั่น & บำรุงผิวกาย",
+  "FACE":"ครีม & โฟมล้างหน้า",
+  "DEO":"ผลิตภัณฑ์ระงับกลิ่นกาย",
+  "FOODS":"อาหาร & เครื่องปรุง",
+  "U-Pro":"ขนาดใหญ่ สำหรับร้าน/โรงแรม"
+};
+function catTh(c){return CAT_TH[c]||c||"อื่นๆ";}
+var MON_TH=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+function fmtDate(s){var d=new Date(s+"T00:00:00");return d.getDate()+" "+MON_TH[d.getMonth()]+" "+(d.getFullYear()+543);}
+function baht(v){return Number(v).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function $(id){return document.getElementById(id);}
+function todayISO(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+
+var P={items:{},rounds:[],up:0};
+var V={i:0,q:"",cat:"all",show:300,br:[],sort:null,dir:-1};   /* br = แบรนด์ที่ติ๊กไว้ · dir -1 = มากไปน้อย */
+var PAGE=300;
+
+function nowIdx(){
+  var t=todayISO(),i;
+  for(i=0;i<P.rounds.length;i++){var w=prWindow(P.rounds[i]);if(w&&t>=w.from&&t<=w.to)return i;}
+  var best=-1;
+  P.rounds.forEach(function(l,k){var w=prWindow(l);if(w&&w.to<t)best=k;});
+  return best>=0?best:(P.rounds.length?P.rounds.length-1:0);
+}
+function rows(){
+  var q=V.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  var out=[];
+  Object.keys(P.items).forEach(function(code){
+    var it=P.items[code],m=prM(it,V.i);
+    if(!m)return;
+    if(prHide(it,m))return;                       /* ไม่พร้อมขาย / ขาดทุน → ไม่โชว์ให้ลูกค้า */
+    if(V.cat!=="all"&&it.c!==V.cat)return;
+    if(V.br.length&&V.br.indexOf(it.b)<0)return;
+    if(q.length){
+      var hay=(code+" "+prName(code,it).nm+" "+it.n+" "+it.v+" "+it.b+" "+it.s+" "+it.c).toLowerCase();
+      for(var j=0;j<q.length;j++)if(hay.indexOf(q[j])<0)return;
+    }
+    out.push({code:code,it:it,m:m,g:prMargin(it,m,false),gp:prMargin(it,m,true)});
+  });
+  if(V.sort){
+    /* กดหัวคอลัมน์แล้วเรียงทั้งรายการเหมือน Excel — ตอนเรียงจะไม่แบ่งหมวดแล้ว
+       เพราะถ้ายังแบ่งหมวดอยู่ มันจะเรียงแค่ในหมวด ซึ่งไม่ใช่สิ่งที่คนกดคาดหวัง
+       แถวที่ไม่มีค่าช่องนั้น (เช่นไม่มีราคาโปร) ลงไปอยู่ท้ายสุดเสมอ ไม่ว่าจะเรียงทางไหน */
+    var val=SORTV[V.sort];
+    out.sort(function(a,b){
+      var x=val(a),y=val(b);
+      if(x==null&&y==null)return 0;
+      if(x==null)return 1;
+      if(y==null)return -1;
+      return (x-y)*V.dir||String(a.code).localeCompare(String(b.code));
+    });
+    return out;
+  }
+  out.sort(function(a,b){
+    var ka=(a.it.c||"zz")+"|"+(a.it.b||"")+"|"+(a.it.n||"")+"|"+(a.it.s||"");
+    var kb=(b.it.c||"zz")+"|"+(b.it.b||"")+"|"+(b.it.n||"")+"|"+(b.it.s||"");
+    return ka<kb?-1:ka>kb?1:0;
+  });
+  return out;
+}
+/* คอลัมน์ไหนกดเรียงได้บ้าง และเอาค่าอะไรไปเรียง (คืน null = ไม่มีค่า ให้ไปอยู่ท้าย) */
+var SORTV={
+  ntt: function(r){return r.m.ntt||null;},
+  rspN:function(r){return r.m.rspN||null;},
+  gain:function(r){return (r.g&&!r.g.unsure)?r.g.pct:null;},
+  rspP:function(r){return r.m.rspP||null;},
+  gainP:function(r){return (r.m.rspP&&r.gp&&!r.gp.unsure)?r.gp.pct:null;}
+};
+var SORTLAB={ntt:"ราคาที่ศูนย์เสนอขาย",rspN:"ราคาแนะนำขาย",gain:"กำไรที่ร้านได้",
+  rspP:"ราคาช่วงโปร",gainP:"กำไรช่วงโปร"};
+/* กดหัวคอลัมน์: ครั้งแรก = มากไปน้อย · ครั้งที่สอง = น้อยไปมาก · ครั้งที่สาม = เลิกเรียง */
+function sortBy(k){
+  if(V.sort!==k){V.sort=k;V.dir=-1;}
+  else if(V.dir===-1)V.dir=1;
+  else {V.sort=null;V.dir=-1;}
+  V.show=PAGE;drawSortSel();draw();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function sortOff(){V.sort=null;V.dir=-1;V.show=PAGE;drawSortSel();draw();}
+function drawSortSel(){
+  var sel=$("sortS"),o='<option value="">ตามหมวดสินค้า (ปกติ)</option>';
+  Object.keys(SORTLAB).forEach(function(k){
+    o+='<option value="'+k+'|-1">'+SORTLAB[k]+' · มากไปน้อย</option>'+
+       '<option value="'+k+'|1">'+SORTLAB[k]+' · น้อยไปมาก</option>';});
+  sel.innerHTML=o;
+  sel.value=V.sort?(V.sort+"|"+V.dir):"";
+}
+/* ---------- ตัวกรองแบรนด์ ---------- */
+function brandList(){
+  /* นับเฉพาะของที่ผ่านตัวกรองหมวดและคำค้นแล้ว แต่ **ไม่สนตัวกรองแบรนด์เอง**
+     ไม่งั้นพอติ๊กแบรนด์แรก แบรนด์อื่นจะหายหมด แล้วติ๊กเพิ่มไม่ได้อีกเลย */
+  var q=V.q.trim().toLowerCase().split(/\s+/).filter(Boolean),s={};
+  Object.keys(P.items).forEach(function(code){
+    var it=P.items[code],m=prM(it,V.i);
+    if(!m||prHide(it,m))return;
+    if(V.cat!=="all"&&it.c!==V.cat)return;
+    if(q.length){
+      var hay=(code+" "+prName(code,it).nm+" "+it.n+" "+it.v+" "+it.b+" "+it.s+" "+it.c).toLowerCase();
+      for(var j=0;j<q.length;j++)if(hay.indexOf(q[j])<0)return;
+    }
+    if(it.b)s[it.b]=(s[it.b]||0)+1;
+  });
+  return s;
+}
+function drawBrands(){
+  var s=brandList(),names=Object.keys(s).sort(function(a,b){return s[b]-s[a]||a.localeCompare(b);});
+  /* แบรนด์ที่ติ๊กไว้แต่หายไปจากรายการ (เพราะเปลี่ยนหมวด) ต้องปลดออก ไม่งั้นจะได้ผลลัพธ์ว่าง */
+  V.br=V.br.filter(function(b){return s[b];});
+  var n=V.br.length;
+  $("bBtn").innerHTML='เลือกแบรนด์ ▾'+(n?'<span class="cnt2">'+n+'</span>':
+    '<span style="color:var(--muted);font-weight:700">ทุกแบรนด์</span>');
+  $("bChips").innerHTML=names.map(function(b){
+    return '<button type="button" class="bchip'+(V.br.indexOf(b)>=0?' on':'')+'" data-b="'+esc(b)+'">'+
+      esc(b)+' <small>'+s[b]+'</small></button>';}).join("")||
+    '<span style="color:var(--muted)">ไม่มีแบรนด์ให้เลือก</span>';
+  Array.prototype.forEach.call($("bChips").querySelectorAll(".bchip"),function(el){
+    el.onclick=function(){
+      var b=el.dataset.b,i=V.br.indexOf(b);
+      if(i>=0)V.br.splice(i,1);else V.br.push(b);
+      V.show=PAGE;drawBrands();draw();};});
+}
+function brandAll(){V.br=[];V.show=PAGE;drawBrands();draw();}
+function brandToggle(){$("bPan").classList.toggle("on");}
+
+/* หนึ่งช่องตัวเลขในตาราง — data-l คือป้ายที่จอแคบเอาไปขึ้นหน้าตัวเลข (ดู @media) */
+function cell(lab,val,sub,cls){
+  return '<td class="cnum '+cls+'" data-l="'+lab+'"><div>'+val+
+    (sub?'<span class="u">'+sub+'</span>':'')+'</div></td>';
+}
+function num(v){return '<span class="v">'+baht(v)+'</span>';}
+function dash(){return '<span class="dash">—</span>';}
+function rowHtml(r){
+  var nm=prName(r.code,r.it).nm;
+  /* ⚠️ รหัสสินค้าต้องขึ้นด้วย — ลูกค้าใช้เลขนี้สั่งของกับเซลล์และในแอป eB2B/UShopPlus
+     และต้องเขียนแบบเดียวกับในแอปของพนักงาน ("รหัส <เลข>") เพื่อให้คุยกันรู้เรื่อง
+     เป็นรหัสตัวเดียวกันอยู่แล้ว เพราะมาจากไฟล์หัวเสือไฟล์เดียวกัน */
+  var sz=['<span class="code">รหัส '+esc(r.code)+'</span>',esc(r.it.s)];
+  if(r.it.p>1)sz.push(r.it.p+' ชิ้น/หีบ');
+  if(r.it.ip>1)sz.push('แพ็ค '+r.it.ip+' ชิ้น');
+  var h='<tr class="prow"><td class="nmcell"><b>'+esc(nm)+'</b>'+
+    '<div class="sz">'+sz.join(' · ')+'</div>'+
+    ((r.it.b&&nm.indexOf(r.it.b)<0)?'<span class="br">'+esc(r.it.b)+'</span>':'')+'</td>';
+  h+=cell('ราคาที่ศูนย์เสนอขาย',r.m.ntt?num(r.m.ntt):dash(),'','c-cost');
+  h+=cell('ราคาแนะนำขาย',r.m.rspN?num(r.m.rspN):dash(),'','c-rsp');
+  if(r.g&&!r.g.unsure)
+    h+=cell('ร้านได้กำไร','<span class="v">'+r.g.pct.toFixed(0)+'%</span>',baht(r.g.baht)+' บ./ชิ้น','c-gain');
+  else
+    h+=cell('ร้านได้กำไร',(r.g&&r.g.unsure)?'<span class="ask">สอบถาม</span>':dash(),'','c-gain');
+  h+=cell('🎉 ราคาช่วงโปร',r.m.rspP?num(r.m.rspP):dash(),'','c-pro');
+  h+=cell('🎉 กำไรช่วงโปร',
+    (r.m.rspP&&r.gp&&!r.gp.unsure)?'<span class="v">'+r.gp.pct.toFixed(0)+'%</span>':dash(),
+    (r.m.rspP&&r.gp&&!r.gp.unsure)?baht(r.gp.baht)+' บ./ชิ้น':'','c-pro');
+  h+='</tr>';
+  /* หมายเหตุของสินค้าตัวนั้น — แถวเต็มความกว้างใต้แถวราคา ไม่ไปเบียดคอลัมน์ให้เลื่อน */
+  var nt=[];
+  if(r.g&&r.g.k>1)nt.push('<span class="nt-pk">📦 ราคาแนะนำขาย '+baht(r.m.rspN)+' บาท เป็นราคา<b>ยกแพ็ค '+r.g.k+' ชิ้น</b> (ตามที่บริษัทกำหนด)</span>');
+  if(r.gp&&r.gp.k>1)nt.push('<span class="nt-pk">🎉 ราคาช่วงโปร '+baht(r.m.rspP)+' บาท เป็นราคา<b>ยกแพ็ค '+r.gp.k+' ชิ้น</b></span>');
+  if((r.g&&r.g.unsure)||(r.gp&&r.gp.unsure))
+    nt.push('<span class="nt-muted">ℹ️ รายการนี้บริษัทไม่ได้ระบุจำนวนชิ้นต่อแพ็คมาในไฟล์ จึงยังคิดกำไรต่อหน่วยให้ไม่ได้ — สอบถามเซลล์ประจำสายได้เลย</span>');
+  /* ⚠️ ห้ามโชว์ช่อง Remark ของไฟล์ให้ลูกค้า — เป็นกลไกโปรฝั่ง "ศูนย์ซื้อจากบริษัท"
+     (Rebate, CCN TPR, 1F1, FO 40, ช่วงวันที่เคลม) ลูกค้าอ่านแล้วไม่ได้ประโยชน์
+     และเป็นคำในบ้านของเรา · ของที่ลูกค้าใช้ได้จริงคือช่อง Note ว่าเป็นแพ็คพิเศษหรือไม่ */
+  if(/special\s*pack/i.test(r.it.nt||''))nt.push('<span class="nt-muted">🎁 สินค้าแพ็คพิเศษของบริษัท</span>');
+  if(nt.length)h+='<tr class="noterow"><td colspan="6">'+nt.join('<br>')+'</td></tr>';
+  return h;
+}
+function th(k,lab,sub){
+  var on=V.sort===k;
+  return '<th class="cnum sv'+(on?' sorted':'')+'" data-s="'+k+'">'+lab+
+    (sub?'<small>'+sub+'</small>':'')+
+    '<span class="ar">'+(on?(V.dir===-1?'▼ มากไปน้อย':'▲ น้อยไปมาก'):'↕')+'</span></th>';
+}
+function thead(){
+  return '<thead><tr><th>สินค้า</th>'+
+    th('ntt','ราคาที่ศูนย์<br>เสนอขาย','รวม VAT แล้ว')+
+    th('rspN','ราคาแนะนำ<br>ให้ร้านตั้งขาย','')+
+    th('gain','ร้านได้กำไร','')+
+    th('rspP','🎉 ราคา<br>ช่วงโปร','')+
+    th('gainP','🎉 กำไร<br>ช่วงโปร','')+
+    '</tr></thead>';
+}
+function draw(){
+  var R=rows(),host=$("list");
+  $("cnt").textContent=R.length?("พบ "+R.length.toLocaleString("th-TH")+" รายการ"):"";
+  if(!R.length){host.innerHTML='<div class="empty">ไม่พบสินค้าที่ค้นหา — ลองพิมพ์สั้นลง เลือก "ทุกหมวดสินค้า" หรือกด "ดูทุกแบรนด์"</div>';return;}
+  var show=R.slice(0,V.show),h="",lastCat=null;
+  show.forEach(function(r){
+    /* ตอนเรียงตามราคา ไม่ต้องขึ้นแถบหมวด — รายการถูกคละหมวดกันแล้วโดยตั้งใจ */
+    if(!V.sort&&r.it.c!==lastCat){lastCat=r.it.c;
+      h+='<tr class="catrow"><td colspan="6">'+esc(catTh(lastCat))+'</td></tr>';}
+    h+=rowHtml(r);
+  });
+  host.innerHTML=
+    (V.sort?'<div class="sortnote"><span>เรียงตาม <b>'+esc(SORTLAB[V.sort])+'</b> '+
+      (V.dir===-1?'มากไปน้อย':'น้อยไปมาก')+' · ไม่ได้แบ่งหมวดอยู่</span>'+
+      '<button type="button" id="sOff">กลับไปแบ่งตามหมวด</button></div>':'')+
+    '<div class="wrapt"><table class="pl-tbl">'+thead()+'<tbody>'+h+'</tbody></table></div>'+
+    (R.length>V.show?'<button class="more" id="moreB">ดูเพิ่ม (เหลืออีก '+(R.length-V.show).toLocaleString("th-TH")+' รายการ)</button>':'');
+  var mb=$("moreB");
+  if(mb)mb.onclick=function(){V.show+=PAGE;draw();};
+  var so=$("sOff");
+  if(so)so.onclick=sortOff;
+  Array.prototype.forEach.call(host.querySelectorAll("th.sv"),function(el){
+    el.onclick=function(){sortBy(el.dataset.s);};});
+}
+function drawRounds(){
+  var now=nowIdx();
+  $("rnd").innerHTML='<span class="lb">รอบราคา</span>'+P.rounds.map(function(l,k){
+    return '<button data-i="'+k+'" class="'+(k===V.i?"on":"")+'">'+esc(l)+(k===now?" · รอบนี้":"")+'</button>';
+  }).join("");
+  Array.prototype.forEach.call($("rnd").querySelectorAll("button"),function(b){
+    b.onclick=function(){V.i=+b.dataset.i;V.show=PAGE;drawRounds();drawCats();drawBrands();draw();window.scrollTo(0,0);};
+  });
+  var w=prWindow(P.rounds[V.i]);
+  if(w){
+    $("win").style.display="";
+    $("win").innerHTML='ราคาชุดนี้ใช้ช่วง <b>'+fmtDate(w.from)+' – '+fmtDate(w.to)+'</b>'+
+      (V.i===now?' (รอบปัจจุบัน)':'')+' · รอบของบริษัทยูนิลีเวอร์ตัดวันที่ 25 ของเดือนก่อน ไม่ใช่วันที่ 1';
+  }else $("win").style.display="none";
+}
+function drawCats(){
+  var s={};
+  Object.keys(P.items).forEach(function(code){
+    var it=P.items[code],m=prM(it,V.i);
+    if(!m||prHide(it,m))return;
+    if(it.c)s[it.c]=(s[it.c]||0)+1;
+  });
+  var sel=$("cat"),cur=V.cat;
+  sel.innerHTML='<option value="all">ทุกหมวดสินค้า</option>'+
+    Object.keys(s).sort(function(a,b){return catTh(a).localeCompare(catTh(b),"th");}).map(function(c){
+      return '<option value="'+esc(c)+'">'+esc(catTh(c))+' ('+s[c]+')</option>';}).join("");
+  sel.value=(cur!=="all"&&s[cur])?cur:"all";V.cat=sel.value;
+}
+$("q").oninput=function(){V.q=this.value;V.show=PAGE;drawBrands();draw();};
+$("cat").onchange=function(){V.cat=this.value;V.show=PAGE;drawBrands();draw();};
+$("bBtn").onclick=brandToggle;
+$("bAll").onclick=brandAll;
+$("sortS").onchange=function(){
+  var v=this.value.split("|");
+  V.sort=v[0]||null;V.dir=v[0]?+v[1]:-1;V.show=PAGE;draw();};
+
+(async function(){
+  try{
+    /* ⚠️ endpoint เดียวที่หน้านี้เรียก — อ่านได้แค่ไฟล์หัวเสือ ห้ามเพิ่มที่อื่น */
+    var r=await fetch("/api/pricelist");
+    var d=await r.json().catch(function(){return {};});
+    if(!r.ok)throw new Error(d.error||("โหลดราคาไม่สำเร็จ (HTTP "+r.status+")"));
+    P.items=d.items||{};P.rounds=d.rounds||[];P.up=d.up||0;
+    if(!P.rounds.length||!Object.keys(P.items).length){
+      $("list").innerHTML='<div class="empty">ยังไม่มีราคาในระบบ — กรุณาติดต่อเซลล์ประจำสายของร้านท่าน</div>';
+      return;
+    }
+    V.i=nowIdx();
+    drawRounds();drawCats();drawBrands();drawSortSel();draw();
+    $("foot").style.display="";
+  }catch(ex){
+    $("list").innerHTML='<div class="empty">⚠️ '+esc(ex.message)+
+      '<br><br>กรุณาลองรีเฟรชหน้านี้อีกครั้ง หรือติดต่อเซลล์ประจำสายของร้านท่าน</div>';
+  }
+})();
+</script>
+</body>
+</html>
