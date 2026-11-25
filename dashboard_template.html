@@ -278,6 +278,15 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 /* 📦 ออเดอร์พิเศษ — หน้าเลือกเดือน (เจ้าของสั่ง 25 พ.ย. 69 ว่าของเดิม "ไม่สวยเลย"
    ให้ไล่บนลงล่าง ต้นปี→ปลายปี) · แถวละเดือน อ่านเป็นรายการ ไม่ใช่การ์ดเล็กกระจาย */
 .sp-mons{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+/* 🎡 วงล้อเลือกเดือน (เจ้าของสั่ง 26 พ.ย. 69) — "ขึ้นเดือนปัจจุบันอยู่อันบนสุด แล้วหมุนเลือกได้ไหล ๆ"
+   เก็บลำดับ ม.ค.→ธ.ค. ไว้เหมือนเดิมตามที่สั่งไว้ 25 พ.ย. แล้ว "เลื่อน" ให้เดือนปัจจุบันมาอยู่บนสุด
+   แทนการสลับลำดับ — เลื่อนขึ้นก็ยังเห็นเดือนก่อนหน้าได้ตามปกติ */
+.sp-mons.wheel{max-height:min(62vh,460px);overflow-y:auto;overscroll-behavior:contain;
+  scroll-snap-type:y proximity;-webkit-overflow-scrolling:touch;scrollbar-width:thin;
+  padding:2px 2px 60px;margin-top:10px;
+  -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 88%,transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 0,#000 88%,transparent 100%)}
+.sp-mons.wheel .sp-mon{scroll-snap-align:start;flex-shrink:0}
 .sp-mon{display:flex;align-items:center;gap:14px;padding:12px 16px;border:1.5px solid var(--line);
   border-radius:12px;background:#fff;cursor:pointer;transition:.12s}
 .sp-mon:hover{border-color:var(--blue);box-shadow:0 2px 10px rgba(0,0,0,.06)}
@@ -11494,7 +11503,7 @@ function cstGrpHtml(f){
     <div class="cst-grpb">${Object.keys(SP_GRP).map(k=>`<button type="button" class="pl-today${
       cur===k?" on":""}" onclick="cstSetGrp('${k}')">${SP_GRP[k].ic} ${SP_GRP[k].n}</button>`).join("")}</div>
     <div class="psub" style="margin-top:6px">${SP_GRP[cur].ic} ${anaEsc(SP_GRP[cur].d)}
-      · เปลี่ยนทีหลังได้ที่หัวใบในหน้าออเดอร์พิเศษ</div></div>`;
+      · เปลี่ยนทีหลังได้โดยกด ✏️ แก้ไขใบ ที่หัวใบในหน้าออเดอร์พิเศษ</div></div>`;
 }
 function cstFormSet(k,v){const f=CST.f;if(!f)return;f[k]=v;cstDraftLater();}
 function cstRowSet(i,k,v){const f=CST.f;if(!f||!f.rows[i])return;f.rows[i][k]=v;cstDraftLater();}
@@ -12586,7 +12595,7 @@ const AL_H={d:"Order Creation Date",pj:"PJP Code",pn:"PJP Name",gin:"GIN No.",
       ขาดไปแล้วหน้าเว็บต้อง **บอกว่าไฟล์นี้ไม่มีช่องเงิน** แล้วถอยไปประเมินจากไฟล์ราคา
       ห้าม throw และห้ามขึ้น 0 เงียบ ๆ */
 const AL_O={gsv:"GSV",niv:"NIV",os:"Order Status",
-  sas:"Sales Allocation Status",fas:"Free Allocation Status"};
+  sas:"Sales Allocation Status",fas:"Free Allocation Status",out:"Outlet Code"};
 let ALLOC=null;
 /* สายจากรหัส PJP — ผ่าน dsLineKey เสมอ เพราะ KA97 ถูกเก็บเป็น 2096_97 ทั้งระบบ */
 function alLine(pj,pn){
@@ -12628,6 +12637,8 @@ function parseAlloc(name,buf){
     const i=hdr.indexOf(AL_O[k]);
     if(i<0)onone.push(AL_O[k]);else ocol[k]=i;});
   const hasMoney=(ocol.gsv!=null)&&(ocol.niv!=null);
+  if(ocol.out!=null)col.out=ocol.out;      /* รหัสร้านเป็นช่องเสริม ไฟล์เก่าไม่มีก็ยังอ่านได้ */
+  const noShop=(ocol.out==null);
   const g={},days={},stat={};let n=0,skip=0,noGin=0,tg=0,tn=0;
   for(let r=1;r<A.length;r++){
     const x=A[r];if(!x)continue;
@@ -12637,7 +12648,7 @@ function parseAlloc(name,buf){
     if(!gin){noGin++;continue;}
     const ln=alLine(x[col.pj],x[col.pn]), dd=alDate(x[col.d]);
     if(dd)days[dd]=(days[dd]||0)+1;
-    const G=g[gin]||(g[gin]={n:0,d:{},ln:{},o:{}});
+    const G=g[gin]||(g[gin]={n:0,d:{},ln:{},o:{},od:{}});
     G.n++;if(dd)G.d[dd]=1;
     /* 🔑 ไฟล์มีช่อง Order Number (M) และ Invoice No. (L) ซึ่งเป็นเลขเดียวกับไฟล์ยอดขาย
        วัดกับของจริง: เลขออเดอร์ในใบจัดของ 1,645 เลข เจอในไฟล์ยอดขาย 1,401 (85.2%)
@@ -12647,8 +12658,21 @@ function parseAlloc(name,buf){
     if(on&&on!=="NA")G.o[on]=1;
     const L=G.ln[ln]||(G.ln[ln]={});
     const it=L[code]||(L[code]={sc:0,ss:0,sp:0,fc:0,fs:0,fp:0,xc:0,xs:0,xp:0,yc:0,ys:0,yp:0,
-      g:0,v:0,mn:0,nm:String(x[col.nm]||"").trim(),pk:alNum(x[col.pk])});
+      g:0,v:0,mn:0,sh:{},nm:String(x[col.nm]||"").trim(),pk:alNum(x[col.pk])});
     ["sc","ss","sp","fc","fs","fp","xc","xs","xp","yc","ys","yp"].forEach(k=>{it[k]+=alNum(x[col[k]]);});
+    /* 🏪 ร้านที่ได้ของจริง — เก็บเป็น "เซ็ตของรหัสร้าน" ไว้ในหน่วยความจำเท่านั้น
+       เวลาบันทึกผลตรวจจะเก็บแค่ "จำนวนร้าน" ลง state ไม่เก็บรายชื่อ (กฎ pmCodeSet:
+       ไฟล์หมื่นแถวต้องไม่ทำให้ snapshot บวม และรีโปเป็นสาธารณะ ห้ามมีรหัสร้านจริงหลุด) */
+    if(col.out!=null){const oc=String(x[col.out]==null?"":x[col.out]).trim();if(oc)it.sh[oc]=1;}
+    /* 🎁 รายละเอียดรายออเดอร์ — ใช้หา "ของแถมตัวนี้มากับการซื้อตัวไหน กี่ต่อกี่"
+       วัดกับไฟล์จริง 10,428 แถว: คู่ที่ถูกต้องปรากฏร่วมกัน **100% ของออเดอร์เสมอ**
+       ส่วนรหัสอื่นร่วม 85% / 70% / 40% ⇒ เกณฑ์ "100%" แยกคู่จริงออกจากของที่บังเอิญซื้อพร้อมกันได้ */
+    if(on&&on!=="NA"){
+      const O=G.od[on]||(G.od[on]={});
+      const q=O[code]||(O[code]=[0,0,0,0,0,0]);
+      q[0]+=alNum(x[col.sc]);q[1]+=alNum(x[col.ss]);q[2]+=alNum(x[col.sp]);
+      q[3]+=alNum(x[col.fc]);q[4]+=alNum(x[col.fs]);q[5]+=alNum(x[col.fp]);
+    }
     /* 💵 เงินตัวจริงจากไฟล์ (AI/AJ) — บวกเฉพาะเมื่อไฟล์มีช่องนั้นจริง
        mn นับจำนวนแถวที่มีเงิน เพื่อแยก "เงินเป็น 0" ออกจาก "ไฟล์ไม่บอกเงิน" */
     if(hasMoney){
@@ -12660,7 +12684,7 @@ function parseAlloc(name,buf){
   }
   if(!n)throw new Error("ไม่พบแถวข้อมูลในไฟล์ (ต้องมีรหัสสินค้าและเลข GIN)");
   const ds=Object.keys(days).sort();
-  ALLOC={up:Date.now(),file:name,n:n,g:g,days:ds,money:hasMoney?1:0,gsv:tg,niv:tn,stat:stat,
+  ALLOC={up:Date.now(),file:name,n:n,g:g,days:ds,money:hasMoney?1:0,gsv:tg,niv:tn,stat:stat,noShop:noShop?1:0,
     nomoney:onone,gins:Object.keys(g).sort((a,b)=>alNum(a)-alNum(b)||a.localeCompare(b))};
   const sl=Object.keys(stat).sort((a,b)=>stat[b]-stat[a]).map(k=>anaEsc(k)+" "+stat[k]);
   ulog("📥 ใบจัดของ (allocation): อ่านได้ <b>"+n.toLocaleString()+"</b> แถว · <b>"+
@@ -12746,26 +12770,103 @@ function alPrice(code,ri){
 }
 
 /* รวมตัวเลขของ GIN ที่แอดมินระบุ ออกมาเป็นรายสาย·รายรหัส (เฉพาะรหัสที่อยู่ในใบนั้น) */
+/* ==========================================================================
+ * 🎁 หา "ของแถมตัวนี้มากับการซื้อตัวไหน กี่ต่อกี่" จากไฟล์ใบจัดของเอง
+ *
+ * ทำไมไม่ใช้ไฟล์ BUM: วัดกับไฟล์จริงแล้ว **บล็อค BBF ของ BUM มีแค่ 24 แถว และเป็นรอบของ
+ * ไฟล์นั้นเอง (01/12/2026-31/12/2026) ทั้งหมดเป็นแถมตัวเอง (AV = รหัสเดียวกัน)** —
+ * โปรของเดือนก่อนหน้า และโปรที่ **แถมข้ามรหัส** (ลักส์ซื้อโรส แถมซากุระ) ไม่มีอยู่ในไฟล์เลย
+ * ⇒ ไฟล์ BUM ตอบคำถามนี้ไม่ได้ ต้องอ่านจากของที่คลังจัดออกไปจริง
+ *
+ * เกณฑ์ที่ใช้ วัดจากไฟล์จริง 10,428 แถว (15-24 พ.ย. 69) กับโปรที่เจ้าของส่งสไลด์มาเทียบ:
+ *   **คู่ที่ถูกต้องปรากฏร่วมกันใน 100% ของออเดอร์เสมอ** ส่วนรหัสอื่นที่บังเอิญซื้อพร้อมกัน
+ *   อยู่ที่ 85% / 70% / 40% ⇒ เกณฑ์ ≥95% แยกคู่จริงออกได้สะอาด ทั้ง 7 คู่ในไฟล์
+ *   - แถม 65691961 → ซื้อ 65691961 100% · 533/536 ออเดอร์เป็น 2 ชิ้น : 1 ชิ้น  (ซิตร้า 2 แถม 1)
+ *   - แถม 65724222 → ซื้อ 65724220 100% · 297/297 ออเดอร์เป็น 2 ชิ้น : 2 ชิ้น  (ลักส์ 2 แถม 2)
+ *   - แถม 65786541 → ซื้อ 65786539 100% · 241/241 ออเดอร์เป็น 1 แพ็ค : 1 แพ็ค (Happy Slot)
+ *   ตรงกับสไลด์ที่ Unilever ส่งมาทั้งสามโปร
+ * ⚠️ เก็บ **คู่จำนวนดิบตามหน่วยในไฟล์** (ลัง/แพ็ค/ชิ้น) ไม่ใช่สัดส่วนที่ย่อแล้ว —
+ *    ย่อ 2:2 เป็น 1:1 จะเพี้ยนไปจากคำที่ Unilever เขียนบนสไลด์ว่า "2 ฟรี 2"
+ * ⚠️ หาไม่เจอ = ไม่เขียนอะไรเลย ห้ามเดาคู่จากรหัสที่ร่วมบ่อยที่สุด
+ * ==========================================================================*/
+const AL_MECH_PCT=0.95;          /* ต้องร่วมออเดอร์กันอย่างน้อยเท่านี้จึงนับเป็นคู่ */
+function alMech(ords,codes){
+  const has={};(codes||[]).forEach(c=>{has[c]=1;});
+  const free={};                 /* รหัสของแถม → { n, with:{code:นับ}, pair:{key:นับ} } */
+  (ords||[]).forEach(O=>{
+    const ks=Object.keys(O);
+    const sold=ks.filter(c=>(O[c][0]||O[c][1]||O[c][2]));
+    ks.forEach(fc=>{
+      if(has[fc]===undefined&&(codes||[]).length)return;
+      const q=O[fc];if(!(q[3]||q[4]||q[5]))return;
+      const F=free[fc]||(free[fc]={n:0,with:{},pair:{}});
+      F.n++;
+      sold.forEach(sc=>{
+        F.with[sc]=(F.with[sc]||0)+1;
+        const p=O[sc];
+        const k=p[0]+","+p[1]+","+p[2]+"|"+q[3]+","+q[4]+","+q[5];
+        (F.pair[sc]=F.pair[sc]||{})[k]=(F.pair[sc][k]||0)+1;
+      });
+    });
+  });
+  const out={};
+  Object.keys(free).forEach(fc=>{
+    const F=free[fc];if(!F.n)return;
+    const cands=Object.keys(F.with).filter(c=>F.with[c]/F.n>=AL_MECH_PCT);
+    if(!cands.length)return;
+    /* ⚠️ ผ่านเกณฑ์ได้พร้อมกันหลายตัวจริง ๆ — วัดจากไฟล์จริง: ของแถม 65691965 ร่วมออเดอร์
+       100% ทั้งกับรหัสตัวเองและกับลักส์ เพราะสองโปรขายเข้าร้านชุดเดียวกัน
+       ลำดับการตัดสิน: ① แถมตัวเองชนะเสมอ ② ร่วมออเดอร์บ่อยกว่า ③ สัดส่วนซ้ำ ๆ กันมากกว่า
+       ④ **ยังเสมอ = ไม่จับคู่** ปล่อยว่างดีกว่าเดาผิดแล้วบอกว่าคลังแถมไม่ครบ */
+    const hits=c=>{const pm=F.pair[c]||{};const k=Object.keys(pm).sort((a,b)=>pm[b]-pm[a])[0];
+      return k?pm[k]:0;};
+    let best;
+    if(cands.indexOf(fc)>=0)best=fc;
+    else{
+      const so=cands.slice().sort((a,b)=>F.with[b]-F.with[a]||hits(b)-hits(a));
+      if(so.length>1&&F.with[so[0]]===F.with[so[1]]&&hits(so[0])===hits(so[1]))return;
+      best=so[0];
+    }
+    if(!best)return;
+    const pm=F.pair[best]||{};
+    const key=Object.keys(pm).sort((a,b)=>pm[b]-pm[a])[0];
+    if(!key)return;
+    const pp=key.split("|"),bq=pp[0].split(",").map(Number),fq=pp[1].split(",").map(Number);
+    if(!(bq[0]||bq[1]||bq[2])||!(fq[0]||fq[1]||fq[2]))return;
+    out[fc]={b:best,bq:bq,fq:fq,n:F.n,hit:pm[key]};
+  });
+  return out;
+}
 function alPick(gins,codes){
-  const out={rows:{},dd:{},miss:[],n:0,ords:{},money:0};
+  const out={rows:{},dd:{},miss:[],n:0,ords:{},money:0,mech:{},shop:0};
   if(!ALLOC)return out;
   out.money=ALLOC.money?1:0;
+  const shop={},shopC={},ordList=[];
   (gins||[]).forEach(gs=>{
     const G=ALLOC.g[String(gs).trim()];
     if(!G){out.miss.push(String(gs).trim());return;}
     Object.keys(G.d).forEach(d=>{out.dd[d]=1;});
     Object.keys(G.o||{}).forEach(o=>{out.ords[o]=1;});
+    Object.keys(G.od||{}).forEach(o=>{ordList.push(G.od[o]);});
     Object.keys(G.ln).forEach(ln=>{
       Object.keys(G.ln[ln]).forEach(code=>{
         if(codes&&codes.length&&codes.indexOf(code)<0)return;
         const s=G.ln[ln][code],k=ln+"|"+code;
         const t=out.rows[k]||(out.rows[k]={sc:0,ss:0,sp:0,fc:0,fs:0,fp:0,xc:0,xs:0,xp:0,yc:0,ys:0,yp:0,
-          g:0,v:0,mn:0,nm:s.nm,pk:s.pk});
+          g:0,v:0,mn:0,nm:s.nm,pk:s.pk,sh:0});
         ["sc","ss","sp","fc","fs","fp","xc","xs","xp","yc","ys","yp","g","v","mn"].forEach(q=>{t[q]+=(+s[q]||0);});
+        /* 🏪 ร้านนับแบบไม่ซ้ำ ข้ามทุกเลข GIN ที่เลือก — รวมเป็น "จำนวน" ตอนเก็บ ไม่เก็บรายชื่อ */
+        const S=shop[k]||(shop[k]={}), SC=shopC[code]||(shopC[code]={});
+        Object.keys(s.sh||{}).forEach(c2=>{S[c2]=1;SC[c2]=1;});
         out.n++;
       });
     });
   });
+  Object.keys(out.rows).forEach(k=>{out.rows[k].sh=Object.keys(shop[k]||{}).length;});
+  const perCode={};
+  Object.keys(shopC).forEach(c=>{perCode[c]=Object.keys(shopC[c]).length;});
+  out.shop=perCode;
+  out.mech=alMech(ordList,codes||[]);
   out.dd=Object.keys(out.dd).sort();
   out.ords=Object.keys(out.ords).sort();
   return out;
@@ -12847,12 +12948,25 @@ function spDay(sid){
   return ds.length?ds[ds.length-1]:todayISO();
 }
 function spSetDay(v){SP.day=v||"";renderSpord();}
+/* เลื่อนวงล้อให้เดือนปัจจุบันมาอยู่บนสุด — ปีอื่นที่ไม่ใช่ปีนี้ให้เริ่มที่บนสุดตามปกติ
+   ⚠️ ไม่ใช้ scrollIntoView เพราะมันลากทั้งหน้าจอตามไปด้วย ใช้ scrollTop ของตัวกล่องเอง */
+function spMonScroll(){
+  const box=document.getElementById("spMons");if(!box)return;
+  const now=todayISO().slice(0,7);
+  const el=box.querySelector('.sp-mon[data-ym="'+now+'"]');
+  try{box.scrollTop=el?Math.max(0,el.offsetTop-box.offsetTop-2):0;}catch(e){}
+}
 /* ==========================================================================
  * 🗂 แท็บในใบออเดอร์ — ขั้นตอนไม่เท่ากันทุกประเภทใบ (เจ้าของสั่ง 26 พ.ย. 69)
  *
- *   🎯 ตัวกระจาย (D)  : ซุปจด → เซลล์คีย์ → แอดมินตรวจ → คลังส่งออก
- *   🧾 ตัดบิลรอส่ง (A) : เซลล์คีย์ → แอดมินตรวจ → คลังส่งออก      (ไม่มีซุปจด)
+ *   🎯 ตัวกระจาย (D)  : ซุปจด → เซลล์คีย์ → แอดมินตรวจ → คลังส่งออก   (4 ขั้น)
+ *   🧾 ตัดบิลรอส่ง (A) : เซลล์คีย์ → คลังส่งออก                      (2 ขั้น)
  *   🚚 ส่งแล้วรอตัดบิล (B) : เหมือน A ทุกอย่าง ต่างกันแค่เป้าหมายของใบ
+ *
+ * เจ้าของย่อ A/B ลงเหลือ 2 ขั้นเมื่อ 26 พ.ย. 69: *"หลังจากเซลล์คีย์ออเดอร์มา แค่ให้แอดมินมากรอก
+ * ส่วนของคลัง ว่าสินค้าออกไปกับเลข GIN ไหน สองขั้นตอนเท่านั้นเอง แอดมินไม่ต้องมาเช็คเหมือนร้าน
+ * ที่กระจายเยอะ ๆ"* ⇒ หน้า 🔎 แอดมินตรวจ (เทียบไฟล์ใบจัดของกับที่เซลล์คีย์) เหลือเฉพาะใบ D
+ * ส่วนใบ A/B ย้ายช่องกรอกเลข GIN ไปไว้ในหน้าคลังส่งออก เป็นกล่องเล็ก ๆ กล่องเดียว
  *   📊 รายงาน ต่อท้ายให้ผู้จัดการเสมอ
  *
  * เจ้าของอธิบายเหตุผลเอง: ใบ A/B เริ่มที่เซลล์ (เช่นใบที่ผู้รับผิดชอบเป็น KA97) ไม่มีใครมาจด
@@ -12869,7 +12983,7 @@ const SP_NUM=["①","②","③","④","⑤","⑥"];
 const SP_TABS=[
   {k:"key",ic:"✍️",nm:"ซุปจด",grp:"D"},
   {k:"rep",ic:"📲",nm:"เซลล์คีย์"},
-  {k:"adm",ic:"🔎",nm:"แอดมินตรวจ"},
+  {k:"adm",ic:"🔎",nm:"แอดมินตรวจ",grp:"D"},
   {k:"out",ic:"🚚",nm:"คลังส่งออก"},
   {k:"rpt",ic:"📊",nm:"รายงาน",mgr:1,nonum:1},
   {k:"old",ic:"🧾",nm:"เลขออเดอร์",off:1,nonum:1},
@@ -13073,12 +13187,14 @@ async function spGinSave(sid,ymd,gins){
   /* money:1 = ไฟล์ที่อ่านมามีช่อง GSV/NIV จึงเก็บเงินตัวจริงไว้ในผลตรวจ
      อ่านย้อนหลังได้โดยไม่ต้องอัพไฟล์ซ้ำ · ผลตรวจเก่าไม่มีช่องนี้ = ประเมินจากไฟล์ราคาเหมือนเดิม */
   const rec={g:gins,rows:pick.rows,dd:pick.dd,miss:pick.miss,ords:pick.ords,money:pick.money,
+    mech:pick.mech,shop:pick.shop,
     file:(ALLOC&&ALLOC.file)||"",by:(S.user&&S.user.id)||"",
     byName:(S.user&&S.user.name)||"",at:Date.now()};
   C.gin[k]=rec;renderSpord();
   try{
     const r=await bdPost("/api/spord",{act:"gin",sid:sid,d:ymd,gin:gins,rows:pick.rows,
-      dd:pick.dd,miss:pick.miss,ords:pick.ords,money:pick.money,file:rec.file});
+      dd:pick.dd,miss:pick.miss,ords:pick.ords,money:pick.money,
+      mech:pick.mech,shop:pick.shop,file:rec.file});
     if(!r||!r.ok)throw new Error((r&&r.error)||"บันทึกไม่สำเร็จ");
     toast("บันทึกผลตรวจแล้ว · "+fmtDate(ymd));
     return true;
@@ -13340,16 +13456,17 @@ function spLockBtn(){
   return ` <button type="button" class="btn-ghost" style="padding:1px 7px;font-size:12px;font-weight:400"
     title="ล็อกหน้านี้ ต้องใส่รหัสใหม่" onclick="spPinLock()">🔒 ล็อก</button>`;
 }
-/* 🛠 แถบปุ่มของแอดมินบนหัวใบ: เลือกประเภทใบ + แก้ไขใบ
+/* 🛠 แถบปุ่มของแอดมินบนหัวใบ — เหลือปุ่มเดียว
+   เจ้าของสั่ง 26 พ.ย. 69: *"ส่วนของที่ให้เลือกประเภทใบ ให้ย้ายมันเข้าไปอยู่ในปุ่มแก้ไขใบ
+   ให้ต้องกดแก้ไขใบก่อนแล้วค่อยไปเปลี่ยนประเภทใบ"* ⇒ เปลี่ยนประเภทได้ในฟอร์มแก้ไขเท่านั้น
+   (ฟอร์มมีตัวเลือกประเภทอยู่แล้วที่ cstGrpHtml) — กันกดโดนบนหัวใบแล้วใบเปลี่ยนประเภททันที
    ⚠️ ต้องใช้ตัวเดียวกันทั้ง spBarHtml และหัวใบในหน้าใบ — ของเดิมเขียน innerHTML ทับกัน
-      ทำให้พอเปิดเข้าไปในใบจริง ๆ ปุ่มเลือกประเภทหายไปทั้งแถบ (เจ้าของหาไม่เจอ 26 พ.ย. 69) */
+      ทำให้พอเปิดเข้าไปในใบจริง ๆ ปุ่มหายไปทั้งแถบ (เจ้าของหาไม่เจอ 26 พ.ย. 69) */
 function spGrpBar(sl){
   if(!sl||!spMgr())return "";
-  return `<div style="margin-top:8px;font-weight:400"><span class="psub">ประเภทใบ:</span> `+
-    Object.keys(SP_GRP).map(k=>`<button type="button" class="pl-today${
-      spGrpOf(sl)===k?" on":""}" onclick="spSetGrp('${k}')">${SP_GRP[k].ic} ${SP_GRP[k].n}</button>`).join(" ")+
-    ` <button type="button" class="pl-today" onclick="spEditSlip('${anaEsc(sl.id)}')"
-      >✏️ แก้ไขใบ (สินค้า/จำนวน/วันที่)</button></div>`;
+  return `<div style="margin-top:8px;font-weight:400">`+
+    `<button type="button" class="pl-today" onclick="spEditSlip('${anaEsc(sl.id)}')"
+      >✏️ แก้ไขใบ (ประเภท/สินค้า/จำนวน/วันที่)</button></div>`;
 }
 function spBarHtml(sl){
   if(!sl)return "📦 ออเดอร์พิเศษ"+spLockBtn();
@@ -13700,7 +13817,7 @@ function spAllOut(sid){
   const C=spKeyOk(),codes=spSlipCodes(sid);
   const nmOf={},cutOf={},order={};
   codes.forEach((c,i)=>{nmOf[c.code]=c.nm||"";cutOf[c.code]=+c.cs||0;order[c.code]=i;});
-  const by={},lines={},days=[],gset={};
+  const by={},lines={},days=[],gset={},shopMax={},mech={};
   let noPk=0,noShr=0;
   Object.keys(C.gin||{}).forEach(k=>{
     const p=k.split("|");if(p[0]!==sid||!p[1])return;
@@ -13709,6 +13826,11 @@ function spAllOut(sid){
     if(!ks.length&&!gs.length)return;
     const day={d:p[1],g:gs,n:ks.length,at:r.at||0,by:r.byName||r.by||"",cs:0};
     days.push(day);
+    /* 🏪 จำนวนร้าน + 🎁 คู่ของแถม เก็บไว้ในเรคอร์ดผลตรวจแล้ว — อ่านกลับได้โดยไม่ต้องอัพไฟล์ซ้ำ
+       ⚠️ ร้านของหลายวันซ้ำกันได้ (วัดจากของจริง ~2% ของคู่ รหัส·ร้าน ซื้อมากกว่าหนึ่งวัน)
+          จึงเก็บเป็น "มากที่สุดของวันเดียว" ไม่ใช่ผลบวก แล้วเขียนบนจอว่านับแบบไหน */
+    Object.keys(r.shop||{}).forEach(c=>{shopMax[c]=Math.max(shopMax[c]||0,+r.shop[c]||0);});
+    Object.keys(r.mech||{}).forEach(fc=>{if(!mech[fc])mech[fc]=r.mech[fc];});
     gs.forEach(x=>{gset[x]=1;});
     ks.forEach(kk=>{
       const a=rows[kk]||{},pp=kk.split("|"),ln=pp[0],code=pp[1];
@@ -13718,11 +13840,15 @@ function spAllOut(sid){
       const free={cs:+a.fc||0,sh:+a.fs||0,pc:+a.fp||0};
       const ps=alPcs(sale,pk,shr),pf=alPcs(free,pk,shr);
       if(!pk)noPk++;else if((sale.sh||free.sh)&&!shr)noShr++;
-      const t=by[code]||(by[code]={code:code,nm:nm,pk:pk,sCs:0,fCs:0,un:0,
+      const t=by[code]||(by[code]={code:code,nm:nm,pk:pk,sCs:0,fCs:0,un:0,shop:0,g:0,v:0,
+        sRaw:{cs:0,sh:0,pc:0},fRaw:{cs:0,sh:0,pc:0},
         raw:{cs:0,sh:0,pc:0},cut:cutOf[code]||0,i:order[code]==null?9e6:order[code]});
       if(!t.nm&&nm)t.nm=nm;
       if(!t.pk&&pk)t.pk=pk;
       t.raw.cs+=sale.cs+free.cs;t.raw.sh+=sale.sh+free.sh;t.raw.pc+=sale.pc+free.pc;
+      t.sRaw.cs+=sale.cs;t.sRaw.sh+=sale.sh;t.sRaw.pc+=sale.pc;
+      t.fRaw.cs+=free.cs;t.fRaw.sh+=free.sh;t.fRaw.pc+=free.pc;
+      t.g+=(+a.g||0);t.v+=(+a.v||0);
       const L=lines[ln]||(lines[ln]={ln:ln,cs:0,n:0,un:0});
       L.n++;
       if(ps!=null&&pk>0){t.sCs+=ps/pk;L.cs+=ps/pk;day.cs+=ps/pk;}else{t.un++;L.un++;}
@@ -13730,16 +13856,19 @@ function spAllOut(sid){
       else if(free.cs||free.sh||free.pc){t.un++;L.un++;}
     });
   });
-  const prod=codes.map(c=>by[c.code]||{code:c.code,nm:c.nm||"",pk:0,sCs:0,fCs:0,un:0,
+  const prod=codes.map(c=>by[c.code]||{code:c.code,nm:c.nm||"",pk:0,sCs:0,fCs:0,un:0,shop:0,g:0,v:0,
+    sRaw:{cs:0,sh:0,pc:0},fRaw:{cs:0,sh:0,pc:0},
     raw:{cs:0,sh:0,pc:0},cut:+c.cs||0,i:order[c.code]});
   Object.keys(by).forEach(c=>{if(order[c]==null)prod.push(by[c]);});
+  prod.forEach(t=>{t.shop=shopMax[t.code]||0;});
   const out=prod.reduce((a,t)=>a+t.sCs+t.fCs,0);
   const cut=prod.reduce((a,t)=>a+(+t.cut||0),0);
   days.sort((a,b)=>String(a.d).localeCompare(String(b.d)));
   const lnArr=Object.keys(lines).map(k=>lines[k])
     .sort((a,b)=>FOCUS_ORDER.indexOf(spLnKey(a.ln))-FOCUS_ORDER.indexOf(spLnKey(b.ln)));
-  return {prod:prod,lines:lnArr,days:days,gins:Object.keys(gset),
-    out:out,cut:cut,noPk:noPk,noShr:noShr};
+  return {prod:prod,lines:lnArr,days:days,gins:Object.keys(gset),mech:mech,
+    out:out,cut:cut,noPk:noPk,noShr:noShr,
+    gsv:prod.reduce((a,t)=>a+(+t.g||0),0),niv:prod.reduce((a,t)=>a+(+t.v||0),0)};
 }
 /* ==========================================================================
  * 🎁 ของแถมตามโปร — "โปรบอกว่าแถมเท่าไหร่" เทียบ "คลังจัดแถมมาเท่าไหร่"
@@ -13762,47 +13891,65 @@ function spBbf(sid){
   const o=spAllOut(sid),by={};
   o.prod.forEach(t=>{by[t.code]=t;});
   const hasBum=!!(typeof PRICE!=="undefined"&&PRICE&&PRICE.bum&&PRICE.bum.items);
-  const rows=[],none=[],want={};
+  const P3=a=>({cs:+((a||[])[0]||0),sh:+((a||[])[1]||0),pc:+((a||[])[2]||0)});
+  const pcs=(q,t)=>t?alPcs(q,t.pk,alShrink(t.nm||"",t.pk)):null;
+  const rows=[],none=[],want={},seen={};
+  /* 1) คู่ที่ถอดได้จากไฟล์ใบจัดของเอง — แม่นที่สุด เพราะเป็นของที่คลังจัดออกไปจริง */
+  Object.keys(o.mech||{}).forEach(fc=>{
+    const m=o.mech[fc],b=by[m.b],f=by[fc];
+    if(!b)return;
+    const bp=pcs(P3(m.bq),b),fp=pcs(P3(m.fq),f||b),sp=pcs(b.sRaw,b);
+    if(!bp||!fp||sp==null)return;
+    const pk=(f&&f.pk)||0;
+    const exp=pk>0?(sp*(fp/bp))/pk:0;
+    seen[m.b]=1;
+    const w=want[fc]||(want[fc]={code:fc,exp:0,from:[]});
+    w.exp+=exp;w.from.push(m.b);
+    rows.push({code:m.b,nm:b.nm,fc:fc,self:m.b===fc,src:"file",
+      bq:m.bq,fq:m.fq,n:m.n,hit:m.hit,sale:b.sCs,exp:exp,end:""});
+  });
+  /* 2) ถ้าไฟล์ใบจัดของยังไม่เคยเจอคู่ของรหัสนั้น ค่อยถามไฟล์ BUM (บล็อค BBF) */
   o.prod.forEach(t=>{
+    if(seen[t.code])return;
     const b=(hasBum&&typeof prB==="function")?prB(t.code):null;
     const ex=b?b.ex:null;
     const fb=+((ex&&ex.fb)||0),fq=+((ex&&ex.fq)||0);
     if(!(fb>0&&fq>0)){none.push(t);return;}
     const fc=String((ex&&ex.fc)||"").trim();
-    const self=!fc;                       /* ไฟล์ไม่ได้ระบุรหัสของแถม → อนุมานว่าแถมตัวเอง */
-    const key=self?t.code:fc;
-    const exp=fb>0?t.sCs/fb*fq:0;
+    const self=!fc,key=self?t.code:fc;
+    const exp=t.sCs/fb*fq;
     const w=want[key]||(want[key]={code:key,exp:0,from:[]});
     w.exp+=exp;w.from.push(t.code);
-    rows.push({code:t.code,nm:t.nm,fb:fb,fq:fq,fc:key,self:self,
-      sale:t.sCs,exp:exp,end:String((ex&&ex.fe)||"")});
+    rows.push({code:t.code,nm:t.nm,fc:key,self:self,src:"bum",
+      bq:[fb,0,0],fq:[fq,0,0],sale:t.sCs,exp:exp,end:String((ex&&ex.fe)||"")});
   });
   const chk=Object.keys(want).map(k=>{
     const g=by[k],w=want[k],got=g?g.fCs:0,d=got-w.exp;
     return {code:k,nm:(g&&g.nm)||"",inSlip:!!g,exp:w.exp,got:got,d:d,from:w.from,
-      st:!g?"noRow":(Math.abs(d)<=Math.max(0.5,w.exp*0.05)?"ok":(d<0?"short":"over"))};
-  }).filter(c=>c.exp>0||c.got>0)      /* คู่ไขว้ด้านที่ไม่ได้ซื้อเลย = 0 ทั้งคู่ ไม่ต้องรก */
+      st:!g?"noRow":(Math.abs(d)<=Math.max(0.5,w.exp*0.07)?"ok":(d<0?"short":"over"))};
+  }).filter(c=>c.exp>0||c.got>0)
     .sort((a,b)=>String(a.code).localeCompare(String(b.code)));
-  return {rows:rows,chk:chk,none:none,hasBum:hasBum};
+  return {rows:rows,chk:chk,none:none,hasBum:hasBum,
+    fromFile:rows.some(r=>r.src==="file")};
 }
 function spBbfHtml(sid){
   if(!peBumOk())return "";
   const g=spBbf(sid);
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
   const head=`<div class="panel" style="margin-top:12px"><h3>🎁 ของแถมตามโปร</h3>`;
-  if(!g.hasBum)return head+`<div class="insight" style="margin-top:8px">
-    ยังไม่ได้อัพไฟล์ <b>BUM</b> ของรอบนี้ จึงยังไม่รู้เงื่อนไขของแถม —
-    อัพไฟล์ที่หมวด 💰 ราคา &amp; ทุน แล้วตัวเลขตรงนี้จะขึ้นเองทั้งหมด</div></div>`;
   if(!g.rows.length)return head+`<div class="insight" style="margin-top:8px">
-    ไฟล์ BUM รอบนี้ไม่ได้ลงโปรของแถมไว้กับสินค้าในใบนี้เลย (${g.none.length} รหัส)</div></div>`;
+    ยังหาคู่ของแถมของใบนี้ไม่ได้ — ไฟล์ใบจัดของรอบนี้ไม่มีแถวของแถม
+    และไฟล์ BUM ${g.hasBum?"ก็ไม่ได้ลงโปรของแถมไว้กับสินค้าในใบนี้":"ยังไม่ได้อัพ"}</div></div>`;
   const ST={ok:'<span class="sp-ok">✓ ตรงโปร</span>',
     short:'<span class="sp-warn">แถมน้อยกว่าสูตร</span>',
     over:'<span class="sp-warn">แถมมากกว่าสูตร</span>',
     noRow:'<span class="psub">ของแถมไม่อยู่ในใบนี้</span>'};
   /* 4 ช่องพอทั้งสองตาราง — รหัสของแถมใส่เป็นบรรทัดเล็กใต้ชื่อ และส่วนต่างรวมอยู่ในช่องผล
      ไม่งั้นช่อง "ผล" ซึ่งเป็นคำตอบ หลุดออกนอกจอมือถือไปเลย */
-  let h=head+`<div class="psub">เงื่อนไขมาจากไฟล์ BUM เอง (ซื้อกี่หีบ · แถมรหัสไหน · กี่หีบ)
-    ไม่ต้องพิมพ์เข้าระบบ</div>
+  let h=head+`<div class="psub">${g.fromFile
+    ? "สูตรถอดมาจากไฟล์ใบจัดของเอง — ของแถมตัวไหนออกไปพร้อมการซื้อตัวไหน กี่ต่อกี่"
+    : "สูตรมาจากไฟล์ BUM (ช่อง BBF)"} · ไม่ต้องพิมพ์เงื่อนไขเข้าระบบ ·
+    ช่อง <b>ควรแถม</b> เป็นค่าประเมิน</div>
     <div class="tblwrap" style="margin-top:10px"><table class="cst-rt"><thead><tr>
       <th style="text-align:left">สินค้าที่ซื้อ</th><th>สูตร</th>
       <th>ขาย → ควรแถม</th></tr></thead><tbody>${
@@ -13811,9 +13958,10 @@ function spBbfHtml(sid){
         <span class="psub" style="display:block">รหัส ${anaEsc(r.code)}${
           r.end?" · ถึง "+anaEsc(r.end):""}</span>
         <span class="psub" style="display:block">แถม: ${r.self
-          ? 'ตัวเอง <b class="down">(ไฟล์ไม่ได้ระบุรหัส)</b>'
-          : anaEsc(spBbfLabel(r.fc))}</span></td>
-      <td><b>ซื้อ ${N(r.fb)}<br>แถม ${N(r.fq)}</b></td>
+          ? (r.src==="file"?"ตัวเอง":'ตัวเอง <b class="down">(ไฟล์ไม่ได้ระบุรหัส)</b>')
+          : anaEsc(spBbfLabel(r.fc))}${r.src==="file"&&r.n
+          ? " · พบ "+r.hit+"/"+r.n+" ออเดอร์":""}</span></td>
+      <td><b>ซื้อ ${anaEsc(spMechU(r.bq))}<br>แถม ${anaEsc(spMechU(r.fq))}</b></td>
       <td>${N(r.sale)} <b>→ ${N(r.exp)}</b></td></tr>`).join("")}
     </tbody></table></div>`;
   h+=`<div class="tblwrap" style="margin-top:12px"><table class="cst-rt"><thead><tr>
@@ -13855,6 +14003,66 @@ function spSent(sid){
   const left=lots.reduce((a,l)=>a+cstLeft(l),0);
   return {cut:cut,out:Math.max(0,cut-left),left:left,src:"lots"};
 }
+/* ==========================================================================
+ * 📋 รายการที่ขายออกไปแล้ว — ใบ 🎯 ตัวกระจาย (เจ้าของสั่ง 26 พ.ย. 69)
+ * ต่อหนึ่งสินค้า: ขายออกจริง · ของแถม · กระจายได้กี่ร้าน · เงิน · สูตรโปรที่ถอดได้จากไฟล์
+ * ⚠️ "กี่ร้าน" เก็บเป็นวันที่มากที่สุด ไม่ใช่ผลบวกข้ามวัน เพราะร้านเดิมซื้อซ้ำได้
+ * ⚠️ เงินมาจากช่อง GSV/NIV ของไฟล์เอง — ไฟล์รุ่นเก่าไม่มีช่องนี้ จะขึ้นเป็นขีด ไม่ใช่ 0
+ * ==========================================================================*/
+function spQtyTxt(o,pk,nm){
+  const shr=alShrink(nm||"",pk);
+  const q=alQtyTxt(o,pk,shr);
+  const raw=[o.cs?o.cs+" ลัง":"",o.sh?o.sh+" แพ็ค":"",o.pc?o.pc+" ชิ้น":""].filter(Boolean).join(" + ");
+  return {main:q&&q.txt!=="0"?q.txt:(raw||"-"),raw:raw,pcs:q?q.pcs:null};
+}
+function spMechU(a){
+  return [a&&a[0]?a[0]+" ลัง":"",a&&a[1]?a[1]+" แพ็ค":"",a&&a[2]?a[2]+" ชิ้น":""]
+    .filter(Boolean).join(" ")||"-";
+}
+function spMechTxt(m){
+  if(!m)return "";
+  return "ซื้อ "+spMechU(m.bq)+" แถม "+spMechU(m.fq);
+}
+function spSoldHtml(o){
+  const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const money=o.prod.some(t=>t.g||t.v);
+  const nmOf={};o.prod.forEach(t=>{nmOf[t.code]=t.nm;});
+  const rows=o.prod.filter(t=>t.sRaw.cs||t.sRaw.sh||t.sRaw.pc||t.fRaw.cs||t.fRaw.sh||t.fRaw.pc);
+  if(!rows.length)return "";
+  /* โปรที่แถมข้ามรหัส ต้องขึ้นทั้งสองแถว — คนอ่านมองหาตัวที่ "ซื้อ" ก่อนเสมอ */
+  const buy={};Object.keys(o.mech||{}).forEach(fc=>{const m=o.mech[fc];
+    if(m.b!==fc)buy[m.b]={m:m,fc:fc};});
+  /* ⚠️ สองช่องเท่านั้น — ชื่อสินค้าไทยยาว ถ้าแยก ขาย/แถม/เงิน เป็นคอลัมน์ ช่องขวาสุดจะหลุดจอมือถือ
+     (บทเรียนเดิมจากหน้ารายการค้างของสต็อคกลาง) จึงซ้อนตัวเลขเป็นบรรทัดในช่องเดียว */
+  return `<div class="panel" style="margin-top:12px"><h3>📋 รายการที่ขายออกไปแล้ว</h3>
+    <div class="psub">จากไฟล์ใบจัดของตามเลข GIN ที่บันทึกไว้ · ของแถมแยกจากของขาย${
+      money?" · เงินเป็นตัวเลขจากไฟล์เอง":" · ไฟล์รุ่นนี้ไม่มีช่องเงิน"}</div>
+    <div class="tblwrap" style="margin-top:10px"><table class="cst-rt"><thead><tr>
+      <th style="text-align:left">สินค้า</th><th style="text-align:right">จำนวนที่ออกไป</th>
+      </tr></thead><tbody>${
+    rows.map(t=>{
+      const qs=spQtyTxt(t.sRaw,t.pk,t.nm),qf=spQtyTxt(t.fRaw,t.pk,t.nm);
+      const m=o.mech[t.code];
+      const has=x=>x&&x.main&&x.main!=="-"&&x.main!=="0";
+      return `<tr>
+        <td style="text-align:left"><b>${anaEsc(t.nm||oname(t.code)||("รหัส "+t.code))}</b>
+          <span class="psub" style="display:block">รหัส ${anaEsc(t.code)}${
+            t.shop?" · กระจาย "+N(t.shop)+" ร้าน":""}</span>${
+          m?`<span class="psub" style="display:block">🎁 ${anaEsc(spMechTxt(m))}${
+            m.b!==t.code?" — ของแถมของ "+anaEsc(nmOf[m.b]||("รหัส "+m.b)):" (แถมตัวเอง)"}</span>`
+           :(buy[t.code]?`<span class="psub" style="display:block">🎁 ${
+             anaEsc(spMechTxt(buy[t.code].m))} — แถมเป็น ${
+             anaEsc(nmOf[buy[t.code].fc]||("รหัส "+buy[t.code].fc))}</span>`:"")}</td>
+        <td style="text-align:right;white-space:nowrap">
+          ${has(qs)?`<div>ขาย <b>${anaEsc(qs.main)}</b></div>`:""}
+          ${has(qf)?`<div style="color:var(--blue)">แถม <b>${anaEsc(qf.main)}</b></div>`:""}
+          ${money&&t.v?`<div class="psub">${THB(t.v)}</div>`:""}</td></tr>`;
+    }).join("")}
+    ${money?`<tr><td style="text-align:left"><b>รวมยอดขาย (NIV)</b></td>
+      <td style="text-align:right"><b>${THB(o.niv)}</b></td></tr>`:""}</tbody></table></div>
+    <div class="note" style="margin-top:8px;color:var(--mid)">จำนวนร้านนับแบบไม่ซ้ำภายในวันเดียว
+      และเลือกวันที่กระจายได้มากที่สุดมาแสดง ไม่ได้บวกข้ามวัน เพราะร้านเดิมสั่งซ้ำได้</div></div>`;
+}
 function spOutAllocHtml(sid){
   const o=spAllOut(sid);
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
@@ -13886,7 +14094,8 @@ function spOutAllocHtml(sid){
   /* ---- รายสินค้า ---- */
   /* 4 ช่องพอ — ของขาย/ของแถมใส่เป็นบรรทัดเล็กใต้ยอดรวม ไม่งั้นตารางกว้างเกินจอมือถือ
      (บทเรียนเดียวกับหน้ารายการค้างของสต็อคกลาง ที่ปุ่มท้ายแถวหลุดขอบจนมองไม่เห็น) */
-  h+=`<div class="panel" style="margin-top:12px"><h3>📦 รายสินค้า</h3>
+  h+=spSoldHtml(o);
+  h+=`<div class="panel" style="margin-top:12px"><h3>📦 เทียบกับที่ตัดบิลไว้</h3>
     <div class="tblwrap"><table class="cst-rt"><thead><tr>
       <th style="text-align:left">สินค้า</th><th>ตัดบิลไว้</th><th>คลังจัดออกแล้ว</th>
       <th>ส่วนต่าง</th></tr></thead><tbody>${
@@ -13922,14 +14131,67 @@ function spOutAllocHtml(sid){
           fmtDateTime(d.at)+"</span>":""}</td></tr>`).join("")}</tbody></table></div></div>`;
   return h+spBbfHtml(sid);
 }
+/* 📋 ใบ A/B: แอดมินกรอกแค่ "ของออกไปกับเลข GIN ไหน" ไม่ต้องเทียบทั้งไฟล์
+   เก็บลงเรคอร์ดเดิม CSTOCK.gin["sid|วันที่"] ผ่าน api/spord.js act:"gin" — ไม่มี section ใหม่
+   ⚠️ ไม่ต้องมีไฟล์ใบจัดของก็บันทึกได้ (rows ว่าง) เพราะใบแบบนี้ไม่ได้ตรวจเทียบ */
+async function spGinNote(sid,ymd){
+  if(!spAdmOk()){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return false;}
+  const el=document.getElementById("spGinNo");
+  const gins=String((el&&el.value)||"").split(/[,\s]+/).map(x=>x.trim()).filter(Boolean).slice(0,50);
+  const C=spKeyOk(),k=sid+"|"+ymd;
+  const old=C.gin[k]?JSON.parse(JSON.stringify(C.gin[k])):null;
+  C.gin[k]=Object.assign({},C.gin[k]||{},{g:gins,del:gins.length?0:1,
+    by:(S.user&&S.user.id)||"",byName:(S.user&&S.user.name)||"",at:Date.now()});
+  renderSpord();
+  try{
+    const r=await bdPost("/api/spord",{act:"gin",sid:sid,d:ymd,gin:gins,
+      rows:(old&&old.rows)||{},dd:(old&&old.dd)||[],ords:(old&&old.ords)||[],
+      miss:[],money:(old&&old.money)||0,file:(old&&old.file)||"",del:gins.length?0:1});
+    if(!r||!r.ok)throw new Error((r&&r.error)||"บันทึกไม่สำเร็จ");
+    toast(gins.length?("บันทึกเลข GIN แล้ว · "+fmtDate(ymd)):("ลบเลข GIN ของ "+fmtDate(ymd)+" แล้ว"));
+    return true;
+  }catch(e){
+    if(old)C.gin[k]=old;else delete C.gin[k];
+    renderSpord();alert("บันทึกไม่สำเร็จ: "+e.message);return false;
+  }
+}
+function spGinNoteHtml(sid){
+  const can=spAdmOk(),ymd=spDay(sid);
+  const C=spKeyOk(),all=[];
+  Object.keys(C.gin||{}).forEach(k=>{const p=k.split("|");
+    if(p[0]!==sid||!p[1])return;const r=C.gin[k];
+    if(!r||r.del||!(r.g||[]).length)return;
+    all.push({d:p[1],g:r.g,by:r.byName||r.by||"",at:r.at||0});});
+  all.sort((a,b)=>String(a.d).localeCompare(String(b.d)));
+  const cur=spGinRec(sid,ymd);
+  return `<div class="panel"><h3>🧾 ของออกไปกับเลข GIN ไหน</h3>
+    <div class="psub">เลือกวันที่ แล้วใส่เลข GIN ที่คลังจัดของออกไปในวันนั้น</div>
+    <div class="controls" style="margin:10px 0 0">${spDayPick(sid)}</div>
+    ${can?`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+      <label class="psub" style="min-width:110px">เลข GIN ${fmtDate(ymd)}</label>
+      <input id="spGinNo" value="${anaEsc(((cur&&cur.g)||[]).join(", "))}"
+        placeholder="เช่น 141, 142 (คั่นด้วยจุลภาคได้)"
+        style="padding:10px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:16px;
+          font-family:ui-monospace,monospace;min-width:220px;flex:1">
+      <button class="upload-btn" onclick="spGinNote('${anaEsc(sid)}','${ymd}')">💾 บันทึก</button></div>`
+      :`<div class="insight" style="margin-top:10px">ดูอย่างเดียว</div>`}
+    ${all.length?`<div class="tblwrap" style="margin-top:12px"><table class="cst-rt"><thead><tr>
+      <th style="text-align:left">วันที่</th><th>เลข GIN</th><th>บันทึกโดย</th></tr></thead><tbody>${
+      all.map(x=>`<tr><td style="text-align:left"><b>${fmtDate(x.d)}</b></td>
+        <td style="font-family:ui-monospace,monospace">${x.g.map(anaEsc).join(" · ")}</td>
+        <td>${anaEsc(x.by||"-")}</td></tr>`).join("")}</tbody></table></div>`
+      :`<div class="psub" style="margin-top:10px">ยังไม่ได้ใส่เลข GIN ของใบนี้</div>`}
+  </div>`;
+}
 function spOutHtml(sid){
   /* 🎯 ใบตัวกระจาย: คลังส่งออก = รายงานจากไฟล์ใบจัดของ ไม่ใช่การกรอกมือ (เจ้าของสั่ง 26 พ.ย. 69)
      ⚠️ ใบ A/B ยังใช้การกรอกมือแบบเดิมทุกอย่าง — lots/clr ของใบ D ก็ยังอยู่ครบ
         ดูและแก้ได้ที่หน้า 🧊 สต็อคกลาง ตามเดิม ไม่มีอะไรถูกลบ */
   if(spGrpOf(spSlip(sid))==="D")return spOutAllocHtml(sid);
   const mgr=(typeof cstMgr==="function")?cstMgr():spMgr();
+  const gin=spGinNoteHtml(sid);
   const rows=(typeof cstSlipRows==="function")?cstSlipRows(sid):[];
-  if(!rows.length)return `<div class="panel"><div class="insight">
+  if(!rows.length)return gin+`<div class="panel" style="margin-top:12px"><div class="insight">
     ใบนี้ยังไม่มีรายการสินค้า — ให้แอดมินแก้ใบออเดอร์ใส่สินค้าก่อน</div></div>`;
   CST.open=CST.open||{};CST.open[sid]=true;        /* เข้ามาแล้วเห็นรายการเลย */
   const g=cstListHtml(rows,mgr);
@@ -13937,7 +14199,7 @@ function spOutHtml(sid){
   const left=rows.reduce((a,l)=>a+cstLeft(l),0);
   const pct=cut>0?Math.max(0,Math.min(100,Math.round((cut-left)/cut*100))):0;
   const R=x=>(Math.round(x*100)/100).toLocaleString();
-  return `<div class="panel">
+  return gin+`<div class="panel" style="margin-top:12px">
     <h3>🚚 คลังส่งออก — ของในใบนี้ส่งออกไปไหนแล้วบ้าง</h3>
     <div class="psub">${mgr?"ติ๊กเลือกรายการ แล้วกด <b>✅ บันทึกว่าส่งออกไปแล้ว</b> · กด 📝 เพื่อลงบางส่วน"
       :"ดูอย่างเดียว"}</div>
@@ -14150,10 +14412,10 @@ function renderSpord(){
           <span class="psub">กดเดือนที่ต้องการ แล้วค่อยเลือกใบออเดอร์</span>
           <span style="flex:1"></span>${spAlBtnHtml()}${
             spMgr()?'<button class="upload-btn" onclick="spNewOrder()">➕ สร้างออเดอร์ใหม่</button>':""}</div>
-        <div class="sp-mons">${ms.map(m=>{
+        <div class="sp-mons wheel" id="spMons">${ms.map(m=>{
           const none=!m.slips,cur=m.ym===now;
           const kn=spMonKeyed(m.ym),gn=spMonGin(m.ym);
-          return `<div class="sp-mon${none?" off":""}${cur?" now":""}" onclick="spOpenMon('${m.ym}')">
+          return `<div class="sp-mon${none?" off":""}${cur?" now":""}" data-ym="${m.ym}" onclick="spOpenMon('${m.ym}')">
             <div class="sp-mn">${m.ym==="ไม่ระบุ"?"ไม่ระบุเดือน":fmtMonth(m.ym)}${
               cur?' <span class="pill g">เดือนนี้</span>':""}</div>
             <div class="sp-mv">${m.slips}<small>ใบออเดอร์</small></div>
@@ -14161,6 +14423,7 @@ function renderSpord(){
               :`<span class="pill">✍️ เซลล์คีย์ ${kn} วัน</span> <span class="pill${gn?" g":""}">🔎 แอดมินตรวจ ${gn} วัน</span>`}</div>
             <div class="sp-ma">▶</div>
           </div>`;}).join("")}</div></div>`;
+      spMonScroll();
       return;
     }
     const inM=sls.filter(x=>spYm(x)===SP.ym);

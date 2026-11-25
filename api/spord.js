@@ -178,9 +178,34 @@ export default async function handler(req, res) {
             // ไฟล์รุ่นเก่าไม่มีช่องนี้ ส่งมาเป็น 0 และ money = 0 แล้วหน้าเว็บประเมินจากไฟล์ราคาแทน
             g: Q(v.g), v: Q(v.v), mn: Q(v.mn),
             nm: S(v.nm, 120), pk: Q(v.pk),
+            // 🏪 จำนวนร้านที่ได้ของจริง — เก็บแค่ "จำนวน" ไม่เก็บรายชื่อร้าน
+            sh: Q(v.sh),
           };
         }
+        // 🎁 คู่ของแถมที่ถอดมาจากไฟล์ใบจัดของเอง (ของแถมรหัสไหน มากับการซื้อรหัสไหน กี่ต่อกี่)
+        // สร้างใหม่ทีละช่อง ไม่รับก้อนดิบ และผูกกับรหัสในใบเท่านั้น
+        const msrc = body.mech && typeof body.mech === "object" ? body.mech : {};
+        const mech = {};
+        const T3 = (a) => (Array.isArray(a) ? [Q(a[0]), Q(a[1]), Q(a[2])] : [0, 0, 0]);
+        let mn = 0;
+        for (const k of Object.keys(msrc)) {
+          const fc = CODE(k);
+          if (!fc || ++mn > MAX_ROWS) break;
+          const v = msrc[k] || {};
+          const b = CODE(v.b);
+          if (!b) continue;
+          mech[fc] = { b, bq: T3(v.bq), fq: T3(v.fq), n: Q(v.n), hit: Q(v.hit) };
+        }
+        const ssrc = body.shop && typeof body.shop === "object" ? body.shop : {};
+        const shop = {};
+        let sn = 0;
+        for (const k of Object.keys(ssrc)) {
+          const c = CODE(k);
+          if (!c || ++sn > MAX_ROWS) break;
+          shop[c] = Q(ssrc[k]);
+        }
         C.gin[key] = {
+          mech, shop,
           // ยกเลิกผลตรวจ = เขียน del:1 ทับ ไม่ใช่ลบคีย์ (ลบแล้วแท็บเก่า union กลับมา)
           del: body.del ? 1 : 0,
           money: body.money ? 1 : 0,

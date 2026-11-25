@@ -253,10 +253,12 @@ const ORIGIN='https://bd-spord.test/';
    return o;});
  /* เจ้าของสั่ง 26 พ.ย. 69: ใบตัดบิลรอส่ง/ส่งแล้วรอตัดบิล เริ่มที่เซลล์ ไม่มีใครมาจดเป้าให้ก่อน
     ส่วนใบตัวกระจาย หัวหน้าเซลล์เป็นคนเปิดใบ จึงต้องมีขั้นซุปจดนำหน้า */
- t('🔑 ใบตัดบิลรอส่ง/ส่งแล้วรอตัดบิล มี 3 ขั้น (เซลล์คีย์ → แอดมินตรวจ → คลังส่งออก) + รายงาน',
-   tabs.chipsMgr.length===4&&/เซลล์คีย์/.test(tabs.chipsMgr[0])&&
-   /แอดมินตรวจ/.test(tabs.chipsMgr[1])&&/คลังส่งออก/.test(tabs.chipsMgr[2])&&
-   /รายงาน/.test(tabs.chipsMgr[3])&&!tabs.chipsMgr.some(c=>/ซุปจด/.test(c))&&
+ /* ย่อลงเหลือ 2 ขั้นเมื่อ 26 พ.ย. 69 — *"หลังจากเซลล์คีย์ออเดอร์มา แค่ให้แอดมินมากรอกส่วนของคลัง
+    ว่าสินค้าออกไปกับเลข GIN ไหน … แอดมินไม่ต้องมาเช็คเหมือนร้านที่กระจายเยอะ ๆ"* */
+ t('🔑 ใบตัดบิลรอส่ง/ส่งแล้วรอตัดบิล เหลือ 2 ขั้น (เซลล์คีย์ → คลังส่งออก) + รายงาน',
+   tabs.chipsMgr.length===3&&/เซลล์คีย์/.test(tabs.chipsMgr[0])&&
+   /คลังส่งออก/.test(tabs.chipsMgr[1])&&/รายงาน/.test(tabs.chipsMgr[2])&&
+   !tabs.chipsMgr.some(c=>/ซุปจด/.test(c))&&!tabs.chipsMgr.some(c=>/แอดมินตรวจ/.test(c))&&
    tabs.secA==='rep',tabs.chipsMgr.join(' | ')+' · เปิดมาที่ '+tabs.secA);
  t('🔑 ใบ 🎯 ตัวกระจาย มี 4 ขั้น เริ่มที่ ① ซุปจด',
    tabs.gD==='D'&&tabs.chipsD.length===5&&/① ✍️ ซุปจด/.test(tabs.chipsD[0])&&
@@ -278,7 +280,7 @@ const ORIGIN='https://bd-spord.test/';
    tabs.afterBack3.tab==='spord',
    JSON.stringify([tabs.afterBack1,tabs.afterBack2,tabs.afterBack3]));
  t('🔒 รายงานเปิดได้เฉพาะผู้จัดการ',
-   /รายงานใบนี้/.test(tabs.rptMgr)&&tabs.chipsSup.length===3&&
+   /รายงานใบนี้/.test(tabs.rptMgr)&&tabs.chipsSup.length===2&&
    !tabs.chipsSup.some(c=>/รายงาน/.test(c))&&!/รายงานใบนี้/.test(tabs.rptSup),
    tabs.chipsSup.join(' | '));
 
@@ -1174,10 +1176,12 @@ const ORIGIN='https://bd-spord.test/';
    return o;});
  const bR=c=>bbf.g.rows.filter(r=>r.code===c)[0];
  const bC=c=>bbf.g.chk.filter(r=>r.code===c)[0];
+ const Q1=a=>(a||[]).join(',');
  t('🔑 อ่านสูตรของแถมจากไฟล์ BUM เอง — ไม่ต้องพิมพ์เงื่อนไขเข้าระบบ',
-   bbf.g.hasBum&&bbf.g.rows.length===5&&bR('AAA1').fb===2&&bR('AAA1').fq===1&&
-   bR('CCC1').fb===2&&bR('CCC1').fq===2&&bR('BBB1').fb===1,
-   bbf.g.rows.map(r=>r.code+' ซื้อ'+r.fb+' แถม'+r.fq).join(' | '));
+   bbf.g.hasBum&&bbf.g.rows.length===5&&Q1(bR('AAA1').bq)==='2,0,0'&&Q1(bR('AAA1').fq)==='1,0,0'&&
+   Q1(bR('CCC1').bq)==='2,0,0'&&Q1(bR('CCC1').fq)==='2,0,0'&&Q1(bR('BBB1').bq)==='1,0,0'&&
+   bbf.g.rows.every(r=>r.src==='bum'),
+   bbf.g.rows.map(r=>r.code+' ซื้อ'+Q1(r.bq)+' แถม'+Q1(r.fq)).join(' | '));
  t('🔑 ของแถมข้ามรหัสต้องรวมยอดไปที่ "รหัสของแถม" ไม่ใช่รหัสที่ซื้อ',
    bR('CCC1').fc==='CCC2'&&!bR('CCC1').self&&bR('BBB1').fc==='BBB2',
    'CCC1 แถม '+bR('CCC1').fc+' · BBB1 แถม '+bR('BBB1').fc);
@@ -1199,9 +1203,9 @@ const ORIGIN='https://bd-spord.test/';
  t('🛟 ตัวเลขที่ควรแถมติดป้าย (ประเมิน) และบอกว่า CAP ต่อร้านทำให้ต่างได้',
    /ประเมิน/.test(bbf.tx)&&/CAP ต่อร้าน/.test(bbf.tx),
    bbf.tx.slice(bbf.tx.indexOf('ควรแถม'),bbf.tx.indexOf('ควรแถม')+60));
- t('🛟 ยังไม่ได้อัพไฟล์ BUM → บอกให้ไปอัพ ไม่ใช่ขึ้นตารางเปล่า',
-   /ยังไม่ได้อัพไฟล์ BUM/.test(bbf.noBum)&&!/ซื้อ 2 แถม 1/.test(bbf.noBum),
-   bbf.noBum.slice(bbf.noBum.indexOf('ของแถมตามโปร'),bbf.noBum.indexOf('ของแถมตามโปร')+110));
+ t('🛟 ยังไม่ได้อัพไฟล์ BUM และไฟล์ใบจัดของไม่มีแถวแถม → บอกตรง ๆ ไม่ใช่ขึ้นตารางเปล่า',
+   /ไฟล์ BUM ยังไม่ได้อัพ/.test(bbf.noBum)&&!/ซื้อ 2 ลัง/.test(bbf.noBum),
+   bbf.noBum.slice(bbf.noBum.indexOf('ของแถมตามโปร'),bbf.noBum.indexOf('ของแถมตามโปร')+130));
  t('🔒 ไฟล์ BUM เป็นไฟล์ต้นทุนศูนย์ — ส่วนนี้กันไว้ในฟังก์ชัน ไม่ใช่แค่ซ่อนปุ่ม',bbf.sales==='');
 
  /* ---------- 13b) ✏️ ปุ่มแก้ไขใบ ---------- */
@@ -1243,14 +1247,198 @@ const ORIGIN='https://bd-spord.test/';
    !edit.salesBtn&&edit.salesBlocked);
  /* หัวใบเคยถูกเขียน innerHTML ทับ ปุ่มเลือกประเภทจึงหายไปทั้งแถบตอนเปิดเข้าไปในใบ
     เจ้าของหาไม่เจอ แล้วมาบอกว่า "แก้ออเดอร์นี้ให้เป็นรูปแบบตัวกระจาย" ให้แทน (26 พ.ย. 69) */
+ /* เจ้าของสั่ง 26 พ.ย. 69: *"ส่วนของที่ให้เลือกประเภทใบ ให้ย้ายมันเข้าไปอยู่ในปุ่มแก้ไขใบ
+    ให้ต้องกดแก้ไขใบก่อนแล้วค่อยไปเปลี่ยนประเภทใบ"* — กันกดโดนบนหัวใบแล้วใบเปลี่ยนประเภททันที */
  const grpBtn=await ev(()=>{
    __as('manager',null,'แอดมิน 1');CST.f=null;SP.view='slip';SP.sid='B20261118-01';renderSpord();
    const h=document.getElementById('spBar');
-   return {inSlip:[...h.querySelectorAll('button[onclick*="spSetGrp"]')].length,
+   const o={inSlip:[...h.querySelectorAll('button[onclick*="spSetGrp"]')].length,
+     edit:!!h.querySelector('button[onclick*="spEditSlip"]'),
      lock:!!h.querySelector('button[onclick*="spPinLock"]'),
-     bar:/spSetGrp/.test(spBarHtml(spSlip('B20261118-01')))};});
- t('🔑 ปุ่มเลือกประเภทใบต้องอยู่บนหัวใบตอนเปิดเข้าไปในใบจริง ๆ (ของเดิมถูกเขียนทับหาย)',
-   grpBtn.inSlip===3&&grpBtn.bar&&grpBtn.lock,JSON.stringify(grpBtn));
+     bar:/spSetGrp/.test(spBarHtml(spSlip('B20261118-01')))};
+   spEditSlip('B20261118-01');
+   o.inForm=[...document.querySelectorAll('#spBody button[onclick*="cstSetGrp"]')].length;
+   CST.f=null;SP.view='slip';renderSpord();
+   return o;});
+ t('🔑 หัวใบมีแต่ปุ่มแก้ไขใบ — เปลี่ยนประเภทต้องกดเข้าไปในฟอร์มก่อน',
+   grpBtn.inSlip===0&&!grpBtn.bar&&grpBtn.edit&&grpBtn.lock&&grpBtn.inForm===3,
+   JSON.stringify(grpBtn));
+
+ /* ================================================================
+  * 14) 🎁 ถอดสูตรของแถมจาก "ไฟล์ใบจัดของ" เอง (เจ้าของสั่ง 26 พ.ย. 69)
+  *   วัดกับไฟล์จริง 10,428 แถว + สไลด์ที่ Unilever ส่งมา:
+  *     บล็อค BBF ของไฟล์ BUM มีแค่ 24 แถว และเป็นรอบของไฟล์นั้นเอง ทั้งหมดแถมตัวเอง
+  *     ⇒ โปรของเดือนก่อน และโปรที่แถมข้ามรหัส ไม่มีใน BUM เลย ต้องอ่านจากของที่คลังจัดออกจริง
+  *   เกณฑ์: คู่ที่ถูกต้องปรากฏร่วมกันใน 100% ของออเดอร์ · รหัสที่บังเอิญซื้อพร้อมกันอยู่ที่ 85%/70%/40%
+  *   ⛔ รหัส/ชื่อในเทสสมมติขึ้นเอง รีโปเป็นสาธารณะ — แต่ลอกโครงโปรจริงมาครบสามแบบ
+  * ================================================================ */
+ await ev(()=>{
+   /* ไฟล์ใบจัดของจำลอง: ออเดอร์ละหนึ่งร้าน · สามโปร + สินค้าหลอกที่ซื้อพร้อมกันบ่อยแต่ไม่ใช่คู่ */
+   window.__alMechBuf=()=>{
+     const H=['Order Creation Date','Distributor Code','Distributor Name','Salesman Name',
+       'PJP Code','PJP Name','Route Type','Outlet Code','Outlet Name','Outlet Subtype',
+       'GIN No.','Invoice No.','Order Number','Order Type','Product Code','Product Description',
+       'Pack Size','Sale Order (CS)','Sale Order (SHR)','Sale Order (PC)',
+       'Free Order (CS)','Free Order (SHR)','Free Order (PC)',
+       'Sale Allocated (CS)','Sale Allocated (SHR)','Sale Allocated (PC)',
+       'Free Allocated (CS)','Free Allocated (SHR)','Free Allocated (PC)',
+       'Sales Allocation Status','Free Allocation Status','Order Status','GSV','NIV'];
+     const A=[H];
+     const row=(shop,no,code,nm,pk,s3,f3,gsv,niv)=>A.push([46341,'15389839','บีดี','2096',
+       '209611','CT_HPC_211','CT',shop,'ร้าน '+shop,'sub','77','INV'+no,no,'B2B',code,nm,pk,
+       s3[0],s3[1],s3[2],f3[0],f3[1],f3[2],s3[0],s3[1],s3[2],f3[0],f3[1],f3[2],
+       'Full','Full','Delivered',gsv,niv]);
+     /* 40 ออเดอร์: ครีม 2 ชิ้น แถมตัวเอง 1 ชิ้น · 30 ใบในนั้นซื้อสบู่ด้วย
+        แล้วอีก 10 ใบซื้อแต่สบู่ — ซ้อนทับกันบางส่วนเหมือนโปรจริงที่ขายเข้าร้านชุดคล้าย ๆ กัน */
+     for(let i=1;i<=40;i++){const no='BD'+(1000+i),sh='S'+(100+i);
+       row(sh,no,'AAA1','ครีมทาผิว เอ',12,[0,0,2],[0,0,1],240,200);
+       if(i<=30){row(sh,no,'CCC1','สบู่เหลว โรส',8,[0,0,2],[0,0,0],300,260);
+         row(sh,no,'CCC2','สบู่เหลว ซากุระ',8,[0,0,0],[0,0,2],0,0);}
+       /* สินค้าหลอก: ซื้อพร้อมกัน 90% แต่ไม่ใช่คู่ของแถม */
+       if(i<=36)row(sh,no,'DDD1','สินค้าไม่มีโปร',12,[0,0,3],[0,0,0],150,120);
+     }
+     for(let i=1;i<=10;i++){const no='BF'+(3000+i),sh='U'+(300+i);
+       row(sh,no,'CCC1','สบู่เหลว โรส',8,[0,0,2],[0,0,0],300,260);
+       row(sh,no,'CCC2','สบู่เหลว ซากุระ',8,[0,0,0],[0,0,2],0,0);}
+     /* 20 ออเดอร์: เซรั่ม 1 แพ็ค แถมอีกสีอีก 1 แพ็ค (ไขว้สองทาง) */
+     for(let i=1;i<=20;i++){const no='BE'+(2000+i),sh='T'+(200+i);
+       row(sh,no,'BBB1','เซรั่ม เอ็กซ์ 12X6X10ML',72,[0,1,0],[0,0,0],180,150);
+       row(sh,no,'BBB2','เซรั่ม วาย 12X6X10ML',72,[0,0,0],[0,1,0],0,0);}
+     const ws=XLSX.utils.aoa_to_sheet(A),wb=XLSX.utils.book_new();
+     XLSX.utils.book_append_sheet(wb,ws,'Export');
+     return XLSX.write(wb,{type:'array',bookType:'xlsx'});
+   };
+ });
+ const mech=await ev(async()=>{
+   __reset();
+   CSTOCK.slips['B20261118-01'].g='D';
+   [['AAA1','ครีมทาผิว เอ',60],['CCC1','สบู่เหลว โรส',60],['CCC2','สบู่เหลว ซากุระ',60],
+    ['BBB1','เซรั่ม เอ็กซ์ 12X6X10ML',20],['BBB2','เซรั่ม วาย 12X6X10ML',20],
+    ['DDD1','สินค้าไม่มีโปร',10]].forEach((p,i)=>{
+     const id='B20261118-01-m'+i;
+     CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],
+       cs:p[2],pc:0,sq:i,ln:'CT11',clr:[],up:1};});
+   PRICE={loaded:true,err:'',hs:null,bum:null};      /* ไม่มีไฟล์ BUM เลย ก็ต้องทำงานได้ */
+   __as('manager',null,'แอดมิน 1');_switchTab('spord');
+   parseAlloc('alloc.xlsx',__alMechBuf());
+   SP.view='slip';SP.sid='B20261118-01';SP.sec='adm';SP.day='2026-11-20';renderSpord();
+   document.getElementById('spGinIn').value='77';
+   await spGinGo('B20261118-01','2026-11-20');await W();
+   const rec=CSTOCK.gin['B20261118-01|2026-11-20'];
+   const o={mech:rec.mech,shop:rec.shop,sent:JSON.stringify(window.__posts[window.__posts.length-1].b.mech)};
+   ALLOC=null;                                       /* ไฟล์หลุดจากเครื่องแล้วต้องยังอ่านได้ */
+   SP.sec='out';renderSpord();
+   o.g=spBbf('B20261118-01');
+   o.tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.niv=spAllOut('B20261118-01').niv;
+   o.ginJson=JSON.stringify(CSTOCK.gin);
+   return o;});
+ const M=c=>mech.mech[c];
+ t('🔑 ถอดคู่ของแถมจากไฟล์ใบจัดของได้เอง — ไม่ต้องมีไฟล์ BUM',
+   !!M('AAA1')&&M('AAA1').b==='AAA1'&&M('AAA1').bq.join()==='0,0,2'&&M('AAA1').fq.join()==='0,0,1',
+   JSON.stringify(M('AAA1')));
+ t('🔑 ของแถมข้ามรหัสจับคู่ถูก (ซื้อโรส แถมซากุระ 2 ชิ้นต่อ 2 ชิ้น)',
+   !!M('CCC2')&&M('CCC2').b==='CCC1'&&M('CCC2').bq.join()==='0,0,2'&&M('CCC2').fq.join()==='0,0,2',
+   JSON.stringify(M('CCC2')));
+ t('🔑 หน่วยแพ็คก็จับได้ และไขว้สองทางก็แยกออก',
+   !!M('BBB2')&&M('BBB2').b==='BBB1'&&M('BBB2').fq.join()==='0,1,0',JSON.stringify(M('BBB2')));
+ /* DDD1 ซื้อพร้อมของแถม 36/40 = 90% ซึ่งต่ำกว่าเกณฑ์ 95% จึงต้องไม่ถูกจับเป็นคู่ */
+ t('🛟 สินค้าที่บังเอิญซื้อพร้อมกันบ่อย แต่ไม่ถึงเกณฑ์ ต้องไม่ถูกจับเป็นคู่ของแถม',
+   !Object.keys(mech.mech).some(k=>mech.mech[k].b==='DDD1'),
+   Object.keys(mech.mech).map(k=>k+'←'+mech.mech[k].b).join(' | '));
+ t('🛟 เก็บลงผลตรวจและส่งขึ้นเซิร์ฟเวอร์ด้วย — เปิดใหม่ไม่ต้องอัพไฟล์ซ้ำ',
+   /CCC1/.test(mech.sent)&&mech.g.fromFile&&mech.g.rows.length>=3,
+   mech.g.rows.map(r=>r.code+'→'+r.fc+' ('+r.src+')').join(' | '));
+ /* ครีม: ขาย 80 ชิ้น ลังละ 12 → ควรแถม 40 ชิ้น = 3.33 ลัง · ได้จริง 40 ชิ้น */
+ t('🔑 เทียบควรแถม vs แถมจริง จากสูตรที่ถอดเอง',
+   mech.g.chk.filter(c=>c.code==='AAA1')[0].st==='ok'&&
+   mech.g.chk.filter(c=>c.code==='CCC2')[0].st==='ok'&&
+   mech.g.chk.filter(c=>c.code==='BBB2')[0].st==='ok',
+   mech.g.chk.map(c=>c.code+' ควร'+Math.round(c.exp*100)/100+' ได้'+Math.round(c.got*100)/100+' '+c.st).join(' | '));
+ t('🔑 มีหน้า "รายการที่ขายออกไปแล้ว" บอกจำนวน ของแถม และกระจายกี่ร้าน',
+   /รายการที่ขายออกไปแล้ว/.test(mech.tx)&&/กระจาย 40 ร้าน/.test(mech.tx)&&
+   /กระจาย 20 ร้าน/.test(mech.tx),
+   mech.tx.slice(mech.tx.indexOf('รายการที่ขายออก'),mech.tx.indexOf('รายการที่ขายออก')+170));
+ t('🔑 ...และยอดเงินมาจากช่อง GSV/NIV ของไฟล์เอง',
+   /ยอดขาย \(NIV\)/.test(mech.tx)&&mech.g.rows.length>0&&
+   Math.round(mech.niv)===(200*40+260*40+120*36+150*20),
+   'NIV รวม '+Math.round(mech.niv));
+ t('🛟 เก็บแค่ "จำนวนร้าน" ไม่เก็บรหัสร้านลง state (ไฟล์หมื่นแถวต้องไม่ทำให้ข้อมูลบวม)',
+   mech.shop&&mech.shop.AAA1===40&&!/S101/.test(mech.ginJson),
+   JSON.stringify(mech.shop));
+
+ /* เสมอกันจริง ๆ สองตัว (ขายเข้าร้านชุดเดียวกันเป๊ะ) → ห้ามเดา เพราะเดาผิดแล้วหน้าจะฟ้องว่า
+    คลังแถมไม่ครบทั้งที่ของครบ — วัดจากไฟล์จริง: ของแถม 65691965 ร่วมออเดอร์ 100% สองรหัส */
+ const tie=await ev(()=>{
+   const H=['Order Creation Date','Distributor Code','Distributor Name','Salesman Name',
+     'PJP Code','PJP Name','Route Type','Outlet Code','Outlet Name','Outlet Subtype',
+     'GIN No.','Invoice No.','Order Number','Order Type','Product Code','Product Description',
+     'Pack Size','Sale Order (CS)','Sale Order (SHR)','Sale Order (PC)',
+     'Free Order (CS)','Free Order (SHR)','Free Order (PC)',
+     'Sale Allocated (CS)','Sale Allocated (SHR)','Sale Allocated (PC)',
+     'Free Allocated (CS)','Free Allocated (SHR)','Free Allocated (PC)'];
+   const A=[H];
+   const row=(no,code,s3,f3)=>A.push([46341,'15389839','บีดี','2096','209611','CT_HPC_211','CT',
+     'SH'+no,'ร้าน','sub','88','INV'+no,no,'B2B',code,'ของ '+code,12,
+     s3[0],s3[1],s3[2],f3[0],f3[1],f3[2],s3[0],s3[1],s3[2],f3[0],f3[1],f3[2]]);
+   for(let i=1;i<=20;i++){const no='TI'+(900+i);
+     row(no,'EEE1',[0,0,2],[0,0,0]);row(no,'EEE2',[0,0,2],[0,0,0]);
+     row(no,'EEE3',[0,0,0],[0,0,1]);}
+   const ws=XLSX.utils.aoa_to_sheet(A),wb=XLSX.utils.book_new();
+   XLSX.utils.book_append_sheet(wb,ws,'Export');
+   parseAlloc('tie.xlsx',XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+   return alPick(['88'],['EEE1','EEE2','EEE3']).mech;});
+ t('🛟 สองรหัสเสมอกันสนิท → ไม่จับคู่ ดีกว่าเดาผิดแล้วฟ้องว่าคลังแถมไม่ครบ',
+   !tie.EEE3,JSON.stringify(tie));
+
+ /* ---------- 14b) ใบ A/B: กรอกเลข GIN ในหน้าคลังส่งออก ---------- */
+ const ginAB=await ev(async()=>{
+   __reset();
+   CSTOCK.slips['B20261118-01'].g='A';
+   CSTOCK.lots['B20261118-01-g0']={id:'B20261118-01-g0',sl:'B20261118-01',d:'2026-11-18',
+     code:'AAA1',nm:'ครีมทาผิว เอ',cs:30,pc:0,sq:0,ln:'CT11',clr:[],up:1};
+   __as('manager',null,'แอดมิน 1');_switchTab('spord');
+   SP.view='slip';SP.sid='B20261118-01';SP.sec='out';SP.day='2026-11-20';renderSpord();
+   const o={box:!!document.getElementById('spGinNo'),
+     bulk:!!document.querySelector('#spBody .cst-bulk')};
+   document.getElementById('spGinNo').value='141, 142';
+   const n=window.__posts.length;
+   await spGinNote('B20261118-01','2026-11-20');await W();
+   o.post=window.__posts[window.__posts.length-1];
+   o.n=window.__posts.length-n;
+   o.rec=CSTOCK.gin['B20261118-01|2026-11-20'];
+   renderSpord();
+   o.tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   /* เซลล์กรอกไม่ได้ */
+   __as('sales','209611','CT11');renderSpord();
+   o.salesBox=!!document.getElementById('spGinNo');
+   const b2=window.__posts.length;
+   await spGinNote('B20261118-01','2026-11-20');
+   o.salesNoPost=window.__posts.length===b2;
+   return o;});
+ t('🔑 ใบ A/B: แอดมินกรอกเลข GIN ได้ในหน้าคลังส่งออก โดยไม่ต้องมีไฟล์ใบจัดของ',
+   ginAB.box&&ginAB.n===1&&ginAB.post.u==='/api/spord'&&ginAB.post.b.act==='gin'&&
+   ginAB.rec.g.join()==='141,142',JSON.stringify({n:ginAB.n,g:ginAB.rec&&ginAB.rec.g}));
+ t('🔑 ...และรายการเคลียร์ของเดิมยังอยู่ในหน้าเดียวกัน',
+   ginAB.bulk&&/141 · 142/.test(ginAB.tx)&&/ยังค้าง/.test(ginAB.tx),
+   ginAB.tx.slice(0,120));
+ t('🔒 เซลล์ไม่มีช่องกรอก และเรียกฟังก์ชันตรง ๆ ก็ไม่ยิง',
+   !ginAB.salesBox&&ginAB.salesNoPost);
+
+ /* ---------- 14c) วงล้อเลือกเดือน ---------- */
+ const wheel=await ev(()=>{
+   __as('manager',null,'แอดมิน 1');SP.view='mon';SP.ym='';SP.yr='';SP.sid='';renderSpord();
+   const box=document.getElementById('spMons');
+   const now=todayISO().slice(0,7);
+   const el=box&&box.querySelector('.sp-mon[data-ym="'+now+'"]');
+   return {wheel:!!(box&&box.classList.contains('wheel')),n:box?box.children.length:0,
+     scrolls:box?getComputedStyle(box).overflowY:'',
+     top:box&&el?Math.abs(box.scrollTop-(el.offsetTop-box.offsetTop))<=4:false,
+     first:box?box.children[0].getAttribute('data-ym'):''};});
+ t('🔑 หน้าเลือกเดือนเป็นวงล้อเลื่อนได้ และเปิดมาอยู่ที่เดือนปัจจุบัน',
+   wheel.wheel&&wheel.n===12&&wheel.scrolls!=='visible'&&wheel.top,JSON.stringify(wheel));
+ t('🛟 ...แต่ลำดับยังเป็น ม.ค.→ธ.ค. เหมือนเดิม เลื่อนขึ้นดูเดือนก่อนหน้าได้',
+   /-01$/.test(wheel.first||''),wheel.first);
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

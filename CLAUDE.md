@@ -798,8 +798,12 @@ code, never printed.
   every stored slip would silently change type.
   **The slip page's tabs depend on the slip's type** (`SP_TABS`/`spTabsOn`, owner 26 Nov 26):
   🎯 ตัวกระจาย runs **① ✍️ ซุปจด → ② 📲 เซลล์คีย์ → ③ 🔎 แอดมินตรวจ → ④ 🚚 คลังส่งออก**, while
-  🧾 ตัดบิลรอส่ง and 🚚 ส่งแล้วรอตัดบิล **start at the rep** — *"เริ่มสร้างเซลล์"* — so they run
-  **เซลล์คีย์ → แอดมินตรวจ → คลังส่งออก** with no target step. **📊 รายงาน** is appended for the
+  🧾 ตัดบิลรอส่ง and 🚚 ส่งแล้วรอตัดบิล are **two steps only — ① เซลล์คีย์ → ② คลังส่งออก**
+  (owner, 26 Nov 26: *"หลังจากเซลล์คีย์ออเดอร์มา แค่ให้แอดมินมากรอกส่วนของคลัง ว่าสินค้าออกไปกับ
+  เลข GIN ไหน สองขั้นตอนเท่านั้นเอง แอดมินไม่ต้องมาเช็คเหมือนร้านที่กระจายเยอะ ๆ"*), so the whole
+  🔎 แอดมินตรวจ comparison belongs to D alone and A/B get a small **เลข GIN box inside คลังส่งออก**
+  (`spGinNote`/`spGinNoteHtml`) that writes the same `CSTOCK.gin[sid|date]` record with empty `rows`
+  — no new section, and it needs no allocation file. **📊 รายงาน** is appended for the
   manager. The step numbers are therefore computed from what is actually shown, never written into
   a label. A slip with no ซุปจด step must also **drop the เป้า / ยังขาด / ผล columns** (`spHasTgt`),
   or the rep's page reads as if someone forgot to set a target. The tab row is drawn into
@@ -822,7 +826,29 @@ code, never printed.
   still on 🧊 สต็อคกลาง. **`spSent(sid)` is the one answer to "how many cases have left the
   warehouse"** (allocation for D, lot clearings for A/B); the month card, the tab and the manager
   report all call it, or a card shows 0% while the tab inside shows 27%.
-  **🎁 ของแถมตามโปร reads the mechanic out of the BUM file** (`spBbf`/`spBbfHtml`, owner 26 Nov 26:
+  **📋 รายการที่ขายออกไปแล้ว** (`spSoldHtml`) is the ตัวกระจาย page's detail list: per product, cases
+  sold, free goods, **how many shops it reached** and the money, all from the stored check. `alPick`
+  counts distinct shops per line·code and stores **only the count** (`rows[].sh`, `shop[code]`), never
+  the shop codes — the `pmCodeSet` rule, and the repo is public. Shops are **not summed across days**
+  (a shop can buy twice); the biggest single day is shown and the page says so.
+  **🎁 The free-goods mechanic is derived from the allocation file itself** (`alMech`, owner 26 Nov 26:
+  *"ลองจับรหัสและ mechanic การแถมของแต่ละโปรจากไฟล์ bum ดู"*). Measured on his real
+  `BUM_DT_Dec26.xlsx`: the BBF block holds **only 24 rows, all for the file's own round
+  (01/12/2026–31/12/2026) and all แถมตัวเอง** — none of the eight codes on the promo slides he sent,
+  and it cannot express a cross-product free (Lux buys Rose, gives Sakura). **So BUM cannot answer
+  this question** and the pairing is read out of what the warehouse actually shipped. Measured on
+  the real 10,428-row allocation file: **the true partner co-occurs in 100% of the orders carrying
+  that free line**, while codes merely bought alongside sit at 85% / 70% / 40%, so a ≥95% threshold
+  separates them cleanly on all 7 pairs — and the **modal (sale, free) quantity pair in the file's own
+  unit** reproduces Unilever's own wording exactly (ซิตร้า 2 ชิ้น:1, ลักส์ 2 ชิ้น:2, Happy Slot
+  1 แพ็ค:1). Never reduce that pair to a ratio: 2:2 would print as "1 แถม 1". **Two candidates can
+  tie at 100%** (65691965 ties with ลักส์ in the real file) — self-pairing wins first, then
+  co-occurrence, then modal consistency, and **a remaining tie stores nothing rather than guessing**,
+  because a wrong pair makes the page accuse the warehouse of short-shipping. The pair and the shop
+  counts are saved on the check (`gin[].mech`/`.shop`, rebuilt field by field in `api/spord.js`), so
+  they read back without the file.
+  **🎁 ของแถมตามโปร** (`spBbf`/`spBbfHtml`) then compares formula against reality, taking the derived
+  pair first and the BUM `ex` block only for codes the allocation file never paired (owner 26 Nov 26:
   *"ลองจับรหัสและ mechanic การแถมของแต่ละโปรจากไฟล์ bum ดู เช่นซิตร้าในออเดอร์นี้มันเป็นโปรสองแถมหนึ่ง
   ลักส์เป็น 2 แถม 2"*). Nothing has to be typed in and no new file is uploaded: `parseBUM` already
   stores the Non-Cust sheet's BBF block per code — **`fb` = AU buy cases · `fc` = AV free product
@@ -834,9 +860,11 @@ code, never printed.
   whole slip while the promos cap sets per shop, and the page says a small difference is not an
   error; and a code the BUM file carries no BBF row for is **counted and listed, never treated as 0**.
   BUM is the depot's cost file, so the whole section is **manager-only inside `spBbfHtml`**.
-  **The admin's ✏️ แก้ไขใบ button and the type picker live on the slip header** (`spGrpBar`, shared
-  by `spBarHtml` and the slip view). The slip view used to overwrite `#spBar` with its own string, so
-  the type buttons vanished the moment you opened a slip — which is why the owner could not switch an
+  **The slip header carries one admin button, ✏️ แก้ไขใบ** (`spGrpBar`, shared by `spBarHtml` and
+  the slip view). The type picker moved **inside the edit form** on 26 Nov 26 — *"ให้ย้ายมันเข้าไป
+  อยู่ในปุ่มแก้ไขใบ ให้ต้องกดแก้ไขใบก่อนแล้วค่อยไปเปลี่ยนประเภทใบ"* — so a stray tap on the header
+  can no longer retype a slip. The slip view used to overwrite `#spBar` with its own string, so the
+  buttons vanished the moment you opened a slip — which is why the owner could not switch an
   order to ตัวกระจาย at all. `spEditSlip` reuses `cstSlipEdit` + the สต็อคกลาง form exactly as
   `spNewOrder` does; both `cstSlipEdit` and `spSetGrp` had `g:(s.g==="B")?"B":"A"` hard-coded, which
   silently demoted a 🎯 ตัวกระจาย slip to ตัดบิลรอส่ง — **always read the type through `SP_GRP`**.
@@ -991,7 +1019,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (163 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (178 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1004,7 +1032,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (163 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (178 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

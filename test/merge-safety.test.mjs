@@ -1313,6 +1313,22 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
         gm1.CSTOCK.gin[GK].rows["CT11|90000001"].g === 1500 &&
         gm1.CSTOCK.gin[GK].rows["CT11|90000001"].v === 1100,
         JSON.stringify(gm1.CSTOCK.gin[GK]));
+  /* 🎁 คู่ของแถมที่ถอดจากไฟล์ใบจัดของ + จำนวนร้าน (เพิ่ม 26 พ.ย. 69)
+     เป็นช่องใหม่บนเรคอร์ดผลตรวจ ซึ่ง merge ทั้งเรคอร์ดตาม at — แท็บรุ่นก่อนต้องลบไม่ได้ */
+  const gmMech = JSON.parse(JSON.stringify(t4));
+  gmMech.CSTOCK.gin[GK] = { g: ["141"], money: 1, at: 50000, by: "admin1",
+    rows: { "CT11|90000001": { sc: 5, fc: 1, sh: 40 } },
+    mech: { "90000002": { b: "90000001", bq: [0, 0, 2], fq: [0, 0, 2], n: 40, hit: 40 } },
+    shop: { "90000001": 40 }, dd: ["2026-11-20"] };
+  const gmOld2 = JSON.parse(JSON.stringify(base));
+  gmOld2.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, up: 51000 };
+  const gm3 = mergeState(gmMech, gmOld2);
+  check("🛟 แท็บรุ่นก่อนบันทึกทับ คู่ของแถม + จำนวนร้าน ในผลตรวจยังอยู่ครบ",
+        !!gm3.CSTOCK.gin[GK].mech && gm3.CSTOCK.gin[GK].mech["90000002"].b === "90000001" &&
+        gm3.CSTOCK.gin[GK].mech["90000002"].fq.join() === "0,0,2" &&
+        gm3.CSTOCK.gin[GK].shop["90000001"] === 40 &&
+        gm3.CSTOCK.gin[GK].rows["CT11|90000001"].sh === 40,
+        JSON.stringify(gm3.CSTOCK.gin[GK]));
   /* แอดมินอัพไฟล์รุ่นเก่า (ไม่มีช่องเงิน) ทับทีหลัง — อันใหม่ชนะตามปกติ แต่ต้องบอกได้ว่าไม่มีเงิน */
   const gmNo = JSON.parse(JSON.stringify(base));
   gmNo.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, key: {},
