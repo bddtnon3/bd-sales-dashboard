@@ -222,6 +222,102 @@ const P_NONE  ='โอโมน้ำซากุระโรแมนซ์';
  t('🛟 ...และบอกตรง ๆ ว่า W% ของหัวเสือรวม on-invoice กับ rebate ไว้ด้วยกัน (ไม่เคลมเกินข้อมูล)',
    pr.warnsOnOff);
 
+ /* ---------- 6ง) 📕 เช็คโปรหมดจากไฟล์ BUM (เจ้าของสั่ง 25 พ.ย. 69) ----------
+    *"ให้ใช้ข้อมูลจากไฟล์ bum ในการดู ว่าตัวไหนที่จะหมดโปร … ไม่งั้นผมก็สั่งวันที่ 24 ไม่ทัน"*
+    ไฟล์ BUM มีสองรอบในไฟล์เดียว จึงบอกได้ก่อนได้ใบสั่งวันที่ 25 */
+ const mkBum=()=>{
+   /* [ws,pack,tpr,on,rb,cf,sp,x,y,rspN,rspP,rem,bbf,p9tpr,p9on,p9rb,ex]
+      p9* = รอบเก่า · tpr/on/rb = รอบใหม่ */
+   return {loaded:true,err:'',bum:{file:'BUM_DT_Dec26.xlsx',mon:'เดือนธันวาคม 2569',
+     bm:{new:'BM12',old:'BM11'},items:{
+     /* เงินคืนนอกบิลหายทั้งก้อน -> ต้องสั่งตุน */
+     '90000001':[1000,12,0,0,0,40,10,900,960,100,0,'  Rebate','',0,0,500,null],
+     /* ลดบนบิลหาย */
+     '90000002':[900,12,0,0,0,40,10,800,860,90,0,'','',0,300,0,null],
+     /* TPR หาย */
+     '90000003':[800,12,0,0,0,40,10,700,750,80,0,'FTR','',200,0,0,null],
+     /* โปรเพิ่มเข้ามารอบใหม่ -> รอได้ */
+     '90000004':[700,12,0,150,0,40,10,600,640,70,0,'','',0,0,0,
+       {w:150,iv:'ON',s:'01/12/2026',e:'31/12/2026'}],
+     /* ยังมีแต่ได้น้อยลง */
+     '90000005':[600,12,0,0,80,40,10,500,540,60,0,'','',0,0,200,null],
+     /* ไม่เปลี่ยนเลย */
+     '90000006':[500,12,50,0,0,40,10,400,430,50,0,'','',50,0,0,null],
+     /* เงินคืนหาย และไฟล์ยังเขียนเงื่อนไขของแถมไว้ด้วย: ซื้อ 15 แถม 1 */
+     '90000007':[400,12,0,0,0,40,10,300,320,40,0,'','',0,0,90,
+       {fb:15,fq:1,fc:'90000007',fe:'31/12/2026'}]}},hs:null};
+ };
+ await ev(new Function('return '+mkBum.toString().replace(/^\(\)=>/,'()=>')+';')
+   ? `window.__mkBum=${mkBum.toString()};` : '');
+ const bum=await ev(()=>{
+   const keepP=JSON.stringify(PRICE||{}),keepU=JSON.stringify(S.user||{});
+   S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};
+   PRICE=window.__mkBum();
+   const d=peBumDiff();
+   PE.only='bum';PE.q='';renderPromoEnd();
+   const tx=document.getElementById('peBody').textContent.replace(/\s+/g,' ');
+   const o={n:d.n,gone:d.gone.map(r=>r.c),add:d.add.map(r=>r.c),chg:d.chg.map(r=>r.c),
+     save:d.save.map(r=>[r.c,r.d]),wait:d.wait.map(r=>r.c),ch:d.ch,
+     pairOld:(peBumPair()||{}).labOld,pairNew:(peBumPair()||{}).labNew,
+     shows:/อ่านจากไฟล์ BUM/.test(tx)&&/รู้ก่อนได้ใบสั่งวันที่ 25/.test(tx),
+     sayWin:/01\/12\/2026/.test(tx), sayFree:/ซื้อ 15 แถม 1/.test(tx),
+     noOldWarn:!/ก่อนที่ระบบจะอ่านบล็อคเงื่อนไขโปรเป็น/.test(tx)};
+   /* ไฟล์ BUM รุ่นเก่า (array สั้นกว่า ไม่มีช่อง ex) ต้องไม่พัง และต้องบอกให้อัพซ้ำ */
+   Object.keys(PRICE.bum.items).forEach(c=>{PRICE.bum.items[c]=PRICE.bum.items[c].slice(0,16);});
+   renderPromoEnd();
+   const tx2=document.getElementById('peBody').textContent.replace(/\s+/g,' ');
+   o.oldOk=/หมดโปรรอบหน้า/.test(tx2);
+   o.oldWarn=/ก่อนที่ระบบจะอ่านบล็อคเงื่อนไขโปรเป็น/.test(tx2)&&/อัพไฟล์ BUM เดิมซ้ำ/.test(tx2);
+   /* เซลล์ต้องไม่เห็นตัวเลขจากไฟล์ BUM เลย (เป็นต้นทุนศูนย์) */
+   PRICE=window.__mkBum();
+   S.user={id:'CT11',role:'sales',name:'เซลล์'};
+   PE.only='bum';renderPromoEnd();
+   const tx3=document.getElementById('peBody').textContent.replace(/\s+/g,' ');
+   o.salesBlocked=/เปิดได้เฉพาะผู้จัดการ/.test(tx3)&&tx3.indexOf('90000001')<0;
+   o.salesHasBum=peHasBum();
+   PRICE=JSON.parse(keepP);S.user=JSON.parse(keepU);PE.only='gone';renderPromoEnd();
+   return o;});
+ t('🔑 ไฟล์ BUM มีสองรอบในไฟล์เดียว — เทียบได้โดยไม่ต้องรอใบสั่งวันที่ 25',
+   bum.n===7,JSON.stringify({n:bum.n}));
+ t('🔑 บอกได้ว่าตัวไหนหมดโปรรอบหน้า',
+   bum.gone.join(',')==='90000001,90000002,90000003,90000007',bum.gone.join(','));
+ t('...ตัวไหนเพิ่งมีโปรรอบหน้า',bum.add.join(',')==='90000004',bum.add.join(','));
+ t('...ตัวไหนยังมีโปรแต่ได้น้อยลง',bum.chg.join(',')==='90000005',bum.chg.join(','));
+ t('🛟 ตัวที่ส่วนลดเท่าเดิม ต้องไม่โผล่ในลิสต์ไหนเลย',
+   bum.gone.concat(bum.add,bum.chg).indexOf('90000006')<0);
+ t('🔑 แยกได้ว่าหายจากช่องไหน — ลดบนบิล / เงินคืนนอกบิล / TPR (มีแต่ไฟล์ BUM ที่แยกได้)',
+   bum.ch.on.gone===1&&bum.ch.rb.gone===2&&bum.ch.tpr.gone===1&&bum.ch.on.add===1,
+   JSON.stringify(bum.ch));
+ t('🔑 ลิสต์ "ต้องสั่งตุนก่อน 25" เรียงจากที่เสียเงินเพิ่มมากสุด',
+   bum.save.map(x=>x[0]).join(',')==='90000001,90000002,90000003,90000005,90000007'&&bum.save[0][1]===500,
+   JSON.stringify(bum.save));
+ t('...และบอกด้วยว่าตัวไหนรอรอบหน้าคุ้มกว่า',bum.wait.join(',')==='90000004',bum.wait.join(','));
+ t('🔑 จับคู่รอบ BUM กับรอบไฟล์ราคาได้ (ห้ามอ่านเลข BM ว่าเดือนนี้/เดือนหน้า)',
+   bum.pairOld==='BM11'&&bum.pairNew==='BM12',bum.pairOld+' → '+bum.pairNew);
+ t('...หน้าบอกชัดว่านี่คือทางที่รู้ก่อนได้ใบสั่งวันที่ 25',bum.shows);
+ t('🔑 โชว์ช่วงวันของโปร และเงื่อนไขของแถม ที่ไฟล์เขียนไว้เอง',
+   bum.sayWin&&bum.sayFree&&bum.noOldWarn,JSON.stringify({w:bum.sayWin,f:bum.sayFree}));
+ t('🛟 ไฟล์ BUM รุ่นเก่า (ไม่มีช่องเงื่อนไข) ต้องยังคิดส่วนลดได้ ไม่พัง',bum.oldOk);
+ t('...และบอกให้อัพไฟล์เดิมซ้ำ ถ้าอยากเห็นเงื่อนไขละเอียด',bum.oldWarn);
+ t('🔒 เซลล์ต้องไม่เห็นตัวเลขจากไฟล์ BUM เลย (เป็นต้นทุนของศูนย์)',
+   bum.salesBlocked&&bum.salesHasBum===false,JSON.stringify({b:bum.salesBlocked,h:bum.salesHasBum}));
+
+ /* ---------- 6จ) 📕 ไม่มีใบสั่งเลย ก็ต้องเช็คโปรหมดจากไฟล์ราคาได้ ----------
+    นี่คือหัวใจของสิ่งที่เจ้าของขอ: ไม่ต้องรอใบสั่งวันที่ 25 */
+ const noOrd=await ev(()=>{
+   const keep=JSON.stringify(POSTATUS),keepP=JSON.stringify(PRICE||{});
+   POSTATUS={dates:[],data:{}};
+   S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};
+   PRICE=window.__mkBum();PE.only='';
+   renderPromoEnd();
+   const tx=document.getElementById('peBody').textContent.replace(/\s+/g,' ');
+   const o={sec:peSec(),open:/หมดโปรรอบหน้า/.test(tx),tab:/เช็คจากไฟล์ BUM/.test(tx)};
+   POSTATUS=JSON.parse(keep);PRICE=JSON.parse(keepP);PE.only='gone';renderPromoEnd();
+   return o;});
+ t('🔑 ยังไม่มีใบสั่งสักใบ ก็เปิดหน้าเช็คโปรหมดจากไฟล์ BUM ได้',
+   noOrd.open&&noOrd.tab,JSON.stringify(noOrd));
+ t('...และเปิดมาอยู่ที่หน้า BUM ให้เลย เมื่อผู้จัดการมีไฟล์ BUM แล้ว',noOrd.sec==='bum');
+
  /* ---------- 7) 🛟 อ่านอย่างเดียว ---------- */
  const ro=await ev(()=>{
    const snap=()=>JSON.stringify({P:POSTATUS,O:ORDERS,S:STOCKD,R:REQUESTS});
@@ -231,6 +327,7 @@ const P_NONE  ='โอโมน้ำซากุระโรแมนซ์';
    peQ('90000001');peQ('');
    peSetB('2026-11-25');peSetA('2026-11-24');
    peSetOnly('pr');peSetPi(0);
+   PRICE=window.__mkBum();peSetOnly('bum');
    peSetOnly('gone');peSetKind('all');
    return {same:snap()===before,sync:window.__sync-s0};});
  t('🛟 กดทุกปุ่มบนหน้านี้แล้ว ข้อมูลไม่ขยับแม้แต่ไบต์เดียว',ro.same);

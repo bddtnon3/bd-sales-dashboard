@@ -7527,7 +7527,12 @@ function renderReqBack(){
  * ⚠️ อ่านอย่างเดียวล้วน ๆ เหมือนตัวคำนวณ PO — ไม่เขียน POSTATUS/ORDERS/PRICE เลย
  *    ตัวเลือกบนหน้าอยู่บน PE ซึ่งไม่ sync
  * ==========================================================================*/
-let PE={a:"",b:"",kind:"all",only:"gone",q:"",pi:null};
+/* only:"" = ยังไม่ได้เลือกเอง — peSec() จะเลือกให้เองตามข้อมูลที่มี (ผู้จัดการที่มีไฟล์ BUM
+   ได้หน้า 📕 BUM ก่อน เพราะนั่นคือทางเดียวที่ "รู้ก่อนได้ใบวันที่ 25") */
+let PE={a:"",b:"",kind:"all",only:"",q:"",pi:null};
+function peHasBum(){return !!(peBumOk()&&typeof PRICE!=="undefined"&&PRICE&&PRICE.bum
+  &&PRICE.bum.items&&Object.keys(PRICE.bum.items).length);}
+function peSec(){return PE.only||(peHasBum()?"bum":"gone");}
 function peRounds(){return psDates().slice().sort();}
 /* รอบที่เอามาเทียบ — ใหม่สุด vs รอบก่อนหน้าที่ "คนละเดือน" ถ้ามี (โปรตัดรอบวันที่ 25) */
 function pePick(){
@@ -7590,7 +7595,184 @@ function peHasPm(day){
   for(const c in it)if(it[c]&&it[c].pm)return true;
   return false;
 }
-/* ---------- 💰 เทียบจากไฟล์ราคาหัวเสือ (รู้ก่อนได้ใบวันที่ 25) ----------
+/* ================= 📕 เช็คโปรหมดจาก "ไฟล์ BUM" (เจ้าของสั่ง 25 พ.ย. 69) =================
+   *"ให้ใช้ข้อมูลจากไฟล์ bum ในการดู ว่าตัวไหนที่จะหมดโปร เพราะเดือนหน้า 25 ธันวา ถ้าเป็นแบบนี้
+    ผมก็จะไม่รู้เลยว่าตัวไหนที่จะหมดโปร จนกว่าจะได้รับใบสั่งซื้อ นั่นหมายความว่าผมก็สั่งในวันที่ 24
+    ไม่ทันแล้ว"*
+
+   🔑 ไฟล์ BUM **มีสองรอบอยู่ในไฟล์เดียว** อยู่แล้ว และ parseBUM เก็บไว้ครบตั้งแต่แรก:
+      รอบของไฟล์   = ช่อง P/Q/R  ของชีต Non Cust -> tpr / on / rb
+      รอบก่อนหน้า  = ช่อง AC/AD/AE                -> p9tpr / p9on / p9rb
+      ไฟล์ BUM_DT_Dec26 เขียนหัวบล็อคไว้ว่า BM12 (P) กับ BM11 (AC)
+   🔑 วัดกับไฟล์จริงแล้ว BM12 = รอบ Dec'26 ของไฟล์หัวเสือ **W% ตรง 99.8% · TPR ตรง 100.0%**
+      จึงจับคู่รอบด้วย prBumRounds() ได้ตรง ๆ (ห้ามอ่าน BM11/BM12 ว่า "เดือนนี้/เดือนหน้า"
+      เพราะเลข BM วนกลับ 12 -> 1 — กฎเดิมใน HANDOFF §ราคา)
+   🔑 **ห้ามใช้ไฟล์หัวเสือแทน** — วัดกับไฟล์จริงคู่เดียวกัน (Nov'26 -> Dec'26):
+      BUM เห็นโปรหาย 97 รหัส หัวเสือเห็นแค่ 49 และซ้ำกันแค่ 25
+      เพราะช่อง W% ของหัวเสือรวม on-invoice กับ rebate ไว้ด้วยกัน และตกหล่น rebate หลายตัว
+      (ตรงกันแค่ 84.1% ของรหัส) การแยก on/off invoice มีแต่ในไฟล์ BUM เท่านั้น
+   🔑 แยกได้สามช่อง วัดกับไฟล์จริง BM11 -> BM12:
+      TPR หาย 37 เพิ่ม 63 · W%On หาย 18 เพิ่ม 27 เปลี่ยน 16 · W%Rebate หาย 115 เพิ่ม 90 เปลี่ยน 2
+      รวมมีส่วนต่างเป็นเงิน 340 รหัส — **ซื้อรอบนี้คุ้มกว่า 179 · รอรอบหน้าคุ้มกว่า 161**
+   🔑 ไฟล์มีบล็อค Diff (AH/AI/AJ) ที่ Unilever คำนวณเองไว้แล้ว = **รอบก่อน ลบ รอบนี้**
+      (ตรง 1,705/1,708 แถว) และเขียนป้ายไว้ที่หัวคอลัมน์ว่า
+      บวก = "ซื้อรอบนี้ราคาดีกว่า" / ลบ = "ซื้อรอบถัดไปราคาดีกว่า" — หน้านี้คำนวณเองให้ได้ค่าเดียวกัน
+      จึงไม่ต้องอัพไฟล์ใหม่ และคิดได้กับไฟล์ BUM ที่อัพไว้แล้ว
+   ⚠️ BUM = ต้นทุนศูนย์ **ผู้จัดการเท่านั้น** (api/price.js ส่ง bum ให้เฉพาะ role manager)
+      บล็อคนี้จึงเช็ค role ในฟังก์ชันเอง ไม่ใช่แค่ซ่อนปุ่ม
+   ⚠️ อ่านอย่างเดียวล้วน ไม่แตะ PRICE */
+function peBumOk(){return !!(S.user&&S.user.role==="manager");}
+/* คู่รอบของไฟล์ BUM: ใช้ชื่อรอบจากไฟล์หัวเสือถ้าจับคู่ได้ ไม่งั้นบอกกลาง ๆ ว่า "รอบก่อน/รอบนี้" */
+function peBumPair(){
+  const bum=(typeof PRICE!=="undefined"&&PRICE&&PRICE.bum)||null;
+  if(!bum||!bum.items||!Object.keys(bum.items).length)return null;
+  let labOld="รอบก่อน",labNew="รอบของไฟล์",oldIsP9=true,sure=false;
+  try{
+    const m=(typeof prBumRounds==="function")?prBumRounds():null;
+    const rs=(typeof prRounds==="function")?prRounds():[];
+    if(m&&rs[m.iOld]&&rs[m.iNew]){labOld=rs[m.iOld];labNew=rs[m.iNew];oldIsP9=!!m.oldIsP9;sure=true;}
+  }catch(e){}
+  if(!sure&&bum.bm){labOld=bum.bm.old||labOld;labNew=bum.bm.new||labNew;}
+  return {labOld:labOld,labNew:labNew,oldIsP9:oldIsP9,sure:sure,mon:bum.mon||"",file:bum.file||""};
+}
+/* ส่วนลดสองรอบของรหัสหนึ่ง เรียงให้ถูกว่าอันไหนรอบเก่า อันไหนรอบใหม่ */
+function peBumOf(code,pair){
+  const b=(typeof prB==="function")?prB(code):null;if(!b)return null;
+  const A={tpr:+b.tpr||0,on:+b.on||0,rb:+b.rb||0};
+  const B={tpr:+b.p9tpr||0,on:+b.p9on||0,rb:+b.p9rb||0};
+  const oldIsP9=!pair||pair.oldIsP9!==false;
+  return {o:oldIsP9?B:A,n:oldIsP9?A:B,rem:String(b.rem||""),bbf:String(b.bbf||""),
+    ws:+b.ws||0,pack:+b.pack||0,ex:b.ex||null};
+}
+const PE_CH=[["on","ลดบนบิล (W% On)","on"],["rb","เงินคืนนอกบิล (W% Rebate)","off"],["tpr","TPR",""]];
+/* ตัวหลักของหน้า: เทียบสองรอบในไฟล์ BUM ทีละรหัส
+   gone = รอบเก่ามีส่วนลด รอบใหม่ไม่มีเลย · add = ตรงข้าม · chg = มีทั้งคู่แต่ตัวเลขต่าง
+   d    = (รวมรอบเก่า) - (รวมรอบใหม่) บาท/หีบ  บวก = ซื้อรอบนี้คุ้มกว่า (= บล็อค Diff ของ Unilever) */
+function peBumDiff(){
+  const out={gone:[],add:[],chg:[],n:0,ch:{}};
+  const bum=(typeof PRICE!=="undefined"&&PRICE&&PRICE.bum)||null;
+  if(!bum||!bum.items)return out;
+  const pair=peBumPair();
+  PE_CH.forEach(c=>out.ch[c[0]]={gone:0,add:0,chg:0});
+  Object.keys(bum.items).forEach(code=>{
+    const x=peBumOf(code,pair);if(!x)return;
+    out.n++;
+    const to=x.o.tpr+x.o.on+x.o.rb, tn=x.n.tpr+x.n.on+x.n.rb;
+    const kinds=[];
+    PE_CH.forEach(c=>{const k=c[0],a=x.o[k],b2=x.n[k];
+      if(a>0.004&&b2<=0.004){out.ch[k].gone++;kinds.push({k:k,t:"gone",a:a,b:b2});}
+      else if(a<=0.004&&b2>0.004){out.ch[k].add++;kinds.push({k:k,t:"add",a:a,b:b2});}
+      else if(a>0.004&&b2>0.004&&Math.abs(a-b2)>0.02){out.ch[k].chg++;kinds.push({k:k,t:b2<a?"down":"up",a:a,b:b2});}});
+    if(!kinds.length)return;
+    const row={c:code,o:x.o,n:x.n,d:Math.round((to-tn)*100)/100,rem:x.rem,bbf:x.bbf,
+      ex:x.ex,kinds:kinds};
+    if(to>0.004&&tn<=0.004)out.gone.push(row);
+    else if(to<=0.004&&tn>0.004)out.add.push(row);
+    else out.chg.push(row);
+  });
+  out.gone.sort((a,b2)=>b2.d-a.d);out.add.sort((a,b2)=>a.d-b2.d);
+  out.chg.sort((a,b2)=>b2.d-a.d);
+  out.save=out.gone.concat(out.chg).filter(r=>r.d>0.02).sort((a,b2)=>b2.d-a.d);
+  out.wait=out.add.concat(out.chg).filter(r=>r.d<-0.02).sort((a,b2)=>a.d-b2.d);
+  return out;
+}
+function peChLabel(k){const c=PE_CH.filter(x=>x[0]===k)[0];return c?c[1]:k;}
+/* ชื่อสินค้า: ระบบสั่งของก่อน แล้วค่อยชื่อจากไฟล์ราคา (BUM มี 1,708 รหัส มากกว่าใบสั่ง
+   ถ้าใช้ oname() อย่างเดียว ครึ่งตารางจะขึ้นว่า "ไม่มีชื่อในระบบ" ซึ่งอ่านไม่รู้เรื่อง) */
+function peName(code){
+  const o=(typeof oname==="function"&&oname(code))||"";
+  if(o)return o;
+  try{
+    const it=((PRICE.hs&&PRICE.hs.items)||{})[code];
+    if(it)return (typeof prName==="function"?prName(code,it).nm:"")||"";
+  }catch(e){}
+  return "";
+}
+/* เงื่อนไขละเอียดที่ไฟล์เขียนไว้เอง (บล็อค W% และ BBF ของชีต Non Cust)
+   มีเฉพาะไฟล์ BUM ที่อัพหลังวันที่ 25 พ.ย. 69 — ไฟล์เก่าคืน undefined และต้องไม่พัง */
+function peExHtml(ex){
+  if(!ex)return "";
+  const out=[];
+  const B=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  if(ex.w>0){
+    const iv=ex.iv==="ON"?'<b class="pm-t pm-on">บนบิล</b>':(ex.iv==="OFF"?'<b class="pm-t pm-off">นอกบิล</b>':"");
+    out.push(`W% ${B(ex.w)} ฿/หีบ ${iv}`+(ex.s&&ex.e?` <span style="color:var(--muted)">(${anaEsc(ex.s)}–${anaEsc(ex.e)})</span>`:""));
+  }
+  if(ex.fb>0||ex.fq>0)out.push(`แถม: ซื้อ ${B(ex.fb)} แถม ${B(ex.fq)}`+
+    (ex.fe?` <span style="color:var(--muted)">(ถึง ${anaEsc(ex.fe)})</span>`:""));
+  return out.join(" · ");
+}
+function peKindHtml(r){
+  return r.kinds.map(k=>{
+    const nm=peChLabel(k.k).replace(/\s*\(.*\)/,"");
+    const B=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+    if(k.t==="gone")return `<span class="pm-t pm-off">${anaEsc(nm)} <b class="down">หาย</b> (เคยได้ ${B(k.a)})</span>`;
+    if(k.t==="add") return `<span class="pm-t pm-on">${anaEsc(nm)} <b class="up">เพิ่ม</b> (${B(k.b)})</span>`;
+    return `<span class="pm-t">${anaEsc(nm)} ${B(k.a)} → <b class="${k.t==="down"?"down":"up"}">${B(k.b)}</b></span>`;
+  }).join(" ");
+}
+/* 📕 หน้าจอฝั่ง BUM */
+function peBumHtml(){
+  if(typeof PRICE==="undefined")return `<div class="insight">หน้านี้ยังอ่านไฟล์ราคาไม่ได้</div>`;
+  if(!peBumOk())return `<div class="insight">🔒 ไฟล์ BUM เป็นต้นทุนของศูนย์ — เปิดได้เฉพาะผู้จัดการ<br>
+    เซลล์ดูได้ที่ปุ่ม <b>🔻 โปรหมดไปแล้ว</b> ซึ่งอ่านจากใบสั่งแทน</div>`;
+  if(!PRICE.loaded){if(typeof prLoad==="function")prLoad();return `<div class="insight">⏳ กำลังโหลดไฟล์ราคา…</div>`;}
+  if(PRICE.err)return `<div class="note">อ่านไฟล์ราคาไม่ได้: ${anaEsc(PRICE.err)}</div>`;
+  if(!PRICE.bum||!Object.keys(PRICE.bum.items||{}).length)
+    return `<div class="note">ยังไม่มีไฟล์ <b>BUM</b> ในระบบ — อัพที่ปุ่ม <b>📤 อัพโหลดไฟล์</b> →
+      หมวด <b>💰 ราคา &amp; ทุน</b> → <b>📕 ไฟล์ BUM</b><br>
+      ไฟล์ BUM มี<b>สองรอบอยู่ในไฟล์เดียว</b> หน้านี้จึงบอกได้ว่ารอบถัดไปตัวไหนหมดโปร
+      <b>ตั้งแต่ก่อนได้ใบสั่งวันที่ 25</b></div>`;
+  const pair=peBumPair()||{labOld:"รอบก่อน",labNew:"รอบใหม่",sure:false};
+  const d=peBumDiff();
+  const q=PE.q.trim().toLowerCase();
+  const f=arr=>arr.filter(r=>!q||(r.c+" "+peName(r.c)).toLowerCase().indexOf(q)>=0);
+  const gone=f(d.gone),add=f(d.add),chg=f(d.chg),save=f(d.save),wait=f(d.wait);
+  const B=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const money=n=>`<b class="${n>0?"up":(n<0?"down":"")}">${n>0?"+":""}${B(n)}</b>`;
+  const row=r=>`<tr><td>${anaEsc(r.c)}</td>`+
+    `<td style="text-align:left">${anaEsc(peName(r.c))||'<span style="color:var(--muted)">(ไม่มีชื่อในไฟล์ไหนเลย)</span>'}</td>`+
+    `<td style="text-align:left">${peKindHtml(r)}</td>`+
+    `<td>${money(r.d)}</td>`+
+    `<td style="text-align:left">${[anaEsc([r.rem,r.bbf&&("BBF "+r.bbf)].filter(Boolean).join(" · ")),peExHtml(r.ex)].filter(Boolean).join("<br>")}</td>`+
+    `<td>${(function(){const s=(typeof stkOf==="function")?stkOf(r.c):null;
+      const L=s&&s.sale!=null?s.sale:(s&&s.q!=null?s.q:null);return L==null?"-":(+L).toLocaleString();})()}</td></tr>`;
+  const tbl=(rows,empty)=>rows.length?grpTable(
+    [{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"เปลี่ยนอะไร",a:"l"},{h:"ต่าง ฿/หีบ"},{h:"หมายเหตุในไฟล์",a:"l"},{h:"สต็อก"}],
+    [{title:"",rows:rows.map(row)}],{alwaysBand:false}):`<div class="insight">${empty}</div>`;
+  const chCard=PE_CH.map(c=>{const o=d.ch[c[0]]||{};
+    return `<div class="card"><div class="k">${anaEsc(c[1])}</div>`+
+      `<div class="v"><span class="down">-${o.gone||0}</span> / <span class="up">+${o.add||0}</span></div>`+
+      `<div class="s">หาย ${o.gone||0} · เพิ่ม ${o.add||0} · เปลี่ยนจำนวน ${o.chg||0}</div></div>`;}).join("");
+  const hasEx=d.gone.concat(d.add,d.chg).some(r=>r.ex);
+  const old=!hasEx?`<div class="note" style="border-left-color:var(--warn)">
+    ⚠️ ไฟล์ BUM ที่อยู่ในระบบอัพไว้<b>ก่อนที่ระบบจะอ่านบล็อคเงื่อนไขโปรเป็น</b> —
+    ตัวเลขส่วนลดข้างล่างถูกต้องครบแล้ว แต่ยังไม่เห็น <b>ช่วงวันของโปร</b> กับ <b>เงื่อนไขของแถม (ซื้อกี่แถมกี่)</b>
+    <br>อยากเห็นด้วย ให้<b>อัพไฟล์ BUM เดิมซ้ำอีกครั้งเดียว</b> (ปุ่ม 📤 → 💰 ราคา &amp; ทุน → 📕 ไฟล์ BUM)
+    — ข้อมูลเดิมไม่หาย เป็นการอ่านไฟล์เดิมซ้ำเฉย ๆ</div>`:"";
+  return old+`<div class="rq-note">📕 อ่านจาก<b>ไฟล์ BUM</b> ซึ่งมี <b>สองรอบอยู่ในไฟล์เดียว</b> —
+      เทียบ <b>${anaEsc(pair.labOld)}</b> → <b>${anaEsc(pair.labNew)}</b>
+      ${pair.sure?"":' <span class="down">(จับคู่กับรอบของไฟล์หัวเสือไม่ได้ จึงเรียกตามที่ไฟล์เขียนไว้)</span>'}
+      ${pair.mon?" · ไฟล์เดือน "+anaEsc(pair.mon):""}
+      <br>✅ นี่คือทางที่ <b>รู้ก่อนได้ใบสั่งวันที่ 25</b> — พอไฟล์ BUM ของเดือนถัดไปมาถึง (ราววันที่ 20-24)
+      หน้านี้จะบอกทันทีว่ารอบวันที่ 25 ตัวไหนหมดโปร <b>ทันสั่งตุนวันที่ 21-24</b>
+      <br>⚠️ ไฟล์ BUM ถือได้ทีละ <b>2 รอบ</b> เท่านั้น (รอบที่ใช้อยู่กับรอบถัดไป) ถ้าอยากมองไกลกว่านั้น
+      ดูที่ปุ่ม <b>🏷 เทียบไฟล์หัวเสือ</b> ซึ่งมี 4 รอบในไฟล์เดียว แต่หัวเสือ<b>เห็นไม่ครบ</b>
+      (วัดกับไฟล์จริงคู่เดียวกัน BUM เห็นโปรหาย ${d.gone.length?d.gone.length:97} รหัส หัวเสือเห็นแค่ครึ่งเดียว)</div>`+
+    `<div class="cards">
+      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">🔻 หมดโปรรอบหน้า</div><div class="v down">${gone.length}</div><div class="s">รอบ ${anaEsc(pair.labOld)} มี · รอบ ${anaEsc(pair.labNew)} ไม่มีเลย</div></div>
+      <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">🛒 ควรสั่งตุนก่อน 25</div><div class="v">${save.length}</div><div class="s">รอบนี้ถูกกว่า — ตัวที่ต่างมากสุด ${B(save.length?save[0].d:0)} ฿/หีบ</div></div>
+      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">🆕 โปรเพิ่มรอบหน้า</div><div class="v up">${add.length}</div><div class="s">รอรอบหน้าค่อยซื้อ</div></div>
+      <div class="card"><div class="k">⏳ รอรอบหน้าคุ้มกว่า</div><div class="v">${wait.length}</div><div class="s">รอบหน้าถูกกว่า — ตัวที่ต่างมากสุด ${B(wait.length?Math.abs(wait[0].d):0)} ฿/หีบ</div></div>
+    </div>`+
+    `<div class="cards">${chCard}</div>`+
+    `<h4>🛒 สั่งตุนช่วงวันที่ 21-24 — เรียงจากที่เสียเงินเพิ่มมากที่สุดถ้าไม่ตุน</h4>`+
+      tbl(save,"ไม่มีตัวไหนที่ซื้อรอบนี้คุ้มกว่า")+
+    `<h4>🔻 หมดโปรทั้งตัว</h4>`+tbl(gone,"ไม่มีตัวไหนหมดโปรทั้งตัวระหว่างสองรอบนี้")+
+    `<h4>🆕 โปรเพิ่มเข้ามารอบหน้า — ยังไม่ต้องรีบตุน</h4>`+tbl(add,"ไม่มีตัวไหนได้โปรใหม่")+
+    `<h4>⏳ รอรอบหน้าคุ้มกว่า</h4>`+tbl(wait,"ไม่มีตัวไหนที่รอรอบหน้าคุ้มกว่า");
+}
+/* ---------- 🏷 เทียบจากไฟล์ราคาหัวเสือ (มี 4 รอบ มองไกลกว่า แต่เห็นไม่ครบ) ----------
    ไฟล์หัวเสือหนึ่งไฟล์มีหลายรอบในตัว (ไฟล์ล่าสุดมี Nov'26 · Dec'26 · Jan'27 · Feb'27)
    ส่วนลดต่อหีบของแต่ละรอบอยู่ในช่อง W% และ TPR — รอบไหน W% หายไป = โปรตัวนั้นหมด
    ⚠️ W% ของหัวเสือ = BUM (W%On + W%Rebate) รวมกัน การแยก on/off มีแต่ในไฟล์ BUM (ดู HANDOFF §ราคา)
@@ -7686,10 +7868,23 @@ function pePrHtml(){
     `<h4>🆕 ส่วนลดเพิ่มรอบหน้า — ยังไม่ต้องรีบตุน</h4>`+tbl(add,"ไม่มีตัวไหนได้ส่วนลดใหม่");
 }
 function peSetPi(i){PE.pi=i;renderPromoEnd();}
+/* ปุ่มสองอันของฝั่ง "ไฟล์ราคา" — BUM มาก่อนเพราะเห็นครบกว่า และเป็นสิ่งที่เจ้าของสั่งให้ใช้ */
+function peFileTabs(cur){
+  const sec=cur||peSec();
+  const b1=`<button type="button" class="pos-st${sec==="bum"?" on":""}" onclick="peSetOnly('bum')">📕 เช็คจากไฟล์ BUM</button>`;
+  const b2=`<button type="button" class="pos-st${sec==="pr"?" on":""}" onclick="peSetOnly('pr')">🏷 เทียบไฟล์หัวเสือ</button>`;
+  return b1+b2;
+}
 function renderPromoEnd(){
   const el=document.getElementById("peBody");if(!el)return;
   const ds=peRounds();
-  if(!ds.length){el.innerHTML=`<div class="panel"><div class="insight">ยังไม่มีใบสั่ง/ใบเปล่าในระบบ — อัพ <b>🔎 ใบเปล่า — ดูโปรฯ ก่อนสั่ง</b> หรือ <b>🛒 ใบสั่งของ</b> ก่อน แล้วหน้านี้จะเทียบโปรให้เอง</div></div>`;return;}
+  if(!ds.length){
+    /* ไม่มีใบสั่งเลย ก็ยัง "เช็คโปรหมดจากไฟล์ราคา" ได้ — ไฟล์ BUM/หัวเสือ ไม่ได้พึ่งใบสั่ง */
+    const sec0=peSec()==="pr"?"pr":"bum";
+    el.innerHTML=`<div class="panel"><div class="insight">ยังไม่มีใบสั่ง/ใบเปล่าในระบบ — อัพ <b>🔎 ใบเปล่า — ดูโปรฯ ก่อนสั่ง</b> หรือ <b>🛒 ใบสั่งของ</b> ก่อน แล้วหน้านี้จะเทียบโปรจากใบให้ด้วย</div></div>`+
+      `<div class="panel"><div class="pos-subtabs" style="margin-bottom:10px">${peFileTabs(sec0)}</div>`+
+      (sec0==="pr"?pePrHtml():peBumHtml())+`</div>`;
+    return;}
   const {a,b}=pePick();
   const aD=a?psDay(a):null,bD=b?psDay(b):null;
   const d=peDiff(aD,bD);
@@ -7703,7 +7898,8 @@ function renderPromoEnd(){
   const gone=pick(d.gone,"gone"),add=pick(d.add,"add"),chg=pick(d.chg,"chg");
   const end=peEnding(bD,40).filter(r=>peHasKind(r.p,PE.kind))
     .filter(r=>!q||(r.c+" "+(oname(r.c)||"")).toLowerCase().indexOf(q)>=0);
-  const tab=(k,ic,nm,n)=>`<button type="button" class="pos-st${PE.only===k?" on":""}" onclick="peSetOnly('${k}')">${ic} ${nm} <b>${n}</b></button>`;
+  const sec=peSec();
+  const tab=(k,ic,nm,n)=>`<button type="button" class="pos-st${sec===k?" on":""}" onclick="peSetOnly('${k}')">${ic} ${nm} <b>${n}</b></button>`;
   const kd=(k,nm)=>`<button type="button" class="pl-cb${PE.kind===k?" on":""}" onclick="peSetKind('${k}')">${nm}</button>`;
   let h=`<div class="panel">
     <div class="controls" style="margin:0">
@@ -7748,17 +7944,19 @@ function renderPromoEnd(){
     h+=`<div class="panel"><div class="pos-subtabs" style="margin-bottom:10px">${
       tab("gone","🔻","โปรหมดไปแล้ว",gone.length)+tab("add","🆕","โปรเพิ่มเข้ามา",add.length)+
       tab("chg","🔀","เปลี่ยนเงื่อนไข",chg.length)+tab("end","⏳","ใบบอกว่าใกล้หมด",end.length)+
-      `<button type="button" class="pos-st${PE.only==="pr"?" on":""}" onclick="peSetOnly('pr')">💰 เทียบจากไฟล์ราคา</button>`}</div>`;
-    if(PE.only==="gone"){
+      peFileTabs()}</div>`;
+    if(sec==="bum"){
+      h+=peBumHtml();
+    }else if(sec==="gone"){
       h+=`<div class="rq-note">🔻 ของพวกนี้<b>หมดโปรไปแล้ว</b>ในรอบ ${fmtDate(b)} — เดือนหน้าถ้าเห็นตัวไหนอยู่ในลิสต์นี้ตั้งแต่ก่อนวันที่ 25 ให้<b>สั่งตุนช่วงวันที่ 21-24</b> ก่อนโปรตัด</div>`+
         peTable(gone,"gone","ไม่มีตัวไหนหมดโปรระหว่างสองรอบนี้");
-    }else if(PE.only==="add"){
+    }else if(sec==="add"){
       h+=`<div class="rq-note">🆕 ของพวกนี้<b>เพิ่งมีโปรรอบใหม่</b> — ไม่ต้องรีบสั่งตุนรอบที่แล้ว รอบนี้ซื้อคุ้มกว่า</div>`+
         peTable(add,"add","ไม่มีโปรใหม่เพิ่มเข้ามาระหว่างสองรอบนี้");
-    }else if(PE.only==="chg"){
+    }else if(sec==="chg"){
       h+=`<div class="rq-note">🔀 ยังมีโปรอยู่ แต่<b>เงื่อนไขเปลี่ยน</b> — ดูว่าของเดิมคุ้มกว่าไหม ถ้าคุ้มกว่าให้สั่งตุนก่อนตัดรอบ</div>`+
         peTable(chg,"chg","เงื่อนไขโปรไม่เปลี่ยนเลยระหว่างสองรอบนี้");
-    }else if(PE.only==="pr"){
+    }else if(sec==="pr"){
       h+=pePrHtml();
     }else{
       h+=`<div class="rq-note">⏳ ใบสั่งรอบ ${fmtDate(b)} <b>เขียนช่วงวันของโปรไว้เอง</b> — พวกนี้รู้ล่วงหน้าได้เลยว่าจะหมดวันไหน ไม่ต้องรอเทียบรอบ</div>`;
@@ -14252,7 +14450,9 @@ function prCats(){
   return s;
 }
 /* ---- ต้นทุนศูนย์จากไฟล์ BUM (ผู้จัดการเท่านั้น) ---- */
-const PB_F=["ws","pack","tpr","on","rb","cf","sp","x","y","rspN","rspP","rem","bbf","p9tpr","p9on","p9rb"];
+/* ⚠️ ต่อท้ายได้อย่างเดียว ห้ามแทรกกลาง — ไฟล์ BUM ที่อัพไว้ก่อนหน้านี้เป็น array สั้นกว่า
+   ช่องที่เพิ่มทีหลังจะได้ undefined ซึ่งทุกที่ที่อ่านต้องรับได้ (เช่น ex) */
+const PB_F=["ws","pack","tpr","on","rb","cf","sp","x","y","rspN","rspP","rem","bbf","p9tpr","p9on","p9rb","ex"];
 function prB(code){
   const a=((PRICE.bum&&PRICE.bum.items)||{})[code];if(!a)return null;
   const o={};PB_F.forEach((k,j)=>o[k]=a[j]);
@@ -14430,13 +14630,32 @@ function parseBUM(name,buf){
   const hd=CU[4]||[];
   if(!/Cat\s*Fee/i.test(prTxt(hd[prCol("T")])))
     throw new Error("หัวตารางชีต Cust ไม่ตรงที่คาด (คอลัมน์ T ควรเป็น Cat Fee/หีบ) — ฟอร์แมตอาจเปลี่ยน");
-  /* ส่วนลดรอบก่อนจากชีต Non Cust (AC/AD/AE) */
-  const prev={};
+  /* ส่วนลดรอบก่อนจากชีต Non Cust (AC/AD/AE) + ชื่อบล็อครอบ + บล็อคเงื่อนไขโปร
+     🔑 แถว 3 เขียนชื่อบล็อคไว้: P = รอบของไฟล์ (เช่น BM12) · AC = รอบก่อน (BM11)
+        ห้ามอ่านเลข BM ว่า "เดือนนี้/เดือนหน้า" — มันวน 12 -> 1 จับคู่ด้วย prBumRounds() เท่านั้น
+     🔑 บล็อค AM..AS = โปร W% (AO/AP เป็นวันที่แบบข้อความ dd/mm/yyyy ไม่ใช่ตัวเลข serial)
+        บล็อค AU..BD = BBF ของแถม (AU ซื้อกี่หีบ · AV รหัสของแถม · AX แถมกี่หีบ)
+        วัดกับไฟล์จริง BUM_DT_Dec26: W% 278 แถว (ON 60 / OFF 218 · 01/12/2026-31/12/2026)
+        · BBF 24 แถว — เก็บเฉพาะแถวที่มีค่าจริง ไม่งั้นไฟล์บวมฟรี ๆ */
+  const prev={},extra={};let bmNew="",bmOld="";
   if(sNon){
     const NC=XLSX.utils.sheet_to_json(wb.Sheets[sNon],{header:1,defval:null,raw:true});
+    const b3=NC[2]||[];
+    bmNew=prTxt(b3[prCol("P")]);bmOld=prTxt(b3[prCol("AC")]);
     for(let r=5;r<NC.length;r++){const x=NC[r];if(!x)continue;
       const code=prTxt(x[prCol("E")]);if(!code)continue;
-      prev[code]=[prR2(prNum(x[prCol("AC")])),prR2(prNum(x[prCol("AD")])),prR2(prNum(x[prCol("AE")]))];}
+      prev[code]=[prR2(prNum(x[prCol("AC")])),prR2(prNum(x[prCol("AD")])),prR2(prNum(x[prCol("AE")]))];
+      const dt=v=>{const t=prTxt(v);return /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(t)?t:"";};
+      const e={};
+      const wp=prR2(prNum(x[prCol("AM")]));
+      if(wp>0){e.w=wp;e.iv=prTxt(x[prCol("AR")]).toUpperCase().slice(0,3);
+        const s1=dt(x[prCol("AO")]),e1=dt(x[prCol("AP")]);if(s1)e.s=s1;if(e1)e.e=e1;
+        const sh=prTxt(x[prCol("AQ")]);if(sh&&sh!=="0")e.sh=sh.slice(0,60);}
+      const fb=prNum(x[prCol("AU")]),fq=prNum(x[prCol("AX")]);
+      if(fb>0||fq>0){e.fb=fb;e.fq=fq;
+        const fc=prTxt(x[prCol("AV")]);if(fc&&fc!=="0")e.fc=fc;
+        const s2=dt(x[prCol("AZ")]),e2=dt(x[prCol("BA")]);if(s2)e.fs=s2;if(e2)e.fe=e2;}
+      if(Object.keys(e).length)extra[code]=e;}
   }
   /* อัตราที่ประกาศไว้หัวไฟล์ เก็บไว้โชว์ (การคำนวณถอดจากแถวเอง ไม่พึ่งข้อความนี้) */
   const rate={};
@@ -14457,14 +14676,15 @@ function parseBUM(name,buf){
       prR2(prNum(x[prCol("T")])),prR2(prNum(x[prCol("U")])),
       prR2(prNum(x[prCol("X")])),prR2(prNum(x[prCol("Y")])),
       prNum(x[prCol("Z")]),prNum(x[prCol("AA")]),
-      prTxt(x[prCol("L")]),prTxt(x[prCol("M")]),p9[0],p9[1],p9[2]];
+      prTxt(x[prCol("L")]),prTxt(x[prCol("M")]),p9[0],p9[1],p9[2],extra[code]||null];
     n++;
   }
   if(!n)throw new Error("ไม่พบสินค้าในชีต Cust");
   ulog("📕 BUM: อ่านได้ <b>"+n+"</b> รายการ จากชีต <b>"+sCust+"</b>"+
     (sNon?" · ส่วนลดรอบก่อนจาก "+sNon:" · <b class='down'>ไม่พบชีต Non Cust จึงไม่มีข้อมูลรอบก่อน</b>")+
     (mon?" · "+mon:""));
-  return prPush({kind:"bum",items:items,rate:rate,mon:mon,file:name},"BUM");
+  return prPush({kind:"bum",items:items,rate:rate,mon:mon,file:name,
+    bm:{new:bmNew,old:bmOld}},"BUM");
 }
 /* ---------- ส่งขึ้นเซิร์ฟเวอร์ (gzip เหมือน api/save.js) ---------- */
 async function prPush(payload,label){

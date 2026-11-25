@@ -396,16 +396,44 @@ code, never printed.
   never stored, so the only fix is re-uploading that day's blank form once. The banner names the
   rounds affected and says the data is not lost. **A silent 0 on this page always means that**, so
   never render one.
-  A fifth chip, **💰 เทียบจากไฟล์ราคา** (`pePrRounds`/`pePrDiff`/`pePrHtml`), answers the same
-  question **before** the 25th arrives: the หัวเสือ file carries four round blocks at once, so
-  comparing block *i* to *i+1* says which codes lose their W% discount next round. Measured on the
-  owner's real file (1,355 items, Nov'26 · Dec'26 · Jan'27 · Feb'27): **131 lose the discount and
-  44 gain one** across the 25 Nov cut — close to the order forms' 113/31, which is the cross-check.
-  It reads `PRICE` only (never part of the synced state) and must keep saying out loud that
-  **หัวเสือ's W% merges on-invoice and rebate** — only BUM splits them — rather than claiming more
-  than the file holds. Prove it with
-  **`node test/browser/promoend.test.cjs`** (39 checks, self-contained with made-up codes; 42 with
+  **Reading the order form answers the question too late** (owner, 25 Nov 26: *"ให้ใช้ข้อมูลจาก
+  ไฟล์ bum ในการดู ว่าตัวไหนที่จะหมดโปร เพราะเดือนหน้า 25 ธันวา … ผมก็จะไม่รู้เลย … จนกว่าจะได้รับ
+  ใบสั่งซื้อ นั่นหมายความว่าผมก็สั่งในวันที่ 24 ไม่ทันแล้ว"*). So the page's **primary** view is
+  **📕 เช็คจากไฟล์ BUM** (`peBumPair`/`peBumOf`/`peBumDiff`/`peBumHtml`), and for a manager holding a
+  BUM file it is what the page **opens on** (`peSec()`; `PE.only` starts `""` = not chosen yet).
+  The BUM file **already carries two rounds in one file** and `parseBUM` has always stored both —
+  `tpr`/`on`/`rb` is the file's own round, `p9tpr`/`p9on`/`p9rb` the previous one — so the analysis
+  needed **no re-upload**: it works on the BUM already in the blob. Which stored block is older is
+  decided by **`prBumRounds()`**, never by reading `BM11`/`BM12` as "this/next month" (BM wraps
+  12 → 1). Measured against the owner's real `BUM_DT_Dec26.xlsx` (1,708 items, Non Cust sheet):
+  **BM12 = หัวเสือ Dec'26 — W% matches 99.8%, TPR 100.0%**, so the pairing is sound.
+  **Never substitute the หัวเสือ file for this.** On the same round pair (Nov'26 → Dec'26) BUM sees
+  **97 codes lose every promo, หัวเสือ sees only 49, and just 25 overlap** — หัวเสือ's single `W%`
+  column merges on-invoice with rebate and drops some rebates entirely (the two agree on only 84.1%
+  of codes). Only BUM splits the three channels, measured BM11 → BM12: **TPR −37/+63 · W%On
+  −18/+27/16 changed · W%Rebate −115/+90/2 changed**, and in money **340 codes differ: 179 are
+  cheaper this round (the 21–24 stock-up list), 161 cheaper next**. The money column is
+  `(old total) − (new total)` per case, which reproduces the file's own `Diff` block (AH/AI/AJ =
+  **prev − now**, 1,705/1,708) and its two printed verdicts, *ซื้อรอบนี้ราคาดีกว่า* /
+  *ซื้อรอบถัดไปราคาดีกว่า*. A total summed across different SKUs is meaningless, so the cards show
+  the **largest single ฿/หีบ gap**, never a sum. **BUM is the depot's cost file, so this view is
+  manager-only inside the function** (`peBumOk`), not by hiding a button.
+  `parseBUM` additionally captures, purely by appending (`PB_F` may only grow — an older stored
+  array must keep working and yields `undefined`): the block labels (`bm.new`/`bm.old`) and one
+  `ex` record per code holding the file's own **W% promo window** (`AO`/`AP`, text `dd/mm/yyyy`, not
+  a serial — 278 rows, `01/12/2026–31/12/2026`, Invoice Type ON 60 / OFF 218) and its **BBF free
+  goods** (`AU` buy / `AX` free — 24 rows). Only rows that have something are stored (302 of 1,708,
+  +184 KB). A BUM uploaded before that exists still computes every discount and **says so**, asking
+  for one re-upload, rather than quietly showing no terms.
+  A second chip, **🏷 เทียบไฟล์หัวเสือ** (`pePrRounds`/`pePrDiff`/`pePrHtml`), is kept because the
+  หัวเสือ file carries **four** round blocks at once (Nov'26 · Dec'26 · Jan'27 · Feb'27, all fully
+  populated) and so can look further than BUM's two — but it must keep saying out loud that its W%
+  merges on-invoice and rebate and that it sees less than BUM.
+  Both work **with no order form at all**, which is the whole point. Prove it with
+  **`node test/browser/promoend.test.cjs`** (55 checks, self-contained with made-up codes; 58 with
   the real forms via `ORDER_BLANK_A=…/ใบ24.xlsm ORDER_BLANK_B=…/ใบ25.xlsm`, which never enter the repo).
+  Note the real BUM file is ~28 MB with a 239 MB `sheet1.xml`: the browser parses it in ~45 s and
+  ~650 MB of heap, so never load it into a test by spreading its bytes into a JS array.
   **การสั่งของ** has six sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO /
   **📅 รายการสั่งก่อนหมดโปร** /
   **📊 ประวัติการสั่งของ** (`renderOrdHist`), the month-at-a-glance table that replaces the Excel the
