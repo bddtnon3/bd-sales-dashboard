@@ -42,7 +42,14 @@ const YMD = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? String(v) : ""
 const LN = (v) => { const t = S(v, 20).toUpperCase(); return /^[A-Z0-9_]{2,20}$/.test(t) ? t : ""; };
 const CODE = (v) => { const t = S(v, 20).toUpperCase(); return /^[A-Z0-9][A-Z0-9._-]{0,19}$/.test(t) ? t : ""; };
 const Q = (v) => { const n = Number(v); return isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0; };
-const MAX_ROWS = 4000;   // ใบหนึ่งวันหนึ่ง: สาย x รหัสในใบ — จริง ๆ หลักร้อย เผื่อไว้กันบวม
+const MAX_ROWS = 4000;
+const REP_MAX = 2;      // เซลล์: บันทึกครั้งแรก + แก้ได้อีก 1 ครั้ง (เจ้าของสั่ง 26 พ.ย. 69)
+const MAX_HIST = 20;    // ประวัติการกรอกต่อสายต่อวัน — มีเพดานกัน snapshot บวม
+// รหัสสายของบัญชีเซลล์ (209611) -> ชื่อสายที่ใช้ในใบ (CT11) · 2096_97 คือ KA97
+const LINE_MAP = { "209611": "CT11", "209612": "CT12", "209613": "CT13", "209614": "CT14",
+  "209615": "CT15", "209616": "CT16", "209617": "CT17", "209619": "CT19", "209622": "CT22",
+  "2096_97": "KA97", "209698": "KA98", "209699": "KA99" };
+const LINE_OF = (code) => LINE_MAP[String(code || "")] || "";   // ใบหนึ่งวันหนึ่ง: สาย x รหัสในใบ — จริง ๆ หลักร้อย เผื่อไว้กันบวม
 // ขั้นไหน ใครติ๊กได้
 const STEP_ROLE = { s3: "manager", s4: "wh", s5: "ds", s6: "manager" };
 
@@ -57,16 +64,16 @@ export default async function handler(req, res) {
   if (!body) return res.status(400).json({ error: "ไม่มีข้อมูลที่จะบันทึก" });
 
   const act = String(body.act || "");
-  if (["add", "del", "step", "key", "gin"].indexOf(act) < 0) return res.status(400).json({ error: "คำสั่งไม่ถูกต้อง" });
+  if (["add", "del", "step", "key", "gin", "rep"].indexOf(act) < 0) return res.status(400).json({ error: "คำสั่งไม่ถูกต้อง" });
 
   const sid = SID(body.sid);
   if (!sid) return res.status(400).json({ error: "ไม่ได้ระบุใบออเดอร์ใหญ่" });
-  const twoStep = act === "key" || act === "gin";
+  const twoStep = act === "key" || act === "gin" || act === "rep";
   const no = twoStep ? "" : NO(body.no);
   if (!twoStep && !no) return res.status(400).json({ error: "เลขออเดอร์ไม่ถูกต้อง (ใส่เลขออเดอร์จากแอพ เช่น BDD0100000123)" });
   const ymd = twoStep ? YMD(body.d) : "";
   if (twoStep && !ymd) return res.status(400).json({ error: "ไม่ได้ระบุวันที่" });
-  const key = twoStep ? (act === "key" ? sid + "|" + ymd + "|" + LN(body.ln) : sid + "|" + ymd)
+  const key = twoStep ? ((act === "key" || act === "rep") ? sid + "|" + ymd + "|" + LN(body.ln) : sid + "|" + ymd)
                       : sid + "|" + no;
 
   const role = claims.role || "";
@@ -92,18 +99,53 @@ export default async function handler(req, res) {
 
     if (!C.key) C.key = {};
     if (!C.gin) C.gin = {};
+    if (!C.rep) C.rep = {};
 
     const existing = C.sub[key] || null;
     const now = Date.now();
 
-    if (act === "key" || act === "gin") {
+    if (act === "key" || act === "gin" || act === "rep") {
       // ฝั่งเซลล์ = หัวหน้าเซลล์ (sup) หรือผู้จัดการ · ฝั่งแอดมิน = ผู้จัดการ (แอดมิน 1-4 เป็น role manager)
       if (act === "key" && !(role === "sup" || isMgr))
         return res.status(403).json({ error: "ฝั่งเซลล์ แก้ได้เฉพาะหัวหน้าเซลล์ (sup) กับผู้จัดการ" });
       if (act === "gin" && !isMgr)
         return res.status(403).json({ error: "ฝั่งแอดมิน แก้ได้เฉพาะแอดมิน/ผู้จัดการ" });
 
-      if (act === "key") {
+      // 👤 act:"rep" — เซลล์กรอก "จำนวนที่คีย์จริง" ของสายตัวเอง
+      // กฎที่เจ้าของสั่ง 26 พ.ย. 69: เซลล์แก้ได้ครั้งเดียว · หัวหน้าเซลล์ดูได้อย่างเดียวแก้ไม่ได้
+      // ⚠️ โควต้าแก้ต้องนับจากเรคอร์ดที่เก็บไว้จริง ไม่ใช่เชื่อค่าที่ส่งมาจากหน้าเว็บ
+      if (act === "rep") {
+        if (!(isMgr || role === "sales"))
+          return res.status(403).json({ error: "บัญชีนี้กรอกจำนวนที่คีย์ไม่ได้" });
+        const ln = LN(body.ln);
+        if (!ln) return res.status(400).json({ error: "ไม่ได้ระบุสาย" });
+        if (!isMgr) {
+          if (!mine) return res.status(400).json({ error: "บัญชีนี้ไม่มีรหัสสาย" });
+          if (LINE_OF(mine) !== ln)
+            return res.status(403).json({ error: "กรอกได้เฉพาะสายของตัวเอง" });
+        }
+        const prev = C.rep[key] || null;
+        const used = +(prev && prev.n) || 0;
+        if (!isMgr && used >= REP_MAX)
+          return res.status(409).json({ error: "สายนี้แก้จำนวนครบจำนวนครั้งที่ให้แก้แล้ว — แจ้งผู้จัดการถ้าต้องแก้อีก" });
+        const src = body.it && typeof body.it === "object" ? body.it : {};
+        const it = {};
+        let n = 0;
+        for (const c of Object.keys(src)) {
+          const code = CODE(c);
+          if (!code) continue;
+          if (++n > MAX_ROWS) break;
+          const v = src[c] || {};
+          const row = { sc: Q(v.sc), sp: Q(v.sp), fc: Q(v.fc), fp: Q(v.fp) };
+          if (row.sc || row.sp || row.fc || row.fp) it[code] = row;
+        }
+        const ent = { at: now, by: uid || role, byName: who, it };
+        C.rep[key] = {
+          it, by: ent.by, byName: who, at: now,
+          n: used + (isMgr ? 0 : 1),                 // ผู้จัดการแก้ ไม่กินโควต้าของเซลล์
+          h: (Array.isArray(prev && prev.h) ? prev.h : []).concat([ent]).slice(-MAX_HIST),
+        };
+      } else if (act === "key") {
         const ln = LN(body.ln);
         if (!ln) return res.status(400).json({ error: "ไม่ได้ระบุสาย" });
         const src = body.it && typeof body.it === "object" ? body.it : {};

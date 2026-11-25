@@ -80,6 +80,33 @@ function mergeSubOne(a, b) {
   }
   return out;
 }
+/* 👤 จำนวนที่เซลล์คีย์จริง (CSTOCK.rep) — รวมทีละช่อง ไม่ใช่ newest-wins ทั้งเรคอร์ด
+   เพราะ n คือโควต้า "แก้ได้ครั้งเดียว" และ h คือประวัติที่ต้องไม่หาย
+   เอาตัวเลขปัจจุบันจากฝั่งที่ใหม่กว่า · n เอาค่ามากกว่า · h รวมกันแล้วไล่ตามเวลา ไม่ซ้ำ */
+function mergeRepOne(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const base = ((b.at || 0) >= (a.at || 0)) ? b : a;
+  const seen = {}, h = [];
+  for (const e of [].concat(Array.isArray(a.h) ? a.h : [], Array.isArray(b.h) ? b.h : [])) {
+    if (!e || typeof e !== "object") continue;
+    const k = String(e.at || 0) + "|" + String(e.by || "");
+    if (seen[k]) continue;
+    seen[k] = 1; h.push(e);
+  }
+  h.sort((x, y) => (x.at || 0) - (y.at || 0));
+  return Object.assign({}, base, {
+    n: Math.max(+a.n || 0, +b.n || 0),
+    h: h.slice(-20),
+  });
+}
+function mergeRep(server, client) {
+  const s = server && typeof server === "object" ? server : {};
+  const c = client && typeof client === "object" ? client : {};
+  const out = {};
+  for (const k of new Set([...Object.keys(s), ...Object.keys(c)])) out[k] = mergeRepOne(s[k], c[k]);
+  return out;
+}
 function mergeExOne(a, b) {
   if (!a) return b;
   if (!b) return a;
@@ -373,13 +400,18 @@ function mergeState(server, c) {
   // ภายในคีย์เดียวกันมีคนเขียนคนเดียวต่อครั้ง จึง newest-wins ต่อคีย์พอ (หลักเดียวกับ PJP.done)
   const csKey = newestByAt(sCs.key, cCs.key);
   const csGin = newestByAt(sCs.gin, cCs.gin);
-  for (const k of Object.keys(csSdel)) {                            // ใบถูกลบ = ทิ้งงานสองฝั่งของใบนั้น
-    for (const m of [csKey, csGin]) {
+  //   rep["sid|วันที่|สาย"] = จำนวนที่ "เซลล์สายนั้น" คีย์จริง
+  // ⚠️ อันนี้ newest-wins ทั้งเรคอร์ดไม่ได้: เซลล์แก้ได้ครั้งเดียว โควต้าอยู่ใน n และประวัติอยู่ใน h
+  //    แท็บเก่าที่ถือ n=1 ทับของใหม่ที่ n=2 = เซลล์กลับมาแก้ได้อีก และประวัติหาย
+  //    จึงรวมทีละช่อง: it เอาอันใหม่ · n เอาค่ามากกว่า · h รวมกันแล้วไล่ตามเวลา (หลักเดียวกับ mergeSubOne)
+  const csRep = mergeRep(sCs.rep, cCs.rep);
+  for (const k of Object.keys(csSdel)) {                            // ใบถูกลบ = ทิ้งงานทุกฝั่งของใบนั้น
+    for (const m of [csKey, csGin, csRep]) {
       for (const kk of Object.keys(m)) if (kk.slice(0, k.length + 1) === k + "|") delete m[kk];
     }
   }
   const CSTOCK = { lots: csLots, del: csDel, slips: csSlips, sdel: csSdel, ex: csEx,
-                   sub: csSub, subdel: csSubDel, key: csKey, gin: csGin,
+                   sub: csSub, subdel: csSubDel, key: csKey, gin: csGin, rep: csRep,
                    up: Math.max(sCs.up || 0, cCs.up || 0) };
 
   return {

@@ -785,6 +785,22 @@ code, never printed.
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
   with **`node test/browser/cstock.test.cjs`** (239 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
+  **👤 Each rep owns their own line's daily figure** (owner, 26 Nov 26). The flow he set:
+  ① the supervisor types each line's **target** for that day (`CSTOCK.key`, unchanged) → ② exports it
+  as Excel/PDF to send the reps (`spTgtXlsx`/`spTgtPrint`) → ③ **the rep logs in with their own line's
+  account, opens the same page and types what they actually keyed** (`CSTOCK.rep["sid|date|LINE"]`,
+  through `api/spord.js` `act:"rep"`) → ④ the supervisor chases whoever is short (`spTrack`/`spTrackHtml`).
+  **Target and actual are different numbers and must never be added together.** Three rules, all
+  checked **on the server** against the stored record, never by hiding a button:
+  a rep may **save once and change it once** (`REP_MAX` = 2) and only for **their own line**
+  (`LINE_OF` maps `209611` → `CT11`); the **supervisor cannot edit a rep's figure at all**, only read
+  it — the owner said so in as many words — while a `manager` can, because otherwise a rep who
+  burns both saves on a mistake is stuck. Every save **appends to `h`** and never overwrites, so
+  tapping a quantity opens the history: when it was first entered, when it changed, by whom.
+  `mergeState` therefore merges this map **field by field** (`mergeRepOne`): the newer `it` wins,
+  `n` takes the **max**, and `h` is unioned by timestamp — newest-wins on the whole record would let
+  a stale tab reset the edit quota and drop a history entry. A rep's page shows **only their own
+  line**; the 12-line target table is the supervisor's.
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
   `renderSpord` returns the PIN screen and **draws nothing of the page** until `spPinOk()`. Two
   rules. **The repo is public, so the digits are never written into any file** — only the SHA-256
@@ -898,7 +914,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (111 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (119 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -911,7 +927,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (111 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (119 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

@@ -12782,6 +12782,7 @@ function spDays(sid){
   const C=spKeyOk(),s={};
   Object.keys(C.key||{}).forEach(k=>{const p=k.split("|");if(p[0]===sid&&p[1])s[p[1]]=1;});
   Object.keys(C.gin||{}).forEach(k=>{const p=k.split("|");if(p[0]===sid&&p[1])s[p[1]]=1;});
+  Object.keys((spRepOk().rep)||{}).forEach(k=>{const p=k.split("|");if(p[0]===sid&&p[1])s[p[1]]=1;});
   return Object.keys(s).sort();
 }
 function spDay(sid){
@@ -12815,6 +12816,135 @@ function spKeyByLine(sid,ymd){
   });
   return out;
 }
+/* ==========================================================================
+ * 👤 ฝั่งเซลล์รายสาย — เซลล์กรอก "จำนวนที่คีย์จริง" ของสายตัวเอง (เจ้าของสั่ง 26 พ.ย. 69)
+ *
+ *   ขั้นตอนที่เจ้าของวางไว้:
+ *     ① ซุปกรอก "เป้า" ของแต่ละสายในวันนั้น  (CSTOCK.key — ของเดิม)
+ *     ② ซุปดึงเป้าออกเป็น Excel / PDF ส่งให้เซลล์
+ *     ③ เซลล์เข้ามากรอก "ที่คีย์จริง" ของสายตัวเอง  (CSTOCK.rep — ใหม่)
+ *     ④ ซุปตามว่าแต่ละสายคีย์ครบเป้าของวันนั้นหรือยัง
+ *
+ * 🔑 สองตัวเลขนี้คนละความหมาย ห้ามรวมกัน: key = เป้า · rep = ที่ทำได้จริง
+ * 🔑 **เซลล์แก้จำนวนได้ครั้งเดียว** (บันทึกครั้งแรก + แก้ได้อีก 1 = REP_MAX ครั้ง)
+ *    ตรวจที่ **เซิร์ฟเวอร์** จากเรคอร์ดที่เก็บไว้จริง ไม่ใช่ซ่อนปุ่มบนหน้าเว็บ
+ * 🔑 **ซุปแก้ของเซลล์ไม่ได้เลย ดูได้อย่างเดียว** (เจ้าของสั่งตรง ๆ) · ผู้จัดการแก้ได้
+ *    เพราะต้องมีทางแก้เมื่อเซลล์กรอกผิดจนโควต้าหมด
+ * 🔑 ทุกครั้งที่บันทึกต่อท้ายลง `h` (ประวัติ) ไม่เคยทับของเดิม — กดที่ตัวเลขแล้วดูได้ว่า
+ *    กรอกเข้าวันไหน เปลี่ยนวันไหน ใครเป็นคนทำ
+ * ⚠️ merge เป็น mergeRepOne: `it` เอาอันใหม่ · `h` รวมกันตาม at · `n` เอาค่ามากกว่า
+ *    ถ้าใช้ newest-wins ทั้งเรคอร์ด แท็บเก่าจะรีเซ็ตโควต้าแก้ให้เซลล์กรอกใหม่ได้เรื่อย ๆ
+ * ==========================================================================*/
+const REP_MAX=2;                       /* บันทึกครั้งแรก + แก้ได้อีก 1 ครั้ง */
+function spRepOk(){const C=cstOk();if(!C.rep)C.rep={};return C;}
+function spRepRec(sid,ymd,ln){const r=(spRepOk().rep||{})[spKk(sid,ymd,ln)];return r||null;}
+function spRepByLine(sid,ymd){
+  const C=spRepOk(),out={};
+  Object.keys(C.rep||{}).forEach(k=>{
+    const p=k.split("|");if(p[0]!==sid||p[1]!==ymd)return;
+    out[p[2]]=C.rep[k];
+  });
+  return out;
+}
+/* สายของคนที่ล็อกอินอยู่ — เซลล์มี code เป็นรหัสสาย (209611) ต้องแปลงเป็นชื่อที่ใช้ในใบ (CT11) */
+function spMyLine(){
+  const c=spMine();if(!c)return "";
+  return FOCUS_MAP[c]||FOCUS_MAP[dsLineKey(c)]||"";
+}
+function spRepLeft(rec){return Math.max(0,REP_MAX-(+((rec||{}).n)||0));}
+/* ใครกรอก "ที่คีย์จริง" ของสายนี้ได้ — ตรงกับกฎที่เซิร์ฟเวอร์ใช้ */
+function spRepCan(ln,rec){
+  const r=spRole();
+  if(r==="manager")return true;                  /* ทางแก้เมื่อเซลล์กรอกผิดจนโควต้าหมด */
+  if(r!=="sales")return false;                   /* ซุปดูได้อย่างเดียว ตามที่เจ้าของสั่ง */
+  if(spMyLine()!==ln)return false;               /* เซลล์กรอกได้เฉพาะสายตัวเอง */
+  return spRepLeft(rec)>0;
+}
+async function spRepSave(sid,ymd,ln,it){
+  const k=spKk(sid,ymd,ln),C=spRepOk();
+  const rec=C.rep[k]||null;
+  if(!spRepCan(ln,rec)){
+    alert(spRole()==="sales"&&spMyLine()===ln
+      ? "สายนี้แก้จำนวนครบจำนวนครั้งที่ให้แก้แล้ว — แจ้งผู้จัดการถ้าต้องแก้อีก"
+      : "บัญชีนี้กรอกจำนวนของสายนี้ไม่ได้");
+    return false;
+  }
+  const old=rec?JSON.parse(JSON.stringify(rec)):null;
+  const mine=spRole()==="sales";
+  const ent={at:Date.now(),by:(S.user&&S.user.id)||"",byName:(S.user&&S.user.name)||"",it:it};
+  C.rep[k]={it:it,by:ent.by,byName:ent.byName,at:ent.at,
+    n:(+(rec&&rec.n)||0)+(mine?1:0),
+    h:(((rec&&rec.h)||[]).concat([ent])).slice(-20)};
+  renderSpord();
+  try{
+    const r=await bdPost("/api/spord",{act:"rep",sid:sid,d:ymd,ln:ln,it:it});
+    if(!r||!r.ok)throw new Error((r&&r.error)||"บันทึกไม่สำเร็จ");
+    const left=spRepLeft(C.rep[k]);
+    toast("บันทึกแล้ว · "+ln+" "+fmtDate(ymd)+(mine?(left?" · แก้ได้อีก "+left+" ครั้ง":" · แก้ครบแล้ว"):""));
+    return true;
+  }catch(e){
+    if(old)C.rep[k]=old;else delete C.rep[k];
+    renderSpord();
+    alert("บันทึกไม่สำเร็จ: "+e.message+"\nตัวเลขเดิมยังอยู่ครบ ลองใหม่อีกครั้ง");
+    return false;
+  }
+}
+function spRepLineSave(sid,ymd,ln){
+  const codes=spSlipCodes(sid),it={};
+  codes.forEach(c=>{
+    const g=k=>{const el=document.getElementById("spR_"+ln+"_"+c.code+"_"+k);
+      const n=el?parseFloat(el.value):NaN;return isFinite(n)&&n>=0?Math.round(n*100)/100:0;};
+    const row={sc:g("sc"),sp:g("sp"),fc:g("fc"),fp:g("fp")};
+    if(row.sc||row.sp||row.fc||row.fp)it[c.code]=row;
+  });
+  const rec=spRepRec(sid,ymd,ln);
+  const left=spRepLeft(rec);
+  if(spRole()==="sales"&&rec&&!confirm(
+    "ยืนยันแก้จำนวนของสาย "+ln+" วันที่ "+fmtDate(ymd)+" ?\n\nแก้ได้อีก "+left+" ครั้งเท่านั้น"))return;
+  spRepSave(sid,ymd,ln,it);
+}
+/* เป้า vs ที่คีย์จริง รายสาย — ตัวเลขที่ซุปใช้ตาม */
+function spTrack(sid,ymd){
+  const tg=spKeyByLine(sid,ymd),rp=spRepByLine(sid,ymd);
+  return spSlipLines(sid).map(ln=>{
+    const sum=o=>{const t={cs:0,pc:0};Object.keys((o&&o.it)||{}).forEach(c=>{
+      const v=o.it[c]||{};t.cs+=(+v.sc||0)+(+v.fc||0);t.pc+=(+v.sp||0)+(+v.fp||0);});return t;};
+    const T=sum(tg[ln]),R=sum(rp[ln]);
+    const has=!!tg[ln],done=!!rp[ln];
+    const left=Math.round((T.cs-R.cs)*100)/100;
+    return {ln:ln,tgt:T,rep:R,has:has,done:done,left:left,
+      rec:rp[ln]||null,n:(rp[ln]&&rp[ln].n)||0,
+      st:!has?"noTgt":(!done?"wait":(left>0?"short":(left<0?"over":"ok")))};
+  });
+}
+/* 🕘 ประวัติการกรอกของสายนั้น — กดที่ตัวเลขแล้วเปิด */
+function spHistHtml(sid,ymd,ln){
+  const rec=spRepRec(sid,ymd,ln),codes=spSlipCodes(sid);
+  const h=((rec&&rec.h)||[]).slice().reverse();
+  if(!h.length)return '<div class="insight">สายนี้ยังไม่เคยกรอกจำนวน</div>';
+  const nm={};codes.forEach(c=>{nm[c.code]=c.nm||"";});
+  return h.map((e,i)=>{
+    const rows=Object.keys(e.it||{}).map(c=>{
+      const v=e.it[c]||{},cs=(+v.sc||0)+(+v.fc||0),pc=(+v.sp||0)+(+v.fp||0);
+      return `<tr><td class="l">${anaEsc(nm[c]||oname(c)||c)}<span class="psub" style="display:block">รหัส ${anaEsc(c)}</span></td>
+        <td>${(+v.sc||0)||"-"}</td><td>${(+v.fc||0)||"-"}</td><td><b>${cs||"-"}</b></td><td>${pc||"-"}</td></tr>`;
+    }).join("")||'<tr><td colspan="5" class="l">ไม่ได้กรอกจำนวนใด ๆ</td></tr>';
+    return `<div class="panel" style="margin-bottom:10px">
+      <div class="cst-fb"><b>${i===0?"ครั้งล่าสุด":"ครั้งที่ "+(h.length-i)}</b>
+        <span class="psub">${fmtDateTime(e.at)} · โดย ${anaEsc(e.byName||e.by||"-")}</span></div>
+      <div class="tblwrap" style="margin-top:8px"><table class="sp-kt">
+        <thead><tr><th class="l">สินค้า</th><th>ขาย (ลัง)</th><th>แถม (ลัง)</th><th>รวม (ลัง)</th><th>ชิ้น</th></tr></thead>
+        <tbody>${rows}</tbody></table></div></div>`;
+  }).join("");
+}
+function spHistOpen(sid,ymd,ln){
+  const el=document.getElementById("spHistBox");if(!el)return;
+  document.getElementById("spHistTitle").textContent="🕘 ประวัติการกรอก · สาย "+ln+" · "+fmtDate(ymd);
+  document.getElementById("spHistBody").innerHTML=spHistHtml(sid,ymd,ln);
+  el.classList.remove("hidden");
+}
+function spHistClose(){const el=document.getElementById("spHistBox");if(el)el.classList.add("hidden");}
+
 /* ---------- บันทึก (ผ่าน api/spord.js — sup ส่ง state ทั้งก้อนไม่ได้) ---------- */
 async function spKeySave(sid,ymd,ln,it){
   if(!spSupOk()){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return false;}
@@ -13310,7 +13440,7 @@ function spShopsHtml(sid){
  * 🔑 จำไว้ต่อ "เครื่องนี้ + คนที่ล็อกอินคนนี้" (`bdsp:<uid>`) — เปลี่ยนคนล็อกอินแล้วถามใหม่
  *    ไม่ได้อยู่ใน state ที่ sync จึงแตะ bd-data-* ไม่ได้ และหุ้ม try/catch เผื่อโหมดส่วนตัว
  * 🔑 ผู้จัดการก็ต้องใส่ เพราะเจ้าของบอกว่า "เข้าชั้นนี้" ไม่ได้ยกเว้นใคร */
-const SP_PINH="ab8c4e54ff47b004aae5bf837e169eeb1d39056fc4ffadfb7033957b316ab566";
+const SP_PINH="2503ba4d1ebb5b0543cdad0b6853ae8ee5afc4a3399b1426c49ff49510aac142";
 /* เก็บ "ปลดให้ใครไว้" ไม่ใช่แค่ 1 — ส่งเครื่องให้คนอื่นล็อกอินแล้วต้องถามรหัสใหม่ */
 let SP_OPEN="";
 function spPinUid(){return (S.user&&S.user.id)||"-";}
@@ -13630,23 +13760,166 @@ function spKeyHtml(sid){
   });
   const tot=spKeySum(sid,ymd);
   const T={sc:0,sp:0,fc:0,fp:0};Object.keys(tot).forEach(c=>{["sc","sp","fc","fp"].forEach(k=>{T[k]+=tot[c][k];});});
+  const tr=spTrack(sid,ymd);
+  const nDone=tr.filter(x=>x.done).length, nTgt=tr.filter(x=>x.has).length;
+  const isSales=spRole()==="sales";
+  /* 👤 เซลล์เห็นเฉพาะสายตัวเอง — ไม่ต้องเลื่อนผ่านเป้าของอีก 11 สายเพื่อหาของตัวเอง
+     และตัวเลขของสายอื่นก็ไม่ใช่เรื่องที่เซลล์ต้องเห็น */
+  if(isSales){
+    const myLn=spMyLine();
+    return spRepMineHtml(sid,ymd)+spTrackHtml(sid,ymd,tr.filter(x=>x.ln===myLn))+
+      `<div id="spHistBox" class="hidden"><div class="panel" style="margin-top:12px">
+        <div class="cst-fb"><h3 id="spHistTitle" style="margin:0"></h3>
+          <span style="flex:1"></span>
+          <button class="btn-ghost" onclick="spHistClose()">✕ ปิด</button></div>
+        <div id="spHistBody" style="margin-top:10px"></div></div></div>`;
+  }
   return `<div class="panel">
-    <h3>✍️ ฝั่งเซลล์ — จำนวนที่เซลล์คีย์วันที่ ${fmtDate(ymd)}</h3>
+    <h3>🎯 เป้าที่ต้องคีย์ วันที่ ${fmtDate(ymd)}</h3>
     <div class="psub">${can?"กรอกทีละสาย แล้วกด <b>💾 บันทึกสายนี้</b> — กรอกเฉพาะช่องที่มี ปล่อยว่างได้":
       "ดูอย่างเดียว"}</div>
     <div class="cards" style="margin-top:10px">
-      <div class="card"><div class="k">ขายวันนี้</div><div class="v">${T.sc.toLocaleString()}</div>
+      <div class="card"><div class="k">เป้าขายวันนี้</div><div class="v">${T.sc.toLocaleString()}</div>
         <div class="s">ลัง${T.sp?" + "+T.sp+" ชิ้น":""}</div></div>
-      <div class="card"><div class="k">แถมวันนี้</div><div class="v">${T.fc.toLocaleString()}</div>
+      <div class="card"><div class="k">เป้าแถมวันนี้</div><div class="v">${T.fc.toLocaleString()}</div>
         <div class="s">ลัง${T.fp?" + "+T.fp+" ชิ้น":""}</div></div>
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k">รวมส่งขึ้นใบใหญ่</div>
         <div class="v">${(T.sc+T.fc).toLocaleString()}</div>
         <div class="s">ลัง${(T.sp+T.fp)?" + "+(T.sp+T.fp)+" ชิ้น":""}</div></div>
-      <div class="card"><div class="k">สายที่กรอกแล้ว</div>
-        <div class="v">${Object.keys(byLine).length}</div><div class="s">จาก ${lines.length} สาย</div></div>
+      <div class="card"><div class="k">สายที่เซลล์คีย์แล้ว</div>
+        <div class="v">${nDone}</div><div class="s">จาก ${nTgt||lines.length} สาย</div></div>
     </div>
+    ${can?`<div class="cst-fb" style="margin-top:10px">
+      <button class="btn-ghost" onclick="spTgtXlsx('${anaEsc(sid)}','${ymd}')">📊 Excel ส่งให้เซลล์</button>
+      <button class="btn-ghost" onclick="spTgtPrint('${anaEsc(sid)}','${ymd}')">🖨 PDF ส่งให้เซลล์</button></div>`:""}
     <div class="tblwrap" style="margin-top:12px"><table class="sp-kt"><thead>${head}</thead><tbody>${body}</tbody></table></div>
+  </div>
+  ${spTrackHtml(sid,ymd,tr)}
+  <div id="spHistBox" class="hidden"><div class="panel" style="margin-top:12px">
+    <div class="cst-fb"><h3 id="spHistTitle" style="margin:0"></h3>
+      <span style="flex:1"></span>
+      <button class="btn-ghost" onclick="spHistClose()">✕ ปิด</button></div>
+    <div id="spHistBody" style="margin-top:10px"></div></div></div>`;
+}
+/* ---------- ตารางของ "สายฉัน" — เซลล์กรอกจำนวนที่คีย์จริง ---------- */
+function spRepMineHtml(sid,ymd){
+  const ln=spMyLine();
+  if(!ln)return `<div class="panel"><div class="insight">
+    บัญชีนี้ไม่มีรหัสสาย จึงกรอกจำนวนของสายไหนไม่ได้</div></div>`;
+  const codes=spSlipCodes(sid),rec=spRepRec(sid,ymd,ln),it=(rec&&rec.it)||{};
+  const tgt=(spKeyByLine(sid,ymd)[ln]||{}).it||{};
+  const can=spRepCan(ln,rec),left=spRepLeft(rec);
+  const rows=codes.map(c=>{
+    const v=it[c.code]||{},g=tgt[c.code]||{};
+    const gc=(+g.sc||0)+(+g.fc||0),gp=(+g.sp||0)+(+g.fp||0);
+    const inp=(k,val)=>can
+      ? `<input type="number" min="0" step="any" id="spR_${anaEsc(ln)}_${anaEsc(c.code)}_${k}"
+           value="${val?anaEsc(String(val)):""}" placeholder="0">`
+      : (val?String(val):"-");
+    return `<tr><td class="l">${anaEsc(c.nm||oname(c.code)||"")||'<span style="color:var(--muted)">(ไม่มีชื่อ)</span>'}
+        <span class="psub" style="display:block">รหัส ${anaEsc(c.code)}</span></td>
+      <td><b>${gc||"-"}</b>${gp?'<span class="psub" style="display:block">+'+gp+' ชิ้น</span>':""}</td>
+      <td>${inp("sc",v.sc)}</td><td>${inp("sp",v.sp)}</td>
+      <td>${inp("fc",v.fc)}</td><td>${inp("fp",v.fp)}</td>
+      <td>${((+v.sc||0)+(+v.fc||0))||"-"}</td></tr>`;
+  }).join("");
+  return `<div class="panel" style="margin-top:12px;border-top:3px solid var(--blue)">
+    <h3>✍️ สายของฉัน · ${anaEsc(ln)} — จำนวนที่คีย์จริง</h3>
+    <div class="psub">${can
+      ? "กรอกจำนวนที่คีย์ไปจริงของวันนี้ แล้วกด <b>💾 บันทึก</b> · <b>แก้ได้อีก "+left+" ครั้ง</b>"
+      : (rec?"<b>บันทึกครบจำนวนครั้งที่แก้ได้แล้ว</b> — ถ้าต้องแก้อีก แจ้งผู้จัดการ"
+            :"บัญชีนี้กรอกจำนวนของสายนี้ไม่ได้")}
+      ${rec?` · ล่าสุด ${fmtDateTime(rec.at)}`:""}</div>
+    <div class="cst-fb" style="margin-top:10px">
+      ${can?`<button class="upload-btn" onclick="spRepLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกจำนวนที่คีย์</button>`:""}
+      ${rec?`<button class="btn-ghost" onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">🕘 ดูประวัติการกรอก</button>`:""}</div>
+    <div class="tblwrap" style="margin-top:10px"><table class="sp-kt">
+      <thead><tr><th class="l">สินค้า</th><th>เป้า (ลัง)</th>
+        <th>ขาย (ลัง)</th><th>ขาย (ชิ้น)</th><th>แถม (ลัง)</th><th>แถม (ชิ้น)</th><th>รวม (ลัง)</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="7" class="l">ใบนี้ยังไม่มีสินค้า</td></tr>'}</tbody></table></div>
   </div>`;
+}
+/* ---------- ตารางติดตาม: สายไหนคีย์ครบเป้าแล้วบ้าง ---------- */
+const SP_TRK={ok:['<span class="sp-ok">✓ ครบเป้า</span>',"var(--good)"],
+  short:['<span class="sp-bad">ยังขาด</span>',"var(--bad)"],
+  over:['<span class="sp-warn">เกินเป้า</span>',"var(--warn)"],
+  wait:['<span class="sp-warn">รอเซลล์คีย์</span>',"var(--warn)"],
+  noTgt:['<span class="psub">ยังไม่ได้ตั้งเป้า</span>',"var(--line)"]};
+function spTrackHtml(sid,ymd,tr){
+  tr=tr||spTrack(sid,ymd);
+  const one=spRole()==="sales";          /* เซลล์เห็นแถวเดียวคือสายตัวเอง */
+  const show=tr.filter(x=>x.has||x.done);
+  if(!show.length)return `<div class="panel" style="margin-top:12px">
+    <h3>📋 ติดตามการคีย์รายสาย</h3>
+    <div class="insight" style="margin-top:8px">ยังไม่ได้ตั้งเป้าของวันนี้</div></div>`;
+  const n={ok:0,short:0,over:0,wait:0};show.forEach(x=>{if(n[x.st]!=null)n[x.st]++;});
+  const cards=one?"":`<div class="cards" style="margin-top:10px">
+      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">ครบเป้า</div>
+        <div class="v up">${n.ok}</div><div class="s">สาย</div></div>
+      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">ยังขาด</div>
+        <div class="v down">${n.short}</div><div class="s">สาย</div></div>
+      <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">รอเซลล์คีย์</div>
+        <div class="v">${n.wait}</div><div class="s">สาย</div></div>
+      <div class="card"><div class="k">เกินเป้า</div><div class="v">${n.over}</div><div class="s">สาย</div></div>
+    </div>`;
+  const rows=show.map(x=>`<tr>
+    <td class="l"><b>${anaEsc(x.ln)}</b></td>
+    <td>${x.tgt.cs||"-"}${x.tgt.pc?'<span class="psub" style="display:block">+'+x.tgt.pc+' ชิ้น</span>':""}</td>
+    <td>${x.done?`<button class="btn-ghost" style="padding:2px 9px;font-weight:700"
+        onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(x.ln)}')">${x.rep.cs||0}</button>`:"-"}</td>
+    <td>${x.st==="short"?'<b class="down">'+x.left+'</b>':(x.st==="over"?'<b class="up">+'+(-x.left)+'</b>':"-")}</td>
+    <td>${SP_TRK[x.st][0]}</td>
+    <td class="l">${x.rec?`<span class="psub">${anaEsc(x.rec.byName||x.rec.by||"")} · ${fmtDateTime(x.rec.at)}${
+      x.n?" · แก้ไป "+(x.n-1)+" ครั้ง":""}</span>`:'<span class="psub">—</span>'}</td></tr>`).join("");
+  return `<div class="panel" style="margin-top:12px">
+    <h3>📋 ${one?"สรุปของสายฉัน":"ติดตามการคีย์รายสาย"} · ${fmtDate(ymd)}</h3>
+    ${cards}
+    <div class="tblwrap" style="margin-top:10px"><table class="sp-kt">
+      <thead><tr><th class="l">สาย</th><th>เป้า (ลัง)</th><th>คีย์จริง (ลัง)</th><th>ยังขาด</th>
+        <th>ผล</th><th class="l">กรอกเมื่อ</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div class="psub" style="margin-top:8px">กดที่ตัวเลข <b>คีย์จริง</b> เพื่อดูประวัติการกรอก</div>
+  </div>`;
+}
+/* ---------- 📄 เป้าของวันนั้น ส่งให้เซลล์ (Excel / PDF) ---------- */
+function spTgtRows(sid,ymd){
+  const codes=spSlipCodes(sid),byLine=spKeyByLine(sid,ymd);
+  const head=["สาย","รหัสสินค้า","ชื่อสินค้า","เป้า ขาย (ลัง)","เป้า ขาย (ชิ้น)",
+    "เป้า แถม (ลัง)","เป้า แถม (ชิ้น)","เป้า รวม (ลัง)"];
+  const body=[];
+  spSlipLines(sid).forEach(ln=>{
+    const it=(byLine[ln]||{}).it||{};
+    codes.forEach(c=>{
+      const v=it[c.code];if(!v)return;
+      body.push([ln,c.code,c.nm||(typeof oname==="function"?oname(c.code):"")||"",
+        +v.sc||0,+v.sp||0,+v.fc||0,+v.fp||0,(+v.sc||0)+(+v.fc||0)]);
+    });
+  });
+  return {head:head,body:body};
+}
+function spTgtXlsx(sid,ymd){
+  const R=spTgtRows(sid,ymd);
+  if(!R.body.length){alert("วันนี้ยังไม่ได้ตั้งเป้า");return;}
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([["ใบออเดอร์",sid],["วันที่",fmtDate(ymd)],[],R.head].concat(R.body));
+  ws["!cols"]=R.head.map((h,i)=>({wch:i===2?34:(i<=1?13:12)}));
+  XLSX.utils.book_append_sheet(wb,ws,"เป้ารายสาย");
+  const fn=(typeof fnAscii==="function")?fnAscii:(x=>String(x).replace(/[^\x20-\x7E]/g,"_"));
+  XLSX.writeFile(wb,fn("Target_"+sid+"_"+ymd)+".xlsx");
+}
+function spTgtPrint(sid,ymd){
+  const R=spTgtRows(sid,ymd);
+  if(!R.body.length){alert("วันนี้ยังไม่ได้ตั้งเป้า");return;}
+  const el=document.getElementById("prArea");if(!el)return;
+  const td=(v,i)=>`<td style="border:1px solid #999;padding:3px 6px;${i>=3?"text-align:right":""}">${anaEsc(String(v==null?"":v))}</td>`;
+  el.innerHTML=`<div style="font-family:sans-serif;font-size:12px">
+    <h2 style="margin:0 0 4px">เป้าที่ต้องคีย์รายสาย — ${anaEsc(sid)}</h2>
+    <div style="margin-bottom:8px">วันที่ <b>${fmtDate(ymd)}</b></div>
+    <table style="border-collapse:collapse;width:100%">
+      <thead><tr>${R.head.map(h=>`<th style="border:1px solid #999;padding:3px 6px;background:#eee;font-size:11px">${anaEsc(h)}</th>`).join("")}</tr></thead>
+      <tbody>${R.body.map(r=>`<tr>${r.map(td).join("")}</tr>`).join("")}</tbody></table>
+    <div style="margin-top:8px;font-size:10px;color:#555">พิมพ์เมื่อ ${fmtDateTime(Date.now())}</div></div>`;
+  try{window.print();}catch(e){}
 }
 function spKeyLineSave(sid,ymd,ln){
   const codes=spSlipCodes(sid),it={};

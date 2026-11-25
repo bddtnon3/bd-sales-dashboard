@@ -1323,14 +1323,53 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
         gm2.CSTOCK.gin[GK].money === 0 && gm2.CSTOCK.gin[GK].g[0] === "143");
   check("🛟 ...แต่จำนวนที่ฝั่งเซลล์กรอกไว้ยังอยู่ครบ",
         gm2.CSTOCK.key[KK].it["90000001"].sc === 7);
+  /* 👤 จำนวนที่เซลล์คีย์จริง (CSTOCK.rep) — เซลล์แก้ได้ครั้งเดียว โควต้าอยู่ใน n ประวัติอยู่ใน h
+     ⚠️ ถ้า merge แบบ newest-wins ทั้งเรคอร์ด แท็บเก่าที่ถือ n=1 จะทับของใหม่ที่ n=2
+        = เซลล์กลับมาแก้ได้อีก และประวัติหายไปหนึ่งครั้ง */
+  const RK = B1 + "|2026-11-20|CT11";
+  const repSrv = JSON.parse(JSON.stringify(gm2));
+  repSrv.CSTOCK.rep = { [RK]: { it: { "90000001": { sc: 11, sp: 0, fc: 1, fp: 0 } },
+    by: "209611", byName: "CT11", at: 52000, n: 2,
+    h: [{ at: 51000, by: "209611", it: { "90000001": { sc: 8 } } },
+        { at: 52000, by: "209611", it: { "90000001": { sc: 11 } } }] } };
+  const staleRep = JSON.parse(JSON.stringify(base));
+  staleRep.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, key: {}, gin: {},
+    rep: { [RK]: { it: { "90000001": { sc: 8, sp: 0, fc: 1, fp: 0 } },
+      by: "209611", at: 51000, n: 1,
+      h: [{ at: 51000, by: "209611", it: { "90000001": { sc: 8 } } }] } }, up: 53000 };
+  const r1 = mergeState(repSrv, staleRep);
+  check("🔑 แท็บเก่าของเซลล์บันทึกทับ โควต้าแก้ไม่ถูกรีเซ็ต",
+        r1.CSTOCK.rep[RK].n === 2, JSON.stringify(r1.CSTOCK.rep[RK].n));
+  check("🛟 ...และประวัติการกรอกยังอยู่ครบทั้งสองครั้ง",
+        (r1.CSTOCK.rep[RK].h || []).length === 2 &&
+        r1.CSTOCK.rep[RK].it["90000001"].sc === 11,
+        JSON.stringify(r1.CSTOCK.rep[RK]));
+  /* แท็บรุ่นก่อนที่ไม่รู้จัก rep เลย บันทึกทับ — ของเซลล์ต้องไม่หายทั้งก้อน */
+  const oldTabR = JSON.parse(JSON.stringify(base));
+  oldTabR.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, up: 54000 };
+  const r2 = mergeState(r1, oldTabR);
+  check("🛟 แท็บรุ่นก่อนบันทึกทับ จำนวนที่เซลล์คีย์ยังอยู่",
+        !!(r2.CSTOCK.rep || {})[RK] && r2.CSTOCK.rep[RK].it["90000001"].sc === 11);
+  check("🔑 ...และเป้าของหัวหน้าเซลล์ก็ยังอยู่ (คนละช่อง ไม่ทับกัน)",
+        r2.CSTOCK.key[KK].it["90000001"].sc === 7);
+  /* เซลล์อีกสายบันทึกเข้ามา ต้องไม่ลบของสายแรก */
+  const otherLine = JSON.parse(JSON.stringify(base));
+  otherLine.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, key: {}, gin: {},
+    rep: { [B1 + "|2026-11-20|CT12"]: { it: { "90000001": { sc: 4 } }, by: "209612", at: 55000, n: 1, h: [] } },
+    up: 55000 };
+  const r3 = mergeState(r2, otherLine);
+  check("🔑 เซลล์อีกสายบันทึก ไม่ลบของสายแรก",
+        !!r3.CSTOCK.rep[RK] && !!r3.CSTOCK.rep[B1 + "|2026-11-20|CT12"],
+        JSON.stringify(Object.keys(r3.CSTOCK.rep)));
   /* ลบใบออเดอร์ = งานสองฝั่งของใบนั้นหายตามไป ไม่ทิ้งเศษค้าง */
   const killSlip = JSON.parse(JSON.stringify(base));
   killSlip.CSTOCK = { lots: {}, del: {}, slips: {}, ex: {}, sub: {}, subdel: {}, key: {}, gin: {},
     sdel: { [B1]: 30000 }, up: 30000 };
-  const t5 = mergeState(gm2, killSlip);
-  check("🛟 ลบใบออเดอร์ทิ้ง งานสองฝั่งของใบนั้นไม่ค้างเป็นเศษ",
+  const t5 = mergeState(r3, killSlip);
+  check("🛟 ลบใบออเดอร์ทิ้ง งานทุกฝั่งของใบนั้นไม่ค้างเป็นเศษ",
         !Object.keys(t5.CSTOCK.key || {}).some((k) => k.indexOf(B1 + "|") === 0) &&
-        !Object.keys(t5.CSTOCK.gin || {}).some((k) => k.indexOf(B1 + "|") === 0),
+        !Object.keys(t5.CSTOCK.gin || {}).some((k) => k.indexOf(B1 + "|") === 0) &&
+        !Object.keys(t5.CSTOCK.rep || {}).some((k) => k.indexOf(B1 + "|") === 0),
         JSON.stringify({ key: Object.keys(t5.CSTOCK.key || {}), gin: Object.keys(t5.CSTOCK.gin || {}) }));
 
   /* 📇 ดัชนีเลขออเดอร์จากไฟล์ยอดขาย (STOREDAILY.ord) — ใช้แปลงเลขเป็นชื่อร้าน/ยอด

@@ -72,7 +72,7 @@ const ORIGIN='https://bd-spord.test/';
  /* ---------- 0) 🔐 รหัสชั้นที่สองของหน้านี้ (เจ้าของสั่ง 26 พ.ย. 69) ----------
     *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"* — รหัสจริงไม่อยู่ในไฟล์ (repo เป็น public)
     เก็บเป็น SHA-256 เท่านั้น เทสจึงคำนวณแฮชเทียบ ไม่ได้เขียนตัวเลขลงเทสด้วย */
- const PIN='3912131415';
+ const PIN='391213';
  const gate=await ev(async(pin)=>{
    __reset();__as('manager',null,'ผู้จัดการ');
    SP_OPEN="";
@@ -116,6 +116,85 @@ const ORIGIN='https://bd-spord.test/';
  t('🔑 มีปุ่ม 🔒 ล็อกกลับ และกดแล้วลืมรหัสที่จำไว้',
    gate.reLocked&&!gate.forgot,JSON.stringify({locked:gate.reLocked,mem:gate.forgot}));
  t('🛟 จำแยกตามคนที่ล็อกอิน — เปลี่ยนคนแล้วถามใหม่',gate.perUser);
+
+
+ /* ---------- 0.5) 👤 ฝั่งเซลล์รายสาย: เป้าของซุป vs ที่เซลล์คีย์จริง ----------
+    เจ้าของสั่ง 26 พ.ย. 69: ซุปกรอกเป้า → ส่งไฟล์ให้เซลล์ → เซลล์กรอกที่คีย์จริงของสายตัวเอง
+    เซลล์แก้ได้ครั้งเดียว · ซุปดูได้อย่างเดียวแก้ไม่ได้ · กดที่ตัวเลขดูประวัติได้ */
+ const rep=await ev(async()=>{
+   __reset();
+   /* ใบนี้ต้องมีสินค้า ไม่งั้นหน้าขึ้นว่า "ใบนี้ยังไม่มีรายการสินค้า" */
+   [['64849613','โอโมน้ำ ซากุระ'],['65456729','บรีสเอกเซล']].forEach((p,i)=>{
+     const id='B20261118-01-k'+i;
+     CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],
+       cs:20,pc:0,sq:i,ln:i?'CT12':'CT11',up:1};});
+   /* ซุปตั้งเป้าให้ CT11 */
+   __as('sup',null,'หัวหน้าเซลล์');_switchTab('spord');
+   SP.sid='B20261118-01';SP.view='slip';SP.sec='key';SP.day='2026-11-20';renderSpord();
+   CSTOCK.key['B20261118-01|2026-11-20|CT11']={it:{'64849613':{sc:10,sp:0,fc:1,fp:0}},
+     by:'sup',byName:'หัวหน้าเซลล์',at:1000};
+   renderSpord();
+   const o={};
+   const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.supNoInput=!document.getElementById('spR_CT11_64849613_sc');   /* ซุปกรอกของเซลล์ไม่ได้ */
+   o.supSeesTrack=/ติดตามการคีย์รายสาย/.test(tx())&&/รอเซลล์คีย์/.test(tx());
+   o.supExport=typeof spTgtXlsx==='function'&&spTgtRows('B20261118-01','2026-11-20').body.length>0;
+
+   /* เซลล์ CT11 เข้ามากรอกของตัวเอง */
+   __as('sales','209611','CT11 · เซลล์');_switchTab('spord');
+   SP.sid='B20261118-01';SP.view='slip';SP.sec='key';SP.day='2026-11-20';renderSpord();
+   o.myLine=spMyLine();
+   o.hasMine=!!document.getElementById('spR_CT11_64849613_sc');
+   o.notOther=!document.getElementById('spR_CT12_64849613_sc');
+   document.getElementById('spR_CT11_64849613_sc').value='8';
+   document.getElementById('spR_CT11_64849613_fc').value='1';
+   await spRepSave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:8,sp:0,fc:1,fp:0}});
+   o.post1=window.__posts[window.__posts.length-1];
+   let r=CSTOCK.rep['B20261118-01|2026-11-20|CT11'];
+   o.n1=r&&r.n; o.h1=r&&r.h.length;
+   o.left1=spRepLeft(r);
+   /* แก้ครั้งที่ 1 (ครั้งสุดท้ายที่ทำได้) */
+   await spRepSave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:11,sp:0,fc:1,fp:0}});
+   r=CSTOCK.rep['B20261118-01|2026-11-20|CT11'];
+   o.n2=r&&r.n; o.h2=r&&r.h.length; o.left2=spRepLeft(r); o.cur=r&&r.it['64849613'].sc;
+   /* ครั้งที่ 3 ต้องถูกปฏิเสธ */
+   const before=window.__posts.length;
+   o.third=await spRepSave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:99,sp:0,fc:0,fp:0}});
+   o.noExtraPost=window.__posts.length===before;
+   o.stillCur=CSTOCK.rep['B20261118-01|2026-11-20|CT11'].it['64849613'].sc;
+   /* ประวัติ */
+   renderSpord();
+   spHistOpen('B20261118-01','2026-11-20','CT11');
+   o.hist=document.getElementById('spHistBody').textContent.replace(/\s+/g,' ');
+   o.histShown=!document.getElementById('spHistBox').classList.contains('hidden');
+
+   /* ซุปกลับมาดู: เห็นของเซลล์ แต่แก้ไม่ได้ */
+   __as('sup',null,'หัวหน้าเซลล์');SP.sec='key';renderSpord();
+   const b2=window.__posts.length;
+   o.supBlocked=await spRepSave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:1,sp:0,fc:0,fp:0}});
+   o.supNoPost=window.__posts.length===b2;
+   o.trk=spTrack('B20261118-01','2026-11-20').filter(x=>x.ln==='CT11')[0];
+   o.supTxt=tx();
+   return o;});
+ t('🔑 เซลล์กรอก "จำนวนที่คีย์จริง" ของสายตัวเองได้',
+   rep.myLine==='CT11'&&rep.hasMine&&rep.post1&&rep.post1.u==='/api/spord'&&rep.post1.b.act==='rep',
+   JSON.stringify({line:rep.myLine,act:rep.post1&&rep.post1.b.act}));
+ t('🔒 ...และเห็นช่องกรอกเฉพาะสายตัวเอง ไม่ใช่ของสายอื่น',rep.hasMine&&rep.notOther);
+ t('🔑 แก้ได้อีกครั้งเดียว แล้วตัวเลขใหม่ชนะ',
+   rep.left1===1&&rep.n2===2&&rep.left2===0&&rep.cur===11,
+   JSON.stringify({left1:rep.left1,n2:rep.n2,left2:rep.left2,cur:rep.cur}));
+ t('🛟 ครั้งที่สามต้องถูกปฏิเสธ ไม่ยิงขึ้นเซิร์ฟเวอร์ และตัวเลขเดิมไม่เปลี่ยน',
+   rep.third===false&&rep.noExtraPost&&rep.stillCur===11,
+   JSON.stringify({third:rep.third,cur:rep.stillCur}));
+ t('🔑 กดดูประวัติได้ว่ากรอกเมื่อไหร่ แก้เมื่อไหร่ (ทุกครั้งเก็บไว้ ไม่ทับของเดิม)',
+   rep.h1===1&&rep.h2===2&&rep.histShown&&/ครั้งล่าสุด/.test(rep.hist),
+   JSON.stringify({h1:rep.h1,h2:rep.h2}));
+ t('🔒 หัวหน้าเซลล์แก้จำนวนของเซลล์ไม่ได้เลย ดูได้อย่างเดียว',
+   rep.supNoInput&&rep.supBlocked===false&&rep.supNoPost);
+ t('🔑 ซุปเห็นตารางติดตามว่าสายไหนคีย์ครบเป้าแล้ว',
+   rep.supSeesTrack&&rep.trk&&rep.trk.tgt.cs===11&&rep.trk.rep.cs===12&&rep.trk.st==='over',
+   JSON.stringify(rep.trk&&{tgt:rep.trk.tgt.cs,rep:rep.trk.rep.cs,st:rep.trk.st}));
+ t('🔑 ซุปดึงเป้าออกเป็นไฟล์ส่งให้เซลล์ได้',rep.supExport);
 
  /* ---------- 1) ใครเห็นอะไร ---------- */
  const who=await ev(()=>{
@@ -537,9 +616,10 @@ const ORIGIN='https://bd-spord.test/';
    o.rec=CSTOCK.key['B20261118-01|2026-11-20|CT11'];
    o.sum=spKeySum('B20261118-01','2026-11-20');
    o.cards=tx();
-   /* เซลล์ธรรมดาเข้ามาดูได้ แต่แก้ไม่ได้ */
+   /* เซลล์เข้ามาเห็น "สายของฉัน" ไม่ใช่ตารางเป้าของทั้ง 12 สาย และแก้เป้าของซุปไม่ได้ */
    __as('sales','209611','เซลล์ CT11');SP.sec='key';renderSpord();
-   o.salesRead=/ดูอย่างเดียว/.test(tx())&&!document.getElementById('spK_CT11_64849613_sc');
+   o.salesRead=!document.getElementById('spK_CT11_64849613_sc')&&/สายของฉัน/.test(tx());
+   o.salesNoOther=!/สาย CT12/.test(tx());
    o.salesSees=/โอโมน้ำ ซากุระ/.test(tx());
    return o;});
  t('🔑 หน้าใบมี 2 ขั้นตอน + ของเดิมเก็บไว้ให้ดูย้อนหลัง',
@@ -556,8 +636,9 @@ const ORIGIN='https://bd-spord.test/';
    two.rec.it['65456729'].sc===3,JSON.stringify(two.rec&&two.rec.it));
  t('🔑 ...แต่ยอดรวมขึ้นใบใหญ่ รวมขาย+แถมเข้าด้วยกันตามที่เจ้าของสั่ง',
    /รวมส่งขึ้นใบใหญ่/.test(two.cards)&&two.sum['64849613'].sc===5&&two.sum['64849613'].fc===1);
- t('🔒 เซลล์ธรรมดาเข้ามาดูได้ แต่แก้ไม่ได้',two.salesRead&&two.salesSees,
-   JSON.stringify({read:two.salesRead,sees:two.salesSees}));
+ t('🔒 เซลล์เห็นหน้า "สายของฉัน" แก้เป้าของหัวหน้าเซลล์ไม่ได้ และไม่เห็นสายอื่น',
+   two.salesRead&&two.salesSees&&two.salesNoOther,
+   JSON.stringify({mine:two.salesRead,sees:two.salesSees,noOther:two.salesNoOther}));
 
  const adm=await ev(async()=>{
    const o={};
