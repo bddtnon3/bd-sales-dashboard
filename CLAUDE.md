@@ -819,20 +819,42 @@ code, never printed.
   Pack Size exactly** (`24X12X30มล` + Q 288 → 12; `6X6X160 กรัม` + Q 36 → 6). Measured: **all
   5,369 rows that use แพ็ค resolve, 100%**, and the 239 codes it cannot resolve never use the unit.
   A row it still cannot convert is **reported, never guessed at 1**.
-  **Money is two different questions and the page must not blur them.** The allocation file has
-  **no money column at all**, so: *ยอดสินค้าในใบนี้* is an **estimate** from the หัวเสือ price file —
-  and note **WS LP is per case while NTT is per piece** (measured: WS 900/case of 36, NTT 16.40,
-  RSP 20), which cost one wrong version where NIV came out 36× too small. *ยอดขายจริงทั้งออเดอร์* is
-  **real**, read from `STOREDAILY.ord` by matching the allocation file's **Order Number** (column M)
-  — 1,401 of 1,645 numbers matched the owner's real sales file, the rest being the day the sales
-  file did not cover. That total **includes products outside the slip**, so the page says so.
-  `parseDailyDcode` now also stores `g` (GSV) on the order index; a file uploaded before that says
-  so and asks for one re-upload rather than showing 0.
+  **Money is two different questions and the page must not blur them.**
+  *ยอดสินค้าในใบนี้* counts only the slip's own products; *ยอดทั้งออเดอร์* is every order number in
+  that round, read from `STOREDAILY.ord` by matching the allocation file's **Order Number**
+  (column M), and it **includes products outside the slip**, so the page says so. Of the owner's
+  1,789 order numbers, 1,401 matched his sales file — 375 were days that file did not cover and
+  **13 were orders with no invoice yet** (status Confirmed / Ordered / Sent to Locus), which is why
+  an unmatched number is counted as *รอไฟล์ยอดขาย* and never as 0.
+  **The money comes from the allocation file itself** (owner, 26 Nov 26: *"ทำไมไฟล์ allocate จะไม่มี
+  อยู่สองช่องสุดท้ายด้านหลังนี้ไง ลองตรวจใหม่หน่อย"* — he was right; the first export analysed had
+  30 columns, his newer one has **36**, ending **AI = GSV · AJ = NIV per row**). Measured on
+  10,428 rows: GSV 7,042,941 · NIV 5,169,482 (73.4%), and per order **GSV and NIV agree with the
+  daily sales file on 1,401/1,401 orders — 100%**, so the two files state the same money and no
+  estimate is needed. Those columns, plus `Order Status` and the two allocation-status columns, are
+  therefore **optional lookups in `AL_O`, never required**: an older 30-column export must still
+  parse, and when it does the page **says out loud** that the file has no money columns and falls
+  back to the หัวเสือ estimate (`sum.src` `"file"`/`"price"`), never a silent 0. In that fallback
+  note **WS LP is per case while NTT is per piece** (measured: WS 900/case of 36, NTT 16.40,
+  RSP 20), which cost one wrong version where NIV came out 36× too small.
+  **Free goods are the one figure that stays an estimate**: all 937 free-goods-only rows carry
+  GSV 0 / NIV 0, because free goods earn nothing — so the file's money is the *sale* money, and
+  *มูลค่าของแถม* is still priced from the หัวเสือ file and labelled ประเมิน. Never add them together.
+  `rows[].g`/`.v`/`.mn` and `money:1` are saved on the gin record, so a stored check reads back with
+  its real money without re-uploading the file; `mn` (rows that carried money) separates **"the file
+  says 0"** from **"the file has not billed this yet"**, which the page reports as
+  *ไฟล์ยังไม่ลงเงิน*. `parseDailyDcode` also stores `g` (GSV) on the order index; a file uploaded
+  before that says so and asks for one re-upload rather than showing 0.
   **③ The day's check exports** to Excel (`spRepXlsx`, สรุป + รายการ sheets) or PDF through the
   browser's own print (`spRepPrint` into `#prArea`). Both read `spCmp`, so the document and the
   screen can never disagree, and the filename stays ASCII (`fnAscii` — Chromium drops a Thai
   `a.download` name *and* its extension).
-  Prove it with **`node test/browser/spord.test.cjs`** (98 checks) plus the `key`/`gin` cases in
+  **How long from picking to billing** (the owner asked, 26 Nov 26): matching Order Number across
+  the two files, **46.7% of orders are invoiced the same day, 43.3% the next day, 9.2% two days
+  later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
+  invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
+  picking day already covers ~90% of it, and the remaining tail needs the day after that.
+  Prove it with **`node test/browser/spord.test.cjs`** (104 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -845,7 +867,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (98 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (104 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

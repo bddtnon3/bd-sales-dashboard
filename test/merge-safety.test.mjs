@@ -1299,11 +1299,35 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
     key: { [KK]: { it: { "90000001": { sc: 5, sp: 0, fc: 1, fp: 0 } }, by: "sup", at: 20000 } }, up: 24000 };
   const t4 = mergeState(t3, staleSup);
   check("🛟 แท็บเก่าที่ถือตัวเลขเดิม ย้อนของใหม่ไม่ได้", t4.CSTOCK.key[KK].it["90000001"].sc === 7);
+  /* 💵 เงินในผลตรวจ (ช่อง GSV/NIV ของไฟล์ใบจัดของ — เพิ่ม 26 พ.ย. 69)
+     แท็บรุ่นก่อนไม่รู้จัก money/g/v/mn เลย บันทึกทับแล้วเงินต้องไม่หาย */
+  const gmSrv = JSON.parse(JSON.stringify(t4));
+  gmSrv.CSTOCK.gin[GK] = { g: ["141", "142"], money: 1,
+    rows: { "CT11|90000001": { sc: 5, ss: 0, sp: 0, fc: 1, fs: 0, fp: 0, g: 1500, v: 1100, mn: 1 } },
+    dd: ["2026-11-20"], by: "admin1", at: 40000 };
+  const gmOldTab = JSON.parse(JSON.stringify(base));
+  gmOldTab.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, up: 41000 };
+  const gm1 = mergeState(gmSrv, gmOldTab);
+  check("🛟 แท็บรุ่นก่อนบันทึกทับ เงิน GSV/NIV ในผลตรวจยังอยู่",
+        gm1.CSTOCK.gin[GK].money === 1 &&
+        gm1.CSTOCK.gin[GK].rows["CT11|90000001"].g === 1500 &&
+        gm1.CSTOCK.gin[GK].rows["CT11|90000001"].v === 1100,
+        JSON.stringify(gm1.CSTOCK.gin[GK]));
+  /* แอดมินอัพไฟล์รุ่นเก่า (ไม่มีช่องเงิน) ทับทีหลัง — อันใหม่ชนะตามปกติ แต่ต้องบอกได้ว่าไม่มีเงิน */
+  const gmNo = JSON.parse(JSON.stringify(base));
+  gmNo.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, key: {},
+    gin: { [GK]: { g: ["143"], money: 0, rows: { "CT11|90000001": { sc: 5, g: 0, v: 0, mn: 0 } },
+      dd: [], by: "admin2", at: 42000 } }, up: 42000 };
+  const gm2 = mergeState(gm1, gmNo);
+  check("...อัพไฟล์รุ่นเก่าทับ ผลตรวจใหม่ชนะและรู้ตัวว่าไม่มีช่องเงิน",
+        gm2.CSTOCK.gin[GK].money === 0 && gm2.CSTOCK.gin[GK].g[0] === "143");
+  check("🛟 ...แต่จำนวนที่ฝั่งเซลล์กรอกไว้ยังอยู่ครบ",
+        gm2.CSTOCK.key[KK].it["90000001"].sc === 7);
   /* ลบใบออเดอร์ = งานสองฝั่งของใบนั้นหายตามไป ไม่ทิ้งเศษค้าง */
   const killSlip = JSON.parse(JSON.stringify(base));
   killSlip.CSTOCK = { lots: {}, del: {}, slips: {}, ex: {}, sub: {}, subdel: {}, key: {}, gin: {},
     sdel: { [B1]: 30000 }, up: 30000 };
-  const t5 = mergeState(t4, killSlip);
+  const t5 = mergeState(gm2, killSlip);
   check("🛟 ลบใบออเดอร์ทิ้ง งานสองฝั่งของใบนั้นไม่ค้างเป็นเศษ",
         !Object.keys(t5.CSTOCK.key || {}).some((k) => k.indexOf(B1 + "|") === 0) &&
         !Object.keys(t5.CSTOCK.gin || {}).some((k) => k.indexOf(B1 + "|") === 0),

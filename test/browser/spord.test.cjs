@@ -440,22 +440,25 @@ const K=(no)=>B1+'|'+no;
          cs:p[2],pc:0,sq:i,ln:i?'CT12':'CT11',up:1};});
      SP.sid='B20261118-01';SP.view='slip';SP.ym='2026-11';SP.day='2026-11-20';SP.sec='key';
    };
-   /* ไฟล์ allocation จำลอง — โครงเดียวกับไฟล์จริง (หัวตารางตรงตัว) */
-   window.__alBuf=()=>{
+   /* ไฟล์ allocation จำลอง — โครงเดียวกับไฟล์จริง (หัวตารางตรงตัว)
+      old=1 → ไฟล์รุ่นเก่า 29 ช่อง ไม่มี GSV/NIV (ต้องยังอ่านได้ และถอยไปประเมินจากไฟล์ราคา) */
+   window.__alBuf=(old)=>{
      const H=['Order Creation Date','Distributor Code','Distributor Name','Salesman Name',
        'PJP Code','PJP Name','Route Type','Outlet Code','Outlet Name','Outlet Subtype',
        'GIN No.','Invoice No.','Order Number','Order Type','Product Code','Product Description',
        'Pack Size','Sale Order (CS)','Sale Order (SHR)','Sale Order (PC)',
        'Free Order (CS)','Free Order (SHR)','Free Order (PC)',
        'Sale Allocated (CS)','Sale Allocated (SHR)','Sale Allocated (PC)',
-       'Free Allocated (CS)','Free Allocated (SHR)','Free Allocated (PC)'];
-     const row=(pj,pn,gin,code,nm,sc,fc,xc)=>[46341,'15389839','บีดี','2096',pj,pn,'CT','T1','ร้าน','sub',
-       gin,'INV1','BDD0100000111','B2B',code,nm,12,sc,0,0,fc,0,0,xc,0,0,fc,0,0];
+       'Free Allocated (CS)','Free Allocated (SHR)','Free Allocated (PC)']
+       .concat(old?[]:['Sales Allocation Status','Free Allocation Status','Order Status','GSV','NIV']);
+     const row=(pj,pn,gin,code,nm,sc,fc,xc,gsv,niv)=>[46341,'15389839','บีดี','2096',pj,pn,'CT','T1','ร้าน','sub',
+       gin,'INV1','BDD0100000111','B2B',code,nm,12,sc,0,0,fc,0,0,xc,0,0,fc,0,0]
+       .concat(old?[]:['Full',fc?'Full':'',  'Delivered',gsv,niv]);
      const A=[H,
-       row('209611','CT_HPC_211','77','64849613','โอโมน้ำ ซากุระ',5,1,5),
-       row('209611','CT_HPC_211','77','65456729','บรีสเอกเซล',2,0,2),   /* ตั้งใจให้ไม่ตรงกับที่เซลล์คีย์ (3) */
-       row('209612','CT_HPC_212','77','64849613','โอโมน้ำ ซากุระ',2,0,1),
-       row('209697','KA_HPC_297','78','64849613','โอโมน้ำ ซากุระ',9,0,9)];
+       row('209611','CT_HPC_211','77','64849613','โอโมน้ำ ซากุระ',5,1,5,1500,1100),
+       row('209611','CT_HPC_211','77','65456729','บรีสเอกเซล',2,0,2,800,610),   /* ตั้งใจให้ไม่ตรงกับที่เซลล์คีย์ (3) */
+       row('209612','CT_HPC_212','77','64849613','โอโมน้ำ ซากุระ',2,0,1,600,440),
+       row('209697','KA_HPC_297','78','64849613','โอโมน้ำ ซากุระ',9,0,9,2700,1980)];
      const ws=XLSX.utils.aoa_to_sheet(A),wb=XLSX.utils.book_new();
      XLSX.utils.book_append_sheet(wb,ws,'Export');
      return XLSX.write(wb,{type:'array',bookType:'xlsx'});
@@ -614,12 +617,24 @@ const K=(no)=>B1+'|'+no;
  t('🔑 ยอดขายจริง NIV/GSV ดึงจากไฟล์ยอดขายด้วยเลขออเดอร์ ไม่ใช่ประเมิน',
    val.sum.rNiv===5000&&val.sum.rGsv===7000&&val.sum.ordHit===1,
    JSON.stringify({niv:val.sum.rNiv,gsv:val.sum.rGsv,hit:val.sum.ordHit}));
- t('🔑 ราคาหีบใช้ WS LP ต่อหีบ · ราคาชิ้นใช้ NTT ต่อชิ้น (คนละหน่วย)',
-   Math.round(val.row.gsv)===720&&Math.round(val.row.niv)===288&&val.row.qS.pcs===24,
-   JSON.stringify({code:val.row.code,pcs:val.row.qS&&val.row.qS.pcs,gsv:val.row.gsv,niv:val.row.niv}));
- t('🛟 หน้าบอกชัดว่าสองยอดนี้คนละคำถาม (ยอดในใบ = ประเมิน · ยอดจริง = ทั้งออเดอร์)',
-   /ยอดสินค้าในใบนี้/.test(val.txt)&&/ยอดขายจริงทั้งออเดอร์/.test(val.txt)&&
+ t('🛟 หน้าบอกชัดว่าสองยอดนี้คนละคำถาม (ยอดในใบ · ยอดทั้งออเดอร์)',
+   /ยอดสินค้าในใบนี้/.test(val.txt)&&/ยอดทั้งออเดอร์/.test(val.txt)&&
    /รวมสินค้าตัวอื่นที่ไม่ได้อยู่ในใบนี้ด้วย/.test(val.txt));
+
+ /* ---------- 💵 เงินในไฟล์ใบจัดของ (ช่อง GSV / NIV ท้ายไฟล์) ----------
+    เจ้าของทักเมื่อ 26 พ.ย. 69: *"ทำไมไฟล์ allocate จะไม่มีอยู่สองช่องสุดท้ายด้านหลังนี้ไง"*
+    ไฟล์จริงรุ่นใหม่มี 36 ช่อง · AI = GSV · AJ = NIV และตรงกับไฟล์ยอดขาย 1,401/1,401 ใบ */
+ t('🔑 อ่าน GSV/NIV จากไฟล์ใบจัดของเอง ไม่ใช่ประเมินจากไฟล์ราคา',
+   val.sum.src==='file'&&Math.round(val.sum.sGsv)===2900&&Math.round(val.sum.sNiv)===2150,
+   JSON.stringify({src:val.sum.src,gsv:val.sum.sGsv,niv:val.sum.sNiv}));
+ t('🔑 ...ตัวเลขรายสินค้าก็มาจากไฟล์ (ไม่ใช่ WS LP x จำนวน)',
+   val.row.gsv===800&&val.row.niv===610&&val.row.est===0,
+   JSON.stringify({gsv:val.row.gsv,niv:val.row.niv,est:val.row.est}));
+ t('🛟 ...และหน้าเว็บบอกว่าเงินมาจากไฟล์ ไม่ได้ปล่อยให้เข้าใจว่าประเมิน',
+   /ตัวเลขเงินมาจากไฟล์ใบจัดของเอง/.test(val.txt)&&!/ยังไม่มีช่อง/.test(val.txt),
+   val.txt.slice(0,80));
+ t('🛟 มูลค่าของแถมยังเป็น "ประเมิน" เสมอ เพราะไฟล์ลงเงินของแถมเป็น 0 (ให้ฟรี)',
+   /มูลค่าของแถม/.test(val.txt)&&/ประเมิน/.test(val.txt));
 
  const doc=await ev(()=>{
    const R=spRepRows('B20261118-01','2026-11-20');
@@ -638,8 +653,9 @@ const K=(no)=>B1+'|'+no;
  t('🛟 ชื่อไฟล์ต้องเป็น ASCII ล้วน (Chromium ตัดชื่อไฟล์ไทยทิ้งทั้งนามสกุล)',
    /^[\x20-\x7E]+\.xlsx$/.test(doc.name),doc.name);
  t('...ใบสรุปบอกที่มาของตัวเลขและจำนวนเลขออเดอร์ที่ดึงได้',
-   doc.meta.indexOf('มูลค่าขายจริง NIV')>=0&&doc.meta.indexOf('รอไฟล์ยอดขาย')>=0&&
-   doc.meta.indexOf('หมายเหตุ')>=0,doc.meta.join(' | ').slice(0,140));
+   doc.meta.indexOf('ยอดทั้งออเดอร์ NIV')>=0&&doc.meta.indexOf('รอไฟล์ยอดขาย')>=0&&
+   doc.meta.indexOf('แหล่งที่มาของเงิน')>=0&&doc.meta.indexOf('หมายเหตุ')>=0,
+   doc.meta.join(' | ').slice(0,140));
 
  const undo=await ev(async()=>{
    CSTOCK.key['B20261118-01|2026-11-20|CT11']={it:{'64849613':{sc:1,sp:0,fc:0,fp:0}},at:1};
@@ -659,6 +675,28 @@ const K=(no)=>B1+'|'+no;
    undo.post&&undo.post.u==='/api/spord'&&undo.post.b.act==='gin'&&undo.post.b.del===1,
    JSON.stringify(undo.post&&undo.post.b.del));
  t('...หน้ากลับไปบอกว่ายังไม่ได้บันทึกผลตรวจ',/ยังไม่ได้บันทึกผลตรวจ/.test(undo.txt));
+
+ /* ไฟล์รุ่นเก่าที่ไม่มีช่องเงิน ต้องยังอ่านได้ และต้อง "บอกออกมา" ไม่ใช่ขึ้น 0 เงียบ ๆ */
+ const oldf=await ev(async()=>{
+   __as('manager',null,'ผู้จัดการ');
+   parseAlloc('Order_Allocation_old.xlsx',window.__alBuf(1));
+   SP.sec='adm';SP.day='2026-11-21';renderSpord();
+   document.getElementById('spGinIn').value='77';
+   await spGinGo('B20261118-01','2026-11-21');
+   const cmp=spCmp('B20261118-01','2026-11-21');
+   return {src:cmp.sum.src,n:cmp.n,alloc:ALLOC.money,gsv:cmp.sum.sGsv,
+     row:cmp.rows.filter(r=>r.code==='65456729'&&r.ln==='CT11')[0],
+     txt:document.getElementById('spBody').textContent.replace(/\s+/g,' ')};});
+ t('🛟 ไฟล์รุ่นเก่า (ไม่มีช่อง GSV/NIV) ยังอ่านได้เหมือนเดิม ไม่ throw',
+   oldf.n.ok+oldf.n.diff+oldf.n.noKey+oldf.n.noAlloc>0&&!oldf.alloc,
+   JSON.stringify(oldf.n));
+ t('🛟 ...และหน้าบอกว่าไฟล์นี้ไม่มีช่องเงิน จึงยังประเมินจากไฟล์ราคา (ไม่ขึ้น 0 เงียบ ๆ)',
+   oldf.src==='price'&&/ไม่มีช่อง GSV \/ NIV/.test(oldf.txt),oldf.txt.slice(0,160));
+ /* เมื่อต้องประเมิน หน่วยราคาต้องถูก: WS LP ต่อ "หีบ" · NTT ต่อ "ชิ้น" (เคยพลาด 36 เท่า) */
+ t('🛟 ...เวลาประเมิน ราคาหีบใช้ WS LP ต่อหีบ · ราคาชิ้นใช้ NTT ต่อชิ้น (คนละหน่วย)',
+   oldf.row&&Math.round(oldf.row.gsv)===720&&Math.round(oldf.row.niv)===288&&
+   oldf.row.qS.pcs===24&&oldf.row.est===1,
+   JSON.stringify(oldf.row&&{pcs:oldf.row.qS&&oldf.row.qS.pcs,gsv:oldf.row.gsv,niv:oldf.row.niv,est:oldf.row.est}));
 
  const noAdm=await ev(async()=>{
    __as('sup',null,'หัวหน้าเซลล์');

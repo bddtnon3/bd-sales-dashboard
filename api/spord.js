@@ -132,12 +132,16 @@ export default async function handler(req, res) {
           rows[ln + "|" + code] = {
             sc: Q(v.sc), ss: Q(v.ss), sp: Q(v.sp), fc: Q(v.fc), fs: Q(v.fs), fp: Q(v.fp),
             xc: Q(v.xc), xs: Q(v.xs), xp: Q(v.xp), yc: Q(v.yc), ys: Q(v.ys), yp: Q(v.yp),
+            // 💵 เงินตัวจริงจากช่อง GSV/NIV ท้ายไฟล์ (ไฟล์รุ่น 36 ช่อง) · mn = จำนวนแถวที่มีเงิน
+            // ไฟล์รุ่นเก่าไม่มีช่องนี้ ส่งมาเป็น 0 และ money = 0 แล้วหน้าเว็บประเมินจากไฟล์ราคาแทน
+            g: Q(v.g), v: Q(v.v), mn: Q(v.mn),
             nm: S(v.nm, 120), pk: Q(v.pk),
           };
         }
         C.gin[key] = {
           // ยกเลิกผลตรวจ = เขียน del:1 ทับ ไม่ใช่ลบคีย์ (ลบแล้วแท็บเก่า union กลับมา)
           del: body.del ? 1 : 0,
+          money: body.money ? 1 : 0,
           g: gins, rows,
           dd: (Array.isArray(body.dd) ? body.dd : []).map(YMD).filter(Boolean).slice(0, 60),
           // เลขออเดอร์ของ GIN นั้น — ใช้ดึง GSV/NIV จริงจากดัชนีไฟล์ยอดขาย (วันละ 3-4 GIN ~50 เลข)

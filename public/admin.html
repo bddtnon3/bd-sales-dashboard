@@ -12546,6 +12546,19 @@ const AL_H={d:"Order Creation Date",pj:"PJP Code",pn:"PJP Name",gin:"GIN No.",
   fc:"Free Order (CS)",fs:"Free Order (SHR)",fp:"Free Order (PC)",
   xc:"Sale Allocated (CS)",xs:"Sale Allocated (SHR)",xp:"Sale Allocated (PC)",
   yc:"Free Allocated (CS)",ys:"Free Allocated (SHR)",yp:"Free Allocated (PC)"};
+/* ---------- ช่องที่ "มีก็ดี ไม่มีก็ยังอ่านไฟล์ได้" (AL_O) ----------
+   เจ้าของทักเมื่อ 26 พ.ย. 69: *"ทำไมไฟล์ allocate จะไม่มีอยู่สองช่องสุดท้ายด้านหลังนี้ไง
+   ลองตรวจใหม่หน่อย"* — ถูกต้อง ไฟล์ที่เขาส่งมารอบใหม่มี **36 ช่อง (ถึง AJ)** ไม่ใช่ 30 ช่อง
+   โดยสองช่องท้ายคือ **AI = GSV · AJ = NIV ต่อแถว** ซึ่งเป็นเงินตัวจริง ไม่ต้องประเมินอีก
+   🔑 วัดกับไฟล์จริง (10,428 แถว · 15-24 พ.ย. 69):
+      GSV รวม 7,042,941 · NIV รวม 5,169,482 (73.4% ของ GSV) · มีเงิน 8,971 แถว
+      และเทียบรายออเดอร์กับไฟล์ยอดขายรายวัน **ตรงกัน 1,401/1,401 ใบ ทั้ง GSV และ NIV (100%)**
+      ⇒ เลิกประเมินจากไฟล์ราคา อ่านจากไฟล์ตรง ๆ ได้เลย
+   ⚠️ ต้องเป็น "ช่องเสริม" ไม่ใช่ช่องบังคับ เพราะไฟล์เก่า 30 ช่องยังต้องอ่านได้เหมือนเดิม
+      ขาดไปแล้วหน้าเว็บต้อง **บอกว่าไฟล์นี้ไม่มีช่องเงิน** แล้วถอยไปประเมินจากไฟล์ราคา
+      ห้าม throw และห้ามขึ้น 0 เงียบ ๆ */
+const AL_O={gsv:"GSV",niv:"NIV",os:"Order Status",
+  sas:"Sales Allocation Status",fas:"Free Allocation Status"};
 let ALLOC=null;
 /* สายจากรหัส PJP — ผ่าน dsLineKey เสมอ เพราะ KA97 ถูกเก็บเป็น 2096_97 ทั้งระบบ */
 function alLine(pj,pn){
@@ -12581,7 +12594,13 @@ function parseAlloc(name,buf){
     if(i<0)miss.push(AL_H[k]);else col[k]=i;});
   if(miss.length)throw new Error("ไม่พบหัวตาราง: "+miss.join(" · ")+
     " — ไฟล์ allocation เปลี่ยนรูปแบบ ยังไม่บันทึกอะไรทั้งนั้น แจ้งให้ปรับโปรแกรมได้");
-  const g={},days={};let n=0,skip=0,noGin=0;
+  /* ช่องเสริม — ขาดไปก็อ่านไฟล์ต่อได้ แต่ต้องจดไว้ว่าขาดอะไร เพื่อบอกบนหน้าเว็บ */
+  const ocol={},onone=[];
+  Object.keys(AL_O).forEach(k=>{
+    const i=hdr.indexOf(AL_O[k]);
+    if(i<0)onone.push(AL_O[k]);else ocol[k]=i;});
+  const hasMoney=(ocol.gsv!=null)&&(ocol.niv!=null);
+  const g={},days={},stat={};let n=0,skip=0,noGin=0,tg=0,tn=0;
   for(let r=1;r<A.length;r++){
     const x=A[r];if(!x)continue;
     const code=String(x[col.code]==null?"":x[col.code]).trim();
@@ -12600,17 +12619,30 @@ function parseAlloc(name,buf){
     if(on&&on!=="NA")G.o[on]=1;
     const L=G.ln[ln]||(G.ln[ln]={});
     const it=L[code]||(L[code]={sc:0,ss:0,sp:0,fc:0,fs:0,fp:0,xc:0,xs:0,xp:0,yc:0,ys:0,yp:0,
-      nm:String(x[col.nm]||"").trim(),pk:alNum(x[col.pk])});
+      g:0,v:0,mn:0,nm:String(x[col.nm]||"").trim(),pk:alNum(x[col.pk])});
     ["sc","ss","sp","fc","fs","fp","xc","xs","xp","yc","ys","yp"].forEach(k=>{it[k]+=alNum(x[col[k]]);});
+    /* 💵 เงินตัวจริงจากไฟล์ (AI/AJ) — บวกเฉพาะเมื่อไฟล์มีช่องนั้นจริง
+       mn นับจำนวนแถวที่มีเงิน เพื่อแยก "เงินเป็น 0" ออกจาก "ไฟล์ไม่บอกเงิน" */
+    if(hasMoney){
+      const gv=alNum(x[ocol.gsv]),nv=alNum(x[ocol.niv]);
+      it.g+=gv;it.v+=nv;tg+=gv;tn+=nv;if(gv||nv)it.mn++;
+    }
+    if(ocol.os!=null){const s=String(x[ocol.os]||"").trim();if(s)stat[s]=(stat[s]||0)+1;}
     n++;
   }
   if(!n)throw new Error("ไม่พบแถวข้อมูลในไฟล์ (ต้องมีรหัสสินค้าและเลข GIN)");
   const ds=Object.keys(days).sort();
-  ALLOC={up:Date.now(),file:name,n:n,g:g,days:ds,gins:Object.keys(g).sort((a,b)=>alNum(a)-alNum(b)||a.localeCompare(b))};
+  ALLOC={up:Date.now(),file:name,n:n,g:g,days:ds,money:hasMoney?1:0,gsv:tg,niv:tn,stat:stat,
+    nomoney:onone,gins:Object.keys(g).sort((a,b)=>alNum(a)-alNum(b)||a.localeCompare(b))};
+  const sl=Object.keys(stat).sort((a,b)=>stat[b]-stat[a]).map(k=>anaEsc(k)+" "+stat[k]);
   ulog("📥 ใบจัดของ (allocation): อ่านได้ <b>"+n.toLocaleString()+"</b> แถว · <b>"+
     ALLOC.gins.length+"</b> เลข GIN · วันที่ "+(ds[0]||"-")+" ถึง "+(ds[ds.length-1]||"-")+
     (noGin?" · <b class='down'>ข้ามแถวที่ไม่มีเลข GIN "+noGin+"</b>":"")+
     (skip?" · ข้ามแถวที่ไม่มีรหัสสินค้า "+skip:"")+
+    (hasMoney?"<br>💵 ไฟล์นี้<b>มีช่องเงิน</b> — GSV รวม <b>"+Math.round(tg).toLocaleString()+
+      "</b> · NIV รวม <b>"+Math.round(tn).toLocaleString()+"</b> (ใช้ตัวเลขจากไฟล์ ไม่ต้องประเมินจากไฟล์ราคา)"
+      :"<br><b class='down'>💵 ไฟล์นี้ไม่มีช่อง "+onone.join(" / ")+"</b> — จะประเมินมูลค่าจากไฟล์ราคาหัวเสือแทน")+
+    (sl.length?"<br><span class='psub'>สถานะออเดอร์: "+sl.join(" · ")+"</span>":"")+
     "<br><span class='psub'>ไฟล์นี้อยู่ในเครื่องนี้เท่านั้น ยังไม่ได้บันทึกขึ้นเซิร์ฟเวอร์ — "+
     "เข้าไปที่ใบออเดอร์ แล้วใส่เลข GIN ของแต่ละวันเพื่อบันทึกผลตรวจ</span>");
   if(typeof renderSpord==="function"&&CURTAB==="spord")renderSpord();
@@ -12688,8 +12720,9 @@ function alPrice(code,ri){
 
 /* รวมตัวเลขของ GIN ที่แอดมินระบุ ออกมาเป็นรายสาย·รายรหัส (เฉพาะรหัสที่อยู่ในใบนั้น) */
 function alPick(gins,codes){
-  const out={rows:{},dd:{},miss:[],n:0,ords:{}};
+  const out={rows:{},dd:{},miss:[],n:0,ords:{},money:0};
   if(!ALLOC)return out;
+  out.money=ALLOC.money?1:0;
   (gins||[]).forEach(gs=>{
     const G=ALLOC.g[String(gs).trim()];
     if(!G){out.miss.push(String(gs).trim());return;}
@@ -12699,8 +12732,9 @@ function alPick(gins,codes){
       Object.keys(G.ln[ln]).forEach(code=>{
         if(codes&&codes.length&&codes.indexOf(code)<0)return;
         const s=G.ln[ln][code],k=ln+"|"+code;
-        const t=out.rows[k]||(out.rows[k]={sc:0,ss:0,sp:0,fc:0,fs:0,fp:0,xc:0,xs:0,xp:0,yc:0,ys:0,yp:0,nm:s.nm,pk:s.pk});
-        ["sc","ss","sp","fc","fs","fp","xc","xs","xp","yc","ys","yp"].forEach(q=>{t[q]+=s[q];});
+        const t=out.rows[k]||(out.rows[k]={sc:0,ss:0,sp:0,fc:0,fs:0,fp:0,xc:0,xs:0,xp:0,yc:0,ys:0,yp:0,
+          g:0,v:0,mn:0,nm:s.nm,pk:s.pk});
+        ["sc","ss","sp","fc","fs","fp","xc","xs","xp","yc","ys","yp","g","v","mn"].forEach(q=>{t[q]+=(+s[q]||0);});
         out.n++;
       });
     });
@@ -12826,13 +12860,15 @@ async function spGinSave(sid,ymd,gins){
   const pick=alPick(gins,codes);
   const C=spKeyOk(),k=sid+"|"+ymd;
   const old=C.gin[k]?JSON.parse(JSON.stringify(C.gin[k])):null;
-  const rec={g:gins,rows:pick.rows,dd:pick.dd,miss:pick.miss,ords:pick.ords,
+  /* money:1 = ไฟล์ที่อ่านมามีช่อง GSV/NIV จึงเก็บเงินตัวจริงไว้ในผลตรวจ
+     อ่านย้อนหลังได้โดยไม่ต้องอัพไฟล์ซ้ำ · ผลตรวจเก่าไม่มีช่องนี้ = ประเมินจากไฟล์ราคาเหมือนเดิม */
+  const rec={g:gins,rows:pick.rows,dd:pick.dd,miss:pick.miss,ords:pick.ords,money:pick.money,
     file:(ALLOC&&ALLOC.file)||"",by:(S.user&&S.user.id)||"",
     byName:(S.user&&S.user.name)||"",at:Date.now()};
   C.gin[k]=rec;renderSpord();
   try{
     const r=await bdPost("/api/spord",{act:"gin",sid:sid,d:ymd,gin:gins,rows:pick.rows,
-      dd:pick.dd,miss:pick.miss,ords:pick.ords,file:rec.file});
+      dd:pick.dd,miss:pick.miss,ords:pick.ords,money:pick.money,file:rec.file});
     if(!r||!r.ok)throw new Error((r&&r.error)||"บันทึกไม่สำเร็จ");
     toast("บันทึกผลตรวจแล้ว · "+fmtDate(ymd));
     return true;
@@ -12902,13 +12938,22 @@ function spCmp(sid,ymd){
     else if(r.kTot.cs===r.aTot.cs&&r.kTot.pc===r.aTot.pc&&!r.aTot.sh)r.st="ok";
     else r.st="diff";
   });
-  /* หน่วยและมูลค่า — ไฟล์ใบจัดของไม่มีช่องเงิน จึงประเมินจากไฟล์ราคาหัวเสือของรอบนั้น */
+  /* ---------- 💵 มูลค่า — ตั้งแต่ 26 พ.ย. 69 อ่าน "จากไฟล์ตรง ๆ" ----------
+     ไฟล์ใบจัดของรุ่น 36 ช่องมี **AI = GSV · AJ = NIV ต่อแถว** (เจ้าของทักเอง)
+     วัดแล้วตรงกับไฟล์ยอดขายรายวันรายออเดอร์ 1,401/1,401 ใบ (100%) ⇒ เชื่อถือได้
+     ⚠️ **แถวของแถมล้วนในไฟล์มีเงินเป็น 0 ทั้ง 937 แถว** (ของแถมให้ฟรี ไม่มีรายได้)
+        ฉะนั้นเงินในไฟล์ = เงินของ "ของขาย" เท่านั้น ส่วน "มูลค่าของแถม" ยังต้อง
+        ประเมินจากไฟล์ราคา และต้องเขียนกำกับว่าเป็นการประเมิน ห้ามปนกัน
+     ⚠️ ไฟล์เก่า 30 ช่องไม่มีช่องเงิน → ถอยไปประเมินทั้งคู่ และ **บอกบนหน้าเว็บ** */
   const rd=alRoundAt(ymd);
+  const fromFile=!!(g&&g.money);
   const sum={sGsv:0,sNiv:0,fNiv:0,pcsS:0,pcsF:0,noPrice:0,noShr:0,csS:0,csF:0,
-    rGsv:0,rNiv:0,ordN:0,ordHit:0,ordWait:0,rNoGsv:0};
-  /* 💵 มูลค่า "ตัวจริง" — ไฟล์ใบจัดของไม่มีช่องเงินเลย แต่มีเลข Order Number ซึ่งเป็นเลข
-     เดียวกับไฟล์ยอดขายรายวัน (ดัชนี STOREDAILY.ord เก็บ NIV ไว้แล้ว และ GSV ตั้งแต่ 26 พ.ย. 69)
-     ⇒ ดึงของจริงมาใช้ ดีกว่าประเมินจากไฟล์ราคา
+    rGsv:0,rNiv:0,ordN:0,ordHit:0,ordWait:0,rNoGsv:0,src:fromFile?"file":"price",noMoney:0};
+  /* 💵 ยอด "ทั้งออเดอร์" — คนละคำถามกับยอดสินค้าในใบนี้ เพราะหนึ่งเลขออเดอร์มีสินค้าตัวอื่น
+     ที่ไม่อยู่ในใบนี้ด้วย · จับคู่ด้วยเลข Order Number ซึ่งเป็นเลขเดียวกับไฟล์ยอดขายรายวัน
+     วัดกับของจริง: เลขในใบจัดของ 1,789 เลข เจอในไฟล์ยอดขาย 1,401 (ที่เหลือคือวันที่ไฟล์
+     ยอดขายยังไม่ครอบ 375 เลข และออเดอร์ที่ยังไม่ออกบิล 13 เลข) และ GSV/NIV ของสองไฟล์
+     **ตรงกันทั้ง 1,401 ใบ** จึงยืนยันได้ว่าเงินในไฟล์ใบจัดของคือเงินก้อนเดียวกัน
      ⚠️ เลขที่ยังไม่มีไฟล์ยอดขายของวันนั้น ต้องนับแยกว่า "รอไฟล์" ห้ามคิดเป็น 0 */
   ((g&&g.ords)||[]).forEach(no=>{
     sum.ordN++;
@@ -12927,16 +12972,25 @@ function spCmp(sid,ymd){
     const pz=alPrice(r.code,rd?rd.i:-1);
     r.pz=pz;
     if(r.a){
-      if(!pz)sum.noPrice++;
-      if((r.aTot.sh||0)&&!r.shr)sum.noShr++;
       const ps=r.qS?r.qS.pcs:null,pf=r.qF?r.qF.pcs:null;
+      /* ไม่มีราคาในไฟล์ราคา: ถ้าเงินมาจากไฟล์ใบจัดของแล้ว จะกระทบแค่ "มูลค่าของแถม"
+         จึงนับเฉพาะแถวที่มีของแถมจริง ไม่ใช่นับทุกแถวให้คนตกใจเปล่า ๆ */
+      if(!pz&&(!fromFile||(pf!=null&&pf>0)))sum.noPrice++;
+      if((r.aTot.sh||0)&&!r.shr)sum.noShr++;
       if(ps!=null){sum.pcsS+=ps;if(r.pk>0)sum.csS+=ps/r.pk;}
       if(pf!=null){sum.pcsF+=pf;if(r.pk>0)sum.csF+=pf/r.pk;}
-      if(pz&&r.pk>0){
+      /* 💵 ของขาย: ถ้าไฟล์มีช่องเงิน ใช้ของไฟล์ · ไม่มี ค่อยประเมินจากไฟล์ราคา */
+      if(fromFile){
+        r.gsv=+r.a.g||0;r.niv=+r.a.v||0;r.est=0;
+        sum.sGsv+=r.gsv;sum.sNiv+=r.niv;
+        if(!r.a.mn&&(r.aSale.cs||r.aSale.sh||r.aSale.pc))sum.noMoney++;
+      }else if(pz&&r.pk>0&&ps!=null){
         /* WS LP ต่อหีบ · NTT ต่อชิ้น — หน่วยคนละอย่าง อย่าหารด้วย pack ทั้งคู่ */
-        if(ps!=null){r.gsv=pz.wsCs*ps/r.pk;r.niv=pz.nttPc*ps;sum.sGsv+=r.gsv;sum.sNiv+=r.niv;}
-        if(pf!=null){r.fNiv=pz.nttPc*pf;sum.fNiv+=r.fNiv;}
+        r.gsv=pz.wsCs*ps/r.pk;r.niv=pz.nttPc*ps;r.est=1;
+        sum.sGsv+=r.gsv;sum.sNiv+=r.niv;
       }
+      /* มูลค่าของแถม: ไฟล์ลงเงินของแถมเป็น 0 เสมอ (ให้ฟรี) จึงประเมินจากไฟล์ราคาเท่านั้น */
+      if(pz&&r.pk>0&&pf!=null){r.fNiv=pz.nttPc*pf;sum.fNiv+=r.fNiv;}
     }
   });
   rows.sort((a,b)=>String(a.ln).localeCompare(String(b.ln))||String(a.code).localeCompare(String(b.code)));
@@ -13619,40 +13673,45 @@ function spAdmHtml(sid){
     <td class="l">${qcell(r.qF)}</td>
     <td>${M(r.gsv)}</td><td>${M(r.niv)}</td><td>${M(r.fNiv)}</td>
     <td>${ST[r.st]}${r.allocDiff&&r.qT?'<br><span class="psub down">คลังจัดจริงไม่เท่าที่สั่ง</span>':""}</td></tr>`).join("");
-  const S=cmp.sum||{};
+  const S=cmp.sum||{},FF=S.src==="file";
   h+=`<div class="cards" style="margin-top:12px">
       <div class="card"><div class="k">ขายออกไป</div><div class="v">${B(Math.round(S.csS*100)/100)}</div>
         <div class="s">ลัง · ${B(S.pcsS)} ชิ้น</div></div>
       <div class="card"><div class="k">ของแถม</div><div class="v">${B(Math.round(S.csF*100)/100)}</div>
         <div class="s">ลัง · ${B(S.pcsF)} ชิ้น</div></div>
-      <div class="card" style="border-top:3px solid var(--blue)"><div class="k">💰 ยอดสินค้าในใบนี้</div>
+      <div class="card" style="border-top:3px solid var(--blue)"><div class="k">💰 ยอดสินค้าในใบนี้${
+        FF?' <span class="sp-ok">จากไฟล์</span>':' <span class="sp-warn">ประเมิน</span>'}</div>
         <div class="v" style="font-size:20px">${M(S.sNiv)}</div>
-        <div class="s">ราคาชิ้น · ราคาหีบ ${M(S.sGsv)} · แถม ${M(S.fNiv)}</div></div>
-      <div class="card"><div class="k">📄 ยอดขายจริงทั้งออเดอร์</div>
+        <div class="s">NIV · GSV ${M(S.sGsv)} · มูลค่าแถม(ประเมิน) ${M(S.fNiv)}</div></div>
+      <div class="card"><div class="k">📄 ยอดทั้งออเดอร์</div>
         <div class="v" style="font-size:20px">${S.ordHit?M(S.rNiv):'<span style="color:var(--muted)">-</span>'}</div>
         <div class="s">${S.ordHit?("NIV · GSV "+(S.rNoGsv>=S.ordHit?"ยังไม่มี":M(S.rGsv))+" · "+S.ordHit+"/"+S.ordN+" เลขออเดอร์")
           :"ยังไม่มีไฟล์ยอดขายของวันนี้"}</div></div>
     </div>
     <div class="psub" style="margin-top:8px">
-      💵 <b>ไฟล์ใบจัดของไม่มีช่องมูลค่าเลย</b> — สองการ์ดนี้ตอบคนละคำถาม อย่าสับสนกัน
-      <br>• <b>ยอดสินค้าในใบนี้</b> = นับเฉพาะสินค้าที่อยู่ในใบออเดอร์ใบนี้ ตีราคาจาก
-      <b>ไฟล์ราคาหัวเสือ</b>${cmp.round?" รอบ <b>"+anaEsc(cmp.round.lab)+"</b>":""}
-      (ราคาหีบ = WS LP · ราคาชิ้น = NTT) — เป็นการ<b>ประเมิน</b>
-      <br>• <b>ยอดขายจริงทั้งออเดอร์</b> = ของจริงจาก<b>ไฟล์ยอดขายรายวัน</b> จับคู่ด้วย<b>เลขออเดอร์</b>
-      ในใบจัดของ — <b>รวมสินค้าตัวอื่นที่ไม่ได้อยู่ในใบนี้ด้วย</b> จึงสูงกว่าเป็นปกติ
-      ${S.ordWait?'<br><b class="down">⚠️ อีก '+S.ordWait+' เลขยังไม่มีไฟล์ยอดขายของวันนั้น — ยอดจริงจะขึ้นเองเมื่ออัพไฟล์ (ไม่ได้นับเป็น 0)</b>':""}
+      ${FF?'💵 <b>ตัวเลขเงินมาจากไฟล์ใบจัดของเอง</b> (ช่อง GSV และ NIV ท้ายไฟล์) ไม่ใช่การประเมิน'
+         :'💵 <b class="down">ไฟล์ใบจัดของที่อัพไว้รอบนี้ไม่มีช่อง GSV / NIV</b> จึงยัง<b>ประเมิน</b>จาก'+
+          '<b>ไฟล์ราคาหัวเสือ</b>'+(cmp.round?" รอบ <b>"+anaEsc(cmp.round.lab)+"</b>":"")+
+          ' (ราคาหีบ = WS LP · ราคาชิ้น = NTT) — อัพไฟล์ใบจัดของรุ่นใหม่แล้วจะเป็นตัวเลขจริง'}
+      <br>• <b>ยอดสินค้าในใบนี้</b> = นับ<b>เฉพาะสินค้าที่อยู่ในใบออเดอร์ใบนี้</b>
+      <br>• <b>ยอดทั้งออเดอร์</b> = ยอดของทุกเลขออเดอร์ในรอบนี้ จับคู่กับ<b>ไฟล์ยอดขายรายวัน</b>
+      ด้วย<b>เลขออเดอร์</b> — <b>รวมสินค้าตัวอื่นที่ไม่ได้อยู่ในใบนี้ด้วย</b> จึงสูงกว่าเป็นปกติ
+      <br>• <b>มูลค่าของแถม</b> ยังเป็นการ<b>ประเมิน</b>เสมอ เพราะไฟล์ลงเงินของแถมเป็น 0 (ให้ฟรี จึงไม่มีรายได้)
+      ${S.ordWait?'<br><b class="down">⚠️ อีก '+S.ordWait+' เลขยังไม่มีไฟล์ยอดขายของวันนั้น — ยอดจะขึ้นเองเมื่ออัพไฟล์ (ไม่ได้นับเป็น 0)</b>':""}
       ${(S.ordHit&&S.rNoGsv)?'<br><b class="down">⚠️ '+S.rNoGsv+' เลขมาจากไฟล์ยอดขายที่อัพไว้ก่อนระบบจะเก็บ GSV — อัพไฟล์วันนั้นซ้ำอีกครั้ง แล้ว GSV จะขึ้นเอง</b>':""}
-      ${!cmp.round?'<br><b class="down">— ยังไม่มีไฟล์ราคาหัวเสือ จึงยังประเมินยอดในใบไม่ได้</b>':""}
-      ${S.noPrice?'<br><b class="down">⚠️ มี '+S.noPrice+' รายการที่ไม่มีในไฟล์ราคา จึงไม่ได้ประเมินมูลค่า (ไม่ได้นับเป็น 0)</b>':""}
+      ${S.noMoney?'<br><b class="down">⚠️ มี '+S.noMoney+' รายการที่คลังจัดของแล้วแต่ไฟล์ยังไม่ลงเงิน (ปกติคือยังไม่ออกบิล) — ไม่ได้นับเป็น 0</b>':""}
+      ${(!FF&&!cmp.round)?'<br><b class="down">— ยังไม่มีไฟล์ราคาหัวเสือ จึงยังประเมินยอดในใบไม่ได้</b>':""}
+      ${S.noPrice?'<br><b class="down">⚠️ มี '+S.noPrice+' รายการที่ไม่มีในไฟล์ราคา จึงยังไม่ได้'+(FF?"ประเมินมูลค่าของแถม":"ประเมินมูลค่า")+' (ไม่ได้นับเป็น 0)</b>':""}
       ${S.noShr?'<br><b class="down">⚠️ มี '+S.noShr+' รายการที่ใช้หน่วยแพ็ค แต่แกะขนาดแพ็คจากชื่อไม่ได้ จึงยังแปลงเป็นลัง/ชิ้นไม่ได้</b>':""}
     </div>
     <div class="tblwrap" style="margin-top:12px"><table class="sp-kt">
     <thead><tr><th class="l">สาย</th><th class="l">สินค้า</th><th class="l">เซลล์คีย์</th>
       <th class="l">คลังจัด · ขาย</th><th class="l">คลังจัด · แถม</th>
-      <th>ราคาหีบ×จำนวน</th><th>ราคาชิ้น×จำนวน</th><th>มูลค่าแถม</th><th>ผล</th></tr></thead>
+      <th>GSV${FF?"":" (ประเมิน)"}</th><th>NIV${FF?"":" (ประเมิน)"}</th><th>มูลค่าแถม (ประเมิน)</th><th>ผล</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="9" class="l">ไม่มีรายการ</td></tr>'}</tbody></table></div>
     <div class="psub" style="margin-top:8px">อ่านช่อง <b>Sale Order</b> กับ <b>Free Order</b> ของไฟล์ตามที่เจ้าของระบุ
-      · จำนวนแปลงเป็น <b>ลัง + ชิ้น</b> จาก Pack Size ของไฟล์ (ช่อง Q) และขนาดแพ็คที่แกะจากชื่อสินค้า</div></div>`;
+      · จำนวนแปลงเป็น <b>ลัง + ชิ้น</b> จาก Pack Size ของไฟล์ (ช่อง Q) และขนาดแพ็คที่แกะจากชื่อสินค้า
+      ${FF?"· เงินอ่านจากช่อง <b>GSV</b> และ <b>NIV</b> ท้ายไฟล์":""}</div></div>`;
   return h;
 }
 /* ---------- 📄 เอกสารผลตรวจรายวัน — Excel / PDF ----------
@@ -13664,11 +13723,12 @@ function spAdmHtml(sid){
 function spRepRows(sid,ymd){
   const cmp=spCmp(sid,ymd),g=cmp.gin||{};
   const R2=n=>Math.round((+n||0)*100)/100;
+  const FF=(cmp.sum||{}).src==="file",sfx=FF?"":"(ประเมิน)";
   const head=["สาย","รหัสสินค้า","ชื่อสินค้า","ลังละ(ชิ้น)","แพ็คละ(ชิ้น)",
     "เซลล์คีย์ ลัง","เซลล์คีย์ ชิ้น",
     "คลังขาย ลัง","คลังขาย แพ็ค","คลังขาย ชิ้น","ขายรวม(ชิ้น)",
     "คลังแถม ลัง","คลังแถม แพ็ค","คลังแถม ชิ้น","แถมรวม(ชิ้น)",
-    "ราคาหีบ x จำนวน","ราคาชิ้น x จำนวน","มูลค่าแถม(ประเมิน)","ผล"];
+    "GSV"+sfx,"NIV"+sfx,"มูลค่าแถม(ประเมิน)","ผล"];
   const ST={ok:"ตรง",diff:"ไม่ตรง",noKey:"เซลล์ไม่ได้คีย์",noAlloc:"คลังไม่ได้จัด"};
   const body=cmp.rows.map(r=>[r.ln,r.code,r.nm||(typeof oname==="function"?oname(r.code):"")||"",
     R2(r.pk),r.shr||"",
@@ -13684,6 +13744,7 @@ function spRepRows(sid,ymd){
 function spRepMeta(sid,ymd,cmp,g){
   const sl=spSlip(sid)||{},S=cmp.sum||{};
   const R2=n=>Math.round((+n||0)*100)/100;
+  const FF=S.src==="file";
   return [
     ["ใบออเดอร์พิเศษ",sid],
     ["วันที่ตัดบิล",sl.d?fmtDate(sl.d):"-"],
@@ -13698,17 +13759,21 @@ function spRepMeta(sid,ymd,cmp,g){
     [""],
     ["ขายออกไป (ลัง)",R2(S.csS)],["ขายออกไป (ชิ้น)",R2(S.pcsS)],
     ["ของแถม (ลัง)",R2(S.csF)],["ของแถม (ชิ้น)",R2(S.pcsF)],
-    ["เลขออเดอร์ในรอบนี้",S.ordN],["ดึงยอดขายจริงได้",S.ordHit],["รอไฟล์ยอดขาย",S.ordWait],
-    ["มูลค่าขายจริง NIV",S.ordHit?R2(S.rNiv):""],
-    ["มูลค่าขายจริง GSV",(S.ordHit&&S.rNoGsv<S.ordHit)?R2(S.rGsv):""],
     [""],
-    ["ประเมินจากไฟล์ราคา: ราคาหีบรวม",R2(S.sGsv)],["ประเมินจากไฟล์ราคา: ราคาชิ้นรวม",R2(S.sNiv)],
-    ["ประเมินมูลค่าของแถม",R2(S.fNiv)],
+    ["ยอดสินค้าในใบนี้ GSV"+(FF?"":" (ประเมิน)"),R2(S.sGsv)],
+    ["ยอดสินค้าในใบนี้ NIV"+(FF?"":" (ประเมิน)"),R2(S.sNiv)],
+    ["มูลค่าของแถม (ประเมิน)",R2(S.fNiv)],
+    ["แหล่งที่มาของเงิน",FF?"ช่อง GSV / NIV ในไฟล์ใบจัดของ":
+      ("ประเมินจากไฟล์ราคาหัวเสือ"+(cmp.round?" รอบ "+cmp.round.lab:" (ยังไม่มีไฟล์ราคา)"))],
     [""],
-    ["หมายเหตุ","NIV/GSV จริง ดึงจากไฟล์ยอดขายรายวัน จับคู่ด้วยเลขออเดอร์ในใบจัดของ"],
-    ["","ช่องมูลค่ารายสินค้า เป็นการประเมินจากไฟล์ราคาหัวเสือ"+
-      (cmp.round?" รอบ "+cmp.round.lab:" (ยังไม่มีไฟล์ราคา)")],
-    ["",S.noPrice?("ไม่มีราคาในไฟล์ "+S.noPrice+" รายการ — ไม่ได้คิดมูลค่า ไม่ได้นับเป็น 0"):""],
+    ["เลขออเดอร์ในรอบนี้",S.ordN],["จับคู่ไฟล์ยอดขายได้",S.ordHit],["รอไฟล์ยอดขาย",S.ordWait],
+    ["ยอดทั้งออเดอร์ NIV",S.ordHit?R2(S.rNiv):""],
+    ["ยอดทั้งออเดอร์ GSV",(S.ordHit&&S.rNoGsv<S.ordHit)?R2(S.rGsv):""],
+    [""],
+    ["หมายเหตุ","ยอดทั้งออเดอร์ รวมสินค้าตัวอื่นที่ไม่ได้อยู่ในใบนี้ด้วย จึงสูงกว่าเป็นปกติ"],
+    ["","มูลค่าของแถมเป็นการประเมินเสมอ เพราะไฟล์ลงเงินของแถมเป็น 0 (ให้ฟรี)"],
+    ["",S.noMoney?("คลังจัดแล้วแต่ไฟล์ยังไม่ลงเงิน "+S.noMoney+" รายการ — ปกติคือยังไม่ออกบิล"):""],
+    ["",S.noPrice?("ไม่มีราคาในไฟล์ราคา "+S.noPrice+" รายการ — ไม่ได้คิดมูลค่า ไม่ได้นับเป็น 0"):""],
     ["",S.noShr?("แกะขนาดแพ็คไม่ได้ "+S.noShr+" รายการ — ยังแปลงเป็นลัง/ชิ้นไม่ได้"):""],
   ];
 }
@@ -13744,7 +13809,8 @@ function spRepPrint(sid,ymd){
     <table style="border-collapse:collapse;margin-bottom:10px">
       <tr>${[["ตรงกัน",cmp.n.ok],["ไม่ตรง",cmp.n.diff],["คลังจัด เซลล์ไม่คีย์",cmp.n.noKey],
         ["เซลล์คีย์ คลังไม่จัด",cmp.n.noAlloc],["ขาย (ลัง)",B(S.csS)],["แถม (ลัง)",B(S.csF)],
-        ["NIV จริง",S.ordHit?M(S.rNiv):"-"],["GSV จริง",(S.ordHit&&S.rNoGsv<S.ordHit)?M(S.rGsv):"-"],
+        ["NIV ในใบนี้",M(S.sNiv)],["GSV ในใบนี้",M(S.sGsv)],
+        ["NIV ทั้งออเดอร์",S.ordHit?M(S.rNiv):"-"],
         ["เลขออเดอร์",S.ordHit+"/"+S.ordN]].map(x=>
         `<td style="border:1px solid #999;padding:4px 8px"><div style="font-size:10px">${anaEsc(x[0])}</div>
           <b style="font-size:14px">${anaEsc(String(x[1]))}</b></td>`).join("")}</tr></table>
@@ -13752,8 +13818,11 @@ function spRepPrint(sid,ymd){
       <thead><tr>${R.head.map(h=>`<th style="border:1px solid #999;padding:3px 5px;background:#eee;font-size:10px">${anaEsc(h)}</th>`).join("")}</tr></thead>
       <tbody>${R.body.map(r=>`<tr>${r.map(td).join("")}</tr>`).join("")}</tbody></table>
     <div style="margin-top:8px;font-size:10px;color:#555">
-      NIV/GSV จริง ดึงจากไฟล์ยอดขายรายวันด้วยเลขออเดอร์${S.ordWait?" · รอไฟล์ยอดขายอีก "+S.ordWait+" เลข":""}
-      · ช่องมูลค่ารายสินค้าเป็นการประเมินจากไฟล์ราคาหัวเสือ${cmp.round?" รอบ "+anaEsc(cmp.round.lab):" (ยังไม่มีไฟล์ราคา)"}
+      ${S.src==="file"?"GSV/NIV อ่านจากช่องท้ายไฟล์ใบจัดของ"
+        :"GSV/NIV ประเมินจากไฟล์ราคาหัวเสือ"+(cmp.round?" รอบ "+anaEsc(cmp.round.lab):" (ยังไม่มีไฟล์ราคา)")}
+      · มูลค่าของแถมเป็นการประเมินเสมอ (ไฟล์ลงเงินของแถมเป็น 0)
+      · ยอดทั้งออเดอร์รวมสินค้าตัวอื่นนอกใบนี้${S.ordWait?" · รอไฟล์ยอดขายอีก "+S.ordWait+" เลข":""}
+      ${S.noMoney?" · ไฟล์ยังไม่ลงเงิน "+S.noMoney+" รายการ":""}
       ${S.noPrice?" · ไม่มีราคา "+S.noPrice+" รายการ":""}${S.noShr?" · แกะขนาดแพ็คไม่ได้ "+S.noShr+" รายการ":""}
       <br>พิมพ์เมื่อ ${fmtDateTime(Date.now())}</div></div>`;
   try{window.print();}catch(e){}
