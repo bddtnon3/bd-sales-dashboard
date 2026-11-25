@@ -199,7 +199,7 @@ const ORIGIN='https://bd-spord.test/';
  /* ---------- 1) ใครเห็นอะไร ---------- */
  const who=await ev(()=>{
    const o={};
-   [['manager',null],['sales','209611'],['wh',null],['ds',null]].forEach(([r,c])=>{
+   [['manager',null],['sales','209611'],['wh',null],['ds',null],['sup',null]].forEach(([r,c])=>{
      __as(r,c,r);o[r]={tab:CURTAB,groups:tabVisible().map(x=>x.g.k).join(','),
        tabs:(tabVisible().filter(x=>x.g.k==='spord')[0]||{tabs:[]}).tabs.map(x=>x.t).join(','),
        stock:(tabVisible().filter(x=>x.g.k==='stock')[0]||{tabs:[]}).tabs.map(x=>x.t).join(',')};});
@@ -215,6 +215,11 @@ const ORIGIN='https://bd-spord.test/';
    who.manager.groups.indexOf('spord')>=0&&who.manager.stock==='stock,cstock'&&
    who.manager.tabs==='spord',who.manager.groups+' | สต็อก: '+who.manager.stock);
  t('ผู้จัดการ/แอดมินเห็นครบเหมือนเดิม',who.manager.groups.split(',').length>=9,who.manager.groups);
+ /* 🛟 หัวหน้าเซลล์ต้อง "มองเห็น" แท็บออเดอร์พิเศษจริง ๆ ไม่ใช่เข้าได้เพราะเทสเรียก _switchTab ตรง ๆ
+    หน้า ① ฝั่งเซลล์ ทำไว้ให้เขาตั้งเป้าโดยเฉพาะ ถ้าแท็บไม่ขึ้นก็ใช้งานไม่ได้เลย */
+ t('🛟 หัวหน้าเซลล์เห็นแท็บออเดอร์พิเศษ (ไม่งั้นเข้าไปตั้งเป้าไม่ได้เลย)',
+   who.sup.groups.split(',').indexOf('spord')>=0&&who.sup.tabs==='spord',
+   who.sup.groups+' | แท็บ: '+who.sup.tabs);
 
  /* ---------- 2) เซลล์กรอกแค่รหัส ---------- */
  const s2=await ev(async()=>{__reset();__as('sales','209611','CT11 · ชลศิต');
