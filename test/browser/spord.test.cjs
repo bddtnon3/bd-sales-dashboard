@@ -21,6 +21,7 @@ const K=(no)=>B1+'|'+no;
  const pg=await (await b.newContext({viewport:{width:1280,height:950}})).newPage();
  const errs=[];pg.on('pageerror',e=>errs.push(String(e)));
  await pg.setContent(fs.readFileSync(PAGE,'utf8'),{waitUntil:'domcontentloaded'});
+ await pg.addScriptTag({path:require.resolve('xlsx/dist/xlsx.full.min.js')});
  const A=[];const t=(n,c,x)=>A.push([!!c,n,x===undefined?'':String(x)]);
  const ev=(f,a)=>pg.evaluate(f,a);
 
@@ -42,14 +43,16 @@ const K=(no)=>B1+'|'+no;
     Object.keys(FOCUS_MAP).forEach(c=>{DATA.lines[c]={display:FOCUS_MAP[c],
       type:FOCUS_MAP[c].indexOf('KA')===0?'KA':'CT',focus:true,name:'',emp:''};});
     DATA.daily={};DATA.targets={};DATA.monthly={'2026-11':{}};
-    CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},sub:{},subdel:{},up:0};
+    CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},sub:{},subdel:{},key:{},gin:{},up:0};
     CSTOCK.slips['${B1}']={d:'2026-11-18',by:'admin1',byName:'แอดมิน 1',at:1,up:1};
     STOREDAILY={data:{},ord:{
       'BDD0100000006':{s:'4862383',l:'209611',d:'2026-11-18',v:351.47,c:4},
       'BDD0100000007':{s:'4862365',l:'209611',d:'2026-11-18',v:1709.38,c:3}}};
     PJP={out:{'4862383':{n:'พี่เทียร',rt:'209611'},'4862365':{n:'แม่จุก',rt:'209611'}},
          plan:{},done:{},cfg:{}};
-    SP={sid:'${B1}',q:'',busy:0,view:'slip',ym:'2026-11'};
+    /* หน้าใบออเดอร์ย่อเหลือ 2 ขั้นตอนเมื่อ 25 พ.ย. 69 ส่วน 6 ขั้นเดิมย้ายไปอยู่หลังชิป 'old'
+       ซึ่ง "ยังอยู่ครบ" — เทสชุดเดิมจึงเล็งไปที่ชิปนั้นต่อ */
+    SP={sid:'${B1}',q:'',busy:0,view:'slip',ym:'2026-11',sec:'old',day:'',gin:''};
   };
   window.__as=(role,code,name)=>{S.user={id:code||role,role:role,code:code,name:name};
     _switchTab(tabIsTeam(role)?'spord':'sales');};
@@ -251,15 +254,16 @@ const K=(no)=>B1+'|'+no;
  t('🔑 เข้ามาหน้าแรกเจอ "เลือกเดือน" ก่อน ไม่ใช่รายการยาว ๆ',
    /เลือกเดือนที่จะดู/.test(nav.monBar)&&/🗓 เลือกเดือน/.test(nav.mon)&&
    /พ\.ย\. 2569/.test(nav.mon)&&/ต\.ค\. 2569/.test(nav.mon),nav.mon.slice(0,120));
- t('...การ์ดเดือนบอกจำนวนใบและเลขออเดอร์ของเดือนนั้น',
-   /1ใบออเดอร์|1 ใบออเดอร์/.test(nav.mon.replace(/\s/g,' '))&&
-   /1 เลขออเดอร์/.test(nav.mon)&&/ค้างที่ทีมคุณ/.test(nav.mon),nav.mon.slice(0,150));
+ /* 25 พ.ย. 69: แถวละเดือน ไล่ ม.ค.→ธ.ค. และบอกความคืบหน้าเป็น "วันที่คีย์แล้ว / ตรวจแล้ว" */
+ t('...แถวเดือนบอกจำนวนใบ และความคืบหน้าสองฝั่งของเดือนนั้น',
+   /1\s*ใบออเดอร์/.test(nav.mon.replace(/\s/g,' '))&&
+   /เซลล์คีย์/.test(nav.mon)&&/แอดมินตรวจ/.test(nav.mon),nav.mon.slice(0,150));
  t('...ช่องเลือกใบซ่อนไว้ตอนอยู่หน้าเลือกเดือน (ไม่รกตา)',nav.slipBox==='none',nav.slipBox);
  t('กดเดือน → เห็นรายการใบของเดือนนั้น พร้อมปุ่มกลับไปเลือกเดือนอื่น',
    /พ\.ย\. 2569/.test(nav.listBar)&&/B20261118-01/.test(nav.list)&&
    /เลือกเดือนอื่น/.test(nav.list)&&!/B20261002-01/.test(nav.list),nav.list.slice(0,140));
- t('กดใบ → เข้าหน้า 6 ขั้นตอน พร้อมปุ่มกลับ และช่องเลือกใบโผล่',
-   /ภาพรวม 6 ขั้นตอน/.test(nav.slip)&&/กลับไปรายการใบ/.test(nav.slip)&&nav.slipBox2==='',
+ t('กดใบ → เข้าหน้าใบ พร้อมปุ่มกลับ และช่องเลือกใบโผล่',
+   /ฝั่งเซลล์/.test(nav.slip)&&/กลับไปรายการใบ/.test(nav.slip)&&nav.slipBox2==='',
    nav.slip.slice(0,100));
  t('ปุ่มกลับไล่ถอยทีละชั้น: ใบ → รายการเดือน → เลือกเดือน',
    nav.back==='mon|2026-11'&&nav.back2==='mon|',nav.back+' → '+nav.back2);
@@ -279,25 +283,31 @@ const K=(no)=>B1+'|'+no;
    STOREDAILY.ord['BDD0100000007'].cs=25;STOREDAILY.ord['BDD0100000007'].pc=0;
    __as('manager',null,'แอดมิน 1');
    SP.view='mon';SP.ym='';SP.yr='';SP.sid='';renderSpord();
-   const o={n:document.querySelectorAll('#spBody .card').length,
+   const o={n:document.querySelectorAll('#spBody .sp-mon').length,
      txt:document.getElementById('spBody').textContent.replace(/\s+/g,' '),
      years:[...document.querySelectorAll('#spBody select option')].map(x=>x.value).join(','),
      yr:spYear()};
    spStepYear(-1);
    o.prev=spYear();o.prevTxt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
-   o.prevN=document.querySelectorAll('#spBody .card').length;
-   spSetYear('2026');spOpenMon('2026-11');spOpenSlip('B20261118-01');
+   o.prevN=document.querySelectorAll('#spBody .sp-mon').length;
+   o.order=[...document.querySelectorAll('#spBody .sp-mn')].map(x=>x.textContent.trim().slice(0,6));
+   spSetYear('2026');
+   o.order26=[...document.querySelectorAll('#spBody .sp-mn')].map(x=>x.textContent.trim().slice(0,6));
+   spOpenMon('2026-11');spOpenSlip('B20261118-01');SP.sec='old';renderSpord();
    o.cases=spCases('B20261118-01');
    o.slip=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    return o;});
  /* หน่วยของการ์ดนี้คือ "ใบออเดอร์" ไม่ใช่ "รายการ" — คำว่ารายการเคยไปชนกับหน้าสต็อคกลาง
     ที่นับบรรทัดสินค้า จนเจ้าของถามว่าทำไมเลขไม่ตรงกัน (25 พ.ย. 69) */
  t('🔑 หน้าเลือกเดือนขึ้นครบ 12 เดือนเสมอ เดือนที่ไม่มีก็ขึ้น 0 ใบออเดอร์',
-   y12.n===12&&/0 ใบออเดอร์/.test(y12.txt)&&/ธ\.ค\. 2569/.test(y12.txt)&&/ม\.ค\. 2569/.test(y12.txt),
+   y12.n===12&&/0\s*ใบออเดอร์/.test(y12.txt)&&/ธ\.ค\. 2569/.test(y12.txt)&&/ม\.ค\. 2569/.test(y12.txt),
    y12.n+' การ์ด');
  t('🛟 ...และไม่ใช้คำว่า "รายการ" บนการ์ดเดือน (กันสับสนกับบรรทัดสินค้าของสต็อคกลาง)',
-   !/\d+ รายการ/.test(y12.txt),(y12.txt.match(/\d+ รายการ/)||[""])[0]);
+   !/\d+\s*รายการ/.test(y12.txt),(y12.txt.match(/\d+\s*รายการ/)||[""])[0]);
  t('...เดือนปัจจุบันมีป้ายกำกับให้เห็นง่าย',/เดือนนี้/.test(y12.txt));
+ /* เจ้าของสั่ง 25 พ.ย. 69: *"ให้มันไล่จากบนลงล่าง เป็นต้นปีมาปลายปี"* */
+ t('🔑 เดือนเรียงจากต้นปีลงมาปลายปี (ม.ค. อยู่บนสุด ธ.ค. ล่างสุด)',
+   /ม\.ค\./.test(y12.order26[0])&&/ธ\.ค\./.test(y12.order26[11]),y12.order26.join(' → '));
  t('🔑 เลือกปีได้บนหัวข้อ และ ◀ ▶ เลื่อนปีได้',
    y12.years==='2026,2025'&&y12.yr==='2026'&&y12.prev==='2025'&&y12.prevN===12&&
    /ส\.ค\. 2568/.test(y12.prevTxt),y12.years+' · กด ◀ → '+y12.prev);
@@ -376,6 +386,142 @@ const K=(no)=>B1+'|'+no;
  t('🛟 ใบเก่าที่ไม่มีช่องหมวด ยังอ่านเป็น "ตัดบิลแล้ว ยังไม่ส่งของ" เหมือนเดิม',
    gq.oldSlip==='A',gq.oldSlip);
  t('...ฟอร์มในหน้า 🧊 สต็อคกลาง ก็เลือกหมวดได้เหมือนกัน (ใบชุดเดียวกัน)',gq.old);
+
+ /* ================================================================
+  * 10) 2 ขั้นตอน: ฝั่งเซลล์คีย์รายวัน + ฝั่งแอดมินตรวจกับไฟล์ allocation
+  *     เจ้าของสั่ง 25 พ.ย. 69 — ย่อจาก 6 ขั้นเหลือ 2
+  * ================================================================ */
+ await ev(()=>{
+   window.__slip=()=>{
+     __reset();
+     CSTOCK.lots={};
+     [['64849613','โอโมน้ำ ซากุระ',40],['65456729','บรีสเอกเซล',30]].forEach((p,i)=>{
+       const id='B20261118-01-r'+i;
+       CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],
+         cs:p[2],pc:0,sq:i,ln:i?'CT12':'CT11',up:1};});
+     SP.sid='B20261118-01';SP.view='slip';SP.ym='2026-11';SP.day='2026-11-20';SP.sec='key';
+   };
+   /* ไฟล์ allocation จำลอง — โครงเดียวกับไฟล์จริง (หัวตารางตรงตัว) */
+   window.__alBuf=()=>{
+     const H=['Order Creation Date','Distributor Code','Distributor Name','Salesman Name',
+       'PJP Code','PJP Name','Route Type','Outlet Code','Outlet Name','Outlet Subtype',
+       'GIN No.','Invoice No.','Order Number','Order Type','Product Code','Product Description',
+       'Pack Size','Sale Order (CS)','Sale Order (SHR)','Sale Order (PC)',
+       'Free Order (CS)','Free Order (SHR)','Free Order (PC)',
+       'Sale Allocated (CS)','Sale Allocated (SHR)','Sale Allocated (PC)',
+       'Free Allocated (CS)','Free Allocated (SHR)','Free Allocated (PC)'];
+     const row=(pj,pn,gin,code,nm,sc,fc,xc)=>[46341,'15389839','บีดี','2096',pj,pn,'CT','T1','ร้าน','sub',
+       gin,'INV1','ORD1','B2B',code,nm,12,sc,0,0,fc,0,0,xc,0,0,fc,0,0];
+     const A=[H,
+       row('209611','CT_HPC_211','77','64849613','โอโมน้ำ ซากุระ',5,1,5),
+       row('209611','CT_HPC_211','77','65456729','บรีสเอกเซล',2,0,2),   /* ตั้งใจให้ไม่ตรงกับที่เซลล์คีย์ (3) */
+       row('209612','CT_HPC_212','77','64849613','โอโมน้ำ ซากุระ',2,0,1),
+       row('209697','KA_HPC_297','78','64849613','โอโมน้ำ ซากุระ',9,0,9)];
+     const ws=XLSX.utils.aoa_to_sheet(A),wb=XLSX.utils.book_new();
+     XLSX.utils.book_append_sheet(wb,ws,'Export');
+     return XLSX.write(wb,{type:'array',bookType:'xlsx'});
+   };
+ });
+ const two=await ev(async()=>{
+   __slip();__as('sup',null,'หัวหน้าเซลล์');_switchTab('spord');renderSpord();
+   const o={};
+   const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.chips=[...document.querySelectorAll('#spBody .pos-st')].map(x=>x.textContent.trim());
+   o.showsName=/โอโมน้ำ ซากุระ/.test(tx())&&/รหัส 64849613/.test(tx());
+   o.hasInputs=!!document.getElementById('spK_CT11_64849613_sc');
+   /* sup กรอกแล้วบันทึก */
+   document.getElementById('spK_CT11_64849613_sc').value='5';
+   document.getElementById('spK_CT11_64849613_fc').value='1';
+   document.getElementById('spK_CT11_65456729_sc').value='3';
+   await spKeyLineSave('B20261118-01','2026-11-20','CT11');
+   o.post=window.__posts[window.__posts.length-1];
+   o.rec=CSTOCK.key['B20261118-01|2026-11-20|CT11'];
+   o.sum=spKeySum('B20261118-01','2026-11-20');
+   o.cards=tx();
+   /* เซลล์ธรรมดาเข้ามาดูได้ แต่แก้ไม่ได้ */
+   __as('sales','209611','เซลล์ CT11');SP.sec='key';renderSpord();
+   o.salesRead=/ดูอย่างเดียว/.test(tx())&&!document.getElementById('spK_CT11_64849613_sc');
+   o.salesSees=/โอโมน้ำ ซากุระ/.test(tx());
+   return o;});
+ t('🔑 หน้าใบมี 2 ขั้นตอน + ของเดิมเก็บไว้ให้ดูย้อนหลัง',
+   two.chips.length===3&&/ฝั่งเซลล์/.test(two.chips[0])&&/ฝั่งแอดมิน/.test(two.chips[1])&&
+   /ของเดิม/.test(two.chips[2]),two.chips.join(' | '));
+ t('🔑 ใบออเดอร์โชว์ชื่อสินค้า ไม่ใช่รหัสเปล่า ๆ (เจ้าของบอกว่า "ขึ้นแค่รหัสมันตามดูยาก")',
+   two.showsName);
+ t('🔑 หัวหน้าเซลล์กรอก ขาย/แถม เป็น ลัง+ชิ้น ได้ทุกสาย',two.hasInputs);
+ t('...กดบันทึกแล้วส่งผ่าน api/spord (ไม่ใช่ save ทั้งก้อน)',
+   two.post&&two.post.u==='/api/spord'&&two.post.b.act==='key'&&
+   two.post.b.ln==='CT11'&&two.post.b.d==='2026-11-20',JSON.stringify(two.post&&two.post.b));
+ t('...เก็บแยกของขายกับของแถมไว้ให้ตรวจได้',
+   two.rec&&two.rec.it['64849613'].sc===5&&two.rec.it['64849613'].fc===1&&
+   two.rec.it['65456729'].sc===3,JSON.stringify(two.rec&&two.rec.it));
+ t('🔑 ...แต่ยอดรวมขึ้นใบใหญ่ รวมขาย+แถมเข้าด้วยกันตามที่เจ้าของสั่ง',
+   /รวมส่งขึ้นใบใหญ่/.test(two.cards)&&two.sum['64849613'].sc===5&&two.sum['64849613'].fc===1);
+ t('🔒 เซลล์ธรรมดาเข้ามาดูได้ แต่แก้ไม่ได้',two.salesRead&&two.salesSees,
+   JSON.stringify({read:two.salesRead,sees:two.salesSees}));
+
+ const adm=await ev(async()=>{
+   const o={};
+   const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   __as('manager',null,'แอดมิน 1');SP.sec='adm';renderSpord();
+   o.noFile=/ยังไม่ได้อัพไฟล์ในเครื่องนี้/.test(tx());
+   parseAlloc('alloc.xlsx',__alBuf());
+   o.n=ALLOC.n;o.gins=ALLOC.gins.slice();
+   SP.sec='adm';renderSpord();
+   document.getElementById('spGinIn').value='77';
+   await spGinGo('B20261118-01','2026-11-20');
+   o.post=window.__posts[window.__posts.length-1];
+   const g=CSTOCK.gin['B20261118-01|2026-11-20'];
+   o.rows=g&&Object.keys(g.rows);
+   o.cmp=spCmp('B20261118-01','2026-11-20');
+   o.txt=tx();
+   /* ใส่เลขที่ไม่มีในไฟล์ ต้องบอก ไม่ใช่เงียบ */
+   document.getElementById('spGinIn').value='77, 999';
+   await spGinGo('B20261118-01','2026-11-20');
+   o.miss=(CSTOCK.gin['B20261118-01|2026-11-20'].miss||[]).slice();
+   o.missTxt=tx();
+   /* หัวหน้าเซลล์เข้ามาดูฝั่งแอดมินได้ แต่แก้ไม่ได้ */
+   __as('sup',null,'หัวหน้าเซลล์');SP.sec='adm';renderSpord();
+   o.supRead=/ดูอย่างเดียว/.test(tx())&&!document.getElementById('spGinIn');
+   return o;});
+ t('🔑 อ่านไฟล์ allocation ของคลังได้ (หาคอลัมน์จากหัวตาราง ไม่ใช่ตำแหน่ง)',
+   adm.n===4&&adm.gins.join(',')==='77,78',adm.n+' แถว · GIN '+adm.gins.join(','));
+ t('...ยังไม่อัพไฟล์ ก็บอกตรง ๆ ไม่ใช่หน้าว่าง',adm.noFile);
+ t('🔑 ใส่เลข GIN แล้วเทียบกับที่เซลล์คีย์ได้ (เฉพาะรหัสที่อยู่ในใบนี้)',
+   adm.rows&&adm.rows.indexOf('CT11|64849613')>=0&&adm.rows.indexOf('CT12|64849613')>=0,
+   JSON.stringify(adm.rows));
+ t('...บันทึกผ่าน api/spord ด้วย act:"gin"',
+   adm.post&&adm.post.u==='/api/spord'&&adm.post.b.act==='gin'&&
+   (adm.post.b.gin||[]).join(',')==='77',JSON.stringify(adm.post&&adm.post.b.act));
+ t('🔑 ตรงกันบอกว่าตรง · ไม่ตรงบอกว่าไม่ตรง · คลังจัดแต่เซลล์ไม่ได้คีย์ นับแยก',
+   adm.cmp.n.ok===1&&adm.cmp.n.diff===1&&adm.cmp.n.noKey===1,JSON.stringify(adm.cmp.n));
+ t('🛟 เลข GIN ที่ไม่มีในไฟล์ ต้องฟ้อง ไม่ใช่เงียบ',
+   adm.miss.join(',')==='999'&&/ไม่พบเลข GIN ในไฟล์/.test(adm.missTxt),adm.miss.join(','));
+ t('🛟 ไฟล์ allocation ไม่ถูกเก็บขึ้นเซิร์ฟเวอร์ (หน้าบอกไว้ชัด)',
+   /ไม่ได้เก็บขึ้นเซิร์ฟเวอร์/.test(adm.txt));
+ t('🔒 หัวหน้าเซลล์ดูฝั่งแอดมินได้ แต่แก้ไม่ได้',adm.supRead);
+
+ const guard=await ev(async()=>{
+   const o={};
+   /* หัวตารางหาย = ทิ้งทั้งไฟล์ ไม่ใช่เก็บศูนย์ทับของดี */
+   const ws=XLSX.utils.aoa_to_sheet([['อะไรก็ไม่รู้','อีกช่อง'],[1,2]]);
+   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Export');
+   const keep=ALLOC;
+   try{parseAlloc('bad.xlsx',XLSX.write(wb,{type:'array',bookType:'xlsx'}));o.threw=false;}
+   catch(e){o.threw=true;o.msg=String(e.message).slice(0,80);}
+   o.kept=ALLOC===keep;
+   /* เซลล์ธรรมดาเขียนฝั่งเซลล์ไม่ได้ */
+   __as('sales','209611','เซลล์');
+   const before=window.__posts.length;
+   await spKeySave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:9,sp:0,fc:0,fp:0}});
+   o.salesBlocked=window.__posts.length===before;
+   await spGinSave('B20261118-01','2026-11-20',['77']);
+   o.salesGinBlocked=window.__posts.length===before;
+   return o;});
+ t('🛟 หัวตารางไฟล์ allocation เปลี่ยน → ทิ้งทั้งไฟล์ ไม่เก็บอะไรเลย',
+   guard.threw&&guard.kept,guard.msg||'');
+ t('🔒 เซลล์ธรรมดาเขียนฝั่งเซลล์/ฝั่งแอดมินไม่ได้ (เช็คในฟังก์ชัน ไม่ใช่แค่ซ่อนปุ่ม)',
+   guard.salesBlocked&&guard.salesGinBlocked);
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

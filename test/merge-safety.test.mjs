@@ -1251,6 +1251,64 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
   check("ออเดอร์พิเศษไม่ไปกวนใบตัดบิล/ลอต/ไฟล์ร้านของเดิม",
         !!u7.CSTOCK.slips[B1] && !!u7.CSTOCK.ex[B1] && !!u7.CSTOCK.lots[B1 + "-r1"]);
 
+  /* ================================================================
+   * 📦 ออเดอร์พิเศษ 2 ขั้น (CSTOCK.key / CSTOCK.gin) — เจ้าของสั่ง 25 พ.ย. 69
+   *   key["sid|วันที่|สาย"] = จำนวนที่หัวหน้าเซลล์กรอก
+   *   gin["sid|วันที่"]      = ผลตรวจของแอดมินจากไฟล์ allocation
+   * สองฝั่งนี้ทำงานคนละเวลาคนละเครื่อง ห้ามฝั่งใดลบฝั่งใด
+   * ================================================================ */
+  const KK = B1 + "|2026-11-20|CT11", GK = B1 + "|2026-11-20";
+  const twoSrv = JSON.parse(JSON.stringify(u7));
+  twoSrv.CSTOCK.key = { [KK]: { it: { "90000001": { sc: 5, sp: 0, fc: 1, fp: 0 } },
+    by: "sup", byName: "หัวหน้าเซลล์", at: 20000 } };
+  twoSrv.CSTOCK.gin = { [GK]: { g: ["141"], rows: { "CT11|90000001": { sc: 5, ss: 0, sp: 0, fc: 1, fs: 0, fp: 0 } },
+    dd: ["2026-11-20"], by: "admin1", byName: "แอดมิน 1", at: 20100 } };
+  /* แท็บรุ่นก่อนหน้า (ไม่รู้จักสองช่องนี้เลย) บันทึกทับ */
+  const oldTab2 = JSON.parse(JSON.stringify(base));
+  oldTab2.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, up: 21000 };
+  const t1 = mergeState(twoSrv, oldTab2);
+  check("🛟 แท็บรุ่นก่อนบันทึกทับ จำนวนที่หัวหน้าเซลล์กรอกยังอยู่",
+        !!(t1.CSTOCK.key || {})[KK] && t1.CSTOCK.key[KK].it["90000001"].sc === 5,
+        JSON.stringify(t1.CSTOCK.key));
+  check("🛟 ...และผลตรวจของแอดมินยังอยู่",
+        !!(t1.CSTOCK.gin || {})[GK] && t1.CSTOCK.gin[GK].g[0] === "141");
+  /* ฝั่งแอดมินบันทึกผลตรวจ จากแท็บที่ไม่มีของฝั่งเซลล์เลย */
+  const admOnly = JSON.parse(JSON.stringify(base));
+  admOnly.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, key: {},
+    gin: { [GK]: { g: ["141", "142"], rows: {}, dd: [], by: "admin2", byName: "แอดมิน 2", at: 22000 } },
+    up: 22000 };
+  const t2 = mergeState(t1, admOnly);
+  check("🔑 แอดมินบันทึกผลตรวจ ไม่ลบจำนวนที่ฝั่งเซลล์กรอกไว้",
+        !!(t2.CSTOCK.key || {})[KK] && t2.CSTOCK.key[KK].it["90000001"].fc === 1);
+  check("...และผลตรวจอันใหม่ชนะของเก่า", (t2.CSTOCK.gin[GK].g || []).length === 2);
+  /* ฝั่งเซลล์แก้ตัวเลขจากแท็บที่ไม่มีผลตรวจของแอดมิน */
+  const supOnly = JSON.parse(JSON.stringify(base));
+  supOnly.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, gin: {},
+    key: { [KK]: { it: { "90000001": { sc: 7, sp: 0, fc: 1, fp: 0 } }, by: "sup", at: 23000 },
+           [B1 + "|2026-11-20|CT12"]: { it: { "90000001": { sc: 2, sp: 0, fc: 0, fp: 0 } }, by: "sup", at: 23000 } },
+    up: 23000 };
+  const t3 = mergeState(t2, supOnly);
+  check("🔑 ฝั่งเซลล์แก้ตัวเลข ไม่ลบผลตรวจของแอดมิน",
+        !!(t3.CSTOCK.gin || {})[GK] && (t3.CSTOCK.gin[GK].g || []).length === 2);
+  check("...และตัวเลขใหม่ชนะ พร้อมสายที่เพิ่งเพิ่มเข้ามา",
+        t3.CSTOCK.key[KK].it["90000001"].sc === 7 &&
+        !!t3.CSTOCK.key[B1 + "|2026-11-20|CT12"]);
+  /* แท็บเก่าที่ถือตัวเลขเดิม (at น้อยกว่า) ต้องย้อนของใหม่ไม่ได้ */
+  const staleSup = JSON.parse(JSON.stringify(base));
+  staleSup.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, gin: {},
+    key: { [KK]: { it: { "90000001": { sc: 5, sp: 0, fc: 1, fp: 0 } }, by: "sup", at: 20000 } }, up: 24000 };
+  const t4 = mergeState(t3, staleSup);
+  check("🛟 แท็บเก่าที่ถือตัวเลขเดิม ย้อนของใหม่ไม่ได้", t4.CSTOCK.key[KK].it["90000001"].sc === 7);
+  /* ลบใบออเดอร์ = งานสองฝั่งของใบนั้นหายตามไป ไม่ทิ้งเศษค้าง */
+  const killSlip = JSON.parse(JSON.stringify(base));
+  killSlip.CSTOCK = { lots: {}, del: {}, slips: {}, ex: {}, sub: {}, subdel: {}, key: {}, gin: {},
+    sdel: { [B1]: 30000 }, up: 30000 };
+  const t5 = mergeState(t4, killSlip);
+  check("🛟 ลบใบออเดอร์ทิ้ง งานสองฝั่งของใบนั้นไม่ค้างเป็นเศษ",
+        !Object.keys(t5.CSTOCK.key || {}).some((k) => k.indexOf(B1 + "|") === 0) &&
+        !Object.keys(t5.CSTOCK.gin || {}).some((k) => k.indexOf(B1 + "|") === 0),
+        JSON.stringify({ key: Object.keys(t5.CSTOCK.key || {}), gin: Object.keys(t5.CSTOCK.gin || {}) }));
+
   /* 📇 ดัชนีเลขออเดอร์จากไฟล์ยอดขาย (STOREDAILY.ord) — ใช้แปลงเลขเป็นชื่อร้าน/ยอด
      ⚠️ mergeState สร้าง STOREDAILY ใหม่จากรายชื่อช่อง ถ้าลืมใส่ ord ดัชนีหายทั้งก้อน */
   const ordSrv = JSON.parse(JSON.stringify(u7));

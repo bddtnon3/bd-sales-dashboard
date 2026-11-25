@@ -366,8 +366,20 @@ function mergeState(server, c) {
     if (newer > csSdel[k]) delete csSdel[k];                       // คีย์ใบกลับเข้ามาใหม่หลังลบ
     else { delete csSlips[k]; delete csEx[k]; }
   }
+  // 📦 ออเดอร์พิเศษ 2 ขั้น (25 พ.ย. 69): ฝั่งเซลล์กับฝั่งแอดมินเขียน **คนละ map คนละคีย์**
+  //   key["sid|วันที่|สาย"] = จำนวนที่หัวหน้าเซลล์กรอกของสายนั้นในวันนั้น
+  //   gin["sid|วันที่"]      = ผลตรวจของแอดมินจากไฟล์ allocation ของวันนั้น
+  // คีย์ไม่ชนกันเลย แท็บที่เปิดค้างของอีกฝั่งจึงลบงานอีกฝั่งไม่ได้ (หลักเดียวกับ mergeExOne)
+  // ภายในคีย์เดียวกันมีคนเขียนคนเดียวต่อครั้ง จึง newest-wins ต่อคีย์พอ (หลักเดียวกับ PJP.done)
+  const csKey = newestByAt(sCs.key, cCs.key);
+  const csGin = newestByAt(sCs.gin, cCs.gin);
+  for (const k of Object.keys(csSdel)) {                            // ใบถูกลบ = ทิ้งงานสองฝั่งของใบนั้น
+    for (const m of [csKey, csGin]) {
+      for (const kk of Object.keys(m)) if (kk.slice(0, k.length + 1) === k + "|") delete m[kk];
+    }
+  }
   const CSTOCK = { lots: csLots, del: csDel, slips: csSlips, sdel: csSdel, ex: csEx,
-                   sub: csSub, subdel: csSubDel,
+                   sub: csSub, subdel: csSubDel, key: csKey, gin: csGin,
                    up: Math.max(sCs.up || 0, cCs.up || 0) };
 
   return {

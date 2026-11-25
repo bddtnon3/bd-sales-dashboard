@@ -767,6 +767,42 @@ code, never printed.
   must read it back or re-saving a group-B slip silently drops it to A. `.pl-today.on` had no style
   at all, so the header's own group toggle never showed which half was selected — the rule now
   paints it, and the step-tick buttons with it.
+  **Reduced to 2 steps on 25 Nov 26** (*"ขอปรับใหม่ให้เริ่มจากง่าย ๆ ก่อน เป็นแค่ฝั่งเซลล์และ
+  ฝั่งแอดมินทำงานร่วมกัน 2 ขั้นตอนก็พอ"*). The 6-step machinery is **retired, not deleted**: the
+  old order-number list still renders behind the third chip 🧾 เลขออเดอร์ (ของเดิม), and
+  `CSTOCK.sub`/`subdel` keep merging. The slip page is now ① ✍️ ฝั่งเซลล์ ② 🔎 ฝั่งแอดมิน, both
+  keyed by a **day picker**, with product **names shown, not bare codes** (`spSlipCodes`) because
+  the owner said *"ตอนนี้มันขึ้นแค่รหัสมันตามดูยาก"*.
+  **① The supervisor types what the reps keyed each day** (`spKeyHtml`/`spKeyLineSave`), laid out
+  like the owner's own template file — สายวิ่ง × สินค้า → จำนวนขาย / จำนวนแถม — in **ลัง + ชิ้น**,
+  the same unit as the bill-cut slip (he chose it). Sale and free are stored separately only so the
+  warehouse file can be checked against them: **the figure that rolls up to the big order adds them
+  together** (*"พอสรุปขึ้นออเดอร์พิเศษหมวดใหญ่ ให้รวมจำนวนไปเลยเหมือนเดิม"*).
+  **② The admin uploads the warehouse's Order Allocation Report and types that day's GIN numbers**
+  (`parseAlloc`/`alPick`/`spGinSave`/`spCmp`), and the page says per line and per product whether
+  what went out matches what the reps keyed. Measured on the owner's real
+  `Order_Allocation_ReportHistorical.xlsx` (10,428 rows, 15–24 Nov 26) before any of it was written:
+  columns are found by **header text**, never position, and a renamed header **throws and stores
+  nothing**; the line is the last two digits of **`PJP Code` (E) and `PJP Name` (F), which agree on
+  all 10,428 rows**, and runs 11–17/19/22/97/99 — not just 11–22, so it goes through
+  `dsLineKey`/`FOCUS_MAP` and is never hard-coded to a range; **one GIN is NOT one line (103/145),
+  not one day (117/145), not one shop (71/145)**, so the check fans a GIN out per line and **says
+  which dates that GIN actually covers** instead of assuming the day selected; and the file carries
+  **both** `Sale/Free Order` (R–W) and `Sale/Free Allocated` (X–AC), which **differ on 603 sale and
+  37 free rows** — the owner named R–W, so that is the figure compared, and the Allocated column is
+  shown underneath when it disagrees rather than silently picked.
+  **The allocation file is never stored** (`ALLOC` is in memory, not synced); only the **result** the
+  admin saves goes into the state, aggregated and **restricted to the codes in that slip** (the
+  `pmCodeSet` rule), so a 10,428-row file cannot bloat the snapshot. The page says this out loud.
+  Two new keyed maps carry the two sides, **never one record**:
+  `CSTOCK.key["sid|YYYY-MM-DD|CT11"]` and `CSTOCK.gin["sid|YYYY-MM-DD"]`, merged newest-wins per key
+  (`newestByAt`) so a tab left open on one side cannot erase the other's work — and deleting the slip
+  drops both. Writes go through **`api/spord.js`** (`act:"key"` = `sup`/`manager`, `act:"gin"` =
+  `manager`), checked **on the server**: everyone may look, each side edits only its own, the manager
+  edits everything. The month picker now runs **January → December down the page** with one row per
+  month (`.sp-mon`), which is what the owner asked for after calling the old grid *"ไม่สวยเลย"*.
+  Prove it with **`node test/browser/spord.test.cjs`** (73 checks) plus the `key`/`gin` cases in
+  `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
   let a rep's tab that has been open since morning erase the warehouse's and the driver's ticks, the
@@ -778,7 +814,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (54 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (73 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
