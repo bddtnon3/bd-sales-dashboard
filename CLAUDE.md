@@ -368,7 +368,32 @@ code, never printed.
   THAI WORD of the order-form name (`psBrandKey`) and never from `STOREPROD` or the price file —
   mixing sources splits one brand across two places in the list. Every other section keeps
   `grpByCat` + `poSeqSort`. Prove it with **`node test/browser/psbill.test.cjs`** (25 checks).
-  **การสั่งของ** has five sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO /
+  The **📅 รายการสั่งก่อนหมดโปร** sub-tab (`renderPromoEnd`/`peDiff`/`poPromo`) answers the thing
+  the owner called *"เรื่องใหญ่ของทุกเดือนเลย ศูนย์จะต้องมานั่งเช็คเอาเอง"* (25 Nov 26): Unilever
+  cuts the promo round **on the 25th**, so some products lose their promo and others gain one, and
+  the depot has to stock up on **21–24** before the cut. The promo terms are written **inside the
+  two product-name cells of the order form**, mixed in with the name — there is no separate column
+  (`cc+8`/`cc+9` looked like one but is the NEXT block's name cells, since blocks are 11 columns
+  apart). `poPromo` reads that text into the owner's two categories plus FTR, each pattern taken
+  from his real 24 and 25 Nov forms:
+  **🟡 On Invoice** — `On-inv 6F1` (free goods) and `On-inv W% 152.64` (baht off per case);
+  **💸 Off Invoice** — `F/O 45B.`, `Rebate`, `BBF 12F1`, `F/P`; **⚡ FTR** = fighting rate.
+  **The yellow band on the name cell is exactly the On-invoice FREE-GOODS case** — measured on the
+  25 Nov form: 34 banded codes, all 34 carry `On-inv <n>F<m>`, none missed. Measured 24 → 25 Nov:
+  On-inv free goods 51→36, On-inv W% 458→436, Off-invoice 529→463, FTR 176→112, and
+  **113 codes lost every promo, 31 gained one, 91 changed terms**.
+  Some rows state their own window — `(25ตค-24พย)` — which is **how the depot can know before the
+  25th**: `pmWinEnd` turns it into a date (49 rows on the 24th, 33 on the 25th, so it covers only
+  part of the list, and a month it cannot read returns **null**, never today).
+  **POSTATUS stores the RAW promo text** (`items[code].pm`), only for codes that actually have a
+  promo, and the parsing happens at read time — so improving `poPromo` later re-reads old rounds
+  correctly without re-uploading, the same rule as `poClosedKind`. Measured on the real forms:
+  ~850 codes and ~60 KB per round. The page is **strictly read-only** over POSTATUS/ORDERS/STOCKD
+  with its state on the non-synced `PE`. Prove it with
+  **`node test/browser/promoend.test.cjs`** (29 checks, self-contained with made-up codes; 32 with
+  the real forms via `ORDER_BLANK_A=…/ใบ24.xlsm ORDER_BLANK_B=…/ใบ25.xlsm`, which never enter the repo).
+  **การสั่งของ** has six sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO /
+  **📅 รายการสั่งก่อนหมดโปร** /
   **📊 ประวัติการสั่งของ** (`renderOrdHist`), the month-at-a-glance table that replaces the Excel the
   depot's sales contact emails every week. The owner gave the mapping himself and it reproduces his
   file to the satang: **1st Order = CON Confirm × 0.85** (`ohVal`), **1st Order − Drop = that minus

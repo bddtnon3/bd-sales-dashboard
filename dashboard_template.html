@@ -1356,6 +1356,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <button class="pos-st" data-k="ord" onclick="ordSetSec('ord')">📄 ใบสั่งของ (แอดมินอัพ)</button>
         <button class="pos-st" data-k="drop" onclick="ordSetSec('drop')">❌ ใบ Drop (แอดมินอัพ)</button>
         <button class="pos-st" data-k="po" onclick="ordSetSec('po')">🧮 คำนวณ PO อัตโนมัติ</button>
+        <button class="pos-st" data-k="pe" onclick="ordSetSec('pe')">📅 รายการสั่งก่อนหมดโปร</button>
         <button class="pos-st" data-k="hist" onclick="ordSetSec('hist')">📊 ประวัติการสั่งของ</button>
       </div>
       <div id="ordSecReq">
@@ -1383,6 +1384,11 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       </div>
       <!-- 📊 ประวัติการสั่งของ — ตารางรายวันทั้งเดือน 1st / 2nd (เจ้าของสั่ง 12 พ.ย. 69)
            ทุกคนดูได้ตามที่เจ้าของสั่ง ("ให้เข้าดูได้ทุกคน") -->
+      <!-- 📅 รายการสั่งก่อนหมดโปร — เทียบใบสั่งสองรอบ แล้วบอกว่าโปรตัวไหนหมด/เพิ่ม/เปลี่ยน
+           (เจ้าของสั่ง 25 พ.ย. 69 · ดูไวยากรณ์โปรที่ poPromo) -->
+      <div id="ordSecPe" class="hidden">
+        <div id="peBody"></div>
+      </div>
       <div id="ordSecHist" class="hidden">
         <div id="ohBody"></div>
       </div>
@@ -6993,13 +6999,14 @@ function initOrder(){
  *    ห้ามข้ามกล่องที่ซ่อน เพราะ parser เรียก renderOrder() แล้วผู้ใช้สลับแท็บทีหลัง
  *    ถ้าข้าม จะเห็นข้อมูลเก่าค้าง
  * ==========================================================================*/
-const ORD_SECS={req:"ordSecReq",ord:"ordSecOrd",drop:"ordSecDrop",po:"ordSecPo",hist:"ordSecHist"};
+const ORD_SECS={req:"ordSecReq",ord:"ordSecOrd",drop:"ordSecDrop",po:"ordSecPo",pe:"ordSecPe",hist:"ordSecHist"};
 function ordSetSec(k){
   if(!ORD_SECS[k])k="req";
   ORD.sec=k;
   for(const x in ORD_SECS)document.getElementById(ORD_SECS[x]).classList.toggle("hidden",x!==k);
   document.querySelectorAll("#ordSubTabs .pos-st").forEach(b=>b.classList.toggle("on",b.dataset.k===k));
   if(k==="po")renderPoCalc();
+  if(k==="pe")renderPromoEnd();
   if(k==="hist")renderOrdHist();
 }
 function renderOrder(){
@@ -7486,6 +7493,172 @@ function renderReqBack(){
  *    ถ้าวันหนึ่งมีไฟล์นั้น ค่อยเพิ่มเป็นคอลัมน์ใหม่ ห้ามเดาจากตัวเลขที่มีอยู่
  * ⚠️ อ่านอย่างเดียวล้วน ๆ เหมือน Drop ค้าง — ไม่เขียน ORDERS/DATA เลย เดือนที่เลือกอยู่บน ORD
  * ========================================================================== */
+/* ============================================================================
+ * 📅 รายการสั่งก่อนหมดโปร — เจ้าของสั่ง 25 พ.ย. 69
+ *   *"โปรของ Unilever จัดตัดรอบวันนี้ … บางตัวที่มีแถบเหลืองได้หายไป และบางตัวที่ไม่มีได้เพิ่ม
+ *     เข้ามา นี่แหละคือเรื่องใหญ่ของทุกเดือนเลย ศูนย์จะต้องมานั่งเช็คเอาเอง ว่าตัวไหนที่หมดโปร
+ *     ไปแล้วเดือนนี้ และตัวไหนที่มีโปรเพิ่มเข้ามาในเดือนหน้า … เพื่อเตรียมสำหรับให้ศูนย์เตรียม
+ *     สั่งตุนไว้ช่วงวันที่ 21-24 ก่อนที่จะขึ้นโปรใหม่ของทุกๆเดือน"*
+ *
+ * สามทางที่รู้ได้ว่าโปรกำลังจะหมด เรียงตาม "รู้ได้เร็วแค่ไหน":
+ *   1. ⏳ ใบสั่งเขียนช่วงวันไว้เอง เช่น `(25ตค-24พย)` → รู้ล่วงหน้าทั้งเดือน (ครอบ 33-49 รหัส)
+ *   2. 💰 ไฟล์ราคาสองรอบ (หัวเสือมี 4 บล็อครอบ · BUM มี BM9/BM10) → รู้ก่อนวันที่ 25
+ *      ⚠️ การแยก on/off invoice มีแต่ในไฟล์ BUM (หัวเสือ W% = BUM W%On + W%Rebate)
+ *   3. 🔻 เทียบใบสั่งสองรอบ → แม่นที่สุดแต่รู้หลังได้ใบวันที่ 25 แล้ว (ครอบทุกรหัส)
+ * หน้านี้แสดงทั้งสามทาง แยก On Invoice / Off Invoice ตามที่เจ้าของสั่ง
+ *
+ * ⚠️ อ่านอย่างเดียวล้วน ๆ เหมือนตัวคำนวณ PO — ไม่เขียน POSTATUS/ORDERS/PRICE เลย
+ *    ตัวเลือกบนหน้าอยู่บน PE ซึ่งไม่ sync
+ * ==========================================================================*/
+let PE={a:"",b:"",kind:"all",only:"gone",q:""};
+function peRounds(){return psDates().slice().sort();}
+/* รอบที่เอามาเทียบ — ใหม่สุด vs รอบก่อนหน้าที่ "คนละเดือน" ถ้ามี (โปรตัดรอบวันที่ 25) */
+function pePick(){
+  const ds=peRounds();
+  if(ds.length<2)return {a:"",b:ds[0]||""};
+  const b=(PE.b&&ds.indexOf(PE.b)>=0)?PE.b:ds[ds.length-1];
+  let a=PE.a;
+  if(!a||ds.indexOf(a)<0||a>=b){
+    const before=ds.filter(d=>d<b);
+    a=before.length?before[before.length-1]:"";
+  }
+  return {a:a,b:b};
+}
+function peSetA(v){PE.a=v;renderPromoEnd();}
+function peSetB(v){PE.b=v;PE.a="";renderPromoEnd();}
+function peSetKind(k){PE.kind=k;renderPromoEnd();}
+function peSetOnly(k){PE.only=k;renderPromoEnd();}
+function peQ(v){PE.q=String(v||"");renderPromoEnd();}
+/* โปรของรอบนี้แบ่งเป็น on / off — ใช้กรองตามปุ่มที่เลือก */
+function peHasKind(p,kind){
+  if(!p)return false;
+  if(kind==="on")return p.on.length>0;
+  if(kind==="off")return p.off.length>0;
+  if(kind==="ftr")return !!p.ftr;
+  return true;
+}
+/* เทียบสองรอบ → {gone,add,chg} แต่ละตัวเป็นรายการ {c,pa,pb} */
+function peDiff(aD,bD){
+  const out={gone:[],add:[],chg:[]};
+  if(!bD)return out;
+  const seen={};
+  const scan=(day,other)=>Object.keys((day&&day.items)||{}).forEach(c=>{
+    if(seen[c])return;seen[c]=1;
+    const pa=psPromoOf(aD,c),pb=psPromoOf(bD,c);
+    if(pa&&!pb)out.gone.push({c:c,pa:pa,pb:null});
+    else if(!pa&&pb)out.add.push({c:c,pa:null,pb:pb});
+    else if(pa&&pb&&pmKey(pa)!==pmKey(pb))out.chg.push({c:c,pa:pa,pb:pb});
+  });
+  scan(bD,aD);scan(aD,bD);
+  const srt=(x,y)=>String(x.c).localeCompare(String(y.c));
+  out.gone.sort(srt);out.add.sort(srt);out.chg.sort(srt);
+  return out;
+}
+/* ⏳ โปรที่ "ใบบอกเองว่าจะหมดเมื่อไหร่" — อ่านจากวงเล็บช่วงวันในข้อความโปร */
+function peEnding(day,days){
+  const out=[];if(!day)return out;
+  const today=todayISO(),lim=dayShift(today,+(days||40));
+  Object.keys(day.items||{}).forEach(c=>{
+    const p=psPromoOf(day,c);
+    if(!p||!p.wEnd)return;
+    if(p.wEnd>=dayShift(today,-3)&&p.wEnd<=lim)out.push({c:c,p:p});
+  });
+  out.sort((x,y)=>String(x.p.wEnd).localeCompare(String(y.p.wEnd))||String(x.c).localeCompare(String(y.c)));
+  return out;
+}
+/* ---------- หน้าจอ ---------- */
+function peSel(id,vals,cur,fn){
+  return `<div class="dstep"><button type="button" class="dstep-b" onclick="selStep('${id}',-1)" title="รอบก่อนหน้า">◀</button>`+
+    `<select id="${id}" data-rev="1" onchange="${fn}(this.value)">`+
+    vals.slice().reverse().map(d=>`<option value="${d}"${d===cur?" selected":""}>${fmtDate(d)}</option>`).join("")+
+    `</select><button type="button" class="dstep-b" onclick="selStep('${id}',1)" title="รอบถัดไป">▶</button></div>`;
+}
+function peRow(r,mode){
+  const c=r.c,nm=oname(c)||"";
+  const stk=(typeof stkOf==="function")?stkOf(c):null;
+  const left=stk&&stk.sale!=null?stk.sale:(stk&&stk.q!=null?stk.q:null);
+  const before=mode==="add"?"—":pmLabel(r.pa);
+  const after =mode==="gone"?'<span class="down">ไม่มีโปรแล้ว</span>':pmLabel(r.pb);
+  return `<tr><td>${anaEsc(c)}</td><td style="text-align:left">${anaEsc(nm)||'<span style="color:var(--muted)">(ไม่มีชื่อในระบบ)</span>'}</td>`+
+    `<td style="text-align:left">${before}</td><td style="text-align:left">${after}</td>`+
+    `<td>${left==null?"-":(+left).toLocaleString()}</td></tr>`;
+}
+function peTable(rows,mode,empty){
+  if(!rows.length)return `<div class="insight">${empty}</div>`;
+  return grpTable([{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"รอบก่อน",a:"l"},{h:"รอบใหม่",a:"l"},{h:"สต็อกคงเหลือ"}],
+    [{title:"",rows:rows.map(r=>peRow(r,mode))}],{alwaysBand:false});
+}
+function renderPromoEnd(){
+  const el=document.getElementById("peBody");if(!el)return;
+  const ds=peRounds();
+  if(!ds.length){el.innerHTML=`<div class="panel"><div class="insight">ยังไม่มีใบสั่ง/ใบเปล่าในระบบ — อัพ <b>🔎 ใบเปล่า — ดูโปรฯ ก่อนสั่ง</b> หรือ <b>🛒 ใบสั่งของ</b> ก่อน แล้วหน้านี้จะเทียบโปรให้เอง</div></div>`;return;}
+  const {a,b}=pePick();
+  const aD=a?psDay(a):null,bD=b?psDay(b):null;
+  const d=peDiff(aD,bD);
+  const q=PE.q.trim().toLowerCase();
+  const pick=(arr,mode)=>arr.filter(r=>{
+    const p=mode==="add"?r.pb:r.pa;
+    if(!peHasKind(p,PE.kind))return false;
+    if(!q)return true;
+    return (r.c+" "+(oname(r.c)||"")).toLowerCase().indexOf(q)>=0;
+  });
+  const gone=pick(d.gone,"gone"),add=pick(d.add,"add"),chg=pick(d.chg,"chg");
+  const end=peEnding(bD,40).filter(r=>peHasKind(r.p,PE.kind))
+    .filter(r=>!q||(r.c+" "+(oname(r.c)||"")).toLowerCase().indexOf(q)>=0);
+  const tab=(k,ic,nm,n)=>`<button type="button" class="pos-st${PE.only===k?" on":""}" onclick="peSetOnly('${k}')">${ic} ${nm} <b>${n}</b></button>`;
+  const kd=(k,nm)=>`<button type="button" class="pl-cb${PE.kind===k?" on":""}" onclick="peSetKind('${k}')">${nm}</button>`;
+  let h=`<div class="panel">
+    <div class="controls" style="margin:0">
+      <div class="ctl"><label>รอบก่อน (ก่อนตัดโปร)</label>${a?peSel("peA",ds.filter(x=>x<b),a,"peSetA"):'<div class="psub">— มีรอบเดียว —</div>'}</div>
+      <div class="ctl"><label>รอบใหม่ (หลังตัดโปร)</label>${peSel("peB",ds,b,"peSetB")}</div>
+      <div class="ctl"><label>ชนิดโปร</label><div class="pl-chips">${
+        kd("all","ทั้งหมด")+kd("on","🟡 On Invoice")+kd("off","💸 Off Invoice")+kd("ftr","⚡ FTR")}</div></div>
+      <div class="ctl"><label>🔍 ค้นหา</label><input value="${anaEsc(PE.q)}" placeholder="รหัส / ชื่อสินค้า"
+        oninput="peQ(this.value)" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:200px"></div>
+    </div>
+    <div class="psub" style="margin-top:8px">
+      <b>On Invoice</b> = ลดให้บนบิลเลย (แถบเหลืองบนชื่อสินค้า = แบบแถม · <code>On-inv W%</code> = ส่วนลดต่อหีบ) ·
+      <b>Off Invoice</b> = ได้คืนทีหลัง (<code>F/O</code> บาท/หีบ · <code>Rebate</code> · <code>BBF</code>) ·
+      <b>FTR</b> = ราคาพิเศษเฉพาะช่วง<br>
+      อ่านจากข้อความที่ Unilever เขียนไว้ในใบสั่งเอง — หน้านี้<b>ไม่แก้ไขข้อมูลใด ๆ</b>
+    </div></div>`;
+  if(!a){
+    h+=`<div class="panel"><div class="note">มีใบอยู่รอบเดียว (${fmtDate(b)}) — ยังเทียบไม่ได้
+      <br>อัพใบของอีกรอบหนึ่ง (เช่นใบวันที่ 24 ก่อนตัดรอบ) แล้วหน้านี้จะบอกได้ทันทีว่าโปรตัวไหนหายไป</div></div>`;
+  }else{
+    h+=`<div class="cards">
+      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">🔻 โปรหมดไปแล้ว</div><div class="v down">${gone.length}</div><div class="s">มีในรอบ ${fmtDate(a)} แต่ไม่มีในรอบ ${fmtDate(b)}</div></div>
+      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">🆕 โปรเพิ่มเข้ามา</div><div class="v up">${add.length}</div><div class="s">เพิ่งมีในรอบ ${fmtDate(b)}</div></div>
+      <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">🔀 เปลี่ยนเงื่อนไข</div><div class="v">${chg.length}</div><div class="s">ยังมีโปร แต่คนละแบบ/คนละจำนวน</div></div>
+      <div class="card"><div class="k">⏳ ใบบอกว่าใกล้หมด</div><div class="v">${end.length}</div><div class="s">อ่านจากวงเล็บช่วงวันในใบ (ภายใน 40 วัน)</div></div>
+    </div>`;
+    h+=`<div class="panel"><div class="pos-subtabs" style="margin-bottom:10px">${
+      tab("gone","🔻","โปรหมดไปแล้ว",gone.length)+tab("add","🆕","โปรเพิ่มเข้ามา",add.length)+
+      tab("chg","🔀","เปลี่ยนเงื่อนไข",chg.length)+tab("end","⏳","ใบบอกว่าใกล้หมด",end.length)}</div>`;
+    if(PE.only==="gone"){
+      h+=`<div class="rq-note">🔻 ของพวกนี้<b>หมดโปรไปแล้ว</b>ในรอบ ${fmtDate(b)} — เดือนหน้าถ้าเห็นตัวไหนอยู่ในลิสต์นี้ตั้งแต่ก่อนวันที่ 25 ให้<b>สั่งตุนช่วงวันที่ 21-24</b> ก่อนโปรตัด</div>`+
+        peTable(gone,"gone","ไม่มีตัวไหนหมดโปรระหว่างสองรอบนี้");
+    }else if(PE.only==="add"){
+      h+=`<div class="rq-note">🆕 ของพวกนี้<b>เพิ่งมีโปรรอบใหม่</b> — ไม่ต้องรีบสั่งตุนรอบที่แล้ว รอบนี้ซื้อคุ้มกว่า</div>`+
+        peTable(add,"add","ไม่มีโปรใหม่เพิ่มเข้ามาระหว่างสองรอบนี้");
+    }else if(PE.only==="chg"){
+      h+=`<div class="rq-note">🔀 ยังมีโปรอยู่ แต่<b>เงื่อนไขเปลี่ยน</b> — ดูว่าของเดิมคุ้มกว่าไหม ถ้าคุ้มกว่าให้สั่งตุนก่อนตัดรอบ</div>`+
+        peTable(chg,"chg","เงื่อนไขโปรไม่เปลี่ยนเลยระหว่างสองรอบนี้");
+    }else{
+      h+=`<div class="rq-note">⏳ ใบสั่งรอบ ${fmtDate(b)} <b>เขียนช่วงวันของโปรไว้เอง</b> — พวกนี้รู้ล่วงหน้าได้เลยว่าจะหมดวันไหน ไม่ต้องรอเทียบรอบ</div>`;
+      h+=end.length?grpTable([{h:"รหัส"},{h:"สินค้า",a:"l"},{h:"โปรที่ได้",a:"l"},{h:"ช่วงที่ใบเขียนไว้"},{h:"หมดวันที่"},{h:"เหลืออีก"}],
+        [{title:"",rows:end.map(r=>{
+          const dd=Math.round((new Date(r.p.wEnd)-new Date(todayISO()))/86400000);
+          const cls=dd<0?"down":(dd<=7?"down":"");
+          return `<tr><td>${anaEsc(r.c)}</td><td style="text-align:left">${anaEsc(oname(r.c)||"")}</td>`+
+            `<td style="text-align:left">${pmLabel(r.p)}</td><td>${anaEsc(r.p.win)}</td>`+
+            `<td>${fmtDate(r.p.wEnd)}</td><td class="${cls}"><b>${dd<0?("เลยมาแล้ว "+(-dd)+" วัน"):(dd===0?"วันนี้วันสุดท้าย":(dd+" วัน"))}</b></td></tr>`;})}],{alwaysBand:false})
+        :`<div class="insight">ใบรอบนี้ไม่ได้เขียนช่วงวันของโปรไว้เลย — ใช้การเทียบรอบด้านบนแทน</div>`;
+    }
+    h+=`</div>`;
+  }
+  el.innerHTML=h;
+}
 const OH_DOW=["อา.","จ.","อ.","พ.","พฤ.","ศ.","ส."];
 function ohN(v){return (Math.round((+v||0)*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
 /* 1st ของวันนั้น — null = วันนั้นไม่มีใบสั่ง/ใบ Drop เลย (คนละเรื่องกับ "สั่ง 0 บาท") */
@@ -7729,6 +7902,95 @@ function cleanupOrderDate(date){
   if((!day.rounds||!Object.keys(day.rounds).length)&&!day.dropped){delete ORDERS.data[date];ORDERS.dates=(ORDERS.dates||[]).filter(d=>d!==date);initOrder();}
 }
 const ORD_PROMO=/(On-inv|Rebate|FTR|Twin ?Pack|W%|F\/O|F\/P|\(6\+1\)|\d+F1|Franchise|WashXpress|\(25)/;
+/* ============================================================================
+ * 🏷 ไวยากรณ์โปรโมชั่นบนใบสั่ง — แกะจากใบจริงวันที่ 24 และ 25 พ.ย. 69 (เจ้าของส่งมาเทียบกัน)
+ *
+ * ข้อความโปรอยู่ใน "สองช่องชื่อสินค้า" (cc-3 / cc-2) ปนกับชื่อสินค้า ไม่มีคอลัมน์แยก
+ * (เคยสงสัยว่า cc+8/cc+9 เป็นช่องโปรแยก — ตรวจแล้วมันคือช่องชื่อของบล็อกถัดไป เพราะบล็อกห่างกัน 11)
+ *
+ * แบ่งเป็น 2 แบบตามที่เจ้าของสั่ง:
+ *   🟡 On Invoice  — ลดให้บนบิลเลย · `On-inv 6F1` (แถม) และ `On-inv W% 152.64` (ส่วนลด)
+ *                    ⚠️ **แถบเหลืองบนชื่อสินค้า = On-inv แบบแถม (NFm) เท่านั้น** วัดกับไฟล์จริง
+ *                    ใบ 25 พ.ย. เหลือง 34 รหัส → เจอ `On-inv <n>F<m>` ครบ 34/34 ไม่มีตัวไหนหลุด
+ *   💸 Off Invoice — ได้เงินคืนทีหลัง · `F/O 45B.` (บาท/หีบ) · `Rebate` · `BBF 12F1` · `F/P`
+ *   ⚡ FTR          — Fighting Rate ราคาพิเศษเฉพาะช่วง (มากับ on/off ก็ได้)
+ *
+ * วัดจากไฟล์จริง (24 → 25 พ.ย.): On-inv แถม 51→36 · On-inv W% 458→436 · Off-inv 529→463 ·
+ * FTR 176→112 · เขียนช่วงวันไว้ในวงเล็บ 49→33 · **โปรหายไปเลย 113 ตัว · เพิ่ม 31 · เปลี่ยนเงื่อนไข 91**
+ * นี่คืองานที่เจ้าของบอกว่า *"เรื่องใหญ่ของทุกเดือนเลย ศูนย์จะต้องมานั่งเช็คเอาเอง"*
+ *
+ * ⚠️ เก็บ "ข้อความดิบ" ลง POSTATUS (`pm`) ไม่ใช่เก็บผลที่แปลแล้ว — ตัวแปลทำตอนอ่าน (poPromo)
+ *    แก้ตัวแปลทีหลังแล้วรอบเก่าอ่านถูกตามไปด้วย ไม่ต้องอัพไฟล์ซ้ำ (หลักเดียวกับ poClosedKind)
+ *    และเก็บเฉพาะรหัสที่ "มีโปรจริง" เท่านั้น ไม่ใช่ทุกรหัส (ไม่งั้น POSTATUS โตเดือนละหลาย MB)
+ * ==========================================================================*/
+const PM_RX={
+  onF :/on[\s-]?inv\.?\s*(\d+)\s*F\s*(\d+)/ig,
+  onW :/on[\s-]?inv\.?\s*W\s*%\s*([\d,]+(?:\.\d+)?)/ig,
+  fo  :/F\/O\s*([\d,]+(?:\.\d+)?)\s*B/ig,
+  fo0 :/F\/O/ig,
+  bbf :/BBF\s*(\d+)\s*F\s*(\d+)/ig,
+  reb :/rebate/ig,
+  fp  :/F\/P/ig,
+  ftr :/FTR/ig,
+  twin:/twin\s*pack/ig,
+  win :/\((\d{1,2})\s*([ก-๙]{1,3}\.?[ก-๙]?\.?)\s*[-–]\s*(\d{1,2})\s*([ก-๙]{1,3}\.?[ก-๙]?\.?)\)/g,
+};
+const PM_MON={"มค":1,"กพ":2,"มีค":3,"เมย":4,"พค":5,"มิย":6,"กค":7,"สค":8,"กย":9,"ตค":10,"พย":11,"ธค":12};
+function pmHits(t,rx){rx.lastIndex=0;const o=[];let m,guard=0;while((m=rx.exec(t))&&guard++<40)o.push(m);return o;}
+function pmNum(v){const n=parseFloat(String(v==null?"":v).replace(/,/g,""));return isFinite(n)?n:0;}
+/* ข้อความโปร → โครงสร้าง · ไม่เจออะไรเลยคืน null (ไม่ใช่ออบเจ็กต์ว่าง) */
+function poPromo(txt){
+  const t=String(txt||"");
+  if(!t)return null;
+  const on=[],off=[];
+  pmHits(t,PM_RX.onF).forEach(m=>on.push({k:"F",b:+m[1],f:+m[2]}));
+  pmHits(t,PM_RX.onW).forEach(m=>on.push({k:"W",v:pmNum(m[1])}));
+  const fo=pmHits(t,PM_RX.fo);
+  fo.forEach(m=>off.push({k:"FO",v:pmNum(m[1])}));
+  if(!fo.length&&pmHits(t,PM_RX.fo0).length)off.push({k:"FO"});
+  pmHits(t,PM_RX.bbf).forEach(m=>off.push({k:"BBF",b:+m[1],f:+m[2]}));
+  if(pmHits(t,PM_RX.reb).length)off.push({k:"REB"});
+  if(pmHits(t,PM_RX.fp).length)off.push({k:"FP"});
+  const ftr=pmHits(t,PM_RX.ftr).length?1:0;
+  const twin=pmHits(t,PM_RX.twin).length?1:0;
+  if(!on.length&&!off.length&&!ftr)return null;
+  const w=pmHits(t,PM_RX.win)[0]||null;
+  return {on:on,off:off,ftr:ftr,twin:twin,win:w?w[0]:"",
+          wEnd:w?pmWinEnd(+w[3],w[4]):null,tx:t};
+}
+/* "(25ตค-24พย)" → วันสิ้นสุดเป็น YYYY-MM-DD · ใบไม่ได้เขียนปีมา จึงเดาปีจากเดือนที่ใกล้ที่สุด
+   ⚠️ คืน null เมื่ออ่านเดือนไม่ออก ห้ามเดาเป็นวันนี้ */
+function pmWinEnd(d,mo){
+  const key=String(mo||"").replace(/\./g,"").trim();
+  const m=PM_MON[key];if(!m||!d||d>31)return null;
+  const now=new Date(),y=now.getFullYear();
+  const pick=[y-1,y,y+1].map(yy=>yy+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0"));
+  const t=now.getTime();
+  return pick.sort((a,b)=>Math.abs(new Date(a).getTime()-t)-Math.abs(new Date(b).getTime()-t))[0];
+}
+/* โปรของรหัสหนึ่งในรอบหนึ่ง (อ่านจาก POSTATUS ที่เก็บข้อความดิบไว้) */
+function psPromoOf(day,code){
+  const it=day&&day.items&&day.items[code];
+  return it?poPromo(it.pm||""):null;
+}
+/* สรุปโปรเป็นคีย์เดียวไว้เทียบว่า "เหมือนเดิมไหม" — เรียงให้คงที่ก่อน */
+function pmKey(p){
+  if(!p)return "";
+  const on=p.on.map(x=>x.k==="F"?("F"+x.b+":"+x.f):("W"+(x.v||0))).sort().join(",");
+  const off=p.off.map(x=>x.k==="FO"?("FO"+(x.v||0)):x.k==="BBF"?("BBF"+x.b+":"+x.f):x.k).sort().join(",");
+  return on+"|"+off+"|"+(p.ftr?"FTR":"");
+}
+/* ข้อความไทยสั้น ๆ ของโปรหนึ่งก้อน */
+function pmLabel(p){
+  if(!p)return "—";
+  const a=[];
+  p.on.forEach(x=>a.push(x.k==="F"?("🎁 แถมบนบิล "+x.b+" แถม "+x.f):("💵 ลดบนบิล "+(x.v||0).toLocaleString()+"฿/หีบ")));
+  p.off.forEach(x=>a.push(x.k==="FO"?("💸 คืนนอกบิล"+(x.v?" "+x.v.toLocaleString()+"฿/หีบ":""))
+    :x.k==="BBF"?("💸 BBF "+x.b+" แถม "+x.f):x.k==="REB"?"💸 Rebate":"💸 F/P"));
+  if(p.ftr)a.push("⚡ FTR ราคาพิเศษ");
+  if(p.twin)a.push("👯 Twin Pack");
+  return a.join(" · ")||"—";
+}
 function ordClean(s){if(s==null)return "";s=String(s);const m=s.match(ORD_PROMO);if(m)s=s.slice(0,m.index);return s.replace(/^[\s.\-]+|[\s.\-]+$/g,"");}
 function ordThai(s){s=String(s==null?"":s).trim();return s&&s.charCodeAt(0)>=0x0E00&&s.charCodeAt(0)<=0x0E7F;}
 /* ---- colour coding used by Unilever's order form (verified against a real BD_*.xlsx) ----
@@ -7958,8 +8220,13 @@ async function parseOrderForm(name,buf,kind){
           const of=isSt(o6)?o6:(isSt(o7)?o7:null);
           const ou=of?null:(o6||o7||null);              /* มีสีแต่ไม่ใช่สีสถานะ */
           const fl={};
+          /* ข้อความในสองช่องชื่อ = ชื่อสินค้า + เงื่อนไขโปรปนกัน (ดูไวยากรณ์ที่ poPromo)
+             เก็บดิบไว้เฉพาะแถวที่ "มีโปรจริง" — ตัวแปลทำตอนอ่าน แก้ทีหลังรอบเก่าได้ตาม */
+          const ptx=[cc>=3?r[cc-3]:"",cc>=2?r[cc-2]:""].map(x=>String(x==null?"":x)).join(" ")
+            .replace(/\s+/g," ").trim().slice(0,160);
+          if(ptx&&poPromo(ptx))fl.pm=ptx;
           if(nf===PO_GREY)fl.s=1;
-          if(nf===PO_YEL){const t=[cc>=3?r[cc-3]:"",cc>=2?r[cc-2]:""].map(x=>String(x==null?"":x)).join(" ");
+          if(nf===PO_YEL){const t=ptx;
             const m=t.match(PO_F);if(m){fl.p=m[1]+"F"+m[2];fl.b=+m[1];fl.f=+m[2];}else fl.p="?";}
           if(poIsYel(kf))fl.k=1;else if(poIsPalePink(kf))fl.k=2;
           /* The cap is the LEFT cell (VMI Order, cc+6) per the owner's rule. cc+7 (Order Confirm)
