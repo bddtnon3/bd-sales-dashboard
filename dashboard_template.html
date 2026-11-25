@@ -2442,8 +2442,8 @@ function doLogin(){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   document.getElementById("uName").textContent=acc.name;
-  document.getElementById("uRole").textContent=ROLE_TH[acc.role]||"เซลล์";
-  document.getElementById("uAv").textContent=(ROLE_AV[acc.role]||acc.name.substring(0,2)).toUpperCase();
+  document.getElementById("uRole").textContent=bdRoleOf(S.user);
+  document.getElementById("uAv").textContent=bdAvOf(S.user);
   /* sales default to own line view; manager sees team */
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
@@ -3074,6 +3074,29 @@ const TEAM_ROLES=["wh","ds","sup"];
 const TEAM_HOME={wh:"spord",ds:"spord",sup:"promo"};
 const ROLE_TH={manager:"เห็นข้อมูลทุกสาย",wh:"ทีมคลัง",ds:"ทีมสายส่ง",sup:"หัวหน้าเซลล์",sales:"เซลล์"};
 const ROLE_AV={manager:"M",wh:"คล",ds:"สส",sup:"หน"};
+/* ==========================================================================
+ * 🧑 บัญชีแอดมิน 1-4 ใช้ role เดียวกับผู้จัดการ (ตั้งแต่ 6 พ.ย. 69) — แต่ "ไม่ใช่คนเดียวกัน"
+ * เจ้าของเจอเอง 26 พ.ย. 69: เข้าเว็บแอดมินแล้วมุมขวาขึ้นตัว **M** เหมือนบัญชีผู้จัดการเป๊ะ
+ * เพราะชื่อย่อกับคำบรรยายอ่านจาก role ล้วน ๆ ไม่ได้ดูว่าเป็นบัญชีไหน ⇒ ดูไม่ออกว่ากำลังใช้
+ * บัญชีใครอยู่ · ตอนนี้ A1-A4 = แอดมิน 1-4 · M = ผู้จัดการ
+ * ⚠️ นี่คือเรื่องการแสดงผล — สิทธิ์จริงยังตรวจที่ฝั่งเซิร์ฟเวอร์เหมือนเดิมทุกอย่าง
+ * ⚠️ bdOwner() = "บัญชีผู้จัดการตัวจริง" ใช้กับส่วนที่เจ้าของสั่งว่าเฉพาะเขาเท่านั้น
+ *    ห้ามเอาไปแทน role manager ในงานประจำของแอดมิน (ตัดบิล · ตรวจ GIN · อัพไฟล์) จะทำงานไม่ได้
+ * ==========================================================================*/
+const ADMIN_NO=/^admin(\d+)$/;
+function bdUid(acc){return String(((acc||S.user||{}).id)||"").trim().toLowerCase();}
+function bdIsAdminAcc(acc){const a=acc||S.user||{};return a.role==="manager"&&ADMIN_NO.test(bdUid(a));}
+function bdOwner(acc){const a=acc||S.user||{};return a.role==="manager"&&bdUid(a)==="manager";}
+function bdAvOf(acc){
+  const m=bdUid(acc).match(ADMIN_NO);
+  if(m&&(acc||{}).role==="manager")return "A"+m[1];
+  return (ROLE_AV[(acc||{}).role]||String((acc||{}).name||"").substring(0,2)).toUpperCase();
+}
+function bdRoleOf(acc){
+  const m=bdUid(acc).match(ADMIN_NO);
+  if(m&&(acc||{}).role==="manager")return "แอดมิน "+m[1];
+  return ROLE_TH[(acc||{}).role]||"เซลล์";
+}
 function tabIsTeam(r){return TEAM_ROLES.indexOf(r||tabRole())>=0;}
 function tabHome(r){return TEAM_HOME[r||tabRole()]||"sales";}
 function tabOk(x){
@@ -5128,7 +5151,7 @@ function pjMapDraw(){
   PJMAP.map.fitBounds(b,40);
 }
 function pjSaveKey(){
-  if(!pjIsMgr()){alert("เฉพาะผู้จัดการเท่านั้น");return;}
+  if(!pjIsMgr()){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return;}
   const el=document.getElementById("pjKeyIn");
   const v=String((el||{}).value||"").trim();
   if(v&&!/^AIza[0-9A-Za-z_-]{20,}$/.test(v)){
@@ -6187,7 +6210,7 @@ function pmSeedLeft(){
   return PROMO_SEED.filter(x=>!have[x.m+"|"+x.name]);
 }
 function pmSeedLoad(){
-  if(!(S.user&&S.user.role==="manager")){alert("เฉพาะผู้จัดการเท่านั้น");return;}
+  if(!(S.user&&S.user.role==="manager")){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return;}
   const add=pmSeedLeft();
   if(!add.length){alert("โปรชุดนี้อยู่ในระบบแล้ว");return;}
   if(!confirm("ใส่โปรโมชั่น "+fmtMonth(PROMO_SEED[0].m)+" จำนวน "+add.length+" โปร ที่อ่านมาจากสไลด์ของ Unilever?\n\n"+
@@ -6511,7 +6534,7 @@ async function pmPush(id,it){
   }catch(ex){alert("บันทึกขึ้นเซิร์ฟเวอร์ไม่สำเร็จ: "+(ex&&ex.message||ex)+"\n\nข้อมูลที่กรอกยังอยู่บนหน้าจอ ลองกดบันทึกอีกครั้ง");}
 }
 function pmDelete(id){
-  if(!(S.user&&S.user.role==="manager")){alert("เฉพาะผู้จัดการเท่านั้น");return;}
+  if(!(S.user&&S.user.role==="manager")){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return;}
   const it=pmOk().items[id];if(!it)return;
   const nRes=Object.keys(PROMO.res).filter(k=>k.slice(0,id.length+1)===id+"|").length;
   if(!confirm('ลบโปรโมชั่น "'+it.name+'" ออกจากระบบ?\n\n'+
@@ -7804,7 +7827,7 @@ function peKindHtml(r){
 /* 📕 หน้าจอฝั่ง BUM */
 function peBumHtml(){
   if(typeof PRICE==="undefined")return `<div class="insight">หน้านี้ยังอ่านไฟล์ราคาไม่ได้</div>`;
-  if(!peBumOk())return `<div class="insight">🔒 หน้านี้เปิดได้เฉพาะผู้จัดการ<br>
+  if(!peBumOk())return `<div class="insight">บัญชีนี้เปิดส่วนนี้ไม่ได้<br>
     เซลล์ดูได้ที่ปุ่ม <b>🔻 โปรหมดไปแล้ว</b> ซึ่งอ่านจากใบสั่งแทน</div>`;
   if(!PRICE.loaded){if(typeof prLoad==="function")prLoad();return `<div class="insight">⏳ กำลังโหลดไฟล์ราคา…</div>`;}
   if(PRICE.err)return `<div class="note">อ่านไฟล์ราคาไม่ได้: ${anaEsc(PRICE.err)}</div>`;
@@ -8797,7 +8820,7 @@ function psSetChart(t){PS2.chart=t;renderPOSOverview();}
 function renderPOS(){
   if(!(S.user&&S.user.role==="manager")){
     ["posBar","posCards","posDiff","posOverview","posSubTabs"].forEach(i=>{const e=document.getElementById(i);if(e)e.innerHTML="";});
-    document.getElementById("posBody").innerHTML='<div class="panel"><div class="insight">หน้านี้สำหรับผู้จัดการเท่านั้น</div></div>';return;}
+    document.getElementById("posBody").innerHTML='<div class="panel"><div class="insight">บัญชีนี้เปิดส่วนนี้ไม่ได้</div></div>';return;}
   if(PS2.main==="sales"){renderSalesOrd();return;}
   const ds=psDates(),sel=document.getElementById("posDate");
   if(!ds.length){
@@ -9528,7 +9551,7 @@ function ldStoreCode(id,v){
 }
 function ldNoteEdit(id){
   const cur=ldMetaOf(id).note||"";
-  const v=prompt("บันทึกภายในเกี่ยวกับร้านนี้ (เห็นเฉพาะ manager)",cur);
+  const v=prompt("บันทึกภายในเกี่ยวกับร้านนี้",cur);
   if(v===null)return;ldWrite(id,{note:v.trim()});renderLeads();
 }
 function ldDel(id){
@@ -13046,7 +13069,7 @@ const SP_DAYTABS=["key","rep","adm"];
 function spTabsOn(sl){
   const g=spGrpOf(sl===undefined?spSlip(SP.sid):sl);
   let n=0;
-  return SP_TABS.filter(x=>!x.off&&(!x.mgr||spMgr())&&(!x.grp||x.grp===g))
+  return SP_TABS.filter(x=>!x.off&&(!x.mgr||spRptOk())&&(!x.grp||x.grp===g))
     .map(x=>Object.assign({},x,{lb:(x.nonum?"":SP_NUM[n++]+" ")+x.ic+" "+x.nm}));
 }
 /* แท็บที่เลือกค้างไว้อาจไม่มีในใบประเภทนี้ (เช่น ซุปจด ของใบ A) → ถอยไปแท็บแรกที่มีจริง
@@ -13568,7 +13591,7 @@ function spBarHtml(sl){
   const subs=spSubs(sl.id),done=subs.filter(r=>spStage(r)>=SP_STEPS.length).length;
   const ttl=spSlipTitle(sl.id,30);
   return `📦 <b>${anaEsc(ttl||sl.id)}</b> <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>`+
-    `<span class="dci-src">${anaEsc(sl.id)}${sl.d?" · "+fmtDate(sl.d):""}`+
+    `<span class="dci-src">${anaEsc(sl.id)}`+
     (subs.length?` · ออเดอร์ย่อย ${subs.length} เลข · จบแล้ว ${done}`:"")+`</span>`+spLockBtn()+
     spGrpBar(sl);
 }
@@ -13693,19 +13716,33 @@ const SP_MAXITEM=10;          /* เกินนี้ย่อเป็น "…
  *    (แอดมินยังต้องใช้รหัสคุยกับคลัง) แต่ไม่ใช่หัวเรื่องอีกต่อไป
  * ⚠️ ใบที่ยังไม่มีสินค้า ต้องถอยไปใช้รหัสใบ ไม่ใช่ขึ้นช่องว่าง
  * ==========================================================================*/
-function spSlipTop(sid,n){
-  return spSlipCodes(sid).slice()
-    .sort((a,b)=>(+b.cs||0)-(+a.cs||0)||(+b.pc||0)-(+a.pc||0))
-    .slice(0,n||2);
+/* ==========================================================================
+ * 🏷 ชื่อที่ใช้เรียกใบออเดอร์ = **วันที่ · จำนวนรายการ · จำนวนลัง**
+ *   เจ้าของสั่ง 26 พ.ย. 69: *"ปรับชื่อออเดอร์ดีกว่า จากที่ต้องใช้ชื่อสินค้าและจำนวน
+ *   ใช้วันที่ - จำนวนสินค้า - จำนวนลัง ขึ้นแทน เช่น 11 พ.ย. 7 รายการ 160 ลัง"*
+ *   (ของเดิมเป็นชื่อสินค้าสองตัวแรก ซึ่งยาวจนล้นบรรทัดบนมือถือ และใบที่ขึ้นต้นด้วยสินค้า
+ *    เดียวกันก็อ่านแยกกันไม่ออก — วันที่แยกได้ชัดกว่า)
+ * ⚠️ ปีไทยจะโผล่เฉพาะใบที่ไม่ใช่ปีนี้ ไม่งั้นทุกใบยาวเท่ากันหมดโดยไม่ได้ข้อมูลเพิ่ม
+ * ⚠️ ใบที่ยังไม่มีวันที่/สินค้า ต้องถอยไปใช้รหัสใบ ห้ามขึ้นบรรทัดว่าง
+ * ==========================================================================*/
+function spDateShort(d){
+  if(!d)return "";
+  const dt=new Date(d+"T00:00:00");
+  if(isNaN(dt.getTime()))return "";
+  const now=new Date();
+  return dt.getDate()+" "+MONTH_TH[dt.getMonth()]+
+    (dt.getFullYear()===now.getFullYear()?"":" "+(dt.getFullYear()+543));
 }
 function spSlipTitle(sid,max){
-  const all=spSlipCodes(sid), top=spSlipTop(sid,2);
-  if(!top.length)return "";
+  const codes=spSlipCodes(sid),sl=spSlip(sid);
+  const cs=spSlipRows(sid).reduce((a,l)=>a+(+l.cs||0),0);
   const N=v=>(Math.round((+v||0)*100)/100).toLocaleString();
-  const cut=t=>{const m=max||26;const x=String(t||"");return x.length>m?x.slice(0,m-1)+"…":x;};
-  const part=top.map(c=>cut(c.nm||oname(c.code)||("รหัส "+c.code))+" "+N(c.cs)+" ลัง");
-  const more=all.length-top.length;
-  return part.join(" + ")+(more>0?" +อีก "+more:"");
+  const part=[];
+  const d=spDateShort(sl&&sl.d);
+  if(d)part.push(d);
+  if(codes.length)part.push(codes.length+" รายการ");
+  if(cs)part.push(N(cs)+" ลัง");
+  return part.length?part.join(" · "):"";
 }
 function spSlipCard(x){
   const g=SP_GRP[spGrpOf(x)];
@@ -13729,8 +13766,7 @@ function spSlipCard(x){
     <div class="cst-gh">
       <div class="cst-t"><b>${anaEsc(spSlipTitle(x.id)||x.id)}</b>
         <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>
-        <span class="psub">${x.d?fmtDate(x.d):"-"} · ${anaEsc(x.id)} · ${codes.length} สินค้า · ${N(cs)} ลัง${
-          x.own?" · 👤 "+anaEsc(x.own):""}</span></div>
+        <span class="psub">${anaEsc(x.id)}${x.own?" · 👤 "+anaEsc(x.own):""}</span></div>
       <div class="cst-n">${cstPctPill(pct,left,cs)}
         <span class="psub">✍️ คีย์แล้ว ${days.length} วัน · 🔎 ตรวจแล้ว ${gn} วัน</span></div>
       <span class="cst-ar">▶</span></div>
@@ -13793,7 +13829,9 @@ function spCases(sid){
  * ⚠️ มูลค่าของออเดอร์พิเศษ "ไม่ใช่ยอดเพิ่ม" แต่เป็นส่วนหนึ่งของยอดขายรายวันอยู่แล้ว
  *    จึงเป็นการ **หักออก** ไม่ใช่บวกเข้า
  * ==========================================================================*/
-function spRptOk(){return spMgr();}
+/* ⚠️ เจ้าของสั่งไว้ตอนสร้างหน้านี้ว่า "เฉพาะ manager เท่านั้นนะ" — แอดมิน 1-4 ใช้ role manager
+   ร่วมกัน หน้านี้จึงเคยเปิดให้ทุกคน ต้องเช็คที่ "บัญชี" ไม่ใช่ที่ role */
+function spRptOk(){return bdOwner();}
 function spRptDays(sid){
   const C=spKeyOk(),R=spRepOk(),s={};
   const add=m=>Object.keys(m||{}).forEach(k=>{const p=k.split("|");if(p[0]===sid&&p[1])s[p[1]]=1;});
@@ -13836,7 +13874,7 @@ function spRptRows(sid){
   });
 }
 function spRptHtml(sid){
-  if(!spRptOk())return `<div class="panel"><div class="insight">🔒 หน้านี้เปิดได้เฉพาะผู้จัดการ</div></div>`;
+  if(!spRptOk())return `<div class="panel"><div class="insight">บัญชีนี้เปิดส่วนนี้ไม่ได้</div></div>`;
   const rows=spRptRows(sid),lots=(typeof cstSlipRows==="function")?cstSlipRows(sid):[];
   const R=x=>(Math.round(x*100)/100).toLocaleString();
   const B=x=>x==null?'<span style="color:var(--muted)">—</span>':THB(x);
@@ -13858,7 +13896,7 @@ function spRptHtml(sid){
     <td>${r.net==null?'<span style="color:var(--muted)">—</span>':"<b>"+THB(r.net)+"</b>"}</td>
     <td>${r.pct==null?"-":r.pct+"%"}</td></tr>`).join("");
   return `<div class="panel">
-    <h3>📊 รายงานใบนี้ <span class="psub">(เฉพาะผู้จัดการ)</span></h3>
+    <h3>📊 รายงานใบนี้</h3>
     <div class="cards" style="margin-top:10px">
       <div class="card"><div class="k">ตัดบิลไว้</div><div class="v">${R(cut)}</div><div class="s">ลัง</div></div>
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k">เซลล์คีย์แล้ว</div>
@@ -14557,8 +14595,7 @@ function renderSpord(){
       const cs=rows.reduce((a,r)=>a+(+r.cs||0),0);
       bar.innerHTML=`📦 <b>${anaEsc(spSlipTitle(SP.sid,30)||SP.sid)}</b>`+
         ` <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>`+
-        `<span class="dci-src">${anaEsc(SP.sid)}${slNow.d?" · "+fmtDate(slNow.d):""} · ${rows.length} สินค้า · ${
-          (Math.round(cs*100)/100).toLocaleString()} ลัง</span>`+spLockBtn()+spGrpBar(slNow);
+        `<span class="dci-src">${anaEsc(SP.sid)}${slNow.d?" · "+fmtDate(slNow.d):""}</span>`+spLockBtn()+spGrpBar(slNow);
       const sec=spSec();
       /* แถวแท็บแบบเดียวกับแท็บย่อยของหมวดอื่น (.tabs2) — แถวเดียว เลื่อนซ้ายขวาได้
          และวาดลงกล่อง #spTabs ที่อยู่ "บนสุดของหน้า" ใต้แถบหมวดใหญ่ ไม่ใช่ในเนื้อหน้า

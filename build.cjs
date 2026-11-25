@@ -224,8 +224,8 @@ function doLogin(){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   document.getElementById("uName").textContent=acc.name;
-  document.getElementById("uRole").textContent=ROLE_TH[acc.role]||"เซลล์";
-  document.getElementById("uAv").textContent=(ROLE_AV[acc.role]||acc.name.substring(0,2)).toUpperCase();
+  document.getElementById("uRole").textContent=bdRoleOf(S.user);
+  document.getElementById("uAv").textContent=bdAvOf(S.user);
   /* sales default to own line view; manager sees team */
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
@@ -258,8 +258,8 @@ async function afterLogin(){
   const acc=S.user;
   document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");
   document.getElementById("uName").textContent=acc.name;
-  document.getElementById("uRole").textContent=ROLE_TH[acc.role]||"เซลล์";
-  document.getElementById("uAv").textContent=(ROLE_AV[acc.role]||(acc.name||"").substring(0,2)).toUpperCase();
+  document.getElementById("uRole").textContent=bdRoleOf(S.user);
+  document.getElementById("uAv").textContent=bdAvOf(S.user);
   if(acc.role==="sales"){S.scope="me";setSeg("scopeSeg","s","me");}
   document.querySelectorAll(".admin-upload").forEach(e=>e.style.display=acc.role==="manager"?"":"none");
   document.querySelectorAll(".sales-only").forEach(e=>e.style.display=acc.role==="sales"?"":"none");

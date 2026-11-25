@@ -273,7 +273,7 @@ const P_NONE  ='โอโมน้ำซากุระโรแมนซ์';
    S.user={id:'CT11',role:'sales',name:'เซลล์'};
    PE.only='bum';renderPromoEnd();
    const tx3=document.getElementById('peBody').textContent.replace(/\s+/g,' ');
-   o.salesBlocked=/เปิดได้เฉพาะผู้จัดการ/.test(tx3)&&tx3.indexOf('90000001')<0;
+   o.salesBlocked=/บัญชีนี้เปิดส่วนนี้ไม่ได้/.test(tx3)&&tx3.indexOf('90000001')<0;
    o.salesHasBum=peHasBum();
    PRICE=JSON.parse(keepP);S.user=JSON.parse(keepU);PE.only='gone';renderPromoEnd();
    return o;});

@@ -334,12 +334,13 @@ const ORIGIN='https://bd-spord.test/';
    o.oldB=spGrpOf({g:'B'});
    o.newD=spGrpOf({g:'D'});
    o.junk=spGrpOf({g:'ZZ'});
-   /* หัวเรื่อง = สินค้าที่มีจำนวนมากที่สุดก่อน */
+   /* หัวเรื่อง = วันที่ · จำนวนรายการ · จำนวนลัง */
    o.title=spSlipTitle('B20261118-01');
-   o.top=spSlipTop('B20261118-01',2).map(x=>x.code);
+   o.short=spDateShort('2025-08-04');
+   o.thisYear=spDateShort(todayISO());
    /* ใบที่ยังไม่มีสินค้า ต้องถอยไปใช้รหัส ไม่ใช่ช่องว่าง */
-   CSTOCK.slips['EMPTY-1']={d:'2026-11-18',at:1,up:1};
-   o.empty=spSlipTitle('EMPTY-1');
+   CSTOCK.slips['EMPTY-X']={at:1,up:1};
+   o.empty=spSlipTitle('EMPTY-X');
    /* การ์ดในรายการเดือน + กล่องเลือกใบ ต้องขึ้นชื่อสินค้า และติดแท็กประเภท */
    SP.view='mon';SP.ym='2026-11';renderSpord();
    o.card=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
@@ -351,15 +352,17 @@ const ORIGIN='https://bd-spord.test/';
  t('🛟 ข้อมูลเก่าไม่ต้องย้าย — ใบที่ไม่มีธงยังเป็นตัดบิลรอส่ง และ B ยังเป็นส่งแล้วรอตัดบิล',
    tag.oldDefault==='A'&&tag.oldB==='B'&&tag.newD==='D'&&tag.junk==='A',
    JSON.stringify(tag));
- t('🔑 หัวเรื่องใบเป็นชื่อสินค้าหลัก + จำนวนลัง (เรียงจากมากไปน้อย สองตัวแรก)',
-   /โอโมน้ำ ซากุระ 120 ลัง/.test(tag.title)&&/บรีสเอกเซล 80 ลัง/.test(tag.title)&&
-   tag.top.join(',')==='64849613,65456729'&&/อีก 1/.test(tag.title),tag.title);
- t('🛟 ใบที่ยังไม่มีสินค้า ถอยไปใช้รหัสใบ ไม่ใช่ขึ้นช่องว่าง',tag.empty==='',tag.empty);
- t('🔑 การ์ดในรายการเดือนขึ้นชื่อสินค้า พร้อมแท็กประเภท และยังมีรหัสใบไว้อ้างอิง',
-   /โอโมน้ำ ซากุระ 120 ลัง/.test(tag.card)&&/ตัดบิลรอส่ง/.test(tag.card)&&
+ /* เจ้าของสั่ง 26 พ.ย. 69: *"ใช้วันที่ - จำนวนสินค้า - จำนวนลัง เช่น 11 พ.ย. 7 รายการ 160 ลัง"* */
+ t('🔑 หัวเรื่องใบเป็น วันที่ · จำนวนรายการ · จำนวนลัง',
+   tag.title==='18 พ.ย. · 3 รายการ · 220 ลัง',tag.title);
+ t('🛟 ปีไทยขึ้นเฉพาะใบที่ไม่ใช่ปีนี้ (ใบของปีนี้จะได้สั้น ไม่ยาวเท่ากันหมด)',
+   /2568$/.test(tag.short)&&!/\d{4}$/.test(tag.thisYear),tag.short+' | '+tag.thisYear);
+ t('🛟 ใบที่ยังไม่มีวันที่/สินค้า ถอยไปใช้รหัสใบ ไม่ใช่ขึ้นช่องว่าง',tag.empty==='',tag.empty);
+ t('🔑 การ์ดในรายการเดือนขึ้นหัวเรื่องแบบเดียวกัน พร้อมแท็กประเภท และยังมีรหัสใบไว้อ้างอิง',
+   /3 รายการ · 220 ลัง/.test(tag.card)&&/ตัดบิลรอส่ง/.test(tag.card)&&
    /B20261118-01/.test(tag.card)&&tag.tagEl,tag.card.slice(0,110));
- t('🔑 กล่องเลือกใบก็ขึ้นชื่อสินค้า ไม่ใช่รหัสเปล่า ๆ',
-   /โอโม/.test(tag.opt),tag.opt.slice(0,90));
+ t('🔑 กล่องเลือกใบก็ขึ้นหัวเรื่องเดียวกัน ไม่ใช่รหัสเปล่า ๆ',
+   /3 รายการ/.test(tag.opt),tag.opt.slice(0,90));
 
  /* ---------- 1) ใครเห็นอะไร ---------- */
  const who=await ev(()=>{
@@ -729,8 +732,8 @@ const ORIGIN='https://bd-spord.test/';
    card.items.join(' | '));
  t('🔑 ...และหน้าตาเหมือนใบในหน้าสต็อคกลาง (แถบสีซ้าย + แถบเปอร์เซ็นต์ + pill)',
    card.bar&&!!card.brd&&/ส่งออกแล้ว/.test(card.tx),card.brd);
- t('...หัวใบบอกจำนวนสินค้า ยอดลัง และผู้รับผิดชอบ',
-   /3 สินค้า/.test(card.tx)&&/150 ลัง/.test(card.tx)&&/Supervisor/.test(card.tx),
+ t('...หัวใบบอกจำนวนรายการ ยอดลัง และผู้รับผิดชอบ',
+   /3 รายการ/.test(card.tx)&&/150 ลัง/.test(card.tx)&&/Supervisor/.test(card.tx),
    card.tx.slice(0,120));
  t('🛟 ปุ่ม "สร้างออเดอร์ใหม่" มีปุ่มเดียว ไม่ซ้ำสองที่',card.news===1,card.news+' ปุ่ม');
  /* เจ้าของสั่ง 26 พ.ย. 69: *"ย้ายปุ่มอัพไฟล์ Allocate ขึ้นไปด้านบนข้างปุ่มสร้างออร์เดอร์ใหม่เลย
@@ -1518,6 +1521,46 @@ const ORIGIN='https://bd-spord.test/';
    rep2.cards+' การ์ด · inputmode='+rep2.inputs);
  t('🔑 ...และบอกเป้าที่ซุปตั้งไว้บนการ์ด',/เป้า/.test(rep2.tx)&&/ครีมทาผิว เอ/.test(rep2.tx),
    rep2.tx.slice(rep2.tx.indexOf('ครีมทาผิว'),rep2.tx.indexOf('ครีมทาผิว')+70));
+
+ /* ================================================================
+  * 16) 🧑 บัญชีแอดมิน 1-4 ไม่ใช่บัญชีผู้จัดการ (เจ้าของเจอเอง 26 พ.ย. 69)
+  *   เข้าเว็บแอดมินแล้วมุมขวาขึ้นตัว M เหมือนผู้จัดการเป๊ะ และเห็นแท็บ 📊 รายงาน
+  *   ที่เขาสั่งไว้ว่า "เฉพาะ manager เท่านั้นนะ" — เพราะ admin1-4 ใช้ role manager ร่วมกัน
+  * ================================================================ */
+ const acct=await ev(()=>{
+   __reset();
+   const A={id:'admin1',role:'manager',name:'แอดมิน 1'};
+   const M={id:'manager',role:'manager',name:'ผู้จัดการ'};
+   const o={avA:bdAvOf(A),roA:bdRoleOf(A),avM:bdAvOf(M),roM:bdRoleOf(M),
+     ownA:bdOwner(A),ownM:bdOwner(M),admAcc:bdIsAdminAcc(A),admAcc2:bdIsAdminAcc(M)};
+   const keys=()=>spTabsOn(spSlip('B20261118-01')).map(x=>x.k).join(',');
+   S.user=A;try{localStorage.setItem('bdsp:admin1','1');}catch(e){}
+   o.tabsA=keys();o.rptA=spRptOk();
+   o.jobsA={mgr:spMgr(),cst:cstMgr(),adm:spAdmOk(),sup:spSupOk()};
+   SP.view='slip';SP.sid='B20261118-01';SP.sec='rpt';renderSpord();
+   o.secA=spSec();                       /* แท็บที่ไม่มีสำหรับเขา ต้องไม่เปิดให้ */
+   o.pageA=spRptHtml('B20261118-01');
+   S.user=M;try{localStorage.setItem('bdsp:manager','1');}catch(e){}
+   o.tabsM=keys();o.rptM=spRptOk();
+   o.pageM=spRptHtml('B20261118-01');
+   return o;});
+ t('🔑 หน้าจอแยกบัญชีแอดมินออกจากบัญชีผู้จัดการ (เดิมขึ้น M เหมือนกันทั้งคู่)',
+   acct.avA==='A1'&&acct.roA==='แอดมิน 1'&&acct.avM==='M'&&acct.roM!=='แอดมิน 1',
+   acct.avA+'/'+acct.roA+' · '+acct.avM+'/'+acct.roM);
+ t('🔑 📊 รายงาน เปิดได้เฉพาะบัญชีผู้จัดการจริง ๆ ไม่ใช่ทุกคนที่ role เป็น manager',
+   !acct.rptA&&acct.rptM&&acct.tabsA.indexOf('rpt')<0&&acct.tabsM.indexOf('rpt')>=0,
+   'แอดมิน: '+acct.tabsA+' | ผู้จัดการ: '+acct.tabsM);
+ t('🔒 ...และเปิดตรง ๆ ก็ไม่ได้ ต้องขึ้นว่าบัญชีนี้เปิดไม่ได้',
+   /บัญชีนี้เปิดส่วนนี้ไม่ได้/.test(acct.pageA)&&!/รายงานใบนี้/.test(acct.pageA)&&
+   /รายงานใบนี้/.test(acct.pageM)&&acct.secA!=='rpt',
+   acct.pageA.replace(/<[^>]*>/g,' ').slice(0,80)+' · sec='+acct.secA);
+ /* ⚠️ ห้ามเผลอเอา bdOwner ไปแทน role manager ในงานประจำ ไม่งั้นแอดมินทำงานไม่ได้ทั้งระบบ */
+ t('🛟 แอดมินยังทำงานประจำได้ครบเหมือนเดิม (ตัดบิล · ตรวจ GIN · เปิดใบ)',
+   acct.jobsA.mgr&&acct.jobsA.cst&&acct.jobsA.adm&&acct.jobsA.sup,
+   JSON.stringify(acct.jobsA));
+ t('🛟 bdOwner แยกถูก และ bdIsAdminAcc ไม่เหมาบัญชีผู้จัดการเข้าไปด้วย',
+   !acct.ownA&&acct.ownM&&acct.admAcc&&!acct.admAcc2,
+   JSON.stringify({ownA:acct.ownA,ownM:acct.ownM,a:acct.admAcc,m:acct.admAcc2}));
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

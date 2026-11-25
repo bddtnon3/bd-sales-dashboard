@@ -260,6 +260,29 @@ nothing, and the failure message must say what to do, not `unauthorized`. Retry 
 or requests double. Prove it with **`node test/auth-renew.test.mjs`** (15 checks) and
 **`node test/browser/reauth.test.cjs`** (25 checks). Rules: `HANDOFF.md` §5.
 
+## 🧑 Role `manager` is not one person — `admin1`–`admin4` share it
+The owner found this himself on 26 Nov 26: he opened `/admin`, the avatar read **M** and the
+manager-only 📊 รายงาน tab was there. Both were right by the code and wrong by his intent — the four
+admin accounts carry **role `manager`**, so every `role === "manager"` check admits them, and the
+avatar/role label was keyed on the role alone, so an admin was indistinguishable from the owner on
+screen. Two separate fixes, and the distinction now has a name:
+- **`bdOwner()`** = role `manager` **and** id `manager` — the owner's own account. **`bdAvOf`/`bdRoleOf`**
+  render `A1`–`A4` / `แอดมิน 1`–`4` for the admins and `M` for the owner (used in the template's
+  standalone login and in both of `build.cjs`'s injected login paths — all three must stay in step).
+- **📊 รายงาน is the only thing gated on `bdOwner`** (`spRptOk`), because he said *"เฉพาะ manager
+  เท่านั้นนะ"* when he asked for it. **Never swap `bdOwner` in for role `manager` in the admins'
+  routine work** — bill-cut slips (`cstMgr`), the GIN check (`spAdmOk`), creating or editing an
+  order (`spMgr`), uploads (`.admin-upload`), PJP settings (`pjIsMgr`), promotions (`pmCanEdit`) and
+  `api/save.js` all have to keep admitting admin1–4, or four people stop being able to work.
+- **The UI no longer claims who may see what.** Messages that said *"เฉพาะผู้จัดการเท่านั้น"* while
+  admins in fact had access now read **"บัญชีนี้แก้ส่วนนี้ไม่ได้" / "บัญชีนี้เปิดส่วนนี้ไม่ได้"**,
+  which is both true and the house rule against role narration.
+- **Still shared with the admins, deliberately:** the BUM cost file (`peBumOk`, and `api/price.js`
+  returns `bum` to any role `manager`), วิเคราะห์การสั่งของ, the auto-PO calculator and the DCI page.
+  Those are role-gated, not owner-gated; locking them would stop admin work, and the owner has not
+  asked for it. **If that is ever meant to be the owner alone, the server check in `api/price.js`
+  must change too** — hiding the page while the browser still receives the data would be theatre.
+
 ## Accounts
 `lib/accounts.js` is the only real account list (passwords never reach the browser; any one can be
 overridden with `PASS_<USER>`). It holds `manager`, the 12 sales lines, **`admin1`…`admin4`**, and —
@@ -785,11 +808,13 @@ code, never printed.
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
   with **`node test/browser/cstock.test.cjs`** (239 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
-  **A slip is named by its goods, not its code** (`spSlipTitle`/`spSlipTop`, owner 26 Nov 26:
-  *"ขึ้นโชว์ชื่อสินค้าหลักและจำนวนลัง … ไม่ต้องดูจากรหัสมันงง"*): the month cards, the slip picker
-  and the page header all lead with the **top one or two products by case count** and keep the slip
-  id as a small reference line, because admins still quote it to the warehouse. A slip with no
-  products falls back to the id rather than rendering blank.
+  **A slip is named `วันที่ · N รายการ · N ลัง`** (`spSlipTitle`/`spDateShort`, owner 26 Nov 26:
+  *"ใช้วันที่ - จำนวนสินค้า - จำนวนลัง ขึ้นแทน เช่น 11 พ.ย. 7 รายการ 160 ลัง"*). It replaced the
+  product-name title of earlier that day, which overflowed on a phone and made two slips that start
+  with the same product unreadable apart. The Thai year appears **only when the slip is not from
+  this year**, so today's slips stay short. The slip id stays as a small reference line, because
+  admins quote it to the warehouse, and a slip with no date or products falls back to the id rather
+  than rendering blank.
   **An order carries one of three purposes** (`SP_GRP`, brought back 26 Nov 26) shown as a `.sp-tag`
   on every card and header: **🎯 ตัวกระจาย** (the supervisor opens it; it has to reach many shops),
   **🧾 ตัดบิลรอส่ง** and **🚚 ส่งแล้วรอตัดบิล**. **No data was migrated and none needs to be** — `A`
@@ -1041,7 +1066,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (187 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (193 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1054,7 +1079,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (187 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (193 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

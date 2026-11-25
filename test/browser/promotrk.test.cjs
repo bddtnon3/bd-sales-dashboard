@@ -259,7 +259,7 @@ const ROWS=[
    /หัวหน้าเซลล์เท่านั้น/.test(perm.salesOpen)&&!perm.salesForm&&/หัวหน้าเซลล์เท่านั้น/.test(perm.salesSave),
    perm.salesOpen);
  t('🛟 หัวหน้าเซลล์ลบโปรทิ้งไม่ได้ (ลบเป็นงานของผู้จัดการ)',
-   /ผู้จัดการ/.test(perm.supDel)&&perm.stillThere===true,perm.supDel);
+   /บัญชีนี้แก้ส่วนนี้ไม่ได้/.test(perm.supDel)&&perm.stillThere===true,perm.supDel);
 
  /* ---------- 9) หน้าจอ ---------- */
  const ui=await ev(async(b64)=>{
