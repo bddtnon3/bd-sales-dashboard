@@ -785,6 +785,31 @@ code, never printed.
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
   with **`node test/browser/cstock.test.cjs`** (239 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
+  **The slip page is five tabs in work order** (`SP_TABS`, owner 26 Nov 26): **① ✍️ ซุปจด** (the
+  supervisor's per-line target) · **② 📲 เซลล์คีย์** (the rep records what they actually keyed; the
+  supervisor watches the chase table here) · **③ 🔎 แอดมินตรวจ** (GIN vs keyed) · **④ 🚚 คลังส่งออก** ·
+  **📊 รายงาน** (manager only), with 🧾 เลขออเดอร์ kept last. Everyone may *open* every tab; who may
+  *write* is checked inside each function. Only the first three are per-day, so `spDayPick` is
+  hidden on the other two (`SP_DAYTABS`).
+  **④ คลังส่งออก is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
+  to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
+  the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
+  is untouched and the two pages can never disagree. Never fork the clearing code.
+  **📊 รายงาน answers "what is this slip worth, and what is it net of the reps' sales?"** — cases cut
+  / keyed / sent / outstanding from the lots and `CSTOCK.rep`, money from the **admin's stored check**
+  (`CSTOCK.gin[].rows[].g`/`.v`, the allocation file's own GSV/NIV), and the day's total from
+  `ohSale`. The special order's money is **part of** the daily sales, so the net column **subtracts**
+  it. A day missing either side shows **—** and is counted in a banner: never print 0 or the gross
+  figure as if it were net.
+  **The ← ย้อนกลับ button steps inside the page** (`spNavPush`/`spNavBack`, `SP.hist`): tab → slip
+  list → month, and only then out to another tab. `NAV` alone holds tabs, so it used to jump
+  straight out of the group.
+  **`spDays` must test for real content, not for a key** (`spDayHas`): deleting here writes an empty
+  record or `del:1` rather than removing the key, so the date chips kept showing days the owner had
+  already cleared.
+  **The entry tables freeze their header** (`.tblwrap.sp-freeze`): the wrapper scrolls in both axes
+  and `thead th` is `position:sticky;top:0` with an **opaque** background — sticky against the page
+  instead would pin the header over the first row, which is why it was removed once before.
   **👤 Each rep owns their own line's daily figure** (owner, 26 Nov 26). The flow he set:
   ① the supervisor types each line's **target** for that day (`CSTOCK.key`, unchanged) → ② exports it
   as Excel/PDF to send the reps (`spTgtXlsx`/`spTgtPrint`) → ③ **the rep logs in with their own line's
@@ -914,7 +939,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (119 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (127 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -927,7 +952,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (119 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (127 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

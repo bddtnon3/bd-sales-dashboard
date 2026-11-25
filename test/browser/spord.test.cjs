@@ -136,13 +136,15 @@ const ORIGIN='https://bd-spord.test/';
    renderSpord();
    const o={};
    const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   SP.sec='rep';renderSpord();
    o.supNoInput=!document.getElementById('spR_CT11_64849613_sc');   /* ซุปกรอกของเซลล์ไม่ได้ */
    o.supSeesTrack=/ติดตามการคีย์รายสาย/.test(tx())&&/รอเซลล์คีย์/.test(tx());
+   SP.sec='key';renderSpord();
    o.supExport=typeof spTgtXlsx==='function'&&spTgtRows('B20261118-01','2026-11-20').body.length>0;
 
    /* เซลล์ CT11 เข้ามากรอกของตัวเอง */
    __as('sales','209611','CT11 · เซลล์');_switchTab('spord');
-   SP.sid='B20261118-01';SP.view='slip';SP.sec='key';SP.day='2026-11-20';renderSpord();
+   SP.sid='B20261118-01';SP.view='slip';SP.sec='rep';SP.day='2026-11-20';renderSpord();
    o.myLine=spMyLine();
    o.hasMine=!!document.getElementById('spR_CT11_64849613_sc');
    o.notOther=!document.getElementById('spR_CT12_64849613_sc');
@@ -169,7 +171,7 @@ const ORIGIN='https://bd-spord.test/';
    o.histShown=!document.getElementById('spHistBox').classList.contains('hidden');
 
    /* ซุปกลับมาดู: เห็นของเซลล์ แต่แก้ไม่ได้ */
-   __as('sup',null,'หัวหน้าเซลล์');SP.sec='key';renderSpord();
+   __as('sup',null,'หัวหน้าเซลล์');SP.sec='rep';renderSpord();
    const b2=window.__posts.length;
    o.supBlocked=await spRepSave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:1,sp:0,fc:0,fp:0}});
    o.supNoPost=window.__posts.length===b2;
@@ -195,6 +197,82 @@ const ORIGIN='https://bd-spord.test/';
    rep.supSeesTrack&&rep.trk&&rep.trk.tgt.cs===11&&rep.trk.rep.cs===12&&rep.trk.st==='over',
    JSON.stringify(rep.trk&&{tgt:rep.trk.tgt.cs,rep:rep.trk.rep.cs,st:rep.trk.st}));
  t('🔑 ซุปดึงเป้าออกเป็นไฟล์ส่งให้เซลล์ได้',rep.supExport);
+
+
+ /* ---------- 0.7) แท็บใหม่ · ปุ่มย้อนกลับ · ชิปวันที่ · freeze หัวตาราง ---------- */
+ const tabs=await ev(async()=>{
+   __reset();
+   [['64849613','โอโมน้ำ ซากุระ'],['65456729','บรีสเอกเซล']].forEach((p,i)=>{
+     const id='B20261118-01-t'+i;
+     CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],
+       cs:20,pc:0,sq:i,ln:i?'CT12':'CT11',clr:[],up:1};});
+   __as('manager',null,'ผู้จัดการ');_switchTab('spord');
+   const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   const o={};
+   /* เข้าหน้าใบผ่านทางปกติ: เลือกเดือน -> เลือกใบ */
+   SP.view='mon';SP.ym='';SP.hist=[];renderSpord();
+   spOpenMon('2026-11');spOpenSlip('B20261118-01');
+   o.chipsMgr=[...document.querySelectorAll('#spBody .pos-st')].map(x=>x.textContent.trim());
+   /* ปุ่มย้อนกลับต้องถอยในหมวดนี้ ไม่ใช่กระโดดออกไปแท็บอื่น */
+   o.backShown=document.getElementById('backBtn').style.display!=='none';
+   spSetSec('out');o.outTxt=tx();
+   navBack();o.afterBack1={tab:CURTAB,view:SP.view,sec:SP.sec};
+   navBack();o.afterBack2={tab:CURTAB,view:SP.view};
+   navBack();o.afterBack3={tab:CURTAB,view:SP.view,ym:SP.ym};
+   /* รายงาน: ผู้จัดการเห็น */
+   spOpenMon('2026-11');spOpenSlip('B20261118-01');SP.sec='rpt';renderSpord();
+   o.rptMgr=tx();
+   /* หัวหน้าเซลล์ไม่เห็นแท็บรายงาน และเปิดตรง ๆ ก็ไม่ได้ */
+   __as('sup',null,'หัวหน้าเซลล์');SP.view='slip';SP.sid='B20261118-01';SP.sec='rpt';renderSpord();
+   o.chipsSup=[...document.querySelectorAll('#spBody .pos-st')].map(x=>x.textContent.trim());
+   o.rptSup=tx();
+   return o;});
+ t('🔑 ในใบมีแท็บ 4 ขั้นตอน + รายงาน (ผู้จัดการ) + ของเดิม',
+   tabs.chipsMgr.length===6&&/รายงาน/.test(tabs.chipsMgr[4]),tabs.chipsMgr.join(' | '));
+ t('🔑 ④ คลังส่งออก โชว์ของที่ตัดบิลไว้ของใบนี้ (ระบบเดิมของสต็อคกลาง)',
+   /คลังส่งออก/.test(tabs.outTxt)&&/ตัดบิลไว้/.test(tabs.outTxt)&&/ยังค้าง/.test(tabs.outTxt),
+   tabs.outTxt.slice(0,90));
+ t('🔑 ปุ่มย้อนกลับถอยทีละหน้าในหมวดนี้ ไม่กระโดดออกไปแท็บอื่น',
+   tabs.backShown&&tabs.afterBack1.tab==='spord'&&tabs.afterBack1.sec==='key'&&
+   tabs.afterBack2.tab==='spord'&&tabs.afterBack2.view==='mon'&&
+   tabs.afterBack3.tab==='spord',
+   JSON.stringify([tabs.afterBack1,tabs.afterBack2,tabs.afterBack3]));
+ t('🔒 รายงานเปิดได้เฉพาะผู้จัดการ',
+   /รายงานใบนี้/.test(tabs.rptMgr)&&tabs.chipsSup.length===5&&
+   !tabs.chipsSup.some(c=>/รายงาน/.test(c))&&!/รายงานใบนี้/.test(tabs.rptSup),
+   tabs.chipsSup.join(' | '));
+
+ /* ชิป "วันที่มีข้อมูลแล้ว" ต้องหายไปเมื่อลบข้อมูลของวันนั้นแล้ว */
+ const chips=await ev(async()=>{
+   __reset();
+   CSTOCK.key['B20261118-01|2026-11-20|CT11']={it:{'64849613':{sc:5}},by:'sup',at:1};
+   CSTOCK.gin['B20261118-01|2026-11-21']={g:['77'],rows:{'CT11|64849613':{sc:5}},dd:[],by:'admin1',at:2};
+   const before=spDays('B20261118-01').slice();
+   /* ยกเลิกผลตรวจของ 21 = เขียน del:1 ทับ ไม่ใช่ลบคีย์ */
+   CSTOCK.gin['B20261118-01|2026-11-21']={g:[],rows:{},dd:[],del:1,by:'admin1',at:3};
+   const after=spDays('B20261118-01').slice();
+   return {before:before,after:after};});
+ t('🛟 ลบผลตรวจแล้ว วันที่นั้นต้องหายจากแถบ "วันที่มีข้อมูลแล้ว"',
+   chips.before.join(',')==='2026-11-20,2026-11-21'&&chips.after.join(',')==='2026-11-20',
+   JSON.stringify(chips));
+
+ /* หัวตารางตอนกรอกต้อง freeze ได้จริง (ตัวครอบต้องเลื่อนเอง ไม่งั้น sticky ไม่ทำงาน) */
+ const frz=await ev(()=>{
+   __reset();
+   [['64849613','โอโม'],['65456729','บรีส']].forEach((p,i)=>{
+     const id='B20261118-01-f'+i;
+     CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],cs:9,pc:0,sq:i,up:1};});
+   __as('sup',null,'หัวหน้าเซลล์');_switchTab('spord');
+   SP.view='slip';SP.sid='B20261118-01';SP.sec='key';SP.day='2026-11-20';renderSpord();
+   const w=document.querySelector('#spBody .tblwrap.sp-freeze');
+   const th=w&&w.querySelector('thead th');
+   const cs=w?getComputedStyle(w):null, ts=th?getComputedStyle(th):null;
+   return {has:!!w,oy:cs&&cs.overflowY,pos:ts&&ts.position,top:ts&&ts.top,
+     bg:ts&&ts.backgroundColor};});
+ t('🔑 หัวตารางตอนกรอกจำนวน freeze ไว้ (sticky บนตัวครอบที่เลื่อนเอง)',
+   frz.has&&frz.pos==='sticky'&&frz.top==='0px'&&frz.oy!=='visible',JSON.stringify(frz));
+ t('🛟 ...และมีพื้นหลังทึบ ไม่ให้แถวทะลุขึ้นมาเห็นผ่านหัวตาราง',
+   !!frz.bg&&frz.bg!=='rgba(0, 0, 0, 0)',frz.bg);
 
  /* ---------- 1) ใครเห็นอะไร ---------- */
  const who=await ev(()=>{
@@ -404,7 +482,7 @@ const ORIGIN='https://bd-spord.test/';
    /พ\.ย\. 2569/.test(nav.listBar)&&/B20261118-01/.test(nav.list)&&
    /เลือกเดือนอื่น/.test(nav.list)&&!/B20261002-01/.test(nav.list),nav.list.slice(0,140));
  t('กดใบ → เข้าหน้าใบ พร้อมปุ่มกลับ และช่องเลือกใบโผล่',
-   /ฝั่งเซลล์/.test(nav.slip)&&/กลับไปรายการใบ/.test(nav.slip)&&nav.slipBox2==='',
+   /ซุปจด/.test(nav.slip)&&/กลับไปรายการใบ/.test(nav.slip)&&nav.slipBox2==='',
    nav.slip.slice(0,100));
  t('ปุ่มกลับไล่ถอยทีละชั้น: ใบ → รายการเดือน → เลือกเดือน',
    nav.back==='mon|2026-11'&&nav.back2==='mon|',nav.back+' → '+nav.back2);
@@ -623,13 +701,15 @@ const ORIGIN='https://bd-spord.test/';
    o.cards=tx();
    /* เซลล์เข้ามาเห็น "สายของฉัน" ไม่ใช่ตารางเป้าของทั้ง 12 สาย และแก้เป้าของซุปไม่ได้ */
    __as('sales','209611','เซลล์ CT11');SP.sec='key';renderSpord();
-   o.salesRead=!document.getElementById('spK_CT11_64849613_sc')&&/สายของฉัน/.test(tx());
+   o.salesRead=!document.getElementById('spK_CT11_64849613_sc')&&/เป้าของสาย/.test(tx());
    o.salesNoOther=!/สาย CT12/.test(tx());
    o.salesSees=/โอโมน้ำ ซากุระ/.test(tx());
    return o;});
- t('🔑 หน้าใบมี 2 ขั้นตอน + ของเดิมเก็บไว้ให้ดูย้อนหลัง',
-   two.chips.length===3&&/ฝั่งเซลล์/.test(two.chips[0])&&/ฝั่งแอดมิน/.test(two.chips[1])&&
-   /ของเดิม/.test(two.chips[2]),two.chips.join(' | '));
+ /* 5 ขั้นตอนเรียงตามลำดับงาน + ของเดิมท้ายสุด (รายงานเห็นเฉพาะผู้จัดการ จึงไม่อยู่ในชุดของ sup) */
+ t('🔑 หน้าใบมีแท็บครบตามลำดับงาน และของเดิมยังอยู่ท้ายสุด',
+   two.chips.length===5&&/ซุปจด/.test(two.chips[0])&&/เซลล์คีย์/.test(two.chips[1])&&
+   /แอดมินตรวจ/.test(two.chips[2])&&/คลังส่งออก/.test(two.chips[3])&&
+   /เลขออเดอร์/.test(two.chips[4]),two.chips.join(' | '));
  t('🔑 ใบออเดอร์โชว์ชื่อสินค้า ไม่ใช่รหัสเปล่า ๆ (เจ้าของบอกว่า "ขึ้นแค่รหัสมันตามดูยาก")',
    two.showsName);
  t('🔑 หัวหน้าเซลล์กรอก ขาย/แถม เป็น ลัง+ชิ้น ได้ทุกสาย',two.hasInputs);
