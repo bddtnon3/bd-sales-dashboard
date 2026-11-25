@@ -664,7 +664,7 @@ code, never printed.
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
-  with **`node test/browser/cstock.test.cjs`** (229 checks; it must load the page over a real origin,
+  with **`node test/browser/cstock.test.cjs`** (236 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
 **📦 ออเดอร์พิเศษ (`spord`) is its own top-level group**, not a tab under สต็อก — the owner moved it
   out on 18 Nov 26 (*"โยกหมวดออเดอร์พิเศษแยกออกมาจากสต็อค ให้เป็นหมวดใหญ่"*) and it is on the admin
@@ -721,10 +721,20 @@ code, never printed.
   กระจายไปร้านไหนบ้าง โดยการใส่เลขออเดอร์"*. Codes whose day has no sales file yet are counted and
   listed separately as **"ยังไม่รู้ร้าน … รอไฟล์"**, never dropped from the list.
   Rules: `HANDOFF.md` §5.
-  Adding a tab means adding it to **`openUpload`'s tab→group map** as well as `TAB_GROUPS`: that
-  map used to end in `||"sales"`, so a new tab's upload button silently opened the daily-sales
-  slots. An unmapped tab now shows every group instead of the wrong one, and the cstock test walks
-  every tab that has an upload button to prove each opens its own.
+  **There is exactly ONE upload button on the whole site**, in the header, on every page
+  (`#upBtn`, class `admin-upload` so it is manager-only) — the owner asked for it on 25 Nov 26:
+  *"ปุ่มอัพโหลดไฟล์ ช่วยทำให้มันรวมปุ่มนึงทุกหน้า สามารถอัพได้ของทุกไฟล์ได้เลย ไม่ต้องไปเปิดแทบนั้นๆ
+  โดยปรับให้มันกดเลือกแต่ละหมวดได้เลย"*. It replaced 13 per-page buttons, each of which could only
+  reach its own page's slots, so uploading a price file meant first opening the price tab. The modal
+  now carries a **category chip bar** (`#upCats`, `UP_CATS`/`upSetCat`/`upPaint`) with a
+  **📂 ทุกหมวด** chip; the chips are built from the `data-group` values actually present in the
+  modal, so a new slot with a new group appears by itself once its name is in `UP_CATS`.
+  It still **opens on the current tab's category** (`UP_TAB`) so the daily routine is no slower,
+  and that chip is marked *· หน้านี้*. Never let an unmapped tab fall through to `"sales"` — it did
+  once, and the cstock-tab upload button opened the daily-sales slots; an unmapped tab now opens on
+  ทุกหมวด. The cstock test walks every tab to prove each mapped one opens its own category, that
+  switching to another category works without leaving the page, and that no page carries a second
+  upload button.
 - `test/browser/_chrome.cjs` — finds the installed Chromium at run time. Never hard-code a
   `/opt/pw-browsers/chromium-NNNN/...` path in a test again: the image moved once and took all 15
   browser tests down with it.

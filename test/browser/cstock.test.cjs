@@ -289,22 +289,36 @@ function seed(a){
    del.n1===del.n0-1&&del.tomb,JSON.stringify(del));
  t('...การลบถึงจะสั่งบันทึกขึ้นเซิร์ฟเวอร์ (ต่างจากการแค่กดดู)',del.d===1,'sync +'+del.d);
 
- /* ---------- 9) ปุ่มอัพโหลดต้องเปิดกลุ่มของแท็บตัวเอง ----------
-    เจ้าของเจอเอง 31 ต.ค. 69: กด "＋ อัพโหลดไฟล์" ในแท็บสต็อคกลาง แล้วเด้งช่องอัพ
-    "ยอดขายรายวัน / ยอดรายเดือน / ยอดรายร้าน" มาแทน เพราะ openUpload แมปแท็บไม่ครบ
-    แล้วมี `||"sales"` รับท้ายไว้ ทำให้แท็บใหม่ทุกแท็บตกไปเป็นยอดขายเงียบ ๆ */
+ /* ---------- 9) ปุ่มอัพโหลด: ปุ่มเดียวทั้งเว็บ + เลือกหมวดเองได้ ----------
+    31 ต.ค. 69 เจ้าของเจอเอง: กดอัพโหลดในแท็บสต็อคกลาง แล้วเด้งช่อง "ยอดขายรายวัน" มาแทน
+    เพราะ openUpload แมปแท็บไม่ครบแล้วมี ||"sales" รับท้ายไว้ → แท็บใหม่ตกไปเป็นยอดขายเงียบ ๆ
+    25 พ.ย. 69 เจ้าของสั่งรวมเป็นปุ่มเดียวทุกหน้า: *"สามารถอัพได้ของทุกไฟล์ได้เลย ไม่ต้องไป
+    เปิดแทบนั้นๆ โดยปรับให้มันกดเลือกแต่ละหมวดได้เลย"* → ค่าเริ่มต้นยังเป็นหมวดของแท็บที่เปิดอยู่
+    (ของเดิมไม่ช้าลง) แต่สลับไปหมวดไหนก็ได้ในกล่องเลย */
  const up=await ev(()=>{_switchTab('cstock');openUpload();
-   const rows=[...document.querySelectorAll('#modal .up-row')];
-   const vis=rows.filter(r=>r.style.display!=='none');
+   const V=()=>[...document.querySelectorAll('#modal .up-row')].filter(r=>r.style.display!=='none');
    const o={title:document.getElementById('upTitle').textContent,
      sub:document.getElementById('upSub').textContent,
-     vis:vis.map(r=>r.dataset.group),
-     labels:vis.map(r=>(r.querySelector('label b')||{}).textContent||''),
-     open:!document.getElementById('modal').classList.contains('hidden')};
+     vis:V().map(r=>r.dataset.group),
+     /* บางหมวด (ราคา · PJP · DCODE) มีหลายช่องอัพอยู่ใน .up-row เดียวกัน ต้องอ่านทุก label */
+     labels:V().map(r=>[...r.querySelectorAll('label b')].map(x=>x.textContent).join(' + ')),
+     open:!document.getElementById('modal').classList.contains('hidden'),
+     cats:[...document.querySelectorAll('#upCats .up-cat')].map(b=>b.textContent.trim()),
+     onCat:[...document.querySelectorAll('#upCats .up-cat.on')].map(b=>b.textContent.trim()).join(''),
+     here:[...document.querySelectorAll('#upCats .up-cat')].filter(b=>/หน้านี้/.test(b.textContent))
+       .map(b=>b.textContent.replace(/\s+/g,' ').trim())};
+   /* 🔑 สลับไปหมวดราคาได้ทั้งที่ยังอยู่แท็บสต็อคกลาง */
+   upSetCat('price');
+   o.priceVis=V().map(r=>r.dataset.group);
+   o.priceLabels=V().map(r=>[...r.querySelectorAll('label b')].map(x=>x.textContent).join(' + '));
+   /* 🔑 และดูทุกหมวดพร้อมกันได้ */
+   upSetCat('');
+   o.allVis=[...new Set(V().map(r=>r.dataset.group))];
+   o.allTitle=document.getElementById('upTitle').textContent;
    closeUpload();return o;});
- t('🔧 กดอัพโหลดในแท็บสต็อคกลาง → เปิดกลุ่มสต็อคกลาง ไม่ใช่ยอดขาย',
+ t('🔧 กดอัพโหลดในแท็บสต็อคกลาง → เริ่มที่หมวดสต็อคกลาง ไม่ใช่ยอดขาย',
    up.vis.length>0&&up.vis.every(g=>g==='cstock'),up.vis.join(',')||'(ไม่มี)');
- t('...เห็นเฉพาะช่องอัพของสต็อคกลาง: ไฟล์ร้านที่ตัดบิลเข้า + ฟอร์ม Excel วิธีเดิม',
+ t('...เห็นช่องอัพของสต็อคกลาง: ไฟล์ร้านที่ตัดบิลเข้า + ฟอร์ม Excel วิธีเดิม',
    up.labels.length===2&&/ร้านที่ตัดบิลเข้า/.test(up.labels[0])&&/สต็อคกลาง/.test(up.labels[1]),
    up.labels.join(' | '));
  t('...และหัวกล่องบอกว่าเป็นไฟล์สต็อคกลาง',/สต็อคกลาง/.test(up.title),up.title);
@@ -312,27 +326,58 @@ function seed(a){
    !/Unilever/.test(up.sub)&&/ใบตัดบิล/.test(up.sub),up.sub);
  t('...ไม่มีช่อง "ยอดขายรายวัน" โผล่มาให้อัพผิดช่อง',
    !up.labels.some(x=>/ยอดขายรายวัน/.test(x)),up.labels.join(' | '));
- /* กันพลาดแบบเดิมอีก: ทุกแท็บที่มีปุ่มอัพโหลด ต้องแมปไปกลุ่มที่มีอยู่จริง */
+ t('🔑 มีแถบหมวดให้กดเลือก ครบทุกหมวดที่มีช่องอัพ + ปุ่ม "ทุกหมวด"',
+   up.cats.length>=13&&/ทุกหมวด/.test(up.cats[0])&&up.cats.some(x=>/ราคา/.test(x)),up.cats.join(' | '));
+ t('...หมวดของแท็บที่เปิดอยู่ถูกเลือกไว้ให้ และติดป้าย "หน้านี้"',
+   /สต็อคกลาง/.test(up.onCat)&&up.here.length===1&&/สต็อคกลาง/.test(up.here[0]),
+   up.onCat+' · ป้าย: '+up.here.join(','));
+ t('🔑 สลับไปหมวดราคาได้เลย ทั้งที่ยังอยู่แท็บสต็อคกลาง (ไม่ต้องไปเปิดแท็บราคาก่อน)',
+   up.priceVis.length>0&&up.priceVis.every(g=>g==='price')&&
+   up.priceLabels.some(x=>/หัวเสือ/.test(x))&&up.priceLabels.some(x=>/BUM/.test(x)),
+   up.priceLabels.join(' | '));
+ t('🔑 กด "ทุกหมวด" แล้วเห็นช่องอัพของทุกหมวดพร้อมกัน',
+   up.allVis.length>=12&&/อัพโหลดไฟล์/.test(up.allTitle),up.allVis.join(','));
+ /* กันพลาดแบบเดิมอีก: ทุกแท็บที่แมปหมวดไว้ ต้องเปิดมาตรงหมวดของตัวเอง ไม่ใช่หมวดมั่ว */
  const cover=await ev(()=>{
    const groups=[...new Set([...document.querySelectorAll('#modal .up-row')].map(r=>r.dataset.group))];
-   const bad=[],fallback=[];
+   const bad=[],wrong=[];
    TAB_GROUPS.forEach(G=>G.tabs.forEach(tb=>{
      _switchTab(tb.t);
-     const v=document.getElementById(tb.t+'View');
-     const hasBtn=!!(v&&[...v.querySelectorAll('button')].some(b=>/อัพโหลดไฟล์/.test(b.textContent)));
-     if(!hasBtn)return;
      openUpload();
      const vis=[...document.querySelectorAll('#modal .up-row')].filter(r=>r.style.display!=='none');
      const gs=[...new Set(vis.map(r=>r.dataset.group))];
      closeUpload();
-     if(!vis.length)bad.push(tb.t+':ไม่เห็นช่องอะไรเลย');
-     else if(gs.length>1)fallback.push(tb.t+':โชว์ทุกกลุ่ม');
+     if(!vis.length){bad.push(tb.t+':ไม่เห็นช่องอะไรเลย');return;}
+     const want=UP_TAB[tb.t];
+     if(want&&(gs.length!==1||gs[0]!==want))wrong.push(tb.t+':เปิดมาเป็น '+gs.join(','));
    }));
-   return {groups:groups,bad:bad,fallback:fallback};});
- t('🛟 ทุกแท็บที่มีปุ่มอัพโหลด เปิดมาแล้วเห็นช่องอัพของตัวเองเสมอ',
+   return {groups:groups,bad:bad,wrong:wrong};});
+ t('🛟 ทุกแท็บกดอัพโหลดแล้วต้องเห็นช่องอัพเสมอ ไม่มีหน้าไหนเปิดมาโล่ง',
    cover.bad.length===0,cover.bad.join(' · ')||'ok');
- t('🛟 ...และไม่มีแท็บไหนตกไปโชว์กลุ่มมั่ว (แท็บที่ยังไม่ได้แมปจะโชว์ทุกกลุ่มให้เลือกเอง)',
-   cover.fallback.length===0,cover.fallback.join(' · ')||'ok');
+ t('🛟 ...และแท็บที่แมปหมวดไว้ ต้องเปิดมาตรงหมวดของตัวเอง ไม่ใช่หมวดมั่ว',
+   cover.wrong.length===0,cover.wrong.join(' · ')||'ok');
+ /* 🔑 ปุ่มเดียวทั้งเว็บ อยู่บนหัว ไม่ใช่กระจายอยู่ในแต่ละหน้า */
+ const btn=await ev(()=>{
+   const inPages=[];
+   TAB_GROUPS.forEach(G=>G.tabs.forEach(tb=>{
+     const v=document.getElementById(tb.t+'View');
+     if(v&&[...v.querySelectorAll('button')].some(b=>/อัพโหลดไฟล์/.test(b.textContent)))inPages.push(tb.t);
+   }));
+   const hd=document.getElementById('upBtn');
+   /* ตอนล็อกอิน โค้ดจะเปิด .admin-upload ให้ผู้จัดการทั้งหมด — จำลองขั้นนั้นแล้ววัดว่าปุ่มโผล่จริง
+      (เทสต์ชุดนี้เซ็ต S.user ตรง ๆ ไม่ได้เดินผ่านหน้าล็อกอิน) */
+   document.querySelectorAll('.admin-upload').forEach(e=>e.style.display='');
+   const shown=hd?getComputedStyle(hd).display!=='none':false;
+   const inHeader=!!(hd&&hd.closest('header'));
+   return {inPages:inPages,hdr:!!hd,hdrTxt:hd?hd.textContent.trim():'',
+     hdrShown:shown,inHeader:inHeader,
+     adminOnly:hd?hd.classList.contains('admin-upload'):false};});
+ t('🔑 ปุ่มอัพโหลดอยู่บนหัวเว็บ เห็นได้ทุกหน้า',
+   btn.hdr&&btn.inHeader&&/อัพโหลดไฟล์/.test(btn.hdrTxt)&&btn.hdrShown,
+   btn.hdrTxt+' · ในหัวเว็บ='+btn.inHeader+' · โผล่='+btn.hdrShown);
+ t('🔑 ...และไม่มีปุ่มอัพโหลดซ้ำซ้อนค้างอยู่ในหน้าไหนอีก',
+   btn.inPages.length===0,btn.inPages.join(',')||'ok');
+ t('🛟 ...ยังเป็นปุ่มของผู้จัดการ/แอดมินเท่านั้น (คลาส admin-upload)',btn.adminOnly);
 
  /* ==========================================================================
   * 10) 🧾 ใบตัดบิล — กรอกในเว็บ แทนการโหลด/กรอก/อัพ Excel

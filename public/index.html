@@ -50,6 +50,16 @@ header .brand{font-size:20px}
 .usr .av{width:38px;height:38px;border-radius:50%;background:var(--blue-soft);color:var(--blue);
   display:flex;align-items:center;justify-content:center;font-weight:800}
 .logout{background:none;border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px;color:var(--muted)}
+/* 📤 ปุ่มอัพโหลดบนหัวเว็บ — มีปุ่มเดียวทั้งเว็บ อยู่ทุกหน้า */
+.upbtn{background:var(--blue);color:#fff;border:none;border-radius:9px;padding:8px 14px;font-size:13.5px;font-weight:800;white-space:nowrap}
+.upbtn:hover{background:var(--blue-dark)}
+@media(max-width:640px){.upbtn{padding:8px 10px}.upbtn .tx{display:none}}
+/* หมวดไฟล์ในกล่องอัพโหลด — กดเลือกหมวดได้ ไม่ต้องไปเปิดแท็บนั้นก่อน */
+.up-cats{display:flex;flex-wrap:wrap;gap:7px;padding:12px 20px 0}
+.up-cat{border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:6px 13px;font-size:12.5px;font-weight:700;color:var(--blue);white-space:nowrap}
+.up-cat:hover{background:var(--blue-soft)}
+.up-cat.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.up-cat .here{font-weight:400;opacity:.75}
 .logout:hover{border-color:var(--bad);color:var(--bad)}
 main{max-width:1180px;margin:0 auto;padding:22px}
 
@@ -1174,6 +1184,10 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <!-- 🛠 ลิงก์ข้ามเว็บ: เว็บเดิมโชว์ "เว็บแอดมิน" ให้ผู้จัดการ/แอดมิน (คลาส admin-upload) ·
            เว็บแอดมินเปลี่ยนเป็น "เว็บทีมขาย" (siteInit) — ข้อมูลชุดเดียวกัน ล็อกอินเดียวกัน -->
       <a class="dc-site admin-upload" id="siteLink" href="/admin" style="display:none"><span>🛠</span><span class="tx"> เว็บแอดมิน</span></a>
+      <!-- 📤 ปุ่มอัพโหลดปุ่มเดียวของทั้งเว็บ (เจ้าของสั่ง 25 พ.ย. 69: *"ช่วยทำให้มันรวมปุ่มนึง
+           ทุกหน้า สามารถอัพได้ของทุกไฟล์ได้เลย ไม่ต้องไปเปิดแทบนั้นๆ"*)
+           เมื่อก่อนมีปุ่มนี้กระจายอยู่ 13 หน้า และแต่ละปุ่มเปิดได้เฉพาะช่องของหน้านั้น -->
+      <button class="upbtn admin-upload" id="upBtn" onclick="openUpload()" style="display:none">📤<span class="tx"> อัพโหลดไฟล์</span></button>
       <button class="backbtn" id="backBtn" onclick="navBack()" style="display:none">← ย้อนกลับ</button>
       <div class="who"><b id="uName"></b><span id="uRole"></span></div>
       <div class="av" id="uAv"></div>
@@ -1223,10 +1237,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <label class="chk"><input type="checkbox" id="inclExtra"> รวมสายเสริม</label>
       </div>
       <div class="spacer"></div>
-      <div class="ctl admin-upload" id="uploadCtl" style="display:none">
-        <label>&nbsp;</label>
-        <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-      </div>
     </div>
 
     <div class="cards" id="cards"></div>
@@ -1272,9 +1282,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
           </div>
         </div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
       </div>
       <div class="kpi-monthbar" id="kpiMonthBar"></div>
       <div class="cards" id="kpiCards"></div>
@@ -1287,9 +1294,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="controls">
         <div class="ctl"><label>&nbsp;</label><div class="eb-period">🗓️ ช่วงแข่งขัน <b>1 ส.ค. – 30 ก.ย. 2569</b></div></div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
         <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
           <button class="ps-del" onclick="ebDelete()">🗑 ลบข้อมูล</button>
         </div>
@@ -1315,9 +1319,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         </div>
         <div class="ctl" id="psRouteCtl"><label>เจาะดูสาย (แผนโฟกัส)</label><select id="psRouteSel" onchange="onPsRoute()"></select></div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
       </div>
       <div class="kpi-monthbar" id="psBar"></div>
       <div class="cards" id="psCards"></div>
@@ -1330,9 +1331,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="controls">
         <div class="ctl"><label>&nbsp;</label><div class="eb-period dci-hd">🏢 DCI Score 2026 · ศูนย์ <b>BD DISTRIBUTION</b> (DT 50006820)</div></div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
       </div>
       <div class="kpi-monthbar" id="dciBar"></div>
       <div class="cards" id="dciCards"></div>
@@ -1347,9 +1345,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <div class="ctl"><label>เลือกวันสั่ง</label><div class="dstep"><button type="button" class="dstep-b" onclick="ordStep(-1)" title="วันก่อนหน้า">◀</button><button class="datebtn" onclick="openCal(allOrderDates(),ORD.date,pickOrderDate)"><span id="orderDateTxt">-</span><span>📅</span></button><button type="button" class="dstep-b" onclick="ordStep(1)" title="วันถัดไป">▶</button></div></div>
         <div class="ctl"><label>🔍 ค้นหาสถานะสินค้า (ทุกวันที่สั่ง)</label><input id="orderSearch" placeholder="พิมพ์รหัส / ชื่อสินค้า เพื่อดูสถานะ" oninput="renderOrder()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:230px"></div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
       </div>
       <div class="kpi-monthbar" id="orderBar"></div>
       <div class="rc-hint">⌨️ <b>ไล่ดูทีละรายการ</b> — คลิกที่บรรทัดไหนก็ได้ แล้วกดลูกศร <b>↑ ↓</b> เลื่อนทีละบรรทัด · <b>PgUp/PgDn</b> ทีละ 10 · <b>Home/End</b> บรรทัดแรก/สุดท้าย · <b>Esc</b> เลิกไฮไลต์<span id="rcPos"></span></div>
@@ -1400,9 +1395,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="controls" id="prUpBar" style="display:none">
         <div class="ctl"><label>&nbsp;</label><span class="psub">อัพไฟล์ราคาหัวเสือ / BUM (เดือนละครั้ง)</span></div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
       </div>
       <div class="kpi-monthbar" id="prBar"></div>
       <div id="prCtl"></div>
@@ -1417,9 +1409,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="controls" id="pcUpBar" style="display:none">
         <div class="ctl"><label>&nbsp;</label><span class="psub">อัพไฟล์ BUM (เดือนละครั้ง)</span></div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
       </div>
       <div class="kpi-monthbar" id="pcBar"></div>
       <div id="pcCtl"></div>
@@ -1433,9 +1422,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="controls" id="pjpUpBar" style="display:none">
         <div class="ctl"><label>&nbsp;</label><span class="psub">อัพไฟล์ PJP & ร้านค้า (เดือนละครั้ง)</span></div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
       </div>
       <div class="kpi-monthbar" id="pjpBar"></div>
       <div id="pjpCtl"></div>
@@ -1465,9 +1451,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <div class="ctl"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="stockZero" onchange="renderStock()"> เฉพาะคงเหลือ ≤ 0 (หมด/ติดลบ)</label></div>
         <div class="ctl" id="stockValWrap" style="display:none"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="stockVal" checked onchange="renderStock()"> 💰 แสดงต้นทุน (ขนาดบรรจุ/ต้นทุนต่อหีบ/ต้นทุนรวม)</label></div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
       </div>
       <div class="kpi-monthbar" id="stockBar"></div>
       <div class="rc-hint">⌨️ <b>ไล่ดูทีละรายการ</b> — คลิกที่บรรทัดไหนก็ได้ แล้วกดลูกศร <b>↑ ↓</b> เลื่อนทีละบรรทัด · <b>PgUp/PgDn</b> ทีละ 10 · <b>Home/End</b> บรรทัดแรก/สุดท้าย · <b>Esc</b> เลิกไฮไลต์</div>
@@ -1537,9 +1520,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <div class="ctl" id="posMonthCtl" style="display:none"><label>ช่วงเวลา</label><div class="dstep"><button type="button" class="dstep-b" onclick="selStep('posMonth',-1)" title="เดือนก่อนหน้า">◀</button><select id="posMonth" data-rev="1" onchange="PS2.month=this.value;renderSalesOrd()"></select><button type="button" class="dstep-b" onclick="selStep('posMonth',1)" title="เดือนถัดไป">▶</button></div></div>
         <div class="ctl" id="posQCtl"><label>🔍 ค้นหาสินค้า</label><input id="posQ" placeholder="พิมพ์รหัส / ชื่อสินค้า" oninput="PS2.q=this.value;renderPOSBody()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:200px"></div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
       </div>
       <div id="posProdWrap">
         <div class="kpi-monthbar" id="posBar"></div>
@@ -1712,9 +1692,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
           <input id="anaStoreSearch" placeholder="🔍 ชื่อ/รหัสร้าน" oninput="onAnaStoreSearch()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:180px">
         </div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
       </div>
       <div id="anaCrumb" class="ana-crumb"></div>
       <div class="cards" id="anaCards"></div>
@@ -1742,9 +1719,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
           <div class="dc-ttl">🧾 สร้างไฟล์อัพออเดอร์ Bulk <span>LmtOrderCreationExcel · DT CODE <b id="dcDtTxt"></b></span></div>
         </div>
         <div class="spacer"></div>
-        <div class="ctl admin-upload" style="display:none"><label>&nbsp;</label>
-          <button class="upload-btn" onclick="openUpload()">＋ อัพโหลดไฟล์</button>
-        </div>
       </div>
       <div id="dcInfo"></div>
       <div id="dcBody"></div>
@@ -1760,6 +1734,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div><h3 id="upTitle">อัพเดตข้อมูล</h3><div class="psub" id="upSub">เลือกไฟล์ .xlsx/.xls จาก Unilever — อัปเดตทันที</div></div>
       <button class="modal-x" onclick="closeUpload()">✕</button>
     </div>
+    <div class="up-cats" id="upCats"></div>
     <div class="up-body">
       <div class="up-row" data-group="sales">
         <label class="drop up-daily" for="fileDaily">📅 <b>ยอดขายรายวัน</b><small>อัพทุกวัน · ระบบใหม่ <b>dcode</b>: ไฟล์ <b>Sales_16-17112026.xlsx</b> (ไฟล์เดียวได้หลายวัน ระบบแยกวันให้เอง) · ไฟล์รายการบิลแบบเดิมยังอัพได้เหมือนเดิม</small></label>
@@ -12971,7 +12946,7 @@ function renderDCI(){
   const src=dciSrc(),ps=src.periods||[];
   const bar=document.getElementById("dciBar");
   const mgr=!!(S.user&&S.user.role==="manager");
-  if(!ps.length){bar.innerHTML=mgr?"ยังไม่มีข้อมูล DCI — กด <b>＋ อัพโหลดไฟล์</b> เพื่อใส่ไฟล์ DCI Score"
+  if(!ps.length){bar.innerHTML=mgr?"ยังไม่มีข้อมูล DCI — กด <b>📤 อัพโหลดไฟล์</b> มุมขวาบน แล้วเลือกหมวด <b>📈 DCI Score</b>"
                                   :"ยังไม่มีข้อมูล DCI — รอผู้จัดการอัพไฟล์เข้ามาก่อน";
     document.getElementById("dciCards").innerHTML="";document.getElementById("dciTrend").innerHTML="";
     document.getElementById("dciGap").innerHTML="";document.getElementById("dciRisk").innerHTML="";
@@ -14965,9 +14940,9 @@ function dcInfoHtml(){
     <div class="card"><div class="k">📦 สินค้า (SKU)</div><div class="v">${pi.list.length.toLocaleString()} รายการ</div>
       <div class="s">Master Data ${nM.toLocaleString()}${MASTER&&MASTER.up?" (อัพ "+dcAgo(MASTER.up)+")":""} · มีในสต็อก ${nS.toLocaleString()} · ในใบสั่งล่าสุด ${nF.toLocaleString()}</div></div>
   </div>`;
-  if(!nO)h+=`<div class="dc-msg warn">ยังไม่มีข้อมูลร้านค้า — กด <b>＋ อัพโหลดไฟล์</b> ด้านบน แล้วเลือก <b>Master Outlet Data</b></div>`;
+  if(!nO)h+=`<div class="dc-msg warn">ยังไม่มีข้อมูลร้านค้า — กด <b>📤 อัพโหลดไฟล์</b> มุมขวาบน แล้วเลือก <b>Master Outlet Data</b></div>`;
   else if(!nPj)h+=`<div class="dc-msg warn">⚠️ ร้านค้าในระบบยังไม่มีเลข PJP — ไฟล์ Master Outlet ชุดที่อยู่ในระบบอัพไว้ก่อนที่ระบบจะเก็บคอลัมน์ AC (PJP)
-    <br>กด <b>＋ อัพโหลดไฟล์</b> แล้วอัพ <b>Master Outlet Data</b> อีกครั้งหนึ่ง สายจะขึ้นให้เองทุกร้าน</div>`;
+    <br>กด <b>📤 อัพโหลดไฟล์</b> มุมขวาบน แล้วอัพ <b>Master Outlet Data</b> อีกครั้งหนึ่ง สายจะขึ้นให้เองทุกร้าน</div>`;
   if(!pi.list.length)h+=`<div class="dc-msg warn">ยังไม่มีรายชื่อสินค้า — อัพ <b>Master Data (สินค้าทั้งหมด)</b> ก่อน</div>`;
   if(unm.length)h+=`<div class="dc-msg warn">⚠️ มี ${unm.length} เลข PJP ที่จับเป็นรหัสสาย (CT/KA) ไม่ได้: ${unm.map(x=>anaEsc(x.pj+(x.nm?" · "+x.nm:""))).join(", ")}
     — ยังใช้งานได้ (ไฟล์ลงเลข PJP ถูกต้อง) แค่บนจอจะโชว์เป็นเลขแทนชื่อสาย</div>`;
@@ -15093,21 +15068,56 @@ function renderDcode(){
   body.innerHTML=dcEditorHtml();
 }
 /* ====================== UPLOAD (admin) ====================== */
-function openUpload(){
-  /* ⚠️ แท็บไหนไม่ได้อยู่ในตารางนี้ ห้ามตกไปเป็น "sales" เงียบๆ — ตอนเพิ่มแท็บสต็อคกลาง
-     ลืมใส่บรรทัดนี้ กดปุ่มอัพโหลดในแท็บนั้นแล้วเด้งช่องอัพ "ยอดขายรายวัน" มาแทน
-     ไม่รู้จัก = โชว์ทุกกลุ่ม ให้ผู้ใช้เลือกเอง ดีกว่าโชว์กลุ่มที่ผิด */
-  const g={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",
-    cstock:"cstock",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price",dcode:"dcode"}[CURTAB]||null;
-  const title={sales:"📊 อัพไฟล์ยอดขาย",kpi:"🎯 อัพไฟล์ eB2B & Self Ordering",eb:"🏆 อัพไฟล์แข่งขันเปิด eB2B",ps:"⭐ อัพไฟล์ Perfect Store",order:"🛒 อัพใบสั่ง / ใบ Drop",stock:"📦 อัพไฟล์สต็อก",cstock:"🧊 อัพไฟล์สต็อคกลาง (ตัดบิลไว้ก่อน)",ana:"🧪 อัพไฟล์ยอดขายรายกลุ่ม/แบรนด์",dci:"📈 อัพไฟล์ DCI Score ของศูนย์",pjp:"🗺 อัพไฟล์ PJP & ร้านค้า",price:"💰 อัพไฟล์ราคา (หัวเสือ / BUM)",dcode:"🧾 อัพไฟล์ข้อมูลตั้งต้นของ DCODE"}[g];
-  document.getElementById("upTitle").textContent=title||"อัพเดตข้อมูล";
-  /* ไฟล์สต็อคกลางแอดมินถือเอง ไม่ได้มาจาก Unilever — บรรทัดรองต้องไม่บอกผิด
-     ตั้งแต่ 4 พ.ย. 69 การตัดบิลใหม่กรอกในเว็บ ไฟล์ฟอร์ม Excel เหลือไว้เป็นวิธีเดิมเท่านั้น */
-  {const sub=document.getElementById("upSub");
-   if(sub)sub.textContent=(g==="cstock")
-     ?"ไฟล์ที่แอดมินถือเอง — ไฟล์ร้านที่ตัดบิลเข้า (Ex.export) หรือฟอร์ม Excel แบบเดิม · การตัดบิลใหม่ให้กรอกที่แท็บ 🧾 ใบตัดบิล"
-     :"เลือกไฟล์ .xlsx/.xls จาก Unilever — อัปเดตทันที";}
-  document.querySelectorAll("#modal .up-row").forEach(el=>{el.style.display=(!g||el.dataset.group===g)?"":"none";});
+/* ============================================================================
+ * 📤 กล่องอัพโหลด — ปุ่มเดียวทั้งเว็บ เลือกหมวดเอาเอง
+ * เจ้าของสั่ง 25 พ.ย. 69: *"ปุ่มอัพโหลดไฟล์ ช่วยทำให้มันรวมปุ่มนึงทุกหน้า สามารถอัพได้
+ * ของทุกไฟล์ได้เลย ไม่ต้องไปเปิดแทบนั้นๆ โดยปรับให้มันกดเลือกแต่ละหมวดได้เลย
+ * ตอนนี้ผมต้องไปเปิดหน้านั้นๆ มันถึงจะอัพข้อมูลส่วนนั้นได้"*
+ *
+ * เดิม: ปุ่มกระจายอยู่ 13 หน้า และ openUpload กรองช่องอัพตาม "แท็บที่เปิดอยู่" เท่านั้น
+ *       จะอัพไฟล์ราคาต้องไปเปิดแท็บราคาก่อน
+ * ตอนนี้: ปุ่มเดียวบนหัวเว็บ (ทุกหน้า) + แถบหมวดในกล่อง กดสลับหมวดได้ทันที
+ *
+ * ⚠️ ค่าเริ่มต้นยังเป็นหมวดของแท็บที่เปิดอยู่ — ของเดิมที่ทำทุกวันจึงไม่ช้าลงเลย
+ *    แท็บที่ไม่ได้อยู่ในตาราง UP_TAB ให้เริ่มที่ "ทุกหมวด" ห้ามตกไปเป็น "sales" เงียบ ๆ
+ *    (เคยพลาดมาแล้วตอนเพิ่มแท็บสต็อคกลาง — กดอัพแล้วเด้งช่อง "ยอดขายรายวัน" มาแทน)
+ * ⚠️ แถบหมวดสร้างจากช่องอัพที่มีอยู่จริงในกล่อง (data-group) ไม่ได้ฮาร์ดโค้ด
+ *    เพิ่มช่องอัพใหม่พร้อม data-group ใหม่ แล้วใส่ชื่อใน UP_CATS หมวดก็ขึ้นเอง
+ * ==========================================================================*/
+const UP_CATS={sales:"📊 ยอดขาย",kpi:"🎯 eB2B & Self Ordering",eb:"🏆 แข่งขันเปิด eB2B",
+  ps:"⭐ Perfect Store",order:"🛒 การสั่งของ",stock:"📦 สต็อก",cstock:"🧊 สต็อคกลาง",
+  dci:"📈 DCI Score",ana:"🧪 วิเคราะห์เชิงลึก",pjp:"🗺 PJP & ร้านค้า",
+  dcode:"🧾 DCODE",price:"💰 ราคา & ทุน"};
+const UP_TAB={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",
+  cstock:"cstock",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price",dcode:"dcode"};
+const UP_SUB={cstock:"ไฟล์ที่แอดมินถือเอง — ไฟล์ร้านที่ตัดบิลเข้า (Ex.export) หรือฟอร์ม Excel แบบเดิม · การตัดบิลใหม่ให้กรอกที่แท็บ 🧾 ใบตัดบิล",
+  price:"สองไฟล์ราคาที่ Unilever ส่งมาทุกเดือน — เก็บแยกจากข้อมูลยอดขาย ไม่กระทบกัน"};
+let UP={cat:null};
+/* หมวดที่มีช่องอัพอยู่จริง เรียงตาม UP_CATS */
+function upGroups(){
+  const have={};
+  document.querySelectorAll("#modal .up-row").forEach(el=>{if(el.dataset.group)have[el.dataset.group]=1;});
+  return Object.keys(UP_CATS).filter(k=>have[k]);
+}
+function upPaint(){
+  const g=UP.cat,here=UP_TAB[typeof CURTAB!=="undefined"?CURTAB:""]||"";
+  const bar=document.getElementById("upCats");
+  if(bar)bar.innerHTML=[["","📂 ทุกหมวด"]].concat(upGroups().map(k=>[k,UP_CATS[k]]))
+    .map(([k,nm])=>`<button type="button" class="up-cat${(g||"")===k?" on":""}" onclick="upSetCat('${k}')">${
+      nm}${(k&&k===here)?' <span class="here">· หน้านี้</span>':""}</button>`).join("");
+  document.getElementById("upTitle").textContent=g?("อัพไฟล์ "+UP_CATS[g].replace(/^\S+\s/,"")):"📤 อัพโหลดไฟล์";
+  const sub=document.getElementById("upSub");
+  if(sub)sub.textContent=(g&&UP_SUB[g])||(g?"เลือกไฟล์ .xlsx/.xls จาก Unilever — อัปเดตทันที"
+    :"กดเลือกหมวดด้านบนเพื่อกรอง หรืออัพจากช่องไหนก็ได้ในรายการนี้เลย");
+  document.querySelectorAll("#modal .up-row").forEach(el=>{
+    el.style.display=(!g||el.dataset.group===g)?"":"none";});
+}
+function upSetCat(k){UP.cat=k||null;upPaint();}
+function openUpload(g){
+  const tab=UP_TAB[typeof CURTAB!=="undefined"?CURTAB:""]||null;
+  UP.cat=(g===undefined)?tab:(g||null);
+  if(UP.cat&&upGroups().indexOf(UP.cat)<0)UP.cat=null;
+  upPaint();
   document.getElementById("modal").classList.remove("hidden");
 }
 function closeUpload(){document.getElementById("modal").classList.add("hidden");}
