@@ -12163,13 +12163,13 @@ function cstListHtml(all,mgr){
     if(!a)return 1;if(!b)return -1;
     const sa=C.slips[a]||{},sb=C.slips[b]||{};
     return String(sb.d||"").localeCompare(String(sa.d||""))||String(a).localeCompare(String(b));});
-  let shown=0,out="";
+  let shown=0,out="",grpShown=0;
   CST._shown={};                       /* รายการที่อยู่บนจอจริง ๆ ต่อก้อน (ใช้ตอน "เลือกทั้งใบ") */
   keys.forEach(k=>{
     const rowsAll=by[k].slice().sort((x,y)=>(+x.sq||0)-(+y.sq||0)||String(x.id).localeCompare(String(y.id)));
     const rows=rowsAll.filter(l=>pick(l)&&match(l));
     if(!rows.length)return;
-    shown+=rows.length;
+    shown+=rows.length;grpShown++;
     CST._shown[k||""]=rows.map(l=>l.id);
     const s=k?(C.slips[k]||{id:k,d:rowsAll[0].d}):{id:"",d:""};
     const op=!!CST.open[k||"_none"];
@@ -12204,7 +12204,15 @@ function cstListHtml(all,mgr){
       </div>`:""}
     </div>`;
   });
-  return {html:out,n:shown};
+  /* 🔑 หน้านี้มีสามหน่วยที่คนละอย่างกัน และเคยเรียก "รายการ" เหมือนกันหมดจนสับสน
+     (เจ้าของถามเอง 25 พ.ย. 69 ว่าทำไมเลขไม่ตรงกับหน้าออเดอร์พิเศษ):
+       ใบตัดบิล (slip)  = 1 ใบ  -> หน้าออเดอร์พิเศษนับอันนี้ เรียกว่า "ใบออเดอร์"
+       ลอต/บรรทัดสินค้า = 1 รายการในใบ
+       ลัง              = จำนวนของ
+     n = บรรทัดที่ "โชว์อยู่ตอนนี้" (ตัวกรองเริ่มต้นคือรอเคลียร์ จึงไม่ใช่ทั้งหมด)
+     slips/slipsAll = ใบที่โชว์ / ใบที่มีจริง — ต่างกันเมื่อใบนั้นเคลียร์หมดแล้วเลยถูกกรองออก */
+  return {html:out,n:shown,slips:grpShown,slipsAll:keys.length,
+    rowsAll:all.length,filtered:CST.only!=="all"||!!q};
 }
 /* แถบ "ติ๊กไว้แล้วทำทีเดียว" — โผล่เมื่อมีรายการถูกติ๊ก */
 function cstSelBarHtml(mgr){
@@ -12798,7 +12806,7 @@ function renderSpord(){
             none?";opacity:.55":""}" onclick="spOpenMon('${m.ym}')">
             <div class="k">${m.ym==="ไม่ระบุ"?"ไม่ระบุเดือน":fmtMonth(m.ym)}${cur?' <span class="pill g">เดือนนี้</span>':""}</div>
             <div class="v"${none?' style="color:var(--muted)"':""}>${m.slips}</div>
-            <div class="s">${none?"0 รายการ":"ใบออเดอร์ · "+m.sub+" เลขออเดอร์"}
+            <div class="s">${none?"ใบออเดอร์":"ใบออเดอร์ · "+m.sub+" เลขออเดอร์"}
             ${m.mine?`<br><b class="down">ค้างที่ทีมคุณ ${m.mine}</b>`:(m.sub?`<br><span class="up">จบแล้ว ${m.done}/${m.sub}</span>`:"")}</div>
           </div>`;}).join("")}</div></div>`;
       return;
@@ -12957,9 +12965,14 @@ function renderCStock(){
   document.getElementById("cstBody").innerHTML=
     (oldL.length?`<div class="rq-note">⚠️ มี <b>${oldL.length}</b> รายการที่ตัดบิลไว้เกิน ${CST_OLD} วันแล้วยังไม่ได้ส่งออก — นี่คือของที่มักจะถูกลืม</div>`:"")+
     `<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-      <h3>ของที่ตัดบิลไว้ (${g.n} รายการ)</h3>
+      <h3>ของที่ตัดบิลไว้ · 🧾 ${g.slips} ใบตัดบิล · 📦 ${g.n} รายการสินค้า</h3>
       <div class="psub">${mgr?"กดที่ใบเพื่อกางรายการ แล้วติ๊กเลือกได้หลายรายการพร้อมกัน"
         :"กดที่ใบเพื่อดูรายการข้างใน"}</div></div>
+     ${g.slipsAll>g.slips?`<div class="psub" style="margin:-4px 0 8px">
+       ซ่อนอยู่อีก <b>${g.slipsAll-g.slips}</b> ใบ (เคลียร์หมดแล้ว หรือไม่ตรงกับที่ค้นหา) —
+       กด <b>ทั้งหมด</b> ด้านบนเพื่อดูครบทุกใบ
+       <br>หมายเหตุ: <b>1 ใบตัดบิล</b> มีสินค้าได้หลายรายการ หน้า <b>📦 ออเดอร์พิเศษ</b> นับเป็น
+       "ใบ" ส่วนหน้านี้บอกทั้งสองอย่าง ตัวเลขจึงไม่เท่ากันเป็นปกติ</div>`:""}
      ${cstSelBarHtml(mgr)}
      ${g.html||'<div class="insight">ไม่มีรายการที่ตรงกับที่เลือกไว้</div>'}</div>`;
 }

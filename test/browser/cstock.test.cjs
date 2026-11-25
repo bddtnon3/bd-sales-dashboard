@@ -258,6 +258,50 @@ function seed(a){
    [filt.all_on,filt.done_on,filt.old_on,filt.open_on].join(' → '));
  t('ค้นหาด้วยชื่อสินค้าได้',filt.q===1,filt.q);
 
+ /* ---------- 6ข) 🔑 "ใบ" กับ "รายการสินค้า" เป็นคนละหน่วย ต้องบอกให้ชัดทั้งคู่ ----------
+    เจ้าของถามเอง 25 พ.ย. 69 ว่าทำไมเลขหน้านี้ไม่ตรงกับหน้า 📦 ออเดอร์พิเศษ
+    คำตอบคือหน้านี้เคยนับ "บรรทัดสินค้าที่ยังค้าง" แต่เรียกว่า "รายการ"
+    ส่วนออเดอร์พิเศษนับ "ใบ" — ไม่ใช่ข้อมูลหาย แต่คำมันชนกัน */
+ const cnt=await ev(()=>{
+   CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};
+   const mk=(sid,d,rows)=>{CSTOCK.slips[sid]={d:d,own:'แอดมิน',up:1000};
+     rows.forEach((cs,i)=>{const id=sid+'-'+i;
+       CSTOCK.lots[id]={id:id,sl:sid,d:d,code:'9000000'+i,nm:'สินค้า '+i,cs:cs.cs,
+         clr:cs.clr?[{d:d,cs:cs.cs,to:'ร้านทดสอบ'}]:[],up:1000};});};
+   /* ใบ A: 2 รายการ ยังค้างทั้งคู่ · ใบ B: 3 รายการ ค้าง 1 · ใบ C: 2 รายการ เคลียร์หมด */
+   mk('B20261119-01','2026-11-19',[{cs:10},{cs:20}]);
+   mk('B20261112-01','2026-11-12',[{cs:5},{cs:6,clr:1},{cs:7,clr:1}]);
+   mk('B20261102-01','2026-11-02',[{cs:8,clr:1},{cs:9,clr:1}]);
+   CST.only='open';CST.q='';CST.open={};CST.sec='list';renderCStock();
+   const head=()=>document.querySelector('#cstBody h3').textContent.replace(/\s+/g,' ');
+   const body=()=>document.getElementById('cstBody').innerText.replace(/\s+/g,' ');
+   const o={open:head(),openNote:body(),
+     grps:document.querySelectorAll('#cstBody .cst-grp').length};
+   cstSetOnly('all');
+   o.all=head();o.allGrps=document.querySelectorAll('#cstBody .cst-grp').length;
+   o.allNote=body();
+   /* หน้าออเดอร์พิเศษนับใบของเดือนนั้น — ต้องได้ 3 ใบ ตรงกับตัวกรอง "ทั้งหมด" ของหน้านี้ */
+   SP.yr='2026';
+   const m=spMonths('2026').filter(x=>x.ym==='2026-11')[0];
+   o.spSlips=m?m.slips:-1;
+   cstSetOnly('open');return o;});
+ t('🔑 ตัวกรอง "ยังค้าง" โชว์ 2 ใบ · 3 รายการสินค้า และบอกทั้งสองเลข',
+   /🧾 2 ใบตัดบิล/.test(cnt.open)&&/📦 3 รายการสินค้า/.test(cnt.open),cnt.open);
+ t('...และบอกว่าซ่อนอีก 1 ใบ (เคลียร์หมดแล้ว) ไม่ใช่หายไปเฉย ๆ',
+   /ซ่อนอยู่อีก 1 ใบ/.test(cnt.openNote),cnt.openNote.slice(0,150));
+ t('...พร้อมอธิบายว่าทำไมไม่เท่ากับหน้าออเดอร์พิเศษ',
+   /ออเดอร์พิเศษ/.test(cnt.openNote)&&/ไม่เท่ากันเป็นปกติ/.test(cnt.openNote));
+ t('🔑 กด "ทั้งหมด" แล้วได้ 3 ใบ · 7 รายการสินค้า',
+   /🧾 3 ใบตัดบิล/.test(cnt.all)&&/📦 7 รายการสินค้า/.test(cnt.all),cnt.all);
+ t('...และไม่มีคำว่าซ่อนอีกต่อไป',!/ซ่อนอยู่อีก/.test(cnt.allNote));
+ t('🔑 จำนวนใบของหน้านี้ (ทั้งหมด) ต้องตรงกับที่หน้าออเดอร์พิเศษนับได้',
+   cnt.spSlips===3&&cnt.allGrps===3,'สต็อคกลาง '+cnt.allGrps+' ใบ · ออเดอร์พิเศษ '+cnt.spSlips+' ใบ');
+
+ /* กลับไปใช้ลอตชุดเดิมให้เทสข้อถัดไปทำงานต่อได้ */
+ await ev(a=>{CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};
+   (a.LOTS||[]).forEach(l=>{CSTOCK.lots[l.id]=JSON.parse(JSON.stringify(l));CSTOCK.lots[l.id].up=1000;});
+   CST.only='open';CST.q='';CST.open={};renderCStock();},{LOTS});
+
  /* ---------- 7) 🛟 อ่านอย่างเดียว ---------- */
  const syncBase=await ev(()=>window.__sync);   /* การอัพไฟล์ก่อนหน้านี้สั่ง sync ไปแล้วตามปกติ */
  const before=await ev(new Function('return '+BLOBS));

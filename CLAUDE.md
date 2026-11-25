@@ -720,6 +720,15 @@ code, never printed.
   edge, so rows with clearings silently lost their buttons (measured: right edge 1409 against a
   1216-wide card) — which is what "บางตัวมีปุ่มท้าย บางตัวไม่มี" was. The table is wrapped in
   `.tblwrap` so an overflow scrolls instead of clipping.
+  **Three different units live on this one screen and must never share a word**: a 🧾 bill-cut
+  slip, a 📦 product line inside it, and a case. The header used to read *"ของที่ตัดบิลไว้
+  (16 รายการ)"* counting **outstanding product lines after the filter**, while 📦 ออเดอร์พิเศษ
+  counts **slips** — so the owner compared `16` with `3 + 4` and asked *"ทำไมจำนวนบิลในหน้าเก่า
+  ไม่เท่ากันกับที่เคยลงไว้"* (25 Nov 26). Nothing was lost; the words collided. The header now
+  states **both** numbers (`cstListHtml` returns `slips`/`slipsAll` beside `n`), and because the
+  default filter is `CST.only="open"` a slip with everything cleared vanishes from the list
+  entirely, the page now says how many slips are hidden and why. The spord month card says
+  **ใบออเดอร์** in every state, including zero. Keep all three units named apart.
   That bar **must stay on screen** (`.cst-bulk.stick`, sticky under the 60px header): it is
   rendered once above all the slip blocks, so with a 16-row slip open the owner ticked rows and the
   bar sat 289px above the viewport — "ติ๊กแล้วไม่มีปุ่มขึ้นมาให้". Never drop the sticky, never put
