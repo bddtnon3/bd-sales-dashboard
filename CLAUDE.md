@@ -822,6 +822,24 @@ code, never printed.
   still on 🧊 สต็อคกลาง. **`spSent(sid)` is the one answer to "how many cases have left the
   warehouse"** (allocation for D, lot clearings for A/B); the month card, the tab and the manager
   report all call it, or a card shows 0% while the tab inside shows 27%.
+  **🎁 ของแถมตามโปร reads the mechanic out of the BUM file** (`spBbf`/`spBbfHtml`, owner 26 Nov 26:
+  *"ลองจับรหัสและ mechanic การแถมของแต่ละโปรจากไฟล์ bum ดู เช่นซิตร้าในออเดอร์นี้มันเป็นโปรสองแถมหนึ่ง
+  ลักส์เป็น 2 แถม 2"*). Nothing has to be typed in and no new file is uploaded: `parseBUM` already
+  stores the Non-Cust sheet's BBF block per code — **`fb` = AU buy cases · `fc` = AV free product
+  code · `fq` = AX free cases**. The section sits under the allocation report and compares the
+  formula against what the warehouse actually shipped. Four rules: **free goods cross product codes**
+  (Lux buys Rose and gives Sakura), so the expected quantity accumulates **on the free code**, never
+  on the bought one; a row whose `fc` is blank is read as "แถมตัวเอง" and **says on screen that the
+  file did not state a code**; the expected figure is **(ประเมิน)**, because it is computed over the
+  whole slip while the promos cap sets per shop, and the page says a small difference is not an
+  error; and a code the BUM file carries no BBF row for is **counted and listed, never treated as 0**.
+  BUM is the depot's cost file, so the whole section is **manager-only inside `spBbfHtml`**.
+  **The admin's ✏️ แก้ไขใบ button and the type picker live on the slip header** (`spGrpBar`, shared
+  by `spBarHtml` and the slip view). The slip view used to overwrite `#spBar` with its own string, so
+  the type buttons vanished the moment you opened a slip — which is why the owner could not switch an
+  order to ตัวกระจาย at all. `spEditSlip` reuses `cstSlipEdit` + the สต็อคกลาง form exactly as
+  `spNewOrder` does; both `cstSlipEdit` and `spSetGrp` had `g:(s.g==="B")?"B":"A"` hard-coded, which
+  silently demoted a 🎯 ตัวกระจาย slip to ตัดบิลรอส่ง — **always read the type through `SP_GRP`**.
   **The 📥 allocation upload sits at the top beside ➕ สร้างออเดอร์ใหม่** (`spAlBtnHtml`/`#spAlBox`),
   not inside one slip's admin tab — *"ไฟล์นี้อัปทีเดียวใช้ได้ทั้งระบบ"*. It is the one exception to
   the single-upload-button rule, because `ALLOC` is never stored in the state.
@@ -973,7 +991,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (148 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (163 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -986,7 +1004,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (148 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (163 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

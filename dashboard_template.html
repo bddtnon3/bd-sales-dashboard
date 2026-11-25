@@ -11460,8 +11460,10 @@ function cstSlipEdit(sid){
   if(!cstMgr())return;
   const C=cstOk(),s=C.slips[sid];if(!s)return;
   const rows=cstSlipRows(sid);let mx=0;
-  /* g ต้องอ่านกลับมาด้วย ไม่งั้นแก้ใบกลุ่ม B แล้วเซฟ ใบจะเด้งกลับไปกลุ่ม A */
-  const f={sid:sid,d:s.d||"",own:s.own||"",g:(s.g==="B")?"B":"A",nw:s.nw||"",ng:s.ng||"",seq:0,rows:[]};
+  /* g ต้องอ่านกลับมาด้วย ไม่งั้นแก้ใบแล้วเซฟ ใบจะเด้งกลับไปกลุ่ม A
+     ⚠️ ต้องอ่านจากตาราง SP_GRP — เขียน "B":"A" ตายไว้ทำให้ใบ 🎯 ตัวกระจาย กลายเป็นตัดบิลรอส่ง
+     ทันทีที่แอดมินกดแก้ใบ (บั๊กตัวเดียวกับ spSetGrp) */
+  const f={sid:sid,d:s.d||"",own:s.own||"",g:SP_GRP[s.g]?s.g:"A",nw:s.nw||"",ng:s.ng||"",seq:0,rows:[]};
   rows.forEach(l=>{const m=String(l.id||"").slice(String(sid).length+1).match(/^r(\d+)$/);
     if(m)mx=Math.max(mx,+m[1]);});
   f.seq=mx;
@@ -13338,6 +13340,17 @@ function spLockBtn(){
   return ` <button type="button" class="btn-ghost" style="padding:1px 7px;font-size:12px;font-weight:400"
     title="ล็อกหน้านี้ ต้องใส่รหัสใหม่" onclick="spPinLock()">🔒 ล็อก</button>`;
 }
+/* 🛠 แถบปุ่มของแอดมินบนหัวใบ: เลือกประเภทใบ + แก้ไขใบ
+   ⚠️ ต้องใช้ตัวเดียวกันทั้ง spBarHtml และหัวใบในหน้าใบ — ของเดิมเขียน innerHTML ทับกัน
+      ทำให้พอเปิดเข้าไปในใบจริง ๆ ปุ่มเลือกประเภทหายไปทั้งแถบ (เจ้าของหาไม่เจอ 26 พ.ย. 69) */
+function spGrpBar(sl){
+  if(!sl||!spMgr())return "";
+  return `<div style="margin-top:8px;font-weight:400"><span class="psub">ประเภทใบ:</span> `+
+    Object.keys(SP_GRP).map(k=>`<button type="button" class="pl-today${
+      spGrpOf(sl)===k?" on":""}" onclick="spSetGrp('${k}')">${SP_GRP[k].ic} ${SP_GRP[k].n}</button>`).join(" ")+
+    ` <button type="button" class="pl-today" onclick="spEditSlip('${anaEsc(sl.id)}')"
+      >✏️ แก้ไขใบ (สินค้า/จำนวน/วันที่)</button></div>`;
+}
 function spBarHtml(sl){
   if(!sl)return "📦 ออเดอร์พิเศษ"+spLockBtn();
   const g=SP_GRP[spGrpOf(sl)];
@@ -13346,14 +13359,24 @@ function spBarHtml(sl){
   return `📦 <b>${anaEsc(ttl||sl.id)}</b> <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>`+
     `<span class="dci-src">${anaEsc(sl.id)}${sl.d?" · "+fmtDate(sl.d):""}`+
     (subs.length?` · ออเดอร์ย่อย ${subs.length} เลข · จบแล้ว ${done}`:"")+`</span>`+spLockBtn()+
-    (spMgr()?`<div style="margin-top:8px;font-weight:400"><span class="psub">กลุ่ม:</span> `+
-      Object.keys(SP_GRP).map(k=>`<button type="button" class="pl-today${
-        spGrpOf(sl)===k?" on":""}" onclick="spSetGrp('${k}')">${SP_GRP[k].ic} ${SP_GRP[k].n}</button>`).join(" ")+
-      `</div>`:"");
+    spGrpBar(sl);
 }
 /* ➕ สร้างออเดอร์ใหญ่ใบใหม่ — เจ้าของบอกว่า "ไม่รู้ไปเพิ่มตรงไหน เจอแต่ report"
    ฟอร์มกรอกใบตัดบิลยังเป็นตัวเดิมที่ใช้มาตลอด (cstNew ในหน้า 🧊 สต็อคกลาง → 🧾 ใบตัดบิล)
    ปุ่มนี้พาไปที่ฟอร์มนั้นให้เลย ไม่ได้ทำฟอร์มซ้ำอีกชุด (ของเดิมมีเทส 229 ข้อคุมอยู่) */
+/* ✏️ แก้ใบที่เปิดไว้แล้ว — ใช้ฟอร์มเดิมทั้งก้อนเหมือน spNewOrder (มีเทส 245 ข้อคุมอยู่)
+   แก้ได้ทั้งวันที่ · ประเภทใบ · สินค้า · จำนวน · ผู้รับผิดชอบ แล้วเซฟกลับใบเดิม
+   ⚠️ ต้องตั้ง SP.view="new" ก่อนเรียก cstSlipEdit เพราะปลายทางมันเรียก renderCStock เอง
+      ซึ่งวนกลับมาที่ renderSpord ทันที ถ้า view ยังไม่ใช่ "new" จะวาดหน้าใบทับฟอร์ม */
+function spEditSlip(sid){
+  if(!spMgr()){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return;}
+  if(!spSlip(sid))return;
+  SP.view="new";
+  cstSlipEdit(sid);
+  CST.sec="list";        /* กันหน้าสต็อคกลางวาดฟอร์มซ้ำอีกชุด = id ซ้ำกันทั้งหน้า */
+  if(typeof CURTAB!=="undefined"&&CURTAB!=="spord")switchTab("spord");
+  renderSpord();
+}
 function spNewOrder(){
   if(!spMgr()){alert("เฉพาะแอดมินเท่านั้นที่เปิดออเดอร์ใหญ่ได้");return;}
   SP.view="new";
@@ -13718,6 +13741,107 @@ function spAllOut(sid){
   return {prod:prod,lines:lnArr,days:days,gins:Object.keys(gset),
     out:out,cut:cut,noPk:noPk,noShr:noShr};
 }
+/* ==========================================================================
+ * 🎁 ของแถมตามโปร — "โปรบอกว่าแถมเท่าไหร่" เทียบ "คลังจัดแถมมาเท่าไหร่"
+ *   เจ้าของสั่ง 26 พ.ย. 69: *"ลองจับรหัสและ mechanic การแถมของแต่ละโปรจากไฟล์ bum ดู
+ *     เช่นซิตร้าในออเดอร์นี้มันเป็นโปรสองแถมหนึ่ง ลักส์เป็น 2 แถม 2"*
+ *
+ * เงื่อนไขของแถมอยู่ในไฟล์ BUM อยู่แล้ว (ชีต Non Cust บล็อค AU..BD) และ parseBUM เก็บไว้
+ * ตั้งแต่ 25 พ.ย. 69: **AU = ซื้อกี่หีบ (`fb`) · AV = รหัสของแถม (`fc`) · AX = แถมกี่หีบ (`fq`)**
+ * ⇒ ไม่ต้องพิมพ์เงื่อนไขเข้าระบบเอง และไม่ต้องอัพไฟล์อะไรเพิ่ม
+ *
+ * ⚠️ **ของแถมข้ามรหัสได้** — ลักส์ซื้อโรส 2 แถมซากุระ 2 (คนละรหัส) ส่วนซิตร้า 2 แถม 1
+ *    เป็น "สีตัวเอง" ⇒ ต้องรวมยอดที่ควรแถม **ตามรหัสของแถม** ไม่ใช่ตามรหัสที่ซื้อ
+ * ⚠️ ไฟล์ไม่ได้ระบุรหัสของแถมในบางแถว → อ่านเป็น "แถมตัวเอง" และ **ติดป้ายว่าเป็นการอนุมาน**
+ * ⚠️ ตัวเลขที่ควรแถมเป็น **(ประเมิน)** เพราะคิดจากยอดรวมทั้งใบ ไม่ใช่รายร้าน และโปรมี CAP
+ *    ต่อร้าน (เช่น 2 เซ็ต/ร้าน) ⇒ ของจริงแถมน้อยกว่าได้โดยไม่ผิด ต้องเขียนกำกับไว้
+ * ⚠️ รหัสที่ไฟล์ BUM ไม่ได้ลงโปรแถมไว้ **นับแยกและบอก ห้ามคิดเป็น 0**
+ * 🔒 ไฟล์ BUM เป็นไฟล์ต้นทุนของศูนย์ ส่วนนี้จึงเปิดเฉพาะผู้จัดการ "ในฟังก์ชัน" ไม่ใช่ซ่อนปุ่ม
+ * ==========================================================================*/
+function spBbf(sid){
+  const o=spAllOut(sid),by={};
+  o.prod.forEach(t=>{by[t.code]=t;});
+  const hasBum=!!(typeof PRICE!=="undefined"&&PRICE&&PRICE.bum&&PRICE.bum.items);
+  const rows=[],none=[],want={};
+  o.prod.forEach(t=>{
+    const b=(hasBum&&typeof prB==="function")?prB(t.code):null;
+    const ex=b?b.ex:null;
+    const fb=+((ex&&ex.fb)||0),fq=+((ex&&ex.fq)||0);
+    if(!(fb>0&&fq>0)){none.push(t);return;}
+    const fc=String((ex&&ex.fc)||"").trim();
+    const self=!fc;                       /* ไฟล์ไม่ได้ระบุรหัสของแถม → อนุมานว่าแถมตัวเอง */
+    const key=self?t.code:fc;
+    const exp=fb>0?t.sCs/fb*fq:0;
+    const w=want[key]||(want[key]={code:key,exp:0,from:[]});
+    w.exp+=exp;w.from.push(t.code);
+    rows.push({code:t.code,nm:t.nm,fb:fb,fq:fq,fc:key,self:self,
+      sale:t.sCs,exp:exp,end:String((ex&&ex.fe)||"")});
+  });
+  const chk=Object.keys(want).map(k=>{
+    const g=by[k],w=want[k],got=g?g.fCs:0,d=got-w.exp;
+    return {code:k,nm:(g&&g.nm)||"",inSlip:!!g,exp:w.exp,got:got,d:d,from:w.from,
+      st:!g?"noRow":(Math.abs(d)<=Math.max(0.5,w.exp*0.05)?"ok":(d<0?"short":"over"))};
+  }).filter(c=>c.exp>0||c.got>0)      /* คู่ไขว้ด้านที่ไม่ได้ซื้อเลย = 0 ทั้งคู่ ไม่ต้องรก */
+    .sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+  return {rows:rows,chk:chk,none:none,hasBum:hasBum};
+}
+function spBbfHtml(sid){
+  if(!peBumOk())return "";
+  const g=spBbf(sid);
+  const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const head=`<div class="panel" style="margin-top:12px"><h3>🎁 ของแถมตามโปร</h3>`;
+  if(!g.hasBum)return head+`<div class="insight" style="margin-top:8px">
+    ยังไม่ได้อัพไฟล์ <b>BUM</b> ของรอบนี้ จึงยังไม่รู้เงื่อนไขของแถม —
+    อัพไฟล์ที่หมวด 💰 ราคา &amp; ทุน แล้วตัวเลขตรงนี้จะขึ้นเองทั้งหมด</div></div>`;
+  if(!g.rows.length)return head+`<div class="insight" style="margin-top:8px">
+    ไฟล์ BUM รอบนี้ไม่ได้ลงโปรของแถมไว้กับสินค้าในใบนี้เลย (${g.none.length} รหัส)</div></div>`;
+  const ST={ok:'<span class="sp-ok">✓ ตรงโปร</span>',
+    short:'<span class="sp-warn">แถมน้อยกว่าสูตร</span>',
+    over:'<span class="sp-warn">แถมมากกว่าสูตร</span>',
+    noRow:'<span class="psub">ของแถมไม่อยู่ในใบนี้</span>'};
+  /* 4 ช่องพอทั้งสองตาราง — รหัสของแถมใส่เป็นบรรทัดเล็กใต้ชื่อ และส่วนต่างรวมอยู่ในช่องผล
+     ไม่งั้นช่อง "ผล" ซึ่งเป็นคำตอบ หลุดออกนอกจอมือถือไปเลย */
+  let h=head+`<div class="psub">เงื่อนไขมาจากไฟล์ BUM เอง (ซื้อกี่หีบ · แถมรหัสไหน · กี่หีบ)
+    ไม่ต้องพิมพ์เข้าระบบ</div>
+    <div class="tblwrap" style="margin-top:10px"><table class="cst-rt"><thead><tr>
+      <th style="text-align:left">สินค้าที่ซื้อ</th><th>สูตร</th>
+      <th>ขาย → ควรแถม</th></tr></thead><tbody>${
+    g.rows.map(r=>`<tr>
+      <td style="text-align:left"><b>${anaEsc(r.nm||oname(r.code)||("รหัส "+r.code))}</b>
+        <span class="psub" style="display:block">รหัส ${anaEsc(r.code)}${
+          r.end?" · ถึง "+anaEsc(r.end):""}</span>
+        <span class="psub" style="display:block">แถม: ${r.self
+          ? 'ตัวเอง <b class="down">(ไฟล์ไม่ได้ระบุรหัส)</b>'
+          : anaEsc(spBbfLabel(r.fc))}</span></td>
+      <td><b>ซื้อ ${N(r.fb)}<br>แถม ${N(r.fq)}</b></td>
+      <td>${N(r.sale)} <b>→ ${N(r.exp)}</b></td></tr>`).join("")}
+    </tbody></table></div>`;
+  h+=`<div class="tblwrap" style="margin-top:12px"><table class="cst-rt"><thead><tr>
+      <th style="text-align:left">ของแถม</th><th>ควรแถม</th>
+      <th>จัดจริง</th></tr></thead><tbody>${
+    g.chk.map(c=>`<tr>
+      <td style="text-align:left"><b>${anaEsc(c.nm||oname(c.code)||("รหัส "+c.code))}</b>
+        <span class="psub" style="display:block">รหัส ${anaEsc(c.code)}</span>
+        <span style="display:block;margin-top:3px">${ST[c.st]}${
+          Math.abs(c.d)<0.005?"":' <span class="psub" style="color:#8a6500">'+
+          ((c.d>0?"+":"")+N(c.d))+" ลัง</span>"}</span></td>
+      <td>${N(c.exp)}</td><td><b>${N(c.got)}</b></td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="note" style="margin-top:8px;color:var(--mid)">
+      “ควรแถม” คิดจากยอดรวมทั้งใบตามสูตรของไฟล์ BUM จึงเป็น <b>ค่าประเมิน</b> —
+      โปรส่วนใหญ่มี CAP ต่อร้าน (เช่น 2 เซ็ต/ร้าน) ร้านที่ซื้อไม่ครบชุดหรือเกิน CAP
+      จะไม่ได้ของแถมตามสูตรเป๊ะ ตัวเลขต่างกันเล็กน้อยจึงไม่ได้แปลว่าคลังจัดผิด</div>`;
+  if(g.none.length)h+=`<div class="note" style="margin-top:8px;color:var(--mid)">
+    อีก ${g.none.length} รหัสในใบนี้ ไฟล์ BUM ไม่ได้ลงโปรของแถมไว้ —
+    ${g.none.slice(0,6).map(t=>anaEsc(t.nm||("รหัส "+t.code))).join(" · ")}${
+    g.none.length>6?" …":""}</div>`;
+  return h+`</div>`;
+}
+/* ชื่อของแถม — ของแถมบางตัวไม่ได้อยู่ในใบนี้ จึงถามจากทะเบียนสินค้ากลาง (oname รวมสต็อก
+   + Master + ชื่อจากใบสั่งซื้อไว้ให้แล้ว) · ไม่รู้ชื่อก็โชว์รหัสเปล่า ไม่เดา */
+function spBbfName(code){return (typeof oname==="function")?(oname(code)||""):"";}
+/* "ชื่อ (รหัส)" หรือ "รหัส XXX" เฉย ๆ เมื่อไม่รู้ชื่อ — ไม่ใช่ "รหัส XXX (XXX)" ซ้ำสองรอบ */
+function spBbfLabel(code){const n=spBbfName(code);return n?(n+" ("+code+")"):("รหัส "+code);}
 /* 📊 "ใบนี้ออกจากคลังไปแล้วกี่ลัง" — คำตอบเดียวที่ทุกหน้าต้องใช้ร่วมกัน
    ⚠️ ใบ 🎯 ตัวกระจาย นับจากไฟล์ใบจัดของ · ใบ A/B นับจากการเคลียร์มือของสต็อคกลาง
    ถ้าหน้าไหนไปคิดเองจะเกิดการ์ดขึ้น 0% ทั้งที่กดเข้าไปในใบแล้วขึ้น 22% (คนละคำตอบในจอเดียวกัน) */
@@ -13796,7 +13920,7 @@ function spOutAllocHtml(sid){
         <td style="font-family:ui-monospace,monospace">${(d.g||[]).map(anaEsc).join(" · ")||"-"}</td>
         <td>${d.n}</td><td>${anaEsc(d.by||"-")}${d.at?'<span class="psub" style="display:block">'+
           fmtDateTime(d.at)+"</span>":""}</td></tr>`).join("")}</tbody></table></div></div>`;
-  return h;
+  return h+spBbfHtml(sid);
 }
 function spOutHtml(sid){
   /* 🎯 ใบตัวกระจาย: คลังส่งออก = รายงานจากไฟล์ใบจัดของ ไม่ใช่การกรอกมือ (เจ้าของสั่ง 26 พ.ย. 69)
@@ -13986,10 +14110,12 @@ function renderSpord(){
         if(nw){SP.sid=nw.id;SP.ym=spYm(nw);SP.view="slip";}
         else SP.view="mon";
       }else{
-        bar.innerHTML="📦 ออเดอร์พิเศษ · ➕ สร้างออเดอร์ใหม่";
+        const ed=CST.f&&CST.f.sid;
+        bar.innerHTML="📦 ออเดอร์พิเศษ · "+(ed?"✏️ แก้ไขใบ "+anaEsc(CST.f.sid):"➕ สร้างออเดอร์ใหม่");
         body.innerHTML=`<div class="panel"><div class="cst-fb">
             <button class="btn-ghost" onclick="spBack()">◀ กลับ</button>
-            <span class="psub">เลือกหมวด · วันที่ · สินค้า · จำนวน แล้วกดบันทึกครั้งเดียว
+            <span class="psub">${ed?"แก้ประเภทใบ · วันที่ · สินค้า · จำนวน แล้วกดบันทึก"
+              :"เลือกหมวด · วันที่ · สินค้า · จำนวน แล้วกดบันทึกครั้งเดียว"}
               · ออกจากหน้านี้ได้ ใบที่กรอกค้างไว้ถูกเก็บเป็นฉบับร่างให้อัตโนมัติ</span></div></div>`
           +cstFormHtml();
         cstBillAfter();
@@ -14061,7 +14187,7 @@ function renderSpord(){
       bar.innerHTML=`📦 <b>${anaEsc(spSlipTitle(SP.sid,30)||SP.sid)}</b>`+
         ` <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>`+
         `<span class="dci-src">${anaEsc(SP.sid)}${slNow.d?" · "+fmtDate(slNow.d):""} · ${rows.length} สินค้า · ${
-          (Math.round(cs*100)/100).toLocaleString()} ลัง</span>`;
+          (Math.round(cs*100)/100).toLocaleString()} ลัง</span>`+spLockBtn()+spGrpBar(slNow);
       const sec=spSec();
       /* แถวแท็บแบบเดียวกับแท็บย่อยของหมวดอื่น (.tabs2) — แถวเดียว เลื่อนซ้ายขวาได้
          และวาดลงกล่อง #spTabs ที่อยู่ "บนสุดของหน้า" ใต้แถบหมวดใหญ่ ไม่ใช่ในเนื้อหน้า

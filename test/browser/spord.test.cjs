@@ -1122,6 +1122,136 @@ const ORIGIN='https://bd-spord.test/';
    /BDD0100000006/.test(old.tx)&&!old.chips.some(c=>/เลขออเดอร์/.test(c)),
    old.chips.join(' | '));
 
+ /* ================================================================
+  * 13) 🎁 ของแถมตามโปร — จับ mechanic จากไฟล์ BUM (เจ้าของสั่ง 26 พ.ย. 69)
+  *   *"ลองจับรหัสและ mechanic การแถมของแต่ละโปรจากไฟล์ bum ดู เช่นซิตร้าในออเดอร์นี้
+  *     มันเป็นโปรสองแถมหนึ่ง ลักส์เป็น 2 แถม 2"*
+  *   ⛔ รหัส/ชื่อในเทสสมมติขึ้นเอง รีโปเป็นสาธารณะ — แต่สูตรโปรลอกโครงของจริงมาทั้งสามแบบ
+  *      (2 แถม 1 สีตัวเอง · 1 แถม 1 ข้ามรหัสสองทาง · 2 แถม 2 ข้ามรหัสทางเดียว)
+  * ================================================================ */
+ const bbf=await ev(async()=>{
+   __reset();
+   CSTOCK.slips['B20261118-01'].g='D';
+   /* ใบ: ครีม 3 ตัว (2F1 สีตัวเอง) · เซรั่มคู่ (1F1 ไขว้) · สบู่คู่ (2F2 ไขว้) · อื่น ๆ 1 ตัว */
+   [['AAA1','ครีมทาผิว เอ',60],['AAA2','ครีมทาผิว บี',90],
+    ['BBB1','เซรั่ม เอ็กซ์',15],['BBB2','เซรั่ม วาย',15],
+    ['CCC1','สบู่เหลว โรส',60],['CCC2','สบู่เหลว ซากุระ',60],
+    ['DDD1','สินค้าไม่มีโปร',10]].forEach((p,i)=>{
+     const id='B20261118-01-b'+i;
+     CSTOCK.lots[id]={id:id,sl:'B20261118-01',d:'2026-11-18',code:p[0],nm:p[1],
+       cs:p[2],pc:0,sq:i,ln:'CT11',clr:[],up:1};});
+   /* ไฟล์ BUM: ช่อง ex อยู่ท้ายสุดของอาเรย์ (PB_F) — fb ซื้อ · fq แถม · fc รหัสของแถม */
+   const B=ex=>{const a=[900,12,0,0,0,0,0,0,0,0,0,'','',0,0,0,ex];return a;};
+   PRICE={loaded:true,err:'',hs:null,bum:{items:{
+     'AAA1':B({fb:2,fq:1}),                     /* ไฟล์ไม่ระบุรหัส = แถมตัวเอง */
+     'AAA2':B({fb:2,fq:1}),
+     'BBB1':B({fb:1,fq:1,fc:'BBB2',fe:'30/11/2026'}),
+     'BBB2':B({fb:1,fq:1,fc:'BBB1'}),
+     'CCC1':B({fb:2,fq:2,fc:'CCC2'}),
+     'CCC2':B(null),                            /* ตัวแถม ไม่มีสูตรของตัวเอง */
+     'DDD1':B(null)}}};
+   const row=(sc,fc)=>({sc:sc,ss:0,sp:0,fc:fc,fs:0,fp:0,pk:12,nm:''});
+   CSTOCK.gin['B20261118-01|2026-11-20']={g:['77'],at:2,by:'admin1',byName:'แอดมิน 2',dd:[],ords:[],money:0,
+     rows:{'CT11|AAA1':row(40,20),'CT11|AAA2':row(60,30),
+           'CT11|BBB1':row(15,0),'CT11|BBB2':row(0,15),
+           'CT11|CCC1':row(60,0),'CT11|CCC2':row(0,60),
+           'CT11|DDD1':row(10,0)}};
+   __as('manager',null,'แอดมิน 1');_switchTab('spord');
+   SP.view='slip';SP.sid='B20261118-01';SP.sec='out';renderSpord();
+   const o={g:spBbf('B20261118-01'),
+     tx:document.getElementById('spBody').textContent.replace(/\s+/g,' ')};
+   /* คลังแถมสบู่มาไม่ครบสูตร */
+   CSTOCK.gin['B20261118-01|2026-11-20'].rows['CT11|CCC2']=row(0,40);
+   o.short=spBbf('B20261118-01').chk.filter(c=>c.code==='CCC2')[0];
+   CSTOCK.gin['B20261118-01|2026-11-20'].rows['CT11|CCC2']=row(0,60);
+   /* ไม่มีไฟล์ BUM เลย */
+   PRICE={loaded:true,err:'',hs:null,bum:null};renderSpord();
+   o.noBum=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   /* เซลล์ไม่มีไฟล์ต้นทุนของศูนย์อยู่แล้ว และฟังก์ชันต้องกันไว้เองด้วย */
+   __as('sales','209611','CT11');
+   o.sales=spBbfHtml('B20261118-01');
+   __as('manager',null,'แอดมิน 1');
+   return o;});
+ const bR=c=>bbf.g.rows.filter(r=>r.code===c)[0];
+ const bC=c=>bbf.g.chk.filter(r=>r.code===c)[0];
+ t('🔑 อ่านสูตรของแถมจากไฟล์ BUM เอง — ไม่ต้องพิมพ์เงื่อนไขเข้าระบบ',
+   bbf.g.hasBum&&bbf.g.rows.length===5&&bR('AAA1').fb===2&&bR('AAA1').fq===1&&
+   bR('CCC1').fb===2&&bR('CCC1').fq===2&&bR('BBB1').fb===1,
+   bbf.g.rows.map(r=>r.code+' ซื้อ'+r.fb+' แถม'+r.fq).join(' | '));
+ t('🔑 ของแถมข้ามรหัสต้องรวมยอดไปที่ "รหัสของแถม" ไม่ใช่รหัสที่ซื้อ',
+   bR('CCC1').fc==='CCC2'&&!bR('CCC1').self&&bR('BBB1').fc==='BBB2',
+   'CCC1 แถม '+bR('CCC1').fc+' · BBB1 แถม '+bR('BBB1').fc);
+ t('🛟 ไฟล์ไม่ได้ระบุรหัสของแถม → อ่านเป็นแถมตัวเอง และติดป้ายว่าเป็นการอนุมาน',
+   bR('AAA1').self&&bR('AAA1').fc==='AAA1'&&/ไฟล์ไม่ได้ระบุรหัส/.test(bbf.tx),
+   JSON.stringify({self:bR('AAA1').self,fc:bR('AAA1').fc}));
+ /* 2 แถม 1: ขาย 40 ควรแถม 20 · 2 แถม 2: ขาย 60 ควรแถม 60 · 1 แถม 1: ขาย 15 ควรแถม 15 */
+ t('🔑 เทียบ "ควรแถมเท่าไหร่" กับ "คลังจัดแถมมาจริงเท่าไหร่" ได้ครบทุกสูตร',
+   bC('AAA1').exp===20&&bC('AAA1').got===20&&bC('AAA1').st==='ok'&&
+   bC('CCC2').exp===60&&bC('CCC2').got===60&&bC('CCC2').st==='ok'&&
+   bC('BBB2').exp===15&&bC('BBB2').got===15&&bC('BBB2').st==='ok',
+   bbf.g.chk.map(c=>c.code+' ควร'+c.exp+' ได้'+c.got+' '+c.st).join(' | '));
+ t('🔑 คลังแถมมาไม่ครบสูตร → ขึ้นว่าน้อยกว่าสูตร พร้อมส่วนต่าง',
+   bbf.short.st==='short'&&bbf.short.d===-20,JSON.stringify(bbf.short&&{st:bbf.short.st,d:bbf.short.d}));
+ t('🛟 รหัสที่ไฟล์ BUM ไม่ได้ลงโปรแถมไว้ ต้องนับแยกและบอก ไม่ใช่คิดเป็น 0',
+   bbf.g.none.length===2&&bbf.g.none.some(x=>x.code==='DDD1')&&
+   /ไฟล์ BUM ไม่ได้ลงโปรของแถมไว้/.test(bbf.tx),
+   bbf.g.none.map(x=>x.code).join(','));
+ t('🛟 ตัวเลขที่ควรแถมติดป้าย (ประเมิน) และบอกว่า CAP ต่อร้านทำให้ต่างได้',
+   /ประเมิน/.test(bbf.tx)&&/CAP ต่อร้าน/.test(bbf.tx),
+   bbf.tx.slice(bbf.tx.indexOf('ควรแถม'),bbf.tx.indexOf('ควรแถม')+60));
+ t('🛟 ยังไม่ได้อัพไฟล์ BUM → บอกให้ไปอัพ ไม่ใช่ขึ้นตารางเปล่า',
+   /ยังไม่ได้อัพไฟล์ BUM/.test(bbf.noBum)&&!/ซื้อ 2 แถม 1/.test(bbf.noBum),
+   bbf.noBum.slice(bbf.noBum.indexOf('ของแถมตามโปร'),bbf.noBum.indexOf('ของแถมตามโปร')+110));
+ t('🔒 ไฟล์ BUM เป็นไฟล์ต้นทุนศูนย์ — ส่วนนี้กันไว้ในฟังก์ชัน ไม่ใช่แค่ซ่อนปุ่ม',bbf.sales==='');
+
+ /* ---------- 13b) ✏️ ปุ่มแก้ไขใบ ---------- */
+ const edit=await ev(()=>{
+   __reset();
+   CSTOCK.slips['B20261118-01'].g='D';
+   CSTOCK.lots['B20261118-01-e0']={id:'B20261118-01-e0',sl:'B20261118-01',d:'2026-11-18',
+     code:'AAA1',nm:'ครีมทาผิว เอ',cs:60,pc:0,sq:0,ln:'CT11',clr:[],up:1};
+   __as('manager',null,'แอดมิน 1');_switchTab('spord');
+   SP.view='slip';SP.sid='B20261118-01';renderSpord();
+   const o={btn:!!document.querySelector('#spBar button[onclick*="spEditSlip"]')};
+   spEditSlip('B20261118-01');
+   o.view=SP.view;o.tab=CURTAB;
+   o.f={sid:CST.f&&CST.f.sid,g:CST.f&&CST.f.g,n:CST.f&&CST.f.rows.length,
+        code:CST.f&&CST.f.rows[0].code,cs:CST.f&&CST.f.rows[0].cs};
+   o.bar=document.getElementById('spBar').textContent.replace(/\s+/g,' ');
+   o.inputs=!!document.getElementById('spBody').querySelector('input');
+   o.cstBill=(document.getElementById('cstBill')||{}).innerHTML||'';
+   o.spShown=!document.getElementById('spordView').classList.contains('hidden');
+   /* เซลล์กดไม่ได้ */
+   CST.f=null;__as('sales','209611','CT11');SP.view='slip';renderSpord();
+   o.salesBtn=!!document.querySelector('#spBar button[onclick*="spEditSlip"]');
+   spEditSlip('B20261118-01');
+   o.salesBlocked=(SP.view!=='new')&&!CST.f;
+   __as('manager',null,'แอดมิน 1');CST.f=null;
+   return o;});
+ t('🔑 แอดมิน/ผู้จัดการมีปุ่ม ✏️ แก้ไขใบ บนหัวใบ แล้วเปิดฟอร์มในหน้านี้เลย',
+   edit.btn&&edit.view==='new'&&edit.tab==='spord'&&edit.spShown&&edit.inputs&&
+   /แก้ไขใบ/.test(edit.bar),JSON.stringify({btn:edit.btn,view:edit.view,tab:edit.tab,
+     shown:edit.spShown,inputs:edit.inputs,bar:edit.bar.slice(0,40)}));
+ t('🔑 ...ฟอร์มขึ้นสินค้าและจำนวนของใบเดิมมาให้แก้ ไม่ใช่ใบเปล่า',
+   edit.f.sid==='B20261118-01'&&edit.f.n===1&&edit.f.code==='AAA1'&&edit.f.cs===60,
+   JSON.stringify(edit.f));
+ /* บั๊กตัวเดียวกับ spSetGrp: เขียน "B":"A" ตายไว้ ทำให้ใบตัวกระจายถูกปัดกลับทันทีที่กดแก้ */
+ t('🛟 ...และประเภทใบ 🎯 ตัวกระจาย ต้องไม่ถูกปัดกลับเป็นตัดบิลรอส่งตอนกดแก้',
+   edit.f.g==='D',edit.f.g);
+ t('🛟 หน้าสต็อคกลางต้องไม่วาดฟอร์มซ้ำอีกชุด (id ซ้ำกันทั้งหน้า)',edit.cstBill==='');
+ t('🔒 เซลล์ไม่มีปุ่มแก้ไขใบ และเรียกฟังก์ชันตรง ๆ ก็ไม่ได้',
+   !edit.salesBtn&&edit.salesBlocked);
+ /* หัวใบเคยถูกเขียน innerHTML ทับ ปุ่มเลือกประเภทจึงหายไปทั้งแถบตอนเปิดเข้าไปในใบ
+    เจ้าของหาไม่เจอ แล้วมาบอกว่า "แก้ออเดอร์นี้ให้เป็นรูปแบบตัวกระจาย" ให้แทน (26 พ.ย. 69) */
+ const grpBtn=await ev(()=>{
+   __as('manager',null,'แอดมิน 1');CST.f=null;SP.view='slip';SP.sid='B20261118-01';renderSpord();
+   const h=document.getElementById('spBar');
+   return {inSlip:[...h.querySelectorAll('button[onclick*="spSetGrp"]')].length,
+     lock:!!h.querySelector('button[onclick*="spPinLock"]'),
+     bar:/spSetGrp/.test(spBarHtml(spSlip('B20261118-01')))};});
+ t('🔑 ปุ่มเลือกประเภทใบต้องอยู่บนหัวใบตอนเปิดเข้าไปในใบจริง ๆ (ของเดิมถูกเขียนทับหาย)',
+   grpBtn.inSlip===3&&grpBtn.bar&&grpBtn.lock,JSON.stringify(grpBtn));
+
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};
    __as('wh',null,'ทีมคลัง 1');renderSpord();
