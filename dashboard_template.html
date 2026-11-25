@@ -13107,13 +13107,18 @@ function spSetGrp(g){
   sl.g=(g==="B")?"B":"A";sl.up=Date.now();
   renderSpord();if(typeof renderCStock==="function")renderCStock();syncToServer();
 }
+/* 🔒 ปุ่มล็อกหน้านี้กลับ — ใช้ตอนส่งเครื่องให้คนอื่นดู หรือกดผิดหน้า */
+function spLockBtn(){
+  return ` <button type="button" class="btn-ghost" style="padding:1px 7px;font-size:12px;font-weight:400"
+    title="ล็อกหน้านี้ ต้องใส่รหัสใหม่" onclick="spPinLock()">🔒 ล็อก</button>`;
+}
 function spBarHtml(sl){
-  if(!sl)return "📦 ออเดอร์พิเศษ";
+  if(!sl)return "📦 ออเดอร์พิเศษ"+spLockBtn();
   const g=SP_GRP[spGrpOf(sl)];
   const subs=spSubs(sl.id),done=subs.filter(r=>spStage(r)>=SP_STEPS.length).length;
   return `📦 ออเดอร์พิเศษ · ${g.ic} <b>${g.n}</b> · ใบ <b>${anaEsc(sl.id)}</b>`+
     (sl.d?` · ${fmtDate(sl.d)}`:"")+
-    ` <span class="dci-src">ออเดอร์ย่อย ${subs.length} เลข · จบแล้ว ${done}</span>`+
+    ` <span class="dci-src">ออเดอร์ย่อย ${subs.length} เลข · จบแล้ว ${done}</span>`+spLockBtn()+
     (spMgr()?`<div style="margin-top:8px;font-weight:400"><span class="psub">กลุ่ม:</span> `+
       Object.keys(SP_GRP).map(k=>`<button type="button" class="pl-today${
         spGrpOf(sl)===k?" on":""}" onclick="spSetGrp('${k}')">${SP_GRP[k].ic} ${SP_GRP[k].n}</button>`).join(" ")+
@@ -13295,8 +13300,82 @@ function spShopsHtml(sid){
       g.wait.length>6?" …":""}<br>พออัพไฟล์แล้วชื่อร้านจะขึ้นเองทั้งหมด ไม่ต้องคีย์ซ้ำ</div>`:""}
   </div>`;
 }
+/* ==========================================================================
+ * 🔐 รหัสชั้นที่สองของหน้าออเดอร์พิเศษ (เจ้าของสั่ง 26 พ.ย. 69)
+ *   *"เมื่อแก้ไขออเดอร์พิเศษจบ ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*
+ *
+ * ⚠️ **repo นี้เป็น public** — ห้ามเขียนตัวเลขรหัสลงไฟล์เด็ดขาด เก็บเป็น SHA-256 เท่านั้น
+ * ⚠️ นี่คือ "ชั้นกันคนเข้าผิดหน้า" ไม่ใช่กำแพงความปลอดภัย: การตรวจอยู่ในเบราว์เซอร์
+ *    ของจริงที่กันข้อมูลคือสิทธิ์ฝั่งเซิร์ฟเวอร์ใน api/spord.js (ใครเขียนขั้นไหนได้)
+ *    ซึ่งไม่ได้เปลี่ยนเลย — ฉะนั้นถึงมีคนเดารหัสได้ ก็ยังเขียนข้อมูลเกินสิทธิ์ตัวเองไม่ได้
+ * 🔑 จำไว้ต่อ "เครื่องนี้ + คนที่ล็อกอินคนนี้" (`bdsp:<uid>`) — เปลี่ยนคนล็อกอินแล้วถามใหม่
+ *    ไม่ได้อยู่ใน state ที่ sync จึงแตะ bd-data-* ไม่ได้ และหุ้ม try/catch เผื่อโหมดส่วนตัว
+ * 🔑 ผู้จัดการก็ต้องใส่ เพราะเจ้าของบอกว่า "เข้าชั้นนี้" ไม่ได้ยกเว้นใคร */
+const SP_PINH="ab8c4e54ff47b004aae5bf837e169eeb1d39056fc4ffadfb7033957b316ab566";
+/* เก็บ "ปลดให้ใครไว้" ไม่ใช่แค่ 1 — ส่งเครื่องให้คนอื่นล็อกอินแล้วต้องถามรหัสใหม่ */
+let SP_OPEN="";
+function spPinUid(){return (S.user&&S.user.id)||"-";}
+function spPinKey(){return "bdsp:"+spPinUid();}
+function spPinOk(){
+  const u=spPinUid();
+  if(SP_OPEN&&SP_OPEN===u)return true;
+  try{if(localStorage.getItem(spPinKey())==="1"){SP_OPEN=u;return true;}}catch(e){}
+  return false;
+}
+async function spPinHash(t){
+  const b=new TextEncoder().encode(String(t));
+  const d=await crypto.subtle.digest("SHA-256",b);
+  return Array.from(new Uint8Array(d)).map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+async function spPinGo(){
+  const el=document.getElementById("spPinIn"),msg=document.getElementById("spPinMsg");
+  const v=String((el&&el.value)||"").replace(/\s+/g,"");
+  if(!v){if(msg)msg.textContent="ใส่รหัสก่อนนะครับ";return;}
+  let h="";
+  try{h=await spPinHash(v);}catch(e){if(msg)msg.textContent="เบราว์เซอร์นี้ตรวจรหัสไม่ได้ ลองเปิดด้วย Chrome";return;}
+  if(h!==SP_PINH){
+    if(el)el.value="";
+    if(msg)msg.textContent="รหัสไม่ถูกต้อง ลองอีกครั้ง";
+    return;
+  }
+  SP_OPEN=spPinUid();
+  try{localStorage.setItem(spPinKey(),"1");}catch(e){}
+  renderSpord();
+}
+function spPinLock(){
+  SP_OPEN="";
+  try{localStorage.removeItem(spPinKey());}catch(e){}
+  renderSpord();
+}
+function spPinHtml(){
+  return `<div class="panel" style="max-width:420px;margin:0 auto;text-align:center">
+    <div style="font-size:40px;line-height:1">🔐</div>
+    <h3 style="margin:6px 0 2px">ออเดอร์พิเศษ</h3>
+    <div class="psub" style="margin-bottom:12px">หน้านี้ต้องใส่รหัสอีกชั้นหนึ่ง<br>
+      ถ้ายังไม่มีรหัส ขอจากผู้จัดการได้เลยครับ</div>
+    <input id="spPinIn" type="password" inputmode="numeric" autocomplete="off"
+      placeholder="ใส่รหัส" style="width:100%;text-align:center;font-size:22px;letter-spacing:4px;padding:10px"
+      onkeydown="if(event.key==='Enter')spPinGo()">
+    <div id="spPinMsg" class="down" style="min-height:20px;margin:6px 0;font-size:13px"></div>
+    <button class="upload-btn" style="width:100%;justify-content:center;padding:11px"
+      onclick="spPinGo()">เข้าหน้าออเดอร์พิเศษ</button>
+    <div class="psub" style="margin-top:10px">ใส่ครั้งเดียวต่อเครื่อง เครื่องนี้จะจำไว้ให้<br>
+      ถ้าจะล็อกกลับ กดปุ่ม 🔒 ล็อก ที่หัวหน้านี้</div>
+  </div>`;
+}
 function renderSpord(){
   const bar=document.getElementById("spBar");if(!bar)return;
+  bar.style.display="";
+  /* 🔐 ยังไม่ได้ใส่รหัสชั้นสอง → โชว์แต่ช่องใส่รหัส ไม่วาดอะไรของหน้านี้เลย */
+  if(!spPinOk()){
+    bar.innerHTML="";bar.style.display="none";
+    const hide=["spSlipBox","spQBox","spSecBox","spNewBox"];
+    hide.forEach(id=>{const e=document.getElementById(id);if(e)e.style.display="none";});
+    {const cb=document.querySelector("#spordView > .controls");if(cb)cb.style.display="none";}
+    const b0=document.getElementById("spBody");if(b0)b0.innerHTML=spPinHtml();
+    const ip=document.getElementById("spPinIn");if(ip)try{ip.focus();}catch(e){}
+    return;
+  }
   const C=spOk(),role=spRole(),sls=spSlips();
   /* กล่องเลือกใบ */
   const sel=document.getElementById("spSlip");
@@ -13351,7 +13430,7 @@ function renderSpord(){
     const yr=spYear(),ys=spYears(),ms=spMonths(yr);
     if(!SP.ym||!ms.some(m=>m.ym===SP.ym)){
       const now=todayISO().slice(0,7);
-      bar.innerHTML=`📦 ออเดอร์พิเศษ · เลือกเดือนที่จะดู`+
+      bar.innerHTML=`📦 ออเดอร์พิเศษ · เลือกเดือนที่จะดู`+spLockBtn()+
         `<span class="dci-src">ปี ${+yr+543}</span>`;
       body.innerHTML=`<div class="panel">
         <div class="cst-fb" style="align-items:center">

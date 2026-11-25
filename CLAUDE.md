@@ -752,6 +752,17 @@ code, never printed.
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
   with **`node test/browser/cstock.test.cjs`** (239 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
+  **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
+  `renderSpord` returns the PIN screen and **draws nothing of the page** until `spPinOk()`. Two
+  rules. **The repo is public, so the digits are never written into any file** — only the SHA-256
+  (`SP_PINH`), checked with `crypto.subtle`, which is why `spord.test.cjs` now loads over a real
+  `https://` origin like the cstock suite (no secure context, no `crypto.subtle`, no localStorage).
+  And it is **a wrong-page guard, not a security boundary**: the check runs in the browser, so what
+  actually protects the data is the unchanged server-side role table in `api/spord.js` — never move
+  a permission from there to this gate. The unlock is remembered per **device and per logged-in
+  user** (`bdsp:<uid>`, `SP_OPEN` holds the uid, not a flag), so handing the phone to someone who
+  logs in as themselves asks again; 🔒 ล็อก in the page header forgets it. Not part of the synced
+  state, every access in try/catch.
 **📦 ออเดอร์พิเศษ (`spord`) is its own top-level group**, not a tab under สต็อก — the owner moved it
   out on 18 Nov 26 (*"โยกหมวดออเดอร์พิเศษแยกออกมาจากสต็อค ให้เป็นหมวดใหญ่"*) and it is on the admin
   site too (`ADMIN_SITE_GROUPS`). It carries the owner's Nov-26 order: special orders run
@@ -854,7 +865,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (104 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (111 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -867,7 +878,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (104 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (111 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

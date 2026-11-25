@@ -15,12 +15,18 @@ const BROWSER=require('./_chrome.cjs').chromePath();
 
 const B1='B20261118-01';
 const K=(no)=>B1+'|'+no;
+/* ⚠️ ต้องโหลดผ่าน origin จริง ไม่ใช่ setContent — ไม่งั้น localStorage ถูกบล็อก และ
+   `crypto.subtle` (ใช้ตรวจรหัสชั้นสองของหน้านี้) ไม่มีให้ใช้นอก secure context
+   หลักเดียวกับ cstock.test.cjs / sreq.test.cjs */
+const ORIGIN='https://bd-spord.test/';
 
 (async()=>{
  const b=await chromium.launch({executablePath:BROWSER,args:['--no-sandbox']});
  const pg=await (await b.newContext({viewport:{width:1280,height:950}})).newPage();
  const errs=[];pg.on('pageerror',e=>errs.push(String(e)));
- await pg.setContent(fs.readFileSync(PAGE,'utf8'),{waitUntil:'domcontentloaded'});
+ const html=fs.readFileSync(PAGE,'utf8');
+ await pg.route(ORIGIN+'**',r=>r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}));
+ await pg.goto(ORIGIN,{waitUntil:'domcontentloaded'});
  await pg.addScriptTag({path:require.resolve('xlsx/dist/xlsx.full.min.js')});
  const A=[];const t=(n,c,x)=>A.push([!!c,n,x===undefined?'':String(x)]);
  const ev=(f,a)=>pg.evaluate(f,a);
@@ -55,10 +61,61 @@ const K=(no)=>B1+'|'+no;
     SP={sid:'${B1}',q:'',busy:0,view:'slip',ym:'2026-11',sec:'old',day:'',gin:''};
   };
   window.__as=(role,code,name)=>{S.user={id:code||role,role:role,code:code,name:name};
+    /* 🔐 ปลดรหัสชั้นสองของหน้าออเดอร์พิเศษให้คนนี้ (จำแยกตามคนที่ล็อกอิน)
+       เทสของตัวรหัสเองอยู่หัวไฟล์ ลบคีย์นี้ทิ้งก่อนเทสแล้ว */
+    try{localStorage.setItem('bdsp:'+(code||role),'1');}catch(e){}
     _switchTab(tabIsTeam(role)?'spord':'sales');};
   window.__reset();
  `);
  const body=()=>ev(()=>document.getElementById('spBody').textContent.replace(/\s+/g,' '));
+
+ /* ---------- 0) 🔐 รหัสชั้นที่สองของหน้านี้ (เจ้าของสั่ง 26 พ.ย. 69) ----------
+    *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"* — รหัสจริงไม่อยู่ในไฟล์ (repo เป็น public)
+    เก็บเป็น SHA-256 เท่านั้น เทสจึงคำนวณแฮชเทียบ ไม่ได้เขียนตัวเลขลงเทสด้วย */
+ const PIN='3912131415';
+ const gate=await ev(async(pin)=>{
+   __reset();__as('manager',null,'ผู้จัดการ');
+   SP_OPEN="";
+   try{['manager','209611'].forEach(u=>localStorage.removeItem('bdsp:'+u));}catch(e){}
+   _switchTab('spord');renderSpord();
+   const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   const o={locked:tx(),hasIn:!!document.getElementById('spPinIn'),
+     bar:document.getElementById('spBar').textContent,
+     leak:document.documentElement.innerHTML.indexOf(pin)>=0};
+   /* รหัสผิด */
+   document.getElementById('spPinIn').value='1234567890';
+   await spPinGo();
+   o.wrong=document.getElementById('spPinMsg').textContent;
+   o.stillLocked=!!document.getElementById('spPinIn');
+   /* รหัสถูก */
+   document.getElementById('spPinIn').value=pin;
+   await spPinGo();
+   o.open=tx();o.noIn=!document.getElementById('spPinIn');
+   o.remembered=(()=>{try{return localStorage.getItem(spPinKey());}catch(e){return null;}})();
+   /* กด 🔒 ล็อกกลับ */
+   spPinLock();
+   o.reLocked=!!document.getElementById('spPinIn');
+   o.forgot=(()=>{try{return localStorage.getItem(spPinKey());}catch(e){return null;}})();
+   /* เปลี่ยนคนล็อกอิน → ต้องถามใหม่ (จำแยกตามคน) */
+   document.getElementById('spPinIn').value=pin;await spPinGo();
+   const a=!document.getElementById('spPinIn');
+   S.user={id:'209611',role:'sales',code:'209611',name:'CT11'};
+   _switchTab('spord');renderSpord();
+   o.perUser=a&&!!document.getElementById('spPinIn');
+   return o;},PIN);
+ t('🔑 เข้าหน้าออเดอร์พิเศษต้องใส่รหัสอีกชั้น',
+   gate.hasIn&&/ต้องใส่รหัสอีกชั้นหนึ่ง/.test(gate.locked),gate.locked.slice(0,70));
+ t('🔒 ...และตอนล็อกอยู่ ไม่วาดข้อมูลของหน้านี้เลย (ไม่ใช่แค่ซ่อนปุ่ม)',
+   !/ใบออเดอร์|เลือกเดือน|ฝั่งเซลล์/.test(gate.locked)&&gate.bar==='',
+   gate.locked.slice(0,70)+' | bar='+gate.bar);
+ t('🔒 ตัวเลขรหัสต้องไม่อยู่ในหน้าเว็บเลย (repo นี้เป็น public)',!gate.leak);
+ t('🛟 รหัสผิด → บอกว่าผิด และยังเข้าไม่ได้',
+   /รหัสไม่ถูกต้อง/.test(gate.wrong)&&gate.stillLocked,gate.wrong);
+ t('🔑 รหัสถูก → เข้าหน้าได้ และเครื่องนี้จำไว้ให้',
+   gate.noIn&&gate.remembered==='1',JSON.stringify({open:gate.noIn,mem:gate.remembered}));
+ t('🔑 มีปุ่ม 🔒 ล็อกกลับ และกดแล้วลืมรหัสที่จำไว้',
+   gate.reLocked&&!gate.forgot,JSON.stringify({locked:gate.reLocked,mem:gate.forgot}));
+ t('🛟 จำแยกตามคนที่ล็อกอิน — เปลี่ยนคนแล้วถามใหม่',gate.perUser);
 
  /* ---------- 1) ใครเห็นอะไร ---------- */
  const who=await ev(()=>{
