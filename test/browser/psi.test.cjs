@@ -95,8 +95,8 @@ function mRow(o){
   r[MC.br]=o.br||'TESTBRAND';r[MC.cat]=o.cat||'FABRIC CLEANING';
   return r;
 }
-function mkMaster(rows){
-  const body=[MH].concat(rows);
+function mkMaster(rows,head){
+  const body=[head||MH].concat(rows);
   const f=new Array(40).fill(null);f[0]='No filters applied';body.push(f);
   const w=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(w,XLSX.utils.aoa_to_sheet(body),'Export');
@@ -398,6 +398,30 @@ function mkOldMaster(rows){
  t('ไฟล์ master แบบเดิมยังอ่านได้เหมือนเดิม',r9.nm==='สินค้าทดสอบ C จากไฟล์เดิม'&&!r9.src,r9.nm);
  t('🛟 ไฟล์เดิมไม่มีน้ำหนัก/ขนาดลัง — ห้ามลบของที่ไฟล์ dcode เคยให้ไว้',r9.keptDet,
    JSON.stringify(r9.items));
+ /* 🔤 กฎกลางของทั้งเว็บ: หาหัวตารางแบบ "เท่ากันทั้งช่อง แต่ไม่สนตัวพิมพ์"
+    มาจากไฟล์ใบจัดของสองแบบของ dcode ที่พิมพ์ Product Code / Product code ต่างกัน */
+ const rh=await ev(()=>({
+   same:hdrIx(['Order Number','Product Code'],'product code'),
+   upper:hdrIx(['PRODUCT CODE'],'Product Code'),
+   nbsp:hdrIx(['Sale Order  (PC)'],'Sale Order (PC)'),
+   sub:hdrIx(['Outlet Ship To Party Code'],'Outlet Code'),
+   miss:hdrIx(['A','B'],'C'),
+   masterLower:(()=>{try{return hdrIx(['item code','status'],'Item Code');}catch(e){return -2;}})()
+ }));
+ t('🔑 หาหัวตารางไม่สนตัวพิมพ์ (Product Code = product code = PRODUCT CODE)',
+   rh.same===1&&rh.upper===0,JSON.stringify(rh));
+ t('…ยุบเว้นวรรคซ้ำและเว้นวรรคแบบไม่ตัดบรรทัดให้ด้วย',rh.nbsp===0,String(rh.nbsp));
+ t('🛟 ยังเทียบ "ทั้งช่อง" ไม่ใช่ substring — Outlet Code ต้องไม่ไปเจอ Outlet Ship To Party Code',
+   rh.sub===-1,String(rh.sub));
+ t('🛟 ไม่เจอจริง ๆ ยังคืน -1 เหมือนเดิม (ตัวอ่านจะได้ throw ต่อได้)',rh.miss===-1,String(rh.miss));
+ /* ไฟล์ master ของ dcode ที่หัวตารางเป็นตัวพิมพ์เล็ก ต้องยังถูกจับได้ว่าเป็นไฟล์ dcode */
+ const r9b=await ev(async a=>{window.__log=[];
+   await parseMaster('Product_Master_lower.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);
+   return {det:(MASTER.det||{})['90000001']||null,src:MASTER.src||''};
+ },{b64:mkMaster([mRow({code:'90000001',nm:'สินค้าทดสอบ A',ps:12,gw:5.63,w:225,l:365,h:220})],
+   MH.map(h=>h==='Item Code'?'item code':(h==='Status'?'STATUS':h)))});
+ t('🔑 ไฟล์ master ของ dcode ที่หัวตารางคนละตัวพิมพ์ ต้องยังถูกจับได้ว่าเป็นไฟล์ dcode',
+   !!r9b.det&&r9b.det.ps===12,JSON.stringify(r9b));
 
  /* ---------------- 10) ไฟล์ราคาแนบขนาด/น้ำหนักติดไปด้วย ---------------- */
  const r10=await ev(()=>{
@@ -499,6 +523,36 @@ function mkOldMaster(rows){
  t('หน้าของเข้าคลังแยกการ์ด 🛒 ของซื้อ กับ 🎁 ของแถม',
    /ของซื้อ/.test(r11c.tin)&&/ของแถม/.test(r11c.tin)&&/ไม่ได้สั่ง ไม่มีมูลค่า/.test(r11c.tin),
    r11c.tin.slice(0,220));
+
+ /* ---------------- 11d) หัวตารางคนละตัวพิมพ์ ต้องยังอ่านได้ ----------------
+    dcode พิมพ์หัวตารางไม่เหมือนกันระหว่างไฟล์ของตัวเอง (วัดจากไฟล์ใบจัดของสองแบบ:
+    "Product Code" กับ "Product code") — ตัวอ่านทุกตัวจึงต้องไม่สนตัวพิมพ์
+    ⚠️ ยังต้องเทียบ "ทั้งช่อง" ไม่ใช่ substring และหัวที่ต้องใช้หายยังต้อง throw เหมือนเดิม */
+ const r11d=await ev(a=>{window.__log=[];PSI={rows:{},days:{},up:0};
+   let err='';
+   try{parsePSI('PSI_Detail_lower.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);}
+   catch(e){err=String(e.message||e);}
+   return {err:err,k:PSI.rows['2026-11-17|90000001'],n:Object.keys(PSI.rows).length};
+ },{b64:mkDet([detRow({code:'90000001',cs:40,v:13072}),
+     detRow({code:'90000001',cs:6,st:'FREE',v:0})],
+   DH.map(h=>h==='Product Code'?'Product code':(h==='Received Qty (CS)'?'RECEIVED QTY (CS)':
+     (h==='Stock Type'?'stock type':h))))});
+ t('🔑 ไฟล์ PSI ที่หัวตารางคนละตัวพิมพ์ ต้องอ่านได้เหมือนกัน',
+   !r11d.err&&r11d.n===1&&r11d.k.cs===40,r11d.err||JSON.stringify(r11d.k));
+ t('…และชื่อคลัง Free/FREE/free อ่านเป็นของแถมเหมือนกัน',!r11d.err&&r11d.k.fr===6,
+   JSON.stringify(r11d.k));
+ const r11e=await ev(a=>{let err='';
+   try{parsePSI('PSI_broken.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);}
+   catch(e){err=String(e.message||e);}
+   return {err:err,n:Object.keys(PSI.rows).length};
+ },{b64:mkDet([detRow({code:'90000002',cs:9,v:1})],
+   DH.map(h=>h==='Received Qty (CS)'?'Qty Received':h))});
+ t('🛟 หัวตารางที่ต้องใช้หายไปจริง ๆ ยังต้องฟ้องและไม่เก็บอะไร',
+   /Received Qty|ใช่ไฟล์ PSI/.test(r11e.err)&&r11e.n===1,r11e.err);
+ /* คืนสถานะเดิมให้หัวข้อถัดไป (สองบล็อกบนล้าง PSI ทิ้งเพื่อทดสอบ) */
+ await ev(a=>{PSI={rows:{},days:{},up:0};
+   parsePSI('PSI_Detail_Report_3.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);
+   psiBust();psiCrBust();psiOrdBust();},{b64:mkDet(rowsD)});
 
  /* ---------------- 12) 💰 แถบเงิน: สั่งไป − Drop เทียบ ของเข้าคลัง (NIV) ----------------
     เจ้าของอธิบายหน้านี้เอง 28 พ.ย. 69: "มันคือหน้า order-drop เทียบกับช่อง delivery

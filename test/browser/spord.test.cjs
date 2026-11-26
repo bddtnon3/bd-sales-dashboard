@@ -1794,6 +1794,59 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🛟 สองรหัสเสมอกันสนิท → ไม่จับคู่ ดีกว่าเดาผิดแล้วฟ้องว่าคลังแถมไม่ครบ',
    !tie.EEE3,JSON.stringify(tie));
 
+ /* ---------- 13c) dcode ส่งใบจัดของมาสองแบบ (Historical / Real Time) ----------
+    วัดไฟล์จริงของเจ้าของ 28 พ.ย. 69: 36 คอลัมน์เท่ากัน เรียงเหมือนกัน ต่างแค่ **ตัวพิมพ์ 2 ช่อง**
+      Product Code → Product code  ·  Sale Order (PC) → Sale order (PC)
+    แค่นั้นทำให้ไฟล์ Real Time ขึ้น "ไม่พบหัวตาราง" แล้วไม่เก็บอะไรเลย
+    และใบที่มีทั้งสองไฟล์ 609 ใบ ตรงกันหมด 609/609 — ต่างกันแค่ "ครอบกี่วัน" */
+ const twoFmt=await ev(()=>{
+   const mk=(hdrCase,days,gin,nPerDay)=>{
+     const H=['Order Creation Date','Distributor Code','Distributor Name','Salesman Name',
+       'PJP Code','PJP Name','Route Type','Outlet Code','Outlet Name','Outlet Subtype',
+       'GIN No.','Invoice No.','Order Number','Order Type',
+       hdrCase?'Product code':'Product Code','Product Description',
+       'Pack Size','Sale Order (CS)','Sale Order (SHR)',
+       hdrCase?'Sale order (PC)':'Sale Order (PC)',
+       'Free Order (CS)','Free Order (SHR)','Free Order (PC)',
+       'Sale Allocated (CS)','Sale Allocated (SHR)','Sale Allocated (PC)',
+       'Free Allocated (CS)','Free Allocated (SHR)','Free Allocated (PC)'];
+     const A=[H];
+     days.forEach((d,di)=>{for(let i=0;i<nPerDay;i++)A.push([d,'15389839','บีดี','2096',
+       '209611','CT_HPC_211','CT','SHX'+i,'ร้าน','sub',gin,'INVX'+di+i,'OX'+di+i,'B2B',
+       'FFF1','ของ FFF1',12,2,0,0,0,0,0,2,0,0,0,0,0]);});
+     const ws=XLSX.utils.aoa_to_sheet(A),wb=XLSX.utils.book_new();
+     XLSX.utils.book_append_sheet(wb,ws,'Export');
+     return XLSX.write(wb,{type:'array',bookType:'xlsx'});
+   };
+   const out={};
+   /* ① ไฟล์แบบ Historical: GIN 777 ครอบ 3 วัน */
+   ALLOC=null;
+   parseAlloc('Order_Allocation_ReportHistorical_3.xlsx',mk(false,[46341,46342,46343],'777',2));
+   out.hi={gins:Object.keys(ALLOC.g).length,d:Object.keys(ALLOC.g['777'].d).length,n:ALLOC.g['777'].n};
+   /* ② ไฟล์แบบ Real Time: หัวตารางตัวพิมพ์ต่าง และครอบแค่วันเดียว */
+   parseAlloc('Order_Allocation_ReportReal_Time_2.xlsx',mk(true,[46343],'777',2));
+   out.rt={gins:Object.keys(ALLOC.g).length,d:Object.keys(ALLOC.g['777'].d).length,n:ALLOC.g['777'].n};
+   /* ③ สลับลำดับ: อ่านไฟล์ช่วงสั้นก่อน แล้วค่อยไฟล์ทั้งเดือน */
+   ALLOC=null;
+   parseAlloc('Order_Allocation_ReportReal_Time_2.xlsx',mk(true,[46343],'777',2));
+   const mid=Object.keys(ALLOC.g['777'].d).length;
+   parseAlloc('Order_Allocation_ReportHistorical_3.xlsx',mk(false,[46341,46342,46343],'777',2));
+   out.swap={mid:mid,d:Object.keys(ALLOC.g['777'].d).length,n:ALLOC.g['777'].n};
+   out.kind={hi:alKindTxt('Order_Allocation_ReportHistorical_3.xlsx'),
+     rt:alKindTxt('Order_Allocation_ReportReal_Time_2.xlsx'),
+     other:alKindTxt('alloc.xlsx')};
+   return out;});
+ t('🔑 ไฟล์ใบจัดของแบบ Real Time (หัวตารางคนละตัวพิมพ์) ต้องอ่านได้เหมือนกัน',
+   twoFmt.rt.gins===1&&twoFmt.rt.n===6,JSON.stringify(twoFmt.rt));
+ t('🔑 ไฟล์ที่ครอบช่วงสั้นกว่า ลบวันที่ไฟล์ก่อนหน้าอ่านไว้ไม่ได้ (กฎเดียวกับ pickGin ฝั่งเซิร์ฟเวอร์)',
+   twoFmt.hi.d===3&&twoFmt.rt.d===3,JSON.stringify([twoFmt.hi,twoFmt.rt]));
+ t('…และอัพสลับลำดับก็ได้ผลเท่ากัน',
+   twoFmt.swap.mid===1&&twoFmt.swap.d===3&&twoFmt.swap.n===twoFmt.hi.n,
+   JSON.stringify(twoFmt.swap));
+ t('บอกบนหน้าเว็บว่าเพิ่งอ่านไฟล์แบบไหน (ชื่อไฟล์ที่ไม่รู้จักก็ไม่เดา)',
+   /Historical/.test(twoFmt.kind.hi)&&/Real Time/.test(twoFmt.kind.rt)&&twoFmt.kind.other==='',
+   JSON.stringify(twoFmt.kind));
+
  /* ---------- 14b) ใบ A/B: กรอกเลข GIN ในหน้าคลังจัดส่ง ---------- */
  const ginAB=await ev(async()=>{
    __reset();

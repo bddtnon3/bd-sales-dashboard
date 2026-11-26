@@ -852,7 +852,7 @@ code, never printed.
   pill, never merged into the Drop badge**: the Drop file is the centre's answer, PSI is our
   warehouse's, and they are different steps. With no PSI file covering that round the pill is
   **silent**, never "ยังไม่เข้า". Prove it with
-  **`node test/browser/psi.test.cjs`** (74 checks, self-contained with made-up codes; 76 with the
+  **`node test/browser/psi.test.cjs`** (82 checks, self-contained with made-up codes; 85 with the
   real file via `PSI_FILE=/path/PSI_Detail_Report_3.xlsx` — either format — which never enters the
   repo) plus the `PSI` cases in `merge-safety`.
   The **📋 สถานะออเดอร์ (ขาย)** tab group (`renderOtrk`) answers *"where is this order?"* for the whole
@@ -1384,7 +1384,7 @@ code, never printed.
   one — otherwise the button asked for the file while the answer was already on its way. Reading is
   manager-only, like the check itself. Prove it with the `api/alloc.js` cases in
   **`node test/merge-safety.test.mjs`** (330 checks) and the round-trip cases in
-  **`node test/browser/spord.test.cjs`** (304 checks).
+  **`node test/browser/spord.test.cjs`** (308 checks).
   **④ คลังจัดส่ง is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
@@ -1625,7 +1625,7 @@ code, never printed.
   on consecutive lines would join into a 20-digit run and both vanish. Typing is still there,
   unchanged, under *— หรือพิมพ์เลขเอง —*. The picker is not a data upload, so the one-upload-button
   rule does not apply. Prove it with the self-contained cases in
-  **`node test/browser/spord.test.cjs`** (304 checks) and, against the owner's real screenshots,
+  **`node test/browser/spord.test.cjs`** (308 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
@@ -1667,8 +1667,29 @@ code, never printed.
   together** (*"พอสรุปขึ้นออเดอร์พิเศษหมวดใหญ่ ให้รวมจำนวนไปเลยเหมือนเดิม"*).
   **② The admin uploads the warehouse's Order Allocation Report and types that day's GIN numbers**
   (`parseAlloc`/`alPick`/`spGinSave`/`spCmp`), and the page says per line and per product whether
-  what went out matches what the reps keyed. Measured on the owner's real
-  `Order_Allocation_ReportHistorical.xlsx` (10,428 rows, 15–24 Nov 26) before any of it was written:
+  what went out matches what the reps keyed. **dcode exports this report in two flavours and both
+  must keep working** — `Order_Allocation_ReportHistorical_N.xlsx` and
+  `Order_Allocation_ReportReal_Time_N.xlsx`, which the owner sent on 28 Nov 26 asking *"ช่วยแกะหน่อย
+  ว่าสองไฟล์นี้ต่างกันยังไง และทำให้มันอัพได้ทั้งสองแบบไปเลย"*. Measured on his two real files:
+  **36 columns, same order, and the content is identical** — the 609 orders both carry agree
+  609/609 on status, GIN, invoice number, quantities and money. They differ in exactly two ways:
+  the **window** (Historical = the whole current month, 12 days / 13,003 rows; Real Time = the last
+  day or two, 2,584 rows) and the **capitalisation of two headers** — `Product Code` → `Product code`
+  and `Sale Order (PC)` → `Sale order (PC)`. That alone made the Real Time file throw
+  "ไม่พบหัวตาราง" and store nothing, which is why **every reader now finds columns through
+  `hdrFind`/`hdrIx`** (`hdrNorm`: trim, collapse whitespace including ` `, lowercase). The rule
+  is unchanged in every other respect — **whole-cell match, never substring** (what `pjColEq`,
+  `dsColOf` and `cstExRead` were already careful about), and a header that is genuinely missing
+  still **throws and stores nothing**; only letter case is forgiven, because dcode is inconsistent
+  with its own. Measured: neither file has two headers that collide once case is ignored, so no
+  column can be picked by mistake. Because the two files differ only in window, the browser-side
+  union needed the server's rule too: **`alPickGin` mirrors `api/alloc.js`'s `pickGin`** (more days
+  wins, then more rows, then the later last day) — `parseAlloc` used to let the newest file win
+  outright, and measured, 2 of the 31 shared GINs are covered by more days in the Historical file,
+  so uploading Real Time afterwards would have quietly shrunk them. Uploading in either order now
+  gives byte-identical results, and the log names the flavour read and how many GINs it kept.
+  Everything below was measured on the owner's earlier real
+  `Order_Allocation_ReportHistorical.xlsx` (10,428 rows, 15–24 Nov 26):
   columns are found by **header text**, never position, and a renamed header **throws and stores
   nothing**; the line is the last two digits of **`PJP Code` (E) and `PJP Name` (F), which agree on
   all 10,428 rows**, and runs 11–17/19/22/97/99 — not just 11–22, so it goes through
@@ -1746,7 +1767,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (304 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (308 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1759,7 +1780,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (304 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (308 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
@@ -1899,12 +1920,25 @@ stock, daily/monthly sales, KPI, master, by-store, analytics). Filenames carry t
 (e.g. `Drop 25072026.xlsx`, `BD_250726.xlsx`). Parsers key data by date/month/line so uploads
 merge rather than replace.
 
+**🔤 Every reader finds its columns through `hdrFind`/`hdrIx`** (`hdrNorm`: trim, collapse
+whitespace including ` `, lowercase), because dcode does not spell its own headers the same way
+twice: its two Order Allocation exports of the same report differ only in `Product Code` vs
+`Product code` and `Sale Order (PC)` vs `Sale order (PC)`, and that alone made one of them throw
+"ไม่พบหัวตาราง" and store nothing. **The rule it relaxes is case and nothing else** — the match is
+still against the **whole cell, never a substring** (`pjColEq`, `dsColOf` and `cstExRead` document
+why that matters: `(Outlet Code)` sits inside `(Outlet Ship To Party Code)`, and `ผู้สั่งซื้อ` inside
+`ผู้สั่งซื้อ (ID)`), a header that is genuinely missing still **throws and stores nothing**, and
+columns are still never found by position. Measured on the owner's two real files: no two headers
+collide once case is ignored, so no column can be picked by mistake.
+
 **BD moved to the dcode system in Nov 26 (`DCODE_START`, recorded at the owner's request so no
-report claims a shop "did not buy" in a period that has no dcode data), so three files now have two
-formats each** and both readers must keep working (`STOCKD.src` / the daily log line say which was read). Each new reader
-is picked by a header the old file does not have, finds every column by **header text** (never a
-fixed index), and **throws without storing anything** if a header it needs is gone — see the
-สต็อก section above for `parseStockDcode`, and below for `parseDailyDcode`.
+report claims a shop "did not buy" in a period that has no dcode data), so several files now have
+two formats each** and both readers must keep working (`STOCKD.src` / the daily log line say which
+was read; PSI says it in the log and on the page; the allocation log names the flavour). Each new
+reader is picked by a header the old file does not have, finds every column by **header text**
+(never a fixed index), and **throws without storing anything** if a header it needs is gone — see the
+สต็อก section above for `parseStockDcode`, the 📥 section for `parsePSI`'s two formats, the
+ออเดอร์พิเศษ section for the two Order Allocation exports, and below for `parseDailyDcode`.
 `parseDaily` dispatches to **`parseDailyDcode`** when the header row carries `(PJP Code)` and
 `(NIV)`. dcode's daily file (`Sales_16-17112026.xlsx`, sheet `Export`, 49 columns) is a
 **line-item bill list covering a date RANGE**, not one day, and the eight fields the dashboard

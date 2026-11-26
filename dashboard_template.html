@@ -10826,6 +10826,33 @@ function ymdOf(d){
 }
 function ymOf(d){return ymdOf(d).slice(0,7);}
 function todayISO(){return ymdOf(new Date());}
+/* ============================================================================
+ * 🔤 หาคอลัมน์จาก "ข้อความหัวตาราง" โดยไม่สนตัวพิมพ์เล็ก/ใหญ่ — ใช้ร่วมกันทุกตัวอ่านไฟล์
+ *
+ * เจ้าของส่งไฟล์ใบจัดของมาสองแบบ 28 พ.ย. 69: *"ไฟล์ order allocation ระบบ dcode ทำได้สองไฟล์
+ * ช่วยแกะหน่อยว่าสองไฟล์นี้ต่างกันยังไง และทำให้มันอัพได้ทั้งสองแบบไปเลย … ปรับให้เวปวิเคราะห์ได้
+ * ทุกรูปแบบไปเลย"*
+ *
+ * 📏 วัดสองไฟล์ก่อนเขียน (`..._Historical_3` 13,003 แถว เทียบ `..._Real_Time_2` 2,584 แถว):
+ *    **36 คอลัมน์เท่ากัน เรียงเหมือนกันทุกช่อง** ต่างกันแค่ **ตัวพิมพ์ 2 ช่อง**
+ *      `Product Code` → `Product code`  ·  `Sale Order (PC)` → `Sale order (PC)`
+ *    และใบที่มีทั้งสองไฟล์ 609 ใบ **ตรงกันหมด 609/609 ทั้งสถานะ · GIN · เลขบิล · จำนวน · เงิน**
+ *    ⇒ ตัวพิมพ์สองตัวนี้อย่างเดียวทำให้ไฟล์ Real Time ขึ้น "ไม่พบหัวตาราง" แล้วไม่เก็บอะไรเลย
+ *
+ * 🔑 กฎเดิมอยู่ครบทุกข้อ: หาจาก **ข้อความหัวตาราง** ไม่ใช่ตำแหน่ง · เทียบ **ทั้งช่อง** ไม่ใช่
+ *    substring (เหตุผลเดียวกับที่ `pjColEq`/`dsColOf`/`cstExRead` ระวังไว้ — "(Outlet Code)"
+ *    เป็นส่วนหนึ่งของ "(Outlet Ship To Party Code)" ได้) · หัวที่ต้องใช้หาย = **throw ไม่เก็บอะไร**
+ *    สิ่งเดียวที่ผ่อนคือตัวพิมพ์ ซึ่ง dcode เองพิมพ์ไม่เหมือนกันระหว่างไฟล์ของตัวเองอยู่แล้ว
+ * 📏 ตรวจแล้วหัวตารางของทั้งสองไฟล์ **ไม่มีช่องไหนซ้ำกันเลยเมื่อไม่สนตัวพิมพ์** จึงไม่มีทางหยิบผิดช่อง
+ * ⚠️ ` ` (เว้นวรรคไม่ตัดบรรทัด) ก็ต้องยุบเป็นเว้นวรรคธรรมดา — Excel ใส่มาได้
+ * ==========================================================================*/
+function hdrNorm(x){return String(x==null?"":x).replace(/[ \s]+/g," ").trim().toLowerCase();}
+/* คืนฟังก์ชันค้นหา เพื่อไม่ต้อง normalize หัวตารางใหม่ทุกครั้งที่ถาม */
+function hdrFind(H){
+  const h=(H||[]).map(hdrNorm);
+  return n=>h.indexOf(hdrNorm(n));
+}
+function hdrIx(H,n){return hdrFind(H)(n);}
 /* order round cutoff 09:00 — before 9am counts for today, from 9am onward goes to next day */
 function orderRoundDate(){const now=new Date();const d=new Date(now);if(now.getHours()>=9)d.setDate(d.getDate()+1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function reqDatesFor(code){return Object.keys((REQUESTS&&REQUESTS.data)||{}).filter(d=>REQUESTS.data[d]&&REQUESTS.data[d][code]).sort();}
@@ -11438,7 +11465,8 @@ function dcStkName(v,code){
   return t.replace(/-\d+(\.\d+)?$/,"").trim();
 }
 function parseStockDcode(name,rows,hdr,H){
-  const nz=x=>String(x==null?"":x).replace(/\s+/g,"");
+  /* หัวตารางไฟล์นี้เป็นไทยล้วน แต่ยุบเว้นวรรคและไม่สนตัวพิมพ์ไว้ด้วย เผื่อ dcode เปลี่ยน */
+  const nz=x=>String(x==null?"":x).replace(/[ \s]+/g,"").toLowerCase();
   const HN=H.map(nz);
   const col=t=>HN.indexOf(nz(t));
   const need=t=>{const i=col(t);if(i<0)throw new Error('ไฟล์สต็อก dcode ไม่มีคอลัมน์ "'+t+'" — ถ้า dcode เปลี่ยนหัวตาราง ต้องแก้ตัวอ่านก่อน');return i;};
@@ -13627,6 +13655,39 @@ function alLine(pj,pn){
   if(two&&FOCUS_MAP["2096_"+two])return FOCUS_MAP["2096_"+two];
   return k||t||"?";
 }
+/* ============================================================================
+ * 🧮 GIN เดียวกันมาจากสองไฟล์ — "ฝั่งที่ครอบวันมากกว่าชนะ" ไม่ใช่ "ไฟล์ใหม่ชนะ"
+ *
+ * กฎเดียวกับ `pickGin` ใน `api/alloc.js` เป๊ะ ๆ (วันเยอะกว่า → แถวเยอะกว่า → วันสุดท้ายใหม่กว่า)
+ * และต้องมีฝั่งเบราว์เซอร์ด้วย เพราะ `parseAlloc` รวมเข้า `ALLOC` ในหน่วยความจำก่อนส่งขึ้นเซิร์ฟเวอร์
+ * — ของเดิมเขียน `gAll[k]=g[k]` คือไฟล์ใหม่ชนะเสมอ
+ *
+ * 📏 ของจริง 28 พ.ย. 69: ไฟล์ Real Time ครอบ 2 วัน ส่วน Historical ครอบ 12 วัน และมี **2 GIN
+ *    ที่ Historical กินวันมากกว่า** — อัพ Real Time ตามหลังจะทำให้สอง GIN นั้นแคบลงทันที
+ *    แล้วผลตรวจของวันก่อนหน้าจะอ่านว่า "คลังจัดน้อยกว่าที่เซลล์คีย์" ทั้งที่ไม่ใช่
+ * ⚠️ `d` ฝั่งเบราว์เซอร์เป็น object map ส่วนฝั่งเซิร์ฟเวอร์เป็น array — นับจำนวนคนละวิธี
+ * ==========================================================================*/
+/* 🏷 dcode ส่งรายงานใบจัดของมาสองแบบ — บอกบนหน้าเว็บว่าเพิ่งอ่านแบบไหน เพราะ "ครอบกี่วัน"
+   ต่างกันมาก (วัดจริง: Historical 12 วันทั้งเดือน · Real Time แค่ 2 วันล่าสุด) ส่วนข้อมูล
+   ของใบที่มีทั้งสองไฟล์ **ตรงกันทุกตัว 609/609** จึงไม่ต้องเลือกว่าไฟล์ไหน "ถูกกว่า" */
+function alKindTxt(name){
+  const s=String(name||"").toLowerCase().replace(/[\s_-]+/g,"");
+  if(s.indexOf("realtime")>=0)return "แบบ Real Time · ช่วงสั้น วันล่าสุด";
+  if(s.indexOf("historical")>=0)return "แบบ Historical · ทั้งเดือน";
+  return "";
+}
+function alGinDays(x){const d=(x&&x.d)||{};return Array.isArray(d)?d.length:Object.keys(d).length;}
+function alGinLast(x){const d=(x&&x.d)||{};
+  const a=Array.isArray(d)?d.slice():Object.keys(d);return a.sort().pop()||"";}
+function alPickGin(a,b){
+  if(!a)return b||null;
+  if(!b)return a;
+  const da=alGinDays(a),db=alGinDays(b);
+  if(da!==db)return da>db?a:b;
+  const na=alNum(a.n),nb=alNum(b.n);
+  if(na!==nb)return na>nb?a:b;
+  return alGinLast(b)>alGinLast(a)?b:a;
+}
 function alNum(v){const n=parseFloat(String(v==null?"":v).replace(/[, ]/g,""));return isFinite(n)?n:0;}
 function alDate(v){
   const s=String(v==null?"":v).trim();
@@ -13979,8 +14040,8 @@ function txGap(a,b){
   return (isFinite(g)&&g>=0&&g<=120)?g:null;
 }
 function txIsTxn(H){
-  const h=(H||[]).map(x=>String(x==null?"":x).trim());
-  return h.indexOf(TX_H.no)>=0&&h.indexOf(TX_O.tm)>=0;
+  const ix=hdrFind(H);
+  return ix(TX_H.no)>=0&&ix(TX_O.tm)>=0;
 }
 function parseTxn(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
@@ -13988,12 +14049,13 @@ function parseTxn(name,buf){
   const A=XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1,defval:null,raw:true});
   if(A.length<2)throw new Error("ไฟล์ว่าง — ไม่ใช่ไฟล์รายการสั่งซื้อหรือเปล่า?");
   const hdr=(A[0]||[]).map(x=>String(x==null?"":x).replace(/\s+/g," ").trim());
+  const ixT=hdrFind(hdr);     /* 🔤 ไม่สนตัวพิมพ์ — ดูบันทึกที่ hdrNorm */
   const col={},miss=[];
-  Object.keys(TX_H).forEach(k=>{const i=hdr.indexOf(TX_H[k]);if(i<0)miss.push(TX_H[k]);else col[k]=i;});
+  Object.keys(TX_H).forEach(k=>{const i=ixT(TX_H[k]);if(i<0)miss.push(TX_H[k]);else col[k]=i;});
   if(miss.length)throw new Error("ไม่พบหัวตาราง: "+miss.join(" · ")+
     " — ไฟล์รายการสั่งซื้อเปลี่ยนรูปแบบ ยังไม่บันทึกอะไรทั้งนั้น แจ้งให้ปรับโปรแกรมได้");
   const oc={},onone=[];
-  Object.keys(TX_O).forEach(k=>{const i=hdr.indexOf(TX_O[k]);if(i<0)onone.push(TX_O[k]);else oc[k]=i;});
+  Object.keys(TX_O).forEach(k=>{const i=ixT(TX_O[k]);if(i<0)onone.push(TX_O[k]);else oc[k]=i;});
   const S=(r,i)=>(i==null||i<0)?"":String(r[i]==null?"":r[i]).trim();
   const ix={},days={},unk={},st={};
   let n=0,skip=0,cx=0,noGin=0,noInv=0;
@@ -14081,16 +14143,19 @@ function parseAlloc(name,buf){
   const A=XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1,defval:null,raw:true});
   if(A.length<2)throw new Error("ไฟล์ว่าง — ไม่ใช่ไฟล์ allocation ของคลังหรือเปล่า?");
   const hdr=(A[0]||[]).map(x=>String(x==null?"":x).replace(/\s+/g," ").trim());
+  /* 🔤 ไม่สนตัวพิมพ์ — ไฟล์ Real Time เขียน "Product code"/"Sale order (PC)" ส่วน Historical
+     เขียน "Product Code"/"Sale Order (PC)" เหมือนกันทุกช่องที่เหลือ (ดูบันทึกที่ hdrNorm) */
+  const ixA=hdrFind(hdr);
   const col={},miss=[];
   Object.keys(AL_H).forEach(k=>{
-    const i=hdr.indexOf(AL_H[k]);
+    const i=ixA(AL_H[k]);
     if(i<0)miss.push(AL_H[k]);else col[k]=i;});
   if(miss.length)throw new Error("ไม่พบหัวตาราง: "+miss.join(" · ")+
     " — ไฟล์ allocation เปลี่ยนรูปแบบ ยังไม่บันทึกอะไรทั้งนั้น แจ้งให้ปรับโปรแกรมได้");
   /* ช่องเสริม — ขาดไปก็อ่านไฟล์ต่อได้ แต่ต้องจดไว้ว่าขาดอะไร เพื่อบอกบนหน้าเว็บ */
   const ocol={},onone=[];
   Object.keys(AL_O).forEach(k=>{
-    const i=hdr.indexOf(AL_O[k]);
+    const i=ixA(AL_O[k]);
     if(i<0)onone.push(AL_O[k]);else ocol[k]=i;});
   const hasMoney=(ocol.gsv!=null)&&(ocol.niv!=null);
   if(ocol.out!=null)col.out=ocol.out;      /* รหัสร้านเป็นช่องเสริม ไฟล์เก่าไม่มีก็ยังอ่านได้ */
@@ -14182,7 +14247,13 @@ function parseAlloc(name,buf){
      เดิมเขียนทับทั้งก้อน อัพไฟล์ที่ครอบวันน้อยกว่าทีไร วันเก่าที่เคยอ่านไว้หายทันที
      รวมแบบ "รายเลข GIN" — GIN ที่ไฟล์ใหม่มี เอาของใหม่ · GIN ที่ไฟล์ใหม่ไม่มี คงของเดิมไว้ */
   const gAll=(ALLOC&&ALLOC.g)?Object.assign({},ALLOC.g):{};
-  Object.keys(g).forEach(k=>{gAll[k]=g[k];});
+  let narrow=0;
+  Object.keys(g).forEach(k=>{
+    const old=gAll[k],win=alPickGin(old,g[k]);
+    /* นับเฉพาะตอนที่ของเดิม "กว้างกว่าจริง ๆ" — เสมอกันแล้วของเดิมชนะด้วยกฎตัดสิน ไม่ใช่
+       การคงของเดิมไว้ ถ้านับรวมไปด้วย ข้อความบนหน้าเว็บจะเกินจริง */
+    if(old&&win!==g[k]&&(alGinDays(old)>alGinDays(g[k])||alNum(old.n)>alNum(g[k].n)))narrow++;
+    gAll[k]=win;});
   const dAll={};((ALLOC&&ALLOC.days)||[]).forEach(d=>{dAll[d]=1;});ds.forEach(d=>{dAll[d]=1;});
   const kept=Object.keys(gAll).length-Object.keys(g).length;
   ALLOC={up:Date.now(),file:name,n:n,g:gAll,days:Object.keys(dAll).sort(),
@@ -14204,10 +14275,14 @@ function parseAlloc(name,buf){
     });
   }
   const sl=Object.keys(stat).sort((a,b)=>stat[b]-stat[a]).map(k=>anaEsc(k)+" "+stat[k]);
-  ulog("📥 ใบจัดของ (allocation): อ่านได้ <b>"+n.toLocaleString()+"</b> แถว · <b>"+
+  ulog("📥 ใบจัดของ (allocation"+(alKindTxt(name)?" · "+alKindTxt(name):"")+
+    "): อ่านได้ <b>"+n.toLocaleString()+"</b> แถว · <b>"+
     ALLOC.gins.length+"</b> เลข GIN · วันที่ "+(ds[0]||"-")+" ถึง "+(ds[ds.length-1]||"-")+
+    (ds.length?" (<b>"+ds.length+"</b> วัน)":"")+
     (noGin?" · <b class='down'>ข้ามแถวที่ไม่มีเลข GIN "+noGin+"</b>":"")+
     (skip?" · ข้ามแถวที่ไม่มีรหัสสินค้า "+skip:"")+
+    (narrow?"<br>🛟 มี <b>"+narrow+"</b> เลข GIN ที่ไฟล์ก่อนหน้าครอบวันมากกว่า — <b>คงของเดิมไว้</b>"+
+      " ไฟล์ที่ครอบช่วงสั้นกว่าจึงทำให้ผลตรวจของวันก่อนหน้าหายไปไม่ได้":"")+
     (hasMoney?"<br>💵 ไฟล์นี้<b>มีช่องเงิน</b> — GSV รวม <b>"+Math.round(tg).toLocaleString()+
       "</b> · NIV รวม <b>"+Math.round(tn).toLocaleString()+"</b> (ใช้ตัวเลขจากไฟล์ ไม่ต้องประเมินจากไฟล์ราคา)"
       :"<br><b class='down'>💵 ไฟล์นี้ไม่มีช่อง "+onone.join(" / ")+"</b> — จะประเมินมูลค่าจากไฟล์ราคาหัวเสือแทน")+
@@ -18311,7 +18386,8 @@ async function parseMasterDcode(name,A,hdr){
      "ศูนย์เราใช้" แล้วลูกค้าจะไม่เห็นน้ำหนักของรหัสพวกนั้น — โหลดก่อนหนึ่งครั้ง */
   try{if(typeof prLoad==="function"&&!(typeof PRICE!=="undefined"&&PRICE&&PRICE.loaded))await prLoad();}catch(e){}
   const H=(A[hdr]||[]).map(x=>String(x==null?"":x).trim());
-  const C={};Object.keys(PM_DCODE).forEach(k=>{C[k]=H.indexOf(PM_DCODE[k]);});
+  const ixM=hdrFind(H);     /* 🔤 ไม่สนตัวพิมพ์ — ดูบันทึกที่ hdrNorm */
+  const C={};Object.keys(PM_DCODE).forEach(k=>{C[k]=ixM(PM_DCODE[k]);});
   if(C.code<0||C.nm<0)throw new Error("ไฟล์ master ของ dcode ขาดคอลัมน์ Item Code / Item Description");
   const T=v=>String(v==null?"":v).trim();
   const NUM=(r,i)=>{if(i<0)return 0;const v=parseFloat(String(r[i]==null?"":r[i]).replace(/,/g,""));
@@ -18383,8 +18459,8 @@ async function parseMaster(name,buf){
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
   /* ไฟล์ dcode: หัวตารางมี "Item Code" (เว้นวรรค) + "Status" — ไฟล์เดิมไม่มีทั้งคู่ */
   for(let i=0;i<Math.min(rows.length,20);i++){
-    const r=(rows[i]||[]).map(x=>String(x==null?"":x).trim());
-    if(r.indexOf(PM_DCODE.code)>=0&&r.indexOf(PM_DCODE.st)>=0)return await parseMasterDcode(name,rows,i);
+    const ix=hdrFind(rows[i]||[]);     /* 🔤 ไม่สนตัวพิมพ์ — ดูบันทึกที่ hdrNorm */
+    if(ix(PM_DCODE.code)>=0&&ix(PM_DCODE.st)>=0)return await parseMasterDcode(name,rows,i);
   }
   let hdr=-1;for(let i=0;i<rows.length;i++){const r=(rows[i]||[]).map(x=>String(x||""));if(r.some(v=>v.indexOf("Item_Code")>=0)){hdr=i;break;}}
   if(hdr<0)throw new Error("ไม่พบคอลัมน์ Item_Code หรือ Item Code (ไม่ใช่ไฟล์ master data?)");
@@ -18869,10 +18945,11 @@ var PSI_COLS_D={inv:"Invoice Number",cre:"Invoice Date",rec:"Received Date",
 var PSI_WH={sound:"sale",free:"gift"};   /* ชื่อคลังในไฟล์ → ของขาย / ของแถม */
 function psiOk(){if(typeof PSI==="undefined"||!PSI)PSI={rows:{},days:{},up:0};
   if(!PSI.rows)PSI.rows={};if(!PSI.days)PSI.days={};return PSI;}
-function psiIsFile(H){return H.indexOf(PSI_COLS.rec)>=0&&H.indexOf(PSI_COLS.rcs)>=0;}
+/* 🔤 ทุกการหาหัวตารางในไฟล์ PSI ไม่สนตัวพิมพ์ — ดูบันทึกที่ hdrNorm */
+function psiIsFile(H){const ix=hdrFind(H);return ix(PSI_COLS.rec)>=0&&ix(PSI_COLS.rcs)>=0;}
 /* ไฟล์ละเอียด — จับด้วยหัวที่ไฟล์เดิมไม่มี (Stock Type + Received Date) */
-function psiIsDetail(H){return H.indexOf(PSI_COLS_D.st)>=0&&H.indexOf(PSI_COLS_D.rec)>=0
-  &&H.indexOf(PSI_COLS_D.rcs)>=0;}
+function psiIsDetail(H){const ix=hdrFind(H);
+  return ix(PSI_COLS_D.st)>=0&&ix(PSI_COLS_D.rec)>=0&&ix(PSI_COLS_D.rcs)>=0;}
 function parsePSI(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
   let sheet=null,A=null,H=null,M=null;
@@ -18883,7 +18960,8 @@ function parsePSI(name,buf){
     else if(psiIsFile(h)){sheet=sn;A=g;H=h;M=PSI_COLS;}});
   if(!sheet)throw new Error("ไม่พบคอลัมน์ Invoice Receiving Date / Received Date — ไฟล์นี้ใช่ไฟล์ PSI หรือเปล่า?");
   const det=(M===PSI_COLS_D);
-  const C={};Object.keys(M).forEach(k=>{C[k]=H.indexOf(M[k]);});
+  const ixP=hdrFind(H);
+  const C={};Object.keys(M).forEach(k=>{C[k]=ixP(M[k]);});
   const miss=["inv","rec","code","rcs"].filter(k=>C[k]<0).map(k=>M[k]);
   if(miss.length)throw new Error("ไฟล์ PSI ขาดคอลัมน์: "+miss.join(" / ")+" — รูปแบบไฟล์อาจเปลี่ยน แจ้งให้ปรับโปรแกรมได้");
   const T=v=>String(v==null?"":v).trim();
@@ -19065,12 +19143,13 @@ function parseDrop(name,buf){
     let hdr=-1;
     for(let i=0;i<rows.length;i++){const r=rows[i]||[];
       if(!rdate){for(let j=0;j<r.length;j++){const m=String(r[j]||"").match(/(\d{4})-(\d{2})-(\d{2})/);if(m){rdate=m[1]+"-"+m[2]+"-"+m[3];break;}}}
-      if(hdr<0&&r.some(v=>String(v||"").trim()==="Material"))hdr=i;
+      if(hdr<0&&hdrFind(r)("Material")>=0)hdr=i;
     }
     if(hdr<0)return;
     const HH=(rows[hdr]||[]).map(x=>String(x==null?"":x).trim());
-    const cMat=HH.indexOf("Material"),cDesc=HH.indexOf("Material Description");
-    const cOrd=HH.findIndex(v=>v==="Order Quantity"),cDel=HH.findIndex(v=>/^Deliver(y)? quantity$/i.test(v)),cDrp=HH.findIndex(v=>v==="Drop Quantity");
+    const ixD=hdrFind(HH);     /* 🔤 ไม่สนตัวพิมพ์ — ดูบันทึกที่ hdrNorm */
+    const cMat=ixD("Material"),cDesc=ixD("Material Description");
+    const cOrd=ixD("Order Quantity"),cDel=HH.findIndex(v=>/^Deliver(y)? quantity$/i.test(v)),cDrp=ixD("Drop Quantity");
     const cDV=HH.findIndex(v=>/^drop value$/i.test(v));   /* มูลค่าที่ถูก Drop (column "Drop Value") — รวมยอดโชว์ในการ์ด CON Confirm */
     const num=x=>{const f=parseFloat(String(x==null?"":x).replace(/,/g,""));return isNaN(f)?0:f;};
     for(let i=hdr+1;i<rows.length;i++){const r=rows[i]||[];const code=String(r[cMat]==null?"":r[cMat]).trim();
