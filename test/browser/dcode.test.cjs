@@ -131,10 +131,13 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  t('...ชื่อแท็บเบราว์เซอร์ "BD Admin" และหน้าล็อกอินบอกว่าเป็นเว็บแอดมิน',ad.title==='BD Admin'&&/Admin/.test(ad.login),ad.title+' | '+ad.login);
  t('...หน้าล็อกอินมีลิงก์กลับเว็บทีมขาย (แทนลิงก์สมัครร้าน)',ad.join==='/',ad.join);
  await ev(seed,{LINES,ORDER});
+ /* 28 พ.ย. 69: แถวบนเป็น "ปุ่มใหญ่" 4 ปุ่มแล้ว แถว #tabTop จึงโชว์เฉพาะหมวดของปุ่มที่เปิดอยู่
+    — รายชื่อหมวดทั้งหมดของเว็บนั้นต้องอ่านจาก tabVisible() ไม่ใช่จาก DOM */
  const tabsA=await ev(()=>{renderTabs();
-   const top=[...document.querySelectorAll('#tabTop .tab')].map(b=>b.dataset.grp);
+   const top=tabVisible().map(x=>x.g.k);
    const subs={};top.forEach(k=>{const g=TAB_GROUPS.filter(x=>x.k===k)[0];subs[k]=g.tabs.filter(tabOk).map(x=>x.t);});
-   return {top:top,subs:subs};});
+   const sup=[...document.querySelectorAll('#tabSup .tab')].map(b=>b.dataset.sup);
+   return {top:top,subs:subs,sup:sup};});
  /* 18 พ.ย. 69: ออเดอร์พิเศษแยกออกมาเป็นหมวดใหญ่ของตัวเอง และอยู่บนเว็บแอดมินด้วย */
  /* 28 พ.ย. 69: ราคา & ทุน ขึ้นเว็บแอดมินด้วย เพราะ 📉 ต้นทุน (ไฟล์ BUM) ย้ายมาอยู่ที่นี่ที่เดียว
     (เจ้าของ: *"ในเวปของเซลล์ให้เอาข้อมูล bum ออกไปนะ ใส่แค่หัวเสือก็พอ"*) */
@@ -142,6 +145,8 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
    tabsA.top.join(',')==='sales,order,stock,price,otrk,spord,plan,dcode',tabsA.top.join(','));
  t('🔑 เว็บแอดมินเห็นทั้งแคตาลอคหัวเสือและต้นทุน BUM',
    (tabsA.subs.price||[]).join(',')==='price,cost',JSON.stringify(tabsA.subs.price));
+ t('🗂 เว็บแอดมินมีปุ่มใหญ่ครบทุกปุ่มที่มีหมวดเหลืออยู่',
+   tabsA.sup.join(',')==='buy,sell,etc',tabsA.sup.join(','));
  t('...แท็บย่อยในกลุ่มยังอยู่ครบเหมือนเว็บเดิม ("เอาให้ข้อมูลเหมือนเดิมให้หมด")',
    tabsA.subs.sales.join(',')==='sales,ana'&&tabsA.subs.order.join(',')==='order,pos,ordhist'&&
    tabsA.subs.stock.join(',')==='stock,strep,cstock'&&tabsA.subs.spord.join(',')==='spord'&&
@@ -160,12 +165,25 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
 
  await go('index.html');
  await ev(seed,{LINES,ORDER});
- const tabsM=await ev(()=>{renderTabs();const m=[...document.querySelectorAll('#tabTop .tab')].map(b=>b.dataset.grp);
+ /* ⚠️ รายชื่อหมวด "ทั้งเว็บ" ต้องอ่านจาก tabVisible() — แถว #tabTop โชว์เฉพาะหมวดของปุ่มใหญ่
+    ที่เปิดอยู่ ตั้งแต่ 28 พ.ย. 69 */
+ const tabsM=await ev(()=>{renderTabs();const m=tabVisible().map(x=>x.g.k);
+   const supM=[...document.querySelectorAll('#tabSup .tab')].map(b=>b.dataset.sup);
    S.user={id:'ct11',role:'sales',code:'209611',name:'CT11'};renderTabs();
-   const s=[...document.querySelectorAll('#tabTop .tab')].map(b=>b.dataset.grp);
+   const s=tabVisible().map(x=>x.g.k);
+   const supS=[...document.querySelectorAll('#tabSup .tab')].map(b=>b.dataset.sup);
+   /* กดปุ่มใหญ่แล้วต้องไปหมวดแรกของปุ่มนั้น และแถวล่างเปลี่ยนตาม */
    S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};renderTabs();
+   switchSuper('field');
+   const fieldTab=CURTAB,fieldRow=[...document.querySelectorAll('#tabTop .tab')].map(b=>b.dataset.grp);
+   switchSuper('buy');
+   const buyTab=CURTAB,buyRow=[...document.querySelectorAll('#tabTop .tab')].map(b=>b.dataset.grp);
+   switchTab('plan');
+   const planSup=[...document.querySelectorAll('#tabSup .tab.on')].map(b=>b.dataset.sup).join('');
    switchGroup('dcode');
-   return {m:m,s:s,site:BD_SITE,title:document.title,cur:CURTAB,gate:siteRoleOk('sales','ct11'),
+   return {m:m,s:s,supM:supM,supS:supS,site:BD_SITE,title:document.title,cur:CURTAB,
+     fieldTab:fieldTab,fieldRow:fieldRow,buyTab:buyTab,buyRow:buyRow,planSup:planSup,
+     gate:siteRoleOk('sales','ct11'),
      link:document.getElementById('siteLink').getAttribute('href')};});
  t('เว็บเดิม: ประตูแอดมินไม่มีผล — เซลล์ล็อกอินเว็บเดิมได้ตามปกติ',tabsM.gate===true);
  /* 18 พ.ย. 69 ซ่อนกลุ่ม "promo" ไว้ก่อน · 24 พ.ย. 69 เจ้าของสั่งเอากลับมา
@@ -176,6 +194,19 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  t('เว็บเดิม: กลุ่มแท็บเหมือนเดิมทุกกลุ่ม (12 กลุ่ม) ไม่มี DCODE',
    tabsM.m.join(',')==='sales,pjp,kpi,promo,order,psib,stock,price,otrk,spord,plan,shop',tabsM.m.join(','));
  t('เว็บเดิม: เซลล์ก็ไม่เห็น DCODE',tabsM.s.indexOf('dcode')<0&&tabsM.s.length>=8,tabsM.s.join(','));
+ /* 🗂 28 พ.ย. 69: แถวบนเหลือ 4 ปุ่มใหญ่ (ซื้อเข้า / ขายออก / งานเซลล์ / อื่น ๆ)
+    เจ้าของอนุมัติแบบนี้หลังบอกว่า "หมวดด้านบนสุดมันเยอะมาก" — 12 หมวดเดิมอยู่ครบ แค่จัดเป็นชั้น */
+ t('🗂 แถวบนเหลือ 4 ปุ่มใหญ่ ซื้อเข้า/ขายออก/งานเซลล์/อื่น ๆ',
+   tabsM.supM.join(',')==='buy,sell,field,etc',tabsM.supM.join(','));
+ t('🔑 กดปุ่มใหญ่แล้วไปหมวดแรกของปุ่มนั้น และแถวล่างโชว์เฉพาะหมวดของปุ่มนั้น',
+   tabsM.fieldTab==='pjp'&&tabsM.fieldRow.join(',')==='pjp,kpi,promo,shop'&&
+   tabsM.buyTab==='order'&&tabsM.buyRow.join(',')==='order,psib,stock',
+   JSON.stringify({f:tabsM.fieldTab,fr:tabsM.fieldRow,b:tabsM.buyTab,br:tabsM.buyRow}));
+ t('🛟 ปุ่มใหญ่ที่สว่างอยู่ ตามหน้าที่เปิดอยู่เสมอ (ไม่ได้เก็บเป็น state แยก)',
+   tabsM.planSup==='etc',tabsM.planSup);
+ t('🔑 เซลล์เห็นปุ่มใหญ่เฉพาะที่มีหมวดเหลืออยู่จริง',
+   tabsM.supS.length>0&&tabsM.supS.every(k=>['buy','sell','field','etc'].indexOf(k)>=0),
+   tabsM.supS.join(','));
  t('เว็บเดิม: กดไปกลุ่ม DCODE ไม่ได้ (อยู่บนเว็บแอดมินเท่านั้น)',tabsM.cur!=='dcode',tabsM.cur);
  t('เว็บเดิม: ธงยังเป็น "main" และชื่อเว็บเดิม',tabsM.site==='main'&&tabsM.title==='BD Sales Dashboard',tabsM.site+' | '+tabsM.title);
  t('เว็บเดิม: ผู้จัดการมีลิงก์ไปเว็บแอดมิน',tabsM.link==='/admin',tabsM.link);
@@ -216,7 +247,7 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  await pg.waitForTimeout(200);
  const g3=await ev(()=>({app:!document.getElementById('app').classList.contains('hidden'),T:TOKEN,
    who:document.getElementById('uName').textContent,tok:localStorage.getItem('bd_token'),
-   tabs:[...document.querySelectorAll('#tabTop .tab')].map(b=>b.dataset.grp).join(',')}));
+   tabs:tabVisible().map(x=>x.g.k).join(',')}));
  t('🔓 บัญชี admin1 (สิทธิ์ manager) เข้าเว็บแอดมินได้ แล้วเห็นครบทุกกลุ่มของเว็บแอดมิน',
    g3.app&&g3.T==='MGR.TOKEN'&&g3.tabs==='sales,order,stock,price,otrk,spord,plan,dcode',JSON.stringify(g3)+' '+dialogs.join(' | '));
  t('...ล็อกอินชุดเดียวกับเว็บเดิม (/api/login + /api/data ตัวเดียวกัน)',

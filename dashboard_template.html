@@ -922,6 +922,28 @@ main.wide{max-width:1560px}
 .tab{background:none;border:none;padding:11px 18px;font-size:15px;font-weight:700;color:var(--muted);
   border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;flex:0 0 auto}
 .tab.on{color:var(--blue);border-bottom-color:var(--blue)}
+/* 🗂 แถวปุ่มใหญ่ (ซื้อเข้า / ขายออก / งานเซลล์ / อื่น ๆ) — ทำเป็นปุ่มทึบ ไม่ใช่แท็บขีดเส้นใต้
+   จะได้ไม่ดูเหมือนแท็บสองแถวซ้อนกันจนแยกไม่ออกว่าอันไหนเป็นชั้นไหน */
+.tabs-sup{border-bottom:0;margin-bottom:10px;gap:8px}
+.tabs-sup .tab.sup{display:flex;flex-direction:column;align-items:flex-start;gap:0;
+  padding:8px 16px;border:1.5px solid var(--line);border-radius:12px;background:#fff;
+  border-bottom:1.5px solid var(--line);margin-bottom:0;line-height:1.25;min-height:44px;
+  justify-content:center}
+.tabs-sup .tab.sup>small{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.2px}
+.tabs-sup .tab.sup.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.tabs-sup .tab.sup.on>small{color:rgba(255,255,255,.82)}
+/* 📱 บนมือถือแถวนี้ต้อง "เห็นครบทุกปุ่ม" ไม่ใช่เลื่อนซ้ายขวา — วัดที่ 390px แล้วปุ่มที่ 4
+   (📎 อื่น ๆ) ถูกตัดหายไปครึ่งหนึ่ง ซึ่งแปลว่าคนใช้มือถืออาจไม่รู้เลยว่ามีหมวดนั้นอยู่
+   นี่เป็นชั้นบนสุดของการนำทางทั้งเว็บ จึงเปลี่ยนเป็นตาราง 2 คอลัมน์ (เหลือ 1 คอลัมน์ถ้าจอแคบมาก)
+   overflow ต้องปลดด้วย ไม่งั้น .tabs ที่เป็น overflow-x:auto จะยังหนีบไว้เหมือนเดิม */
+@media(max-width:560px){
+  .tabs-sup{display:grid;grid-template-columns:1fr 1fr;gap:6px;overflow:visible}
+  .tabs-sup .tab.sup{padding:7px 10px;font-size:14px;white-space:normal;min-width:0}
+  .tabs-sup .tab.sup>small{font-size:10px}
+}
+@media(max-width:330px){
+  .tabs-sup{grid-template-columns:1fr}
+}
 /* แถวแท็บย่อย — ทำเป็นปุ่มกลมบนพื้นอ่อน ไม่ให้ดูเหมือนแท็บหลักสองแถวซ้อนกัน
    กลุ่มที่มีหน้าเดียวจะไม่ขึ้นแถวนี้เลย (ดู renderTabs) */
 .tabs2{display:flex;gap:4px;margin:-8px 0 16px;padding:5px;background:var(--bg);
@@ -1670,6 +1692,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
     </div>
   </header>
   <main>
+    <div class="tabs tabs-sup" id="tabSup"></div>
     <div class="tabs" id="tabTop"></div>
     <div class="tabs2" id="tabSub" style="display:none"></div>
     <div id="salesView">
@@ -3655,14 +3678,54 @@ function tabGroupOf(t){
 function tabVisible(){
   return TAB_GROUPS.filter(tabGrpOnSite).map(g=>({g:g,tabs:g.tabs.filter(tabOk)})).filter(x=>x.tabs.length);
 }
+/* ============================================================================
+ * 🗂 สี่ปุ่มใหญ่ด้านบน — แบ่งตาม "ซื้อเข้า / ขายออก" ตามคำที่ยูนิลีเวอร์ใช้
+ *
+ * เจ้าของสั่ง 28 พ.ย. 69: *"ตอนนี้หมวดด้านบนสุดมันเยอะมาก ช่วยจัดเรียงหน่อยได้ไหม เสนอมาก่อนว่า
+ * จะจัดแยกแบบไหนดีให้ไม่งง ใช้ข้อมูลที่แจ้งไป"* แล้วเลือกแบบนี้ — แถวบนเหลือ 4 ปุ่ม กดแล้วแถวถัดมา
+ * ค่อยโชว์หมวดของปุ่มนั้น (12 หมวดเดิมอยู่ครบ ไม่ได้ตัดอะไรทิ้ง)
+ *
+ * 🔑 ตัวแบ่งคือคำของเจ้าของเอง: **1st Sale = ยอดซื้อ** (ยูนิลีเวอร์ → ศูนย์เรา) ·
+ *    **2nd Sale = ยอดขาย** (ศูนย์เรา → ร้านค้า) — ดูบันทึกที่ `saleScopeHtml`
+ * ⚠️ **ไม่มี state ของตัวเอง** — ปุ่มใหญ่ที่สว่างอยู่คำนวณจากหน้าที่เปิดอยู่ (`tabSupOf`) เสมอ
+ *    ถ้าเก็บเป็นตัวแปรแยก มันจะไม่ตรงกับหน้าที่เปิดอยู่ทันทีที่มีใครสลับหน้าด้วยวิธีอื่น
+ *    (คนละกรณีกับ `PJ.ym` / `SP.cm` ที่ต้องแยกจริง ๆ เพราะเป็นคนละคำถาม)
+ * ⚠️ ปุ่มใหญ่ที่ไม่มีหมวดไหนเหลือเลย (บทบาทนั้นเปิดไม่ได้ หรือไม่ได้อยู่บนเว็บแอดมิน) **ไม่ต้องขึ้น**
+ * ⚠️ หมวดที่ไม่ได้อยู่ในตารางนี้ ตกไป "อื่น ๆ" เอง — เพิ่มหมวดใหม่แล้วไม่หายไปไหน
+ * ⚠️ แถวเดียวกับ `.tabs` เดิม แต่ย้ายป้ายแจ้งเตือนของปฏิทินมาโชว์ที่ปุ่มใหญ่ด้วย
+ *    (`plBadge` เขียนลง `#planBadge` ทั้งสองจุด) ไม่งั้นงานค้างจะถูกซ่อนอยู่ชั้นใน
+ * ==========================================================================*/
+const TAB_SUPERS=[
+  {k:"buy", nm:"🛒 ซื้อเข้า",  sub:"1st Sale", g:["order","psib","stock"]},
+  {k:"sell",nm:"🚚 ขายออก",   sub:"2nd Sale", g:["sales","otrk","spord"]},
+  {k:"field",nm:"🎯 งานเซลล์", sub:"หน้างาน",  g:["pjp","kpi","promo","shop","eb"]},
+  {k:"etc", nm:"📎 อื่น ๆ",    sub:"",         g:["price","plan","dcode"]}];
+function tabSupOf(gk){
+  for(const s of TAB_SUPERS)if(s.g.indexOf(gk)>=0)return s.k;
+  return "etc";      /* หมวดใหม่ที่ยังไม่ได้จัดเข้าปุ่มไหน ไปอยู่ "อื่น ๆ" ไม่ใช่หายไป */
+}
 function renderTabs(){
+  const sup=document.getElementById("tabSup");
   const top=document.getElementById("tabTop"),sub=document.getElementById("tabSub");
   if(!top||!sub)return;
   const cur=tabGroupOf(CURTAB),vis=tabVisible();
-  top.innerHTML=vis.map(x=>{
+  const curSup=tabSupOf(cur.k);
+  /* ปุ่มใหญ่ที่มีหมวดเหลืออยู่จริงเท่านั้น และเรียงตามตารางข้างบน */
+  const sups=TAB_SUPERS.map(s=>({s:s,list:vis.filter(x=>tabSupOf(x.g.k)===s.k)}))
+    .filter(x=>x.list.length);
+  if(sup){
+    sup.innerHTML=(sups.length<2)?"":sups.map(x=>{
+      const badge=x.list.some(y=>y.g.badge)?'<span id="planBadge"></span>':"";
+      return `<button type="button" class="tab sup${x.s.k===curSup?" on":""}" data-sup="${x.s.k}"
+        onclick="switchSuper('${x.s.k}')">${x.s.nm}${
+        x.s.sub?`<small>${x.s.sub}</small>`:""}${badge}</button>`;}).join("");
+    sup.style.display=(sups.length<2)?"none":"";
+  }
+  const mineSup=(sups.filter(x=>x.s.k===curSup)[0]||{list:vis}).list;
+  top.innerHTML=mineSup.map(x=>{
     const nm=(tabIsTeam()&&x.g.nmTeam)?x.g.nmTeam:
              ((tabRole()==="sales"&&x.g.nmSales)?x.g.nmSales:x.g.nm);
-    return `<button type="button" class="tab${x.g.k===cur.k?" on":""}" data-grp="${x.g.k}" onclick="switchGroup('${x.g.k}')">${nm}${x.g.badge?'<span id="planBadge"></span>':""}</button>`;
+    return `<button type="button" class="tab${x.g.k===cur.k?" on":""}" data-grp="${x.g.k}" onclick="switchGroup('${x.g.k}')">${nm}${x.g.badge?'<span id="planBadge2"></span>':""}</button>`;
   }).join("");
   const mine=((vis.filter(x=>x.g.k===cur.k)[0])||{tabs:[]}).tabs;
   if(mine.length<2){sub.innerHTML="";sub.style.display="none";}   /* กลุ่มหน้าเดียว ไม่ต้องมีแถวย่อย */
@@ -3671,6 +3734,13 @@ function renderTabs(){
     sub.innerHTML=mine.map(x=>`<button type="button" class="tab2${x.t===CURTAB?" on":""}" data-tab="${x.t}" onclick="switchTab('${x.t}')">${x.nm}</button>`).join("");
   }
   if(typeof plBadge==="function")plBadge();
+}
+/* กดปุ่มใหญ่ = ไปหมวดแรกของปุ่มนั้น · อยู่ในปุ่มนั้นอยู่แล้วก็ไม่ต้องเด้ง */
+function switchSuper(k){
+  const vis=tabVisible().filter(x=>tabSupOf(x.g.k)===k);
+  if(!vis.length)return;
+  if(vis.some(x=>x.tabs.some(t=>t.t===CURTAB)))return;
+  switchTab(vis[0].tabs[0].t);
 }
 /* กดกลุ่ม = ไปหน้าแรกของกลุ่มนั้น · ถ้าอยู่ในกลุ่มนั้นอยู่แล้ว ไม่ต้องเด้งกลับหน้าแรก */
 function switchGroup(k){
@@ -4372,14 +4442,19 @@ function plToggleDone(){PL.showDone=!PL.showDone;renderPlan();}
 
 /* ---------- วาดหน้าจอ ---------- */
 function plBadge(){
-  const bd=document.getElementById("planBadge");if(!bd)return;
+  /* ป้ายขึ้นสองจุด: ปุ่มใหญ่ด้านบน (#planBadge) และปุ่มหมวดปฏิทินในแถวถัดมา (#planBadge2)
+     ไม่งั้นงานค้างจะถูกซ่อนอยู่ชั้นในแล้วไม่มีใครเห็น */
+  const bd=document.getElementById("planBadge"),bd2=document.getElementById("planBadge2");
+  if(!bd&&!bd2)return;
   const today=todayISO();
   /* ป้ายตัวเลขต้องนับงานค้าง "ทั้งหมด" เสมอ ไม่ขึ้นกับตัวกรองที่ค้างอยู่บนหน้าจอ
      รวมถึงช่องเลือกสายของผู้จัดการด้วย ไม่งั้นกรองสายเดียวแล้วป้ายจะบอกน้อยกว่าความจริง */
   const sc=PL.scope,pl=PL.pjLine;PL.scope="all";PL.pjLine="";
   const n=plNotiRows().n;                 /* ตัวเลขเดียวกับที่แท็บ 🔔 แจ้งเตือน แสดง */
   PL.scope=sc;PL.pjLine=pl;
-  bd.innerHTML=n?`<span style="background:var(--bad);color:#fff;border-radius:20px;font-size:10.5px;font-weight:800;padding:1px 6px;margin-left:6px">${n}</span>`:"";
+  const pill=n?`<span style="background:var(--bad);color:#fff;border-radius:20px;font-size:10.5px;font-weight:800;padding:1px 6px;margin-left:6px">${n}</span>`:"";
+  if(bd)bd.innerHTML=pill;
+  if(bd2)bd2.innerHTML=pill;
   const vb=document.getElementById("plNotiN");
   if(vb)vb.innerHTML=n?` <b style="background:var(--bad);color:#fff;border-radius:20px;font-size:10px;padding:0 5px">${n}</b>`:"";
 }

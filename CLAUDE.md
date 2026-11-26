@@ -14,7 +14,9 @@ the app UI; the sales team sees everything live. Features (all are tabs in one p
 earns from them).
 **ราคา & ทุน** (the two monthly Unilever price files: the หัวเสือ quote prices the depot sells at —
 also published to shop customers as a public catalogue — and the BUM cost file, manager-only).
-The pages sit in **12 top-level tab groups** on the main site (among them **📥 สถานะออเดอร์ (ซื้อ)**
+The pages sit in **12 top-level tab groups** on the main site, gathered since 28 Nov 26 under
+**4 big buttons** — 🛒 ซื้อเข้า (1st Sale) · 🚚 ขายออก (2nd Sale) · 🎯 งานเซลล์ · 📎 อื่น ๆ
+(`TAB_SUPERS`, see "The tab bar itself" below) — (among them **📥 สถานะออเดอร์ (ซื้อ)**
 between 🛒 การสั่งของ and 📦 สต็อก, and **📋 สถานะออเดอร์ (ขาย)** and **📦 ออเดอร์พิเศษ**, in that
 order right after 💰 ราคา & ทุน) (`TAB_GROUPS`/`renderTabs`), several of
 which open a row of sub-tabs. The per-page keys (`CURTAB`) did not change when the grouping was added —
@@ -724,6 +726,24 @@ code, never printed.
   from this table. Its two pages carry an explicit `role:["manager","sales","sup"]` array, which
   `tabOk` needs for a team role to see them at all. The dcode test counts the main site's groups,
   so that number moves with this list.
+  **🗂 Above it sit four big buttons** (`TAB_SUPERS`/`tabSupOf`/`switchSuper`, `#tabSup`), because
+  12 groups in one row no longer fitted on anything (owner, 28 Nov 26: *"ตอนนี้หมวดด้านบนสุดมันเยอะ
+  มาก ช่วยจัดเรียงหน่อยได้ไหม เสนอมาก่อนว่าจะจัดแยกแบบไหนดีให้ไม่งง ใช้ข้อมูลที่แจ้งไป"*; he chose
+  this of the options offered). **The split is his own vocabulary** — 🛒 ซื้อเข้า **1st Sale**
+  (การสั่งของ · สถานะออเดอร์ (ซื้อ) · สต็อก) · 🚚 ขายออก **2nd Sale** (ยอดขาย · สถานะออเดอร์ (ขาย) ·
+  ออเดอร์พิเศษ) · 🎯 งานเซลล์ หน้างาน (PJP · KPI · โปรโมชั่น · ร้านใหม่ · eB2B) · 📎 อื่น ๆ
+  (ราคา & ทุน · ปฏิทินงาน · DCODE) — the same two words `saleScopeHtml` teaches on the two
+  order-status pages, so the tab bar and those banners cannot contradict each other.
+  **Nothing was removed: all 12 groups are still there**, one level down. Four rules:
+  the lit button is **derived from `CURTAB` through `tabSupOf`, never stored** (a separate variable
+  would disagree the moment anything else switched page — this is the opposite of the `PJ.ym`/`PJ.d`
+  and `SP.cm`/`SP.day` cases, which really are two questions); a group that is in no bucket falls
+  through to **อื่น ๆ**, so adding one can never make it disappear; a bucket with nothing left for
+  that role or that site is **not rendered at all**, and with fewer than two buckets the row hides
+  itself; and the calendar's red badge is written to **both** `#planBadge` (the bucket) and
+  `#planBadge2` (the group), or outstanding work would be hidden one level down.
+  📱 On a phone the row is a **2×2 grid, not a scrolling strip** — measured at 390px, the fourth
+  button sat half off the right edge, and this is the top level of the whole site's navigation.
   **Every date / round / month picker carries ◀ ▶ step buttons** (`.dstep`, `selStep`/`dateStep`/
   `keyStep`/`ordStep`/`pjStep`) — the owner asked for the PJP one everywhere. ◀ always means
   *older* and ▶ *newer*, so a `<select>` whose options are filled newest-first (most of them, they

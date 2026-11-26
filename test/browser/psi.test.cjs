@@ -331,7 +331,9 @@ function mkOldMaster(rows){
    psiSetDay('2026-11-19');const d19=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
    psiSetDay('2026-11-17');
    return {tabs:tabs,inTxt:inTxt,chk:chk,wait:w,d19:d19,same:snap()===before,
-     grp:[...document.querySelectorAll('#tabTop .tab')].map(x=>x.textContent.trim()).join('|')};
+     /* ⚠️ อ่านจาก tabVisible() — แถว #tabTop โชว์เฉพาะหมวดของปุ่มใหญ่ที่เปิดอยู่ (28 พ.ย. 69) */
+     grp:tabVisible().map(x=>x.g.nm).join('|'),
+     supBuy:TAB_SUPERS.filter(x=>x.k==='buy')[0].g.join(',')};
  });
  t('หน้ามีสองแท็บย่อย: ของเข้าคลัง และ สั่งไป → ได้ของหรือยัง',
    /ของเข้าคลัง/.test(r7.tabs)&&/ได้ของหรือยัง/.test(r7.tabs),r7.tabs);
@@ -345,6 +347,8 @@ function mkOldMaster(rows){
  t('🛟 หน้านี้อ่านอย่างเดียว — กดทุกปุ่มแล้วข้อมูลทุกก้อนเหมือนเดิมเป๊ะ',r7.same);
  t('🔑 หมวดใหม่ "สถานะออเดอร์ (ซื้อ)" อยู่ระหว่างการสั่งของกับสต็อก และหมวดเดิมเปลี่ยนเป็น (ขาย)',
    /การสั่งของ\|📥 สถานะออเดอร์ \(ซื้อ\)\|📦 สต็อก/.test(r7.grp)&&/สถานะออเดอร์ \(ขาย\)/.test(r7.grp),r7.grp);
+ t('🗂 และอยู่ใต้ปุ่มใหญ่ 🛒 ซื้อเข้า (1st Sale) ร่วมกับการสั่งของและสต็อก',
+   r7.supBuy==='order,psib,stock',r7.supBuy);
 
  /* ---------------- 8) Master ของ dcode ---------------- */
  const mRows=[
