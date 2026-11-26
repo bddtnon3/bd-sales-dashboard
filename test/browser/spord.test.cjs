@@ -267,24 +267,24 @@ const ORIGIN='https://bd-spord.test/';
     ส่วนใบตัวกระจาย หัวหน้าเซลล์เป็นคนเปิดใบ จึงต้องมีขั้นซุปจดนำหน้า */
  /* ย่อลงเหลือ 2 ขั้นเมื่อ 26 พ.ย. 69 — *"หลังจากเซลล์คีย์ออเดอร์มา แค่ให้แอดมินมากรอกส่วนของคลัง
     ว่าสินค้าออกไปกับเลข GIN ไหน … แอดมินไม่ต้องมาเช็คเหมือนร้านที่กระจายเยอะ ๆ"* */
- t('🔑 ใบตัดบิลรอส่ง/ส่งแล้วรอตัดบิล เหลือ 2 ขั้น (เซลล์คีย์ → คลังส่งออก) + รายงาน',
+ t('🔑 ใบตัดบิลรอส่ง/ส่งแล้วรอตัดบิล เหลือ 2 ขั้น (เซลล์คีย์ → คลังจัดส่ง) + รายงาน',
    tabs.chipsMgr.length===3&&/เซลล์คีย์/.test(tabs.chipsMgr[0])&&
-   /คลังส่งออก/.test(tabs.chipsMgr[1])&&/รายงาน/.test(tabs.chipsMgr[2])&&
+   /คลังจัดส่ง/.test(tabs.chipsMgr[1])&&/รายงาน/.test(tabs.chipsMgr[2])&&
    !tabs.chipsMgr.some(c=>/ซุปจด/.test(c))&&!tabs.chipsMgr.some(c=>/แอดมินตรวจ/.test(c))&&
    tabs.secA==='rep',tabs.chipsMgr.join(' | ')+' · เปิดมาที่ '+tabs.secA);
  t('🔑 ใบ 🎯 ตัวกระจาย มี 4 ขั้น เริ่มที่ ① ซุปจด',
    tabs.gD==='D'&&tabs.chipsD.length===5&&/① ✍️ ซุปจด/.test(tabs.chipsD[0])&&
    /② 📲 เซลล์คีย์/.test(tabs.chipsD[1])&&/③ 🔎 แอดมินตรวจ/.test(tabs.chipsD[2])&&
-   /④ 🚚 คลังส่งออก/.test(tabs.chipsD[3]),tabs.chipsD.join(' | '));
- /* เจ้าของสั่ง 26 พ.ย. 69: *"เอาหมวดเลขออเดอร์ออกไปได้เลย มันซ้ำกับหมวดคลังส่งออกแล้ว"* */
+   /④ 🚚 คลังจัดส่ง/.test(tabs.chipsD[3]),tabs.chipsD.join(' | '));
+ /* เจ้าของสั่ง 26 พ.ย. 69: *"เอาหมวดเลขออเดอร์ออกไปได้เลย มันซ้ำกับหมวดคลังจัดส่งแล้ว"* */
  t('🔑 หมวด 🧾 เลขออเดอร์ ไม่อยู่บนแถบแท็บแล้วทั้งสองประเภท',
    !tabs.chipsMgr.some(c=>/เลขออเดอร์/.test(c))&&!tabs.chipsD.some(c=>/เลขออเดอร์/.test(c)),
    tabs.chipsMgr.concat(tabs.chipsD).join(' | '));
  /* เจ้าของสั่ง 26 พ.ย. 69: *"เอากรอบในนั้นขยับขึ้นมาอยู่ด้านบนให้เห็นชัดชัด"* */
  t('🔑 แถบแท็บอยู่บนสุดของหน้า เหนือเนื้อหน้า (ไม่ต้องเลื่อนจอลงไปหา)',
    tabs.tabsTop&&tabs.tabsInBody===0,'ใน spBody เหลือ '+tabs.tabsInBody+' ปุ่ม');
- t('🔑 ④ คลังส่งออก โชว์ของที่ตัดบิลไว้ของใบนี้ (ระบบเดิมของสต็อคกลาง)',
-   /คลังส่งออก/.test(tabs.outTxt)&&/ตัดบิลไว้/.test(tabs.outTxt)&&/ยังค้าง/.test(tabs.outTxt),
+ t('🔑 ④ คลังจัดส่ง โชว์ของที่ตัดบิลไว้ของใบนี้ (ระบบเดิมของสต็อคกลาง)',
+   /คลังจัดส่ง/.test(tabs.outTxt)&&/ตัดบิลไว้/.test(tabs.outTxt)&&/ยังค้าง/.test(tabs.outTxt),
    tabs.outTxt.slice(0,90));
  t('🔑 ปุ่มย้อนกลับถอยทีละหน้าในหมวดนี้ ไม่กระโดดออกไปแท็บอื่น',
    tabs.backShown&&tabs.afterBack1.tab==='spord'&&tabs.afterBack1.sec==='rep'&&
@@ -883,7 +883,7 @@ const ORIGIN='https://bd-spord.test/';
  /* 5 ขั้นตอนเรียงตามลำดับงาน + ของเดิมท้ายสุด (รายงานเห็นเฉพาะผู้จัดการ จึงไม่อยู่ในชุดของ sup) */
  t('🔑 หน้าใบมีแท็บครบตามลำดับงาน และของเดิมยังอยู่ท้ายสุด',
    two.chips.length===4&&/ซุปจด/.test(two.chips[0])&&/เซลล์คีย์/.test(two.chips[1])&&
-   /แอดมินตรวจ/.test(two.chips[2])&&/คลังส่งออก/.test(two.chips[3]),two.chips.join(' | '));
+   /แอดมินตรวจ/.test(two.chips[2])&&/คลังจัดส่ง/.test(two.chips[3]),two.chips.join(' | '));
  t('🔑 ใบออเดอร์โชว์ชื่อสินค้า ไม่ใช่รหัสเปล่า ๆ (เจ้าของบอกว่า "ขึ้นแค่รหัสมันตามดูยาก")',
    two.showsName);
  t('🔑 หัวหน้าเซลล์กรอกเป็น ลัง + ชิ้น ได้ทุกสาย',two.hasInputs);
@@ -1350,8 +1350,8 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🔒 หัวหน้าเซลล์ยกเลิกผลตรวจของแอดมินไม่ได้',noAdm);
 
  /* ================================================================
-  * 12) 🚚 คลังส่งออก ของใบ 🎯 ตัวกระจาย = รายงานจากไฟล์ใบจัดของ (เจ้าของสั่ง 26 พ.ย. 69)
-  *   *"ให้ใช้ไฟล์ที่แอดมิน up เข้าไป … ระบบขึ้นรายงานได้เลยว่าคลังส่งออกไปแล้วทั้งหมดกี่ลัง
+  * 12) 🚚 คลังจัดส่ง ของใบ 🎯 ตัวกระจาย = รายงานจากไฟล์ใบจัดของ (เจ้าของสั่ง 26 พ.ย. 69)
+  *   *"ให้ใช้ไฟล์ที่แอดมิน up เข้าไป … ระบบขึ้นรายงานได้เลยว่าคลังจัดส่งไปแล้วทั้งหมดกี่ลัง
   *     โดยถ้านับจากไฟล์ allocate แล้ว คำนวณมา ไม่ต้องรอซุปจดหรือเซลล์คีย์"*
   * ================================================================ */
  const dist=await ev(async()=>{
@@ -1384,7 +1384,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    return o;});
  /* ไฟล์จำลอง: GIN 77 → โอโม CT11 5+1 ลัง · บรีส CT11 2 ลัง · โอโม CT12 2 ลัง   (ลังละ 12 ชิ้น)
     GIN 78 → โอโม KA97 9 ลัง  ⇒ รวม 19 ลัง จาก 70 ลังที่ตัดบิลไว้ = 27% */
- t('🔑 คลังส่งออกของใบตัวกระจาย คิดจากไฟล์ใบจัดของล้วน ๆ ไม่ต้องรอซุปจด/เซลล์คีย์',
+ t('🔑 คลังจัดส่งของใบตัวกระจาย คิดจากไฟล์ใบจัดของล้วน ๆ ไม่ต้องรอซุปจด/เซลล์คีย์',
    dist.keyed===0&&Math.round(dist.sum.out)===19&&dist.sum.cut===70,
    JSON.stringify({keyed:dist.keyed,out:dist.sum.out,cut:dist.sum.cut}));
  t('🔑 ...ขึ้นเป็นรายงาน: ตัดบิลไว้ / คลังจัดออกแล้ว / ยังไม่ได้จัด / วันที่ตรวจ',
@@ -1417,7 +1417,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    o.a=spSent('B20261118-01');
    CSTOCK.slips['B20261118-01'].g='D';
    return o;});
- t('🛟 การ์ดในรายการเดือนใช้เลขชุดเดียวกับหน้าคลังส่งออก (ห้ามขึ้นคนละเปอร์เซ็นต์)',
+ t('🛟 การ์ดในรายการเดือนใช้เลขชุดเดียวกับหน้าคลังจัดส่ง (ห้ามขึ้นคนละเปอร์เซ็นต์)',
    Math.round(same.d.out)===19&&same.d.src==='alloc'&&/51 \/ 70 ลัง/.test(same.card),
    JSON.stringify(same.d)+' | '+same.card.slice(0,90));
  t('🛟 ใบ A/B ยังนับจากการเคลียร์มือเหมือนเดิม (ยังไม่เคลียร์ = ค้างทั้งใบ)',
@@ -1707,7 +1707,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🛟 สองรหัสเสมอกันสนิท → ไม่จับคู่ ดีกว่าเดาผิดแล้วฟ้องว่าคลังแถมไม่ครบ',
    !tie.EEE3,JSON.stringify(tie));
 
- /* ---------- 14b) ใบ A/B: กรอกเลข GIN ในหน้าคลังส่งออก ---------- */
+ /* ---------- 14b) ใบ A/B: กรอกเลข GIN ในหน้าคลังจัดส่ง ---------- */
  const ginAB=await ev(async()=>{
    __reset();
    CSTOCK.slips['B20261118-01'].g='A';
@@ -1732,7 +1732,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    await spGinNote('B20261118-01','2026-11-20');
    o.salesNoPost=window.__posts.length===b2;
    return o;});
- t('🔑 ใบ A/B: แอดมินกรอกเลข GIN ได้ในหน้าคลังส่งออก โดยไม่ต้องมีไฟล์ใบจัดของ',
+ t('🔑 ใบ A/B: แอดมินกรอกเลข GIN ได้ในหน้าคลังจัดส่ง โดยไม่ต้องมีไฟล์ใบจัดของ',
    ginAB.box&&ginAB.n===1&&ginAB.post.u==='/api/spord'&&ginAB.post.b.act==='gin'&&
    ginAB.rec.g.join()==='141,142',JSON.stringify({n:ginAB.n,g:ginAB.rec&&ginAB.rec.g}));
  t('🔑 ...และรายการเคลียร์ของเดิมยังอยู่ในหน้าเดียวกัน',
@@ -2219,6 +2219,69 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    step.nextMon+' · '+step.prevMon);
  t('📅 todayISO ตรงกับวันบนปฏิทินของเครื่อง ไม่ใช่ของ UTC',
    step.today===step.local,step.today+' vs '+step.local);
+
+ /* ================================================================
+  * 20) 🚚 คลังจัดส่ง — ใบตรวจรายวัน เซลล์คีย์ ↔ คลังจัดของ (เจ้าของสั่ง 27 พ.ย. 69)
+  *   *"ทำให้หน้านี้เป็นส่วนของแอดมินที่ตรวจข้อมูลการคีย์ว่าตรงหรือขาดหรือเกินกี่ลัง
+  *     แล้วตรวจสอบกับทางคลังเป็นรายวัน … หรือดึงออกมาเป็น EXCEL PDF ได้เหมือนเดิม"*
+  * ================================================================ */
+ const chk=await ev(()=>{
+   __reset();
+   CSTOCK.slips['B20261118-01'].g='D';
+   CSTOCK.lots['K1']={id:'K1',sl:'B20261118-01',d:'2026-11-19',code:'AAA1',
+     nm:'ครีมทาผิว เอ',cs:40,pc:0,sq:0,ln:'CT11',clr:[],up:1};
+   CSTOCK.lots['K2']={id:'K2',sl:'B20261118-01',d:'2026-11-19',code:'BBB1',
+     nm:'เซรั่ม เอ็กซ์',cs:24,pc:0,sq:1,ln:'CT11',clr:[],up:1};
+   if(!CSTOCK.key)CSTOCK.key={};if(!CSTOCK.gin)CSTOCK.gin={};
+   CSTOCK.key['B20261118-01|2026-11-20|CT11']={it:{AAA1:{sc:10,sp:0},BBB1:{sc:5,sp:0}},by:'sup',at:10};
+   CSTOCK.key['B20261118-01|2026-11-21|CT11']={it:{AAA1:{sc:8,sp:0}},by:'sup',at:10};
+   const G=(d,g,rows)=>{CSTOCK.gin['B20261118-01|'+d]={g:g,rows:rows,dd:[d],ords:[],miss:[],
+     by:'manager',byName:'แอดมิน 1',at:20,money:0};};
+   /* 20 พ.ย. ตรงเป๊ะ · 21 พ.ย. ตัวหนึ่งขาด 2 ลัง อีกตัวเกิน 3 ลัง (เซลล์ไม่ได้คีย์) */
+   G('2026-11-20',['141'],{'CT11|AAA1':{sc:10,ss:0,sp:0,fc:0,fs:0,fp:0,nm:'ครีมทาผิว เอ',pk:12},
+     'CT11|BBB1':{sc:5,ss:0,sp:0,fc:0,fs:0,fp:0,nm:'เซรั่ม เอ็กซ์',pk:6}});
+   G('2026-11-21',['142'],{'CT11|AAA1':{sc:6,ss:0,sp:0,fc:0,fs:0,fp:0,nm:'ครีมทาผิว เอ',pk:12},
+     'CT11|BBB1':{sc:3,ss:0,sp:0,fc:0,fs:0,fp:0,nm:'เซรั่ม เอ็กซ์',pk:6}});
+   __as('manager',null,'แอดมิน 1');_switchTab('spord');
+   const before=JSON.stringify(CSTOCK),s0=window.__sync,p0=window.__posts.length;
+   SP.view='slip';SP.sid='B20261118-01';SP.sec='out';SP.chkD='';renderSpord();
+   const L=spDayChk('B20261118-01');
+   const o={n:L.length,d20:L[0],d21:L[1],
+     tabs:[...document.querySelectorAll('#spTabs .tab2')].map(x=>x.textContent.trim()),
+     txt:document.getElementById('spBody').textContent.replace(/\s+/g,' '),
+     rows:document.querySelectorAll('#spBody .sp-chk tbody tr.sp-chk-r').length,
+     xl:spChkRows('B20261118-01')};
+   /* กดแถวเพื่อกางรายการที่ไม่ตรง */
+   SP.chkD='2026-11-21';renderSpord();
+   o.det=document.querySelector('#spBody .sp-chk-det');
+   o.detTxt=o.det?o.det.textContent.replace(/\s+/g,' '):'';
+   o.det=!!o.det;
+   o.same=JSON.stringify(CSTOCK)===before;
+   o.sync=window.__sync-s0;o.posts=window.__posts.length-p0;
+   return o;});
+ t('🚚 แท็บ ④ ชื่อ "คลังจัดส่ง" ตามที่เจ้าของสั่ง',
+   chk.tabs.some(x=>/คลังจัดส่ง/.test(x))&&!chk.tabs.some(x=>/คลังส่งออก/.test(x)),
+   chk.tabs.join(' | '));
+ t('🚚 มีใบตรวจรายวัน หนึ่งแถวต่อวันที่แอดมินตรวจไว้',
+   chk.n===2&&chk.rows===2&&/ตรวจรายวัน/.test(chk.txt),chk.n+' วัน · '+chk.rows+' แถว');
+ t('🚚 วันที่ตรงกันหมด ขึ้นว่าตรง ไม่มีขาดไม่มีเกิน',
+   chk.d20.okAll&&chk.d20.short.pcs===0&&chk.d20.over.pcs===0&&chk.d20.keyed.cs===15&&
+   chk.d20.out.cs===15,JSON.stringify({ok:chk.d20.okAll,k:chk.d20.keyed,a:chk.d20.out}));
+ t('🔑 ขาดกับเกินแยกกอง ไม่หักกลบกัน (ขาด 2 ลัง · เกิน 3 ลัง)',
+   chk.d21.short.cs===2&&chk.d21.over.cs===3&&!chk.d21.okAll,
+   'ขาด '+JSON.stringify(chk.d21.short)+' · เกิน '+JSON.stringify(chk.d21.over));
+ t('🔑 ...และบอกเป็นรายสินค้าว่าตัวไหนขาด ตัวไหนเกิน',
+   chk.d21.bad.length===2&&chk.d21.bad.some(b=>b.code==='AAA1'&&/ขาด/.test(b.txt))&&
+   chk.d21.bad.some(b=>b.code==='BBB1'&&/เกิน/.test(b.txt)),
+   chk.d21.bad.map(b=>b.code+':'+b.txt).join(' · '));
+ t('🚚 กดที่แถวแล้วกางรายการที่ไม่ตรงออกมาใต้แถว',
+   chk.det&&/ครีมทาผิว เอ/.test(chk.detTxt)&&/ขาด/.test(chk.detTxt),chk.detTxt.slice(0,110));
+ t('📄 ดึงเป็น Excel ได้ และตัวเลขตรงกับหน้าจอ',
+   chk.xl.sum.length===3&&chk.xl.sum[1][2]===15&&chk.xl.sum[2][6]===2&&chk.xl.sum[2][8]===3,
+   JSON.stringify(chk.xl.sum[2]));
+ t('🛟 หน้าตรวจอ่านอย่างเดียว ไม่เขียนอะไรลงข้อมูลเลย',
+   chk.same&&chk.sync===0&&chk.posts===0,
+   'เหมือนเดิม '+chk.same+' · sync +'+chk.sync+' · posts +'+chk.posts);
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

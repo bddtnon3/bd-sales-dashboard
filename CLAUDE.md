@@ -1127,11 +1127,11 @@ code, never printed.
   is the new one, and a slip with no flag still reads as `A`. Never reassign what a letter means:
   every stored slip would silently change type.
   **The slip page's tabs depend on the slip's type** (`SP_TABS`/`spTabsOn`, owner 26 Nov 26):
-  🎯 ตัวกระจาย runs **① ✍️ ซุปจด → ② 📲 เซลล์คีย์ → ③ 🔎 แอดมินตรวจ → ④ 🚚 คลังส่งออก**, while
-  🧾 ตัดบิลรอส่ง and 🚚 ส่งแล้วรอตัดบิล are **two steps only — ① เซลล์คีย์ → ② คลังส่งออก**
+  🎯 ตัวกระจาย runs **① ✍️ ซุปจด → ② 📲 เซลล์คีย์ → ③ 🔎 แอดมินตรวจ → ④ 🚚 คลังจัดส่ง**, while
+  🧾 ตัดบิลรอส่ง and 🚚 ส่งแล้วรอตัดบิล are **two steps only — ① เซลล์คีย์ → ② คลังจัดส่ง**
   (owner, 26 Nov 26: *"หลังจากเซลล์คีย์ออเดอร์มา แค่ให้แอดมินมากรอกส่วนของคลัง ว่าสินค้าออกไปกับ
   เลข GIN ไหน สองขั้นตอนเท่านั้นเอง แอดมินไม่ต้องมาเช็คเหมือนร้านที่กระจายเยอะ ๆ"*), so the whole
-  🔎 แอดมินตรวจ comparison belongs to D alone and A/B get a small **เลข GIN box inside คลังส่งออก**
+  🔎 แอดมินตรวจ comparison belongs to D alone and A/B get a small **เลข GIN box inside คลังจัดส่ง**
   (`spGinNote`/`spGinNoteHtml`) that writes the same `CSTOCK.gin[sid|date]` record with empty `rows`
   — no new section, and it needs no allocation file. **📊 รายงาน** is appended for the
   manager. The step numbers are therefore computed from what is actually shown, never written into
@@ -1140,14 +1140,29 @@ code, never printed.
   **`#spTabs`, the first element of the view** — the same `.tabs2` row the other groups' sub-tabs
   use, so it sits under the main tab bar instead of inside a panel halfway down the page
   (*"เอากรอบในนั้นขยับขึ้นมาอยู่ด้านบนให้เห็นชัดชัด"*). `spOpenSlip` lands on the first tab that slip
-  really has, never a hard-coded `"key"`. **🧾 เลขออเดอร์ is retired** (*"มันซ้ำกับหมวดคลังส่งออกแล้ว"*)
+  really has, never a hard-coded `"key"`. **🧾 เลขออเดอร์ is retired** (*"มันซ้ำกับหมวดคลังจัดส่งแล้ว"*)
   the same way a retired upload slot is: `off:1` keeps it out of the row while `spSec` still opens it
   and `spOldHtml`/`CSTOCK.sub`/`subdel` keep working, so putting the line back restores it with its
   history. Everyone may *open* every tab; who may *write* is checked inside each function. Only the
   first three are per-day, so `spDayPick` is hidden on the others (`SP_DAYTABS`).
-  **For 🎯 ตัวกระจาย, ④ คลังส่งออก is a report read out of the allocation file, not a form**
+  **④ is called 🚚 คลังจัดส่ง** (renamed from คลังจัดส่ง on 27 Nov 26) **and is the admin's daily
+  verification record** (`spDayChk`/`spOutChkHtml`/`spChkXlsx`/`spChkPrint`, owner: *"ทำให้หน้านี้
+  เป็นส่วนของแอดมินที่ตรวจข้อมูลการคีย์ว่าตรงหรือขาดหรือเกินกี่ลัง แล้วตรวจสอบกับทางคลังเป็นรายวัน
+  จากเลข GIN ที่ตรวจมาจากหน้าแอดมินตรวจ … หรือดึงออกมาเป็น EXCEL PDF ได้เหมือนเดิม เพื่อเก็บเป็น
+  record"*). One row per day the admin has checked — วันที่ · GIN · เซลล์คีย์ · คลังจัด · **ขาด** ·
+  **เกิน** · ผลตรวจ — tapping a row opens the products that disagree, and the whole slip exports to
+  Excel (สรุปรายวัน + รายการที่ไม่ตรง) or PDF through the browser's own print, both read from
+  `spDayChk` so the document and the screen cannot disagree. Three rules: **the difference is
+  computed per product code and only then summed**, because case sizes differ and a net difference
+  in pieces converted once is a meaningless number; **ขาด and เกิน are separate buckets and are
+  never netted off** — short 5 cases of one code and over 5 of another is not "ตรง"; and a row the
+  rep never keyed counts as เกิน while a row the warehouse never shipped counts as ขาด, both of
+  which the admin has to chase, so neither may be skipped. Rows whose units cannot be converted are
+  counted and reported, never treated as 0. The volume roll-up by product that used to be the whole
+  page is still there, below. Read-only.
+  **For 🎯 ตัวกระจาย, ④ คลังจัดส่ง is a report read out of the allocation file, not a form**
   (`spAllOut`/`spOutAllocHtml`, owner 26 Nov 26: *"ให้ใช้ไฟล์ที่แอดมิน up เข้าไป … ระบบขึ้นรายงาน
-  ได้เลยว่าคลังส่งออกไปแล้วทั้งหมดกี่ลัง … ไม่ต้องรอซุปจดหรือเซลล์คีย์ เพราะเป้าหมายของออเดอร์แบบนี้
+  ได้เลยว่าคลังจัดส่งไปแล้วทั้งหมดกี่ลัง … ไม่ต้องรอซุปจดหรือเซลล์คีย์ เพราะเป้าหมายของออเดอร์แบบนี้
   คือการ match ข้อมูลออเดอร์ที่เซลล์คีย์ กับคลังจัดของให้ตรงกัน"*). It reads the **stored** checks
   (`CSTOCK.gin[sid|date].rows`), not the file held in memory, so it reads back without re-uploading;
   it needs no target and no keyed figure; it converts ลัง/แพ็ค/ชิ้น through `alPcs` and **reports the
@@ -1253,8 +1268,8 @@ code, never printed.
   one — otherwise the button asked for the file while the answer was already on its way. Reading is
   manager-only, like the check itself. Prove it with the `api/alloc.js` cases in
   **`node test/merge-safety.test.mjs`** (325 checks) and the round-trip cases in
-  **`node test/browser/spord.test.cjs`** (282 checks).
-  **④ คลังส่งออก is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
+  **`node test/browser/spord.test.cjs`** (290 checks).
+  **④ คลังจัดส่ง is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
   is untouched and the two pages can never disagree. Never fork the clearing code.
@@ -1290,7 +1305,7 @@ code, never printed.
   **Each slip type belongs to one side of the depot** (`SP_SIDE`/`spTypeLines`, owner 26 Nov 26:
   *"ตัวกระจาย จะมีแค่สาย CT และอีกสองรูปแบบ ตัดบิลส่งของ ส่งของตัดบิล มีแค่สาย KA จะได้ไม่งง"*):
   🎯 ตัวกระจาย offers the **9 CT lines**, 🧾/🚚 the **3 KA lines**. He named the exception himself —
-  *"ยกเว้นในส่วนของคลังส่งออก ออเดอร์สร้างจาก KA อาจจะคีย์เข้า CT เป็นตัวกระจายได้"* — and that page
+  *"ยกเว้นในส่วนของคลังจัดส่ง ออเดอร์สร้างจาก KA อาจจะคีย์เข้า CT เป็นตัวกระจายได้"* — and that page
   never goes through `spSlipLines`: it reads the line off the allocation file and the lots. **A line
   the slip's own lots name is always appended**, even when it is on the other side, or work already
   keyed would vanish from the screen while the data sat in the state.
@@ -1482,7 +1497,7 @@ code, never printed.
   on consecutive lines would join into a 20-digit run and both vanish. Typing is still there,
   unchanged, under *— หรือพิมพ์เลขเอง —*. The picker is not a data upload, so the one-upload-button
   rule does not apply. Prove it with the self-contained cases in
-  **`node test/browser/spord.test.cjs`** (282 checks) and, against the owner's real screenshots,
+  **`node test/browser/spord.test.cjs`** (290 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
@@ -1599,7 +1614,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (282 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (290 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1612,7 +1627,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (282 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (290 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
