@@ -96,7 +96,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (306 checks against the real `api/save.js`, the real
+  running **`node test/merge-safety.test.mjs`** (308 checks against the real `api/save.js`, the real
   `api/ordtrk.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
@@ -772,6 +772,23 @@ code, never printed.
   1,677/1,677 rows**, so that column proves *delivered / not delivered*, never *late*.
   Its upload button is **on this page** (`otUpTxn`), the second documented exception to the
   one-upload-button rule, for the same reason as the allocation file: one upload serves the system.
+  **🧩 The number a rep can actually quote is the one their phone shows** (`#1034715426`), and the
+  owner found where it lives on 27 Nov 26: *"ผมเจอ jigsaw ตัวสุดท้ายแล้ว นั่นคือเลขคำสั่งซื้อของเซลล์
+  ตอนที่กดคีย์"*. Measured across all three real files before anything was written: it is
+  **`หมายเลขอ้างอิง (Reference Number)` in the daily sales file** (1,392 of 1,412 orders) and
+  **`เลขอ้างอิง DDT` in the Transaction Inquiry file** (2,096 of 2,107), the two files state the
+  **same number on all 1,392 orders they share (100%)**, 1 order never carries two, and the
+  **allocation file does not have the column at all** — every column was checked. The orders without
+  one are exactly the **Back Office** ones (11), which never went through the app; by channel,
+  Mobility 1,737 · B2B 353 · BO 17. It is stored as `rf` on `STOREDAILY.ord` and on the order-track
+  record, filled by both readers (the Transaction file fills only where empty, as it does for every
+  other field), and `otNorm`/`otFind` accept it so 🔎 ค้นเลขออเดอร์ takes it like any other number.
+  **Two traps:** the daily file also has `หมายเลขใบแจ้งหนี้ (Reference Invoice Number)` right beside
+  it, so the column must be matched on the **exact `(Reference Number)` suffix** (`dsColOf`), not by
+  `indexOf`; and `STOREDAILY.ord` is keyed by the **invoice number as well as the order number**, and
+  returns (`BDD04`) quote the same reference — so a lookup that does not prefer the `BDD01` sale
+  counts the same goods two or three times (measured: 1,392 references point at more than one key).
+  `spOrdFind` prefers `BDD01` and reports the rest.
   `parseDailyDcode` also stores **`k` = the Sales Order Creation Date** on `STOREDAILY.ord`
   (optional lookup — a file uploaded before that still parses, and the page simply has no sales-side
   cross-check for it). `d` on that record is the INVOICE date and answers a different question;
@@ -800,7 +817,7 @@ code, never printed.
   cancelled ones) — so it must NOT count as billed. This is the same `cs===undefined` test `spRow`,
   `spCases` and `spShops` make; `x.sl.inv` never existed on that index, so the old fallback was dead
   code. Prove it with
-  **`node test/browser/ordtrk.test.cjs`** (95 checks, self-contained with made-up codes; 101 with the
+  **`node test/browser/ordtrk.test.cjs`** (99 checks, self-contained with made-up codes; 105 with the
   real file via `ORDTRK_TXN=/path/Transaction_Inquiry_....xlsx`, which holds real shop names and
   never enters the repo) plus the `api/ordtrk.js` cases in `merge-safety`.
   The **💰 ราคา & ทุน** tab group (`renderPrice`/`renderCost`) reads the two monthly Unilever price
@@ -1153,6 +1170,21 @@ code, never printed.
   `n` takes the **max**, and `h` is unioned by timestamp — newest-wins on the whole record would let
   a stale tab reset the edit quota and drop a history entry. A rep's page shows **only their own
   line**; the 12-line target table is the supervisor's.
+  **🧾 The rep types the day's order numbers at the bottom of their entry card**
+  (`spRepNoHtml`/`spNoSplit`/`spNoSum`/`spOrdFind`, the owner on 27 Nov 26: *"เซลล์ตอนที่คีย์รายวันแล้ว
+  จะต้องกรอกคำสั่งซื้อทั้งหมดในออเดอร์นั้น ๆ เข้าไปในช่องล่างสุด เพื่อให้แอดมินตรวจสอบจากระบบเองได้เลย …
+  เซลล์จะมากรอกเลขใบสั่งซื้อ แอดมินมากรอกเลข GIN ระบบตรวจสอบจำนวนว่าตรงกันทั้งหมดไหม"*). One box takes
+  any number of numbers — pasted, space/comma/newline separated — and accepts the **app number**
+  (`1034715426`), the full `BDD01…` or a bare tail alike. It is **a field on the record that already
+  exists** (`CSTOCK.rep[...].no`), never a new section, so `mergeRepOne` carries it and a tab from
+  before the field existed cannot blank it. Typing never re-renders the page (`spNoLive` writes into
+  its own `<div>`, so the caret stays), and the summary distinguishes all four states the project's
+  rules demand: found · **ยังหาไม่เจอ** (named one by one) · **รอไฟล์ยอดขาย** (an order known only
+  from the Transaction file, where `cs===undefined`) · ใบที่ยกเลิก. The supervisor's tracking table
+  then carries a third figure, **🧾 จากเลขออเดอร์** (`spOrdCell`), which is what the *system* totals
+  from those numbers rather than what anyone typed — it turns red with the difference when it
+  disagrees with the rep's keyed quantity, which is exactly the check the owner asked for. It works
+  the same on all three slip types, because every type that has a เซลล์คีย์ step renders this card.
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
   `renderSpord` returns the PIN screen and **draws nothing of the page** until `spPinOk()`. Two
   rules. **The repo is public, so the digits are never written into any file** — only the SHA-256
@@ -1266,7 +1298,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (206 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (219 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1279,7 +1311,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (206 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (219 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
@@ -1426,7 +1458,7 @@ upload log, as are an unknown PJP code (kept under that code), a rep name that d
 `DATA.lines[].name` (never overwritten — CT12 changed rep), a document type other than `Sales`,
 and a last day equal to today (the export may be mid-day, so re-upload after the day closes).
 `DATA.lines[].emp` is filled only when empty. Prove it with
-**`node test/browser/dailydc.test.cjs`** (30 checks, self-contained with made-up figures; 33 with
+**`node test/browser/dailydc.test.cjs`** (32 checks, self-contained with made-up figures; 35 with
 the real file via `DCODE_DAILY=/path/Sales_....xlsx`, which never enters the repo — the repo is
 public, so never commit the depot's real revenue).
 `parseOutlet` **and** `parsePJP` both dispatch to **`parsePjpDcode`** when the header row carries

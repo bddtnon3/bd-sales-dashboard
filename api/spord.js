@@ -139,9 +139,20 @@ export default async function handler(req, res) {
           const row = { sc: Q(v.sc), sp: Q(v.sp), fc: Q(v.fc), fp: Q(v.fp) };
           if (row.sc || row.sp || row.fc || row.fp) it[code] = row;
         }
-        const ent = { at: now, by: uid || role, byName: who, it };
+        // 🧾 the order numbers the rep keyed that day — the owner's "last jigsaw piece"
+        // (27 Nov 26). They are what the admin checks the typed quantities against, so they are
+        // stored as given and resolved at read time; the server only bounds them.
+        // Measured on the real files: the number the rep sees in the app is 10 digits
+        // (1034715426), a few older ones are 8, and an order number is BDD + 10. Anything
+        // outside that is dropped rather than stored as junk.
+        const no = (Array.isArray(body.no) ? body.no : [])
+          .map((x) => String(x == null ? "" : x).trim().toUpperCase().replace(/[^0-9A-Z]/g, ""))
+          .filter((x) => x.length >= 4 && x.length <= 24 && /^(BDD)?\d+$/.test(x));
+        const noU = [];
+        for (const x of no) if (noU.indexOf(x) < 0 && noU.length < 80) noU.push(x);
+        const ent = { at: now, by: uid || role, byName: who, it, no: noU };
         C.rep[key] = {
-          it, by: ent.by, byName: who, at: now,
+          it, no: noU, by: ent.by, byName: who, at: now,
           n: used + (isMgr ? 0 : 1),                 // ผู้จัดการแก้ ไม่กินโควต้าของเซลล์
           h: (Array.isArray(prev && prev.h) ? prev.h : []).concat([ent]).slice(-MAX_HIST),
         };

@@ -350,6 +350,9 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
    ⚠️ ช่องกรอกต้อง >= 16px ไม่งั้นเบราว์เซอร์มือถือซูมเข้าเองตอนโฟกัส แล้วหน้าเลื่อนหนี */
 .sp-rc{border:1.5px solid var(--line);border-radius:13px;padding:13px 14px;margin:10px 0;background:#fff}
 .sp-rc.on{border-color:var(--blue);box-shadow:0 2px 10px rgba(33,106,212,.08)}
+/* 🧾 กล่องเลขคำสั่งซื้อ — หน้าตาเหมือนการ์ดสินค้า แต่ต้องเป็นคนละคลาส
+   เพราะ ".sp-rc" แปลว่า "หนึ่งการ์ด = หนึ่งสินค้า" ทั้งหน้าจอและในเทส */
+.sp-rno{border:1.5px solid var(--blue);border-radius:13px;padding:13px 14px;margin:10px 0;background:#fff}
 .sp-rn{font-weight:800;font-size:15.5px;line-height:1.35}
 .sp-rg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:11px}
 .sp-rf label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px}
@@ -13216,6 +13219,7 @@ function otSplit(ix){
     if(o.dp!==undefined&&o.dp!==null)r.dp=o.dp;
     if(o.dv!==undefined&&o.dv!==null)r.dv=o.dv;
     if(o.cn)r.cn=o.cn;
+    if(o.rf)r.rf=o.rf;        /* 🧾 เลขคำสั่งซื้อที่เซลล์/ร้านเห็นในแอพ */
     if(o.cx)r.cx=1;
     B.ord[k]=r;
     const cd={};Object.keys(o.cd).forEach(c=>{
@@ -13284,6 +13288,7 @@ async function otPush(ix,file,d1,d2){
  * ========================================================================== */
 const TX_H={no:"เลขที่เอกสาร",sh:"รหัสร้านค้า",ln:"หมายเลข PJP",d:"วันที่เอกสาร"};
 const TX_O={nm:"ชื่อร้านค้ายาว",tm:"เวลาสั่งซื้อ",dd:"วันที่จัดส่ง",da:"วันที่จัดส่งจริง",
+  ref:"เลขอ้างอิง DDT",
   gin:"หมายเลขใบจัดสินค้า",inv:"เลขที่ใบแจ้งหนี้",ivd:"DYP.......invoicedate",
   gsv:"จำนวนรวม (GSV)",niv:"DYP.......NIV",ds:"สถานะเอกสาร",ws:"สถานะการดำเนินการ",ch:"ช่องทางความต้องการ"};
 const TX_CH={"Mobility (MOB)":"M","Business to Business (B2B)":"B","Back Office (BO)":"O"};
@@ -13342,6 +13347,7 @@ function parseTxn(name,buf){
       c:0,v:txNum(x[oc.niv]),gsv:txNum(x[oc.gsv]),x:0,cd:{},
       tm:txTime(x[oc.tm]),nm:S(x,oc.nm),
       cx:cancel?1:0,cn:TX_CH[S(x,oc.ch)]||"",
+      rf:(()=>{const v=S(x,oc.ref).toUpperCase();return (/^[0-9A-Z]{4,24}$/.test(v)&&v!=="NA")?v:"";})(),
       ivd:txDate(x[oc.ivd])};
     const gp=txGap(d,txDate(x[oc.dd]));if(gp!==null)o.dp=gp;
     const gv=txGap(d,txIso(x[oc.da]));if(gv!==null)o.dv=gv;
@@ -13365,6 +13371,7 @@ function parseTxn(name,buf){
       const rec={s:o.s,l:dsLineKey(o.l),k:o.full,v:Math.round(o.v*100)/100,tx:1};
       if(o.gsv)rec.g=Math.round(o.gsv*100)/100;
       if(o.ivd)rec.d=o.ivd;
+      if(o.rf)rec.rf=o.rf;
       STOREDAILY.ord[full]=rec;addO++;
     }else{
       let hit=0;
@@ -13374,9 +13381,11 @@ function parseTxn(name,buf){
       if(!cur.d&&o.ivd){cur.d=o.ivd;hit=1;}
       if(!(+cur.v)&&o.v){cur.v=Math.round(o.v*100)/100;hit=1;}
       if(!(+cur.g)&&o.gsv){cur.g=Math.round(o.gsv*100)/100;hit=1;}
+      if(!cur.rf&&o.rf){cur.rf=o.rf;hit=1;}
       if(hit)fillO++;
     }
   });
+  spRfBust();
   const uk=Object.keys(unk);
   const sl=Object.keys(st).sort((a,b)=>st[b]-st[a]).map(k=>anaEsc(k)+" "+st[k]);
   ulog("📥 รายการสั่งซื้อ (ฝั่งเซลล์คีย์): อ่านได้ <b>"+n.toLocaleString()+"</b> ใบ · วันที่ "+
@@ -13978,7 +13987,7 @@ function spRepCan(ln,rec){
   if(spMyLine()!==ln)return false;               /* เซลล์กรอกได้เฉพาะสายตัวเอง */
   return spRepLeft(rec)>0;
 }
-async function spRepSave(sid,ymd,ln,it){
+async function spRepSave(sid,ymd,ln,it,no){
   const k=spKk(sid,ymd,ln),C=spRepOk();
   const rec=C.rep[k]||null;
   if(!spRepCan(ln,rec)){
@@ -13989,13 +13998,14 @@ async function spRepSave(sid,ymd,ln,it){
   }
   const old=rec?JSON.parse(JSON.stringify(rec)):null;
   const mine=spRole()==="sales";
-  const ent={at:Date.now(),by:(S.user&&S.user.id)||"",byName:(S.user&&S.user.name)||"",it:it};
-  C.rep[k]={it:it,by:ent.by,byName:ent.byName,at:ent.at,
+  const nos=Array.isArray(no)?no:[];
+  const ent={at:Date.now(),by:(S.user&&S.user.id)||"",byName:(S.user&&S.user.name)||"",it:it,no:nos};
+  C.rep[k]={it:it,no:nos,by:ent.by,byName:ent.byName,at:ent.at,
     n:(+(rec&&rec.n)||0)+(mine?1:0),
     h:(((rec&&rec.h)||[]).concat([ent])).slice(-20)};
   renderSpord();
   try{
-    const r=await bdPost("/api/spord",{act:"rep",sid:sid,d:ymd,ln:ln,it:it});
+    const r=await bdPost("/api/spord",{act:"rep",sid:sid,d:ymd,ln:ln,it:it,no:nos});
     if(!r||!r.ok)throw new Error((r&&r.error)||"บันทึกไม่สำเร็จ");
     const left=spRepLeft(C.rep[k]);
     toast("บันทึกแล้ว · "+ln+" "+fmtDate(ymd)+(mine?(left?" · แก้ได้อีก "+left+" ครั้ง":" · แก้ครบแล้ว"):""));
@@ -14015,11 +14025,37 @@ function spRepLineSave(sid,ymd,ln){
     const row={sc:g("sc"),sp:g("sp"),fc:g("fc"),fp:g("fp")};
     if(row.sc||row.sp||row.fc||row.fp)it[c.code]=row;
   });
+  const el=document.getElementById("spRNo_"+ln);
+  const no=el?spNoSplit(el.value):((spRepRec(sid,ymd,ln)||{}).no||[]);
   const rec=spRepRec(sid,ymd,ln);
   const left=spRepLeft(rec);
   if(spRole()==="sales"&&rec&&!confirm(
     "ยืนยันแก้จำนวนของสาย "+ln+" วันที่ "+fmtDate(ymd)+" ?\n\nแก้ได้อีก "+left+" ครั้งเท่านั้น"))return;
-  spRepSave(sid,ymd,ln,it);
+  spRepSave(sid,ymd,ln,it,no);
+}
+/* ช่องเลขคำสั่งซื้อของเซลล์ — พิมพ์แล้วสรุปให้ดูทันที โดยไม่วาดหน้าใหม่ (เคอร์เซอร์จะได้ไม่กระโดด) */
+function spNoLive(ln){
+  const el=document.getElementById("spRNo_"+ln),box=document.getElementById("spRNoInfo_"+ln);
+  if(!el||!box)return;
+  box.innerHTML=spNoInfoHtml(spNoSplit(el.value));
+}
+function spNoInfoHtml(list){
+  if(!list.length)return `<span class="psub">ยังไม่ได้ใส่เลข</span>`;
+  const o=spNoSum(list);
+  const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const chip=(t,c)=>`<span class="pm-item${c?" "+c:""}">${t}</span>`;
+  let h=`<div class="pm-chips" style="margin:6px 0 0">`+
+    chip(`<b>${o.n}</b> <span>เลขที่ใส่</span>`)+
+    chip(`<b>${o.found}</b> <span>เจอในระบบ</span>`,o.found===o.n?"up":"")+
+    (o.cs?chip(`<b>${N(o.cs)}</b> <span>ลัง</span>`):"")+
+    (o.v?chip(`<b>${THB(o.v)}</b>`):"")+
+    (o.nShop?chip(`<b>${o.nShop}</b> <span>ร้าน</span>`):"")+
+    (o.cx?chip(`<b>${o.cx}</b> <span>ใบที่ยกเลิก</span>`,"down"):"")+`</div>`;
+  /* สิ่งที่ยัง "ไม่รู้" ต้องบอก ห้ามปล่อยให้ยอดดูเหมือนครบ */
+  if(o.wait)h+=`<div class="psub" style="margin-top:4px">⏳ <b>${o.wait}</b> ใบยังไม่รู้จำนวนลัง — รอไฟล์ยอดขายของวันนั้น</div>`;
+  if(o.miss.length)h+=`<div class="psub down" style="margin-top:4px">❓ ยังหาไม่เจอ <b>${o.miss.length}</b> เลข (${
+    o.miss.slice(0,6).map(anaEsc).join(" · ")}${o.miss.length>6?" …":""}) — ถ้าเพิ่งคีย์วันนี้ ให้รอไฟล์ของวันนั้นก่อน</div>`;
+  return h;
 }
 /* เป้า vs ที่คีย์จริง รายสาย — ตัวเลขที่ซุปใช้ตาม */
 function spTrack(sid,ymd){
@@ -14030,7 +14066,11 @@ function spTrack(sid,ymd){
     const T=sum(tg[ln]),R=sum(rp[ln]);
     const has=!!tg[ln],done=!!rp[ln];
     const left=Math.round((T.cs-R.cs)*100)/100;
-    return {ln:ln,tgt:T,rep:R,has:has,done:done,left:left,
+    /* 🧾 ตัวเลขที่ "ระบบ" หาได้เองจากเลขคำสั่งซื้อที่เซลล์กรอก — ไม่ได้มาจากการพิมพ์จำนวน
+       เป็นตัวที่แอดมินใช้ตรวจว่าที่เซลล์คีย์มาตรงกับของจริงไหม */
+    const nos=(rp[ln]&&Array.isArray(rp[ln].no))?rp[ln].no:[];
+    const O=nos.length?spNoSum(nos):null;
+    return {ln:ln,tgt:T,rep:R,has:has,done:done,left:left,ord:O,
       rec:rp[ln]||null,n:(rp[ln]&&rp[ln].n)||0,
       st:!has?"noTgt":(!done?"wait":(left>0?"short":(left<0?"over":"ok")))};
   });
@@ -15771,9 +15811,115 @@ function spRepMineHtml(sid,ymd){
     ${rec?`<div class="cst-fb" style="margin-top:10px">
       <button class="btn-ghost" onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">🕘 ดูประวัติการกรอก</button></div>`:""}
     ${cards}
+    ${spRepNoHtml(ln,rec,can)}
     ${can?`<div class="sp-save"><button class="upload-btn"
       onclick="spRepLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกจำนวนที่คีย์</button></div>`:""}
   </div>`;
+}
+/* 🧾 ช่องเลขคำสั่งซื้อ — อยู่ "ล่างสุด" ตามที่เจ้าของสั่ง (27 พ.ย. 69)
+   ใส่เลขจากแอพ (#1034715426) ได้ตรง ๆ หรือเลขออเดอร์ BDD01… ก็ได้ ระบบหาให้เอง */
+function spRepNoHtml(ln,rec,can){
+  const no=(rec&&Array.isArray(rec.no))?rec.no:[];
+  return `<div class="sp-rno">
+    <div class="sp-rn">🧾 เลขคำสั่งซื้อของวันนี้</div>
+    <div class="psub">ใส่ได้หลายเลข คั่นด้วยเว้นวรรค คอมมา หรือขึ้นบรรทัดใหม่ ·
+      ใส่เลขที่เห็นในแอพได้เลย เช่น <b>1034715426</b> หรือเลขออเดอร์ <b>BDD0100001234</b></div>
+    ${can?`<textarea id="spRNo_${anaEsc(ln)}" rows="3" inputmode="numeric" autocomplete="off"
+      oninput="spNoLive('${anaEsc(ln)}')"
+      placeholder="1034715426 1034715427 …"
+      style="width:100%;margin-top:8px;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:16px;font-family:inherit">${
+      anaEsc(no.join(" "))}</textarea>`
+      :`<div style="margin-top:8px;font-size:15px;word-break:break-all">${no.length?anaEsc(no.join(" · ")):'<span class="psub">ยังไม่ได้ใส่เลข</span>'}</div>`}
+    <div id="spRNoInfo_${anaEsc(ln)}">${spNoInfoHtml(no)}</div>
+  </div>`;
+}
+/* ============================================================================
+ * 🧩 เลขคำสั่งซื้อที่เซลล์เห็นในแอพ (#1034715426) — ชิ้นสุดท้ายของจิ๊กซอว์
+ *
+ * เจ้าของเจอเอง 27 พ.ย. 69: *"ผมเจอ jigsaw ตัวสุดท้ายแล้ว นั่นคือเลขคำสั่งซื้อของเซลล์
+ * ตอนที่กดคีย์ … โดยเซลล์ตอนที่คีย์รายวันแล้ว จะต้องกรอกคำสั่งซื้อทั้งหมดในออเดอร์นั้น ๆ
+ * เข้าไปในช่องล่างสุด เพื่อให้แอดมินตรวจสอบจากระบบเองได้เลย"*
+ *
+ * 🔎 ตรวจทั้งสามไฟล์จริงแล้วก่อนเขียน:
+ *   • ไฟล์ยอดขายรายวัน  → คอลัมน์ "หมายเลขอ้างอิง (Reference Number)" · 1,392 จาก 1,412 ใบ
+ *   • ไฟล์รายการสั่งซื้อ → คอลัมน์ "เลขอ้างอิง DDT"              · 2,096 จาก 2,107 ใบ
+ *   • ไฟล์ใบจัดของ       → **ไม่มีช่องนี้เลย** (ตรวจครบทุกคอลัมน์แล้ว)
+ *   • 1 ใบ = 1 เลข ไม่มีใบไหนมีสองเลข · และสองไฟล์ตรงกัน **1,392/1,392 (100%)**
+ *   • ใบที่ไม่มีเลข = ใบที่คีย์จาก Back Office ทั้งหมด (ไม่ได้ผ่านแอพ) 11 ใบ
+ *   • แยกตามช่องทาง: Mobility 1,737 · B2B 353 · Back Office 17
+ * ⚠️ มี 10 เลขที่ชี้ไปสองใบ เพราะใบ **คืนของ (BDD04 Fresh Sales Return)** อ้างเลขเดียวกับใบขาย
+ *    → เวลาหาให้เอาใบขาย (BDD01) ก่อนเสมอ ไม่งั้นยอดจะถูกนับซ้ำ
+ * ⚠️ ดัชนีสร้างตอนอ่านจาก STOREDAILY.ord ไม่ได้เก็บเพิ่มลง state (กฎเดียวกับ pjDailyIdx)
+ * ==========================================================================*/
+let _spRfIdx=null;
+function spRfBust(){_spRfIdx=null;}
+function spRfIdx(){
+  const ix=((typeof STOREDAILY!=="undefined"&&STOREDAILY&&STOREDAILY.ord)||{});
+  /* นับคีย์ไว้ด้วย — โหลดข้อมูลใหม่จากเซิร์ฟเวอร์แล้วดัชนีจะสร้างใหม่เอง ไม่ค้างของเก่า */
+  const sz=Object.keys(ix).length;
+  if(_spRfIdx&&_spRfIdx.n===sz)return _spRfIdx;
+  const rf={},inv={};
+  Object.keys(ix).forEach(k=>{
+    const r=ix[k];if(!r)return;
+    if(r.rf){const t=String(r.rf).trim();if(t)(rf[t]=rf[t]||[]).push(k);}
+    if(r.inv){const t=String(r.inv).trim();if(t)(inv[t]=inv[t]||[]).push(k);}
+  });
+  _spRfIdx={rf:rf,inv:inv,n:sz};return _spRfIdx;
+}
+/* ข้อความหนึ่งก้อน → เลขทีละตัว (รับทั้งเว้นวรรค คอมมา ขึ้นบรรทัดใหม่ และ # นำหน้า) */
+function spNoSplit(txt){
+  const seen={},out=[];
+  String(txt==null?"":txt).split(/[^0-9A-Za-z]+/).forEach(t=>{
+    const v=String(t||"").trim().toUpperCase();
+    if(!v||v.length<4)return;
+    if(seen[v])return;seen[v]=1;out.push(v);
+  });
+  return out.slice(0,SP_NOMAX);
+}
+const SP_NOMAX=80;
+/* หาออเดอร์จากเลขที่พิมพ์มา — คืน {no,r} หรือ null ถ้ายังหาไม่เจอ (ห้ามคืน 0) */
+function spOrdFind(txt){
+  const raw=String(txt==null?"":txt).trim().toUpperCase().replace(/[^0-9A-Z]/g,"");
+  if(!raw)return null;
+  const ix=((typeof STOREDAILY!=="undefined"&&STOREDAILY&&STOREDAILY.ord)||{});
+  const I=spRfIdx();
+  const pick=ks=>{
+    if(!ks||!ks.length)return null;
+    /* ใบขายก่อนเสมอ — ใบคืนของ (BDD04) อ้างเลขเดียวกัน ถ้านับด้วยยอดจะซ้ำ */
+    const sale=ks.filter(k=>k.indexOf("BDD01")===0);
+    const use=(sale.length?sale:ks)[0];
+    return {no:use,r:ix[use],more:ks.length>1?ks.filter(k=>k!==use):null};
+  };
+  const byRf=pick(I.rf[raw]);
+  if(byRf)return Object.assign(byRf,{via:"rf"});
+  if(typeof otNorm==="function"){
+    const n=otNorm(raw);
+    if(n&&n.k){const full=otFullNo(n.k);if(ix[full])return {no:full,r:ix[full],via:"no",more:null};}
+    if(n&&n.inv){const byInv=pick(I.inv[n.inv]);if(byInv)return Object.assign(byInv,{via:"inv"});}
+  }
+  return null;
+}
+/* รวมยอดของเลขที่เซลล์กรอกมา — ลัง/ชิ้น/มูลค่า/ร้าน และเลขที่ยังหาไม่เจอ
+   ⚠️ เรคอร์ดที่มาจากไฟล์รายการสั่งซื้อ (tx:1) ยังไม่รู้จำนวนลัง ต้องแยกนับเป็น "รอไฟล์ยอดขาย"
+      ไม่ใช่บวกเป็น 0 (กฎเดียวกับ spRow/spCases) */
+function spNoSum(list){
+  const o={n:0,cs:0,v:0,shops:{},found:0,wait:0,miss:[],rows:[],cx:0,dup:0};
+  (list||[]).forEach(t=>{
+    o.n++;
+    const f=spOrdFind(t);
+    if(!f||!f.r){o.miss.push(t);return;}
+    o.found++;
+    if(f.more&&f.more.length)o.dup++;
+    const r=f.r;
+    if(r.cx)o.cx++;
+    if(r.s)o.shops[r.s]=1;
+    if(r.cs===undefined)o.wait++;else o.cs+=+r.cs||0;
+    o.v+=+r.v||0;
+    o.rows.push({ask:t,no:f.no,r:r,via:f.via});
+  });
+  o.cs=Math.round(o.cs*100)/100;o.v=Math.round(o.v*100)/100;
+  o.nShop=Object.keys(o.shops).length;
+  return o;
 }
 /* ---------- ตารางติดตาม: สายไหนคีย์ครบเป้าแล้วบ้าง ---------- */
 const SP_TRK={ok:['<span class="sp-ok">✓ ครบเป้า</span>',"var(--good)"],
@@ -15781,6 +15927,24 @@ const SP_TRK={ok:['<span class="sp-ok">✓ ครบเป้า</span>',"var(--
   over:['<span class="sp-warn">เกินเป้า</span>',"var(--warn)"],
   wait:['<span class="sp-warn">รอเซลล์คีย์</span>',"var(--warn)"],
   noTgt:['<span class="psub">ยังไม่ได้ตั้งเป้า</span>',"var(--line)"]};
+/* ช่อง "จากเลขออเดอร์" — ยอดที่ระบบหาเองจากเลขที่เซลล์กรอก
+   ⚠️ สามสถานะคนละเรื่องกัน ห้ามยุบรวม: ยังไม่กรอกเลข / กรอกแล้วแต่ยังหาไม่เจอ / เจอแล้ว
+   และ "ยังไม่รู้จำนวนลัง" (ใบที่มีแต่ในไฟล์รายการสั่งซื้อ) ต้องบอก ไม่ใช่นับเป็น 0 */
+function spOrdCell(x){
+  const o=x.ord;
+  if(!o||!o.n)return '<span class="psub">—</span>';
+  const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const bits=[];
+  if(o.miss.length)bits.push('<span class="psub down">หาไม่เจอ '+o.miss.length+'</span>');
+  if(o.wait)bits.push('<span class="psub">รอไฟล์ยอดขาย '+o.wait+'</span>');
+  const know=o.found-o.wait;
+  if(!know)return '<span class="psub">'+(bits.join(" · ")||"—")+'</span>';
+  const diff=Math.round((o.cs-(x.rep&&x.rep.cs||0))*100)/100;
+  const cls=(!o.miss.length&&!o.wait&&Math.abs(diff)<0.01)?"up":(Math.abs(diff)>=0.01?"down":"");
+  return '<b class="'+cls+'">'+N(o.cs)+'</b>'+
+    (Math.abs(diff)>=0.01?'<span class="psub" style="display:block">ต่าง '+(diff>0?"+":"")+N(diff)+'</span>':"")+
+    (bits.length?'<span class="psub" style="display:block">'+bits.join(" · ")+'</span>':"");
+}
 function spTrackHtml(sid,ymd,tr){
   tr=tr||spTrack(sid,ymd);
   const one=spRole()==="sales";          /* เซลล์เห็นแถวเดียวคือสายตัวเอง */
@@ -15805,6 +15969,7 @@ function spTrackHtml(sid,ymd,tr){
     ${tg?`<td>${x.tgt.cs||"-"}${x.tgt.pc?'<span class="psub" style="display:block">+'+x.tgt.pc+' ชิ้น</span>':""}</td>`:""}
     <td>${x.done?`<button class="btn-ghost" style="padding:2px 9px;font-weight:700"
         onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(x.ln)}')">${x.rep.cs||0}</button>`:"-"}</td>
+    <td>${spOrdCell(x)}</td>
     ${tg?`<td>${x.st==="short"?'<b class="down">'+x.left+'</b>':(x.st==="over"?'<b class="up">+'+(-x.left)+'</b>':"-")}</td>
     <td>${SP_TRK[x.st][0]}</td>`:""}
     <td class="l">${x.rec?`<span class="psub">${anaEsc(x.rec.byName||x.rec.by||"")} · ${fmtDateTime(x.rec.at)}${
@@ -15813,10 +15978,13 @@ function spTrackHtml(sid,ymd,tr){
     <h3>📋 ${one?"สรุปของสายฉัน":(tg?"ติดตามการคีย์รายสาย":"จำนวนที่เซลล์คีย์")} · ${fmtDate(ymd)}</h3>
     ${cards}
     <div class="tblwrap" style="margin-top:10px"><table class="sp-kt">
-      <thead><tr><th class="l">สาย</th>${tg?"<th>เป้า (ลัง)</th>":""}<th>คีย์จริง (ลัง)</th>${
+      <thead><tr><th class="l">สาย</th>${tg?"<th>เป้า (ลัง)</th>":""}<th>คีย์จริง (ลัง)</th>
+        <th>🧾 จากเลขออเดอร์</th>${
         tg?"<th>ยังขาด</th><th>ผล</th>":""}<th class="l">กรอกเมื่อ</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
-    <div class="psub" style="margin-top:8px">กดที่ตัวเลข <b>คีย์จริง</b> เพื่อดูประวัติการกรอก</div>
+    <div class="psub" style="margin-top:8px">กดที่ตัวเลข <b>คีย์จริง</b> เพื่อดูประวัติการกรอก ·
+      <b>🧾 จากเลขออเดอร์</b> คือยอดที่ระบบหาเองจากเลขคำสั่งซื้อที่เซลล์กรอกไว้
+      (ไม่ได้มาจากการพิมพ์จำนวน) — ถ้าสองช่องไม่ตรงกันจะขึ้นสีแดงไว้ให้</div>
   </div>`;
 }
 /* ---------- 📄 เป้าของวันนั้น ส่งให้เซลล์ (Excel / PDF) ---------- */
@@ -18021,8 +18189,11 @@ function otNorm(v){
   let d=/^BDD\d+$/.test(s)?s.slice(3):s;
   if(!/^\d+$/.test(d))return {raw:s};
   if(d.length>=10&&d.slice(0,2)==="09")return {inv:d.slice(2).replace(/^0+(?=\d)/,"").padStart(8,"0"),raw:s};
+  /* 🧾 เลขคำสั่งซื้อที่เซลล์/ร้านเห็นในแอพ (#1034715426) — ไม่ได้ขึ้นต้นด้วย BDD
+     เก็บไว้เป็นทางเลือกที่สาม ให้ otFind ลองหาจากช่อง rf ด้วย (กฎ: เลขออเดอร์ขึ้นต้น 01 เท่านั้น) */
+  const rf=(s.indexOf("BDD")<0&&d.length>=6)?d:"";
   if(d.length>=10&&d.slice(0,2)==="01")d=d.slice(2);
-  return {k:d.padStart(8,"0"),raw:s};
+  return rf?{k:d.padStart(8,"0"),rf:rf,raw:s}:{k:d.padStart(8,"0"),raw:s};
 }
 function otFullNo(k){return otFull(k,"BDD01");}
 function otInvNo(v){return v?otFull(v,"BDD09"):"";}
@@ -18143,11 +18314,14 @@ async function otFind(){
   for(const m of months){
     const C=await otLoad(m,false);
     const o=(C&&C.ord)||{};
-    const inv={};Object.keys(o).forEach(k=>{if(o[k].i)inv[o[k].i]=k;});
+    const inv={},ref={};Object.keys(o).forEach(k=>{
+      if(o[k].i)inv[o[k].i]=k;
+      if(o[k].rf)ref[String(o[k].rf)]=k;});
     want.forEach(w=>{
       const id=w.k||w.inv||w.raw;
       if(found[id])return;
-      const k=w.k&&o[w.k]?w.k:(w.inv&&inv[w.inv]?inv[w.inv]:"");
+      const k=w.k&&o[w.k]?w.k:(w.inv&&inv[w.inv]?inv[w.inv]
+        :(w.rf&&ref[w.rf]?ref[w.rf]:""));
       if(!k)return;
       found[id]={m:m,k:k,r:o[k],no:otFullNo(k),ln:otLineOf(o[k]),
         d:m+"-"+String(o[k].d||0).padStart(2,"0"),sl:otSales(k),ask:w.raw};
@@ -18193,8 +18367,10 @@ function otRowHtml(x){
    ห้ามเอาไปทำรายงาน "ส่งช้า" เพราะไฟล์ไม่เคยบอกว่าส่งช้า */
 function otShipHtml(x){
   const r=x.r,ymd=g=>dayShift(x.d,g);
-  if(r.dp===undefined&&r.dv===undefined)return "";
+  if(r.dp===undefined&&r.dv===undefined&&!r.rf)return "";
   const out=[];
+  /* 🧾 เลขที่เซลล์และร้านเห็นในแอพ — เป็นเลขที่คนจำได้ ไม่ใช่ BDD01… */
+  if(r.rf)out.push(`<span class="pm-item">🧾 <span>คำสั่งซื้อ</span> <b>${anaEsc(r.rf)}</b></span>`);
   if(r.dp!==undefined)out.push(`<span class="pm-item">📅 <span>นัดส่ง</span> <b>${anaEsc(fmtDate(ymd(r.dp)))}</b></span>`);
   if(r.dv!==undefined)out.push(`<span class="pm-item up">🚚 <span>ส่งแล้ว</span> <b>${anaEsc(fmtDate(ymd(r.dv)))}</b></span>`);
   else if(!r.cx)out.push(`<span class="pm-item"><span class="down">ยังไม่ได้ส่ง</span></span>`);
@@ -19522,6 +19698,13 @@ function parseDailyDcode(name,rows,hdr,H){
        หาแบบไม่บังคับ: ไฟล์ที่อัพก่อนมีช่องนี้ยังอ่านได้ แต่หน้าสถานะออเดอร์จะบอกให้อัพซ้ำ
        (หลักเดียวกับตอนเพิ่ม GSV เข้าดัชนีนี้) */
     cCre=col("Sales Order Creation Date"),
+    /* 🧩 "เลขคำสั่งซื้อ" ที่เซลล์และร้านเห็นในแอพ (#1034715426) — เจ้าของเรียกว่าชิ้นสุดท้ายของจิ๊กซอว์
+       27 พ.ย. 69 · วัดกับไฟล์จริงแล้ว: ไฟล์ยอดขาย 1,392 เลขจาก 1,412 ใบ · ไฟล์รายการสั่งซื้อ
+       2,096 จาก 2,107 ใบ (ที่ขาดคือใบที่คีย์จาก Back Office ซึ่งไม่ได้ผ่านแอพ)
+       1 ใบ = 1 เลข ไม่มีใบไหนมีสองเลข และสองไฟล์ตรงกัน 1,392/1,392 (100%)
+       ⚠️ ไฟล์ใบจัดของ (allocation) **ไม่มีช่องนี้เลย** — ตรวจทุกคอลัมน์แล้ว
+       หาแบบไม่บังคับ ไฟล์เก่าที่ไม่มีช่องนี้ต้องอ่านได้เหมือนเดิม */
+    cRef=col("Reference Number"),
     cNo=col("Order Number"),cInv=col("Invoice Number");
   const N=(r,i)=>{if(i<0)return 0;const v=parseFloat(String(r[i]==null?"":r[i]).replace(/,/g,""));return isNaN(v)?0:v;};
   const S=(r,i)=>i<0?"":String(r[i]==null?"":r[i]).trim();
@@ -19581,6 +19764,8 @@ function parseDailyDcode(name,rows,hdr,H){
       o.v+=niv;o.c++;o.cs+=N(r,cCs);o.pc+=N(r,cPc);
       if(cGsv>=0)o.g=(+o.g||0)+N(r,cGsv);
       if(cCre>=0){const kk=toYMD(r[cCre]);if(kk)o.k=kk;}
+      /* ช่องว่าง / 0 / NA ไม่ใช่เลข — เก็บเฉพาะที่หน้าตาเป็นเลขจริง (กฎเดียวกับ spNoSplit) */
+      if(cRef>=0){const rf=S(r,cRef).toUpperCase();if(/^[0-9A-Z]{4,24}$/.test(rf)&&rf!=="NA")o.rf=rf;}
       if(sc)o.s=sc;o.l=code;o.d=dkey;
     });
     if(cDoc>=0){const d=S(r,cDoc)||"(ว่าง)";docs[d]=(docs[d]||0)+1;}
@@ -19612,6 +19797,7 @@ function parseDailyDcode(name,rows,hdr,H){
     o.v=Math.round(o.v*100)/100;o.cs=Math.round(o.cs*100)/100;o.pc=Math.round(o.pc*100)/100;
     if(o.g)o.g=Math.round(o.g*100)/100;
     STOREDAILY.ord[no]=o;});
+  spRfBust();
   /* 🎁 ดัชนีโปรโมชั่น — คีย์ "วัน|สาย" คือหน่วยเดียวกับที่ไฟล์หนึ่งใบเขียน ไฟล์ที่กรองมา
      แค่สายเดียวจึงทับได้แค่สายนั้น (กฎเดียวกับ DATA.daily ข้างบน) */
   if(pmAny&&typeof pmOk==="function"){

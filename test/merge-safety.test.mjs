@@ -1368,12 +1368,32 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
         !!(r2.CSTOCK.rep || {})[RK] && r2.CSTOCK.rep[RK].it["90000001"].sc === 11);
   check("🔑 ...และเป้าของหัวหน้าเซลล์ก็ยังอยู่ (คนละช่อง ไม่ทับกัน)",
         r2.CSTOCK.key[KK].it["90000001"].sc === 7);
+  /* 🧾 เลขคำสั่งซื้อที่เซลล์กรอก (rep[].no) — ช่องใหม่บนเรคอร์ดเดิม
+     ⚠️ mergeRepOne เอาเรคอร์ดที่ใหม่กว่าทั้งก้อน ช่องใหม่จึงต้องติดไปด้วย
+        และแท็บเก่าที่ไม่รู้จักช่องนี้ ต้องลบเลขที่เซลล์กรอกไว้ไม่ได้ */
+  const noSrv = JSON.parse(JSON.stringify(base));
+  noSrv.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, key: {}, gin: {},
+    rep: { [RK]: { it: { "90000001": { sc: 11, sp: 0, fc: 1, fp: 0 } },
+      no: ["1034715426", "1034715427"],
+      by: "209611", byName: "CT11", at: 58000, n: 1, h: [{ at: 58000, by: "209611", it: {}, no: ["1034715426"] }] } },
+    up: 58000 };
+  const n1 = mergeState(r1, noSrv);
+  check("\u{1F9FE} เลขคำสั่งซื้อที่เซลล์กรอกถูกบันทึก",
+        (n1.CSTOCK.rep[RK].no || []).join(",") === "1034715426,1034715427",
+        JSON.stringify(n1.CSTOCK.rep[RK].no));
+  const oldNo = JSON.parse(JSON.stringify(base));
+  oldNo.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, up: 54000 };
+  const n2 = mergeState(n1, oldNo);
+  check("\u{1F6DF} แท็บเก่าที่ไม่รู้จักช่องนี้ บันทึกทับ เลขที่กรอกไว้ไม่หาย",
+        (n2.CSTOCK.rep[RK].no || []).length === 2 && n2.CSTOCK.rep[RK].it["90000001"].sc === 11,
+        JSON.stringify(n2.CSTOCK.rep[RK].no));
+
   /* เซลล์อีกสายบันทึกเข้ามา ต้องไม่ลบของสายแรก */
   const otherLine = JSON.parse(JSON.stringify(base));
   otherLine.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, key: {}, gin: {},
     rep: { [B1 + "|2026-11-20|CT12"]: { it: { "90000001": { sc: 4 } }, by: "209612", at: 55000, n: 1, h: [] } },
     up: 55000 };
-  const r3 = mergeState(r2, otherLine);
+  const r3 = mergeState(n2, otherLine);
   check("🔑 เซลล์อีกสายบันทึก ไม่ลบของสายแรก",
         !!r3.CSTOCK.rep[RK] && !!r3.CSTOCK.rep[B1 + "|2026-11-20|CT12"],
         JSON.stringify(Object.keys(r3.CSTOCK.rep)));

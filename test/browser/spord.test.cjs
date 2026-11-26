@@ -1599,6 +1599,96 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
    rep2.tx.slice(rep2.tx.indexOf('ครีมทาผิว'),rep2.tx.indexOf('ครีมทาผิว')+70));
 
  /* ================================================================
+  * 🧾 เลขคำสั่งซื้อที่เซลล์เห็นในแอพ (#1034715426) — เจ้าของเรียกว่าชิ้นสุดท้ายของจิ๊กซอว์
+  * วัดกับไฟล์จริงแล้ว: อยู่ในไฟล์ยอดขาย (Reference Number) และไฟล์รายการสั่งซื้อ (เลขอ้างอิง DDT)
+  * ไม่มีในไฟล์ใบจัดของ · 1 ใบ = 1 เลข · สองไฟล์ตรงกัน 100%
+  * ⛔ เลข/รหัสร้านในเทสสมมติขึ้นเอง — รีโปเป็นสาธารณะ
+  * ============================================================== */
+ const ref=await ev(async()=>{
+   const o={};
+   __as('sales','209611','CT11 · เซลล์');
+   /* ดัชนีเลขออเดอร์: ใบขาย · ใบกำกับที่อ้างเลขเดียวกัน · ใบคืนของ · และใบที่รู้จักจากไฟล์
+      รายการสั่งซื้ออย่างเดียว (tx:1 — ยังไม่รู้จำนวนลัง) */
+   STOREDAILY.ord['BDD0100009001']={s:'4862383',l:'209611',d:'2026-11-20',v:1000,c:2,cs:10,pc:0,rf:'1034715426'};
+   STOREDAILY.ord['BDD0900009101']={s:'4862383',l:'209611',d:'2026-11-20',v:1000,c:2,cs:10,pc:0,rf:'1034715426'};
+   STOREDAILY.ord['BDD0400009001']={s:'4862383',l:'209611',d:'2026-11-20',v:-50,c:1,cs:1,pc:0,rf:'1034715426'};
+   STOREDAILY.ord['BDD0100009002']={s:'4862365',l:'209611',d:'2026-11-20',v:2000,c:3,cs:7,pc:0,rf:'1034715427'};
+   STOREDAILY.ord['BDD0100009003']={s:'4870004',l:'209611',d:'2026-11-20',v:500,tx:1,rf:'1034715428'};
+   spRfBust();
+   const f=spOrdFind('1034715426');
+   o.byRef=f&&f.no;o.via=f&&f.via;o.more=(f&&f.more)||[];
+   o.byNo=(spOrdFind('BDD0100009002')||{}).no;
+   o.byTail=(spOrdFind('9002')||{}).no;
+   o.byHash=(spOrdFind('#1034715427')||{}).no;
+   o.unknown=spOrdFind('9999999999');
+   /* วางทั้งก้อนแบบที่เซลล์จะทำจริง */
+   const sum=spNoSum(spNoSplit('1034715426, 1034715427\n1034715428  5555555555'));
+   o.sum={n:sum.n,found:sum.found,cs:sum.cs,v:sum.v,shops:sum.nShop,wait:sum.wait,miss:sum.miss};
+   o.info=spNoInfoHtml(spNoSplit('1034715426 1034715427 1034715428 5555555555'));
+   return o;});
+ t('🔑 พิมพ์เลขจากแอพ (#1034715426) แล้วระบบหาออเดอร์เจอ',
+   ref.byRef==='BDD0100009001'&&ref.via==='rf',ref.byRef+' via='+ref.via);
+ t('🔑 ...และเลือก "ใบขาย" เสมอ ไม่ใช่ใบกำกับหรือใบคืนของที่อ้างเลขเดียวกัน (ยอดจะซ้ำ)',
+   ref.byRef.indexOf('BDD01')===0&&ref.more.length===2,JSON.stringify(ref.more));
+ t('🔑 พิมพ์เลขออเดอร์เต็ม / เลขท้าย / มี # นำหน้า ก็หาเจอเหมือนกัน',
+   ref.byNo==='BDD0100009002'&&ref.byTail==='BDD0100009002'&&ref.byHash==='BDD0100009002',
+   [ref.byNo,ref.byTail,ref.byHash].join(' · '));
+ t('🛟 เลขที่ไม่มีในระบบ ต้องตอบว่าไม่เจอ ไม่ใช่เดาเป็นใบอื่น',ref.unknown===null);
+ t('🔑 วางหลายเลขพร้อมกัน แล้วรวมลัง/มูลค่า/ร้านให้',
+   ref.sum.n===4&&ref.sum.found===3&&ref.sum.cs===17&&ref.sum.v===3500&&ref.sum.shops===3,
+   JSON.stringify(ref.sum));
+ t('🛟 ใบที่รู้จักจากไฟล์รายการสั่งซื้ออย่างเดียว ยังไม่รู้จำนวนลัง ต้องแยกบอก ไม่ใช่บวกเป็น 0',
+   ref.sum.wait===1&&/รอไฟล์ยอดขาย/.test(ref.info),ref.sum.wait);
+ t('🛟 เลขที่ยังหาไม่เจอ ต้องบอกเป็นรายตัว',
+   ref.sum.miss.join(',')==='5555555555'&&/ยังหาไม่เจอ/.test(ref.info),ref.sum.miss.join(','));
+
+ /* เซลล์กรอกเลขจริง แล้วแอดมินตรวจได้จากตาราง */
+ const refSave=await ev(async()=>{
+   const o={};
+   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10);};
+   const D=T(0);o.D=D;
+   __as('sales','209611','CT11 · เซลล์');
+   CSTOCK.key['B20261118-01|'+D+'|CT11']={it:{'AAA1':{sc:20,sp:0,fc:0,fp:0}},by:'sup',at:1000};
+   delete CSTOCK.rep['B20261118-01|'+D+'|CT11'];
+   spOpenSlip('B20261118-01');SP.sec='rep';SP.day=D;renderSpord();
+   o.box=!!document.getElementById('spRNo_CT11');
+   const el=document.getElementById('spRNo_CT11');
+   if(el){el.value='1034715426 1034715427';el.dispatchEvent(new Event('input'));}
+   o.live=document.getElementById('spRNoInfo_CT11').textContent.replace(/\s+/g,' ');
+   /* กรอกจำนวนไม่ตรงกับของจริง (17 ลัง) เพื่อให้แอดมินเห็นว่าต่าง */
+   const q=document.getElementById('spR_CT11_AAA1_sc');if(q)q.value='20';
+   window.__posts=[];
+   await spRepLineSave('B20261118-01',D,'CT11');
+   await new Promise(r=>setTimeout(r,60));
+   o.post=(window.__posts||[]).filter(p=>p.b&&p.b.act==='rep').slice(-1)[0]||null;
+   o.rec=JSON.parse(JSON.stringify(CSTOCK.rep['B20261118-01|'+D+'|CT11']||{}));
+   /* อ่านกลับมาแล้วต้องยังอยู่ในช่อง */
+   renderSpord();
+   const el2=document.getElementById('spRNo_CT11');
+   o.back=el2?el2.value.trim():'';
+   /* ฝั่งแอดมิน: ตารางติดตามต้องมีช่อง "จากเลขออเดอร์" */
+   __as('manager',null,'แอดมิน 1');renderSpord();
+   const tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.col=/จากเลขออเดอร์/.test(tx);
+   o.diff=/ต่าง/.test(tx);
+   const tr=spTrack('B20261118-01',D).filter(x=>x.ln==='CT11')[0];
+   o.ord=tr&&tr.ord?{cs:tr.ord.cs,found:tr.ord.found,miss:tr.ord.miss.length}:null;
+   o.rep=tr&&tr.rep.cs;
+   return o;});
+ t('🔑 หน้ากรอกของเซลล์มีช่องเลขคำสั่งซื้ออยู่ล่างสุด',refSave.box);
+ t('🔑 พิมพ์แล้วสรุปให้เห็นทันที ว่าเจอกี่ใบ กี่ลัง',
+   /2 เลขที่ใส่/.test(refSave.live)&&/17/.test(refSave.live),refSave.live.slice(0,90));
+ t('🔑 กดบันทึก แล้วเลขถูกส่งขึ้นระบบพร้อมจำนวน',
+   !!refSave.post&&(refSave.post.b.no||[]).join(',')==='1034715426,1034715427',
+   JSON.stringify(refSave.post&&refSave.post.b.no));
+ t('🔑 ...และอ่านกลับมาขึ้นในช่องเหมือนเดิม',refSave.back==='1034715426 1034715427',refSave.back);
+ t('🔑 ฝั่งแอดมินเห็นช่อง "จากเลขออเดอร์" ที่ระบบหาเอง',refSave.col&&!!refSave.ord,
+   JSON.stringify(refSave.ord));
+ t('🔑 ...และฟ้องเมื่อจำนวนที่เซลล์คีย์ไม่ตรงกับของจริง (คีย์ 20 · ของจริง 17)',
+   refSave.ord&&refSave.ord.cs===17&&refSave.rep===20&&refSave.diff,
+   'ระบบ '+(refSave.ord&&refSave.ord.cs)+' · คีย์ '+refSave.rep);
+
+ /* ================================================================
   * 16) 🧑 บัญชีแอดมิน 1-4 ไม่ใช่บัญชีผู้จัดการ (เจ้าของเจอเอง 26 พ.ย. 69)
   *   เข้าเว็บแอดมินแล้วมุมขวาขึ้นตัว M เหมือนผู้จัดการเป๊ะ และเห็นแท็บ 📊 รายงาน
   *   ที่เขาสั่งไว้ว่า "เฉพาะ manager เท่านั้นนะ" — เพราะ admin1-4 ใช้ role manager ร่วมกัน

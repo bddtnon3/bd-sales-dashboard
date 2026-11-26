@@ -104,6 +104,12 @@ export function recOrd(o) {
   const dp = DAY(o.dp); if (dp !== null) r.dp = dp;                   // +วัน ถึงวันนัดส่ง
   const dv = DAY(o.dv); if (dv !== null) r.dv = dv;                   // +วัน ถึงวันส่งจริง (ไม่มี = ยังไม่ส่ง)
   const cn = S(o.cn, 1); if (cn) r.cn = cn;                           // ช่องทาง M/B/O
+  // 🧩 the order number the rep and the shop see in the app (#1034715426). Measured on the
+  // owner's real files: present on 2,096 of 2,107 documents (the 11 without were keyed in the
+  // back office, so no app was involved), 1 order = 1 number, and the sales file and the
+  // transaction file state the same number on all 1,392 orders they share. The allocation file
+  // does not carry it at all. It is what a rep can type from memory, so the search accepts it.
+  const rf = S(o.rf, 24); if (rf) r.rf = rf;
   if (o.cx) r.cx = 1;                                                 // ยกเลิกแล้ว
   return Object.keys(r).length ? r : null;
 }

@@ -48,6 +48,7 @@ function dcRow(o){
   r[C.doc]=o.doc||'Sales';r[C.ord]=o.ord||'Mobility (MOB)';
   r[10]='BDD09'+String(o.pjp);r[11]='BDD01'+String(o.pjp);r[12]='NA';
   r[C.shop]=o.shop;r[C.shopN]=o.shopN||'ร้านทดสอบ';
+  r[18]=o.ref||'';                   /* หมายเลขอ้างอิง = เลขคำสั่งซื้อที่เซลล์เห็นในแอพ */
   r[C.prod]=o.prod||'64391612';r[C.prodN]=o.prodN||'บรีสน้ำอัลตร้า เขียว';
   r[32]=288;r[C.cs]=o.cs||0;r[C.pc]=o.pc||0;
   /* GSV และ Total ตั้งให้ "ผิดจาก NIV คนละตัว" เพื่อจับว่าตัวอ่านหยิบช่อง NIV จริง ๆ */
@@ -116,7 +117,7 @@ function mkOld(rows){
 
  /* ---------- 1) อ่านไฟล์ระบบใหม่ ---------- */
  const rows1=[
-   dcRow({pjp:'209611',d:'2026-11-16',shop:'4862383',shopN:'พี่เทียร',cs:0.5,pc:12,niv:100}),
+   dcRow({pjp:'209611',d:'2026-11-16',shop:'4862383',shopN:'พี่เทียร',cs:0.5,pc:12,niv:100,ref:'1034715426'}),
    dcRow({pjp:'209611',d:'2026-11-16',shop:'4862383',shopN:'พี่เทียร',cs:0.25,pc:6,niv:50.55,prod:'65456730'}),
    dcRow({pjp:'209611',d:'2026-11-16',shop:'4862365',shopN:'แม่จุก',cs:1,pc:12,niv:200,ord:'Business to Business (B2B)'}),
    dcRow({pjp:'209612',d:'2026-11-16',shop:'4862435',shopN:'ธนอนันต์',cs:2,pc:24,niv:300,
@@ -136,6 +137,16 @@ function mkOld(rows){
    ka97:DATA.lines['2096_97']||null,ct12:DATA.lines['209612']||null}));
  t('อ่านไฟล์ dcode แล้วแยกเป็น 2 วันตามใบแจ้งหนี้',
    g1.days.join(',')==='2026-11-16,2026-11-17',g1.days.join(','));
+ /* 🧾 เลขคำสั่งซื้อที่เซลล์/ร้านเห็นในแอพ — คนละช่องกับ "หมายเลขใบแจ้งหนี้ (Reference
+    Invoice Number)" ซึ่งอยู่ในไฟล์เดียวกันและชื่อใกล้กันมาก ถ้าจับผิดช่องจะได้ NA */
+ const g1r=await ev(()=>{const ix=STOREDAILY.ord||{};
+   const k=Object.keys(ix).filter(x=>ix[x].rf);
+   return {n:k.length,rf:k.map(x=>ix[x].rf).sort(),
+     zero:Object.keys(ix).filter(x=>ix[x].rf==='0'||ix[x].rf==='NA').length};});
+ t('🔑 เก็บเลขคำสั่งซื้อจากแอพไว้กับออเดอร์ (ช่องหมายเลขอ้างอิง)',
+   g1r.rf.join(',')==='1034715426,1034715426',JSON.stringify(g1r.rf));
+ t('🛟 ช่องว่าง / 0 / NA ไม่ใช่เลข ต้องไม่ถูกเก็บ (ช่องข้างกันคือ Reference Invoice Number)',
+   g1r.zero===0,g1r.zero);
  /* 3 บรรทัดของสาย CT11 = 100 + 50.55 + 200 = 350.55
     ไฟล์ทดสอบตั้ง GSV ไว้สูงกว่า NIV บรรทัดละ 1000 และ Total = NIV x 1.07
     ถ้าตัวอ่านหยิบผิดช่องจะได้ 3350.55 (GSV) หรือ 375.09 (รวมภาษี) */

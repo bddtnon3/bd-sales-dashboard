@@ -292,6 +292,24 @@ const ORIGIN='https://bd-ordtrk.test/';
    badge.txNotInv,badge.txNotInv);
  t('🛟 ลบใบที่เพิ่มไว้ทดสอบออกแล้ว กลับมาเท่าเดิม',badge.after===3,badge.after);
 
+ /* ---- 🧾 ค้นด้วยเลขคำสั่งซื้อที่เห็นในแอพ ---- */
+ const fRef=await ev(async()=>{
+   const C=OT.cache['2026-11'];
+   C.ord['00000101'].rf='1034700101';
+   OT.ask=1;
+   OT.q='1034700101';await otFind();
+   const a={n:(OT.hits.rows||[]).length,no:(OT.hits.rows[0]||{}).no,miss:(OT.hits.miss||[]).slice()};
+   OT.q='9999999999';await otFind();
+   const b={n:(OT.hits.rows||[]).length,miss:(OT.hits.miss||[]).slice()};
+   const body=document.getElementById('otBody').textContent.replace(/\s+/g,' ');
+   OT.q='';OT.hits=null;OT.ask=0;renderOtrk();
+   return {a:a,b:b,body:body};});
+ t('🔑 พิมพ์เลขคำสั่งซื้อที่เห็นในแอพ (#1034700101) แล้วหาออเดอร์เจอ',
+   fRef.a.n===1&&fRef.a.no==='BDD0100000101'&&!fRef.a.miss.length,JSON.stringify(fRef.a));
+ t('🛟 เลขที่ไม่มีจริง ต้องบอกว่าหาไม่เจอ ไม่ใช่เงียบ',
+   fRef.b.n===0&&fRef.b.miss.join(',')==='9999999999'&&/9999999999/.test(fRef.body),
+   JSON.stringify(fRef.b));
+
  /* ---- กางดูรายสินค้าในใบ ---- */
  const det=await ev(async()=>{
    otRowTog('00000101');await new Promise(r=>setTimeout(r,120));
@@ -387,7 +405,7 @@ const ORIGIN='https://bd-ordtrk.test/';
      'เลขที่อ้างอิงใบแจ้งหนี้','เลขที่ใบแจ้งหนี้','DYP.......invoicedate'];
    const R=(no,sh,nm,ln,tm,d,dd,da,gsv,niv,ds,ws,ch,gin,inv,ivd)=>
      [no,sh,nm,ln+' / TH20960001','เซลล์ ก / คนส่ง','SC'+ln+'F210',ln+'_THU',ln,tm,
-      d,dd,da,gsv,0,0,niv,0,0,0,0,0,ds,ws,ch,'1034',gin,'',inv,ivd];
+      d,dd,da,gsv,0,0,niv,0,0,0,0,0,ds,ws,ch,'10347'+String(no).slice(-5),gin,'',inv,ivd];
    const rows=[H,
      /* ส่งถึงร้านแล้ว — มีครบทุกอย่าง */
      R('BDD0100000301','9000001','ร้าน ก','209611','10:22:11','17-11-2026','19-11-2026',
@@ -435,6 +453,15 @@ const ORIGIN='https://bd-ordtrk.test/';
  t('🔑 ใบที่ยกเลิกติดธงไว้ ไม่ได้ทิ้ง',txn.c&&txn.c.cx===1&&txn.c.t==='X',JSON.stringify(txn.c));
  t('🛟 ...แต่ห้ามเข้าดัชนีเลขออเดอร์ที่หน้าอื่นใช้ (ไม่ใช่ยอดขาย)',
    !txn.sd['BDD0100000303'],Object.keys(txn.sd).join(','));
+ /* 🧾 เลขคำสั่งซื้อที่เซลล์/ร้านเห็นในแอพ — ไฟล์นี้เรียกว่า "เลขอ้างอิง DDT"
+    ไฟล์ยอดขายเรียกว่า "หมายเลขอ้างอิง (Reference Number)" และเป็นเลขเดียวกัน (วัดแล้ว 100%)
+    ไฟล์ใบจัดของไม่มีช่องนี้เลย */
+ t('🔑 เก็บเลขคำสั่งซื้อจากแอพไว้กับออเดอร์ ทั้งในที่เก็บของหน้านี้และในดัชนีที่หน้าอื่นใช้',
+   txn.a&&txn.a.rf==='1034700301'&&txn.sd['BDD0100000302'].rf==='1034700302',
+   JSON.stringify([txn.a&&txn.a.rf,txn.sd['BDD0100000302'].rf]));
+ t('🛟 ...และเติมให้เรคอร์ดที่ไฟล์ยอดขายเขียนไว้แล้วด้วย โดยไม่ทับช่องอื่น',
+   txn.sd['BDD0100000301'].rf==='1034700301'&&txn.sd['BDD0100000301'].cs===3,
+   JSON.stringify(txn.sd['BDD0100000301']));
  t('🔑 เติมดัชนีเลขออเดอร์ให้ใบที่ไฟล์ยอดขายยังไม่มี',
    !!txn.sd['BDD0100000302']&&txn.sd['BDD0100000302'].s==='9000002'&&
    txn.sd['BDD0100000302'].tx===1,JSON.stringify(txn.sd['BDD0100000302']));
