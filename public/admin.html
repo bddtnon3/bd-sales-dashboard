@@ -13009,8 +13009,9 @@ function renderSpord(){
     if(!keepSid&&(!SP.sid||!sls.some(x=>x.id===SP.sid)))SP.sid=(sls[0]||{}).id||"";
     const opt=sls.slice();
     if(keepSid&&!sls.some(x=>x.id===SP.sid))opt.unshift(Object.assign({id:SP.sid},spSlip(SP.sid)));
+     
     sel.innerHTML=opt.map(x=>`<option value="${anaEsc(x.id)}"${x.id===SP.sid?" selected":""}>${
-      SP_GRP[spGrpOf(x)].ic} ${anaEsc(spSlipTitle(x.id,18)||x.id)}${x.d?" · "+fmtDate(x.d):""}</option>`).join("");
+      SP_GRP[spGrpOf(x)].ic} ${anaEsc(spSlipTitle(x.id)||x.id)}</option>`).join("");
   }
   {const nb=document.getElementById("spNewBox");if(nb)nb.style.display=spMgr()?"":"none";}
    

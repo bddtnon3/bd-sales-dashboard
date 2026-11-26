@@ -346,6 +346,10 @@ const ORIGIN='https://bd-spord.test/';
    o.card=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    o.tagEl=!!document.querySelector('#spBody .sp-tag');
    o.opt=[...document.querySelectorAll('#spSlip option')].map(x=>x.textContent.trim()).join(' | ');
+   /* กล่องเลือกใบเคยต่อวันที่เข้าไปอีกรอบท้ายชื่อ กลายเป็น
+      "18 พ.ย. · 3 รายการ · 220 ลัง · 18 พ.ย. 2569" — เจ้าของทักเองว่าวันที่ซ้ำ */
+   o.opt1=([...document.querySelectorAll('#spSlip option')]
+     .filter(x=>x.value==='B20261118-01')[0]||{textContent:''}).textContent.trim();
    return o;});
  t('🔑 ประเภทใบมี 3 แบบ: ตัวกระจาย / ตัดบิลรอส่ง / ส่งแล้วรอตัดบิล',
    tag.types.join(',')==='D,A,B',tag.types.join(','));
@@ -363,6 +367,9 @@ const ORIGIN='https://bd-spord.test/';
    /B20261118-01/.test(tag.card)&&tag.tagEl,tag.card.slice(0,110));
  t('🔑 กล่องเลือกใบก็ขึ้นหัวเรื่องเดียวกัน ไม่ใช่รหัสเปล่า ๆ',
    /3 รายการ/.test(tag.opt),tag.opt.slice(0,90));
+ t('🛟 กล่องเลือกใบขึ้นวันที่ครั้งเดียว ไม่ซ้ำสองรอบ',
+   /3 รายการ/.test(tag.opt1)&&(tag.opt1.match(/18 พ\.ย\./g)||[]).length===1&&
+   !/2569/.test(tag.opt1),tag.opt1);
 
  /* ---------- 1) ใครเห็นอะไร ---------- */
  const who=await ev(()=>{

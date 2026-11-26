@@ -14483,8 +14483,11 @@ function renderSpord(){
     if(!keepSid&&(!SP.sid||!sls.some(x=>x.id===SP.sid)))SP.sid=(sls[0]||{}).id||"";
     const opt=sls.slice();
     if(keepSid&&!sls.some(x=>x.id===SP.sid))opt.unshift(Object.assign({id:SP.sid},spSlip(SP.sid)));
+    /* ⚠️ ห้ามต่อ fmtDate(x.d) ท้ายชื่ออีก — spSlipTitle ขึ้นต้นด้วยวันที่อยู่แล้ว
+       (spDateShort ใส่ปีให้เองเฉพาะใบที่ไม่ใช่ปีนี้) เคยต่อไว้ ชื่อจึงอ่านว่า
+       "19 พ.ย. · 7 รายการ · 360 ลัง · 19 พ.ย. 2569" เจ้าของทักเอง 26 พ.ย. 69 ว่าวันที่ซ้ำ */
     sel.innerHTML=opt.map(x=>`<option value="${anaEsc(x.id)}"${x.id===SP.sid?" selected":""}>${
-      SP_GRP[spGrpOf(x)].ic} ${anaEsc(spSlipTitle(x.id,18)||x.id)}${x.d?" · "+fmtDate(x.d):""}</option>`).join("");
+      SP_GRP[spGrpOf(x)].ic} ${anaEsc(spSlipTitle(x.id)||x.id)}</option>`).join("");
   }
   {const nb=document.getElementById("spNewBox");if(nb)nb.style.display=spMgr()?"":"none";}
   /* 📥 ไฟล์ใบจัดของอยู่บนสุดข้างปุ่มสร้างออเดอร์ใหม่ (เจ้าของสั่ง 26 พ.ย. 69)
