@@ -873,6 +873,30 @@ main.wide{max-width:1560px}
 .pm-slide{width:100%;max-width:980px;border:1px solid var(--line);border-radius:12px;display:block;margin-bottom:6px}
 .pm-items{display:flex;flex-wrap:wrap;gap:6px}
 .pm-item{font-size:12px;font-weight:700;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+/* 📊 Report รายสาย — ทำตามหน้าตาไฟล์ Excel ที่เซลล์ดูมาตลอด แต่ตัด text ที่ไม่ต้องใช้ออก
+   ระบายที่ >td ไม่ใช่ที่ tr (tr ไม่รับ background ทับ td) กฎเดียวกับแถวที่ติ๊กในใบตัดบิล */
+.pm-rtbl td,.pm-rtbl th{text-align:center}
+.pm-rtbl tbody tr:hover>td{background:#F3F7FE}
+.pm-rtbl tr.on>td{background:#E3EEFD;box-shadow:inset 3px 0 0 var(--blue)}
+.pm-rtbl tr.me>td{background:#F2F7FF}
+.pm-rtbl tr.pm-tot>td{background:#F7F9FC;border-top:2px solid var(--line)}
+.pm-rtbl tr.pm-det-row>td{background:#FBFCFE;padding:10px 12px;text-align:left}
+.pm-rtbl tr.pm-det-row:hover>td{background:#FBFCFE}
+.pm-shops td,.pm-shops th{font-size:12.5px}
+.pm-shopbox{max-height:min(55vh,420px);overflow:auto;border:1px solid var(--line);border-radius:10px}
+@media(max-width:760px){
+  .pm-rtbl thead{display:none}
+  .pm-rtbl,.pm-rtbl tbody,.pm-rtbl tr,.pm-rtbl td{display:block;width:auto}
+  .pm-rtbl tbody tr{border:1px solid var(--line);border-radius:12px;padding:8px 12px;
+    margin-bottom:8px;background:#fff}
+  .pm-rtbl tbody tr.pm-det-row{padding:0;border:0;margin-top:-4px}
+  .pm-rtbl td{border:0;padding:3px 0;text-align:left!important;
+    display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  .pm-rtbl td::before{content:attr(data-l);color:var(--muted);font-size:12px;flex:0 0 auto}
+  .pm-rtbl td:first-child{border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:4px}
+  .pm-rtbl tr.on>td,.pm-rtbl tr.me>td,.pm-rtbl tbody tr:hover>td{background:transparent;box-shadow:none}
+  .pm-rtbl tr.pm-det-row>td{display:block;padding:0}
+}
 .pm-item span{font-weight:400;color:var(--muted)}
 .pm-cond{font-size:13px;line-height:1.8;padding-left:18px}
 /* ตารางผลงานรวม route × promo */
@@ -1789,6 +1813,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       </div>
       <div class="kpi-monthbar" id="pmBar"></div>
       <div class="cards" id="pmCards"></div>
+      <div id="pmSeedBar" style="display:none"></div>
       <div id="pmList"></div>
       <div class="panel" id="pmDetail" style="display:none"></div>
       <div id="pmModal"></div>
@@ -4384,8 +4409,8 @@ const PRO_GRP={HC:"HomeCare",BW:"Body Wash",PC:"Personal Care",BWPC:"Body Wash &
 /* โปรโมชั่นตุลาคม 2569 ที่อ่านมาจากสไลด์ที่ Unilever ส่งให้ศูนย์ (12 รูป อ่านแล้วตรวจทานตัวเลขซ้ำทุกตัว)
    อ่านอย่างเดียว ไม่เคยถูกเขียนกลับ — ผู้จัดการกดปุ่มเดียวเพื่อใส่เข้าระบบ แล้วแก้/ลบได้ตามปกติ
    `imgFile` คือชื่อไฟล์สไลด์ของโปรนั้น ใช้จับคู่ตอนแนบรูปทีละหลายไฟล์ (pmAttach) */
-const PROMO_SEED=[{"m":"2026-10","ch":"CT","grp":"mixed","tgtPct":35,"tgtStores":0,"tgtNote":"Target นับ MPM, MPL, RTD","supMoney":0,"pts":"","note":"","prod":[{"c":"65711451","n":"ของแถม HC1 — โอโมลิควิดซันชายน์ ลดอับ FO15"},{"c":"65545207","n":"ของแถม HC2 — โอโมคอตตอนบลูม FO39"},{"c":"64914983","n":"ของแถม BWPC1 — ซันซิลแชมพู สีเขียว"},{"c":"64931530","n":"ของแถม BWPC2 — ซันซิล สีชมพู แชมพู+ครีมนวด ปั๊มแพ็คคู่"}],"lines":[{"k":"HC1","mech":"ซื้อครบ 18 ชิ้น","free":"โอโมลิควิดซันชายน์ ลดอับ FO15 x2 ชิ้น (65711451)","tgtPct":35,"cap":"MPS / MPM / FD 4 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 12 เซ็ตต่อร้าน"},{"k":"HC2","mech":"ซื้อครบ 9 ชิ้น","free":"โอโมคอตตอนบลูม FO39 x1 ชิ้น (65545207)","tgtPct":30,"cap":"MPS / MPM / FD 3 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 6 เซ็ตต่อร้าน"},{"k":"BWPC1","mech":"ซื้อครบ 18 ชิ้น","free":"ซันซิลแชมพู สีเขียว x2 ชิ้น (64914983)","tgtPct":35,"cap":"MPS / MPM / FD 4 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 12 เซ็ตต่อร้าน"},{"k":"BWPC2","mech":"ซื้อครบ 9 ชิ้น","free":"ซันซิล สีชมพู แชมพู+ครีมนวด ปั๊มแพ็คคู่ x1 ชิ้น (64931530)","tgtPct":30,"cap":"MPS / MPM / FD 3 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 6 เซ็ตต่อร้าน"}],"pay":[],"cond":["Focus Items HC: โอโมซันชายน์ แบบผง FO20 (ยกเว้นสีส้ม) · โอโมลิควิด FO15 · คอมฟอร์ทบิวตี้เพอร์ฟูม/ออร่า/ยูวี FO15-20 · ซันไลต์พลัส FO20","Focus Items HC2 เพิ่ม: บรีสเอกเซล FO45 · บรีสเอกเซล L แพ็คคู่ · บรีสเอกเซลล์ 69 บาท · โอโมลิควิด L แพ็คคู่ · คอมฟอร์ท L เดี่ยว/แพ็คคู่ · ซันไลต์เลมอน/ยูซุ 500 มล.","Focus Items BWPC: เคลียร์ผู้หญิง FO25 · เคลียร์ผู้ชาย FO29 (ไม่รวม CXRB FO25) · โดฟแชมพู/ครีมนวด 60 มล (ติดราคา/ไม่ติดราคา) · วาสลีนกลูต้าไฮยา แบบซอง · พอนด์สไบรท์มิราเคิลครีมกลางวัน 5.5 ก. · ลักส์สบู่ก้อน 70 ก.","ขายเกิน CAP ของประเภทร้านนั้น จะไม่ขึ้นของแถมให้"],"detail":[],"imgFile":["Combo drive 1.jpg","Combo drive 2.jpg","Combo drive 3.jpg"],"name":"CT COMBO DRIVE ตุลาคม'26 : HPC","type":"combo"},{"m":"2026-10","ch":"CT","grp":"Foods","tgtPct":40,"tgtStores":0,"tgtNote":"Target นับ MPM, MPL, RTD · Actual นับ All M&P / WM","supMoney":0,"pts":"","note":"","prod":[{"c":"64852734","n":"ของแถม — โจ๊กซอง รสกุ้ง 28 ก."}],"lines":[{"k":"FOODS","mech":"ซื้อครบ 24 ชิ้น","free":"โจ๊กซอง รสกุ้ง 28 ก. x1 (64852734)","tgtPct":40,"cap":"2 เซ็ตต่อร้าน"}],"pay":[],"cond":["Focus Items: คนอร์ก้อน 10 บาท · โจ๊กซอง 28 กรัม · คนอร์ก้อนต้มยำ 24 กรัม · คนอร์ก้อน 20 กรัม","แคปเซ็ต 2 เซ็ตต่อร้าน"],"detail":[],"imgFile":["Combo drive 4.jpg"],"name":"CT COMBO DRIVE ตุลาคม'26 : FOODS","type":"combo"},{"m":"2026-10","ch":"KA","grp":"mixed","tgtPct":35,"tgtStores":0,"tgtNote":"Actual นับ WS / WSS / SPM (HCF) และ WS / WSS / SPM / PCRT (BWPC)","supMoney":0,"pts":"","note":"","prod":[{"c":"65677731","n":"ของแถม HCF — บรีส ลิควิด เขียว FO45"},{"c":"65692012","n":"ของแถม BWPC — ซิตร้า เพิร์ล 300 มล. แพ็คคู่ FO149"}],"lines":[{"k":"HCF","mech":"ซื้อครบ 10 ลัง","free":"บรีส ลิควิด เขียว FO45 x8 (65677731)","tgtPct":35,"cap":"WS / WSS / SPM 12 เซ็ตต่อร้าน"},{"k":"BWPC","mech":"ซื้อครบ 5 ลัง","free":"ซิตร้า เพิร์ล 300 มล. แพ็คคู่ FO149 x4 (65692012)","tgtPct":35,"cap":"WS / WSS / SPM / PCRT 12 เซ็ตต่อร้าน"}],"pay":[],"cond":["HCF กำไรเพิ่มขึ้น 360 บาท/เซ็ต · BWPC กำไรเพิ่มขึ้น 596 บาท/เซ็ต","ซันไลต์เลมอน FO25 / Non-FO: W% 122.16 ontop BBF 6F1","วาสลีนกลูต้าไฮยา แพ็คคู่: W% 222.84 ontop BBF 12F1","ขายเกิน CAP 12 เซ็ต/ร้าน จะไม่ขึ้นของแถมให้"],"detail":[],"imgFile":["KA Combo drive.jpg"],"name":"KA COMBO DRIVE OCT'26","type":"combo"},{"m":"2026-10","ch":"CT","grp":"HC","tgtPct":27,"tgtStores":40000,"tgtNote":"เป้ากระจายทั้งประเทศ 40,000 ร้าน · ศูนย์ได้รับแบ่งมาเป็น 27%","supMoney":0,"pts":"","note":"","prod":[{"c":"64333524","n":""},{"c":"64312782","n":""},{"c":"68875414","n":""},{"c":"64977014","n":""},{"c":"69593551","n":""},{"c":"69593549","n":""},{"c":"69651605","n":""},{"c":"69724339","n":""},{"c":"64315793","n":""},{"c":"64315810","n":""},{"c":"64894669","n":""},{"c":"64896030","n":""},{"c":"64931137","n":""},{"c":"65440053","n":""},{"c":"64931150","n":""}],"lines":[],"pay":[],"cond":["สินค้า: คอมฟอร์ท 110 มล. (อัลตร้า / น้ำเดียว / บิวตี้เพอร์ฟูม / UV)","Condition: ร้านต้องซื้อครบ 6 ชิ้น จึงนับเป็น 1 ร้านที่กระจายสำเร็จ","W% NTT 11.45"],"detail":[{"k":"Condition","v":"นับ 6 ชิ้น"},{"k":"W% NTT","v":"11.45"}],"imgFile":["Ecotrophy.jpg"],"name":"Eco Trophy ตุลาคม'26","type":"eco"},{"m":"2026-10","ch":"CT","grp":"HC","tgtPct":25,"tgtStores":0,"tgtNote":"Target และ Actual คำนวณจากร้านค้า M&P ทั้งหมด","supMoney":0,"pts":"","note":"","prod":[{"c":"64401555","n":""},{"c":"65542616","n":""},{"c":"64914232","n":""},{"c":"65649245","n":""},{"c":"65495409","n":""},{"c":"65597714","n":""},{"c":"64399473","n":""}],"lines":[],"pay":[{"label":"ขั้น 1","pcs":9,"colors":3,"growth":0,"sm":700,"sup":1000},{"label":"ขั้น 2","pcs":15,"colors":3,"growth":0,"sm":1500,"sup":2000}],"cond":["สินค้า: บรีสลิควิด FO20 (ยกเว้นสีเขียว / สีชมพู)","นับเป็นสี ไม่นับรหัส — เช่นสีแดงมี 2 รหัส ขายเข้าทั้ง 2 รหัส นับเป็น 1 สี","ต้องได้อย่างน้อย 3 สี/ร้าน ทั้งสองขั้น"],"detail":[{"k":"Invoice","v":"REBATE"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"W% เทียบเท่า 6 F 1"}],"imgFile":["Extra dist drive HC.jpg"],"name":"HC : EXTRA DIST. DRIVE ตุลาคม'26","type":"extra"},{"m":"2026-10","ch":"CT","grp":"BW","tgtPct":30,"tgtStores":0,"tgtNote":"Target และ Actual คำนวณจากร้านค้า M&P ทั้งหมด","supMoney":0,"pts":"","note":"","prod":[{"c":"65769637","n":""},{"c":"69975010","n":""},{"c":"64970305","n":""}],"lines":[],"pay":[{"label":"ขั้น 1","pcs":3,"colors":0,"growth":0,"sm":700,"sup":1000},{"label":"ขั้น 2","pcs":6,"colors":0,"growth":0,"sm":1500,"sup":2000}],"cond":["สินค้า: เคลียร์แชมพูไอซ์ 140 มล. + เมนคูล 50 มล. · เคลียร์ไอซ์คูลเมนทอล 140 มล.","จำนวนชิ้น/ร้าน/เดือน: ขั้น 1 = 3 ชิ้น · ขั้น 2 = 6 ชิ้น"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"W% PO"}],"imgFile":["Extra dist drive BW.jpg"],"name":"BW : EXTRA DIST. DRIVE ตุลาคม'26","type":"extra"},{"m":"2026-10","ch":"CT","grp":"PC","tgtPct":0,"tgtStores":15000,"tgtNote":"เป้ากระจายทั้งประเทศ 15,000 ร้าน — บริษัทจะแบ่งโควตาให้ศูนย์อีกที","supMoney":0,"pts":"5 คะแนน/ชิ้น · CAP 12 ชิ้น/ร้านค้า · คะแนนหารสองเป็นบาท · ต้องปิดที่ 95% จึงได้เงิน","note":"","prod":[{"c":"65714950","n":"พอนด์ส ไฮยาฟิลเลอร์ เซรั่ม X7 ก. (แบบซอง)"}],"lines":[],"pay":[],"cond":["ช่วงโปร: 1 ตุลาคม – 31 ตุลาคม","W% NTT ชิ้นละ 27.5 บาท"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"W% NTT 27.5/ชิ้น"}],"imgFile":["Hit of the month .jpg"],"name":"HIT OF THE MONTH – ตุลาคม'26","type":"hit"},{"m":"2026-10","ch":"CT","grp":"HC","tgtPct":0,"tgtStores":80000,"tgtNote":"เป้ากระจาย 80,000 ร้าน Total M&P (ระดับประเทศ)","supMoney":0,"pts":"","note":"","prod":[{"c":"65660382","n":"โอโม ซอฟท์ ทัช 250G FO20 (ตัวซื้อ)"},{"c":"64829046","n":"โอโมน้ำ พิงค์ ฟลอรัล FO15 (ของแถม)"}],"lines":[{"k":"","mech":"ซื้อโอโมซอฟท์ทัชผง FO20 3 ชิ้น","free":"ฟรี โอโมน้ำ พิงค์ ฟลอรัล FO15 4 ชิ้น (64829046)","tgtPct":0,"cap":"1 เซ็ต/ร้าน"}],"pay":[],"cond":["CAP โควต้า 1 เซ็ต/ร้าน","ทุนต่อเซ็ต NTT 49.61 บาท"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"ซื้อ 3 แถม 4 · ทุนต่อเซ็ต NTT 49.61/เซ็ต"}],"imgFile":["Flash deal.jpg"],"name":"FLASH DEAL ตุลาคม'26 : โอโมซอฟท์ทัช 3 ฟรี 4","type":"flash"},{"m":"2026-10","ch":"both","grp":"PC","tgtPct":0,"tgtStores":15000,"tgtNote":"เป้ากระจายทั้งประเทศ 15,000 ร้าน","supMoney":0,"pts":"","note":"","prod":[{"c":"65433869","n":"วีต้า เคราติน ซิลกี้ 10บ. 20 มล. (ตัวซื้อ)"},{"c":"65433871","n":"วีต้า เคราติน คัลเลอร์ ชายน์ 10บ. 20 มล. (ของแถม)"}],"lines":[{"k":"","mech":"ซื้อวีต้าเคราติน 20 มล. สีดำ 1 กล่อง","free":"ฟรี สีแดง 1 กล่อง (65433871)","tgtPct":0,"cap":"2 เซ็ต/ร้านค้า"}],"pay":[],"cond":["ลูกค้าต้องสั่งผ่านแอป UShopPlus / eB2B เท่านั้น","แคปโควต้า 2 เซ็ต/ร้านค้า","ทุนต่อเซ็ต 76.64 บาท"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"All Shoptypes eB2B"},{"k":"Mechanic","v":"BBF 10F10 · ทุนต่อเซ็ต 76.64 บาท"}],"imgFile":["digital flashdeal.jpg"],"name":"DIGITAL FLASH DEAL : ตุลาคม'26","type":"dflash"},{"m":"2026-10","ch":"CT","grp":"","tgtPct":0,"tgtStores":0,"tgtNote":"ร้าน M&P 30 ร้านที่ยอดสูงสุดของสาย ที่ Unilever เลือกให้","supMoney":0,"pts":"","note":"เป็นกติกาของทั้งไตรมาส วางไว้ที่เดือนตุลาคมเพื่อให้ทีมเห็น","prod":[],"lines":[],"pay":[{"label":"TOP 30 โต 1%","pcs":0,"colors":0,"growth":1,"sm":1500,"sup":2000},{"label":"TOP 30 โต 3%","pcs":0,"colors":0,"growth":3,"sm":2500,"sup":3500},{"label":"ECO ทำได้ 92%","pcs":0,"colors":0,"growth":92,"sm":500,"sup":1000}],"cond":["เงินก้อน ECO (92%) เป็นคนละก้อนกับเงิน TOP 30","สไลด์นี้เป็นการปรับเงื่อนไขเงินรางวัลของไตรมาส 1 ปี 2026 ไม่ใช่โปรประจำเดือน"],"detail":[{"k":"ขอบเขต Salesman","v":"TOP 30 M&P by Route"},{"k":"ขอบเขต Supervisor","v":"TOP 30 M&P Total DT (ภาพรวมศูนย์)"},{"k":"การนับสาย CT","v":"DT/PP นับตัวเลขรวมกัน"}],"imgFile":["Top30.png"],"name":"TOP 30 — เงินรางวัลทีมขาย ไตรมาส 1 ปี 2026","type":"top30"}];
-let PM={m:null,scope:"all",open:null,edit:null,form:null,busy:false};
+const PROMO_SEED=[{"m":"2026-10","ch":"CT","grp":"mixed","tgtPct":35,"tgtStores":0,"tgtNote":"Target นับ MPM, MPL, RTD","supMoney":0,"pts":"","note":"","prod":[{"c":"65711451","n":"ของแถม HC1 — โอโมลิควิดซันชายน์ ลดอับ FO15"},{"c":"65545207","n":"ของแถม HC2 — โอโมคอตตอนบลูม FO39"},{"c":"64914983","n":"ของแถม BWPC1 — ซันซิลแชมพู สีเขียว"},{"c":"64931530","n":"ของแถม BWPC2 — ซันซิล สีชมพู แชมพู+ครีมนวด ปั๊มแพ็คคู่"}],"lines":[{"k":"HC1","mech":"ซื้อครบ 18 ชิ้น","free":"โอโมลิควิดซันชายน์ ลดอับ FO15 x2 ชิ้น (65711451)","tgtPct":35,"cap":"MPS / MPM / FD 4 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 12 เซ็ตต่อร้าน"},{"k":"HC2","mech":"ซื้อครบ 9 ชิ้น","free":"โอโมคอตตอนบลูม FO39 x1 ชิ้น (65545207)","tgtPct":30,"cap":"MPS / MPM / FD 3 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 6 เซ็ตต่อร้าน"},{"k":"BWPC1","mech":"ซื้อครบ 18 ชิ้น","free":"ซันซิลแชมพู สีเขียว x2 ชิ้น (64914983)","tgtPct":35,"cap":"MPS / MPM / FD 4 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 12 เซ็ตต่อร้าน"},{"k":"BWPC2","mech":"ซื้อครบ 9 ชิ้น","free":"ซันซิล สีชมพู แชมพู+ครีมนวด ปั๊มแพ็คคู่ x1 ชิ้น (64931530)","tgtPct":30,"cap":"MPS / MPM / FD 3 เซ็ตต่อร้าน · MPL / MPM-PT / MPL-PT / MPL-PTP 6 เซ็ตต่อร้าน"}],"pay":[],"cond":["Focus Items HC: โอโมซันชายน์ แบบผง FO20 (ยกเว้นสีส้ม) · โอโมลิควิด FO15 · คอมฟอร์ทบิวตี้เพอร์ฟูม/ออร่า/ยูวี FO15-20 · ซันไลต์พลัส FO20","Focus Items HC2 เพิ่ม: บรีสเอกเซล FO45 · บรีสเอกเซล L แพ็คคู่ · บรีสเอกเซลล์ 69 บาท · โอโมลิควิด L แพ็คคู่ · คอมฟอร์ท L เดี่ยว/แพ็คคู่ · ซันไลต์เลมอน/ยูซุ 500 มล.","Focus Items BWPC: เคลียร์ผู้หญิง FO25 · เคลียร์ผู้ชาย FO29 (ไม่รวม CXRB FO25) · โดฟแชมพู/ครีมนวด 60 มล (ติดราคา/ไม่ติดราคา) · วาสลีนกลูต้าไฮยา แบบซอง · พอนด์สไบรท์มิราเคิลครีมกลางวัน 5.5 ก. · ลักส์สบู่ก้อน 70 ก.","ขายเกิน CAP ของประเภทร้านนั้น จะไม่ขึ้นของแถมให้"],"detail":[],"imgFile":["Combo drive 1.jpg","Combo drive 2.jpg","Combo drive 3.jpg"],"name":"CT COMBO DRIVE ตุลาคม'26 : HPC","type":"combo"},{"m":"2026-10","ch":"CT","grp":"Foods","tgtPct":40,"tgtStores":0,"tgtNote":"Target นับ MPM, MPL, RTD · Actual นับ All M&P / WM","supMoney":0,"pts":"","note":"","prod":[{"c":"64852734","n":"ของแถม — โจ๊กซอง รสกุ้ง 28 ก."}],"lines":[{"k":"FOODS","mech":"ซื้อครบ 24 ชิ้น","free":"โจ๊กซอง รสกุ้ง 28 ก. x1 (64852734)","tgtPct":40,"cap":"2 เซ็ตต่อร้าน"}],"pay":[],"cond":["Focus Items: คนอร์ก้อน 10 บาท · โจ๊กซอง 28 กรัม · คนอร์ก้อนต้มยำ 24 กรัม · คนอร์ก้อน 20 กรัม","แคปเซ็ต 2 เซ็ตต่อร้าน"],"detail":[],"imgFile":["Combo drive 4.jpg"],"name":"CT COMBO DRIVE ตุลาคม'26 : FOODS","type":"combo"},{"m":"2026-10","ch":"KA","grp":"mixed","tgtPct":35,"tgtStores":0,"tgtNote":"Actual นับ WS / WSS / SPM (HCF) และ WS / WSS / SPM / PCRT (BWPC)","supMoney":0,"pts":"","note":"","prod":[{"c":"65677731","n":"ของแถม HCF — บรีส ลิควิด เขียว FO45"},{"c":"65692012","n":"ของแถม BWPC — ซิตร้า เพิร์ล 300 มล. แพ็คคู่ FO149"}],"lines":[{"k":"HCF","mech":"ซื้อครบ 10 ลัง","free":"บรีส ลิควิด เขียว FO45 x8 (65677731)","tgtPct":35,"cap":"WS / WSS / SPM 12 เซ็ตต่อร้าน"},{"k":"BWPC","mech":"ซื้อครบ 5 ลัง","free":"ซิตร้า เพิร์ล 300 มล. แพ็คคู่ FO149 x4 (65692012)","tgtPct":35,"cap":"WS / WSS / SPM / PCRT 12 เซ็ตต่อร้าน"}],"pay":[],"cond":["HCF กำไรเพิ่มขึ้น 360 บาท/เซ็ต · BWPC กำไรเพิ่มขึ้น 596 บาท/เซ็ต","ซันไลต์เลมอน FO25 / Non-FO: W% 122.16 ontop BBF 6F1","วาสลีนกลูต้าไฮยา แพ็คคู่: W% 222.84 ontop BBF 12F1","ขายเกิน CAP 12 เซ็ต/ร้าน จะไม่ขึ้นของแถมให้"],"detail":[],"imgFile":["KA Combo drive.jpg"],"name":"KA COMBO DRIVE OCT'26","type":"combo"},{"m":"2026-10","ch":"CT","grp":"HC","tgtPct":27,"tgtStores":40000,"tgtNote":"เป้ากระจายทั้งประเทศ 40,000 ร้าน · ศูนย์ได้รับแบ่งมาเป็น 27%","supMoney":0,"pts":"","note":"","prod":[{"c":"64333524","n":""},{"c":"64312782","n":""},{"c":"68875414","n":""},{"c":"64977014","n":""},{"c":"69593551","n":""},{"c":"69593549","n":""},{"c":"69651605","n":""},{"c":"69724339","n":""},{"c":"64315793","n":""},{"c":"64315810","n":""},{"c":"64894669","n":""},{"c":"64896030","n":""},{"c":"64931137","n":""},{"c":"65440053","n":""},{"c":"64931150","n":""}],"lines":[],"pay":[],"cond":["สินค้า: คอมฟอร์ท 110 มล. (อัลตร้า / น้ำเดียว / บิวตี้เพอร์ฟูม / UV)","Condition: ร้านต้องซื้อครบ 6 ชิ้น จึงนับเป็น 1 ร้านที่กระจายสำเร็จ","W% NTT 11.45"],"detail":[{"k":"Condition","v":"นับ 6 ชิ้น"},{"k":"W% NTT","v":"11.45"}],"imgFile":["Ecotrophy.jpg"],"name":"Eco Trophy ตุลาคม'26","type":"eco"},{"m":"2026-10","ch":"CT","grp":"HC","tgtPct":25,"tgtStores":0,"tgtNote":"Target และ Actual คำนวณจากร้านค้า M&P ทั้งหมด","supMoney":0,"pts":"","note":"","prod":[{"c":"64401555","n":""},{"c":"65542616","n":""},{"c":"64914232","n":""},{"c":"65649245","n":""},{"c":"65495409","n":""},{"c":"65597714","n":""},{"c":"64399473","n":""}],"lines":[],"pay":[{"label":"ขั้น 1","pcs":9,"colors":3,"growth":0,"sm":700,"sup":1000},{"label":"ขั้น 2","pcs":15,"colors":3,"growth":0,"sm":1500,"sup":2000}],"cond":["สินค้า: บรีสลิควิด FO20 (ยกเว้นสีเขียว / สีชมพู)","นับเป็นสี ไม่นับรหัส — เช่นสีแดงมี 2 รหัส ขายเข้าทั้ง 2 รหัส นับเป็น 1 สี","ต้องได้อย่างน้อย 3 สี/ร้าน ทั้งสองขั้น"],"detail":[{"k":"Invoice","v":"REBATE"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"W% เทียบเท่า 6 F 1"}],"imgFile":["Extra dist drive HC.jpg"],"name":"HC : EXTRA DIST. DRIVE ตุลาคม'26","type":"extra"},{"m":"2026-10","ch":"CT","grp":"BW","tgtPct":30,"tgtStores":0,"tgtNote":"Target และ Actual คำนวณจากร้านค้า M&P ทั้งหมด","supMoney":0,"pts":"","note":"","prod":[{"c":"65769637","n":""},{"c":"69975010","n":""},{"c":"64970305","n":""}],"lines":[],"pay":[{"label":"ขั้น 1","pcs":3,"colors":0,"growth":0,"sm":700,"sup":1000},{"label":"ขั้น 2","pcs":6,"colors":0,"growth":0,"sm":1500,"sup":2000}],"cond":["สินค้า: เคลียร์แชมพูไอซ์ 140 มล. + เมนคูล 50 มล. · เคลียร์ไอซ์คูลเมนทอล 140 มล.","จำนวนชิ้น/ร้าน/เดือน: ขั้น 1 = 3 ชิ้น · ขั้น 2 = 6 ชิ้น"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"W% PO"}],"imgFile":["Extra dist drive BW.jpg"],"name":"BW : EXTRA DIST. DRIVE ตุลาคม'26","type":"extra"},{"m":"2026-10","ch":"CT","grp":"PC","tgtPct":0,"tgtStores":15000,"tgtNote":"เป้ากระจายทั้งประเทศ 15,000 ร้าน — บริษัทจะแบ่งโควตาให้ศูนย์อีกที","supMoney":0,"pts":"5 คะแนน/ชิ้น · CAP 12 ชิ้น/ร้านค้า · คะแนนหารสองเป็นบาท · ต้องปิดที่ 95% จึงได้เงิน","note":"","prod":[{"c":"65714950","n":"พอนด์ส ไฮยาฟิลเลอร์ เซรั่ม X7 ก. (แบบซอง)"}],"lines":[],"pay":[],"cond":["ช่วงโปร: 1 ตุลาคม – 31 ตุลาคม","W% NTT ชิ้นละ 27.5 บาท"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"W% NTT 27.5/ชิ้น"}],"imgFile":["Hit of the month .jpg"],"name":"HIT OF THE MONTH – ตุลาคม'26","type":"hit"},{"m":"2026-10","ch":"CT","grp":"HC","tgtPct":0,"tgtStores":80000,"tgtNote":"เป้ากระจาย 80,000 ร้าน Total M&P (ระดับประเทศ)","supMoney":0,"pts":"","note":"","prod":[{"c":"65660382","n":"โอโม ซอฟท์ ทัช 250G FO20 (ตัวซื้อ)"},{"c":"64829046","n":"โอโมน้ำ พิงค์ ฟลอรัล FO15 (ของแถม)"}],"lines":[{"k":"","mech":"ซื้อโอโมซอฟท์ทัชผง FO20 3 ชิ้น","free":"ฟรี โอโมน้ำ พิงค์ ฟลอรัล FO15 4 ชิ้น (64829046)","tgtPct":0,"cap":"1 เซ็ต/ร้าน"}],"pay":[],"cond":["CAP โควต้า 1 เซ็ต/ร้าน","ทุนต่อเซ็ต NTT 49.61 บาท"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"ซื้อ 3 แถม 4 · ทุนต่อเซ็ต NTT 49.61/เซ็ต"}],"imgFile":["Flash deal.jpg"],"name":"FLASH DEAL ตุลาคม'26 : โอโมซอฟท์ทัช 3 ฟรี 4","type":"flash"},{"m":"2026-10","ch":"both","grp":"PC","tgtPct":0,"tgtStores":15000,"tgtNote":"เป้ากระจายทั้งประเทศ 15,000 ร้าน","supMoney":0,"pts":"","note":"","prod":[{"c":"65433869","n":"วีต้า เคราติน ซิลกี้ 10บ. 20 มล. (ตัวซื้อ)"},{"c":"65433871","n":"วีต้า เคราติน คัลเลอร์ ชายน์ 10บ. 20 มล. (ของแถม)"}],"lines":[{"k":"","mech":"ซื้อวีต้าเคราติน 20 มล. สีดำ 1 กล่อง","free":"ฟรี สีแดง 1 กล่อง (65433871)","tgtPct":0,"cap":"2 เซ็ต/ร้านค้า"}],"pay":[],"cond":["ลูกค้าต้องสั่งผ่านแอป UShopPlus / eB2B เท่านั้น","แคปโควต้า 2 เซ็ต/ร้านค้า","ทุนต่อเซ็ต 76.64 บาท"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"All Shoptypes eB2B"},{"k":"Mechanic","v":"BBF 10F10 · ทุนต่อเซ็ต 76.64 บาท"}],"imgFile":["digital flashdeal.jpg"],"name":"DIGITAL FLASH DEAL : ตุลาคม'26","type":"dflash"},{"m":"2026-10","ch":"CT","grp":"","tgtPct":0,"tgtStores":0,"tgtNote":"ร้าน M&P 30 ร้านที่ยอดสูงสุดของสาย ที่ Unilever เลือกให้","supMoney":0,"pts":"","note":"เป็นกติกาของทั้งไตรมาส วางไว้ที่เดือนตุลาคมเพื่อให้ทีมเห็น","prod":[],"lines":[],"pay":[{"label":"TOP 30 โต 1%","pcs":0,"colors":0,"growth":1,"sm":1500,"sup":2000},{"label":"TOP 30 โต 3%","pcs":0,"colors":0,"growth":3,"sm":2500,"sup":3500},{"label":"ECO ทำได้ 92%","pcs":0,"colors":0,"growth":92,"sm":500,"sup":1000}],"cond":["เงินก้อน ECO (92%) เป็นคนละก้อนกับเงิน TOP 30","สไลด์นี้เป็นการปรับเงื่อนไขเงินรางวัลของไตรมาส 1 ปี 2026 ไม่ใช่โปรประจำเดือน"],"detail":[{"k":"ขอบเขต Salesman","v":"TOP 30 M&P by Route"},{"k":"ขอบเขต Supervisor","v":"TOP 30 M&P Total DT (ภาพรวมศูนย์)"},{"k":"การนับสาย CT","v":"DT/PP นับตัวเลขรวมกัน"}],"imgFile":["Top30.png"],"name":"TOP 30 — เงินรางวัลทีมขาย ไตรมาส 1 ปี 2026","type":"top30"},{"m":"2026-11","ch":"CT","grp":"PC","type":"hit","name":"HIT OF THE MONTH – พฤศจิกายน'26 : วาสลีน ดีพรีสโตร์ 3 ฟรี 1","tgtPct":0,"tgtStores":15000,"tgtNote":"เป้ากระจายทั้งประเทศ 15,000 ร้าน — บริษัทจะแบ่งโควตาให้ศูนย์อีกที","supMoney":0,"pts":"10 คะแนน/ชิ้น · CAP 6 ชิ้น/ร้านค้า · คะแนนหารสองเป็นบาท · ต้องปิดที่ 95% จึงได้เงิน","note":"","min":3,"prod":[{"c":"68906730","n":"วาสลีน ดีพรีสโตร์ 100 มล.","k":"m"},{"c":"64377977","n":"วาสลีน ดีพรีสโตร์ 100 มล.","k":"m"},{"c":"65586005","n":"วาสลีน ดีพรีสโตร์ 100 มล.","k":"m"}],"lines":[{"k":"","mech":"ซื้อ 3 ชิ้น","free":"ฟรี 1 ชิ้น","tgtPct":0,"cap":"U-Bonus CAP 6 ชิ้น/ร้านค้า"}],"pay":[],"cond":["สินค้า: วาสลีน ดีพรีสโตร์ 100 ml.","กติกา: 3 ฟรี 1","U-Bonus 10 คะแนน/ชิ้น · CAP 6 ชิ้น/ร้านค้า"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"M&P"},{"k":"Bum ขาย","v":"3 ฟรี 1"}],"imgFile":["LINE_ALBUM_รายการเดือน พย_261126_1.jpg"]},{"m":"2026-11","ch":"CT","grp":"BW","type":"extra","name":"BW : EXTRA DIST. DRIVE พฤศจิกายน'26","tgtPct":25,"tgtStores":0,"tgtNote":"Target และ Actual คำนวณจากร้านค้า M&P ทั้งหมด","supMoney":0,"pts":"","note":"","min":2,"prod":[{"c":"65691961","n":"ซิตร้า AHA Pearl UV FO79","k":"m"},{"c":"65691963","n":"ซิตร้า AHA Tanaka UV FO79","k":"m"},{"c":"65691965","n":"ซิตร้า AHA Sakura UV FO79","k":"m"},{"c":"65691967","n":"ซิตร้า AHA Red Algae UV FO79","k":"m"}],"lines":[{"k":"","mech":"ซื้อ 2 ชิ้น","free":"ฟรี 1 ชิ้น (สีตัวเอง)","tgtPct":25,"cap":"Cap 2 Set/Store"}],"pay":[{"label":"ขั้น 1","pcs":2,"colors":0,"growth":0,"sm":700,"sup":1000},{"label":"ขั้น 2","pcs":4,"colors":0,"growth":0,"sm":1500,"sup":2000}],"cond":["สินค้า: ซิตร้า FO79","กติกา: BBF 2 Free 1 (สีตัวเอง)","Cap 2 Set/Store","จำนวนชิ้น/ร้าน/เดือน: ขั้น 1 = 2 ชิ้น · ขั้น 2 = 4 ชิ้น","Target และ Actual คำนวณจากร้านค้า M&P ทั้งหมด"],"detail":[{"k":"Invoice","v":"REBATE"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"BBF 2 Free 1 (สีตัวเอง)"}],"imgFile":["LINE_ALBUM_รายการเดือน พย_261126_2.jpg"]},{"m":"2026-11","ch":"CT","grp":"HC","type":"extra","name":"HC : EXTRA DIST. DRIVE พฤศจิกายน'26","tgtPct":25,"tgtStores":0,"tgtNote":"Target และ Actual คำนวณจากร้านค้า M&P ทั้งหมด","supMoney":0,"pts":"","note":"","min":9,"prod":[{"c":"64401555","n":"บรีสลิควิด FO20","k":"m"},{"c":"65542616","n":"บรีสลิควิด FO20","k":"m"},{"c":"64914232","n":"บรีสลิควิด FO20","k":"m"},{"c":"65649245","n":"บรีสลิควิด FO20","k":"m"},{"c":"65495409","n":"บรีสลิควิด FO20","k":"m"},{"c":"65597714","n":"บรีสลิควิด FO20","k":"m"},{"c":"64399473","n":"บรีสลิควิด FO20","k":"m"}],"lines":[],"pay":[{"label":"ขั้น 1","pcs":9,"colors":3,"growth":0,"sm":700,"sup":1000},{"label":"ขั้น 2","pcs":15,"colors":3,"growth":0,"sm":1500,"sup":2000}],"cond":["สินค้า: บรีสลิควิด FO20 (ยกเว้นสีเขียว / สีชมพู)","จำนวนสีขั้นต่ำ/ร้าน: สีแดง + สีใดก็ได้อีก 2 สี (ยกเว้นสีเขียว ชมพู)","นับเป็นสี ไม่นับรหัส — เช่นสีแดงมี 2 รหัส ขายเข้าทั้ง 2 รหัส นับเป็น 1 สี","จำนวนชิ้น/ร้าน/เดือน: ขั้น 1 = 9 ชิ้น · ขั้น 2 = 15 ชิ้น","Target และ Actual คำนวณจากร้านค้า M&P ทั้งหมด"],"detail":[{"k":"Invoice","v":"REBATE"},{"k":"Shoptype","v":"M&P"},{"k":"Mechanic","v":"W% เทียบเท่า 6 F 1"}],"imgFile":["LINE_ALBUM_รายการเดือน พย_261126_3.jpg"]},{"m":"2026-11","ch":"CT","grp":"HC","type":"eco","name":"Eco Trophy พฤศจิกายน'26","tgtPct":30,"tgtStores":46000,"tgtNote":"เป้ากระจายทั้งประเทศ 46,000 ร้าน · Target 30%","supMoney":0,"pts":"","note":"","min":3,"prod":[{"c":"65549348","n":"คอมฟอร์ท FO39","k":"m"},{"c":"65628525","n":"คอมฟอร์ท FO39","k":"m"},{"c":"65549344","n":"คอมฟอร์ท FO39","k":"m"},{"c":"65549346","n":"คอมฟอร์ท FO39","k":"m"}],"lines":[],"pay":[],"cond":["สินค้า: คอมฟอร์ท FO39","Condition: ร้านต้องซื้อครบ 3 ชิ้น จึงนับเป็น 1 ร้านที่กระจายสำเร็จ","W% NTT 33.33"],"detail":[{"k":"Condition","v":"นับ 3 ชิ้น"},{"k":"W% NTT","v":"33.33"}],"imgFile":["LINE_ALBUM_รายการเดือน พย_261126_4.jpg"]},{"m":"2026-11","ch":"both","grp":"HC","type":"dflash","name":"DIGITAL FLASH DEAL : พฤศจิกายน'26 — คอมฟอร์ทเพียวแฮปปี้ 24 แถม 24","tgtPct":0,"tgtStores":8000,"tgtNote":"เป้ากระจาย 8,000 ร้าน","supMoney":0,"pts":"","note":"","min":24,"prod":[{"c":"65628537","n":"คอมฟอร์ทเพียวแฮปปี้ 18 มล. (ตัวซื้อ)","k":"m"}],"lines":[{"k":"","mech":"ซื้อ 1 แพ็ค (24 ชิ้น)","free":"ฟรี 1 แพ็ค (24 ชิ้น) — รหัสเดียวกัน (65628537)","tgtPct":0,"cap":"2 เซ็ต/ร้าน"}],"pay":[],"cond":["ลูกค้าต้องสั่งผ่านแอป UShopPlus / eB2B เท่านั้น (M&P eB2B only)","Cap 2 Set/Store","ทุนต่อเซ็ต 46.46 บาท"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shoptype","v":"M&P eB2B only"},{"k":"Bum ขาย","v":"BBF 24F24"},{"k":"ทุนต่อเซ็ต","v":"46.46 บาท"}],"imgFile":["LINE_ALBUM_รายการเดือน พย_261126_5.jpg"]},{"m":"2026-11","ch":"CT","grp":"PC","type":"flash","name":"HAPPY SLOT พฤศจิกายน'26 : ซิตร้า ซื้อ 1 ฟรี 1","tgtPct":0,"tgtStores":50000,"tgtNote":"เป้ากระจาย 50,000 ร้าน Total M&P","supMoney":0,"pts":"","note":"","min":1,"prod":[{"c":"65786539","n":"ซิตร้า วอเตอร์เมลอน โทนอัพ","k":"m"},{"c":"65786541","n":"ซิตร้า เพิร์ลสปอตเลส","k":"m"}],"lines":[{"k":"สลอต 1","mech":"ซื้อ ซิตร้า วอเตอร์เมลอน โทนอัพ 1 (65786539)","free":"ฟรี ซิตร้า เพิร์ลสปอตเลส 1 (65786541)","tgtPct":0,"cap":"แคป 2 เซ็ต/ร้านค้า"},{"k":"สลอต 2","mech":"ซื้อ ซิตร้า เพิร์ลสปอตเลส 1 (65786541)","free":"ฟรี ซิตร้า วอเตอร์เมลอน โทนอัพ 1 (65786539)","tgtPct":0,"cap":"แคป 2 เซ็ต/ร้านค้า"}],"pay":[{"label":"ON TOP — เซลล์ปิดรายสายวิ่ง","pcs":0,"colors":0,"growth":0,"sm":500,"sup":0},{"label":"ON TOP — ศูนย์ Achieve Target","pcs":0,"colors":0,"growth":0,"sm":0,"sup":500}],"cond":["CAP โควต้ารวม 4 เซ็ต/ร้าน (แคปสลอตละ 2 เซ็ต/ร้านค้า)","ทุนต่อเซ็ต BBF 1 Free 1","ON TOP SCHEME: เซลล์แมนปิดรายสายวิ่ง รับบัตรน้ำมัน 500 บาท · ซุป ศูนย์ Achieve Target รับบัตรน้ำมัน 500 บาท","ต้องผ่าน Flash Deal Slot หลักก่อน ถึงจะได้คูปองบัตรน้ำมัน"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shop type","v":"M&P"},{"k":"CAP โควต้า","v":"4 เซ็ต/ร้าน"},{"k":"ทุนต่อเซ็ต","v":"BBF 1 Free 1"}],"imgFile":["LINE_ALBUM_รายการเดือน พย_261126_6.jpg"]},{"m":"2026-11","ch":"CT","grp":"BW","type":"flash","name":"FLASH DEAL พฤศจิกายน'26 : ลักส์ซอฟโรส 2 ฟรี ลักส์ซากุระ 2","tgtPct":0,"tgtStores":47000,"tgtNote":"เป้ากระจาย 47,000 ร้าน Total M&P","supMoney":0,"pts":"","note":"","min":2,"prod":[{"c":"65724220","n":"ลักส์สบู่เหลวโรสปั๊ม FO69 450มล (ตัวซื้อ)","k":"m"},{"c":"65724222","n":"ลักส์สบู่เหลวซากุระปั๊ม FO69 450มล (ของแถม)","k":"f"}],"lines":[{"k":"","mech":"ซื้อ ลักส์ซอฟโรส FO69 2 ชิ้น","free":"ฟรี ลักส์ซากุระ FO69 2 ชิ้น (65724222)","tgtPct":0,"cap":"2 เซ็ต/ร้าน"}],"pay":[],"cond":["CAP โควต้า 2 เซ็ต/ร้าน","ทุนต่อเซ็ต NTT 120.70/เซ็ต"],"detail":[{"k":"Invoice","v":"Rebate"},{"k":"Shop type","v":"M&P"},{"k":"CAP โควต้า","v":"2 เซ็ต/ร้าน"},{"k":"ทุนต่อเซ็ต","v":"NTT 120.70/เซ็ต"}],"imgFile":["LINE_ALBUM_รายการเดือน พย_261126_7.jpg"]}];
+let PM={m:null,scope:"all",open:null,edit:null,form:null,busy:false,step:0,rep:""};
 let PR={m:null,scope:"all",paste:null};
 
 /* ---------- อ่านข้อมูล ---------- */
@@ -4398,7 +4423,10 @@ function pmAll(){
     .map(id=>Object.assign({id:id},P.items[id]));
 }
 function pmMonths(){
+  /* รวมเดือนของชุดที่อ่านมาจากสไลด์ไว้ด้วย — ไม่งั้นเดือนใหม่ที่ยังไม่ได้กดใส่
+     จะเลือกไม่ได้เลย และปุ่ม "ใส่โปรให้เลย" ก็ไม่มีทางโผล่ */
   const s={};pmAll().forEach(it=>{if(it.m)s[it.m]=1;});
+  PROMO_SEED.forEach(x=>{if(x.m)s[x.m]=1;});
   return Object.keys(s).sort();
 }
 function pmSort(a,b){
@@ -4503,6 +4531,9 @@ function pmTrack(it){
   });
   Object.keys(rows).forEach(ln=>{
     const sm=shopSet[ln]||{},ks=Object.keys(sm);
+    /* 🏪 เก็บ "ร้าน → จำนวนชิ้นสะสม" ไว้ด้วย (อยู่ในหน่วยความจำตอนวาดหน้าเท่านั้น ไม่ได้เก็บลง state)
+       ใช้สองอย่าง: กางดูรายร้าน และนับร้านที่ผ่านขั้นเงินรางวัลแต่ละขั้น ซึ่งใช้เกณฑ์ชิ้นคนละตัวกัน */
+    rows[ln].sh=sm;
     rows[ln].shops=ks.length;
     rows[ln].qual=ks.filter(sc=>sm[sc]>=min).length;
     rows[ln].pc=Math.round(rows[ln].pc*100)/100;
@@ -4564,7 +4595,10 @@ function pmHasRes(m){
 /* ---------- ปุ่มควบคุม ---------- */
 function pmSetMonth(m){PM.m=m;PM.open=null;renderPromo();}
 function pmSetScope(s){PM.scope=s;setSeg("pmScopeSeg","s",s);PM.open=null;renderPromo();}
-function pmToggle(id){PM.open=(PM.open===id?null:id);renderPromo();
+function pmToggle(id){
+  /* เปลี่ยนโปร = เริ่มรายงานใหม่ ไม่งั้นขั้นที่เลือกไว้ของโปรเดิมจะค้างข้ามใบ */
+  if(PM.open!==id){PM.step=0;PM.rep="";}
+  PM.open=(PM.open===id?null:id);renderPromo();
   if(PM.open){const el=document.getElementById("pmDetail");if(el&&el.scrollIntoView)el.scrollIntoView({behavior:"smooth",block:"nearest"});}}
 function prSetMonth(m){PR.m=m;renderPromoRes();}
 function prSetScope(s){PR.scope=s;setSeg("prScopeSeg","s",s);renderPromoRes();}
@@ -5531,13 +5565,25 @@ function renderPromo(){
     }</div><div class="s">นับตามรหัสสินค้าที่ไม่ซ้ำกัน</div></div>`;
 
   const el=document.getElementById("pmList");
+  /* แถบ "ยังมีโปรที่อ่านไว้แล้วแต่ยังไม่ได้ใส่" — ของเดือนที่เลือกอยู่เท่านั้น
+     เดิมผูกกับ PROMO_SEED[0] จึงขึ้นชื่อเดือนแรกเสมอ และโผล่เฉพาะตอนเดือนนั้นว่างเปล่า */
+  const seedM=mgr?pmSeedLeft(PM.m):[];
+  {const sb=document.getElementById("pmSeedBar");
+   if(sb){
+     if(seedM.length&&list.length){
+       sb.style.display="";
+       sb.innerHTML=`<div class="insight">มีโปรของ <b>${PM.m?fmtMonth(PM.m):"-"}</b> ที่อ่านจากสไลด์ไว้แล้ว `+
+         `<b>${seedM.length}</b> โปร ยังไม่ได้ใส่เข้าระบบ `+
+         `<button type="button" class="pl-today" style="margin-left:8px" onclick="pmSeedLoad('${anaEsc(PM.m)}')">📥 ใส่ให้เลย</button></div>`;
+     }else{sb.style.display="none";sb.innerHTML="";}
+   }}
   if(!list.length){
-    const seedLeft=mgr?pmSeedLeft().length:0;
+    const seedLeft=seedM.length;
     el.innerHTML=`<div class="panel"><div class="insight">${PM.m?("ยังไม่มีโปรโมชั่นของ "+fmtMonth(PM.m)):"ยังไม่มีโปรโมชั่นในระบบ"} — ${
       mgr?'กดปุ่ม <b>＋ เพิ่มโปรโมชั่น</b> ด้านบนเพื่อใส่โปรของเดือนนี้':'รอผู้จัดการใส่โปรของเดือนนี้'}</div>`+
-      (seedLeft?`<div class="pl-mf" style="margin-top:14px"><button type="button" class="pl-save" style="flex:0 0 auto;padding:13px 22px" onclick="pmSeedLoad()">`+
-        `📥 ใส่โปร ${fmtMonth(PROMO_SEED[0].m)} ให้เลย (${seedLeft} โปร)</button></div>`+
-        `<div class="psub" style="margin-top:8px">อ่านมาจากสไลด์ ${PROMO_SEED.length} โปรที่ Unilever ส่งให้ศูนย์ — เป้า กติกา CAP รหัสสินค้า และขั้นเงินรางวัล ใส่ไว้ให้ครบแล้ว แก้หรือลบทีหลังได้ตามปกติ</div>`:"")+
+      (seedLeft?`<div class="pl-mf" style="margin-top:14px"><button type="button" class="pl-save" style="flex:0 0 auto;padding:13px 22px" onclick="pmSeedLoad('${anaEsc(PM.m)}')">`+
+        `📥 ใส่โปร ${PM.m?fmtMonth(PM.m):""} ให้เลย (${seedLeft} โปร)</button></div>`+
+        `<div class="psub" style="margin-top:8px">อ่านมาจากสไลด์ที่ Unilever ส่งให้ศูนย์ — เป้า กติกา CAP รหัสสินค้า และขั้นเงินรางวัล ใส่ไว้ให้ครบแล้ว แก้หรือลบทีหลังได้ตามปกติ</div>`:"")+
       `</div>`;
   }else{
     el.innerHTML=PRO_ORDER.filter(k=>byType[k]).map(k=>{
@@ -5569,7 +5615,22 @@ function pmCardHtml(it,me){
         `<div class="pm-bar"><i class="${pmBarCls(p)}" style="width:${w}%"></i></div>`+
         `<div class="pm-melab"><span style="font-weight:400;color:var(--muted)">ทำได้ ${(+s.act||0).toLocaleString()} จากเป้า ${(+s.tgt||0).toLocaleString()}</span>`+
         (s.money>0?`<span class="pm-money">${pmBaht(s.money)}</span>`:"<span></span>")+`</div></div>`;
-    }else mine=`<div class="pm-me"><div class="pm-melab" style="font-weight:400;color:var(--muted)">ยังไม่มีผลงานของสายคุณในโปรนี้</div></div>`;
+    }else{
+      /* ยังไม่มีผลงานจากไฟล์รายงาน → ใช้ตัวเลขที่ระบบนับเองจากไฟล์ยอดขายรายวัน
+         เจ้าของสั่ง 26 พ.ย. 69 ให้เซลล์ "ตรวจสอบยอดเงินรางวัลของเดือนนั้น ๆ" ได้จากตรงนี้
+         ⚠️ ต้องติดป้าย (ประเมิน) เสมอ — ไม่ใช่ยอดที่ Unilever จ่ายจริง */
+      const R=pmRepRows(it,pmSteps(it)[0]);
+      const x=R?R.rows.filter(y=>y.ln===me)[0]:null;
+      if(x&&(x.act||x.tgt)){
+        const p=x.pct,w=Math.max(0,Math.min(100,p===null?0:p));
+        mine=`<div class="pm-me"><div class="pm-melab"><span>สายคุณ (${anaEsc(pmLineName(me))})</span>`+
+          `<span class="${pmPctCls(p)}" style="background:none;padding:0">${pmPctTxt(p)}</span></div>`+
+          `<div class="pm-bar"><i class="${pmBarCls(p)}" style="width:${w}%"></i></div>`+
+          `<div class="pm-melab"><span style="font-weight:400;color:var(--muted)">ทำได้ ${
+            (+x.act||0).toLocaleString()}${x.tgt===null?"":" จากเป้า "+(+x.tgt).toLocaleString()} (ประเมิน)</span>`+
+          (x.money>0?`<span class="pm-money">${pmBaht(x.money)}</span>`:"<span></span>")+`</div></div>`;
+      }else mine=`<div class="pm-me"><div class="pm-melab" style="font-weight:400;color:var(--muted)">ยังไม่มีผลงานของสายคุณในโปรนี้</div></div>`;
+    }
   }
   return `<button type="button" class="pm-card" style="border-top-color:${T.c}" onclick="pmToggle('${it.id}')">`+
     `<div class="pm-head"><div class="pm-kind" style="color:${T.c}">${T.ic} ${T.nm}${it.ch&&it.ch!=="both"?' <span class="pm-chip">'+anaEsc(it.ch)+'</span>':""}${
@@ -5586,55 +5647,160 @@ function pmCardHtml(it,me){
       (it.pts?`<div class="pm-row"><span>คะแนน</span><b>${anaEsc(it.pts)}</b></div>`:"")+
     `</div>`+mine+`</button>`;
 }
-/* ตารางยอดจริงรายสายของโปรหนึ่งใบ — อ่านจาก PROMO.sales ที่ parseDailyDcode เก็บไว้
-   ⚠️ แยกให้ออกระหว่าง "ยังไม่มีข้อมูล" กับ "ขายได้ 0" — วันที่ยังไม่ได้อัพไฟล์ต้องบอกตรง ๆ
-      ว่ายังไม่ได้อัพ ไม่ใช่โชว์ 0 ให้เข้าใจผิดว่าสายนั้นขายไม่ได้เลย */
-function pmTrackHtml(it,me){
+/* ---------- 🏪 จำนวนร้าน M&P ต่อสาย (ใช้เป็นฐานตอนไม่มีเป้าจากไฟล์) ----------
+   🔑 วัดจากไฟล์ร้านค้าจริงของเจ้าของ (Outlet_Master__PJP_Report, 2,888 ร้าน):
+      M&P (MPS/MPM/MPL + PLATINUM) = 2,399 ร้าน · CT11 239 · CT12 222 · CT13 268 · CT14 242
+      CT15 248 · CT16 240 · CT17 240 · TL219 404 · CT22 258 · KA97 13 · KA99 25
+   ⚠️ นี่ไม่ใช่ "เป้า" — ไฟล์รายงานจริงของ Unilever ให้เป้า CT11 มา 77 และ 82 ในสองรอบ
+      (ราว 31-34% ของร้าน M&P และไม่เท่ากันสองรอบ) ⇒ เป้าจริงมาจากไฟล์เท่านั้น ห้ามคำนวณแทน
+      ที่คำนวณได้คือ "ประมาณการ" = tgtPct% × จำนวนร้าน M&P และต้องติดป้าย (ประเมิน) เสมอ */
+const PM_MP=/MPS|MPM|MPL|Mom\s*&?\s*Pop/i;
+const PM_SHOPMAX=60;
+/* ⚠️ ต้องเทียบ "ทั้งคำ" — /active/i ติด "Inactive" ด้วย (คำว่า active อยู่ข้างใน)
+   ร้านที่ปิดไปแล้วจะถูกนับเป็นร้านเปิด แล้วเป้าประมาณการก็บวมตามไปทั้งสาย */
+function pmActive(st){const v=String(st==null?"":st).trim();return !v||/^active$/i.test(v);}
+let PM_MPC=null,PM_MPC_K="";
+function pmMP(route){
+  const out=((typeof PJP!=="undefined"&&PJP&&PJP.out)||{});
+  const k=Object.keys(out).length+"";
+  if(!PM_MPC||PM_MPC_K!==k){
+    PM_MPC={};PM_MPC_K=k;
+    Object.keys(out).forEach(c=>{const o=out[c];if(!o)return;
+      if(!pmActive(o.st))return;
+      if(!PM_MP.test(String(o.t||"")))return;
+      const r=String(o.rt||"");if(!r)return;
+      PM_MPC[r]=(PM_MPC[r]||0)+1;});
+  }
+  return PM_MPC[String(route)]||0;
+}
+/* ขั้นเงินรางวัลที่ใช้เกณฑ์ "ชิ้นต่อร้าน" — ไม่มีขั้นก็ใช้ min ของโปรเป็นขั้นเดียว */
+function pmSteps(it){
+  const pay=(it&&it.pay||[]).filter(p=>+p.pcs>0);
+  if(pay.length)return pay.map((p,i)=>({i:i,label:p.label||("ขั้น "+(i+1)),pcs:+p.pcs,sm:+p.sm||0,sup:+p.sup||0}));
+  return [{i:0,label:"เกณฑ์ของโปร",pcs:Math.max(1,+((it&&it.min)||1)),sm:0,sup:0}];
+}
+function pmStepOf(it){
+  const st=pmSteps(it);
+  const i=+PM.step||0;
+  return st[i]||st[0];
+}
+/* หนึ่งแถวของรายงาน = หนึ่งสาย — รูปแบบเดียวกับไฟล์ Excel ที่เซลล์ดูมาตลอด
+   เป้า: ใช้ของจริงจากไฟล์รายงานก่อนเสมอ (PROMO.res) ไม่มีค่อยประเมินจากจำนวนร้าน M&P */
+function pmRepRows(it,step){
   const t=pmTrack(it);
-  if(!t)return `<h4>📊 ยอดขายจริงตามรหัสสินค้า</h4>`+
+  if(!t)return null;
+  const routes=pmRoutes(it.ch||"both");
+  const keys=routes.concat(Object.keys(t.rows).filter(c=>routes.indexOf(c)<0));
+  const seen={},out=[];
+  keys.forEach(c=>{
+    if(seen[c])return;seen[c]=1;
+    const r=t.rows[c]||{pc:0,cs:0,fpc:0,fcs:0,niv:0,shops:0,qual:0,sh:{}};
+    const sh=r.sh||{};
+    const act=Object.keys(sh).filter(sc=>sh[sc]>=step.pcs).length;
+    const off=pmSumRoute(it,c);
+    let tgt=null,est=false;
+    if(off&&+off.tgt>0)tgt=+off.tgt;
+    else if(+it.tgtPct>0){const mp=pmMP(c);if(mp>0){tgt=Math.round(mp*(+it.tgtPct)/100);est=true;}}
+    const pct=(tgt>0)?act/tgt*100:null;
+    let money=null,mEst=false;
+    if(off&&+off.money>0)money=+off.money;
+    else if(step.sm>0&&pct!==null){money=(pct>=100)?step.sm:0;mEst=true;}
+    out.push({ln:c,r:r,sh:sh,act:act,tgt:tgt,est:est,pct:pct,
+      diff:(tgt===null?null:act-tgt),money:money,mEst:mEst,mp:pmMP(c),
+      pjp:(off&&+off.pjp>0)?+off.pjp:0});
+  });
+  return {rows:out,t:t};
+}
+function pmRepTog(ln){PM.rep=(PM.rep===ln)?"":ln;renderPromo();}
+function pmSetStep(i){PM.step=+i||0;PM.rep="";renderPromo();}
+function pmShopRow(it,x){
+  const sh=x.sh||{},step=pmStepOf(it);
+  const N=v=>(Math.round((+v||0)*100)/100).toLocaleString();
+  const line=`<div class="pm-chips" style="margin:2px 0 10px">`+
+    `<span class="pm-item"><b>${N(x.r.pc)}</b> <span>ชิ้น</span></span>`+
+    (x.r.cs?`<span class="pm-item"><b>${N(x.r.cs)}</b> <span>ลัง</span></span>`:"")+
+    (x.r.fpc?`<span class="pm-item">🎁 <b>${N(x.r.fpc)}</b> <span>ชิ้น (ของแถม)</span></span>`:"")+
+    (x.r.niv?`<span class="pm-item"><b>${THB(x.r.niv)}</b> <span>NIV</span></span>`:"")+
+    `<span class="pm-item"><b>${N(x.mp)}</b> <span>ร้าน M&P ในสาย</span></span>`+
+    (x.pjp?`<span class="pm-item"><b>${N(x.pjp)}</b> <span>ร้านในเขต (จากไฟล์รายงาน)</span></span>`:"")+`</div>`;
+  const ks=Object.keys(sh);
+  if(!ks.length)return line+`<div class="psub">ยังไม่มีร้านที่ซื้อสินค้าในโปรนี้</div>`;
+  /* ⚠️ สายหนึ่งมีร้านเป็นร้อย — เรียง "ร้านที่ยังไม่ผ่านเกณฑ์" ขึ้นก่อน เพราะนั่นคือรายชื่อที่เซลล์
+     ต้องไปตามต่อ และตัดให้เหลือ PM_SHOPMAX แถว พร้อมบอกจำนวนที่เหลือ ไม่งั้นกางทีเดียวยาวเป็นพันแถว */
+  const no=ks.filter(c=>sh[c]<step.pcs).sort((a,b)=>sh[b]-sh[a]);
+  const ok=ks.filter(c=>sh[c]>=step.pcs).sort((a,b)=>sh[b]-sh[a]);
+  const show=no.slice(0,PM_SHOPMAX).concat(ok.slice(0,Math.max(0,PM_SHOPMAX-Math.min(no.length,PM_SHOPMAX))));
+  const hidden=ks.length-show.length;
+  const row=c=>{
+    const nm=(typeof cstStoreName==="function")?cstStoreName(c):"";
+    const pass=sh[c]>=step.pcs;
+    return `<tr><td style="text-align:left">${anaEsc(nm||("ร้าน "+c))}${
+        nm?`<br><span class="psub">${anaEsc(c)}</span>`:""}</td>`+
+      `<td style="text-align:right"><b>${N(sh[c])}</b></td>`+
+      `<td>${pass?'<b class="up">✓ ผ่าน</b>':`<span class="down">ขาดอีก ${N(step.pcs-sh[c])}</span>`}</td></tr>`;};
+  return line+
+    `<div class="psub" style="margin-bottom:5px">ร้านที่ซื้อ <b>${N(ks.length)}</b> ร้าน · `+
+      `ผ่านเกณฑ์ <b class="up">${N(ok.length)}</b> · ยังไม่ผ่าน <b class="down">${N(no.length)}</b>`+
+      (hidden>0?` · แสดง ${N(show.length)} ร้านแรก (เรียงร้านที่ยังไม่ผ่านขึ้นก่อน)`:"")+`</div>`+
+    `<div class="tblwrap pm-shopbox"><table class="grp-tbl pm-shops"><thead><tr>`+
+      `<th style="text-align:left">ร้าน</th><th style="text-align:right">ชิ้น</th><th>ผ่านเกณฑ์</th></tr></thead>`+
+      `<tbody>${show.map(row).join("")}</tbody></table></div>`+
+    (hidden>0?`<div class="psub" style="margin-top:5px">…และอีก ${N(hidden)} ร้าน</div>`:"");
+}
+/* 📊 รายงานรายสายของโปรหนึ่งใบ — ทำตามหน้าตาไฟล์ Excel ที่เซลล์ดูมาตลอด
+   (สาย · เป้า · ทำได้ · %Achieve · ส่วนต่าง) แต่ตัด text ที่ไม่ต้องใช้ออก
+   ⚠️ แยกให้ออกระหว่าง "ยังไม่มีข้อมูล" กับ "ขายได้ 0" — วันที่ยังไม่ได้อัพไฟล์ต้องบอกตรง ๆ */
+function pmTrackHtml(it,me){
+  const R0=pmRepRows(it,pmStepOf(it));
+  if(!R0)return `<h4>📊 Report รายสาย</h4>`+
     `<div class="note">ยังไม่ได้ใส่รหัสสินค้าของโปรนี้ — ${pmCanEdit()
       ?'กด <b>✏️ แก้ไข</b> แล้วใส่รหัสตัวหลัก (และของแถมถ้ามี) ระบบจะเริ่มนับยอดให้เองจากไฟล์ยอดขายรายวัน'
       :"รอหัวหน้าเซลล์ใส่รหัสสินค้า"}</div>`;
-  const hasFree=t.codes.free>0;
-  const routes=pmRoutes(it.ch||"both");
-  const keys=routes.filter(c=>t.rows[c]).concat(Object.keys(t.rows).filter(c=>routes.indexOf(c)<0));
-  const tot={pc:0,cs:0,fpc:0,fcs:0,niv:0,shops:0,qual:0};
-  const rows=keys.map(c=>{
-    const r=t.rows[c];
-    tot.pc+=r.pc;tot.cs+=r.cs;tot.fpc+=r.fpc;tot.fcs+=r.fcs;tot.niv+=r.niv;tot.shops+=r.shops;tot.qual+=r.qual;
-    return `<tr${c===me?' style="background:#F2F7FF"':""}><td><b>${anaEsc(pmLineName(c))}</b></td>`+
-      `<td><b>${r.pc.toLocaleString()}</b></td><td>${r.cs?r.cs.toLocaleString():"-"}</td>`+
-      (hasFree?`<td>${r.fpc?r.fpc.toLocaleString():"-"}</td>`:"")+
-      `<td>${r.shops.toLocaleString()}</td>`+
-      `<td><b class="up">${r.qual.toLocaleString()}</b></td>`+
-      `<td>${r.niv?THB(r.niv):"-"}</td></tr>`;
-  });
-  const head=[{h:"สาย"},{h:"ขาย (ชิ้น)"},{h:"ขาย (ลัง)"}]
-    .concat(hasFree?[{h:"🎁 ของแถม (ชิ้น)"}]:[])
-    .concat([{h:"ร้านที่ซื้อ"},{h:"ร้านที่กระจายสำเร็จ"},{h:"ยอด NIV"}]);
+  const t=R0.t,steps=pmSteps(it),step=pmStepOf(it);
+  const N=v=>(Math.round((+v||0)*100)/100).toLocaleString();
   const R=t.range;
-  let h=`<h4>📊 ยอดขายจริงตามรหัสสินค้า <span class="psub" style="font-weight:400">· ${
-    fmtDate(R.a)} – ${fmtDate(R.b)}${R.own?"":" (ทั้งเดือน)"}</span></h4>`;
-  h+=`<div class="psub" style="margin-bottom:6px">นับ <b>ร้านที่กระจายสำเร็จ</b> = ร้านที่ซื้อตัวหลักครบ <b>${
-    t.min.toLocaleString()} ชิ้น</b> ขึ้นไปในช่วงนี้ (นับร้านไม่ซ้ำทั้งช่วง)`+
-    (hasFree?" · ของแถมอ่านจากคอลัมน์ \"ปริมาณของแถม\" ในไฟล์ ไม่ใช่คอลัมน์ขาย":"")+`</div>`;
-  if(rows.length){
-    rows.push(`<tr style="background:#F7F9FC"><td><b>รวมทั้งศูนย์</b></td>`+
-      `<td><b>${(Math.round(tot.pc*100)/100).toLocaleString()}</b></td>`+
-      `<td>${tot.cs?(Math.round(tot.cs*100)/100).toLocaleString():"-"}</td>`+
-      (hasFree?`<td>${tot.fpc?(Math.round(tot.fpc*100)/100).toLocaleString():"-"}</td>`:"")+
-      `<td>${tot.shops.toLocaleString()}</td><td><b class="up">${tot.qual.toLocaleString()}</b></td>`+
-      `<td>${tot.niv?THB(tot.niv):"-"}</td></tr>`);
-    h+=grpTable(head,[{title:"",rows:rows}],{alwaysBand:false});
-  }else{
-    h+=`<div class="note">ยังไม่มียอดของรหัสสินค้าในโปรนี้เลยในช่วงที่เลือก — อัพไฟล์ยอดขายรายวันของช่วงนี้ก่อน แล้วตัวเลขจะขึ้นเอง</div>`;
-  }
+  let h=`<h4>📊 Report รายสาย <span class="psub" style="font-weight:400">· ${
+    fmtDate(R.a)} – ${fmtDate(R.b)}</span></h4>`;
+  if(steps.length>1)h+=`<div class="seg" style="margin-bottom:10px">`+steps.map(st=>
+    `<button class="${st.i===step.i?"on":""}" onclick="pmSetStep(${st.i})">${anaEsc(st.label)} · ${st.pcs} ชิ้น${
+      st.sm?" · "+pmBaht(st.sm):""}</button>`).join("")+`</div>`;
+  const anyMoney=R0.rows.some(x=>x.money!==null);
+  const estT=R0.rows.some(x=>x.est),estM=R0.rows.some(x=>x.mEst&&x.money);
+  const tot={act:0,tgt:0,money:0,hasT:false};
+  const body=R0.rows.map(x=>{
+    tot.act+=x.act;if(x.tgt!==null){tot.tgt+=x.tgt;tot.hasT=true;}
+    if(x.money)tot.money+=x.money;
+    const op=PM.rep===x.ln;
+    return `<tr class="${op?"on":""}${x.ln===me?" me":""}" onclick="pmRepTog('${anaEsc(x.ln)}')" style="cursor:pointer">`+
+      `<td style="text-align:left"><b>${anaEsc(pmLineName(x.ln))}</b>${x.ln===me?' <span class="pm-chip">สายคุณ</span>':""}</td>`+
+      `<td data-l="เป้า (ร้าน)">${x.tgt===null?"—":N(x.tgt)+(x.est?' <span class="psub">(ประเมิน)</span>':"")}</td>`+
+      `<td data-l="ทำได้"><b>${N(x.act)}</b></td>`+
+      `<td data-l="%Achieve" class="${pmPctCls(x.pct)}">${pmPctTxt(x.pct)}</td>`+
+      `<td data-l="ส่วนต่าง">${x.diff===null?"—":`<b class="${x.diff>=0?"up":"down"}">${x.diff>0?"+":""}${N(x.diff)}</b>`}</td>`+
+      (anyMoney?`<td data-l="เงินรางวัล">${x.money===null?"—":(x.money?`<b class="up">${pmBaht(x.money)}</b>`:'<span class="psub">—</span>')}</td>`:"")+
+      `</tr>`+
+      (op?`<tr class="pm-det-row"><td colspan="${anyMoney?6:5}">${pmShopRow(it,x)}</td></tr>`:"");
+  }).join("");
+  const tpct=tot.hasT&&tot.tgt>0?tot.act/tot.tgt*100:null;
+  h+=`<div class="tblwrap"><table class="grp-tbl pm-rtbl"><thead><tr>`+
+    `<th style="text-align:left">สาย</th><th>เป้า (ร้าน)</th><th>ทำได้</th><th>%Achieve</th><th>ส่วนต่าง</th>`+
+    (anyMoney?`<th>เงินรางวัล</th>`:"")+`</tr></thead><tbody>${body}`+
+    `<tr class="pm-tot"><td style="text-align:left"><b>รวมทั้งศูนย์</b></td>`+
+    `<td data-l="เป้า (ร้าน)">${tot.hasT?N(tot.tgt):"—"}</td><td data-l="ทำได้"><b>${N(tot.act)}</b></td>`+
+    `<td data-l="%Achieve" class="${pmPctCls(tpct)}">${pmPctTxt(tpct)}</td>`+
+    `<td data-l="ส่วนต่าง">${tot.hasT?`<b class="${tot.act-tot.tgt>=0?"up":"down"}">${tot.act-tot.tgt>0?"+":""}${N(tot.act-tot.tgt)}</b>`:"—"}</td>`+
+    (anyMoney?`<td data-l="เงินรางวัล">${tot.money?`<b class="up">${pmBaht(tot.money)}</b>`:"—"}</td>`:"")+
+    `</tr></tbody></table></div>`;
+  h+=`<div class="psub" style="margin-top:8px">ทำได้ = ร้านที่ซื้อตัวหลักครบ <b>${step.pcs} ชิ้น</b> ขึ้นไปในช่วงนี้ (นับร้านไม่ซ้ำ) · แตะที่แถวเพื่อดูรายร้าน</div>`;
   /* สิ่งที่ยัง "ไม่รู้" ต้องบอก ไม่ใช่ปล่อยให้ตัวเลขดูเหมือนครบแล้ว */
   const warn=[];
+  if(estT)warn.push("เป้ารายสายเป็น <b>ประมาณการ</b> (" + (+it.tgtPct) + "% ของร้าน M&P ในสาย) เพราะยังไม่ได้ใส่ไฟล์รายงานของ Unilever — "+
+    "ใส่ได้ที่แท็บ <b>💰 ผลงาน & เงินรางวัล</b> → ปุ่มวางผลจาก Excel แล้วระบบจะใช้เป้าจริงแทนให้เอง");
+  if(estM)warn.push("เงินรางวัลเป็น <b>ประมาณการ</b> จากกติกาในสไลด์ (ทำได้ถึง 100% ของเป้า = ได้เงินขั้นนั้น) ไม่ใช่ยอดที่ Unilever จ่ายจริง");
   if(t.days.miss.length)warn.push("ยังไม่ได้อัพไฟล์ยอดขายของ <b>"+t.days.miss.length+" วัน</b> ในช่วงนี้ ("+
     t.days.miss.slice(0,6).map(fmtDate).join(" · ")+(t.days.miss.length>6?" …":"")+") ตัวเลขจึงยังไม่ครบ");
   if(t.codes.miss.length)warn.push("มี <b>"+t.codes.miss.length+" รหัส</b> ที่ยังไม่เจอยอดเลย ("+
-    t.codes.miss.slice(0,6).map(anaEsc).join(" · ")+(t.codes.miss.length>6?" …":")")+
+    t.codes.miss.slice(0,6).map(anaEsc).join(" · ")+(t.codes.miss.length>6?" …":"")+
     ") — ถ้าเพิ่งเพิ่มรหัสนี้ทีหลัง ให้อัพไฟล์ยอดขายของช่วงนี้ซ้ำอีกครั้ง ระบบจะเก็บย้อนให้");
   if(warn.length)h+=`<div class="note" style="margin-top:8px">⚠️ `+warn.join("<br>")+`</div>`;
   return h;
@@ -5698,23 +5864,9 @@ function pmDetailHtml(it,me){
   if(it.note)h+=`<h4>📝 หมายเหตุ</h4><div class="pm-sub" style="font-size:13.5px">${anaEsc(it.note)}</div>`;
   /* 📊 ยอดขายจริงจากไฟล์ยอดขายรายวัน — ของใหม่ 24 พ.ย. 69 */
   h+=pmTrackHtml(it,me);
-  /* ผลงานรายสาย */
-  const routes=pmRoutes(it.ch||"both");
-  const rows=[];
-  routes.forEach(c=>{
-    const s=pmSumRoute(it,c);
-    if(!s&&me&&c!==me)return;
-    const p=s?s.pct:null;
-    rows.push(`<tr${c===me?' style="background:#F2F7FF"':""}><td><b>${anaEsc(pmLineName(c))}</b></td>`+
-      `<td>${s&&s.pjp?s.pjp.toLocaleString():"-"}</td><td>${s?(+s.tgt).toLocaleString():"-"}</td>`+
-      `<td><b>${s?(+s.act).toLocaleString():"-"}</b></td>`+
-      `<td><span class="pm-cell ${pmPctCls(p)}">${pmPctTxt(p)}</span></td>`+
-      `<td>${s&&s.money>0?`<b class="up">${pmBaht(s.money)}</b>`:"-"}</td></tr>`);
-  });
-  h+=`<h4>📊 ผลงานรายสาย</h4>`+
-    (rows.length?grpTable([{h:"สาย"},{h:"PJP / ร้านในเขต"},{h:"เป้า"},{h:"ทำได้"},{h:"% ทำได้"},{h:"เงินรางวัล"}],
-      [{title:"",rows:rows}],{alwaysBand:false})
-     :`<div class="insight">ยังไม่ได้ใส่ผลงานของโปรนี้ — ${mgr?'ไปที่แท็บ <b>💰 ผลงาน & เงินรางวัล</b> แล้วกด "วางผลจาก Excel"':"รอผู้จัดการใส่ผล"}</div>`);
+  /* ⚠️ ตาราง "ผลงานรายสาย" เดิมถูกตัดออก 26 พ.ย. 69 — Report รายสายข้างบนรวมไว้ให้หมดแล้ว
+     (เป้า/ทำได้/%/เงินรางวัล มาจากแหล่งเดียวกันคือ PROMO.res) เจ้าของขอให้ "text น้อยกว่านี้"
+     ตัวเลขจาก PROMO.res ยังใช้อยู่ครบ ทั้งในรายงานและหน้า 💰 ผลงาน & เงินรางวัล */
   /* สไลด์ */
   const imgs=pmImgs(it);
   if(imgs.length)h+=`<h4>🖼 สไลด์จาก Unilever${imgs.length>1?" ("+imgs.length+" หน้า)":""}</h4>`+
@@ -6265,16 +6417,16 @@ async function prApply(){
 }
 
 /* ---------- ใส่โปรชุดที่อ่านมาจากสไลด์ + แนบรูปสไลด์ทีละหลายไฟล์ ---------- */
-function pmSeedLeft(){
+function pmSeedLeft(m){
   pmOk();
   const have={};pmAll().forEach(it=>{have[it.m+"|"+it.name]=1;});
-  return PROMO_SEED.filter(x=>!have[x.m+"|"+x.name]);
+  return PROMO_SEED.filter(x=>!have[x.m+"|"+x.name]&&(!m||x.m===m));
 }
-function pmSeedLoad(){
+function pmSeedLoad(m){
   if(!(S.user&&S.user.role==="manager")){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return;}
-  const add=pmSeedLeft();
+  const add=pmSeedLeft(m);
   if(!add.length){alert("โปรชุดนี้อยู่ในระบบแล้ว");return;}
-  if(!confirm("ใส่โปรโมชั่น "+fmtMonth(PROMO_SEED[0].m)+" จำนวน "+add.length+" โปร ที่อ่านมาจากสไลด์ของ Unilever?\n\n"+
+  if(!confirm("ใส่โปรโมชั่น "+fmtMonth(m||add[0].m)+" จำนวน "+add.length+" โปร ที่อ่านมาจากสไลด์ของ Unilever?\n\n"+
      "• แก้หรือลบทีหลังได้ตามปกติ\n"+
      "• โปรและข้อมูลเดิมในระบบไม่ถูกแตะต้อง\n"+
      "• รูปสไลด์ยังไม่ได้แนบ — แนบทีหลังได้ด้วยปุ่ม 📎 แนบสไลด์"))return;
@@ -6283,7 +6435,7 @@ function pmSeedLoad(){
     const id="sd"+String(x.m).replace("-","")+(now.toString(36))+i;
     PROMO.items[id]=Object.assign({},JSON.parse(JSON.stringify(x)),{by:"manager",byName:nm,at:now,up:now+i});
   });
-  PM.m=PROMO_SEED[0].m;PM.open=null;
+  PM.m=m||add[0].m;PM.open=null;
   renderPromo();syncToServer();
   alert("ใส่ให้แล้ว "+add.length+" โปร\n\nขั้นต่อไป: กด 📎 แนบสไลด์ ด้านบน แล้วเลือกรูปสไลด์ทั้งโฟลเดอร์พร้อมกันได้เลย ระบบจับคู่ชื่อไฟล์ให้เอง");
 }
@@ -13947,7 +14099,8 @@ function spSlipCard(x){
   const sn=spSent(x.id);
   const cs=sn.cut,left=sn.left;
   const pct=cstPct(cs,left);
-  const days=spDays(x.id), gn=days.filter(d=>spGinRec(x.id,d)).length;
+  /* เกณฑ์เดียวกับการ์ดเดือน (spMonGin) — spGinRec กรองแค่ del ยังไม่กรองเรคอร์ดเปล่า */
+  const days=spDays(x.id), gn=days.filter(d=>spDayHas(spGinRec(x.id,d))).length;
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
   const shown=codes.slice(0,SP_MAXITEM);
   const more=codes.length-shown.length;
@@ -13969,16 +14122,21 @@ function spSlipCard(x){
     ${cstPctBar(pct)}
     ${items}</div>`;
 }
+/* ⚠️ ต้องนับผ่าน spDayHas เสมอ — ห้ามนับแค่ "มีคีย์อยู่"
+   ยกเลิกผลตรวจเขียน del:1 ทับ (ไม่ได้ลบคีย์ทิ้ง เพราะแท็บเก่าจะ union กลับมา) และกล่องเลข GIN
+   ที่เซฟแล้วลบข้อความออกก็เหลือเรคอร์ดเปล่า ๆ — ทั้งสองแบบเคยถูกนับเป็น "ตรวจแล้ว"
+   การ์ดเดือนจึงขึ้น "แอดมินตรวจ 2 วัน" ทั้งที่เข้าไปในใบแล้วไม่มีอะไรเลย (เจ้าของทักเอง 26 พ.ย. 69)
+   spDays / spGinRec ใช้เกณฑ์นี้อยู่แล้ว ตัวเลขสองที่จึงต้องมาจากฟังก์ชันเดียวกัน */
 function spMonKeyed(ym){
   const C=spKeyOk(),s={};
   Object.keys(C.key||{}).forEach(k=>{const p=k.split("|");
-    if(p[1]&&p[1].slice(0,7)===ym&&spSlip(p[0]))s[p[1]]=1;});
+    if(p[1]&&p[1].slice(0,7)===ym&&spSlip(p[0])&&spDayHas(C.key[k]))s[p[1]]=1;});
   return Object.keys(s).length;
 }
 function spMonGin(ym){
   const C=spKeyOk(),s={};
   Object.keys(C.gin||{}).forEach(k=>{const p=k.split("|");
-    if(p[1]&&p[1].slice(0,7)===ym&&spSlip(p[0]))s[p[1]]=1;});
+    if(p[1]&&p[1].slice(0,7)===ym&&spSlip(p[0])&&spDayHas(C.gin[k]))s[p[1]]=1;});
   return Object.keys(s).length;
 }
 function spYear(){

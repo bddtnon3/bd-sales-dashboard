@@ -619,7 +619,7 @@ code, never printed.
   (so nothing unexpected can be smuggled into the state), takes `by`/`byName` from the verified
   claims, **never touches `PROMO.sales`** — a promotion must not be able to delete a month of sales
   readings — and only a `manager` may delete. Prove it with
-  **`node test/browser/promotrk.test.cjs`** (34 checks, self-contained with made-up codes; 37 with
+  **`node test/browser/promotrk.test.cjs`** (63 checks, self-contained with made-up codes; 66 with
   the real file via `DCODE_DAILY=/path/Sales_....xlsx`, which never enters the repo). Seven promotion types share one record shape
   (`PRO_TYPE`); every monthly report, whatever the promotion, reduces to the same row —
   route → PJP/Base · Target · Actual · %Achieve · money — so results are stored once as
@@ -637,6 +637,35 @@ code, never printed.
   Slide images and report screenshots both go to their own `bd-promoimg-*` blobs
   via `api/promoimg.js` — never into the state; the state keeps only the URL
   (`PROMO.items[id].imgs` for slides, `.reps` for the report a result was typed from).
+  **Each promotion opens a 📊 Report รายสาย** (`pmTrackHtml`/`pmRepRows`/`pmShopRow`), rebuilt
+  26 Nov 26 to the shape of the Excel the reps have always read — **สาย · เป้า (ร้าน) · ทำได้ ·
+  %Achieve · ส่วนต่าง · เงินรางวัล** and nothing else; the owner asked for *"ทำเทมเพลตออกคล้าย ๆ เดิม
+  … แค่ทำให้ดูสะอาดตา และ Text น้อยกว่านี้"*, so the old `📊 ผลงานรายสาย` table below it was removed
+  rather than left to say the same thing twice. **ทำได้ is computed live** from `PROMO.sales`: the
+  number of shops that bought the main codes up to a **threshold that comes from the prize step**
+  (`pmSteps` — `pay[].pcs`, e.g. บรีส 9 ชิ้น / 15 ชิ้น), so the step chips re-count the whole table.
+  **เป้า always prefers the official figure** the manager pasted in (`PROMO.res[...].tgt`); only when
+  there is none does it fall back to `tgtPct% × pmMP(route)` and it is then tagged **(ประเมิน)**.
+  That fallback is a fallback **on purpose**: measured against the owner's real files, CT11 has
+  **239 active M&P shops** while Unilever's own report set that route's target at **77 in one round
+  and 82 in the next** (31% and 34%) — the target is allocated per round, not derivable, so the page
+  must never present the computed number as fact. Prize money works the same way: the official
+  `money` wins, otherwise "reached 100% of target ⇒ that step's `sm`", tagged (ประเมิน). A rep's
+  **promo card** shows the same live figure for their own line when no official report exists yet,
+  because the owner's purpose for all of it was *"ไว้ให้เซลล์ตรวจสอบยอดเงินรางวัลของเดือนนั้น ๆ"*.
+  Tapping a route expands **the shops themselves** (`rows[ln].sh`, which `pmTrack` now returns —
+  in memory at render time, never stored): shops that have **not** passed come first with
+  *ขาดอีก N ชิ้น*, since that is the list a rep acts on, capped at `PM_SHOPMAX` (60) inside a
+  scrolling box because one route has hundreds of shops.
+  **`pmMP` counts M&P shops per route from `PJP.out`** (`t` = Outlet Subtype Name, `rt` = route) and
+  memoises. Its status test must be **`/^active$/`** — `/active/i` matches *"Inactive"*, which
+  silently counted closed shops and inflated every estimated target.
+  **The month's promotions are seeded from `PROMO_SEED`**, read off the slides Unilever sends;
+  November 2026's seven are in there (Hit of the Month วาสลีน · BW Extra ซิตร้า FO79 · HC Extra
+  บรีสลิควิด FO20 · Eco Trophy คอมฟอร์ท FO39 · Digital Flash คอมฟอร์ทเพียวแฮปปี้ · Happy Slot
+  ซิตร้า · Flash Deal ลักส์). The import is **per month** (`pmSeedLeft(m)`/`pmSeedLoad(m)`) and
+  `pmMonths()` includes seed months, so a month nobody has imported yet can still be selected —
+  it used to hard-code `PROMO_SEED[0]` and offer October for ever.
   Rules: `HANDOFF.md` §5.
   The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 11 groups,
   each holding one or more pages, role-gated per page. Adding a page means adding it to that
@@ -969,7 +998,11 @@ code, never printed.
   straight out of the group.
   **`spDays` must test for real content, not for a key** (`spDayHas`): deleting here writes an empty
   record or `del:1` rather than removing the key, so the date chips kept showing days the owner had
-  already cleared.
+  already cleared. **Every counter that walks `CSTOCK.key`/`CSTOCK.gin` must go through `spDayHas`
+  too** — `spMonKeyed`/`spMonGin` (the month card) and `spSlipCard` counted bare keys, so a day the
+  admin had un-checked (`del:1`) or a GIN note saved and then emptied still read as "ตรวจแล้ว". The
+  owner opened a month card reading *"แอดมินตรวจ 2 วัน"* with nothing inside the slip (26 Nov 26).
+  The month card and the slip page must always count with the same function, or they disagree.
   **The entry tables freeze their header** (`.tblwrap.sp-freeze`): the wrapper scrolls in both axes
   and `thead th` is `position:sticky;top:0` with an **opaque** background — sticky against the page
   instead would pin the header over the first row, which is why it was removed once before.
@@ -1124,7 +1157,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (194 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (197 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1137,7 +1170,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (194 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (197 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

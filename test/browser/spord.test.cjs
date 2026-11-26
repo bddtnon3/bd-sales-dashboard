@@ -579,6 +579,26 @@ const ORIGIN='https://bd-spord.test/';
    /1\s*ใบออเดอร์/.test(nav.mon.replace(/\s/g,' '))&&
    /เซลล์คีย์/.test(nav.mon)&&/แอดมินตรวจ/.test(nav.mon),nav.mon.slice(0,150));
  t('...ช่องเลือกใบซ่อนไว้ตอนอยู่หน้าเลือกเดือน (ไม่รกตา)',nav.slipBox==='none',nav.slipBox);
+ /* 🐞 เจ้าของทักเอง 26 พ.ย. 69: การ์ดเดือนขึ้น "แอดมินตรวจ 2 วัน" แต่เข้าไปในใบแล้วไม่มีอะไรเลย
+    สาเหตุ: spMonGin/spMonKeyed นับแค่ "มีคีย์อยู่" จึงนับทั้งวันที่กดยกเลิกผลตรวจไปแล้ว (del:1)
+    และเรคอร์ดเปล่า ๆ ที่เหลือจากการเซฟแล้วลบข้อความออก */
+ const ghost=await ev(()=>{
+   const sid='B20261118-01',C=spKeyOk();
+   const before={k:spMonKeyed('2026-11'),g:spMonGin('2026-11')};
+   C.gin[sid+'|2026-11-27']={at:Date.now(),rows:{},g:[],del:1};      /* กดยกเลิกผลตรวจไปแล้ว */
+   C.gin[sid+'|2026-11-28']={at:Date.now(),rows:{},g:[]};            /* เซฟแล้วลบข้อความออกหมด */
+   C.key[sid+'|2026-11-29|CT11']={at:Date.now(),it:{},del:1};        /* ฝั่งซุปก็เหมือนกัน */
+   const after={k:spMonKeyed('2026-11'),g:spMonGin('2026-11')};
+   const days=spDays(sid);
+   delete C.gin[sid+'|2026-11-27'];delete C.gin[sid+'|2026-11-28'];
+   delete C.key[sid+'|2026-11-29|CT11'];
+   return {before:before,after:after,days:days.join(',')};});
+ t('🐞 วันที่ยกเลิกผลตรวจไปแล้ว ต้องไม่ถูกนับว่า "แอดมินตรวจแล้ว"',
+   ghost.after.g===ghost.before.g,JSON.stringify(ghost));
+ t('🐞 เรคอร์ดเปล่า ๆ (เซฟแล้วลบข้อความออก) ก็ต้องไม่ถูกนับ',
+   ghost.after.k===ghost.before.k,JSON.stringify(ghost));
+ t('🛟 ...และตัวเลขบนการ์ดเดือนต้องตรงกับวันที่หน้าใบขึ้นจริง',
+   !/2026-11-27|2026-11-28|2026-11-29/.test(ghost.days),ghost.days);
  t('กดเดือน → เห็นรายการใบของเดือนนั้น พร้อมปุ่มกลับไปเลือกเดือนอื่น',
    /พ\.ย\. 2569/.test(nav.listBar)&&/B20261118-01/.test(nav.list)&&
    /เลือกเดือนอื่น/.test(nav.list)&&!/B20261002-01/.test(nav.list),nav.list.slice(0,140));

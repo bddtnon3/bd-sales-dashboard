@@ -274,11 +274,12 @@ const ROWS=[
    const d=document.getElementById('pmDetail');
    return {txt:d.textContent.replace(/\s+/g,' '),add:document.getElementById('pmAddCtl').style.display};
  },mk(ROWS));
- t('🔑 การ์ดโปรมีตารางยอดจริงรายสาย พร้อมช่วงวันที่',
-   /ยอดขายจริงตามรหัสสินค้า/.test(ui.txt)&&/10 พ\.ย\. 2569 – 12 พ\.ย\. 2569/.test(ui.txt),
-   ui.txt.slice(ui.txt.indexOf('ยอดขายจริง'),ui.txt.indexOf('ยอดขายจริง')+70));
- t('...มีคอลัมน์ร้านที่กระจายสำเร็จ และบอกเกณฑ์ขั้นต่ำไว้ชัด',
-   /ร้านที่กระจายสำเร็จ/.test(ui.txt)&&/ซื้อตัวหลักครบ 6 ชิ้น/.test(ui.txt));
+ /* 26 พ.ย. 69 เจ้าของสั่งให้ทำหน้ารายงานตามไฟล์ Excel ที่เซลล์ดูมาตลอด และตัด text ให้น้อยลง */
+ t('🔑 การ์ดโปรมี Report รายสาย พร้อมช่วงวันที่',
+   /Report รายสาย/.test(ui.txt)&&/10 พ\.ย\. 2569 – 12 พ\.ย\. 2569/.test(ui.txt),
+   ui.txt.slice(ui.txt.indexOf('Report รายสาย'),ui.txt.indexOf('Report รายสาย')+70));
+ t('...คอลัมน์เหมือนไฟล์ Excel เดิม และบอกเกณฑ์ขั้นต่ำไว้ชัด',
+   /%Achieve/.test(ui.txt)&&/ส่วนต่าง/.test(ui.txt)&&/ซื้อตัวหลักครบ 6 ชิ้น/.test(ui.txt));
  t('...แยกสินค้าตัวหลักกับของแถมให้เห็น',/ตัวหลัก — ตัวที่ต้องขายให้ถึงเป้า/.test(ui.txt)&&/🎁 ของแถม/.test(ui.txt));
  t('...และมีแถวรวมทั้งศูนย์',/รวมทั้งศูนย์/.test(ui.txt));
  t('ปุ่มเพิ่มโปรโมชั่นโผล่ให้ผู้จัดการ',ui.add!=='none',ui.add);
@@ -302,6 +303,133 @@ const ROWS=[
  }else{
    console.log('  (ข้าม 3 ข้อของไฟล์จริง — ตั้ง DCODE_DAILY=/path/Sales_....xlsx เพื่อตรวจเพิ่ม)');
  }
+
+
+ /* ---------- 9) 📥 โปรเดือน พ.ย. 69 ที่อ่านมาจากสไลด์ ---------- */
+ const seed=await ev(()=>{
+   __reset();__as('manager','ผู้จัดการ');
+   const nov=PROMO_SEED.filter(x=>x.m==='2026-11');
+   const code=nm=>{const x=nov.filter(y=>new RegExp(nm).test(y.name))[0];
+     return x?(x.prod||[]).map(p=>p.c).join(','):'(ไม่เจอ)';};
+   const byName=nm=>nov.filter(y=>new RegExp(nm).test(y.name))[0]||null;
+   return {n:nov.length,types:nov.map(x=>x.type).join(','),
+     vas:code('HIT OF THE MONTH'),citra:code('BW : EXTRA'),breeze:code('HC : EXTRA'),
+     comfort:code('Eco Trophy'),dflash:code('DIGITAL FLASH'),slot:code('HAPPY SLOT'),lux:code('^FLASH DEAL'),
+     luxFree:(byName('^FLASH DEAL').prod||[]).filter(p=>p.k==='f').map(p=>p.c).join(','),
+     bwPay:(byName('BW : EXTRA').pay||[]).map(p=>p.pcs+':'+p.sm+'/'+p.sup).join(' '),
+     hcPay:(byName('HC : EXTRA').pay||[]).map(p=>p.pcs+':'+p.sm+'/'+p.sup).join(' '),
+     ecoMin:byName('Eco Trophy').min,hcTgt:byName('HC : EXTRA').tgtPct,
+     left:pmSeedLeft('2026-11').length,leftOct:pmSeedLeft('2026-10').length,
+     months:pmMonths().join(',')};});
+ t('🔑 โปรเดือน พ.ย. 69 อ่านจากสไลด์ครบ 7 โปร',seed.n===7,seed.n+' · '+seed.types);
+ t('🔑 วาสลีน ดีพรีสโตร์ (Hit of the month) รหัสครบ 3 ตัว',
+   seed.vas==='68906730,64377977,65586005',seed.vas);
+ t('🔑 ซิตร้า FO79 (BW Extra) รหัสครบ 4 ตัว',
+   seed.citra==='65691961,65691963,65691965,65691967',seed.citra);
+ t('🔑 บรีสลิควิด FO20 (HC Extra) รหัสครบ 7 ตัว',
+   seed.breeze==='64401555,65542616,64914232,65649245,65495409,65597714,64399473',seed.breeze);
+ t('🔑 คอมฟอร์ท FO39 (Eco Trophy) รหัสครบ 4 ตัว และนับ 3 ชิ้น',
+   seed.comfort==='65549348,65628525,65549344,65549346'&&seed.ecoMin===3,seed.comfort+' min='+seed.ecoMin);
+ t('🔑 คอมฟอร์ทเพียวแฮปปี้ (Digital Flash) รหัสเดียว',seed.dflash==='65628537',seed.dflash);
+ t('🔑 ซิตร้า Happy Slot สองรหัสแถมไขว้กัน',seed.slot==='65786539,65786541',seed.slot);
+ t('🔑 ลักส์ 2 ฟรี 2 — โรสเป็นตัวซื้อ ซากุระเป็นของแถม',
+   seed.lux==='65724220,65724222'&&seed.luxFree==='65724222',seed.lux+' free='+seed.luxFree);
+ t('🔑 ขั้นเงินรางวัล BW: 2 ชิ้น 700/1,000 · 4 ชิ้น 1,500/2,000',
+   seed.bwPay==='2:700/1000 4:1500/2000',seed.bwPay);
+ t('🔑 ขั้นเงินรางวัล HC: 9 ชิ้น 700/1,000 · 15 ชิ้น 1,500/2,000 · Target 25%',
+   seed.hcPay==='9:700/1000 15:1500/2000'&&seed.hcTgt===25,seed.hcPay+' tgt='+seed.hcTgt);
+ t('🔑 เดือน พ.ย. โผล่ในช่องเลือกเดือน ทั้งที่ยังไม่ได้กดใส่',
+   /2026-11/.test(seed.months),seed.months);
+ t('🛟 ปุ่มใส่โปรนับเฉพาะเดือนที่เลือก ไม่ปนกับเดือนอื่น',
+   seed.left===7&&seed.leftOct===10,seed.left+' / '+seed.leftOct);
+
+ const load=await ev(()=>{
+   window.confirm=()=>true;window.alert=()=>{};
+   pmSeedLoad('2026-11');
+   const got=pmAll().filter(x=>x.m==='2026-11');
+   const again=pmSeedLeft('2026-11').length;
+   return {n:got.length,again:again,oct:pmAll().filter(x=>x.m==='2026-10').length};});
+ t('🔑 กดใส่แล้วเข้าระบบครบ 7 โปร',load.n===7,load.n);
+ t('🛟 กดซ้ำไม่เพิ่มซ้ำ (เทียบจากเดือน+ชื่อโปร)',load.again===0,load.again);
+ t('🛟 ...และไม่ไปแตะโปรของเดือนอื่น',load.oct===0,load.oct);
+
+ /* ---------- 10) 📊 Report รายสาย แบบไฟล์ Excel ที่เซลล์ดูมาตลอด ---------- */
+ const rep=await ev(()=>{
+   __reset();__as('manager','ผู้จัดการ');
+   /* ร้าน M&P 4 ร้านในสาย CT11 · 1 ร้านเป็น WS (ไม่ใช่ M&P) · 1 ร้านปิดไปแล้ว */
+   PJP={out:{
+     S1:{n:'ร้าน ก',rt:'209611',t:'SS HPC - MPM_Mom & Pop Medium',st:'Active'},
+     S2:{n:'ร้าน ข',rt:'209611',t:'SS HPC - MPS_Mom & Pop Small',st:'Active'},
+     S3:{n:'ร้าน ค',rt:'209611',t:'SS HPC - MPL_Mom & Pop Large',st:'Active'},
+     S4:{n:'ร้าน ง',rt:'209611',t:'SS HPC - MPS_Mom & Pop Small',st:'Active'},
+     S5:{n:'ร้าน จ',rt:'209611',t:'SS HPC - WS_Wholesale',st:'Active'},
+     S6:{n:'ร้าน ฉ',rt:'209611',t:'SS HPC - MPS_Mom & Pop Small',st:'Inactive'},
+     S7:{n:'ร้าน ช',rt:'209612',t:'SS HPC - MPM_Mom & Pop Medium',st:'Active'}},plan:{},done:{},cfg:{}};
+   /* ยอดของสาย CT11: S1 ซื้อ 10 ชิ้น · S2 ซื้อ 4 · S3 ซื้อ 2 */
+   PROMO.sales={'2026-11-10|209611':{up:1,p:{'90000001':{cs:0,pc:16,fc:0,fp:0,niv:1600,
+     sh:{S1:10,S2:4,S3:2}}}}};
+   __promo({id:'r1',m:'2026-11',type:'extra',tgtPct:50,min:2,
+     prod:[{c:'90000001',n:'ตัวหลัก',k:'m'}],
+     pay:[{label:'ขั้น 1',pcs:2,sm:700,sup:1000},{label:'ขั้น 2',pcs:9,sm:1500,sup:2000}]});
+   const it=PROMO.items['r1'];
+   PM.step=0;PM.rep='';
+   const h1=pmTrackHtml(it,'209611');
+   const r1=pmRepRows(it,pmSteps(it)[0]).rows.filter(x=>x.ln==='209611')[0];
+   PM.step=1;
+   const r2=pmRepRows(it,pmSteps(it)[1]).rows.filter(x=>x.ln==='209611')[0];
+   PM.step=0;PM.rep='209611';
+   const h2=pmTrackHtml(it,'209611');
+   PM.rep='';
+   return {mp11:pmMP('209611'),mp12:pmMP('209612'),mpX:pmMP('209699'),
+     h1:h1.replace(/\s+/g,' '),h2:h2.replace(/\s+/g,' '),
+     r1:{act:r1.act,tgt:r1.tgt,est:r1.est,pct:Math.round(r1.pct),diff:r1.diff,money:r1.money},
+     r2:{act:r2.act,tgt:r2.tgt,pct:Math.round(r2.pct),money:r2.money},
+     steps:pmSteps(it).length};});
+ t('🔑 นับร้าน M&P ต่อสายได้ (ไม่นับร้านส่ง และไม่นับร้านที่ปิดไปแล้ว)',
+   rep.mp11===4&&rep.mp12===1&&rep.mpX===0,rep.mp11+'/'+rep.mp12+'/'+rep.mpX);
+ t('🔑 รายงานหน้าตาแบบไฟล์ Excel: สาย · เป้า · ทำได้ · %Achieve · ส่วนต่าง',
+   /สาย/.test(rep.h1)&&/เป้า \(ร้าน\)/.test(rep.h1)&&/ทำได้/.test(rep.h1)&&
+   /%Achieve/.test(rep.h1)&&/ส่วนต่าง/.test(rep.h1),rep.h1.slice(0,160));
+ t('🔑 ขั้นเงินรางวัลเลือกได้ และเปลี่ยนเกณฑ์ชิ้นจริง',
+   rep.steps===2&&rep.r1.act===3&&rep.r2.act===1,JSON.stringify(rep.r1)+' '+JSON.stringify(rep.r2));
+ t('🔑 ไม่มีเป้าจากไฟล์ → ประเมินจาก % × ร้าน M&P และติดป้าย (ประเมิน)',
+   rep.r1.tgt===2&&rep.r1.est===true&&/\(ประเมิน\)/.test(rep.h1),JSON.stringify(rep.r1));
+ t('🔑 %Achieve และส่วนต่างคิดถูก (ทำได้ 3 จากเป้า 2 = 150% · +1)',
+   rep.r1.pct===150&&rep.r1.diff===1,JSON.stringify(rep.r1));
+ t('🔑 ถึงเป้าแล้วขึ้นเงินรางวัลของขั้นนั้น · ไม่ถึงเป้าเป็น 0',
+   rep.r1.money===700&&rep.r2.money===0,rep.r1.money+' / '+rep.r2.money);
+ t('🛟 เงินรางวัลที่คำนวณเองต้องติดป้ายว่าเป็นประมาณการ',
+   /เงินรางวัลเป็น <b>ประมาณการ<\/b>/.test(rep.h1),'');
+ t('🔑 แตะแถวสายแล้วกางรายร้าน พร้อมบอกว่าร้านไหนผ่านเกณฑ์',
+   /ร้าน ก/.test(rep.h2)&&/ร้าน ข/.test(rep.h2)&&/ผ่านเกณฑ์/.test(rep.h2),rep.h2.slice(-220));
+ t('🛟 รายร้านโผล่เฉพาะแถวที่กดเปิด ไม่ใช่กางทุกสายพร้อมกัน',
+   !/ร้าน ก/.test(rep.h1),rep.h1.slice(-160));
+
+ /* การ์ดของเซลล์ต้องขึ้นตัวเลขที่ระบบนับเอง ตอนที่ยังไม่มีไฟล์รายงาน (เจ้าของสั่ง 26 พ.ย. 69) */
+ const card=await ev(()=>{
+   const it=PROMO.items['r1'];
+   return {me:pmCardHtml(it,'209611').replace(/\s+/g,' '),
+     other:pmCardHtml(it,'209699').replace(/\s+/g,' ')};});
+ t('🔑 การ์ดโปรขึ้นผลของสายตัวเองให้เซลล์ ทั้งที่ยังไม่มีไฟล์รายงาน',
+   /สายคุณ \(CT11\)/.test(card.me)&&/ทำได้ 3/.test(card.me),card.me.slice(-220));
+ t('🛟 ...และติดป้าย (ประเมิน) ไม่ใช่ทำเป็นยอดจริงที่ Unilever จ่าย',
+   /\(ประเมิน\)/.test(card.me),'');
+ t('🛟 สายที่ไม่มียอดเลย ยังบอกว่ายังไม่มีผลงาน ไม่ใช่โชว์ 0 ให้เข้าใจผิด',
+   /ยังไม่มีผลงานของสายคุณ/.test(card.other),card.other.slice(-140));
+
+ const off=await ev(()=>{
+   /* ใส่เป้าจริงจากไฟล์รายงานของ Unilever → ต้องชนะค่าประเมินเสมอ */
+   PROMO.res['r1|209611|']={tgt:77,act:140,pct:182,money:1500,up:1};
+   PM.step=0;
+   const r=pmRepRows(PROMO.items['r1'],pmSteps(PROMO.items['r1'])[0]).rows
+     .filter(x=>x.ln==='209611')[0];
+   const h=pmTrackHtml(PROMO.items['r1'],'').replace(/\s+/g,' ');
+   PROMO.res={};
+   return {tgt:r.tgt,est:r.est,money:r.money,mEst:r.mEst,warn:/เป้ารายสายเป็น <b>ประมาณการ/.test(h)};});
+ t('🔑 มีเป้าจริงจากไฟล์แล้ว ใช้ของจริง ไม่ใช่ค่าประเมิน',
+   off.tgt===77&&off.est===false&&!off.warn,JSON.stringify(off));
+ t('🔑 ...เงินรางวัลก็ใช้ยอดจริงจากไฟล์ ไม่ใช่ค่าที่คำนวณเอง',
+   off.money===1500&&off.mEst===false,JSON.stringify(off));
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n+(x&&!c?' → '+x:''));});
  const real=errs.filter(e=>!/localStorage/.test(e));
