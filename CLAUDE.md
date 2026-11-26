@@ -277,11 +277,13 @@ screen. Two separate fixes, and the distinction now has a name:
 - **The UI no longer claims who may see what.** Messages that said *"เฉพาะผู้จัดการเท่านั้น"* while
   admins in fact had access now read **"บัญชีนี้แก้ส่วนนี้ไม่ได้" / "บัญชีนี้เปิดส่วนนี้ไม่ได้"**,
   which is both true and the house rule against role narration.
-- **Still shared with the admins, deliberately:** the BUM cost file (`peBumOk`, and `api/price.js`
-  returns `bum` to any role `manager`), วิเคราะห์การสั่งของ, the auto-PO calculator and the DCI page.
-  Those are role-gated, not owner-gated; locking them would stop admin work, and the owner has not
-  asked for it. **If that is ever meant to be the owner alone, the server check in `api/price.js`
-  must change too** — hiding the page while the browser still receives the data would be theatre.
+- **Still shared with the admins — the owner decided this, 26 Nov 26.** Asked whether the BUM cost
+  file should be locked to his own account, he answered **"ปล่อยไว้ได้เลย"**: admin1–4 keep it.
+  So the BUM view (`peBumOk`, and `api/price.js` returning `bum` to any role `manager`),
+  วิเคราะห์การสั่งของ, the auto-PO calculator and the DCI page stay **role-gated, not owner-gated**.
+  **Do not "fix" this later** — it is a decision, not an oversight. If he ever reverses it, the
+  server check in `api/price.js` must change too; hiding the page while the browser still receives
+  the data would be theatre.
 
 ## Accounts
 `lib/accounts.js` is the only real account list (passwords never reach the browser; any one can be
