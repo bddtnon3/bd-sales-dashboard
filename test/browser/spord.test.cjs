@@ -1931,7 +1931,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
        cs:p[2],pc:0,sq:i,ln:'CT11',clr:[],up:1};});
    CSTOCK.slips['B20261118-01'].g='D';
    /* ซุปตั้งเป้าสามวัน: เมื่อวาน · วันนี้ · ข้ามสัปดาห์ไปอีก 9 วัน (สายอื่นหนึ่งวัน) */
-   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10);};
+   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return ymdOf(t);};   /* ⚠️ ymdOf ไม่ใช่ toISOString — เทสต์รันใน Asia/Bangkok ตอนเย็น UTC จะคนละวันกับแอป */
    if(!CSTOCK.key)CSTOCK.key={};if(!CSTOCK.rep)CSTOCK.rep={};
    const K=(d,ln,sc)=>{CSTOCK.key['B20261118-01|'+d+'|'+ln]=
      {it:{'AAA1':{sc:sc,sp:0,fc:0,fp:0}},by:'sup',byName:'หัวหน้าเซลล์',at:1000};};
@@ -2028,7 +2028,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  /* เซลล์กรอกเลขจริง แล้วแอดมินตรวจได้จากตาราง */
  const refSave=await ev(async()=>{
    const o={};
-   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10);};
+   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return ymdOf(t);};   /* ⚠️ ymdOf ไม่ใช่ toISOString — เทสต์รันใน Asia/Bangkok ตอนเย็น UTC จะคนละวันกับแอป */
    const D=T(0);o.D=D;
    __as('sales','209611','CT11 · เซลล์');
    CSTOCK.key['B20261118-01|'+D+'|CT11']={it:{'AAA1':{sc:20,sp:0,fc:0,fp:0}},by:'sup',at:1000};
@@ -2118,7 +2118,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
   * ================================================================ */
  const tflow=await ev(async()=>{
    __reset();
-   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10)};
+   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return ymdOf(t);};   /* ⚠️ ymdOf ไม่ใช่ toISOString (ดูหมายเหตุด้านบน) */
    const T0=T(0),T1=T(1);
    CSTOCK.slips['B20261118-01'].g='D';
    CSTOCK.lots['LF1']={id:'LF1',sl:'B20261118-01',d:T0,code:'AAA1',nm:'ครีมทาผิว เอ',
@@ -2219,7 +2219,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
 
  const ocr2=await ev(async()=>{
    __reset();
-   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10)};
+   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return ymdOf(t);};   /* ⚠️ ymdOf ไม่ใช่ toISOString (ดูหมายเหตุด้านบน) */
    const D=T(0);
    CSTOCK.slips['B20261118-01'].g='D';
    CSTOCK.lots['LO1']={id:'LO1',sl:'B20261118-01',d:D,code:'AAA1',nm:'ครีมทาผิว เอ',

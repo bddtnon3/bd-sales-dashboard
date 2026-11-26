@@ -165,8 +165,8 @@ function mkOldMaster(rows){
  t('สรุปรายวันนับแถว ลัง มูลค่า และจำนวนใบกำกับให้',
    r1.d17&&r1.d17.n===3&&r1.d17.cs===200&&r1.d17.iv===2,JSON.stringify(r1.d17));
  t('เติมชื่อสินค้าจากไฟล์ให้รหัสที่ยังไม่มีชื่อ',r1.names==='สินค้าทดสอบ 90000001',r1.names);
- t('🛟 แถวที่รับไม่ตรงกับบิล (Variance ≠ 0) ต้องถูกรายงาน ไม่ใช่เงียบ',
-   /รับไม่ตรงกับบิล/.test(r1.log)&&/1/.test(r1.log),r1.log.slice(0,200));
+ t('🛟 แถวที่รับไม่ครบตามบิล ต้องถูกรายงานพร้อมจำนวนลัง ไม่ใช่เงียบ',
+   /รับเข้าไม่ครบตามบิล/.test(r1.log)&&/1 แถว รวม 2 ลัง/.test(r1.log),r1.log.slice(0,260));
  t('อัพแล้วบันทึกขึ้นเซิร์ฟเวอร์ 1 ครั้ง',r1.sync===1,r1.sync);
 
  /* ---------------- 2) ไฟล์ที่กรองมาบางช่วง ต้องไม่ลบวันอื่น ---------------- */
@@ -595,6 +595,118 @@ function mkOldMaster(rows){
    /\(ประเมิน\)/.test(r12.tx16)&&/ไม่ใช่ BI Report/.test(r12.tx16),r12.tx16.slice(0,300));
  t('แถบเงินบอกว่าเป็นตัวเดียวกับช่องในหน้าประวัติการสั่งของ',
    /ประวัติการสั่งของ/.test(r12.tx16),r12.tx16.slice(0,300));
+
+ /* ---------------- 13) 🔄 ของตีคืน (ศูนย์ลงบิลมา − คลังรับเข้าจริง) ----------------
+    เจ้าของถาม 28 พ.ย. 69 ว่าอ่าน "สถานะ" จากไฟล์ PSI ได้ไหม — ตรวจทุกคอลัมน์แล้ว **ไม่มีช่อง
+    สถานะเลย** (ที่เหลือเป็นค่าเดียวทั้งไฟล์ · Remarks ว่าง 192/192) ช่องที่ตอบได้จริงคือ
+    Invoice Qty ↔ Received Qty ซึ่งคือ Variance ของไฟล์เอง */
+ const r13=await ev(a=>{PSI={rows:{},days:{},up:0};
+   parsePSI('PSI_Detail_ret.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);
+   psiBust();psiCrBust();psiOrdBust();
+   ORDERS.dates=['2026-11-16'];
+   ORDERS.data['2026-11-16']={rounds:{main:{'90000001':40,'90000002':160}},
+     dropped:{},hasResult:true,dropVal:0};
+   psiOrdBust();
+   const R=psiCheck('2026-11-16'),by={};R.rows.forEach(r=>by[r.code]=r);
+   PSIV.sec='chk';PSIV.ord='2026-11-16';PSIV.only='all';PSIV.q='';renderPsi();
+   const tx=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
+   return {a:by['90000001'],b:by['90000002'],ret:R.ret,retN:R.retN,tx:tx};
+ },{b64:mkDet([
+   detRow({code:'90000001',cs:40,got:34,v:13072}),   /* ลงบิล 40 รับเข้า 34 ⇒ ตีคืน 6 */
+   detRow({code:'90000002',cs:160,v:65566})])});     /* รับครบ */
+ t('🔑 ตีคืน = ศูนย์ลงบิลมา − คลังรับเข้าจริง (บิล 40 รับ 34 ⇒ 6)',
+   r13.a.ret===6&&r13.a.got===34&&r13.ret===6&&r13.retN===1,JSON.stringify(r13.a));
+ t('…รายการที่รับครบ ตีคืนเป็น 0 ไม่ใช่ช่องว่าง',r13.b.ret===0,JSON.stringify(r13.b));
+ t('หน้าเทียบใบสั่งขึ้นช่อง 🔄 ตีคืน และบอกจำนวนออกมา',
+   /ตีคืน/.test(r13.tx)&&/รับเข้าไม่ครบ/.test(r13.tx),r13.tx.slice(0,260));
+ const r13b=await ev(()=>{
+   /* รอบเก่าที่อัพก่อนมีช่อง iq — ต้องตอบ null (ยังไม่รู้) ห้ามคิดเป็นตีคืนทั้งรอบ */
+   delete PSI.rows['2026-11-17|90000001'].iq;
+   psiBust();
+   const R=psiCheck('2026-11-16'),by={};R.rows.forEach(r=>by[r.code]=r);
+   PSIV.sec='chk';renderPsi();
+   return {ret:by['90000001'].ret,sum:R.ret,unk:R.retUnk,
+     tx:document.getElementById('psiBody').textContent.replace(/\s+/g,' ')};});
+ t('🛟 รอบที่อัพก่อนมีช่องนี้ ต้องตอบ "ยังไม่รู้" ไม่ใช่ตีคืนทั้งก้อน',
+   r13b.ret===null&&r13b.sum===0&&r13b.unk===1,JSON.stringify(r13b));
+ t('…และบอกบนหน้าเว็บว่าให้อัพไฟล์อีกครั้ง',/ยังตอบไม่ได้/.test(r13b.tx),r13b.tx.slice(0,300));
+ const r13c=await ev(a=>{PSI={rows:{},days:{},up:0};
+   parsePSI('PSI_Detail_ok.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);
+   psiBust();psiCrBust();psiOrdBust();
+   PSIV.sec='chk';PSIV.ord='2026-11-16';renderPsi();
+   return document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
+ },{b64:mkDet([detRow({code:'90000001',cs:40,v:13072}),detRow({code:'90000002',cs:160,v:65566})])});
+ t('🔑 ไม่มีของตีคืน ต้องพูดออกมา ไม่ใช่เงียบ ("ไม่มี" กับ "ไม่รู้" คนละเรื่อง)',
+   /ของตีคืน: รอบนี้ไม่มี/.test(r13c),r13c.slice(0,300));
+
+ /* ---------------- 14) 📅 ตารางรับเข้า: สองวันที่ และ % ----------------
+    เจ้าของอธิบายเอง 28 พ.ย. 69: "วันที่ตัวเลขนับเป็นยอดซื้อ กับวันที่ของพวกนี้เข้าคลัง
+    มันแตกต่างกันบางวัน … ยอดซื้อเข้าวันที่ 20 ของเข้าคลังมาแยกกันวันที่ 20/21"
+    และขอ "ตาราง % การส่งของเข้าคลัง … เขียวคือครบ แดงคือยังไม่ครบ" */
+ const r14=await ev(a=>{PSI={rows:{},days:{},up:0};
+   parsePSI('PSI_Detail_cal.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);
+   psiBust();psiCrBust();psiOrdBust();
+   ORDERS.dates=['2026-11-16','2026-11-20','2026-11-30'];
+   ORDERS.data['2026-11-16']={rounds:{main:{'90000001':40}},dropped:{},hasResult:true,dropVal:0};
+   ORDERS.data['2026-11-20']={rounds:{main:{'90000002':200}},dropped:{},hasResult:true,dropVal:0};
+   ORDERS.data['2026-11-30']={rounds:{main:{'90000003':10}},dropped:{},hasResult:true,dropVal:0};
+   psiOrdBust();psiCrBust();
+   const R=psiRounds(),by={};R.forEach(r=>by[r.d]=r);
+   PSIV.sec='cal';PSIV.ym='';renderPsi();
+   const el=document.getElementById('psiBody');
+   const tx=el.textContent.replace(/\s+/g,' ');
+   const rows=[...el.querySelectorAll('table.psi-cal tbody tr')].length;
+   return {by:by,tx:tx,rows:rows,order:R.map(r=>r.d)};
+ },{b64:mkDet([
+   /* บิล 16 → เข้า 17 ทั้งก้อน (ครบ) */
+   detRow({code:'90000001',cs:40,v:13072,cre:'2026-11-16',rec:'2026-11-17'}),
+   /* บิล 20 → เข้า 20 ครึ่ง และ 21 อีกครึ่ง (ยังไม่ครบ) */
+   detRow({code:'90000002',cs:60,v:5000,inv:'3100000002',cre:'2026-11-20',rec:'2026-11-20'}),
+   detRow({code:'90000002',cs:60,v:5000,inv:'3100000003',cre:'2026-11-20',rec:'2026-11-21'})])});
+ t('🔑 ตารางจับคู่ "วันที่ศูนย์ออกบิล" กับ "วันที่ของเข้าคลัง" ซึ่งคนละวันกันได้ (16 → 17)',
+   r14.by['2026-11-16'].rec.join()==='2026-11-17',JSON.stringify(r14.by['2026-11-16'].rec));
+ t('🔑 บิลวันเดียวของเข้าหลายวันได้ และแจกแจงจำนวนรายวันให้ (20 → 20 กับ 21 อย่างละ 60)',
+   r14.by['2026-11-20'].rec.join()==='2026-11-20,2026-11-21'&&
+   r14.by['2026-11-20'].by['2026-11-20'].cs===60&&r14.by['2026-11-20'].by['2026-11-21'].cs===60,
+   JSON.stringify(r14.by['2026-11-20'].by));
+ t('🔑 % = เข้าคลังแล้ว ÷ ต้องได้ · ครบ 100% · ไม่ครบ 60%',
+   r14.by['2026-11-16'].pct===100&&r14.by['2026-11-20'].pct===60,
+   JSON.stringify([r14.by['2026-11-16'].pct,r14.by['2026-11-20'].pct]));
+ t('🛟 รอบที่ไฟล์ PSI ยังไปไม่ถึง ต้องเป็นขีด ห้ามเป็น 0%',
+   r14.by['2026-11-30'].pct===null&&r14.by['2026-11-30'].got===null,
+   JSON.stringify(r14.by['2026-11-30']));
+ t('เรียงใหม่สุดอยู่บน เหมือนตัวเลือกวันทุกหน้า',
+   r14.order[0]==='2026-11-30'&&r14.order[r14.order.length-1]==='2026-11-16',
+   r14.order.join(' '));
+ t('ตารางขึ้นครบทุกรอบของเดือน และบอกเกณฑ์สีไว้บนหน้า',
+   r14.rows===3&&/เขียว = ครบ/.test(r14.tx)&&/แดง = ยังไม่ครบ/.test(r14.tx),
+   r14.rows+' แถว');
+ const r14b=await ev(()=>{
+   const col=p=>psiPctCol(p);
+   return {g:col(100),r:col(10),n:col(null),
+     p100:psiPct(10,10),p0:psiPct(0,10),pNull:psiPct(5,0)};});
+ t('สีเขียวเมื่อครบ · แดงเมื่อขาด · ไม่มีข้อมูลเป็นสีจาง',
+   /good/.test(r14b.g)&&/bad/.test(r14b.r)&&/muted/.test(r14b.n),JSON.stringify(r14b));
+ t('🛟 ต้องได้เป็น 0 ⇒ % ตอบ null ไม่ใช่หารศูนย์',r14b.pNull===null&&r14b.p0===0,
+   JSON.stringify(r14b));
+ /* กดแถวแล้วเปิดหน้าเทียบของรอบนั้น · และหน้านี้ห้ามเขียนอะไรลงข้อมูล */
+ const r14c=await ev(()=>{
+   const before=JSON.stringify({P:PSI,O:ORDERS});
+   PSIV.sec='cal';renderPsi();
+   psiGoRound('2026-11-20');
+   const after=JSON.stringify({P:PSI,O:ORDERS});
+   return {sec:PSIV.sec,ord:PSIV.ord,same:before===after,
+     tx:document.getElementById('psiBody').textContent.replace(/\s+/g,' ').slice(0,120)};});
+ t('กดแถวในตารางแล้วเปิดหน้าเทียบของรอบนั้นเลย',
+   r14c.sec==='chk'&&r14c.ord==='2026-11-20',JSON.stringify(r14c));
+ t('🛟 ตารางรับเข้าอ่านอย่างเดียว — เปิดและกดแล้วข้อมูลเหมือนเดิมเป๊ะ',r14c.same,'');
+ const r14d=await ev(()=>{
+   const g=TAB_GROUPS.filter(x=>x.k==='psib')[0];
+   const r=(g.tabs[0].role||[]);
+   return {roles:r.join(','),secs:PSI_SECS.map(x=>x[0]).join(',')};});
+ t('🔑 ทุกบทบาทเปิดหมวดนี้ได้ (เจ้าของขอ "ให้ทุกคนในบริษัทรับรู้")',
+   ['manager','sales','sup','wh','ds'].every(x=>r14d.roles.indexOf(x)>=0),r14d.roles);
+ t('ตารางรับเข้าเป็นหน้าแรกของหมวด',r14d.secs.split(',')[0]==='cal',r14d.secs);
 
  /* ---------------- ไฟล์จริง (ถ้าตั้ง env ไว้) ---------------- */
  if(process.env.PSI_FILE&&fs.existsSync(process.env.PSI_FILE)){

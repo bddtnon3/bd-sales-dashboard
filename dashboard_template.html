@@ -797,7 +797,13 @@ main.wide{max-width:1560px}
     padding-bottom:6px;margin-bottom:4px}
   .psi-tbl td.psi-nm>*{text-align:left}
   .psi-tbl td.psi-nm::before{content:""}
+  /* ⚠️ ช่องที่มีหลายบรรทัด ต้องห่อไว้ใน "ก้อนเดียว" — ไม่งั้นแต่ละ <div> กลายเป็น flex item
+     คนละช่อง แล้วบรรทัดท้าย ๆ หลุดออกนอกการ์ดทางขวา (บทเรียนเดียวกับ .ot-tbl) */
+  .psi-tbl td>span.psi-cell{display:block;flex:1 1 auto;min-width:0;text-align:right}
+  .psi-tbl td>span.psi-cell>*{text-align:right}
 }
+.psi-cal td{vertical-align:top}
+.psi-cal tbody tr:hover{background:var(--hov,#f6f9ff)}
 /* 🚚 สรุปรายสายบนหน้า "แอดมินตรวจ" — การ์ดหนึ่งใบต่อหนึ่งสาย กดแล้วกางรายการสินค้า
    หัวการ์ดเป็น grid ไม่ใช่ flex เพื่อให้ "ชื่อสาย / จำนวนลัง / เงิน" ของทุกสายตรงคอลัมน์กัน
    ซึ่งคือสิ่งที่ทำให้กวาดตาเทียบกันได้ · บนมือถือพับลงเป็นสองแถว */
@@ -18494,8 +18500,8 @@ async function parseMaster(name,buf){
  * ⚠️ "ยังไม่มีไฟล์ PSI ที่ครอบวันนั้น" กับ "มีไฟล์แล้วแต่ของยังไม่เข้า" คนละเรื่องกัน
  *    ห้ามรวมเป็นช่องเดียว ไม่งั้นวันที่ยังไม่ได้อัพไฟล์จะอ่านเหมือนศูนย์ไม่ส่งของ
  * ==========================================================================*/
-let PSIV={sec:"in",day:"",ord:"",only:"all",q:""};
-const PSI_SECS=[["in","📥 ของเข้าคลัง"],["chk","🔎 สั่งไป → ได้ของหรือยัง"]];
+let PSIV={sec:"cal",day:"",ord:"",only:"all",q:"",ym:""};
+const PSI_SECS=[["cal","📅 ตารางรับเข้า"],["in","📥 ของเข้าคลัง"],["chk","🔎 สั่งไป → ได้ของหรือยัง"]];
 function psiSetSec(k){PSIV.sec=k;renderPsi();}
 function psiSetDay(v){PSIV.day=v;renderPsi();}
 function psiSetOrd(v){PSIV.ord=v;renderPsi();}
@@ -18576,6 +18582,33 @@ function psiFrFor(code,ymd){
   return Math.round(psiWin(code,ymd).reduce((s,x)=>s+(+x.fr||0),0)*100)/100;
 }
 /* ============================================================================
+ * 🔄 ของตีคืน — "ศูนย์ลงบิลมาเท่าไหร่ แต่คลังเรารับเข้าจริงเท่าไหร่"
+ *
+ * เจ้าของถาม 28 พ.ย. 69: *"ผมคาดว่ามันน่าจะมีพวกออเดอร์ของตีคืนหน้างานคลังเลยตีกลับทำให้จัดส่ง
+ * ไม่สำเร็จ อ่านจากสถานะในไฟล์ PSI แล้วเทียบยอดจากใบสั่งซื้อรายรอบได้เลย"*
+ *
+ * 📏 ตรวจทุกคอลัมน์ของไฟล์ PSI ทั้งสองแบบแล้ว — **ไม่มีคอลัมน์สถานะเลยสักช่อง**:
+ *    ช่องที่เหลือทั้งหมดมีค่าเดียวทั้งไฟล์ (Region / Area / Distributor / Site / Supplier /
+ *    UOM) และ `Remarks` **ว่างทั้ง 192 แถว** · ไม่มี Order Status แบบไฟล์ใบจัดของ
+ * ✅ ช่องที่ตอบคำถามนี้ได้จริงคือคู่ **Invoice Qty (CS) ↔ Received Qty (CS)** ซึ่งก็คือ
+ *    ช่อง `Variance` ของไฟล์เอง: ศูนย์ลงบิลมา 10 ลัง คลังรับเข้า 8 ⇒ ตีคืน 2
+ * 📏 ในไฟล์จริงสองไฟล์ของเจ้าของ **Variance = 0 ทุกแถว** (235/235 และ 192/192) และ
+ *    รับเข้า = ลงบิล ทุกแถว ⇒ **ช่วงนี้ยังไม่มีของตีคืนเลย** หน้าเว็บต้องพูดออกมาแบบนั้น
+ *    ไม่ใช่เงียบ เพราะ "ไม่มีของตีคืน" กับ "ไม่รู้" เป็นคนละเรื่อง
+ * ⚠️ สถานะ `UnSuccessful Delivery` ที่เจ้าของนึกถึงอยู่ใน **ไฟล์ใบจัดของ (allocation)**
+ *    ช่อง `Order Status` — 41 แถวในไฟล์จริง — แต่นั่นคือ **รถเราส่งให้ร้านไม่สำเร็จ**
+ *    คนละขากับ "ศูนย์ส่งเข้าคลังเรา" ห้ามเอามาปนกัน
+ * ⚠️ `iq` เป็นช่องที่เพิ่งต่อท้าย — รอบที่อัพไว้ก่อนหน้านี้ไม่มี จึงต้องตอบ `null`
+ *    (= ยังไม่รู้) ห้ามคำนวณเป็น 0 แล้วอ่านว่าตีคืนทั้งรอบ
+ * ==========================================================================*/
+function psiRetFor(code,ymd){
+  const w=psiWin(code,ymd).filter(psiPaid);
+  if(!w.length)return null;
+  if(w.some(x=>x.iq==null))return null;      /* รอบเก่า ไม่มีข้อมูลพอจะตอบ */
+  const iq=w.reduce((s,x)=>s+(+x.iq||0),0),cs=w.reduce((s,x)=>s+(+x.cs||0),0);
+  return Math.round((iq-cs)*100)/100;
+}
+/* ============================================================================
  * 💰 "สั่งไป − Drop" เทียบ "ของเข้าคลัง (NIV)" — คำอธิบายของเจ้าของเอง 28 พ.ย. 69:
  *   *"ผมจะสรุปหน้าสถานะออเดอร์ซื้อ ให้คุณเข้าใจ มันคือหน้า order-drop เทียบกับช่อง
  *     delivery หรือของเข้าคลัง NIV นี้แหละ"*
@@ -18627,7 +18660,7 @@ function psiCheck(ymd){
   if(!day)return {rows:[],has:false};
   const om=orderedMerged(day),dp=day.dropped||{},res=!!day.hasResult;
   const cov=psiCovers(ymd);
-  let overDrop=0,dlvOver=0,fr=0,frN=0;
+  let overDrop=0,dlvOver=0,fr=0,frN=0,ret=0,retN=0,retUnk=0;
   const rows=Object.keys(om).map(c=>{
     const ord=Math.round((+om[c]||0)*100)/100;
     const e=(c in dp)?dp[c]:null;
@@ -18650,14 +18683,18 @@ function psiCheck(ymd){
     /* 🎁 ของแถมที่มาพร้อมรอบนี้ — นับแยก ห้ามบวกเข้า "เข้าคลังแล้ว" เพราะเราไม่ได้สั่งมัน */
     const gf=g?(+g.fr||0):psiFrFor(c,ymd);
     if(gf){fr=Math.round((fr+gf)*100)/100;frN++;}
+    /* 🔄 ตีคืน = ศูนย์ลงบิลมา − คลังรับเข้าจริง · null = รอบเก่าที่ยังไม่มีข้อมูลพอ */
+    const rt=g?psiRetFor(c,ymd):null;
+    if(g&&rt===null)retUnk++;
+    if(rt>0.001){ret=Math.round((ret+rt)*100)/100;retN++;}
     return {code:c,nm:(typeof oname==="function"?oname(c):"")||"",
-      ord:ord,drop:drop,raw:raw,due:due,got:got,left:left,fr:gf,
+      ord:ord,drop:drop,raw:raw,due:due,got:got,left:left,fr:gf,ret:rt,
       d:g?g.d:"",inv:g?g.inv:[],st:st,res:res};
   });
   /* รหัสที่อยู่ในใบ Drop แต่ไม่ได้อยู่ในใบสั่งของวันนี้เลย — บอกไว้ ไม่เอามาปนในยอด */
   const extra=Object.keys(dp).filter(c=>!(c in om));
   return {rows:rows,has:true,cov:cov,res:res,overDrop:overDrop,dlvOver:dlvOver,extra:extra,
-    fr:fr,frN:frN,money:psiMoney(ymd)};
+    fr:fr,frN:frN,ret:ret,retN:retN,retUnk:retUnk,money:psiMoney(ymd)};
 }
 const PSI_ST={full:{i:"✅",t:"เข้าครบแล้ว",p:"g"},part:{i:"🟡",t:"เข้าบางส่วน",p:"w"},
   wait:{i:"🕓",t:"ยังไม่เข้าคลัง",p:"b"},dropall:{i:"⛔",t:"โดน Drop ทั้งหมด",p:""},
@@ -18669,8 +18706,154 @@ function renderPsi(){
   const tb=document.getElementById("psiTabs"),el=document.getElementById("psiBody");
   if(!el)return;
   if(tb)tb.innerHTML=psiTabsHtml();
-  el.innerHTML=(PSIV.sec==="chk")?psiChkHtml():psiInHtml();
+  el.innerHTML=(PSIV.sec==="chk")?psiChkHtml():((PSIV.sec==="cal")?psiCalHtml():psiInHtml());
 }
+/* ============================================================================
+ * 📅 ตารางรับเข้า — สถานะว่า "ของที่ศูนย์สั่งซื้อไป เข้าคลังครบหรือยัง" ให้ทั้งบริษัทอ่าน
+ *
+ * เจ้าของสั่ง 28 พ.ย. 69: *"ปรับปฏิทินให้เป็นแบบตาราง แล้ววันไหนมีของเข้าให้มียอดสีเขียว
+ * คือของครบ สีแดงคือของยังไม่ครบ ทำขึ้นเป็นตาราง % การส่งของเข้าคลัง ให้ทุกคนในบริษัทรับรู้
+ * สถานะวันเวลาที่ออเดอร์ที่ศูนย์สั่งซื้อรับเข้าคลัง"*
+ *
+ * 🔑 และตารางนี้คือที่ที่ "สองวันที่" มาเจอกัน ซึ่งเจ้าของอธิบายไว้เองวันเดียวกัน:
+ *    *"สองส่วนนี้คือวันที่ตัวเลขนับเป็นยอดซื้อ กับวันที่ของพวกนี้เข้าคลัง มันแตกต่างกันบางวัน
+ *      เช่น ยอด 765k วันที่ขึ้นโชว์ในรีพอร์ตหน้าประวัติการสั่งของคือวันที่ 16 แต่วันที่ของ
+ *      เข้าคลังคือ 17 และยอดซื้อเข้าวันที่ 20 ของเข้าคลังมาแยกกันวันที่ 20/21"*
+ *    ถูกต้องทุกคำ และวัดจากไฟล์จริงได้แบบนี้ (PSI_Detail_Report_3):
+ *      บิล 16 พ.ย. (765,785) → เข้าคลัง 17 พ.ย. ทั้งก้อน
+ *      บิล 18 พ.ย. (1,409,361) → เข้าคลัง 19 พ.ย. ทั้งก้อน
+ *      บิล 20 พ.ย. (2,208,446) → เข้าคลัง **20 พ.ย. 1,042,436 + 21 พ.ย. 1,166,010**
+ *      บิล 24 พ.ย. (2,764,064) → เข้าคลัง **24 พ.ย. 1,067,296 + 25 พ.ย. 1,696,768**
+ *    วัดทั้งไฟล์: ของเข้าวันเดียวกับบิล 70 แถว · +1 วัน 165 แถว · **ไม่เคยเกิน +1 วัน**
+ *
+ * ⚠️ สองวันนี้ตอบคนละคำถาม และห้ามสลับกัน:
+ *    **วันที่ศูนย์ออกบิล (`cr`)** = วันที่นับเป็นยอดซื้อ — เป็นคีย์ของช่อง 📥 ของเข้าคลัง (NIV)
+ *      ในหน้าประวัติการสั่งของ (วัดแล้วตรงกับไฟล์ของเจ้าของ ดูบันทึกที่ `psiCrIdx`)
+ *    **วันที่คลังรับเข้า** = วันที่ของถึงมือเรา — เป็นคีย์ของ `PSI.rows` และของหน้า ① ของเข้าคลัง
+ * ⚠️ % ที่โชว์คือ **เข้าคลังแล้ว ÷ ต้องได้ (เราสั่ง − Drop)** ไม่ใช่ ÷ ที่ศูนย์ลงบิล —
+ *    คำถามของเจ้าของคือ "ของที่สั่งไปเข้าครบหรือยัง"
+ * ⚠️ รอบที่ยังไม่มีไฟล์ PSI ครอบถึง = **ขีด ห้ามเป็น 0%** ไม่งั้นวันที่ยังไม่ได้อัพไฟล์
+ *    จะอ่านว่าศูนย์ไม่ส่งของ
+ * ⚠️ อ่านอย่างเดียวทั้งหน้า และทุกบทบาทเปิดได้ (เจ้าของขอ "ให้ทุกคนในบริษัทรับรู้")
+ * ==========================================================================*/
+function psiPct(got,due){
+  if(due==null||!(due>0))return null;
+  return Math.round((got/due)*1000)/10;
+}
+function psiPctCol(p){
+  if(p==null)return "var(--muted)";
+  if(p>=99.95)return "var(--good)";
+  if(p>=75)return "#8a6500";
+  return "var(--bad)";
+}
+/* หนึ่งแถว = หนึ่งรอบใบสั่ง · รวมข้อมูลจากสองฝั่งเข้าด้วยกัน ไม่เก็บอะไรใหม่ */
+function psiRounds(){
+  const out=[],cr=psiCrIdx();
+  const ds=psiOrdDates().slice().sort();
+  const seen={};
+  ds.forEach(d=>{seen[d]=1;});
+  /* วันที่ศูนย์ออกบิลที่ไม่มีใบสั่งของเราเลย ก็ต้องเห็น ไม่ใช่หายไปเงียบ ๆ */
+  Object.keys(cr).forEach(d=>{if(!seen[d]){seen[d]=1;ds.push(d);}});
+  ds.sort();
+  ds.forEach(d=>{
+    const C=cr[d]||null;
+    const R=psiCheck(d);
+    const sum=(R.rows||[]).reduce((s,r)=>({due:s.due+r.due,got:s.got+r.got,
+      left:s.left+(r.left||0),n:s.n+1}),{due:0,got:0,left:0,n:0});
+    const has=!!R.has;
+    const pct=(has&&R.cov)?psiPct(sum.got,sum.due):null;
+    out.push({d:d,has:has,cov:R.cov,
+      due:has?Math.round(sum.due*100)/100:null,
+      got:(has&&R.cov)?Math.round(sum.got*100)/100:null,
+      left:(has&&R.cov)?Math.round(sum.left*100)/100:null,
+      n:sum.n,pct:pct,ret:R.ret||0,retN:R.retN||0,fr:R.fr||0,
+      rec:C?(C.rec||[]):[],by:C?(C.by||{}):{},niv:C?C.v:null,recCs:C?C.cs:null});
+  });
+  return out.reverse();     /* ใหม่สุดอยู่บน เหมือนตัวเลือกวันทุกหน้า */
+}
+function psiCalHtml(){
+  const rows=psiRounds();
+  if(!rows.length)return `<div class="panel"><h3>📅 ตารางรับเข้า</h3>
+    <div class="insight">ยังไม่มีข้อมูล — อัพไฟล์ใบสั่ง (BD_...xlsx) และไฟล์ <b>PSI</b> ก่อน</div></div>`;
+  const yms={};rows.forEach(r=>{yms[String(r.d).slice(0,7)]=1;});
+  const ml=Object.keys(yms).sort().reverse();
+  if(!PSIV.ym||ml.indexOf(PSIV.ym)<0)PSIV.ym=ml[0];
+  const show=rows.filter(r=>String(r.d).slice(0,7)===PSIV.ym);
+  const opt=ml.map(m=>`<option value="${m}"${m===PSIV.ym?" selected":""}>${anaEsc(fmtMonth?fmtMonth(m):m)}</option>`).join("");
+  const tot=show.reduce((s,r)=>({due:s.due+(r.due||0),got:s.got+(r.got||0),
+    left:s.left+(r.left||0),ret:s.ret+(r.ret||0),niv:s.niv+(r.niv||0),
+    full:s.full+((r.pct!=null&&r.pct>=99.95)?1:0),part:s.part+((r.pct!=null&&r.pct<99.95)?1:0),
+    wait:s.wait+((r.pct==null)?1:0)}),
+    {due:0,got:0,left:0,ret:0,niv:0,full:0,part:0,wait:0});
+  const totPct=psiPct(tot.got,tot.due);
+  const body=show.map(r=>{
+    const col=psiPctCol(r.pct);
+    /* 📅 วันที่ของเข้าคลัง — บิลวันเดียวเข้าได้หลายวัน จึงแจกแจงทุกวันพร้อมจำนวน */
+    const recTxt=r.rec.length
+      ? r.rec.map(x=>{const b=r.by[x]||{};
+          return `<div><b>${anaEsc(fmtDayMon(x))}</b>`+
+            (b.cs?` <span class="psub">${psiN(b.cs)} ลัง</span>`:"")+`</div>`;}).join("")
+      : (r.cov?`<div class="psub">ยังไม่มีของเข้า</div>`
+             :`<div class="psub">รอไฟล์ PSI</div>`);
+    const gap=r.rec.length?(Math.round((new Date(r.rec[0]+"T00:00:00")-new Date(r.d+"T00:00:00"))/86400000)):null;
+    return `<tr class="psi-cal-r" onclick="psiGoRound('${r.d}')" style="cursor:pointer">
+      <td data-l="ศูนย์ออกบิล" style="text-align:left"><span class="psi-cell"><b>${anaEsc(fmtDate(r.d))}</b>
+        <div class="psub">${r.has?(r.n+" รายการ"):"ไม่มีใบสั่ง"}</div></span></td>
+      <td data-l="ของเข้าคลัง" style="text-align:left"><span class="psi-cell">${recTxt}${
+        gap!==null?`<div class="psub">${gap===0?"วันเดียวกับบิล":("ช้ากว่าบิล "+gap+" วัน")}${
+          r.rec.length>1?(" · แยก "+r.rec.length+" วัน"):""}</div>`:""}</span></td>
+      <td data-l="ต้องได้">${r.due==null?'<span class="psub">-</span>':`<b>${psiN(r.due)}</b>`}</td>
+      <td data-l="เข้าคลังแล้ว">${r.got==null?'<span class="psub">-</span>':`<b class="up">${psiN(r.got)}</b>`}</td>
+      <td data-l="ยังค้าง">${r.left==null?'<span class="psub">-</span>'
+        :(r.left>0.001?`<b class="down">${psiN(r.left)}</b>`:'<span class="up">ครบ</span>')}</td>
+      <td data-l="ตีคืน">${r.ret>0.001?`<b class="down">${psiN(r.ret)}</b>`:'<span class="psub">-</span>'}</td>
+      <td data-l="มูลค่า (NIV)">${r.niv?THBk(r.niv):'<span class="psub">-</span>'}</td>
+      <td data-l="% เข้าคลัง" style="min-width:120px">${r.pct==null
+        ?'<span class="psub">รอไฟล์ PSI</span>'
+        :`<span class="psi-cell" style="min-width:110px">
+          <div style="font-weight:800;color:${col};font-size:17px">${r.pct.toLocaleString()}%</div>
+          <div style="height:7px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:3px">
+            <div style="height:100%;width:${Math.max(2,Math.min(100,r.pct))}%;background:${col}"></div></div></span>`}</td>
+    </tr>`;}).join("");
+  return `<div class="panel"><div class="controls" style="margin:0">
+      <div class="ctl"><label>เดือน</label><div class="dstep">
+        <button type="button" class="dstep-b" onclick="selStep('psiYm',-1)" title="เดือนก่อนหน้า">◀</button>
+        <select id="psiYm" data-rev="1" onchange="psiSetYm(this.value)">${opt}</select>
+        <button type="button" class="dstep-b" onclick="selStep('psiYm',1)" title="เดือนถัดไป">▶</button>
+      </div></div>
+    </div></div>
+    <div class="cards sp-c5">
+      <div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">🎯 ต้องได้</div>
+        <div class="v">${psiN(tot.due)}</div><div class="s">ลัง · ${show.length} รอบ</div></div>
+      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">✅ เข้าคลังแล้ว</div>
+        <div class="v up">${psiN(tot.got)}</div><div class="s">ลัง · ${tot.full} รอบเข้าครบ</div></div>
+      <div class="card" style="border-top:3px solid #8a6500"><div class="k" style="color:#8a6500">🔴 ยังค้าง</div>
+        <div class="v" style="color:${tot.left>0.001?"var(--bad)":"var(--good)"}">${psiN(tot.left)}</div>
+        <div class="s">ลัง · ${tot.part} รอบยังไม่ครบ</div></div>
+      <div class="card"><div class="k">🔄 ตีคืน</div>
+        <div class="v" style="color:${tot.ret>0.001?"var(--bad)":"var(--muted)"}">${tot.ret>0.001?psiN(tot.ret):"0"}</div>
+        <div class="s">ลัง · รับเข้าไม่ครบตามบิล</div></div>
+      <div class="card" style="border-top:3px solid ${psiPctCol(totPct)}"><div class="k">% เข้าคลัง</div>
+        <div class="v" style="color:${psiPctCol(totPct)}">${totPct==null?"-":(totPct.toLocaleString()+"%")}</div>
+        <div class="s">${tot.wait?(tot.wait+" รอบยังไม่มีไฟล์ PSI"):"ทั้งเดือนนี้"}</div></div>
+    </div>
+    <div class="panel"><h3>📅 ออเดอร์ที่ศูนย์สั่งซื้อ → เข้าคลังวันไหน</h3>
+      <div class="psub"><b>ศูนย์ออกบิล</b> คือวันที่นับเป็นยอดซื้อ (ตรงกับหน้า 📊 ประวัติการสั่งของ) ·
+        <b>ของเข้าคลัง</b> คือวันที่ของถึงคลังจริง — <b>คนละวันกันได้</b> และบิลวันเดียวของเข้าหลายวันก็ได้
+        <br><b>% เข้าคลัง</b> = เข้าคลังแล้ว ÷ ต้องได้ (เราสั่ง − Drop) ·
+        <span style="color:var(--good);font-weight:700">เขียว = ครบ</span> ·
+        <span style="color:var(--bad);font-weight:700">แดง = ยังไม่ครบ</span> ·
+        รอบที่ยังไม่มีไฟล์ PSI ครอบถึงขึ้นขีด ไม่ใช่ 0% · กดที่แถวเพื่อดูรายสินค้า</div>
+      <div class="tblwrap"><table class="psi-tbl psi-cal">
+        <thead><tr><th style="text-align:left">ศูนย์ออกบิล</th><th style="text-align:left">ของเข้าคลัง</th>
+          <th>ต้องได้</th><th>เข้าคลังแล้ว</th><th>ยังค้าง</th><th>ตีคืน</th><th>มูลค่า (NIV)</th>
+          <th>% เข้าคลัง</th></tr></thead>
+        <tbody>${body}</tbody></table></div>
+    </div>`;
+}
+function psiSetYm(v){PSIV.ym=v;renderPsi();}
+function psiGoRound(d){PSIV.ord=d;PSIV.sec="chk";PSIV.only="all";PSIV.q="";renderPsi();
+  try{window.scrollTo({top:0,behavior:"instant"});}catch(e){window.scrollTo(0,0);}}
 /* ---------- ① ของเข้าคลัง ---------- */
 function psiInHtml(){
   const P=psiOk(),ds=psiDays();
@@ -18776,6 +18959,18 @@ function psiMoneyHtml(d,M){
     ${w.length?`<div class="note" style="margin-top:10px">⚠️ ${w.join("<br>⚠️ ")}</div>`:""}
     </div>`;
 }
+/* 🔄 ของตีคืน — "ไม่มีของตีคืน" กับ "ยังไม่รู้" เป็นคนละเรื่อง ต้องพูดออกมาทั้งสองแบบ */
+function psiRetNote(R){
+  if(!R.cov)return "";
+  if(R.ret>0.001)
+    return `<div class="note" style="margin-top:8px">🔄 รอบนี้มีของที่<b>ศูนย์ลงบิลมาแต่คลังรับเข้าไม่ครบ</b>
+      <b>${psiN(R.ret)}</b> ลัง ใน <b>${R.retN}</b> รายการ — ของตีคืนหน้างาน/รับไม่ครบ
+      ดูช่อง <b>🔄 ตีคืน</b> ในตาราง · ช่อง "เข้าคลังแล้ว" นับเฉพาะที่รับเข้าจริง</div>`;
+  if(R.retUnk&&!R.retN)
+    return `<div class="psub">🔄 <b>ของตีคืน:</b> รอบนี้อัพไฟล์ PSI ไว้ก่อนระบบจะเก็บจำนวนที่ศูนย์ลงบิล
+      จึงยังตอบไม่ได้ — อัพไฟล์ PSI ที่ครอบรอบนี้อีกครั้งแล้วจะขึ้นให้เอง</div>`;
+  return `<div class="psub">🔄 <b>ของตีคืน:</b> รอบนี้ไม่มี — ทุกรายการที่ศูนย์ลงบิลมา คลังรับเข้าครบตามบิล</div>`;
+}
 /* ---------- ② สั่งไป → ได้ของหรือยัง ---------- */
 function psiChkHtml(){
   const ds=psiOrdDates();
@@ -18800,6 +18995,7 @@ function psiChkHtml(){
   const byCode={};show.forEach(r=>byCode[r.code]=r);
   const PCLS={full:"r-ok",part:"r-nokey",wait:"r-noalloc",dropall:"r-diff",nofile:""};
   const hasFr=R.fr>0;   /* 🎁 มีเฉพาะไฟล์ละเอียด — ไม่มีก็ไม่ต้องขึ้นช่องว่างให้รก */
+  const hasRet=R.ret>0; /* 🔄 ของตีคืน — ขึ้นช่องเฉพาะรอบที่มีจริง */
   const bands=grpByCat(codes).map(g=>{
     const list=poSeqSort(g.list,null,null);
     return {title:`${g.icon} ${g.cat}`,sub:`· ${list.length} รายการ`,
@@ -18813,12 +19009,14 @@ function psiChkHtml(){
             :(r.got?`<b class="up">${psiN(r.got)}</b>`:'<span class="psub">0</span>')}</span></td>`+
           `<td data-l="ยังค้าง"><span>${r.left===null?'<span class="psub">-</span>'
             :(r.left>0.001?`<b class="down">${psiN(r.left)}</b>`:'<span class="up">ครบ</span>')}</span></td>`+
+          (hasRet?`<td data-l="ตีคืน"><span>${(r.ret>0.001)?`<b class="down">${psiN(r.ret)}</b>`
+            :(r.ret===null?'<span class="psub">-</span>':'<span class="psub">0</span>')}</span></td>`:"")+
           (hasFr?`<td data-l="ของแถม"><span>${(+r.fr)?`<b class="up">${psiN(r.fr)}</b>`:"-"}</span></td>`:"")+
           `<td data-l="วันที่เข้า"><span>${r.d?anaEsc(fmtDayMon(r.d)):"-"}</span></td>`+
           `<td data-l="สถานะ" style="text-align:left"><span class="pill ${S.p}">${S.i} ${S.t}</span></td></tr>`;})};
   });
   const tbl=grpTable([{h:"สินค้า",a:"l"},{h:"เราสั่ง"},{h:"โดน Drop"},{h:"ต้องได้"},
-      {h:"เข้าคลังแล้ว"},{h:"ยังค้าง"}].concat(hasFr?[{h:"🎁 ของแถม"}]:[],
+      {h:"เข้าคลังแล้ว"},{h:"ยังค้าง"}].concat(hasRet?[{h:"🔄 ตีคืน"}]:[],hasFr?[{h:"🎁 ของแถม"}]:[],
       [{h:"วันที่เข้า"},{h:"สถานะ",a:"l"}]),
     bands,{alwaysBand:true,cls:"psi-tbl sp-rt",empty:'<div class="insight">ไม่มีรายการที่ตรงกับที่เลือกไว้</div>'});
   /* ⚠️ สองไฟล์ไม่ตรงกัน = ข้อเท็จจริงที่เจ้าของต้องรู้ ไม่ใช่เรื่องที่ระบบควรกลืนแล้วคิดเลขต่อ */
@@ -18866,6 +19064,7 @@ function psiChkHtml(){
       ${hasFr?`<div class="psub">🎁 รอบนี้มี<b>ของแถม</b>เข้ามาด้วย <b>${psiN(R.fr)}</b> ลัง
         (${R.frN} รายการ) — <b>ไม่ได้นับ</b>รวมในช่อง "เข้าคลังแล้ว" เพราะเราไม่ได้สั่งมัน
         ถ้ารวมกันของบางตัวจะอ่านว่าเข้าเกินที่สั่ง</div>`:""}
+      ${psiRetNote(R)}
       ${note}
       ${warn.length?`<div class="note" style="margin-top:8px">⚠️ ${warn.join("<br>⚠️ ")}</div>`:""}
       <div class="rq-lines" style="margin:10px 0">
@@ -18966,7 +19165,7 @@ function parsePSI(name,buf){
   if(miss.length)throw new Error("ไฟล์ PSI ขาดคอลัมน์: "+miss.join(" / ")+" — รูปแบบไฟล์อาจเปลี่ยน แจ้งให้ปรับโปรแกรมได้");
   const T=v=>String(v==null?"":v).trim();
   const rows={},days={},names={};
-  let n=0,skipFoot=0,skipNo=0,varied=0,pcs=0,noDate=0,frRows=0,frCs=0;
+  let n=0,skipFoot=0,skipNo=0,varied=0,pcs=0,noDate=0,frRows=0,frCs=0,retCs=0;
   const unkWh={};
   for(let i=1;i<A.length;i++){
     const r=A[i];if(!r)continue;
@@ -18977,6 +19176,10 @@ function parsePSI(name,buf){
     const d=alDate(r[C.rec]);
     if(!d){noDate++;continue;}
     const cs=alNum(r[C.rcs]),pc=C.rpc>=0?alNum(r[C.rpc]):0;
+    /* 🔄 จำนวนที่ "ศูนย์ลงบิลมา" เก็บไว้ด้วย เพื่อตอบคำถามของตีคืน (บิลมา − รับเข้า)
+       ไฟล์ไม่มีคอลัมน์สถานะเลย (วัดแล้ว ทุกช่องที่เหลือเป็นค่าเดียว · Remarks ว่างทั้งไฟล์)
+       ช่องที่บอกเรื่องนี้ได้จริงคือคู่ Invoice Qty / Received Qty ซึ่งก็คือ Variance ของไฟล์เอง */
+    const iq=C.ics>=0?alNum(r[C.ics]):0;
     if(C.vr>=0&&alNum(r[C.vr])!==0)varied++;
     if(pc)pcs++;
     /* ของแถม (คลัง Free) เก็บแยกจากของซื้อ — คลังที่อ่านไม่ออกนับเป็นของขายและรายงาน */
@@ -18986,18 +19189,22 @@ function parsePSI(name,buf){
     const free=(whk==="gift");
     const k=d+"|"+code;
     const e=rows[k]||(rows[k]={cs:0,v:0,inv:[],cr:C.cre>=0?alDate(r[C.cre]):"",dt:det?1:0});
-    if(free){e.fr=Math.round(((e.fr||0)+cs)*100)/100;frRows++;frCs+=cs;}
+    if(free){e.fr=Math.round(((e.fr||0)+cs)*100)/100;
+      e.ifq=Math.round(((e.ifq||0)+iq)*100)/100;frRows++;frCs+=cs;}
     else{
       e.cs=Math.round((e.cs+cs)*100)/100;
+      e.iq=Math.round(((e.iq||0)+iq)*100)/100;
       if(pc)e.pc=(e.pc||0)+pc;
       if(C.niv>=0)e.v=Math.round(e.v+alNum(r[C.niv]));
     }
+    if(iq>cs+0.001)retCs+=iq-cs;
     const iv=T(r[C.inv]);if(iv&&e.inv.indexOf(iv)<0&&e.inv.length<12)e.inv.push(iv);
     const nm=C.nm>=0?T(r[C.nm]):"";if(nm)names[code]=nm;
-    const dd=days[d]||(days[d]={n:0,cs:0,v:0,iv:[]});
+    const dd=days[d]||(days[d]={n:0,cs:0,v:0,iq:0,iv:[]});
     dd.n++;
     if(free)dd.fr=Math.round(((dd.fr||0)+cs)*100)/100;
     else{dd.cs=Math.round((dd.cs+cs)*100)/100;
+      dd.iq=Math.round((dd.iq+iq)*100)/100;
       if(C.niv>=0)dd.v=Math.round(dd.v+alNum(r[C.niv]));}
     if(iv&&dd.iv.indexOf(iv)<0)dd.iv.push(iv);
     n++;
@@ -19016,7 +19223,7 @@ function parsePSI(name,buf){
   const dl=Object.keys(days).sort();
   dl.forEach(d=>{const x=days[d],o=P.days[d];
     if(!det&&o&&o.dt)return;
-    const rec={n:x.n,cs:x.cs,v:x.v,iv:x.iv.length,at:at,by:who,byName:whoN,file:name};
+    const rec={n:x.n,cs:x.cs,v:x.v,iq:x.iq,iv:x.iv.length,at:at,by:who,byName:whoN,file:name};
     if(x.fr!=null)rec.fr=x.fr;
     if(det)rec.dt=1;
     P.days[d]=rec;});
@@ -19026,7 +19233,8 @@ function parsePSI(name,buf){
   let nmAdd=0;Object.keys(names).forEach(c=>{if(!ORDERS.names[c]){ORDERS.names[c]=names[c];nmAdd++;}});
   PSI.up=at;
   const warn=[];
-  if(varied)warn.push("มีแถวที่รับไม่ตรงกับบิล <b>"+varied+"</b> แถว (ช่อง Variance ไม่เป็น 0)");
+  if(varied||retCs)warn.push("🔄 มีของที่<b>รับเข้าไม่ครบตามบิล</b> "+varied+" แถว รวม <b>"+
+    psiN(retCs)+"</b> ลัง — หน้า 🔎 สั่งไป → ได้ของหรือยัง ขึ้นให้เป็น \"ตีคืน\" แล้ว");
   if(pcs)warn.push("มีแถวที่รับเป็นชิ้น <b>"+pcs+"</b> แถว");
   if(noDate)warn.push("ข้ามแถวที่ไม่มีวันที่รับเข้า <b>"+noDate+"</b> แถว");
   const uk=Object.keys(unkWh);
@@ -19058,8 +19266,9 @@ function psiIdx(){
   Object.keys(P.rows||{}).forEach(k=>{
     const i=k.indexOf("|");if(i<0)return;
     const d=k.slice(0,i),c=k.slice(i+1),r=P.rows[k]||{};
+    /* `iq` ต้องคง undefined ไว้เมื่อเรคอร์ดเก่าไม่มี — ห้ามแปลงเป็น 0 (ดูบันทึกที่ psiRetFor) */
     (m[c]=m[c]||[]).push({d:d,cs:+r.cs||0,pc:+r.pc||0,v:+r.v||0,fr:+r.fr||0,
-      inv:r.inv||[],cr:r.cr||""});
+      iq:(r.iq==null?null:(+r.iq||0)),inv:r.inv||[],cr:r.cr||""});
   });
   Object.keys(m).forEach(c=>m[c].sort((a,b)=>a.d<b.d?-1:1));
   _psiIdx=m;return m;
@@ -19113,13 +19322,24 @@ function psiCrIdx(){
   Object.keys(P.rows||{}).forEach(k=>{
     const r=P.rows[k]||{},c=String(r.cr||"");
     if(!/^\d{4}-\d{2}-\d{2}$/.test(c))return;
-    const e=m[c]||(m[c]={v:0,n:0,cs:0,fr:0,rec:{}});
+    const e=m[c]||(m[c]={v:0,n:0,cs:0,fr:0,iq:0,noIq:0,rec:{},by:{}});
     e.v+=+r.v||0;e.cs+=+r.cs||0;e.fr+=+r.fr||0;e.n++;
-    const d=k.slice(0,k.indexOf("|"));if(d)e.rec[d]=1;
+    /* `iq` ต่อท้ายทีหลัง — รอบที่อัพไว้ก่อนมีช่องนี้ต้องไม่อ่านว่า "ลงบิล 0 ⇒ ตีคืนทั้งหมด" */
+    if(r.iq==null)e.noIq++;else e.iq+=+r.iq||0;
+    /* 📅 แตกตามวันที่ของเข้าคลังด้วย — บิลวันเดียวของเข้าได้หลายวัน (วัดจริง: บิล 20 พ.ย.
+       ของเข้า 20 กับ 21) นี่คือความต่างของ "วันที่นับเป็นยอดซื้อ" กับ "วันที่ของเข้าคลัง" */
+    const d=k.slice(0,k.indexOf("|"));
+    if(d){e.rec[d]=1;
+      const b=e.by[d]||(e.by[d]={cs:0,fr:0,v:0,iq:0,n:0});
+      b.cs+=+r.cs||0;b.fr+=+r.fr||0;b.v+=+r.v||0;b.iq+=+r.iq||0;b.n++;}
   });
-  Object.keys(m).forEach(c=>{m[c].v=Math.round(m[c].v*100)/100;
-    m[c].cs=Math.round(m[c].cs*100)/100;m[c].fr=Math.round(m[c].fr*100)/100;
-    m[c].rec=Object.keys(m[c].rec).sort();});
+  Object.keys(m).forEach(c=>{const e=m[c];
+    e.v=Math.round(e.v*100)/100;e.cs=Math.round(e.cs*100)/100;
+    e.fr=Math.round(e.fr*100)/100;e.iq=Math.round(e.iq*100)/100;
+    Object.keys(e.by).forEach(d=>{const b=e.by[d];
+      b.cs=Math.round(b.cs*100)/100;b.fr=Math.round(b.fr*100)/100;
+      b.v=Math.round(b.v*100)/100;b.iq=Math.round(b.iq*100)/100;});
+    e.rec=Object.keys(e.rec).sort();});
   _psiCr=m;return m;
 }
 /* คืน null = ยังไม่มีไฟล์ที่ครอบวันนั้น (ห้ามแสดงเป็น 0) */
@@ -19132,7 +19352,7 @@ function psiCrOf(ymd){
   const t=new Date(d+"T00:00:00");t.setDate(t.getDate()+2);
   const lim=ymdOf(t);
   /* มีไฟล์ครอบถึง D+2 แล้วแต่ไม่มีของวันนั้นเลย = ศูนย์ไม่ได้ออกบิลวันนั้นจริง ๆ */
-  return ds.some(x=>x>=lim)?{v:0,n:0,cs:0,fr:0,rec:[]}:null;
+  return ds.some(x=>x>=lim)?{v:0,n:0,cs:0,fr:0,iq:0,noIq:0,rec:[],by:{}}:null;
 }
 
 /* Daily Drop Report parser (clean table: Material / Material Description) */

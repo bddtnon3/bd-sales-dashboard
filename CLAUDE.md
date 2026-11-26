@@ -751,6 +751,11 @@ code, never printed.
   a month boundary. Everything that wants "the date on the user's calendar" goes through `ymdOf`.
   The one correct use that stays is a date built with `Date.UTC(...)` and read back with `getUTC*`
   (the Excel serial converter and the PJP calendar): both sides are UTC, so they cannot drift.
+  **The same trap bit the TESTS on 28 Nov 26**: four fixtures in `spord.test.cjs` built "today"
+  with `new Date().toISOString().slice(0,10)` while the browser context runs in `Asia/Bangkok`, so
+  from 17:00 UTC onward the fixture's "tomorrow" was the app's today and three checks failed — on
+  the committed code, with nothing changed. A test that only fails in the evening is worse than no
+  test: they go through **`ymdOf`** now, like the app.
   The **📥 สถานะออเดอร์ (ซื้อ)** tab group (`renderPsi`/`parsePSI`) answers the other half of the
   question: *what did we order from Unilever, and when did it reach our warehouse?* The owner asked
   for it on 27 Nov 26 — *"หมวด สถานะออเดอร์ (ซื้อ) โดยวางไว้ตรงกลางของ การสั่งของ และ สต็อค ส่วนตัวเดิม
@@ -799,8 +804,26 @@ code, never printed.
   receive-date badge read live with no second fetch. A PSI export can be filtered to part of a
   period, so a new upload **writes only the keys it carries** and says so (the `parseDailyDcode`
   rule); a header it needs that is missing **throws and stores nothing**.
+  **📅 Two dates, two questions, and the page must never swap them** — the owner set this out
+  himself on 28 Nov 26: *"สองส่วนนี้คือวันที่ตัวเลขนับเป็นยอดซื้อ กับวันที่ของพวกนี้เข้าคลัง
+  มันแตกต่างกันบางวัน … ยอด 765k วันที่ขึ้นโชว์ในรีพอร์ตหน้าประวัติการสั่งของคือวันที่ 16 แต่วันที่
+  ของเข้าคลังคือ 17 และยอดซื้อเข้าวันที่ 20 ของเข้าคลังมาแยกกันวันที่ 20/21"*. Every word checks
+  out against his real file: 16 Nov (765,785) → 17 Nov whole · 18 Nov → 19 Nov whole ·
+  **20 Nov → 20 Nov 1,042,436 + 21 Nov 1,166,010** · **24 Nov → 24 Nov 1,067,296 + 25 Nov
+  1,696,768**; over the file, same day 70 rows, +1 day 165, never further.
+  **`cr` (the centre's invoice date) is the day the money counts as a purchase** and keys
+  📥 ของเข้าคลัง (NIV) on ประวัติการสั่งของ; **the receiving date keys `PSI.rows` and tab ①**.
+  `psiCrIdx` now also carries `by[receivingDay]`, so the split is available wherever it is wanted.
   The page is **strictly read-only** over PSI/ORDERS/POSTATUS with its state on the non-synced
-  `PSIV`, and has two sub-tabs: **📥 ของเข้าคลัง** (per receiving day — products, cases, value,
+  `PSIV`, and has three sub-tabs. The first, **📅 ตารางรับเข้า** (`psiRounds`/`psiCalHtml`), is the
+  company status board the owner asked for — *"ปรับปฏิทินให้เป็นแบบตาราง แล้ววันไหนมีของเข้าให้มี
+  ยอดสีเขียว คือของครบ สีแดงคือของยังไม่ครบ ทำขึ้นเป็นตาราง % การส่งของเข้าคลัง ให้ทุกคนในบริษัท
+  รับรู้"*: one row per order round — ศูนย์ออกบิล · ของเข้าคลัง (every receiving day with its own
+  case count and how many days late) · ต้องได้ · เข้าคลังแล้ว · ยังค้าง · ตีคืน · NIV · **% with a
+  bar, green at 100% and red below** (`psiPct`/`psiPctCol`). The % is **received ÷ due (ordered −
+  Drop)**, not ÷ invoiced, because his question is "did what I ordered arrive"; a round no PSI file
+  covers is a **dash, never 0%**; tapping a row opens ② for that round; every role can open it.
+  Then **📥 ของเข้าคลัง** (per receiving day — products, cases, value,
   invoice numbers, banded by the order form's own categories) and **🔎 สั่งไป → ได้ของหรือยัง**,
   which is the reconciliation the owner asked for: per code, ศูนย์สั่ง → หัก Drop → **ควรได้** →
   เข้าคลังแล้ว → **ขาดอีก** → วันที่เข้า. `ควรได้` is the quantity the Drop file says was actually
@@ -846,13 +869,26 @@ code, never printed.
   owner's 21 Nov screen read ORDER–DROP = −21,759.18 with the same หัก DROP as the 20th, the money
   twin of the case bug fixed the same day. Free goods have no money (GSV/NIV 0 on every real row),
   so they never touch this band.
+  **🔄 ของตีคืน — the PSI file has no status column at all** (`psiRetFor`/`psiRetNote`). The owner
+  expected one on 28 Nov 26: *"ผมคาดว่ามันน่าจะมีพวกออเดอร์ของตีคืนหน้างานคลังเลยตีกลับทำให้จัดส่ง
+  ไม่สำเร็จ อ่านจากสถานะในไฟล์ PSI"*. Every column of both formats was checked: all the remaining
+  ones hold a single value for the whole file (Region, Area, Distributor, Site, Supplier, UOM) and
+  **`Remarks` is empty on all 192 rows**. What does answer the question is the pair
+  **`Invoice Qty (CS)` ↔ `Received Qty (CS)`** — the file's own `Variance`: the centre billed 10
+  cases, the warehouse took in 8, so 2 came back. Measured on both real files, **`Variance` is 0 on
+  every row** (235/235 and 192/192), so there were no returns in that period — and the page
+  **says so out loud** rather than leaving a blank, because "none" and "not known" are different
+  facts. `iq` is an appended field, so a round stored before it exists answers **null**, never 0,
+  or the whole round would read as returned. ⚠️ The `UnSuccessful Delivery` status the owner had in
+  mind is in the **allocation file** (`Order Status`, 41 rows in his real file) and means **our van
+  failed to deliver to a shop** — the other direction entirely; never mix the two.
   **The receive date is appended to the existing order-status badge** (`psiPill` inside
   `reqStatusCell`), so every page that shows a product's order status — the manager's combined
   request table, the rep's own request page, ขอแล้วสั่งไม่ได้ — gains it at once. It is a **separate
   pill, never merged into the Drop badge**: the Drop file is the centre's answer, PSI is our
   warehouse's, and they are different steps. With no PSI file covering that round the pill is
   **silent**, never "ยังไม่เข้า". Prove it with
-  **`node test/browser/psi.test.cjs`** (82 checks, self-contained with made-up codes; 85 with the
+  **`node test/browser/psi.test.cjs`** (100 checks, self-contained with made-up codes; 103 with the
   real file via `PSI_FILE=/path/PSI_Detail_Report_3.xlsx` — either format — which never enters the
   repo) plus the `PSI` cases in `merge-safety`.
   The **📋 สถานะออเดอร์ (ขาย)** tab group (`renderOtrk`) answers *"where is this order?"* for the whole
