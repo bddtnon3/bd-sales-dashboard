@@ -1812,11 +1812,39 @@ console.log("TEST 33 — 📥 PSI (คลังรับของเข้าจ
         p4.PSI.days["2026-11-17"].by === "admin2" && Object.keys(p4.PSI.rows).length === 3,
         JSON.stringify(p4.PSI.days["2026-11-17"]));
 
+  /* 🎁 ไฟล์ละเอียด (PSI_Detail_Report) เพิ่ม fr = ของแถม และ dt:1 = คีย์นี้มาจากไฟล์ละเอียด
+     ทั้งสองเป็น "ช่องบนเรคอร์ดเดิม" ไม่ใช่ section ใหม่ · rows/days merge ทีละคีย์ทั้งเรคอร์ด
+     แท็บเก่าที่ไม่รู้จักช่องนี้ ต้องลบของแถมของคีย์อื่นทิ้งไม่ได้ */
+  const det = JSON.parse(JSON.stringify(base));
+  det.PSI = { rows: {
+      "2026-11-17|90000001": { cs: 40, fr: 6, v: 14000, inv: ["3100000001"], cr: "2026-11-16", dt: 1 },
+      "2026-11-17|90000007": { cs: 0, fr: 3, v: 0, inv: ["3100000001"], cr: "2026-11-16", dt: 1 } },
+    days: { "2026-11-17": { n: 3, cs: 200, fr: 9, v: 80000, iv: 1, at: 80000,
+      by: "admin1", file: "PSI_Detail_Report_3.xlsx", dt: 1 } }, up: 80000 };
+  const pd1 = mergeState(p4, det);
+  check("🎁 ไฟล์ละเอียดเก็บของแถม (fr) และธงไฟล์ละเอียด (dt) ได้ครบ",
+        pd1.PSI.rows["2026-11-17|90000001"].fr === 6 &&
+        pd1.PSI.rows["2026-11-17|90000001"].dt === 1 &&
+        pd1.PSI.rows["2026-11-17|90000007"].fr === 3 &&
+        pd1.PSI.days["2026-11-17"].fr === 9,
+        JSON.stringify(pd1.PSI.rows["2026-11-17|90000001"]));
+  const oldTab2 = JSON.parse(JSON.stringify(base));
+  oldTab2.PSI = { rows: { "2026-11-25|90000009": { cs: 7, v: 999, inv: ["3100000009"], cr: "2026-11-24" } },
+    days: { "2026-11-25": { n: 1, cs: 7, v: 999, iv: 1, at: 90000, by: "admin1", file: "PSI_25.xlsx" } },
+    up: 90000 };
+  const pd2 = mergeState(pd1, oldTab2);
+  check("🛟 แท็บที่ไม่เคยรู้จักช่องของแถม บันทึกทับ ของแถมของคีย์อื่นยังอยู่ครบ",
+        pd2.PSI.rows["2026-11-17|90000001"].fr === 6 &&
+        pd2.PSI.rows["2026-11-17|90000007"].fr === 3 &&
+        pd2.PSI.days["2026-11-17"].fr === 9 && pd2.PSI.days["2026-11-17"].dt === 1,
+        JSON.stringify(pd2.PSI.days["2026-11-17"]));
+
   const blank = JSON.parse(JSON.stringify(base));
   blank.PSI = { rows: {}, days: {}, up: 0 };
-  const p5 = mergeState(p4, blank);
+  const pd3 = mergeState(pd2, blank);
   check("🛟 ไคลเอนต์ที่โหลดไม่ขึ้น (PSI ว่าง) ลบของที่รับเข้าไม่ได้",
-        Object.keys(p5.PSI.rows).length === 3 && Object.keys(p5.PSI.days).length === 2);
+        Object.keys(pd3.PSI.rows).length === 4 && Object.keys(pd3.PSI.days).length === 2,
+        JSON.stringify(Object.keys(pd3.PSI.rows)));
 
   /* MASTER.det — น้ำหนัก/ขนาดลังต่อรหัส จากไฟล์ master ของ dcode
      merge ทีละรหัสเหมือน items · ไม่งั้นไฟล์ master ที่ใหม่กว่าแต่มีรายละเอียดน้อยกว่า

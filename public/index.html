@@ -16363,23 +16363,43 @@ function psiOrdByCode(){
   _psiOrdC={m:m,n:ds.length};return m;
 }
  
-function psiGotFor(code,ymd){
-  const a=psiIdx()[String(code)];if(!a||!a.length)return null;
+function psiWin(code,ymd){
+  const a=psiIdx()[String(code)];if(!a||!a.length)return [];
   const ds=psiOrdByCode()[String(code)]||[];
   const i=ds.indexOf(ymd);
   const next=(i>=0&&i<ds.length-1)?ds[i+1]:"";
   const first=ds.length?ds[0]:ymd;
-  const hit=a.filter(x=>{
+  return a.filter(x=>{
     const w=x.cr||x.d||"";
     if(!w)return false;
     if(next&&w>=next)return false;             
     if(w<ymd&&ymd!==first)return false;        
     return true;
   });
+}
+ 
+function psiGotFor(code,ymd){
+  const w=psiWin(code,ymd);
+  const hit=w.filter(psiPaid);
   if(!hit.length)return null;
   const last=hit[hit.length-1];
   return {d:last.d,cs:Math.round(hit.reduce((s,x)=>s+x.cs,0)*100)/100,
-    n:hit.length,inv:last.inv,cr:last.cr};
+    n:hit.length,inv:last.inv,cr:last.cr,
+    fr:Math.round(w.reduce((s,x)=>s+(+x.fr||0),0)*100)/100};
+}
+ 
+function psiFrFor(code,ymd){
+  return Math.round(psiWin(code,ymd).reduce((s,x)=>s+(+x.fr||0),0)*100)/100;
+}
+ 
+function psiMoney(ymd){
+  const o=(typeof ohVal==="function")?ohVal(ymd):null;
+  const p=(typeof psiCrOf==="function")?psiCrOf(ymd):null;
+  if(!o&&!p)return null;
+  return {cv:o?o.cv:null,c85:o?o.c85:null,drop:o?o.drop:null,net:o?o.net:null,
+    niv:p?p.v:null,frCs:p?(+p.fr||0):0,
+    over:!!(o&&o.drop>o.c85+0.01),
+    diff:(o&&p)?Math.round((p.v-o.net)*100)/100:null};
 }
  
 function psiCheck(ymd){
@@ -16387,7 +16407,7 @@ function psiCheck(ymd){
   if(!day)return {rows:[],has:false};
   const om=orderedMerged(day),dp=day.dropped||{},res=!!day.hasResult;
   const cov=psiCovers(ymd);
-  let overDrop=0,dlvOver=0;
+  let overDrop=0,dlvOver=0,fr=0,frN=0;
   const rows=Object.keys(om).map(c=>{
     const ord=Math.round((+om[c]||0)*100)/100;
     const e=(c in dp)?dp[c]:null;
@@ -16406,13 +16426,17 @@ function psiCheck(ymd){
     else st="part";
      
     const left=(st==="nofile"||st==="dropall")?null:Math.max(0,Math.round((due-got)*100)/100);
+     
+    const gf=g?(+g.fr||0):psiFrFor(c,ymd);
+    if(gf){fr=Math.round((fr+gf)*100)/100;frN++;}
     return {code:c,nm:(typeof oname==="function"?oname(c):"")||"",
-      ord:ord,drop:drop,raw:raw,due:due,got:got,left:left,
+      ord:ord,drop:drop,raw:raw,due:due,got:got,left:left,fr:gf,
       d:g?g.d:"",inv:g?g.inv:[],st:st,res:res};
   });
    
   const extra=Object.keys(dp).filter(c=>!(c in om));
-  return {rows:rows,has:true,cov:cov,res:res,overDrop:overDrop,dlvOver:dlvOver,extra:extra};
+  return {rows:rows,has:true,cov:cov,res:res,overDrop:overDrop,dlvOver:dlvOver,extra:extra,
+    fr:fr,frN:frN,money:psiMoney(ymd)};
 }
 const PSI_ST={full:{i:"✅",t:"เข้าครบแล้ว",p:"g"},part:{i:"🟡",t:"เข้าบางส่วน",p:"w"},
   wait:{i:"🕓",t:"ยังไม่เข้าคลัง",p:"b"},dropall:{i:"⛔",t:"โดน Drop ทั้งหมด",p:""},
@@ -16438,7 +16462,10 @@ function psiInHtml(){
   Object.keys(P.rows||{}).forEach(k=>{const i=k.indexOf("|");if(i<0)return;
     if(k.slice(0,i)!==d)return;idx[k.slice(i+1)]=P.rows[k];});
   const codes=Object.keys(idx);
-  const tot=codes.reduce((s,c)=>({cs:s.cs+(+idx[c].cs||0),v:s.v+(+idx[c].v||0)}),{cs:0,v:0});
+  const tot=codes.reduce((s,c)=>({cs:s.cs+(+idx[c].cs||0),v:s.v+(+idx[c].v||0),
+    fr:s.fr+(+idx[c].fr||0)}),{cs:0,v:0,fr:0});
+   
+  const hasFr=(meta.fr!=null)||tot.fr>0;
   const opt=ds.slice().reverse().map(x=>`<option value="${x}"${x===d?" selected":""}>${anaEsc(fmtDate(x))}</option>`).join("");
   const bands=grpByCat(codes).map(g=>{
     const list=poSeqSort(g.list,null,(a,b)=>(idx[b].cs||0)-(idx[a].cs||0));
@@ -16448,11 +16475,13 @@ function psiInHtml(){
         return `<tr><td class="psi-nm" data-l="สินค้า"><b>${anaEsc(oname(c)||("รหัส "+c))}</b>`+
             `<div class="psub">รหัส ${anaEsc(c)}</div></td>`+
           `<td data-l="ลัง"><b>${psiN(r.cs)}</b>${r.pc?` <small>+${psiN(r.pc)} ชิ้น</small>`:""}</td>`+
+          (hasFr?`<td data-l="ของแถม">${(+r.fr)?`<b class="up">${psiN(r.fr)}</b>`:"-"}</td>`:"")+
           `<td data-l="มูลค่า">${r.v?THBk(r.v):"-"}</td>`+
           `<td data-l="ศูนย์ออกบิล">${r.cr?anaEsc(fmtDayMon(r.cr)):"-"}</td>`+
           `<td data-l="เลขใบกำกับ" style="text-align:left"><small>${anaEsc((r.inv||[]).join(" · "))||"-"}</small></td></tr>`;})};
   });
-  const tbl=grpTable([{h:"สินค้า",a:"l"},{h:"ลัง"},{h:"มูลค่า"},{h:"ศูนย์ออกบิล"},{h:"เลขใบกำกับ",a:"l"}],
+  const tbl=grpTable([{h:"สินค้า",a:"l"},{h:"ลัง"}].concat(hasFr?[{h:"🎁 ของแถม"}]:[],
+      [{h:"มูลค่า"},{h:"ศูนย์ออกบิล"},{h:"เลขใบกำกับ",a:"l"}]),
     bands,{alwaysBand:true,cls:"psi-tbl",empty:'<div class="insight">วันนี้ไม่มีรายการ</div>'});
   return `<div class="panel"><div class="controls" style="margin:0">
       <div class="ctl"><label>วันที่คลังรับเข้า</label><div class="dstep">
@@ -16465,11 +16494,13 @@ function psiInHtml(){
         <div class="psub" style="padding-top:6px">${meta.file?anaEsc(meta.file):"-"}${
           meta.at?` · ${anaEsc(fmtDateTime(meta.at))}`:""}</div></div>
     </div></div>
-    <div class="cards">
+    <div class="cards${hasFr?" sp-c5":""}">
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">รายการที่เข้า</div>
         <div class="v">${codes.length}</div><div class="s">รหัสสินค้า</div></div>
-      <div class="card"><div class="k">จำนวนรวม</div>
+      <div class="card"><div class="k">🛒 ของซื้อ</div>
         <div class="v">${psiN(tot.cs)}</div><div class="s">ลัง</div></div>
+      ${hasFr?`<div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">🎁 ของแถม</div>
+        <div class="v up">${psiN(tot.fr)}</div><div class="s">ลัง · ไม่ได้สั่ง ไม่มีมูลค่า</div></div>`:""}
       <div class="card"><div class="k">มูลค่า (NIV)</div>
         <div class="v" style="font-size:20px">${THBk(tot.v)}</div><div class="s">${psiN(tot.v)} บาท</div></div>
       <div class="card"><div class="k">ใบกำกับ</div>
@@ -16478,7 +16509,50 @@ function psiInHtml(){
     <div class="panel"><h3>📥 ของที่เข้าคลัง · ${anaEsc(fmtDate(d))}</h3>
       <div class="psub">เรียงตามลำดับในใบสั่งซื้อ แบ่งตามหมวดเหมือนหน้าการสั่งของ ·
         <b>ศูนย์ออกบิล</b> คือวันที่ศูนย์ออกใบกำกับ ซึ่งมักเป็นวันเดียวกันหรือก่อนหน้าหนึ่งวัน</div>
+      ${hasFr
+        ?`<div class="psub">🎁 <b>ของแถม</b> แยกช่องไว้ เพราะเราไม่ได้สั่งมัน และในไฟล์ไม่มีมูลค่า —
+            ยอด <b>ของซื้อ</b> จึงเป็นตัวที่เอาไปเทียบกับใบสั่งได้ตรง ๆ</div>`
+        :`<div class="psub">ℹ️ ไฟล์ที่อัพวันนี้ <b>รวมของแถมไว้ในจำนวนเดียวกัน</b> จึงแยกออกมาไม่ได้ —
+            ตัวเลขของบางรหัสจะดูมากกว่าที่สั่งไว้ · อัพไฟล์ <b>PSI_Detail_Report</b>
+            ของวันเดียวกันสักครั้ง แล้วระบบจะแยกให้เอง</div>`}
       ${tbl}</div>`;
+}
+ 
+function psiMoneyHtml(d,M){
+  if(!M)return "";
+  const no='<span class="psub">-</span>';
+  const est=' <small style="font-weight:400">(ประเมิน)</small>';
+  const dif=M.diff;
+  const w=[];
+  if(M.over)w.push(`ใบ Drop รอบนี้มีมูลค่า<b>มากกว่ายอดสั่ง</b> — ลองตรวจว่าอัพใบ Drop ตรงรอบหรือเปล่า ·
+    ยอดฝั่งสั่งเป็นการประเมินจาก CON Confirm อยู่แล้ว เลขติดลบจึงเชื่อไม่ได้`);
+  if(M.niv===null)w.push(`ยังไม่มีไฟล์ PSI ที่ครอบวันนี้ จึงยังไม่มีมูลค่าของเข้าคลังมาเทียบ`);
+  else if(M.net===null)w.push(`รอบนี้ยังไม่มีใบสั่ง/ใบ Drop จึงเทียบได้แต่ฝั่งของเข้าคลัง`);
+  return `<div class="panel"><h3>💰 มูลค่า · สั่งไป − Drop เทียบ ของเข้าคลัง</h3>
+    <div class="psub"><b>ฝั่งสั่ง</b> มาจาก CON Confirm × 0.85 ซึ่งเป็น<b>การประเมิน</b> ไม่ใช่ยอดในใบแจ้งหนี้ ·
+      <b>ฝั่งของเข้าคลัง</b> คือ NIV จากไฟล์ PSI นับตามวันที่ศูนย์ออกบิล — เป็นตัวเดียวกับช่อง
+      📥 ของเข้าคลัง (NIV) ในหน้า 📊 ประวัติการสั่งของ จึงขัดกันไม่ได้ และไม่ใช่ BI Report ของยูนิลีเวอร์</div>
+    <div class="cards sp-c5" style="margin:12px 0 0">
+      <div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">📦 สั่งไป${est}</div>
+        <div class="v" style="font-size:20px">${M.c85===null?no:THBk(M.c85)}</div>
+        <div class="s">${M.cv?("CON Confirm "+THBk(M.cv)+" − 15%"):"ยังไม่มีใบสั่ง"}</div></div>
+      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">⛔ หัก Drop</div>
+        <div class="v down" style="font-size:20px">${M.drop===null?no:THBk(M.drop)}</div>
+        <div class="s">จากใบ Drop ของรอบนี้</div></div>
+      <div class="card"><div class="k">🎯 ต้องได้${est}</div>
+        <div class="v" style="font-size:20px">${M.net===null?no:THBk(M.net)}</div>
+        <div class="s">สั่งไป − Drop</div></div>
+      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">📥 เข้าคลังแล้ว</div>
+        <div class="v up" style="font-size:20px">${M.niv===null?no:THBk(M.niv)}</div>
+        <div class="s">${M.niv===null?"ยังไม่มีไฟล์ PSI":"NIV จากไฟล์ PSI"}</div></div>
+      <div class="card" style="border-top:3px solid #8a6500"><div class="k" style="color:#8a6500">ต่างกัน</div>
+        <div class="v" style="font-size:20px;color:${dif===null?"var(--muted)":
+          (Math.abs(dif)<0.01?"var(--good)":(dif<0?"var(--bad)":"var(--good)"))}">${
+          dif===null?no:((dif>0?"+":"")+THBk(dif))}</div>
+        <div class="s">${dif===null?"เทียบไม่ได้":(dif<0?"ของเข้าคลังน้อยกว่าที่ควรได้":"ของเข้าคลังมากกว่าที่ประเมินไว้")}</div></div>
+    </div>
+    ${w.length?`<div class="note" style="margin-top:10px">⚠️ ${w.join("<br>⚠️ ")}</div>`:""}
+    </div>`;
 }
  
 function psiChkHtml(){
@@ -16503,6 +16577,7 @@ function psiChkHtml(){
   const codes=show.map(r=>r.code);
   const byCode={};show.forEach(r=>byCode[r.code]=r);
   const PCLS={full:"r-ok",part:"r-nokey",wait:"r-noalloc",dropall:"r-diff",nofile:""};
+  const hasFr=R.fr>0;    
   const bands=grpByCat(codes).map(g=>{
     const list=poSeqSort(g.list,null,null);
     return {title:`${g.icon} ${g.cat}`,sub:`· ${list.length} รายการ`,
@@ -16516,11 +16591,13 @@ function psiChkHtml(){
             :(r.got?`<b class="up">${psiN(r.got)}</b>`:'<span class="psub">0</span>')}</span></td>`+
           `<td data-l="ยังค้าง"><span>${r.left===null?'<span class="psub">-</span>'
             :(r.left>0.001?`<b class="down">${psiN(r.left)}</b>`:'<span class="up">ครบ</span>')}</span></td>`+
+          (hasFr?`<td data-l="ของแถม"><span>${(+r.fr)?`<b class="up">${psiN(r.fr)}</b>`:"-"}</span></td>`:"")+
           `<td data-l="วันที่เข้า"><span>${r.d?anaEsc(fmtDayMon(r.d)):"-"}</span></td>`+
           `<td data-l="สถานะ" style="text-align:left"><span class="pill ${S.p}">${S.i} ${S.t}</span></td></tr>`;})};
   });
   const tbl=grpTable([{h:"สินค้า",a:"l"},{h:"เราสั่ง"},{h:"โดน Drop"},{h:"ต้องได้"},
-      {h:"เข้าคลังแล้ว"},{h:"ยังค้าง"},{h:"วันที่เข้า"},{h:"สถานะ",a:"l"}],
+      {h:"เข้าคลังแล้ว"},{h:"ยังค้าง"}].concat(hasFr?[{h:"🎁 ของแถม"}]:[],
+      [{h:"วันที่เข้า"},{h:"สถานะ",a:"l"}]),
     bands,{alwaysBand:true,cls:"psi-tbl sp-rt",empty:'<div class="insight">ไม่มีรายการที่ตรงกับที่เลือกไว้</div>'});
    
   const warn=[];
@@ -16558,11 +16635,15 @@ function psiChkHtml(){
         <div class="s">${R.cov?(sum.left>0.001?("ลัง · "+sum.nLeft+" รายการ"):"เข้าครบทั้งรอบแล้ว")
           :"ยังไม่มีไฟล์ PSI"}</div></div>
     </div>
+    ${psiMoneyHtml(d,R.money)}
     <div class="panel"><h3>🔎 ใบสั่งรอบ ${anaEsc(fmtDate(d))} → ของเข้าคลัง</h3>
       <div class="psub"><b>ต้องได้</b> = เราสั่ง − โดน Drop · <b>ยังค้าง</b> = ต้องได้ − เข้าคลังแล้ว
         <br><b>เข้าคลังแล้ว</b> นับเฉพาะของที่เป็น <b>ของรอบนี้</b> คือของที่ศูนย์ออกบิลตั้งแต่รอบนี้
         ไปจนถึงก่อนรอบถัดไปของรหัสนั้น — รหัสที่สั่งซ้ำหลายรอบจึงไม่เอาของรอบหลังมานับให้รอบนี้ ·
         หนึ่งรหัสเข้าได้หลายวัน ระบบรวมให้แล้ว</div>
+      ${hasFr?`<div class="psub">🎁 รอบนี้มี<b>ของแถม</b>เข้ามาด้วย <b>${psiN(R.fr)}</b> ลัง
+        (${R.frN} รายการ) — <b>ไม่ได้นับ</b>รวมในช่อง "เข้าคลังแล้ว" เพราะเราไม่ได้สั่งมัน
+        ถ้ารวมกันของบางตัวจะอ่านว่าเข้าเกินที่สั่ง</div>`:""}
       ${note}
       ${warn.length?`<div class="note" style="margin-top:8px">⚠️ ${warn.join("<br>⚠️ ")}</div>`:""}
       <div class="rq-lines" style="margin:10px 0">
@@ -16586,23 +16667,35 @@ var PSI_COLS={inv:"Invoice Number",cre:"Invoice Creation Date",rec:"Invoice Rece
   code:"Product Code",nm:"Product Description",uom:"UOM",
   ics:"Invoice Qty (CS)",ipc:"Invoice Qty (Pcs)",rcs:"Received Qty (CS)",rpc:"Received Qty (Pcs)",
   vr:"Variance",niv:"Value (NIV)",dod:"DO Number"};
+ 
+var PSI_COLS_D={inv:"Invoice Number",cre:"Invoice Date",rec:"Received Date",
+  code:"Product Code",nm:"Product Description",
+  ics:"Invoice Qty (CS)",ipc:"Invoice Qty (Pcs)",rcs:"Received Qty (CS)",rpc:"Received Qty (Pcs)",
+  vr:"Variance",niv:"Value (NIV)",st:"Stock Type",dod:"Document Number"};
+var PSI_WH={sound:"sale",free:"gift"};    
 function psiOk(){if(typeof PSI==="undefined"||!PSI)PSI={rows:{},days:{},up:0};
   if(!PSI.rows)PSI.rows={};if(!PSI.days)PSI.days={};return PSI;}
 function psiIsFile(H){return H.indexOf(PSI_COLS.rec)>=0&&H.indexOf(PSI_COLS.rcs)>=0;}
+ 
+function psiIsDetail(H){return H.indexOf(PSI_COLS_D.st)>=0&&H.indexOf(PSI_COLS_D.rec)>=0
+  &&H.indexOf(PSI_COLS_D.rcs)>=0;}
 function parsePSI(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
-  let sheet=null,A=null,H=null;
+  let sheet=null,A=null,H=null,M=null;
   wb.SheetNames.forEach(sn=>{if(sheet)return;
     const g=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null});
     const h=(g[0]||[]).map(x=>String(x==null?"":x).trim());
-    if(psiIsFile(h)){sheet=sn;A=g;H=h;}});
-  if(!sheet)throw new Error("ไม่พบคอลัมน์ Invoice Receiving Date / Received Qty (CS) — ไฟล์นี้ใช่ไฟล์ PSI หรือเปล่า?");
-  const C={};Object.keys(PSI_COLS).forEach(k=>{C[k]=H.indexOf(PSI_COLS[k]);});
-  const miss=["inv","rec","code","rcs"].filter(k=>C[k]<0).map(k=>PSI_COLS[k]);
+    if(psiIsDetail(h)){sheet=sn;A=g;H=h;M=PSI_COLS_D;}
+    else if(psiIsFile(h)){sheet=sn;A=g;H=h;M=PSI_COLS;}});
+  if(!sheet)throw new Error("ไม่พบคอลัมน์ Invoice Receiving Date / Received Date — ไฟล์นี้ใช่ไฟล์ PSI หรือเปล่า?");
+  const det=(M===PSI_COLS_D);
+  const C={};Object.keys(M).forEach(k=>{C[k]=H.indexOf(M[k]);});
+  const miss=["inv","rec","code","rcs"].filter(k=>C[k]<0).map(k=>M[k]);
   if(miss.length)throw new Error("ไฟล์ PSI ขาดคอลัมน์: "+miss.join(" / ")+" — รูปแบบไฟล์อาจเปลี่ยน แจ้งให้ปรับโปรแกรมได้");
   const T=v=>String(v==null?"":v).trim();
   const rows={},days={},names={};
-  let n=0,skipFoot=0,skipNo=0,varied=0,pcs=0,noDate=0;
+  let n=0,skipFoot=0,skipNo=0,varied=0,pcs=0,noDate=0,frRows=0,frCs=0;
+  const unkWh={};
   for(let i=1;i<A.length;i++){
     const r=A[i];if(!r)continue;
     const a0=T(r[0]);
@@ -16614,25 +16707,45 @@ function parsePSI(name,buf){
     const cs=alNum(r[C.rcs]),pc=C.rpc>=0?alNum(r[C.rpc]):0;
     if(C.vr>=0&&alNum(r[C.vr])!==0)varied++;
     if(pc)pcs++;
+     
+    const wh=(C.st>=0)?T(r[C.st]):"";
+    const whk=wh?(PSI_WH[wh.toLowerCase()]||""):"sale";
+    if(wh&&!whk)unkWh[wh]=(unkWh[wh]||0)+1;
+    const free=(whk==="gift");
     const k=d+"|"+code;
-    const e=rows[k]||(rows[k]={cs:0,v:0,inv:[],cr:C.cre>=0?alDate(r[C.cre]):""});
-    e.cs=Math.round((e.cs+cs)*100)/100;
-    if(pc)e.pc=(e.pc||0)+pc;
-    if(C.niv>=0)e.v=Math.round(e.v+alNum(r[C.niv]));
+    const e=rows[k]||(rows[k]={cs:0,v:0,inv:[],cr:C.cre>=0?alDate(r[C.cre]):"",dt:det?1:0});
+    if(free){e.fr=Math.round(((e.fr||0)+cs)*100)/100;frRows++;frCs+=cs;}
+    else{
+      e.cs=Math.round((e.cs+cs)*100)/100;
+      if(pc)e.pc=(e.pc||0)+pc;
+      if(C.niv>=0)e.v=Math.round(e.v+alNum(r[C.niv]));
+    }
     const iv=T(r[C.inv]);if(iv&&e.inv.indexOf(iv)<0&&e.inv.length<12)e.inv.push(iv);
     const nm=C.nm>=0?T(r[C.nm]):"";if(nm)names[code]=nm;
     const dd=days[d]||(days[d]={n:0,cs:0,v:0,iv:[]});
-    dd.n++;dd.cs=Math.round((dd.cs+cs)*100)/100;if(C.niv>=0)dd.v=Math.round(dd.v+alNum(r[C.niv]));
+    dd.n++;
+    if(free)dd.fr=Math.round(((dd.fr||0)+cs)*100)/100;
+    else{dd.cs=Math.round((dd.cs+cs)*100)/100;
+      if(C.niv>=0)dd.v=Math.round(dd.v+alNum(r[C.niv]));}
     if(iv&&dd.iv.indexOf(iv)<0)dd.iv.push(iv);
     n++;
   }
   if(!n)throw new Error("ไม่พบแถวข้อมูลในไฟล์ PSI");
   const at=Date.now(),who=(S.user&&S.user.id)||"",whoN=(S.user&&S.user.name)||"";
   const P=psiOk();
-  Object.keys(rows).forEach(k=>{P.rows[k]=rows[k];});
+   
+  let keptDt=0;
+  Object.keys(rows).forEach(k=>{
+    const o=P.rows[k];
+    if(!det&&o&&o.dt){keptDt++;return;}
+    P.rows[k]=rows[k];});
   const dl=Object.keys(days).sort();
-  dl.forEach(d=>{const x=days[d];
-    P.days[d]={n:x.n,cs:x.cs,v:x.v,iv:x.iv.length,at:at,by:who,byName:whoN,file:name};});
+  dl.forEach(d=>{const x=days[d],o=P.days[d];
+    if(!det&&o&&o.dt)return;
+    const rec={n:x.n,cs:x.cs,v:x.v,iv:x.iv.length,at:at,by:who,byName:whoN,file:name};
+    if(x.fr!=null)rec.fr=x.fr;
+    if(det)rec.dt=1;
+    P.days[d]=rec;});
    
   if(!ORDERS.names)ORDERS.names={};
   let nmAdd=0;Object.keys(names).forEach(c=>{if(!ORDERS.names[c]){ORDERS.names[c]=names[c];nmAdd++;}});
@@ -16641,12 +16754,21 @@ function parsePSI(name,buf){
   if(varied)warn.push("มีแถวที่รับไม่ตรงกับบิล <b>"+varied+"</b> แถว (ช่อง Variance ไม่เป็น 0)");
   if(pcs)warn.push("มีแถวที่รับเป็นชิ้น <b>"+pcs+"</b> แถว");
   if(noDate)warn.push("ข้ามแถวที่ไม่มีวันที่รับเข้า <b>"+noDate+"</b> แถว");
-  ulog("📥 "+name+" (คลังรับของเข้า) → <b>"+n+"</b> แถว · <b>"+Object.keys(rows).length+
-    "</b> รายการ · วันที่รับเข้า <b>"+dl.length+"</b> วัน ("+dl.map(fmtDayMon).join(" · ")+")"+
+  const uk=Object.keys(unkWh);
+  if(uk.length)warn.push("มีคลังที่ไม่รู้จัก "+uk.map(x=>anaEsc(x)+" ("+unkWh[x]+" แถว)").join(" · ")+
+    " — นับรวมเป็นของขายไว้ก่อน");
+  ulog("📥 "+name+" (คลังรับของเข้า"+(det?" · ไฟล์ละเอียด":"")+") → <b>"+n+"</b> แถว · <b>"+
+    Object.keys(rows).length+"</b> รายการ · วันที่รับเข้า <b>"+dl.length+"</b> วัน ("+
+    dl.map(fmtDayMon).join(" · ")+")"+
+    (frRows?" · 🎁 ของแถม <b>"+psiN(frCs)+"</b> ลัง ("+frRows+" แถว · แยกจากของซื้อ ไม่นับเป็นของที่สั่ง)":"")+
     (nmAdd?" · เติมชื่อสินค้าใหม่ "+nmAdd+" รหัส":"")+
     (skipFoot?" · ข้ามแถวสรุปท้ายไฟล์ "+skipFoot:"")+
     (skipNo?" · ข้ามแถวที่ไม่ใช่สินค้า "+skipNo:"")+
     (warn.length?"<br>⚠️ "+warn.join(" · "):"")+
+    (keptDt?" · คงของเดิมไว้ <b>"+keptDt+"</b> รายการ":"")+
+    (det?"":"<br>ℹ️ ไฟล์นี้<b>รวมของแถมไว้ในจำนวนเดียวกัน</b> จึงแยกของซื้อออกมาไม่ได้ —"+
+      " ถ้าต้องการให้ตัวเลขแยกถูก ให้อัพไฟล์ <b>PSI_Detail_Report</b> แทน"+
+      (keptDt?" · วัน/รายการที่เคยอ่านจากไฟล์ละเอียดแล้ว ระบบคงตัวเลขเดิมไว้ ไม่เขียนทับ":""))+
     "<br>วันอื่นที่เคยอัพไว้อยู่ครบเหมือนเดิม ไฟล์ที่กรองมาบางช่วงจึงลบของเก่าไม่ได้");
   psiBust();psiCrBust();psiOrdBust();pgBust();
   if(CURTAB==="psib")renderPsi();
@@ -16661,16 +16783,18 @@ function psiIdx(){
   Object.keys(P.rows||{}).forEach(k=>{
     const i=k.indexOf("|");if(i<0)return;
     const d=k.slice(0,i),c=k.slice(i+1),r=P.rows[k]||{};
-    (m[c]=m[c]||[]).push({d:d,cs:+r.cs||0,pc:+r.pc||0,v:+r.v||0,inv:r.inv||[],cr:r.cr||""});
+    (m[c]=m[c]||[]).push({d:d,cs:+r.cs||0,pc:+r.pc||0,v:+r.v||0,fr:+r.fr||0,
+      inv:r.inv||[],cr:r.cr||""});
   });
   Object.keys(m).forEach(c=>m[c].sort((a,b)=>a.d<b.d?-1:1));
   _psiIdx=m;return m;
 }
  
+function psiPaid(x){return !!((+x.cs||0)||(+x.pc||0));}
 function psiGot(code,fromDate){
   const a=psiIdx()[String(code)];if(!a||!a.length)return null;
   const f=fromDate||"";
-  const hit=f?a.filter(x=>x.d>=f):a.slice();
+  const hit=(f?a.filter(x=>x.d>=f):a.slice()).filter(psiPaid);
   if(!hit.length)return null;
   const last=hit[hit.length-1];
   return {d:last.d,cs:Math.round(hit.reduce((s,x)=>s+x.cs,0)*100)/100,n:hit.length,inv:last.inv,cr:last.cr};
@@ -16690,12 +16814,13 @@ function psiCrIdx(){
   Object.keys(P.rows||{}).forEach(k=>{
     const r=P.rows[k]||{},c=String(r.cr||"");
     if(!/^\d{4}-\d{2}-\d{2}$/.test(c))return;
-    const e=m[c]||(m[c]={v:0,n:0,cs:0,rec:{}});
-    e.v+=+r.v||0;e.cs+=+r.cs||0;e.n++;
+    const e=m[c]||(m[c]={v:0,n:0,cs:0,fr:0,rec:{}});
+    e.v+=+r.v||0;e.cs+=+r.cs||0;e.fr+=+r.fr||0;e.n++;
     const d=k.slice(0,k.indexOf("|"));if(d)e.rec[d]=1;
   });
   Object.keys(m).forEach(c=>{m[c].v=Math.round(m[c].v*100)/100;
-    m[c].cs=Math.round(m[c].cs*100)/100;m[c].rec=Object.keys(m[c].rec).sort();});
+    m[c].cs=Math.round(m[c].cs*100)/100;m[c].fr=Math.round(m[c].fr*100)/100;
+    m[c].rec=Object.keys(m[c].rec).sort();});
   _psiCr=m;return m;
 }
  
@@ -16708,7 +16833,7 @@ function psiCrOf(ymd){
   const t=new Date(d+"T00:00:00");t.setDate(t.getDate()+2);
   const lim=ymdOf(t);
    
-  return ds.some(x=>x>=lim)?{v:0,n:0,cs:0,rec:[]}:null;
+  return ds.some(x=>x>=lim)?{v:0,n:0,cs:0,fr:0,rec:[]}:null;
 }
 
  

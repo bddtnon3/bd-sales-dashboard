@@ -103,7 +103,8 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
   tombstones, goods receipts from the centre (`PSI.rows`/`days` — a PSI export filtered to one day
-  must not delete the days already read, and a tab from before the section existed must not blank it),
+  must not delete the days already read, a tab from before the section existed must not blank it,
+  and a tab that never heard of the free-goods fields must not drop another key's `fr`/`dt`),
   the product master's per-code detail (`MASTER.det` — an old-format master upload must not erase the
   weights and case sizes the dcode file gave), the shared planner (`PLAN.items`/`done`/`del`), the monthly promotions and their prize
   money (`PROMO.items`/`res`/`del`), the PJP visit plan (`PJP.out`/`plan`/`done`/`cfg` — a new
@@ -757,8 +758,33 @@ code, never printed.
   สถานะของไฟล์นี้"* — so the group sits between 🛒 การสั่งของ and 📦 สต็อก, and the older group was
   renamed **(ขาย)**. **The page keys (`CURTAB`) did not change**: the new one is `psib`, the old one
   is still `otrk`; renaming a key would break every remembered tab and history entry.
-  It reads one file, **`PSI_ddmmyyyy.xlsx`** (sheet `Export`, 31 columns), and every claim below was
-  measured on the owner's real file before anything was written (194 rows, 28 invoices, 137 codes):
+  **It reads TWO formats of the same report and both must keep working** (`parsePSI` dispatches on
+  `Stock Type` + `Received Date`, headers the old file does not have): the depot's original
+  **`PSI_ddmmyyyy.xlsx`** (sheet `Export`, 31 columns) and dcode's **`PSI_Detail_Report_N.xlsx`**
+  (same sheet, 24 columns), which the owner sent on 26 Nov 26 — *"ไม่แน่ใจว่าไฟล์นี้ต่างจากไฟล์เดิม
+  ยังไง แต่ถ้ามันครบกว่าใช้ไฟล์นี้แทนได้เลย"*. Measured on his two real files of the same period:
+  the **bought** side is identical — 28 invoices, 137 codes, 192 (invoice|code) pairs with **0
+  differences**, NIV 7,147,655.35 and GSV 15,163,688.25 to the satang — and the detail file carries
+  **43 more rows, all `Stock Type = Free`** (3,071 cases, GSV/NIV 0): the free goods.
+  🔴 **The old file does not merely omit them — it folds them into the same quantity.** Measured per
+  (invoice|code), all **192/192** pairs have old `Received Qty (CS)` = bought + free, and **0** equal
+  the bought figure alone (code 64329248 on invoice 3106016228: old 134 = 67 bought + 67 free;
+  11,155 + 3,071 = 14,226 = the old file's own Total). So the reconciliation used to read
+  "เข้าคลังแล้ว 134" against "ต้องได้ 67" and print ✅ เข้าครบ with a phantom surplus — part of the
+  "ตัวเลขมันมั่วซั่ว" the owner reported. **The detail file is therefore not just fuller, it is the
+  only one that answers this page's question correctly**, and a key already read from it (`dt:1`)
+  **must not have its quantities overwritten by the old format** (`pickGin`'s "the side that knows
+  more wins"); the old file may still add days and codes the detail file never covered, and says in
+  the log what it left alone. Free goods are stored as **`fr` on the existing record** (never a new
+  section), are **never added into `cs`** — the `pmCodeSet`-era rule that free and sale goods are
+  never summed — and a row that is free-only must not read as "received, 0 cases" (`psiPaid`,
+  `psiWin`/`psiFrFor`). An unreadable `Stock Type` is kept as a sale row and **reported**
+  (the `parseStockDcode` rule). The detail file has **no `Total` row** (only `Applied filters:`) and
+  **no `UOM` column**, but carries both (CS) and (Pcs); measured, every row is in cases with
+  `Variance` 0, `Document Number` is 1-1 with the invoice (28/28), `Site Code` has one value, and
+  `GSV − Discount = NIV` on all 235 rows.
+  Every claim below was measured on the owner's real file before anything was written
+  (194 rows, 28 invoices, 137 codes):
   **the last two rows are not data** — a `Total` row and an `Applied filters:` row, exactly like the
   dcode daily sales file, and both are skipped *and reported*; `Received Qty` equalled `Invoice Qty`
   on all 192 real rows with `Variance` 0 everywhere and no row in pieces (UOM is `CS` throughout) —
@@ -808,15 +834,27 @@ code, never printed.
   `nofile`, because a fully-dropped code needs no PSI file to answer it. The page also gained the
   **search box** he asked for (name or code) and tints each row by status. Quantities print as whole
   cases (`psiN`), since both files count in CS.
+  **💰 The page is "ORDER − DROP vs Delivery", and the owner said so himself** (28 Nov 26:
+  *"ผมจะสรุปหน้าสถานะออเดอร์ซื้อ ให้คุณเข้าใจ มันคือหน้า order-drop เทียบกับช่อง delivery หรือของเข้า
+  คลัง NIV นี้แหละ"*), so the reconciliation carries a money band beside the case cards
+  (`psiMoney`/`psiMoneyHtml`): สั่งไป (ประเมิน) − หัก Drop = ต้องได้ (ประเมิน) · เข้าคลังแล้ว (NIV) ·
+  ต่างกัน. It reads **`ohVal` and `psiCrOf`, the very functions 📊 ประวัติการสั่งของ uses**, so the
+  two pages cannot disagree. Three rules carry over unchanged: the order side is CON Confirm × 0.85
+  and must stay tagged **(ประเมิน)**; the receipt side is NIV keyed on the **centre's invoice date**
+  and is **not the BI report**; and a day no PSI file covers is a **dash, never 0**. A Drop figure
+  larger than the order figure is **named in a banner** rather than rendered as a negative — the
+  owner's 21 Nov screen read ORDER–DROP = −21,759.18 with the same หัก DROP as the 20th, the money
+  twin of the case bug fixed the same day. Free goods have no money (GSV/NIV 0 on every real row),
+  so they never touch this band.
   **The receive date is appended to the existing order-status badge** (`psiPill` inside
   `reqStatusCell`), so every page that shows a product's order status — the manager's combined
   request table, the rep's own request page, ขอแล้วสั่งไม่ได้ — gains it at once. It is a **separate
   pill, never merged into the Drop badge**: the Drop file is the centre's answer, PSI is our
   warehouse's, and they are different steps. With no PSI file covering that round the pill is
   **silent**, never "ยังไม่เข้า". Prove it with
-  **`node test/browser/psi.test.cjs`** (53 checks, self-contained with made-up codes; 47 with the
-  real file via `PSI_FILE=/path/PSI_ddmmyyyy.xlsx`, which never enters the repo) plus the `PSI`
-  cases in `merge-safety`.
+  **`node test/browser/psi.test.cjs`** (74 checks, self-contained with made-up codes; 76 with the
+  real file via `PSI_FILE=/path/PSI_Detail_Report_3.xlsx` — either format — which never enters the
+  repo) plus the `PSI` cases in `merge-safety`.
   The **📋 สถานะออเดอร์ (ขาย)** tab group (`renderOtrk`) answers *"where is this order?"* for the whole
   team. The owner's words, 26 Nov 26, after the analysis below: *"เราเจอหัวใจสำคัญละ เชื่อมด้วย
   เลขออเดอร์เดียวทั้งระบบฝั่งการขาย"*. It is **two steps, by his instruction** — *"ตอนนี้เรามีแค่
@@ -1813,9 +1851,12 @@ code, never printed.
 - `api/*.js` — Vercel serverless functions (ESM): `login`, `data` (read newest non-empty blob),
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write),
   `apply` (PUBLIC shop application → its own `bd-lead-*` blob), `leads` (manager-only read).
-- **`PSI`** (in the main snapshot, no endpoint of its own) — goods received from the centre, read
-  from `PSI_ddmmyyyy.xlsx` by `parsePSI`. Uploaded from the one upload button under the category
-  **📥 สถานะออเดอร์ (ซื้อ)**. See the 📥 section above for the measured rules.
+- **`PSI`** (in the main snapshot, no endpoint of its own) — goods received from the centre, read by
+  `parsePSI` from **either** `PSI_ddmmyyyy.xlsx` (31 columns) **or** dcode's
+  `PSI_Detail_Report_N.xlsx` (24 columns, splits bought from free). Uploaded from the one upload
+  button under the category **📥 สถานะออเดอร์ (ซื้อ)**. See the 📥 section above for the measured
+  rules — above all that the old format folds free goods into the same quantity, so a key the detail
+  file has already written (`dt:1`) must not have its quantities overwritten by it.
 - `api/ordtrk.js` — the 📋 order-tracking index, fed by **two** files (the warehouse's allocation
   report and the reps' Transaction Inquiry): manager/admin upload, **everyone** reads.
   Its own blob prefix (`bd-ordtrk-`), **sharded by month**, never a read or a write of `bd-data-*`

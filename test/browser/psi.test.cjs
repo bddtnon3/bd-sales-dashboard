@@ -50,6 +50,35 @@ function mkPsi(rows,head,foot){
   XLSX.utils.book_append_sheet(w,XLSX.utils.aoa_to_sheet(body),'Export');
   return Buffer.from(XLSX.write(w,{bookType:'xlsx',type:'array'})).toString('base64');
 }
+/* ---- ไฟล์ละเอียด PSI_Detail_Report (24 คอลัมน์ · มี Stock Type = Sound/Free) ----
+   วัดจากไฟล์จริงของเจ้าของแล้วว่าส่วน "ของซื้อ" เหมือนไฟล์เดิมเป๊ะ และมีของแถมเพิ่มมา */
+const DH=['Region','Area','Distributor Code','Distributor Name','Site Code','Site Name',
+ 'Product Code','Product Description','Invoice Date','Invoice Number','Received Date',
+ 'Document Number','Stock Type','Invoice Qty (CS)','Invoice Qty (Pcs)','Received Qty (CS)',
+ 'Received Qty (Pcs)','Variance','GSV','Discount','Value (NIV)','VAT %','Tax Value','Net Amount'];
+const DC={code:6,nm:7,cre:8,inv:9,rec:10,doc:11,st:12,ics:13,ipc:14,rcs:15,rpc:16,vr:17,
+ gsv:18,dis:19,niv:20};
+function detRow(o){
+  const r=new Array(24).fill(null);
+  r[0]='BKK & Vicinity';r[1]='Nonthaburi';r[2]='15389839';r[3]='บริษัททดสอบ จำกัด';
+  r[4]='2096';r[5]='บริษัททดสอบ จำกัด';
+  r[DC.code]=o.code;r[DC.nm]=o.nm||('สินค้าทดสอบ '+o.code);
+  r[DC.cre]=ser(o.cre||'2026-11-16');r[DC.inv]=o.inv||'3100000001';
+  r[DC.rec]=ser(o.rec||'2026-11-17');r[DC.doc]='2120000001';
+  r[DC.st]=(o.st===undefined?'Sound':o.st);
+  r[DC.ics]=o.cs;r[DC.ipc]=o.pc||0;r[DC.rcs]=(o.got===undefined?o.cs:o.got);r[DC.rpc]=o.gotPc||0;
+  r[DC.vr]=o.vr||0;r[DC.gsv]=(o.v||0)*1.2;r[DC.dis]=(o.v||0)*0.2;r[DC.niv]=o.v||0;
+  return r;
+}
+/* ไฟล์ละเอียดไม่มีแถว Total — มีแต่แถว Applied filters */
+function mkDet(rows,head){
+  const body=[head||DH].concat(rows);
+  const f=new Array(24).fill(null);f[0]='Applied filters:\r\nDistributor_Name is บริษัททดสอบ จำกัด';
+  body.push(f);
+  const w=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(w,XLSX.utils.aoa_to_sheet(body),'Export');
+  return Buffer.from(XLSX.write(w,{bookType:'xlsx',type:'array'})).toString('base64');
+}
 /* ---- Master ของ dcode (40 คอลัมน์ · ใช้เฉพาะช่องที่ตัวอ่านต้องใช้) ---- */
 const MH=['Division','Division Description','Sub Division','Sub Division Description','Category',
  'Category Description','Market','Market Description','Brand','Brand Description','Sector',
@@ -391,21 +420,151 @@ function mkOldMaster(rows){
    (PL.match(/fetch\(/g)||[]).length===1&&/\/api\/pricelist/.test(PL),
    (PL.match(/fetch\([^)]*\)/g)||[]).join(' , '));
 
+ /* ---------------- 11) ไฟล์ละเอียด PSI_Detail_Report (ของแถม) ----------------
+    เจ้าของส่งไฟล์ใหม่มา 26 พ.ย. 69 — ของซื้อเหมือนไฟล์เดิมเป๊ะ มี Stock Type = Free เพิ่มมา
+    ⚠️ ของแถมต้องเก็บแยก ห้ามรวมเข้า "เข้าคลังแล้ว" ไม่งั้นของที่สั่งจะอ่านว่าเข้าเกิน */
+ const rowsD=[
+   detRow({code:'90000001',cs:40,v:13072,inv:'3100000001'}),
+   detRow({code:'90000001',cs:6,st:'Free',inv:'3100000001',v:0}),
+   detRow({code:'90000002',cs:160,v:65566,inv:'3100000001'}),
+   detRow({code:'90000002',cs:10,st:'Free',inv:'3100000001',v:0}),
+   /* รหัสที่วันนั้นมีแต่ของแถม — ต้องไม่อ่านว่า "รับของที่สั่งแล้วได้ 0 ลัง" */
+   detRow({code:'90000007',cs:3,st:'Free',inv:'3100000001',v:0}),
+   /* คลังที่อ่านไม่ออก ต้องนับเป็นของขายและรายงาน ไม่ใช่ทิ้ง */
+   detRow({code:'90000008',cs:7,st:'01-Unknown',inv:'3100000001',v:1000}),
+ ];
+ const r11=await ev(a=>{window.__log=[];PSI={rows:{},days:{},up:0};
+   parsePSI('PSI_Detail_Report_3.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);
+   psiBust();psiCrBust();
+   return {k1:PSI.rows['2026-11-17|90000001'],k2:PSI.rows['2026-11-17|90000002'],
+     k7:PSI.rows['2026-11-17|90000007'],k8:PSI.rows['2026-11-17|90000008'],
+     day:PSI.days['2026-11-17'],got7:psiGot('90000007','2026-11-16'),
+     got1:psiGot('90000001','2026-11-16'),log:window.__log.join(' ')};},{b64:mkDet(rowsD)});
+ t('🔑 อ่านไฟล์ละเอียดได้ (จับจากหัว Stock Type + Received Date ที่ไฟล์เดิมไม่มี)',
+   !!r11.k1&&r11.k1.cs===40,JSON.stringify(r11.k1));
+ t('🔑 ของแถมเก็บแยกเป็น fr ไม่บวกเข้าของซื้อ (ซื้อ 40 / แถม 6)',
+   r11.k1.cs===40&&r11.k1.fr===6&&r11.k2.cs===160&&r11.k2.fr===10,
+   JSON.stringify([r11.k1,r11.k2]));
+ t('ของแถมไม่มีมูลค่า จึงไม่ไปเพิ่มในยอด NIV ของวัน',
+   r11.day.v===13072+65566+1000&&r11.day.cs===40+160+7&&r11.day.fr===6+10+3,
+   JSON.stringify(r11.day));
+ t('🛟 รหัสที่วันนั้นมีแต่ของแถม ต้องไม่อ่านว่า "รับของที่สั่งแล้วได้ 0 ลัง"',
+   r11.got7===null&&!!r11.got1,JSON.stringify({got7:r11.got7,got1:r11.got1}));
+ t('🛟 คลังที่อ่านไม่ออก นับเป็นของขายและรายงาน ไม่ใช่ทิ้ง',
+   r11.k8&&r11.k8.cs===7&&/คลังที่ไม่รู้จัก/.test(r11.log)&&/01-Unknown/.test(r11.log),
+   r11.log.slice(0,200));
+ t('ไฟล์ละเอียดไม่มีแถว Total — ข้ามแถว Applied filters แถวเดียว',
+   /ข้ามแถวสรุปท้ายไฟล์ 1/.test(r11.log),r11.log.slice(0,200));
+ t('รายงานของแถมในบันทึกการอัพโหลด',/ของแถม 19 ลัง/.test(r11.log)&&/ไฟล์ละเอียด/.test(r11.log),
+   r11.log.slice(0,260));
+ /* 🔴 ไฟล์รูปแบบเดิมรวมของแถมไว้ในจำนวนเดียวกัน (วัดจากไฟล์จริง 192/192 คู่: เดิม = ซื้อ + แถม)
+    จึงแยกไม่ออก — คีย์ที่ไฟล์ละเอียดให้มาแล้ว ไฟล์เดิมห้ามเขียนทับจำนวน (ฝั่งที่รู้มากกว่าชนะ)
+    แต่ยังเพิ่มวัน/รหัสที่ไฟล์ละเอียดไม่มีได้ตามปกติ */
+ const r11b=await ev(a=>{window.__log=[];
+   parsePSI('PSI_26112026.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);
+   psiBust();psiCrBust();
+   return {k1:PSI.rows['2026-11-17|90000001'],day:PSI.days['2026-11-17'],
+     nw:PSI.rows['2026-11-19|90000055'],nwDay:PSI.days['2026-11-19'],log:window.__log.join(' ')};
+ },{b64:mkPsi([
+   psiRow({code:'90000001',cs:46,v:13072,inv:'3100000001'}),   /* 40 ซื้อ + 6 แถม รวมมาเป็นก้อนเดียว */
+   psiRow({code:'90000055',cs:9,v:500,inv:'3100000009',cre:'2026-11-18',rec:'2026-11-19'})])});
+ t('🔑 ไฟล์รูปแบบเดิมเขียนทับจำนวนของคีย์ที่ไฟล์ละเอียดให้มาแล้วไม่ได้ (ไม่งั้นของซื้อจะกลายเป็นยอดรวม 46)',
+   r11b.k1.cs===40&&r11b.k1.fr===6&&r11b.day.fr===19,
+   JSON.stringify([r11b.k1,r11b.day]));
+ t('…แต่ยังเพิ่มวัน/รหัสที่ไฟล์ละเอียดไม่มีได้ตามปกติ',
+   !!r11b.nw&&r11b.nw.cs===9&&!!r11b.nwDay,JSON.stringify(r11b.nw));
+ t('…และบอกออกมาว่าคงของเดิมไว้ และไฟล์นี้รวมของแถมไว้ในจำนวนเดียวกัน',
+   /คงของเดิมไว้ 1 รายการ/.test(r11b.log)&&/รวมของแถมไว้ในจำนวนเดียวกัน/.test(r11b.log),
+   r11b.log.slice(0,300));
+ /* ของแถมบนหน้าจอ: แยกช่อง + ไม่ถูกนับใน "เข้าคลังแล้ว" */
+ const r11c=await ev(a=>{PSI={rows:{},days:{},up:0};
+   parsePSI('PSI_Detail_Report_3.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);
+   psiBust();psiCrBust();psiOrdBust();
+   const R=psiCheck('2026-11-16'),by={};R.rows.forEach(r=>by[r.code]=r);
+   PSIV.sec='chk';PSIV.ord='2026-11-16';PSIV.only='all';PSIV.q='';renderPsi();
+   const tx=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
+   PSIV.sec='in';PSIV.day='2026-11-17';renderPsi();
+   const tin=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
+   PSIV.sec='chk';renderPsi();
+   return {a:by['90000001'],fr:R.fr,frN:R.frN,tx:tx,tin:tin,
+     day19:(PSI.days['2026-11-17']||{}).fr};},{b64:mkDet(rowsD)});
+ t('🔑 ของแถมไม่ถูกนับใน "เข้าคลังแล้ว" (สั่ง 40 − Drop 5 = 35 · เข้า 40 · แถม 6 แยกไว้)',
+   r11c.a.got===40&&r11c.a.fr===6,JSON.stringify(r11c.a));
+ /* ① กับ ② ตอบคนละคำถาม: ① = ของที่เข้าคลังทั้งหมดของวันนั้น (19 ลัง · รวมรหัสที่เราไม่ได้สั่ง)
+    ② = ของแถมที่มาพร้อม "ใบสั่งรอบนี้" เท่านั้น (16 ลัง) — ตัวเลขสองหน้าจึงต่างกันได้ ไม่ใช่บั๊ก */
+ t('🔑 ของแถมในหน้าเทียบใบสั่ง นับแค่รหัสที่อยู่ในใบสั่งรอบนั้น (16) ส่วนยอดของวันอยู่หน้า ① (19)',
+   r11c.fr===16&&r11c.day19===19,'รอบ '+r11c.fr+' · วัน '+r11c.day19);
+ t('หน้าเทียบใบสั่งบอกออกมาว่ารอบนี้มีของแถมเข้ามาด้วย และไม่ได้นับรวม',
+   /ของแถม/.test(r11c.tx)&&/ไม่ได้นับ/.test(r11c.tx),r11c.tx.slice(0,220));
+ t('หน้าของเข้าคลังแยกการ์ด 🛒 ของซื้อ กับ 🎁 ของแถม',
+   /ของซื้อ/.test(r11c.tin)&&/ของแถม/.test(r11c.tin)&&/ไม่ได้สั่ง ไม่มีมูลค่า/.test(r11c.tin),
+   r11c.tin.slice(0,220));
+
+ /* ---------------- 12) 💰 แถบเงิน: สั่งไป − Drop เทียบ ของเข้าคลัง (NIV) ----------------
+    เจ้าของอธิบายหน้านี้เอง 28 พ.ย. 69: "มันคือหน้า order-drop เทียบกับช่อง delivery
+    หรือของเข้าคลัง NIV นี้แหละ" — ต้องอ่านจาก ohVal/psiCrOf ชุดเดียวกับหน้าประวัติการสั่งของ */
+ const r12=await ev(()=>{
+   ORDERS.data['2026-11-16'].vals={main:{ov:1000000,cv:1000000}};
+   ORDERS.data['2026-11-16'].dropVal=100000;
+   psiCrBust();
+   const M=psiMoney('2026-11-16');
+   const oh=ohVal('2026-11-16'),cr=psiCrOf('2026-11-16');
+   /* วันที่ไฟล์ PSI ยังไปไม่ถึง = ขีด ห้ามเป็น 0 */
+   ORDERS.data['2026-11-30'].vals={main:{ov:500000,cv:500000}};
+   const late=psiMoney('2026-11-30');
+   /* ใบ Drop มากกว่ายอดสั่ง = สองไฟล์ไม่ตรงกัน ต้องบอก ไม่ใช่โชว์ติดลบเฉย ๆ */
+   if(ORDERS.dates.indexOf('2026-11-28')<0)ORDERS.dates.push('2026-11-28');
+   ORDERS.data['2026-11-28']={rounds:{main:{'90000001':150}},dropped:{},hasResult:true,
+     vals:{main:{ov:100000,cv:100000}},dropVal:900000};
+   psiOrdBust();
+   const over=psiMoney('2026-11-28');
+   PSIV.ord='2026-11-28';PSIV.sec='chk';renderPsi();
+   const tx=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
+   PSIV.ord='2026-11-16';renderPsi();
+   const tx16=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
+   return {M:M,oh:oh,cr:cr,late:late,over:over,tx:tx,tx16:tx16};
+ });
+ t('🔑 ฝั่งสั่งคือ CON Confirm × 0.85 แล้วหัก Drop — ตัวเดียวกับหน้าประวัติการสั่งของ',
+   r12.M.c85===850000&&r12.M.drop===100000&&r12.M.net===750000&&r12.M.net===r12.oh.net,
+   JSON.stringify(r12.M));
+ t('🔑 ฝั่งของเข้าคลังคือ NIV จากไฟล์ PSI นับตามวันที่ศูนย์ออกบิล',
+   r12.M.niv===r12.cr.v&&r12.M.niv===13072+65566+1000,
+   JSON.stringify({niv:r12.M.niv,cr:r12.cr.v}));
+ t('ต่างกัน = ของเข้าคลัง − ต้องได้',
+   r12.M.diff===Math.round((r12.M.niv-750000)*100)/100,JSON.stringify(r12.M.diff));
+ t('🛟 วันที่ยังไม่มีไฟล์ PSI ครอบถึง ต้องเป็นขีด ห้ามเป็น 0',
+   r12.late.niv===null&&r12.late.diff===null,JSON.stringify(r12.late));
+ t('🔑 ใบ Drop มากกว่ายอดสั่ง = บอกออกมาว่าสองไฟล์ไม่ตรงกัน ไม่ใช่โชว์ติดลบเฉย ๆ',
+   r12.over.over===true&&/ใบ Drop รอบนี้มีมูลค่ามากกว่ายอดสั่ง/.test(r12.tx),
+   r12.tx.slice(0,240));
+ t('แถบเงินติดป้าย (ประเมิน) ไว้ฝั่งสั่ง และบอกว่าไม่ใช่ BI Report',
+   /\(ประเมิน\)/.test(r12.tx16)&&/ไม่ใช่ BI Report/.test(r12.tx16),r12.tx16.slice(0,300));
+ t('แถบเงินบอกว่าเป็นตัวเดียวกับช่องในหน้าประวัติการสั่งของ',
+   /ประวัติการสั่งของ/.test(r12.tx16),r12.tx16.slice(0,300));
+
  /* ---------------- ไฟล์จริง (ถ้าตั้ง env ไว้) ---------------- */
  if(process.env.PSI_FILE&&fs.existsSync(process.env.PSI_FILE)){
    const real=fs.readFileSync(process.env.PSI_FILE).toString('base64');
    const rr=await ev(a=>{window.__log=[];PSI={rows:{},days:{},up:0};
      parsePSI('PSI_real.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);
-     const codes={};Object.keys(PSI.rows).forEach(k=>{codes[k.split('|')[1]]=1;});
+     psiBust();psiCrBust();
+     const codes={};let cs=0,fr=0,v=0;
+     Object.keys(PSI.rows).forEach(k=>{codes[k.split('|')[1]]=1;const r=PSI.rows[k];
+       cs+=+r.cs||0;fr+=+r.fr||0;v+=+r.v||0;});
      return {rows:Object.keys(PSI.rows).length,days:Object.keys(PSI.days).length,
-       codes:Object.keys(codes).length,log:window.__log.join(' ')};},{b64:real});
+       codes:Object.keys(codes).length,cs:Math.round(cs),fr:Math.round(fr),v:Math.round(v),
+       det:/ไฟล์ละเอียด/.test(window.__log.join(' ')),log:window.__log.join(' ')};},{b64:real});
    t('ไฟล์จริง: อ่านได้และแยกวันรับเข้าออกมาได้',rr.days>0&&rr.rows>0,
      rr.rows+' คีย์ · '+rr.days+' วัน · '+rr.codes+' รหัส');
-   t('ไฟล์จริง: ไม่มีแถวสรุปท้ายไฟล์หลุดเข้ามาเป็นสินค้า',/ข้ามแถวสรุปท้ายไฟล์ 2/.test(rr.log),
-     rr.log.slice(0,160));
-   console.log('   (ไฟล์จริง: '+rr.rows+' รายการ · '+rr.days+' วัน · '+rr.codes+' รหัส)');
+   t('ไฟล์จริง: ไม่มีแถวสรุปท้ายไฟล์หลุดเข้ามาเป็นสินค้า',
+     /ข้ามแถวสรุปท้ายไฟล์ [12]/.test(rr.log),rr.log.slice(0,160));
+   if(rr.det)t('ไฟล์จริง (ละเอียด): ของแถมแยกออกมาได้ และของซื้อไม่ถูกปน',
+     rr.fr>0&&rr.cs>0,'ของซื้อ '+rr.cs+' ลัง · ของแถม '+rr.fr+' ลัง');
+   console.log('   (ไฟล์จริง'+(rr.det?' ละเอียด':'')+': '+rr.rows+' รายการ · '+rr.days+' วัน · '+
+     rr.codes+' รหัส · ของซื้อ '+rr.cs+' ลัง'+(rr.fr?' · ของแถม '+rr.fr+' ลัง':'')+
+     ' · NIV '+rr.v.toLocaleString()+')');
  }else{
-   console.log('  (ข้าม 2 เช็คของไฟล์จริง — ตั้ง PSI_FILE=/path/PSI_ddmmyyyy.xlsx เพื่อตรวจกับไฟล์จริง)');
+   console.log('  (ข้ามเช็คของไฟล์จริง — ตั้ง PSI_FILE=/path/PSI_....xlsx เพื่อตรวจกับไฟล์จริง)');
  }
 
  let bad2=0;A.forEach(([c,n,x])=>{if(!c)bad2++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n+(x&&!c?' → '+x:''));});
