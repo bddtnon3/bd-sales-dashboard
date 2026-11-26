@@ -869,6 +869,20 @@ code, never printed.
   owner's 21 Nov screen read ORDER–DROP = −21,759.18 with the same หัก DROP as the 20th, the money
   twin of the case bug fixed the same day. Free goods have no money (GSV/NIV 0 on every real row),
   so they never touch this band.
+  **🔁 PSI is only the warehouse's "received" tick — nothing else**, and the owner said so plainly
+  on 28 Nov 26: *"จริง ๆ PSI คือไฟล์ที่คลังกดรับของเข้าเท่านั้น ในส่วนของสินค้าที่ไม่ได้รับเข้าให้
+  วิเคราะห์จากจำนวนสินค้า order-drop จากใบสั่งซื้อ … และจำนวนรับเข้าของ PSI … แต่ละรอบมีดริฟกันไหม
+  แล้วให้ระบบชนกันเองอัตโนมัติ มีการวิเคราะห์สองส่วนนี้อยู่ตลอด"*, with the chain spelled out:
+  **ศูนย์สั่ง → − ดรอป → ตัวเลขซื้อเข้า → วันที่คลังรับเข้า**. So "what did not arrive" is never
+  looked for inside PSI; it is **the order form minus the Drop file against the quantity PSI
+  received**, which is what `psiCheck` computes — and **`psiDrift`/`psiDriftHtml` now run that
+  comparison across every round by itself**, on top of the receiving table, so nobody has to open
+  rounds one at a time. Three rules: drift has **two directions and they are never netted off** —
+  `left` (short) and **`over` (received more than the round ordered), which was invisible because
+  `left` is clamped at 0**; a round no PSI file covers is **"รอไฟล์", not drift**, or an un-uploaded
+  day accuses the centre; and a fully-dropped code is not drift either. The band states both
+  figures, counts the rounds that agree, and lists the codes that drift most with the rounds they
+  drifted in — and when everything agrees it **says so** instead of rendering empty.
   **🔄 ของตีคืน — the PSI file has no status column at all** (`psiRetFor`/`psiRetNote`). The owner
   expected one on 28 Nov 26: *"ผมคาดว่ามันน่าจะมีพวกออเดอร์ของตีคืนหน้างานคลังเลยตีกลับทำให้จัดส่ง
   ไม่สำเร็จ อ่านจากสถานะในไฟล์ PSI"*. Every column of both formats was checked: all the remaining
@@ -888,9 +902,22 @@ code, never printed.
   pill, never merged into the Drop badge**: the Drop file is the centre's answer, PSI is our
   warehouse's, and they are different steps. With no PSI file covering that round the pill is
   **silent**, never "ยังไม่เข้า". Prove it with
-  **`node test/browser/psi.test.cjs`** (100 checks, self-contained with made-up codes; 103 with the
+  **`node test/browser/psi.test.cjs`** (112 checks, self-contained with made-up codes; 115 with the
   real file via `PSI_FILE=/path/PSI_Detail_Report_3.xlsx` — either format — which never enters the
   repo) plus the `PSI` cases in `merge-safety`.
+  **🧭 1st Sale / 2nd Sale — the vocabulary the team must share** (`saleScopeHtml`). The owner had
+  to explain it himself on 28 Nov 26 after the allocation file was discussed on the buying side:
+  *"ส่วนไฟล์ allocation มันคนละส่วนกันนะ นั่นคือฝั่งที่ศูนย์ขายให้ลูกค้า ส่วนที่เรากำลังทำ มันคือส่วนที่
+  ศูนย์สั่งของเข้า นับเป็นยอดซื้อ unilever เรียก 1st sale และฝั่งขายเรียก 2nd sale ทำเวปให้สื่อสารให้
+  คนใช้งานเข้าใจทั้งหมดนี้ด้วยนะ"*. So both groups open with a band naming which side they are:
+  **📥 (ซื้อ) = ยอดซื้อ · 1st Sale**, Unilever → the depot, fed by the order form, the Drop file and
+  PSI; **📋 (ขาย) = ยอดขาย · 2nd Sale**, the depot → shops, fed by the allocation file, the daily
+  sales file and the Transaction Inquiry. Each band states the chain, names the files, and **points
+  at the other group** so nobody lands on the wrong side again. It is written **once** and called
+  from both pages — split in two and they drift apart. ⚠️ This is "what this number counts", which
+  the user needs in order to work, not a narration of how the system is built; it does not loosen
+  the house rule against explaining the internals on screen. ประวัติการสั่งของ already labelled its
+  columns 1st / 2nd, so the three pages now use one vocabulary.
   The **📋 สถานะออเดอร์ (ขาย)** tab group (`renderOtrk`) answers *"where is this order?"* for the whole
   team. The owner's words, 26 Nov 26, after the analysis below: *"เราเจอหัวใจสำคัญละ เชื่อมด้วย
   เลขออเดอร์เดียวทั้งระบบฝั่งการขาย"*. It is **two steps, by his instruction** — *"ตอนนี้เรามีแค่

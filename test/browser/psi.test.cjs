@@ -708,6 +708,80 @@ function mkOldMaster(rows){
    ['manager','sales','sup','wh','ds'].every(x=>r14d.roles.indexOf(x)>=0),r14d.roles);
  t('ตารางรับเข้าเป็นหน้าแรกของหมวด',r14d.secs.split(',')[0]==='cal',r14d.secs);
 
+ /* ---------------- 15) 🔍 ชนตัวเลขเองอัตโนมัติทุกรอบ ----------------
+    เจ้าของ 28 พ.ย. 69: *"PSI คือไฟล์ที่คลังกดรับของเข้าเท่านั้น ในส่วนของสินค้าที่ไม่ได้รับเข้า
+    ให้วิเคราะห์จากจำนวนสินค้า order-drop จากใบสั่งซื้อ … และจำนวนรับเข้าของ PSI … แต่ละรอบ
+    มีดริฟกันไหม แล้วให้ระบบชนกันเองอัตโนมัติ"*  ลูกโซ่: ศูนย์สั่ง − ดรอป − ซื้อเข้า − วันที่รับเข้า */
+ const r15=await ev(a=>{PSI={rows:{},days:{},up:0};
+   parsePSI('PSI_Detail_drift.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)).buffer);
+   psiBust();psiCrBust();psiOrdBust();
+   ORDERS.dates=['2026-11-16','2026-11-20','2026-11-30'];
+   /* รอบ 16: สั่ง 50 ดรอป 10 ⇒ ต้องได้ 40 · เข้า 40 = ตรง */
+   ORDERS.data['2026-11-16']={rounds:{main:{'90000001':50}},
+     dropped:{'90000001':{o:50,d:40,q:10}},hasResult:true,dropVal:0};
+   /* รอบ 20: สั่ง 200 ดรอป 0 ⇒ ต้องได้ 200 · เข้า 120 = ขาด 80
+      และอีกรหัสเข้าเกิน: สั่ง 5 เข้า 30 ⇒ เกิน 25 */
+   ORDERS.data['2026-11-20']={rounds:{main:{'90000002':200,'90000003':5}},
+     dropped:{},hasResult:true,dropVal:0};
+   /* รอบ 30: ยังไม่มีไฟล์ PSI ครอบ — ต้องไม่นับเป็นดริฟ */
+   ORDERS.data['2026-11-30']={rounds:{main:{'90000009':10}},dropped:{},hasResult:true};
+   psiOrdBust();psiCrBust();
+   const D=psiDrift('2026-11');
+   const R20=psiCheck('2026-11-20'),by={};R20.rows.forEach(x=>by[x.code]=x);
+   PSIV.sec='cal';PSIV.ym='2026-11';renderPsi();
+   const tx=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
+   return {D:D,b2:by['90000002'],b3:by['90000003'],over:R20.over,overN:R20.overN,tx:tx};
+ },{b64:mkDet([
+   detRow({code:'90000001',cs:40,v:1000,cre:'2026-11-16',rec:'2026-11-17'}),
+   detRow({code:'90000002',cs:120,v:2000,inv:'3100000002',cre:'2026-11-20',rec:'2026-11-21'}),
+   detRow({code:'90000003',cs:30,v:500,inv:'3100000002',cre:'2026-11-20',rec:'2026-11-21'})])});
+ t('🔑 ระบบชนให้เองทุกรอบ ไม่ต้องเปิดดูทีละวัน (ตรวจ 3 รอบ · ตรง 1 · ไม่ตรง 1 · รอไฟล์ 1)',
+   r15.D.nR===3&&r15.D.ok===1&&r15.D.bad===1&&r15.D.nWait===1,JSON.stringify({
+     nR:r15.D.nR,ok:r15.D.ok,bad:r15.D.bad,wait:r15.D.nWait}));
+ t('🔑 "ขาด" มาจากใบสั่ง − ใบ Drop เทียบของที่รับเข้า (สั่ง 200 เข้า 120 ⇒ ขาด 80)',
+   r15.b2.due===200&&r15.b2.got===120&&r15.b2.left===80&&r15.D.short===80,
+   JSON.stringify(r15.b2));
+ t('🔑 ดริฟอีกทิศ: เข้าเกินที่สั่ง (สั่ง 5 เข้า 30 ⇒ เกิน 25) ต้องเห็นด้วย ไม่ใช่ถูกปัดเป็น 0',
+   r15.b3.over===25&&r15.over===25&&r15.overN===1&&r15.D.over===25,
+   JSON.stringify(r15.b3));
+ t('🛟 ขาดกับเกินห้ามหักลบกัน (ขาด 80 · เกิน 25 ไม่ใช่ขาด 55)',
+   r15.D.short===80&&r15.D.over===25,JSON.stringify([r15.D.short,r15.D.over]));
+ t('🛟 รอบที่ยังไม่มีไฟล์ PSI ครอบ ไม่ถูกนับเป็นดริฟ',
+   r15.D.nWait===1&&r15.D.bad===1,JSON.stringify(r15.D));
+ t('หน้าตารางขึ้นผลการชนตัวเลขให้เห็นเลย พร้อมรายการที่ดริฟมากที่สุด',
+   /ระบบชนตัวเลขให้เองทุกรอบ/.test(r15.tx)&&/ขาด 80/.test(r15.tx)&&
+   /เข้าเกินที่สั่ง 25/.test(r15.tx)&&/สินค้าที่ดริฟมากที่สุด/.test(r15.tx),r15.tx.slice(0,400));
+ const r15b=await ev(()=>{
+   /* ทุกรอบตรงกัน = ต้องพูดออกมาว่าตรง ไม่ใช่ปล่อยว่าง */
+   delete ORDERS.data['2026-11-20'];delete ORDERS.data['2026-11-30'];
+   ORDERS.dates=['2026-11-16'];psiOrdBust();psiCrBust();
+   PSIV.sec='cal';renderPsi();
+   return document.getElementById('psiBody').textContent.replace(/\s+/g,' ');});
+ t('🔑 ทุกรอบตรงกัน ต้องบอกว่า "ไม่มีรอบไหนดริฟ" ไม่ใช่เงียบ',
+   /ไม่มีรอบไหนดริฟ/.test(r15b),r15b.slice(0,300));
+
+ /* ---------------- 16) 🧭 1st Sale / 2nd Sale ----------------
+    เจ้าของต้องมาอธิบายเองว่าไฟล์ allocation เป็นฝั่งขาย ไม่ใช่ฝั่งซื้อ —
+    *"ทำเวปให้สื่อสารให้คนใช้งานเข้าใจทั้งหมดนี้ด้วยนะ"* */
+ const r16=await ev(()=>{
+   PSIV.sec='cal';renderPsi();
+   const buy=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
+   return {buy:buy,sell:saleScopeHtml('sell').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ')};});
+ t('🔑 หน้าฝั่งซื้อบอกว่าเป็น "ยอดซื้อ · 1st Sale" และวางลูกโซ่ให้ครบ',
+   /ยอดซื้อ · 1st Sale/.test(r16.buy)&&/ศูนย์สั่ง/.test(r16.buy)&&
+   /− ดรอป/.test(r16.buy)&&/ต้องได้/.test(r16.buy)&&/วันที่คลังรับเข้า/.test(r16.buy),
+   r16.buy.slice(0,320));
+ t('🔑 …และบอกว่าไฟล์ PSI คือ "คลังกดรับของเข้า" เท่านั้น',
+   /คลังกดรับของเข้าไปแล้วเท่าไหร่/.test(r16.buy),r16.buy.slice(0,420));
+ t('🔑 หน้าฝั่งขายบอกว่าเป็น "ยอดขาย · 2nd Sale" และไฟล์ใบจัดของอยู่ฝั่งนี้',
+   /ยอดขาย · 2nd Sale/.test(r16.sell)&&/ใบจัดของ \(allocation\)/.test(r16.sell),
+   r16.sell.slice(0,320));
+ t('🔑 สองหน้าชี้ไปหากันเอง จะได้ไม่สับสนว่าอยู่ฝั่งไหน',
+   /สถานะออเดอร์ \(ขาย\)/.test(r16.buy)&&/สถานะออเดอร์ \(ซื้อ\)/.test(r16.sell),'');
+ t('🛟 เขียนไว้ที่เดียว (saleScopeHtml) สองหน้าจึงพูดไม่ตรงกันไม่ได้',
+   (fs.readFileSync(path.join(ROOT,'dashboard_template.html'),'utf8')
+     .match(/function saleScopeHtml/g)||[]).length===1,'');
+
  /* ---------------- ไฟล์จริง (ถ้าตั้ง env ไว้) ---------------- */
  if(process.env.PSI_FILE&&fs.existsSync(process.env.PSI_FILE)){
    const real=fs.readFileSync(process.env.PSI_FILE).toString('base64');

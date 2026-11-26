@@ -802,6 +802,9 @@ main.wide{max-width:1560px}
   .psi-tbl td>span.psi-cell{display:block;flex:1 1 auto;min-width:0;text-align:right}
   .psi-tbl td>span.psi-cell>*{text-align:right}
 }
+/* 🧭 แถบ "หน้านี้คือยอดซื้อ/ยอดขาย" — บางและอ่านไว ไม่ใช่กล่องใหญ่บังของจริง */
+.sale-scope{padding:12px 14px!important;margin-bottom:12px}
+.sale-scope .psub{line-height:1.65}
 .psi-cal td{vertical-align:top}
 .psi-cal tbody tr:hover{background:var(--hov,#f6f9ff)}
 /* 🚚 สรุปรายสายบนหน้า "แอดมินตรวจ" — การ์ดหนึ่งใบต่อหนึ่งสาย กดแล้วกางรายการสินค้า
@@ -18644,6 +18647,23 @@ function psiMoney(ymd){
  * 🔑 กฎเดียว อ่านออกใน 1 บรรทัด:   **ต้องได้ = เราสั่ง − โดน Drop**   แล้ว
  *                                 **ยังค้าง = ต้องได้ − เข้าคลังแล้ว**
  *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 🔁 **ไฟล์ PSI คือ "คลังกดรับของเข้า" เท่านั้น — ไม่มีสถานะอะไรในตัวมันเอง**
+ * เจ้าของยืนยันเอง 28 พ.ย. 69: *"จริง ๆ PSI คือไฟล์ที่คลังกดรับของเข้าเท่านั้น ในส่วนของสินค้า
+ * ที่ไม่ได้รับเข้าให้วิเคราะห์จากจำนวนสินค้า order-drop จากใบสั่งซื้อที่อัพในการสั่งของของวันนั้น ๆ
+ * และจำนวนรับเข้าของ PSI ว่าลงรายละเอียดจำนวนสินค้าไป แต่ละรอบมีดริฟกันไหม แล้วให้ระบบชนกันเอง
+ * อัตโนมัติ มีการวิเคราะห์สองส่วนนี้อยู่ตลอด"* — และวางลูกโซ่ไว้ให้ครบ:
+ *
+ *      **ศูนย์สั่ง → − ดรอป → ตัวเลขซื้อเข้า → วันที่คลังรับเข้า**
+ *
+ * ⇒ "ของที่ไม่ได้รับเข้า" จึงต้องคิดจาก **ใบสั่งซื้อ − ใบ Drop เทียบกับจำนวนที่ PSI รับเข้า**
+ *   ไม่ใช่ไปหาสถานะในไฟล์ PSI (ซึ่งไม่มี) · นี่คือสิ่งที่ `psiCheck` ทำอยู่ และ `psiDrift`
+ *   ทำให้มัน **ชนกันเองทุกรอบโดยไม่ต้องเปิดดูทีละรอบ**
+ * ⚠️ ดริฟมี **สองทิศ** และเดิมเห็นทางเดียว: `left` ถูก `Math.max(0,…)` ไว้ ของที่
+ *   **เข้าเกินที่สั่ง** จึงหายไปเงียบ ๆ ทั้งที่เป็นดริฟเหมือนกัน — ตอนนี้เก็บเป็น `over` แยก
+ *   และ **ห้ามหักลบกับ `left`** (ขาด 5 ลังของรหัสหนึ่ง กับเกิน 5 ลังของอีกรหัส ไม่ใช่ "ตรง"
+ *   — กฎเดียวกับ ขาด/เกิน ของหน้าแอดมินตรวจ)
+ *
  * ⚠️ สิ่งที่ทำให้ของเดิมมั่ว: ใบ Drop กับใบสั่งของเราเป็น **คนละไฟล์** และบอกจำนวนไม่ตรงกันได้
  *    (บนจอจริงของเจ้าของ: เราสั่ง 150 แต่ใบ Drop ลง 300 แล้ว "ควรได้" กลายเป็น 0)
  *    ของเดิมใช้สามทางปนกัน — `dropD` ก่อน แล้วถอยไป `dropO` แล้วค่อยถอยมาที่ของเรา —
@@ -18660,7 +18680,7 @@ function psiCheck(ymd){
   if(!day)return {rows:[],has:false};
   const om=orderedMerged(day),dp=day.dropped||{},res=!!day.hasResult;
   const cov=psiCovers(ymd);
-  let overDrop=0,dlvOver=0,fr=0,frN=0,ret=0,retN=0,retUnk=0;
+  let overDrop=0,dlvOver=0,fr=0,frN=0,ret=0,retN=0,retUnk=0,over=0,overN=0;
   const rows=Object.keys(om).map(c=>{
     const ord=Math.round((+om[c]||0)*100)/100;
     const e=(c in dp)?dp[c]:null;
@@ -18680,6 +18700,9 @@ function psiCheck(ymd){
     /* ยังค้างกี่ลัง — คำถามเดียวที่เจ้าของต้องการจากหน้านี้
        ยังไม่มีไฟล์ครอบ = ยังไม่รู้ ต้องเป็น null ห้ามเป็นตัวเลข */
     const left=(st==="nofile"||st==="dropall")?null:Math.max(0,Math.round((due-got)*100)/100);
+    /* ⬆️ อีกทิศของดริฟ: เข้าเกินที่สั่ง — เก็บแยก ห้ามหักกับ "ยังค้าง" */
+    const ov=(st==="nofile")?null:Math.max(0,Math.round((got-due)*100)/100);
+    if(ov>0.001){over=Math.round((over+ov)*100)/100;overN++;}
     /* 🎁 ของแถมที่มาพร้อมรอบนี้ — นับแยก ห้ามบวกเข้า "เข้าคลังแล้ว" เพราะเราไม่ได้สั่งมัน */
     const gf=g?(+g.fr||0):psiFrFor(c,ymd);
     if(gf){fr=Math.round((fr+gf)*100)/100;frN++;}
@@ -18688,13 +18711,14 @@ function psiCheck(ymd){
     if(g&&rt===null)retUnk++;
     if(rt>0.001){ret=Math.round((ret+rt)*100)/100;retN++;}
     return {code:c,nm:(typeof oname==="function"?oname(c):"")||"",
-      ord:ord,drop:drop,raw:raw,due:due,got:got,left:left,fr:gf,ret:rt,
+      ord:ord,drop:drop,raw:raw,due:due,got:got,left:left,over:ov,fr:gf,ret:rt,
       d:g?g.d:"",inv:g?g.inv:[],st:st,res:res};
   });
   /* รหัสที่อยู่ในใบ Drop แต่ไม่ได้อยู่ในใบสั่งของวันนี้เลย — บอกไว้ ไม่เอามาปนในยอด */
   const extra=Object.keys(dp).filter(c=>!(c in om));
   return {rows:rows,has:true,cov:cov,res:res,overDrop:overDrop,dlvOver:dlvOver,extra:extra,
-    fr:fr,frN:frN,ret:ret,retN:retN,retUnk:retUnk,money:psiMoney(ymd)};
+    fr:fr,frN:frN,ret:ret,retN:retN,retUnk:retUnk,over:over,overN:overN,
+    money:psiMoney(ymd)};
 }
 const PSI_ST={full:{i:"✅",t:"เข้าครบแล้ว",p:"g"},part:{i:"🟡",t:"เข้าบางส่วน",p:"w"},
   wait:{i:"🕓",t:"ยังไม่เข้าคลัง",p:"b"},dropall:{i:"⛔",t:"โดน Drop ทั้งหมด",p:""},
@@ -18706,7 +18730,8 @@ function renderPsi(){
   const tb=document.getElementById("psiTabs"),el=document.getElementById("psiBody");
   if(!el)return;
   if(tb)tb.innerHTML=psiTabsHtml();
-  el.innerHTML=(PSIV.sec==="chk")?psiChkHtml():((PSIV.sec==="cal")?psiCalHtml():psiInHtml());
+  el.innerHTML=saleScopeHtml("buy")+
+    ((PSIV.sec==="chk")?psiChkHtml():((PSIV.sec==="cal")?psiCalHtml():psiInHtml()));
 }
 /* ============================================================================
  * 📅 ตารางรับเข้า — สถานะว่า "ของที่ศูนย์สั่งซื้อไป เข้าคลังครบหรือยัง" ให้ทั้งบริษัทอ่าน
@@ -18736,6 +18761,45 @@ function renderPsi(){
  *    จะอ่านว่าศูนย์ไม่ส่งของ
  * ⚠️ อ่านอย่างเดียวทั้งหน้า และทุกบทบาทเปิดได้ (เจ้าของขอ "ให้ทุกคนในบริษัทรับรู้")
  * ==========================================================================*/
+/* ============================================================================
+ * 🧭 1st Sale / 2nd Sale — คำที่ยูนิลีเวอร์ใช้ และทีมต้องเข้าใจตรงกัน
+ *
+ * เจ้าของสั่ง 28 พ.ย. 69 หลังต้องมาอธิบายเองว่าไฟล์ allocation เป็นคนละฝั่ง:
+ * *"ส่วนไฟล์ allocation มันคนละส่วนกันนะ นั่นคือฝั่งที่ศูนย์ขายให้ลูกค้า ส่วนที่เรากำลังทำ
+ *   มันคือส่วนที่ศูนย์สั่งของเข้า นับเป็นยอดซื้อ unilever เรียก 1st sale และฝั่งขายเรียก 2nd sale
+ *   ทำเวปให้สื่อสารให้คนใช้งานเข้าใจทั้งหมดนี้ด้วยนะ"*
+ *
+ *   **1st Sale = ยอดซื้อ** · ยูนิลีเวอร์ → ศูนย์เรา · หมวด 📥 สถานะออเดอร์ (ซื้อ)
+ *     ไฟล์: ใบสั่งซื้อ (การสั่งของ) · ใบ Drop · **PSI = คลังกดรับของเข้า**
+ *   **2nd Sale = ยอดขาย** · ศูนย์เรา → ร้านค้า · หมวด 📋 สถานะออเดอร์ (ขาย)
+ *     ไฟล์: ใบจัดของ (allocation) · ยอดขายรายวัน · รายการสั่งซื้อ
+ *
+ * ⚠️ เขียนไว้ที่เดียวแล้วเรียกสองหน้า — ถ้าแยกกันเขียน สองหน้าจะพูดไม่ตรงกันเมื่อไหร่ก็ได้
+ * ⚠️ นี่คือ "เลขตัวนี้นับอะไร" ซึ่งเป็นสิ่งที่คนใช้งานต้องรู้เพื่อทำงาน ไม่ใช่การเล่าวิธีทำงาน
+ *    ของระบบ — คนละเรื่องกับกฎห้ามเล่าเบื้องหลังบนหน้าเว็บ
+ * ==========================================================================*/
+function saleScopeHtml(kind){
+  const buy=(kind==="buy");
+  return `<div class="panel sale-scope" style="border-left:4px solid ${buy?"var(--blue)":"var(--good)"}">
+    <div style="font-weight:800;font-size:15px;margin-bottom:4px">
+      ${buy?"🛒 หน้านี้คือ <span style='color:var(--blue)'>ยอดซื้อ · 1st Sale</span>"
+           :"🚚 หน้านี้คือ <span style='color:var(--good)'>ยอดขาย · 2nd Sale</span>"}</div>
+    <div class="psub">
+      ${buy
+        ? `ของที่ <b>ศูนย์เราสั่งซื้อจากยูนิลีเวอร์</b> เข้าคลังของเราเอง<br>
+           <b>ลูกโซ่:</b> ศูนย์สั่ง (ใบสั่งซื้อ) → <b>− ดรอป</b> (ใบ Drop) → <b>ต้องได้</b> →
+           คลังรับเข้า (ไฟล์ PSI) → <b>วันที่คลังรับเข้า</b><br>
+           ไฟล์ <b>PSI</b> บอกแค่ว่า <b>คลังกดรับของเข้าไปแล้วเท่าไหร่</b> —
+           ของที่ยังไม่เข้า ระบบคิดจาก <b>ใบสั่งซื้อ − ใบ Drop</b> เทียบกับจำนวนที่รับเข้า และชนให้เองทุกรอบ<br>
+           <span style="color:var(--muted)">คนละเรื่องกับ <b>2nd Sale</b> (ของที่เราขายออกให้ร้านค้า)
+           ซึ่งอยู่ที่หมวด <b>📋 สถานะออเดอร์ (ขาย)</b></span>`
+        : `ของที่ <b>ศูนย์เราขายออกให้ร้านค้า</b><br>
+           <b>ลูกโซ่:</b> ① เซลล์คีย์ออเดอร์ → ② คลังจัดของ (เลข GIN) → ออกบิล<br>
+           ไฟล์: <b>ใบจัดของ (allocation)</b> · ไฟล์ยอดขายรายวัน · ไฟล์รายการสั่งซื้อ<br>
+           <span style="color:var(--muted)">คนละเรื่องกับ <b>1st Sale</b> (ของที่ศูนย์สั่งซื้อเข้าคลัง)
+           ซึ่งอยู่ที่หมวด <b>📥 สถานะออเดอร์ (ซื้อ)</b></span>`}
+    </div></div>`;
+}
 function psiPct(got,due){
   if(due==null||!(due>0))return null;
   return Math.round((got/due)*1000)/10;
@@ -18770,6 +18834,84 @@ function psiRounds(){
       rec:C?(C.rec||[]):[],by:C?(C.by||{}):{},niv:C?C.v:null,recCs:C?C.cs:null});
   });
   return out.reverse();     /* ใหม่สุดอยู่บน เหมือนตัวเลือกวันทุกหน้า */
+}
+/* ============================================================================
+ * 🔍 ชนตัวเลขเองอัตโนมัติทุกรอบ — "ใบสั่งซื้อ − ใบ Drop" ปะทะ "จำนวนที่คลังรับเข้า"
+ *
+ * เจ้าของสั่ง 28 พ.ย. 69: *"ให้ระบบชนกันเองอัตโนมัติ มีการวิเคราะห์สองส่วนนี้อยู่ตลอด"*
+ * เดิมต้องเปิดดูทีละรอบถึงจะเห็น ตอนนี้กวาดทุกรอบให้เองแล้วสรุปไว้บนสุดของตาราง
+ *
+ * ⚠️ ดริฟสองทิศ **ห้ามหักลบกัน**: `short` (ยังไม่เข้า/เข้าไม่ครบ) กับ `over` (เข้าเกินที่สั่ง)
+ *    เป็นคนละปัญหาและต้องตามคนละแบบ
+ * ⚠️ รอบที่ยังไม่มีไฟล์ PSI ครอบถึง **ไม่ใช่ดริฟ** — แยกนับเป็น "รอไฟล์" ไม่งั้นวันที่ยังไม่ได้
+ *    อัพไฟล์จะถูกฟ้องว่าศูนย์ส่งของไม่ครบ
+ * ⚠️ รหัสที่โดน Drop ทั้งตัว (ต้องได้ = 0) ไม่ใช่ดริฟเช่นกัน
+ * ==========================================================================*/
+function psiDrift(ym){
+  const rounds=psiRounds();
+  const use=ym?rounds.filter(r=>String(r.d).slice(0,7)===ym):rounds;
+  const codes={};
+  let nR=0,nWait=0,short=0,shortN=0,over=0,overN=0,bad=0;
+  use.forEach(r=>{
+    if(!r.has)return;
+    nR++;
+    if(!r.cov){nWait++;return;}
+    const R=psiCheck(r.d);
+    let any=false;
+    (R.rows||[]).forEach(x=>{
+      if(x.st==="dropall")return;
+      const s=+x.left||0,o=+x.over||0;
+      if(s>0.001){short=Math.round((short+s)*100)/100;shortN++;any=true;}
+      if(o>0.001){over=Math.round((over+o)*100)/100;overN++;any=true;}
+      if(s>0.001||o>0.001){
+        const e=codes[x.code]||(codes[x.code]={code:x.code,nm:x.nm,s:0,o:0,n:0,ds:[]});
+        e.s=Math.round((e.s+s)*100)/100;e.o=Math.round((e.o+o)*100)/100;e.n++;
+        if(e.ds.indexOf(r.d)<0)e.ds.push(r.d);
+      }
+    });
+    if(any)bad++;
+  });
+  const list=Object.keys(codes).map(c=>codes[c])
+    .sort((a,b)=>(b.s+b.o)-(a.s+a.o));
+  return {nR:nR,nWait:nWait,bad:bad,ok:nR-nWait-bad,
+    short:short,shortN:shortN,over:over,overN:overN,list:list};
+}
+function psiDriftHtml(ym){
+  const D=psiDrift(ym);
+  if(!D.nR)return "";
+  const clean=!D.shortN&&!D.overN;
+  const top=D.list.slice(0,8).map(x=>
+    `<tr><td class="psi-nm" data-l="สินค้า"><b>${anaEsc(x.nm||("รหัส "+x.code))}</b>
+       <div class="psub">รหัส ${anaEsc(x.code)} · ดริฟ ${x.n} รอบ</div></td>
+     <td data-l="ขาด">${x.s>0.001?`<b class="down">${psiN(x.s)}</b>`:'<span class="psub">-</span>'}</td>
+     <td data-l="เกิน">${x.o>0.001?`<b style="color:#8a6500">${psiN(x.o)}</b>`:'<span class="psub">-</span>'}</td>
+     <td data-l="รอบที่เจอ"><span class="psub">${x.ds.slice(0,3).map(d=>anaEsc(fmtDayMon(d))).join(" · ")}${
+       x.ds.length>3?(" +"+(x.ds.length-3)):""}</span></td></tr>`).join("");
+  return `<div class="panel"><h3>🔍 ระบบชนตัวเลขให้เองทุกรอบ</h3>
+    <div class="psub"><b>ใบสั่งซื้อ − ใบ Drop</b> ปะทะ <b>จำนวนที่คลังรับเข้า (PSI)</b> —
+      ระบบตรวจให้ทุกรอบเอง ไม่ต้องเปิดดูทีละวัน ·
+      <b>ขาด</b> กับ <b>เกิน</b> เป็นคนละปัญหา จึงไม่หักลบกัน</div>
+    <div class="rq-lines" style="margin:10px 0 0">
+      <span class="rq-chip off" style="cursor:default">ตรวจแล้ว <span class="n">${D.nR}</span> รอบ</span>
+      <span class="rq-chip off" style="cursor:default;color:var(--good)">✅ ตรงกัน <span class="n">${D.ok}</span></span>
+      <span class="rq-chip off" style="cursor:default;color:${D.bad?"var(--bad)":"var(--muted)"}">⚠️ ไม่ตรง <span class="n">${D.bad}</span></span>
+      ${D.nWait?`<span class="rq-chip off" style="cursor:default">⏳ รอไฟล์ PSI <span class="n">${D.nWait}</span></span>`:""}
+    </div>
+    ${clean
+      ? `<div class="insight" style="margin-top:10px">✅ ทุกรอบที่มีไฟล์ PSI แล้ว
+          <b>ของเข้าครบตามที่สั่งหักดรอป</b> — ไม่มีรอบไหนดริฟเลย</div>`
+      : `<div class="note" style="margin-top:10px">⚠️ <b>${D.bad}</b> รอบตัวเลขไม่ตรงกัน —
+          <b class="down">ขาด ${psiN(D.short)} ลัง</b> (${D.shortN} รายการ)${
+          D.overN?` · <b style="color:#8a6500">เข้าเกินที่สั่ง ${psiN(D.over)} ลัง</b> (${D.overN} รายการ)`:""}
+          <br><b>ขาด</b> = สั่งแล้วหักดรอปแล้ว แต่คลังยังรับเข้าไม่ครบ — ต้องตามกับศูนย์${
+          D.overN?` · <b>เกิน</b> = คลังรับเข้ามากกว่าที่ใบสั่งรอบนั้นระบุ — เช็กว่าเป็นของรอบอื่นหรือเปล่า`:""}</div>
+        <div class="tblwrap" style="margin-top:10px"><table class="psi-tbl">
+          <thead><tr><th style="text-align:left">สินค้าที่ดริฟมากที่สุด</th><th>ขาด</th><th>เกิน</th>
+            <th style="text-align:left">รอบที่เจอ</th></tr></thead>
+          <tbody>${top}</tbody></table></div>
+        ${D.list.length>8?`<div class="psub" style="margin-top:6px">แสดง 8 จาก ${D.list.length} รายการ —
+          กดที่รอบในตารางด้านล่างเพื่อดูครบทุกรายการของรอบนั้น</div>`:""}`}
+    </div>`;
 }
 function psiCalHtml(){
   const rows=psiRounds();
@@ -18837,6 +18979,7 @@ function psiCalHtml(){
         <div class="v" style="color:${psiPctCol(totPct)}">${totPct==null?"-":(totPct.toLocaleString()+"%")}</div>
         <div class="s">${tot.wait?(tot.wait+" รอบยังไม่มีไฟล์ PSI"):"ทั้งเดือนนี้"}</div></div>
     </div>
+    ${psiDriftHtml(PSIV.ym)}
     <div class="panel"><h3>📅 ออเดอร์ที่ศูนย์สั่งซื้อ → เข้าคลังวันไหน</h3>
       <div class="psub"><b>ศูนย์ออกบิล</b> คือวันที่นับเป็นยอดซื้อ (ตรงกับหน้า 📊 ประวัติการสั่งของ) ·
         <b>ของเข้าคลัง</b> คือวันที่ของถึงคลังจริง — <b>คนละวันกันได้</b> และบิลวันเดียวของเข้าหลายวันก็ได้
@@ -18996,6 +19139,7 @@ function psiChkHtml(){
   const PCLS={full:"r-ok",part:"r-nokey",wait:"r-noalloc",dropall:"r-diff",nofile:""};
   const hasFr=R.fr>0;   /* 🎁 มีเฉพาะไฟล์ละเอียด — ไม่มีก็ไม่ต้องขึ้นช่องว่างให้รก */
   const hasRet=R.ret>0; /* 🔄 ของตีคืน — ขึ้นช่องเฉพาะรอบที่มีจริง */
+  const hasOver=R.over>0;  /* ⬆️ เข้าเกินที่สั่ง — ดริฟอีกทิศ ห้ามหักกับ "ยังค้าง" */
   const bands=grpByCat(codes).map(g=>{
     const list=poSeqSort(g.list,null,null);
     return {title:`${g.icon} ${g.cat}`,sub:`· ${list.length} รายการ`,
@@ -19009,6 +19153,8 @@ function psiChkHtml(){
             :(r.got?`<b class="up">${psiN(r.got)}</b>`:'<span class="psub">0</span>')}</span></td>`+
           `<td data-l="ยังค้าง"><span>${r.left===null?'<span class="psub">-</span>'
             :(r.left>0.001?`<b class="down">${psiN(r.left)}</b>`:'<span class="up">ครบ</span>')}</span></td>`+
+          (hasOver?`<td data-l="เข้าเกิน"><span>${(r.over>0.001)
+            ?`<b style="color:#8a6500">${psiN(r.over)}</b>`:'<span class="psub">-</span>'}</span></td>`:"")+
           (hasRet?`<td data-l="ตีคืน"><span>${(r.ret>0.001)?`<b class="down">${psiN(r.ret)}</b>`
             :(r.ret===null?'<span class="psub">-</span>':'<span class="psub">0</span>')}</span></td>`:"")+
           (hasFr?`<td data-l="ของแถม"><span>${(+r.fr)?`<b class="up">${psiN(r.fr)}</b>`:"-"}</span></td>`:"")+
@@ -19016,7 +19162,8 @@ function psiChkHtml(){
           `<td data-l="สถานะ" style="text-align:left"><span class="pill ${S.p}">${S.i} ${S.t}</span></td></tr>`;})};
   });
   const tbl=grpTable([{h:"สินค้า",a:"l"},{h:"เราสั่ง"},{h:"โดน Drop"},{h:"ต้องได้"},
-      {h:"เข้าคลังแล้ว"},{h:"ยังค้าง"}].concat(hasRet?[{h:"🔄 ตีคืน"}]:[],hasFr?[{h:"🎁 ของแถม"}]:[],
+      {h:"เข้าคลังแล้ว"},{h:"ยังค้าง"}].concat(hasOver?[{h:"⬆️ เข้าเกิน"}]:[],
+      hasRet?[{h:"🔄 ตีคืน"}]:[],hasFr?[{h:"🎁 ของแถม"}]:[],
       [{h:"วันที่เข้า"},{h:"สถานะ",a:"l"}]),
     bands,{alwaysBand:true,cls:"psi-tbl sp-rt",empty:'<div class="insight">ไม่มีรายการที่ตรงกับที่เลือกไว้</div>'});
   /* ⚠️ สองไฟล์ไม่ตรงกัน = ข้อเท็จจริงที่เจ้าของต้องรู้ ไม่ใช่เรื่องที่ระบบควรกลืนแล้วคิดเลขต่อ */
@@ -21577,7 +21724,7 @@ function renderOtrk(){
   if(OT.err&&!all.length){
     body.innerHTML=`<div class="panel"><div class="insight">อ่านข้อมูลไม่ได้: ${anaEsc(OT.err)} — ลองรีเฟรชอีกครั้ง</div></div>`;return;}
   if(!all.length){
-    body.innerHTML=otAskHtml()+`<div class="panel"><div class="insight">
+    body.innerHTML=saleScopeHtml("sell")+otAskHtml()+`<div class="panel"><div class="insight">
       เดือนนี้ยังไม่มีข้อมูล — ข้อมูลมาจากไฟล์ใบจัดของของคลัง ให้แอดมินอัพไฟล์นั้นก่อน
       (ปุ่มอัพโหลด → 📦 ออเดอร์พิเศษ → ไฟล์ใบจัดของ)</div></div>`;return;}
   const rows=all.filter(otPass);
@@ -21608,7 +21755,7 @@ function renderOtrk(){
     <div class="psub" style="margin-top:8px">① เซลล์คีย์ = วันที่สร้างใบสั่งซื้อ ·
       ② คลังจัดของ = เลข GIN (ใบจัดของของคลัง)${
       meta.file?` · ไฟล์ล่าสุด ${anaEsc(meta.file)}${meta.d2?" (ถึง "+anaEsc(fmtDate(meta.d2))+")":""}`:""}</div></div>`;
-  body.innerHTML=otAskHtml()+cards+seg+
+  body.innerHTML=saleScopeHtml("sell")+otAskHtml()+cards+seg+
     (OT.sec==="prod"?otProdHtml(rows):otTblHtml(rows));
 }
 /* ====================== 💰 หน้าแคตาลอคราคา (ทุกคนเห็น) ====================== */
