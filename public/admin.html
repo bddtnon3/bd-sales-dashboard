@@ -607,6 +607,70 @@ main.wide{max-width:1560px}
   .ot-tbl tr.on>td,.ot-tbl tbody tr:hover>td{background:transparent;box-shadow:none}
   .ot-tbl tr.ot-det>td{display:block;padding:0}
 }
+ 
+@media(max-width:760px){
+  .psi-tbl thead{display:none}
+  .psi-tbl,.psi-tbl tbody,.psi-tbl tr,.psi-tbl td{display:block;width:auto}
+  .psi-tbl tbody tr{border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+    margin-bottom:10px;background:#fff}
+  .psi-tbl tbody tr.grp-row{border:0;border-radius:8px;padding:8px 10px;margin:14px 0 8px}
+  .psi-tbl tbody tr.grp-row>td{display:block;padding:0;font-weight:800}
+  .psi-tbl tbody tr.grp-row>td::before{content:""}
+  .psi-tbl td{border:0;padding:3px 0;text-align:left!important;
+    display:flex;justify-content:space-between;align-items:baseline;gap:14px}
+  .psi-tbl td::before{content:attr(data-l);color:var(--muted);font-size:12px;
+    flex:0 0 auto;white-space:nowrap}
+  .psi-tbl td>*{text-align:right}
+  .psi-tbl td.psi-nm{display:block;border-bottom:1px solid var(--line);
+    padding-bottom:6px;margin-bottom:4px}
+  .psi-tbl td.psi-nm>*{text-align:left}
+  .psi-tbl td.psi-nm::before{content:""}
+}
+ 
+.sl-wrap{display:flex;flex-direction:column;gap:10px}
+.sl-card{border:1.5px solid var(--line);border-radius:12px;background:#fff;overflow:hidden}
+.sl-card.on{border-color:var(--blue);box-shadow:0 2px 10px rgba(27,78,163,.12)}
+.sl-head{width:100%;border:0;background:none;cursor:pointer;text-align:left;padding:12px 14px;
+  display:grid;grid-template-columns:62px 112px 1fr 150px 96px;align-items:center;gap:12px;
+  font-family:inherit;font-size:14px}
+.sl-head:hover{background:var(--blue-soft)}
+.sl-card.on .sl-head{background:var(--blue-soft)}
+.sl-ln{font-weight:800;font-size:16px;color:var(--blue)}
+.sl-big{font-weight:800;font-size:20px;white-space:nowrap}
+.sl-big small{font-size:12px;font-weight:700;color:var(--muted);margin-left:3px}
+.sl-sub{color:var(--muted);font-size:12.5px}
+.sl-money{text-align:right;font-weight:700;white-space:nowrap}
+.sl-money small{display:block;font-size:11px;font-weight:600;color:var(--muted)}
+.sl-x{text-align:right;color:var(--blue);font-weight:700;font-size:12.5px;white-space:nowrap}
+.sl-warn{padding:0 14px 10px;color:#8a6500;font-size:12.5px;font-weight:700}
+.sl-items{border-top:1px solid var(--line);padding:10px 14px 14px;background:#FBFDFF;overflow-x:auto}
+.sl-tb{width:100%;border-collapse:collapse;font-size:13.5px}
+.sl-tb th{text-align:center;color:var(--muted);font-size:12px;font-weight:700;padding:4px 8px;
+  border-bottom:1px solid var(--line);white-space:nowrap}
+.sl-tb th.l,.sl-tb td.l{text-align:left}
+.sl-tb td{padding:7px 8px;border-bottom:1px solid #EEF1F6;vertical-align:top}
+.sl-tb tr:last-child td{border-bottom:0}
+@media(max-width:760px){
+  .sl-head{grid-template-columns:1fr auto;gap:4px 10px;padding:11px 12px}
+  .sl-ln{grid-column:1}
+  .sl-big{grid-column:2;text-align:right}
+  .sl-sub{grid-column:1/-1}
+  .sl-money{grid-column:1;text-align:left;font-size:13px}
+  .sl-money small{display:inline;margin-left:4px}
+  .sl-x{grid-column:2}
+  .sl-items{padding:8px 10px 12px;overflow-x:visible}
+   
+  .sl-tb thead{display:none}
+  .sl-tb,.sl-tb tbody,.sl-tb tr,.sl-tb td{display:block;width:auto}
+  .sl-tb tbody tr{border:1px solid var(--line);border-radius:10px;background:#fff;
+    padding:8px 10px;margin-bottom:8px}
+  .sl-tb tbody tr:last-child{margin-bottom:0}
+  .sl-tb td{border:0;padding:3px 0;display:flex;justify-content:space-between;
+    align-items:baseline;gap:12px}
+  .sl-tb td::before{content:attr(data-l);color:var(--muted);font-size:12px;flex:0 0 auto}
+  .sl-tb td.sl-nm{display:block;border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:4px}
+  .sl-tb td.sl-nm::before{content:""}
+}
 .cst-rt .tk{width:74px;white-space:nowrap}
 .cst-rt input[type=checkbox]{width:19px;height:19px;cursor:pointer}
 .cst-rt .psub{font-size:11px;line-height:1.45}
@@ -1689,6 +1753,11 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
     </div>
 
     
+    <div id="psibView" class="hidden">
+      <div class="tabs2" id="psiTabs"></div>
+      <div id="psiBody"></div>
+    </div>
+    
     <div id="otrkView" class="hidden">
       <div class="controls">
         <div class="ctl"><label>เดือน</label>
@@ -1978,6 +2047,10 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <label class="drop up-drop" for="fileDrop">❌ <b>ใบ Drop</b><small>อัพเมื่อได้ผลตอนเย็น · ไฟล์ชื่อ Drop 03072026.xlsx (วันที่จากชื่อไฟล์)</small></label>
         <input id="fileDrop" type="file" accept=".xlsx,.xlsm,.xls" multiple class="hidden">
       </div>
+      <div class="up-row" data-group="psib">
+        <label class="drop up-drop" for="filePSI">📥 <b>คลังรับของเข้า (PSI)</b><small>ไฟล์ <b>PSI_ddmmyyyy.xlsx</b> จากศูนย์ · บอกว่าของที่สั่งไปเข้าคลังเราวันไหน ลังเท่าไหร่ · ไฟล์กรองมาบางช่วงได้ วันอื่นที่อัพไว้แล้วไม่หาย</small></label>
+        <input id="filePSI" type="file" accept=".xlsx,.xls" multiple class="hidden">
+      </div>
       <div class="up-row" data-group="stock">
         <label class="drop up-stock" for="fileStock2">📦 <b>สต็อกสินค้า</b><small>อัพทุกวัน · ระบบใหม่ <b>dcode</b>: ไฟล์ <b>DataExtract...xlsx</b> (ใส่วันที่ท้ายชื่อไฟล์ด้วย เช่น DataExtract_161126) · ไฟล์ Stock แบบเดิมยังอัพได้เหมือนเดิม</small></label>
         <input id="fileStock2" type="file" accept=".xlsx,.xls" multiple class="hidden">
@@ -2234,6 +2307,9 @@ let STOREDAILY = {data:{}};
 let POSTATUS = {dates:[],data:{}};
 
  
+let PSI = {rows:{},days:{},up:0};
+
+ 
 let EB2B = {asof:null,up:0,lines:{},data:{}};
 
  
@@ -2416,7 +2492,7 @@ async function loadData(){
     const r=await fetch("/api/data",{headers:{"Authorization":"Bearer "+TOKEN}});
     if(r.status===401){logout();return;}
     const d=await r.json();
-    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},meta:{},del:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};DCI=d.DCI||{periods:[],data:{}};MINSTOCK=d.MINSTOCK||{man:{}};PLAN=d.PLAN||{items:{},done:{},del:{}};PROMO=d.PROMO||{items:{},res:{},del:{},sales:{}};PJP=d.PJP||{out:{},plan:{},done:{},cfg:{}};CSTOCK=d.CSTOCK||{lots:{},del:{},slips:{},sdel:{},ex:{},up:0};}
+    if(d&&d.DATA){DATA=d.DATA;STORE=d.STORE||{months:[],stores:[]};KPI=d.KPI||{months:[],lines:{},data:{},meta:{},del:{},workdays:26};ORDERS=d.ORDERS||{dates:[],data:{},names:{}};STOCKD=d.STOCKD||{date:null,rows:[],names:{}};REQUESTS=d.REQUESTS||{data:{}};MASTER=d.MASTER||{items:{}};ANALYTICS=d.ANALYTICS||{months:[],lines:{},data:{}};STOREPROD=d.STOREPROD||{months:[],cat:{},stores:{},data:{}};STOREDAILY=d.STOREDAILY||{data:{}};PSTORE=d.PSTORE||{rounds:{}};EB2B=d.EB2B||{asof:null,up:0,lines:{},data:{}};POSTATUS=d.POSTATUS||{dates:[],data:{}};LEADS=d.LEADS||{meta:{},sales:{},del:{}};DCI=d.DCI||{periods:[],data:{}};MINSTOCK=d.MINSTOCK||{man:{}};PLAN=d.PLAN||{items:{},done:{},del:{}};PROMO=d.PROMO||{items:{},res:{},del:{},sales:{}};PJP=d.PJP||{out:{},plan:{},done:{},cfg:{}};CSTOCK=d.CSTOCK||{lots:{},del:{},slips:{},sdel:{},ex:{},up:0};PSI=d.PSI||{rows:{},days:{},up:0};}
     LEADSRAW=[];LEADSLOADED=false;    
     if(!DATA.focus_order||!DATA.focus_order.length)DATA.focus_order=["209611","209612","209613","209614","209615","209616","209617","209619","209622","2096_97","209698","209699"];
     buildStoreIdx();initKeys();render();initKPI();initOrder();initAnalytics();initPlan();initPromo();initPjp();navReset();
@@ -2431,7 +2507,7 @@ function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบั�
 async function _doSync(){
   if(!TOKEN)return;
   try{
-    const payload=JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY,PSTORE,EB2B,POSTATUS,LEADS,DCI,MINSTOCK,PLAN,PROMO,PJP,CSTOCK});
+    const payload=JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY,PSTORE,EB2B,POSTATUS,LEADS,DCI,MINSTOCK,PLAN,PROMO,PJP,CSTOCK,PSI});
     let body=payload,headers={"Content-Type":"application/json","Authorization":"Bearer "+TOKEN};
      
     try{if(typeof CompressionStream!=="undefined"){const cs=new Blob([payload]).stream().pipeThrough(new CompressionStream("gzip"));body=await new Response(cs).arrayBuffer();headers={"Content-Type":"application/octet-stream","x-body-gzip":"1","Authorization":"Bearer "+TOKEN};}}catch(e){}
@@ -2991,6 +3067,9 @@ const TAB_GROUPS=[
    
    
    
+   
+  {k:"psib",nm:"📥 สถานะออเดอร์ (ซื้อ)",tabs:[
+    {t:"psib",nm:"คลังรับของเข้า",role:["manager","sales","sup","wh","ds"]}]},
   {k:"stock",nm:"📦 สต็อก",tabs:[
     {t:"stock",nm:"สต็อคปัจจุบัน",role:["manager","sales"]},
     {t:"strep",nm:"📊 รายงานสต็อค",role:"manager"},
@@ -3000,8 +3079,8 @@ const TAB_GROUPS=[
     {t:"price",nm:"แคตาลอคราคาขาย"},
     {t:"cost",nm:"📉 ต้นทุน & เทียบรอบ",role:"manager"}]},
    
-  {k:"otrk",nm:"📋 สถานะออเดอร์",tabs:[
-    {t:"otrk",nm:"สถานะออเดอร์",role:["manager","sales","sup","wh","ds"]}]},
+  {k:"otrk",nm:"📋 สถานะออเดอร์ (ขาย)",tabs:[
+    {t:"otrk",nm:"สถานะออเดอร์ (ขาย)",role:["manager","sales","sup","wh","ds"]}]},
   {k:"spord",nm:"📦 ออเดอร์พิเศษ",tabs:[
     {t:"spord",nm:"ออเดอร์พิเศษ",role:["manager","sales","sup","wh","ds"]}]},
   {k:"plan",nm:"🗓 ปฏิทินงาน",badge:true,tabs:[{t:"plan",nm:"ปฏิทินงาน"}]},
@@ -3121,6 +3200,7 @@ function _switchTab(t){
   document.getElementById("ordhistView").classList.toggle("hidden",t!=="ordhist");
   document.getElementById("cstockView").classList.toggle("hidden",t!=="cstock");
   document.getElementById("spordView").classList.toggle("hidden",t!=="spord");
+  document.getElementById("psibView").classList.toggle("hidden",t!=="psib");
   document.getElementById("otrkView").classList.toggle("hidden",t!=="otrk");
   document.getElementById("posView").classList.toggle("hidden",t!=="pos");
   document.getElementById("dciView").classList.toggle("hidden",t!=="dci");
@@ -3145,6 +3225,7 @@ function _switchTab(t){
   if(t==="ordhist")renderOrdHist();
   if(t==="cstock")renderCStock();
   if(t==="spord")renderSpord();
+  if(t==="psib")renderPsi();
   if(t==="otrk")renderOtrk();
   if(t==="pos")renderPOS();
   if(t==="dci")renderDCI();
@@ -9783,6 +9864,16 @@ function stkCell(code,wantCs){
   return "<b>"+s.raw+"</b>"+onWay;
 }
  
+ 
+function psiPill(ymd,code){
+  if(!ymd)return "";
+  const g=psiGot(code,ymd);
+  if(g)return ' <span class="pill g" title="ไฟล์ PSI: คลังรับเข้า '+anaEsc(fmtDate(g.d))+
+    (g.n>1?" ("+g.n+" รอบ)":"")+'">📥 เข้าคลัง '+anaEsc(fmtDayMon(g.d))+" · "+
+    (Math.round(g.cs*100)/100).toLocaleString()+" ลัง</span>";
+  if(!psiCovers(ymd))return "";
+  return ' <span class="pill w" title="ไฟล์ PSI ครอบวันนี้แล้ว แต่ยังไม่มีรหัสนี้เข้าคลัง">📥 ยังไม่เข้าคลัง</span>';
+}
 function reqStatusCell(reqDate,code){
   const oc=reqFulfillment(reqDate,code)||{status:"notordered"};
   const dtxt=(oc.date&&oc.date!==reqDate)?(" <small>· "+fmtDayMon(oc.date)+"</small>"):"";
@@ -9795,6 +9886,9 @@ function reqStatusCell(reqDate,code){
    
   else if(!ordRoundKnown(reqDate)){badge='<span class="pill w" title="ยังไม่ได้อัพไฟล์ใบสั่งของรอบนี้ ระบบจึงยังบอกผลไม่ได้">⏳ รอผล — ยังไม่ได้อัพใบสั่งรอบนี้</span>';ord="-";}
   else{badge=poWhyBadge(poWhy(reqDate,code));ord="-";}
+   
+  if(oc.status==="drop"||oc.status==="partial"||oc.status==="got"||oc.status==="pending")
+    badge+=psiPill(oc.date||reqDate,oc.alt||code);
   return {oc:oc,badge:badge,style:style,got:got,ord:ord};
 }
 const ORDER_CATS=["Home_Care","PC_Hair","PC_3D","Skin_Care1","Skin_Care2","Best_F1"];
@@ -12425,7 +12519,7 @@ function alPick(gins,codes){
   return out;
 }
 
-let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:"",sec:"key",day:"",gin:"",cm:""};
+let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:"",sec:"key",day:"",gin:"",cm:"",cmpLn:""};
 function spOk(){const C=cstOk();if(!C.sub)C.sub={};if(!C.subdel)C.subdel={};return C;}
  
 function spSupOk(){const r=spRole();return r==="sup"||r==="manager";}
@@ -12863,6 +12957,46 @@ function spCmp(sid,ymd){
   return {rows:rows,n:n,gin:g,keyedLines:Object.keys(keyed).length,sum:sum,round:rd};
 }
 
+ 
+function spCmpLines(cmp){
+  const by={};
+  (cmp.rows||[]).forEach(r=>{
+    const e=by[r.ln]||(by[r.ln]={ln:r.ln,n:0,sPc:0,fPc:0,kPc:0,gsv:0,niv:0,fNiv:0,
+      bad:0,noKey:0,noAlloc:0,diff:0,items:[]});
+    e.n++;
+    if(r.st==="noKey")e.noKey++;
+    if(r.st==="noAlloc")e.noAlloc++;
+    if(r.st==="diff")e.diff++;
+    const sp=r.qS&&r.qS.pcs!=null?r.qS.pcs:null;
+    const fp=r.qF&&r.qF.pcs!=null?r.qF.pcs:null;
+    const kp=r.qK&&r.qK.pcs!=null?r.qK.pcs:null;
+    if(sp!=null)e.sPc+=sp; if(fp!=null)e.fPc+=fp; if(kp!=null)e.kPc+=kp;
+    if(r.a&&(sp==null||fp==null))e.bad++;
+    e.gsv+=(+r.gsv||0);e.niv+=(+r.niv||0);e.fNiv+=(+r.fNiv||0);
+    e.items.push({code:r.code,nm:r.nm||oname(r.code)||"",pk:r.pk,shr:r.shr,
+      qS:r.qS,qF:r.qF,qK:r.qK,st:r.st,
+      pcs:(sp==null?0:sp)+(fp==null?0:fp)});
+  });
+  const out=Object.keys(by).sort().map(ln=>{
+    const e=by[ln];
+    e.items.sort((a,b)=>(b.pcs-a.pcs)||String(a.code).localeCompare(String(b.code)));
+    e.tot=e.sPc+e.fPc;
+    return e;
+  });
+  return out;
+}
+ 
+function spLnCs(items,pick){
+  let cs=0,pc=0,bad=0;
+  (items||[]).forEach(it=>{
+    const q=pick==="f"?it.qF:(pick==="k"?it.qK:it.qS);
+    if(!q||q.pcs==null){if(pick!=="k"&&it.st!=="noAlloc")bad++;return;}
+    pc+=q.pcs;
+    if(it.pk>0)cs+=q.pcs/it.pk;
+  });
+  return {cs:Math.round(cs*100)/100,pc:pc,bad:bad};
+}
+function spCmpLn(v){SP.cmpLn=(SP.cmpLn===v)?"":v;renderSpord();}
 function spRole(){return (S.user&&S.user.role)||"";}
 function spMgr(){return spRole()==="manager";}
 function spMine(){return (S.user&&S.user.code)||"";}
@@ -14516,7 +14650,10 @@ function spAdmHtml(sid){
   const qcell=q=>q?`${anaEsc(q.txt)}${q.sub?'<span class="psub" style="display:block">'+anaEsc(q.sub)+'</span>':""}`:"-";
   const ST={ok:'<span class="sp-ok">✓ ตรง</span>',diff:'<span class="sp-bad">✗ ไม่ตรง</span>',
     noKey:'<span class="sp-warn">เซลล์ไม่ได้คีย์</span>',noAlloc:'<span class="sp-warn">คลังไม่ได้จัด</span>'};
-  const rows=cmp.rows.map(r=>`<tr>
+   
+  const only=SP.cmpLn||"";
+  const shown=only?cmp.rows.filter(r=>r.ln===only):cmp.rows;
+  const rows=shown.map(r=>`<tr>
     <td class="l"><b>${anaEsc(r.ln)}</b></td>
     <td class="l">${anaEsc(r.nm||oname(r.code)||"")}<span class="psub" style="display:block">รหัส ${anaEsc(r.code)}${
       r.pk?" · ลังละ "+B(r.pk)+" ชิ้น":""}${r.shr?" · แพ็คละ "+B(r.shr):""}</span></td>
@@ -14551,6 +14688,9 @@ function spAdmHtml(sid){
       ${S.noPrice?'<br><b class="down">⚠️ มี '+S.noPrice+' รายการที่ไม่มีราคาในไฟล์</b>':""}
       ${S.noShr?'<br><b class="down">⚠️ มี '+S.noShr+' รายการที่แปลงเป็นลัง/ชิ้นไม่ได้</b>':""}
     </div>
+    ${spLineSumHtml(cmp,FF)}
+    ${only?`<div class="rq-note" style="margin-top:10px">🔎 <b>กำลังดูเฉพาะสาย ${anaEsc(only)}</b>
+      (${shown.length} รายการ จากทั้งหมด ${cmp.rows.length}) · กดชื่อสายซ้ำอีกครั้งเพื่อดูทุกสาย</div>`:""}
     <div class="tblwrap" style="margin-top:12px"><table class="sp-kt">
     <thead><tr><th class="l">สาย</th><th class="l">สินค้า</th><th class="l">เซลล์คีย์</th>
       <th class="l">คลังจัด · ขาย</th><th class="l">คลังจัด · แถม</th>
@@ -14560,6 +14700,56 @@ function spAdmHtml(sid){
       · จำนวนแปลงเป็น <b>ลัง + ชิ้น</b> จาก Pack Size ของไฟล์ (ช่อง Q) และขนาดแพ็คที่แกะจากชื่อสินค้า
       ${FF?"· เงินอ่านจากช่อง <b>GSV</b> และ <b>NIV</b> ท้ายไฟล์":""}</div></div>`;
   return h;
+}
+ 
+function spLineSumHtml(cmp,FF){
+  const L=spCmpLines(cmp);
+  if(!L.length)return "";
+  const B=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const M=n=>(Math.round((+n||0)*100)/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  const only=SP.cmpLn||"";
+   
+  const qtxt=q=>(q&&q.txt&&q.txt!=="0")?anaEsc(q.txt):'<span class="psub">-</span>';
+  const tot={cs:0,pc:0,n:0,niv:0};
+  L.forEach(e=>{const a=spLnCs(e.items,"s"),f=spLnCs(e.items,"f");
+    e._s=a;e._f=f;e._cs=Math.round((a.cs+f.cs)*100)/100;e._pc=a.pc+f.pc;
+    tot.cs+=e._cs;tot.pc+=e._pc;tot.n+=e.n;tot.niv+=e.niv;});
+  const cards=L.map(e=>{
+    const on=only===e.ln;
+    const warn=[];
+    if(e.noKey)warn.push("คลังจัดแต่เซลล์ไม่ได้คีย์ "+e.noKey);
+    if(e.noAlloc)warn.push("เซลล์คีย์แต่คลังไม่ได้จัด "+e.noAlloc);
+    if(e.diff)warn.push("ไม่ตรง "+e.diff);
+    if(e.bad)warn.push("แปลงเป็นลัง/ชิ้นไม่ได้ "+e.bad);
+    const list=on?`<div class="sl-items">
+      <table class="sl-tb"><thead><tr><th class="l">สินค้า</th><th class="l">คลังจัด · ขาย</th>
+        <th class="l">คลังจัด · แถม</th><th class="l">เซลล์คีย์</th></tr></thead><tbody>${
+      e.items.map(it=>`<tr><td class="l sl-nm"><b>${anaEsc(it.nm||("รหัส "+it.code))}</b>
+          <span class="psub" style="display:block">รหัส ${anaEsc(it.code)}${
+            it.pk?" · ลังละ "+B(it.pk)+" ชิ้น":""}</span></td>
+        <td class="l" data-l="คลังจัด · ขาย">${qtxt(it.qS)}</td>
+        <td class="l" data-l="คลังจัด · แถม">${qtxt(it.qF)}</td>
+        <td class="l" data-l="เซลล์คีย์">${qtxt(it.qK)}</td></tr>`).join("")}
+      </tbody></table></div>`:"";
+    return `<div class="sl-card${on?" on":""}">
+      <button type="button" class="sl-head" onclick="spCmpLn('${anaEsc(e.ln)}')"
+        title="${on?"กดเพื่อปิด":"กดเพื่อดูสินค้าของสายนี้"}">
+        <span class="sl-ln">${anaEsc(e.ln)}</span>
+        <span class="sl-big">${B(e._cs)} <small>ลัง</small></span>
+        <span class="sl-sub">${e.n} รายการ · ขาย ${B(e._s.cs)} ลัง · แถม ${B(e._f.cs)} ลัง</span>
+        <span class="sl-money">${M(e.niv)} <small>NIV${FF?"":" (ประเมิน)"}</small></span>
+        <span class="sl-x">${on?"▲ ปิด":"▼ ดูสินค้า"}</span>
+      </button>
+      ${warn.length?`<div class="sl-warn">⚠️ ${anaEsc(warn.join(" · "))}</div>`:""}
+      ${list}</div>`;
+  }).join("");
+  return `<div class="panel" style="margin-top:12px;padding:14px">
+    <h4 style="margin:0 0 4px">🚚 สรุปรายสาย · ${L.length} สาย</h4>
+    <div class="psub" style="margin-bottom:10px">รวมทั้งวัน <b>${B(tot.cs)} ลัง</b> ·
+      ${tot.n} รายการ · NIV ${M(tot.niv)}${FF?"":" (ประเมิน)"} ·
+      <b>กดที่สายเพื่อดูว่าของสายนั้นมีสินค้าอะไร กี่ลังกี่ชิ้น</b>
+      <br>จำนวนลังรวมคิดจาก "ชิ้นทั้งหมด ÷ ลังละกี่ชิ้น" ของแต่ละรหัส จึงมีทศนิยมได้</div>
+    <div class="sl-wrap">${cards}</div></div>`;
 }
  
 function spRepRows(sid,ymd){
@@ -14781,23 +14971,395 @@ function renderCStock(){
      ${g.html||'<div class="insight">ไม่มีรายการที่ตรงกับที่เลือกไว้</div>'}</div>`;
 }
  
-function parseMaster(name,buf){
+const PM_DCODE={code:"Item Code",nm:"Item Description",ps:"Pack Size",st:"Status",
+  gw:"Gross Weight/CS",nw:"Net Weight/CS",w:"Width/CS",l:"Length/CS",h:"Height/CS",
+  br:"Brand Description",cat:"Category Description"};
+ 
+function pmKnownCodes(){
+  const S={};
+  const add=c=>{const k=String(c||"").trim();if(/^[A-Z0-9]{4,20}$/i.test(k))S[k]=1;};
+  Object.keys((MASTER&&MASTER.items)||{}).forEach(add);
+  Object.keys((ORDERS&&ORDERS.names)||{}).forEach(add);
+  Object.keys((ORDERS&&ORDERS.cat)||{}).forEach(add);
+  Object.keys(((POSTATUS&&POSTATUS.data)||{})).forEach(d=>{
+    const it=((POSTATUS.data[d]||{}).items)||{};Object.keys(it).forEach(add);});
+  Object.keys(((ORDERS&&ORDERS.data)||{})).forEach(d=>{
+    const day=ORDERS.data[d]||{};Object.keys(orderedMerged(day)).forEach(add);
+    Object.keys(day.dropped||{}).forEach(add);});
+  ((STOCKD&&STOCKD.rows)||[]).forEach(r=>add(r&&r.c));
+  Object.keys((STOCKD&&STOCKD.names)||{}).forEach(add);
+  Object.keys((typeof PRICE!=="undefined"&&PRICE&&PRICE.hs&&PRICE.hs.items)||{}).forEach(add);
+  Object.keys((STOREPROD&&STOREPROD.cat)||{}).forEach(add);
+  Object.keys((MINSTOCK&&MINSTOCK.man)||{}).forEach(add);
+  Object.keys(psiIdx()).forEach(add);
+  return S;
+}
+async function parseMasterDcode(name,A,hdr){
+   
+  try{if(typeof prLoad==="function"&&!(typeof PRICE!=="undefined"&&PRICE&&PRICE.loaded))await prLoad();}catch(e){}
+  const H=(A[hdr]||[]).map(x=>String(x==null?"":x).trim());
+  const C={};Object.keys(PM_DCODE).forEach(k=>{C[k]=H.indexOf(PM_DCODE[k]);});
+  if(C.code<0||C.nm<0)throw new Error("ไฟล์ master ของ dcode ขาดคอลัมน์ Item Code / Item Description");
+  const T=v=>String(v==null?"":v).trim();
+  const NUM=(r,i)=>{if(i<0)return 0;const v=parseFloat(String(r[i]==null?"":r[i]).replace(/,/g,""));
+    return isFinite(v)&&v>0?v:0;};
+  const all={},stAll={};let total=0,foot=0;
+  for(let i=hdr+1;i<A.length;i++){
+    const r=A[i];if(!r)continue;
+    const code=T(r[C.code]);
+    if(!/^\d{6,12}$/.test(code)){if(/^No filters|^Applied filters|^Total$/i.test(T(r[0])))foot++;continue;}
+    const st=T(r[C.st]);stAll[st]=(stAll[st]||0)+1;
+    all[code]={nm:T(r[C.nm]),st:st,
+      ps:NUM(r,C.ps),gw:NUM(r,C.gw),nw:NUM(r,C.nw),
+      w:NUM(r,C.w),l:NUM(r,C.l),h:NUM(r,C.h)};
+    total++;
+  }
+  if(!total)throw new Error("ไม่พบรายการสินค้าในไฟล์ master ของ dcode");
+   
+  const known=pmKnownCodes();
+  let keep=Object.keys(all).filter(c=>known[c]);
+  let mode="ที่ศูนย์เราใช้จริง";
+   
+  if(Object.keys(known).length<200){
+    keep=Object.keys(all).filter(c=>all[c].st==="Active"&&/[฀-๿]/.test(all[c].nm));
+    mode="ที่พร้อมขาย (Active) และมีชื่อไทย";
+  }
+  const items=Object.assign({},(MASTER&&MASTER.items)||{}),det={};
+  const oldDet=(MASTER&&MASTER.det)||{};
+  Object.keys(oldDet).forEach(c=>{det[c]=oldDet[c];});
+  let nDim=0,nNoDim=0,nNew=0,nInact=0;
+  keep.forEach(c=>{
+    const r=all[c];
+    if(r.nm)items[c]=r.nm;
+    const o={};
+    if(r.ps)o.ps=Math.round(r.ps*100)/100;
+    if(r.gw)o.gw=Math.round(r.gw*1000)/1000;
+    if(r.nw)o.nw=Math.round(r.nw*1000)/1000;
+    if(r.w)o.w=Math.round(r.w);
+    if(r.l)o.l=Math.round(r.l);
+    if(r.h)o.h=Math.round(r.h);
+    if(r.st&&r.st!=="Active")o.st=r.st.charAt(0).toUpperCase();
+    if(o.gw||o.w)nDim++;else nNoDim++;
+    if(r.st==="New")nNew++;
+    if(r.st==="Inactive")nInact++;
+    det[c]=o;
+  });
+  MASTER={date:fnameDate(name)||new Date().toISOString().slice(0,10),
+    items:items,det:det,src:"dcode",up:Date.now()};
+  const skipped=total-keep.length;
+  ulog("📚 "+name+" (Master dcode) → ไฟล์มี <b>"+total.toLocaleString()+"</b> รหัสทั้งประเทศ · "+
+    "เก็บรหัส"+mode+" <b>"+keep.length.toLocaleString()+"</b> รหัส"+
+    (skipped>0?" · ข้ามอีก "+skipped.toLocaleString()+" รหัสที่ศูนย์เรายังไม่เคยใช้ (ถ้าวันหนึ่งสั่ง ใบสั่งรอบนั้นจะพาเข้ามาเอง)":"")+
+    "<br>มีน้ำหนัก/ขนาดลัง <b>"+nDim.toLocaleString()+"</b> รหัส"+(nNoDim?" · ไฟล์ไม่ได้ลงไว้ "+nNoDim:"")+
+    " · สถานะในไฟล์: "+Object.keys(stAll).sort().map(k=>(k||"(ว่าง)")+" "+stAll[k].toLocaleString()).join(" · ")+
+    (nNew||nInact?"<br>ในรหัสที่เก็บไว้: ยังไม่เปิดขาย (New) <b>"+nNew+"</b>"+(nInact?" · เลิกใช้ (Inactive) <b>"+nInact+"</b>":""):"")+
+    (foot?" · ข้ามแถวท้ายไฟล์ "+foot:"")+
+    "<br>น้ำหนัก/ขนาดลังจะขึ้นในแคตาลอคราคาหลังอัพ <b>ไฟล์หัวเสือ</b> อีกครั้ง (หน้าแคตาลอคสาธารณะอ่านจากไฟล์ราคาไฟล์เดียว)");
+  pgBust();
+  {const v=document.getElementById("dcodeView");if(v&&!v.classList.contains("hidden"))renderDcode();}
+  syncToServer();
+}
+ 
+function pmDet(code){return ((MASTER&&MASTER.det)||{})[String(code)]||null;}
+ 
+async function parseMaster(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
+   
+  for(let i=0;i<Math.min(rows.length,20);i++){
+    const r=(rows[i]||[]).map(x=>String(x==null?"":x).trim());
+    if(r.indexOf(PM_DCODE.code)>=0&&r.indexOf(PM_DCODE.st)>=0)return await parseMasterDcode(name,rows,i);
+  }
   let hdr=-1;for(let i=0;i<rows.length;i++){const r=(rows[i]||[]).map(x=>String(x||""));if(r.some(v=>v.indexOf("Item_Code")>=0)){hdr=i;break;}}
-  if(hdr<0)throw new Error("ไม่พบคอลัมน์ Item_Code (ไม่ใช่ไฟล์ master data?)");
+  if(hdr<0)throw new Error("ไม่พบคอลัมน์ Item_Code หรือ Item Code (ไม่ใช่ไฟล์ master data?)");
   const H=(rows[hdr]||[]).map(x=>String(x||""));
   const cCode=H.findIndex(v=>v.indexOf("Item_Code")>=0),cTH=H.findIndex(v=>v.indexOf("TH_Desc")>=0),cEN=H.findIndex(v=>v.indexOf("EN_Desc")>=0);
   const items={};
   for(let i=hdr+1;i<rows.length;i++){const r=rows[i];if(!r)continue;const code=String(r[cCode]==null?"":r[cCode]).trim();if(!/^\d+$/.test(code))continue;
     const nm=(cTH>=0&&r[cTH]?String(r[cTH]):"")||(cEN>=0&&r[cEN]?String(r[cEN]):"");if(nm&&!items[code])items[code]=nm;}
   if(!Object.keys(items).length)throw new Error("ไม่พบรายการสินค้าใน master data");
+   
+  const keepDet=(MASTER&&MASTER.det)||null;
   MASTER={date:fnameDate(name)||new Date().toISOString().slice(0,10),items:items,up:Date.now()};
+  if(keepDet&&Object.keys(keepDet).length)MASTER.det=keepDet;
   ulog("✅ "+name+" (Master Data) → "+Object.keys(items).length+" รายการ (ใช้ค้นหาคำขอ + เติมชื่อสินค้าที่หมดสต็อก + เลือก SKU ในหน้า DCODE)");
   pgBust();
   {const v=document.getElementById("dcodeView");if(v&&!v.classList.contains("hidden"))renderDcode();}
   syncToServer();
 }
+ 
+let PSIV={sec:"in",day:"",ord:"",only:"all"};
+const PSI_SECS=[["in","📥 ของเข้าคลัง"],["chk","🔎 สั่งไป → ได้ของหรือยัง"]];
+function psiSetSec(k){PSIV.sec=k;renderPsi();}
+function psiSetDay(v){PSIV.day=v;renderPsi();}
+function psiSetOrd(v){PSIV.ord=v;renderPsi();}
+function psiOnly(v){PSIV.only=v;renderPsi();}
+function psiN(v){return (Math.round((+v||0)*100)/100).toLocaleString();}
+ 
+function psiOrdDates(){
+  const D=(ORDERS&&ORDERS.data)||{};
+  return ((ORDERS&&ORDERS.dates)||[]).filter(d=>{const x=D[d];
+    return x&&Object.keys(orderedMerged(x)).length;}).slice().sort();
+}
+ 
+function psiCheck(ymd){
+  const day=((ORDERS&&ORDERS.data)||{})[ymd];
+  if(!day)return {rows:[],has:false};
+  const om=orderedMerged(day),dp=day.dropped||{},res=!!day.hasResult;
+  const cov=psiCovers(ymd);
+  const rows=Object.keys(om).map(c=>{
+    const ord=+om[c]||0;
+    const e=(c in dp)?dp[c]:null;
+    const drop=e?dropQ(e):0;
+     
+    const exp=e?(dropD(e)||Math.max(0,(dropO(e)||ord)-drop)):(res?ord:ord);
+    const g=psiGot(c,ymd);
+    const got=g?g.cs:0;
+    let st;
+    if(!cov)st="nofile";
+    else if(exp<=0)st="dropall";
+    else if(!g)st="wait";
+    else if(got+0.001>=exp)st="full";
+    else st="part";
+    return {code:c,ord:ord,drop:drop,exp:Math.round(exp*100)/100,got:Math.round(got*100)/100,
+      d:g?g.d:"",inv:g?g.inv:[],st:st,res:res};
+  });
+  return {rows:rows,has:true,cov:cov,res:res};
+}
+const PSI_ST={full:{i:"✅",t:"เข้าครบแล้ว",p:"g"},part:{i:"🟡",t:"เข้าบางส่วน",p:"w"},
+  wait:{i:"🕓",t:"ยังไม่เข้าคลัง",p:"b"},dropall:{i:"⛔",t:"โดน Drop ทั้งหมด",p:""},
+  nofile:{i:"⏳",t:"ยังไม่ได้อัพไฟล์ PSI ที่ครอบวันนี้",p:"w"}};
+function psiTabsHtml(){
+  return PSI_SECS.map(([k,nm])=>`<button class="tab2${PSIV.sec===k?" on":""}" onclick="psiSetSec('${k}')">${nm}</button>`).join("");
+}
+function renderPsi(){
+  const tb=document.getElementById("psiTabs"),el=document.getElementById("psiBody");
+  if(!el)return;
+  if(tb)tb.innerHTML=psiTabsHtml();
+  el.innerHTML=(PSIV.sec==="chk")?psiChkHtml():psiInHtml();
+}
+ 
+function psiInHtml(){
+  const P=psiOk(),ds=psiDays();
+  if(!ds.length)return `<div class="panel"><h3>📥 คลังรับของเข้าจากศูนย์</h3>
+    <div class="insight">ยังไม่ได้อัพไฟล์ PSI — กด <b>📤 อัพโหลดไฟล์</b> ด้านบน แล้วเลือกหมวด
+      <b>📥 สถานะออเดอร์ (ซื้อ)</b> · ไฟล์ชื่อ <b>PSI_ddmmyyyy.xlsx</b> จากศูนย์</div></div>`;
+  if(!PSIV.day||ds.indexOf(PSIV.day)<0)PSIV.day=ds[ds.length-1];
+  const d=PSIV.day,meta=P.days[d]||{};
+  const idx={};
+  Object.keys(P.rows||{}).forEach(k=>{const i=k.indexOf("|");if(i<0)return;
+    if(k.slice(0,i)!==d)return;idx[k.slice(i+1)]=P.rows[k];});
+  const codes=Object.keys(idx);
+  const tot=codes.reduce((s,c)=>({cs:s.cs+(+idx[c].cs||0),v:s.v+(+idx[c].v||0)}),{cs:0,v:0});
+  const opt=ds.slice().reverse().map(x=>`<option value="${x}"${x===d?" selected":""}>${anaEsc(fmtDate(x))}</option>`).join("");
+  const bands=grpByCat(codes).map(g=>{
+    const list=poSeqSort(g.list,null,(a,b)=>(idx[b].cs||0)-(idx[a].cs||0));
+    const cs=list.reduce((s,c)=>s+(+idx[c].cs||0),0);
+    return {title:`${g.icon} ${g.cat}`,sub:`· ${list.length} รายการ · ${psiN(cs)} ลัง`,
+      rows:list.map(c=>{const r=idx[c];
+        return `<tr><td class="psi-nm" data-l="สินค้า"><b>${anaEsc(oname(c)||("รหัส "+c))}</b>`+
+            `<div class="psub">รหัส ${anaEsc(c)}</div></td>`+
+          `<td data-l="ลัง"><b>${psiN(r.cs)}</b>${r.pc?` <small>+${psiN(r.pc)} ชิ้น</small>`:""}</td>`+
+          `<td data-l="มูลค่า">${r.v?THBk(r.v):"-"}</td>`+
+          `<td data-l="ศูนย์ออกบิล">${r.cr?anaEsc(fmtDayMon(r.cr)):"-"}</td>`+
+          `<td data-l="เลขใบกำกับ" style="text-align:left"><small>${anaEsc((r.inv||[]).join(" · "))||"-"}</small></td></tr>`;})};
+  });
+  const tbl=grpTable([{h:"สินค้า",a:"l"},{h:"ลัง"},{h:"มูลค่า"},{h:"ศูนย์ออกบิล"},{h:"เลขใบกำกับ",a:"l"}],
+    bands,{alwaysBand:true,cls:"psi-tbl",empty:'<div class="insight">วันนี้ไม่มีรายการ</div>'});
+  return `<div class="panel"><div class="controls" style="margin:0">
+      <div class="ctl"><label>วันที่คลังรับเข้า</label><div class="dstep">
+        <button type="button" class="dstep-b" onclick="selStep('psiDay',-1)" title="วันก่อนหน้า">◀</button>
+        <select id="psiDay" data-rev="1" onchange="psiSetDay(this.value)">${opt}</select>
+        <button type="button" class="dstep-b" onclick="selStep('psiDay',1)" title="วันถัดไป">▶</button>
+      </div></div>
+      <div class="spacer"></div>
+      <div class="ctl"><label>อัพไฟล์ล่าสุด</label>
+        <div class="psub" style="padding-top:6px">${meta.file?anaEsc(meta.file):"-"}${
+          meta.at?` · ${anaEsc(fmtDateTime(meta.at))}`:""}</div></div>
+    </div></div>
+    <div class="cards">
+      <div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">รายการที่เข้า</div>
+        <div class="v">${codes.length}</div><div class="s">รหัสสินค้า</div></div>
+      <div class="card"><div class="k">จำนวนรวม</div>
+        <div class="v">${psiN(tot.cs)}</div><div class="s">ลัง</div></div>
+      <div class="card"><div class="k">มูลค่า (NIV)</div>
+        <div class="v" style="font-size:20px">${THBk(tot.v)}</div><div class="s">${psiN(tot.v)} บาท</div></div>
+      <div class="card"><div class="k">ใบกำกับ</div>
+        <div class="v">${meta.iv||0}</div><div class="s">ใบ · รวม ${meta.n||0} แถว</div></div>
+    </div>
+    <div class="panel"><h3>📥 ของที่เข้าคลัง · ${anaEsc(fmtDate(d))}</h3>
+      <div class="psub">เรียงตามลำดับในใบสั่งซื้อ แบ่งตามหมวดเหมือนหน้าการสั่งของ ·
+        <b>ศูนย์ออกบิล</b> คือวันที่ศูนย์ออกใบกำกับ ซึ่งมักเป็นวันเดียวกันหรือก่อนหน้าหนึ่งวัน</div>
+      ${tbl}</div>`;
+}
+ 
+function psiChkHtml(){
+  const ds=psiOrdDates();
+  if(!ds.length)return `<div class="panel"><h3>🔎 สั่งไป → ได้ของหรือยัง</h3>
+    <div class="insight">ยังไม่มีใบสั่ง — อัพไฟล์ใบสั่ง (BD_...xlsx) ก่อน แล้วหน้านี้จะเทียบให้เอง</div></div>`;
+  if(!PSIV.ord||ds.indexOf(PSIV.ord)<0)PSIV.ord=ds[ds.length-1];
+  const d=PSIV.ord,R=psiCheck(d);
+  const cnt={full:0,part:0,wait:0,dropall:0,nofile:0};
+  R.rows.forEach(r=>{cnt[r.st]=(cnt[r.st]||0)+1;});
+  const sum=R.rows.reduce((s,r)=>({ord:s.ord+r.ord,exp:s.exp+r.exp,got:s.got+r.got}),{ord:0,exp:0,got:0});
+  const only=PSIV.only;
+  const show=R.rows.filter(r=>only==="all"||r.st===only);
+  const opt=ds.slice().reverse().map(x=>`<option value="${x}"${x===d?" selected":""}>${anaEsc(fmtDate(x))}</option>`).join("");
+  const chip=(k,nm,n)=>`<button type="button" class="rq-chip${only===k?"":" off"}" onclick="psiOnly('${k}')">${nm} <span class="n">${n}</span></button>`;
+  const codes=show.map(r=>r.code);
+  const byCode={};show.forEach(r=>byCode[r.code]=r);
+  const bands=grpByCat(codes).map(g=>{
+    const list=poSeqSort(g.list,null,null);
+    return {title:`${g.icon} ${g.cat}`,sub:`· ${list.length} รายการ`,
+      rows:list.map(c=>{const r=byCode[c],S=PSI_ST[r.st]||PSI_ST.wait;
+        return `<tr><td class="psi-nm" data-l="สินค้า"><b>${anaEsc(oname(c)||("รหัส "+c))}</b>`+
+            `<div class="psub">รหัส ${anaEsc(c)}</div></td>`+
+          `<td data-l="ศูนย์สั่ง">${psiN(r.ord)}</td>`+
+          `<td data-l="Drop">${r.drop?`<b class="down">${psiN(r.drop)}</b>`:"-"}</td>`+
+          `<td data-l="ควรได้"><b>${psiN(r.exp)}</b></td>`+
+          `<td data-l="เข้าคลังแล้ว">${r.st==="nofile"?'<span class="psub">รอไฟล์</span>':(r.got?`<b>${psiN(r.got)}</b>`:'<span class="psub">0</span>')}</td>`+
+          `<td data-l="วันที่เข้า">${r.d?anaEsc(fmtDayMon(r.d)):"-"}</td>`+
+          `<td data-l="สถานะ" style="text-align:left"><span class="pill ${S.p}">${S.i} ${S.t}</span></td></tr>`;})};
+  });
+  const tbl=grpTable([{h:"สินค้า",a:"l"},{h:"ศูนย์สั่ง"},{h:"Drop"},{h:"ควรได้"},
+      {h:"เข้าคลังแล้ว"},{h:"วันที่เข้า"},{h:"สถานะ",a:"l"}],
+    bands,{alwaysBand:true,cls:"psi-tbl",empty:'<div class="insight">ไม่มีรายการที่ตรงกับที่เลือกไว้</div>'});
+  const note=!R.cov
+    ? `<div class="note">⏳ <b>ยังไม่ได้อัพไฟล์ PSI ที่ครอบวันนี้</b> — ระบบจึงยังตอบไม่ได้ว่าของเข้าคลังหรือยัง
+         ไม่ใช่ว่าศูนย์ไม่ส่ง · อัพไฟล์ <b>PSI</b> ที่มีวันที่ตั้งแต่ ${anaEsc(fmtDate(d))} เป็นต้นไปสักครั้ง</div>`
+    : (!R.res?`<div class="note">🕓 รอบนี้ <b>ยังไม่ได้อัพใบ Drop</b> — ช่อง "ควรได้" จึงยังใช้จำนวนที่ศูนย์สั่งเต็ม ๆ อยู่</div>`:"");
+  return `<div class="panel"><div class="controls" style="margin:0">
+      <div class="ctl"><label>ใบสั่งรอบวันที่</label><div class="dstep">
+        <button type="button" class="dstep-b" onclick="selStep('psiOrd',-1)" title="รอบก่อนหน้า">◀</button>
+        <select id="psiOrd" data-rev="1" onchange="psiSetOrd(this.value)">${opt}</select>
+        <button type="button" class="dstep-b" onclick="selStep('psiOrd',1)" title="รอบถัดไป">▶</button>
+      </div></div>
+    </div></div>
+    <div class="cards">
+      <div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">ศูนย์สั่ง</div>
+        <div class="v">${psiN(sum.ord)}</div><div class="s">ลัง · ${R.rows.length} รายการ</div></div>
+      <div class="card"><div class="k">ควรได้ (หัก Drop)</div>
+        <div class="v">${psiN(sum.exp)}</div><div class="s">ลัง</div></div>
+      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">เข้าคลังแล้ว</div>
+        <div class="v up">${R.cov?psiN(sum.got):"-"}</div><div class="s">${R.cov?"ลัง":"ยังไม่มีไฟล์ PSI"}</div></div>
+      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">ยังไม่เข้า</div>
+        <div class="v down">${cnt.wait||0}</div><div class="s">รายการ · เข้าบางส่วน ${cnt.part||0}</div></div>
+    </div>
+    <div class="panel"><h3>🔎 ใบสั่งรอบ ${anaEsc(fmtDate(d))} → ของเข้าคลัง</h3>
+      <div class="psub"><b>ควรได้</b> = จำนวนที่ศูนย์ส่งจริงตามใบ Drop (สั่งแล้วหักที่โดน Drop ออก) ·
+        <b>เข้าคลังแล้ว</b> = รวมทุกรอบที่ไฟล์ PSI บอกว่าเข้า ตั้งแต่วันที่สั่งเป็นต้นไป ·
+        หนึ่งรหัสเข้าได้หลายวัน ระบบรวมให้แล้ว</div>
+      ${note}
+      <div class="rq-lines" style="margin:10px 0">
+        ${chip("all","ทั้งหมด",R.rows.length)}
+        ${chip("wait","🕓 ยังไม่เข้า",cnt.wait||0)}
+        ${chip("part","🟡 เข้าบางส่วน",cnt.part||0)}
+        ${chip("full","✅ เข้าครบ",cnt.full||0)}
+        ${cnt.dropall?chip("dropall","⛔ โดน Drop ทั้งหมด",cnt.dropall):""}
+      </div>
+      ${tbl}</div>`;
+}
+ 
+var PSI_COLS={inv:"Invoice Number",cre:"Invoice Creation Date",rec:"Invoice Receiving Date",
+  code:"Product Code",nm:"Product Description",uom:"UOM",
+  ics:"Invoice Qty (CS)",ipc:"Invoice Qty (Pcs)",rcs:"Received Qty (CS)",rpc:"Received Qty (Pcs)",
+  vr:"Variance",niv:"Value (NIV)",dod:"DO Number"};
+function psiOk(){if(typeof PSI==="undefined"||!PSI)PSI={rows:{},days:{},up:0};
+  if(!PSI.rows)PSI.rows={};if(!PSI.days)PSI.days={};return PSI;}
+function psiIsFile(H){return H.indexOf(PSI_COLS.rec)>=0&&H.indexOf(PSI_COLS.rcs)>=0;}
+function parsePSI(name,buf){
+  const wb=XLSX.read(buf,{type:"array"});
+  let sheet=null,A=null,H=null;
+  wb.SheetNames.forEach(sn=>{if(sheet)return;
+    const g=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null});
+    const h=(g[0]||[]).map(x=>String(x==null?"":x).trim());
+    if(psiIsFile(h)){sheet=sn;A=g;H=h;}});
+  if(!sheet)throw new Error("ไม่พบคอลัมน์ Invoice Receiving Date / Received Qty (CS) — ไฟล์นี้ใช่ไฟล์ PSI หรือเปล่า?");
+  const C={};Object.keys(PSI_COLS).forEach(k=>{C[k]=H.indexOf(PSI_COLS[k]);});
+  const miss=["inv","rec","code","rcs"].filter(k=>C[k]<0).map(k=>PSI_COLS[k]);
+  if(miss.length)throw new Error("ไฟล์ PSI ขาดคอลัมน์: "+miss.join(" / ")+" — รูปแบบไฟล์อาจเปลี่ยน แจ้งให้ปรับโปรแกรมได้");
+  const T=v=>String(v==null?"":v).trim();
+  const rows={},days={},names={};
+  let n=0,skipFoot=0,skipNo=0,varied=0,pcs=0,noDate=0;
+  for(let i=1;i<A.length;i++){
+    const r=A[i];if(!r)continue;
+    const a0=T(r[0]);
+    if(/^Total$/i.test(a0)||/^Applied filters/i.test(a0)){skipFoot++;continue;}
+    const code=T(r[C.code]);
+    if(!/^\d{6,12}$/.test(code)||!T(r[C.inv])){if(r.some(x=>x!=null&&x!==""))skipNo++;continue;}
+    const d=alDate(r[C.rec]);
+    if(!d){noDate++;continue;}
+    const cs=alNum(r[C.rcs]),pc=C.rpc>=0?alNum(r[C.rpc]):0;
+    if(C.vr>=0&&alNum(r[C.vr])!==0)varied++;
+    if(pc)pcs++;
+    const k=d+"|"+code;
+    const e=rows[k]||(rows[k]={cs:0,v:0,inv:[],cr:C.cre>=0?alDate(r[C.cre]):""});
+    e.cs=Math.round((e.cs+cs)*100)/100;
+    if(pc)e.pc=(e.pc||0)+pc;
+    if(C.niv>=0)e.v=Math.round(e.v+alNum(r[C.niv]));
+    const iv=T(r[C.inv]);if(iv&&e.inv.indexOf(iv)<0&&e.inv.length<12)e.inv.push(iv);
+    const nm=C.nm>=0?T(r[C.nm]):"";if(nm)names[code]=nm;
+    const dd=days[d]||(days[d]={n:0,cs:0,v:0,iv:[]});
+    dd.n++;dd.cs=Math.round((dd.cs+cs)*100)/100;if(C.niv>=0)dd.v=Math.round(dd.v+alNum(r[C.niv]));
+    if(iv&&dd.iv.indexOf(iv)<0)dd.iv.push(iv);
+    n++;
+  }
+  if(!n)throw new Error("ไม่พบแถวข้อมูลในไฟล์ PSI");
+  const at=Date.now(),who=(S.user&&S.user.id)||"",whoN=(S.user&&S.user.name)||"";
+  const P=psiOk();
+  Object.keys(rows).forEach(k=>{P.rows[k]=rows[k];});
+  const dl=Object.keys(days).sort();
+  dl.forEach(d=>{const x=days[d];
+    P.days[d]={n:x.n,cs:x.cs,v:x.v,iv:x.iv.length,at:at,by:who,byName:whoN,file:name};});
+   
+  if(!ORDERS.names)ORDERS.names={};
+  let nmAdd=0;Object.keys(names).forEach(c=>{if(!ORDERS.names[c]){ORDERS.names[c]=names[c];nmAdd++;}});
+  PSI.up=at;
+  const warn=[];
+  if(varied)warn.push("มีแถวที่รับไม่ตรงกับบิล <b>"+varied+"</b> แถว (ช่อง Variance ไม่เป็น 0)");
+  if(pcs)warn.push("มีแถวที่รับเป็นชิ้น <b>"+pcs+"</b> แถว");
+  if(noDate)warn.push("ข้ามแถวที่ไม่มีวันที่รับเข้า <b>"+noDate+"</b> แถว");
+  ulog("📥 "+name+" (คลังรับของเข้า) → <b>"+n+"</b> แถว · <b>"+Object.keys(rows).length+
+    "</b> รายการ · วันที่รับเข้า <b>"+dl.length+"</b> วัน ("+dl.map(fmtDayMon).join(" · ")+")"+
+    (nmAdd?" · เติมชื่อสินค้าใหม่ "+nmAdd+" รหัส":"")+
+    (skipFoot?" · ข้ามแถวสรุปท้ายไฟล์ "+skipFoot:"")+
+    (skipNo?" · ข้ามแถวที่ไม่ใช่สินค้า "+skipNo:"")+
+    (warn.length?"<br>⚠️ "+warn.join(" · "):"")+
+    "<br>วันอื่นที่เคยอัพไว้อยู่ครบเหมือนเดิม ไฟล์ที่กรองมาบางช่วงจึงลบของเก่าไม่ได้");
+  psiBust();pgBust();
+  if(CURTAB==="psib")renderPsi();
+  syncToServer();
+}
+ 
+var _psiIdx=null;
+function psiBust(){_psiIdx=null;}
+function psiIdx(){
+  if(_psiIdx)return _psiIdx;
+  const P=psiOk(),m={};
+  Object.keys(P.rows||{}).forEach(k=>{
+    const i=k.indexOf("|");if(i<0)return;
+    const d=k.slice(0,i),c=k.slice(i+1),r=P.rows[k]||{};
+    (m[c]=m[c]||[]).push({d:d,cs:+r.cs||0,pc:+r.pc||0,v:+r.v||0,inv:r.inv||[],cr:r.cr||""});
+  });
+  Object.keys(m).forEach(c=>m[c].sort((a,b)=>a.d<b.d?-1:1));
+  _psiIdx=m;return m;
+}
+ 
+function psiGot(code,fromDate){
+  const a=psiIdx()[String(code)];if(!a||!a.length)return null;
+  const f=fromDate||"";
+  const hit=f?a.filter(x=>x.d>=f):a.slice();
+  if(!hit.length)return null;
+  const last=hit[hit.length-1];
+  return {d:last.d,cs:Math.round(hit.reduce((s,x)=>s+x.cs,0)*100)/100,n:hit.length,inv:last.inv,cr:last.cr};
+}
+ 
+function psiCovers(ymd){
+  const ds=Object.keys(psiOk().days||{});
+  return ds.length?ds.some(d=>d>=ymd):false;
+}
+function psiDays(){return Object.keys(psiOk().days||{}).sort();}
+
  
 function parseDrop(name,buf){
   const wb=XLSX.read(buf,{type:"array"});let rdate=null;const items={},dropNames={};let dropVal=0;const lines=[];
@@ -16213,6 +16775,9 @@ function parseHuasuer(name,buf){
        
       o:(typeof oname==="function"?oname(code):"")||"",
       m:[]};
+     
+    if(typeof pmDet==="function"){const x=pmDet(code);
+      if(x&&(x.gw||x.w))it.d=[x.gw||0,x.w||0,x.l||0,x.h||0];}
     blocks.forEach(b=>{const o=b.o;
       it.m.push([prNum(x[o]),prNum(x[o+1]),prR2(prNum(x[o+2])),prR2(prNum(x[o+3])),
         prR2(prNum(x[o+5])),prNum(x[o+6]),prNum(x[o+7]),prNum(x[o+8]),prTxt(x[o+9])]);});
@@ -16721,6 +17286,20 @@ function prRows(){
   out.sort((a,b)=>(a.it.c+a.it.b+a.it.n+a.it.s<b.it.c+b.it.b+b.it.n+b.it.s)?-1:1);
   return {rows:out,i:i};
 }
+ 
+function prDimOf(code,it){
+  const x=(typeof pmDet==="function")?pmDet(code):null;
+  if(x&&(x.gw||x.w))return [x.gw||0,x.w||0,x.l||0,x.h||0];
+  const d=it&&it.d;
+  return (d&&d.length>=4&&(d[0]||d[1]))?d:null;
+}
+function prDimTxt(code,it){
+  const d=prDimOf(code,it);if(!d)return "";
+  const out=[];
+  if(d[0])out.push("ลัง "+(Math.round(d[0]*100)/100)+" กก.");
+  if(d[1]&&d[2]&&d[3])out.push("กล่อง "+[d[1],d[2],d[3]].map(v=>Math.round(v)/10).join("×")+" ซม.");
+  return out.length?'<br>'+anaEsc(out.join(" · ")):"";
+}
 function prBaht(v){return v==null?"-":v.toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2});}
 function renderPrice(){
   const bar=document.getElementById("prBar");if(!bar)return;
@@ -16819,7 +17398,7 @@ function prTableHtml(rows,mgr){
         ((r.it.b&&nmo.nm.indexOf(r.it.b)<0)?' <span class="pl-tag">'+anaEsc(r.it.b)+'</span>':"")+
         '<div class="psub">'+sub.join(" · ")+'</div></td>'+
       '<td><b>'+anaEsc(r.it.s)+'</b><div class="psub">'+r.it.p+' ชิ้น/หีบ'+
-        (r.it.ip>1?" · แพ็ค "+r.it.ip+" ชิ้น":"")+'</div></td>'+
+        (r.it.ip>1?" · แพ็ค "+r.it.ip+" ชิ้น":"")+prDimTxt(r.code,r.it)+'</div></td>'+
       '<td class="num"><b>'+prBaht(r.m.ntt)+'</b></td>'+
       '<td class="num">'+prBaht(r.m.fl)+'</td>'+
       '<td class="num">'+(r.m.rspN?prBaht(r.m.rspN)+(pk?'<div class="psub">ยกแพ็ค '+r.g.k+' ชิ้น</div>':""):"-")+'</td>'+
@@ -17596,11 +18175,13 @@ function renderDcode(){
 const UP_CATS={sales:"📊 ยอดขาย",kpi:"🎯 eB2B & Self Ordering",eb:"🏆 แข่งขันเปิด eB2B",
   ps:"⭐ Perfect Store",order:"🛒 การสั่งของ",stock:"📦 สต็อก",cstock:"🧊 สต็อคกลาง",spord:"📦 ออเดอร์พิเศษ",
   dci:"📈 DCI Score",ana:"🧪 วิเคราะห์เชิงลึก",pjp:"🗺 PJP & ร้านค้า",
-  dcode:"🧾 DCODE",price:"💰 ราคา & ทุน",otrk:"📋 สถานะออเดอร์"};
+  dcode:"🧾 DCODE",price:"💰 ราคา & ทุน",psib:"📥 สถานะออเดอร์ (ซื้อ)",
+  otrk:"📋 สถานะออเดอร์ (ขาย)"};
 const UP_TAB={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",ordhist:"order",
-  stock:"stock",strep:"stock",
+  stock:"stock",strep:"stock",psib:"psib",
   cstock:"cstock",spord:"spord",otrk:"otrk",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price",dcode:"dcode"};
-const UP_SUB={otrk:"ไฟล์ที่เซลล์คีย์เข้าระบบ — ใช้ได้ทั้งหน้าสถานะออเดอร์และตรวจกับออเดอร์พิเศษ จับคู่ด้วยเลขออเดอร์เดียวกัน",
+const UP_SUB={psib:"ไฟล์ PSI จากศูนย์ — บอกว่าของที่สั่งไปแล้วเข้าคลังเราวันไหน จับคู่กับใบสั่งด้วยรหัสสินค้า",
+  otrk:"ไฟล์ที่เซลล์คีย์เข้าระบบ — ใช้ได้ทั้งหน้าสถานะออเดอร์และตรวจกับออเดอร์พิเศษ จับคู่ด้วยเลขออเดอร์เดียวกัน",
   spord:"ไฟล์ใบจัดของจากคลัง — อ่านในเครื่องนี้เพื่อตรวจกับที่เซลล์คีย์ ไม่ได้เก็บไฟล์ขึ้นเซิร์ฟเวอร์",
   cstock:"ไฟล์ที่แอดมินถือเอง — ไฟล์ร้านที่ตัดบิลเข้า (Ex.export) หรือฟอร์ม Excel แบบเดิม · การตัดบิลใหม่ให้กรอกที่แท็บ 🧾 ใบตัดบิล",
   price:"สองไฟล์ราคาที่ Unilever ส่งมาทุกเดือน — เก็บแยกจากข้อมูลยอดขาย ไม่กระทบกัน"};
@@ -17658,7 +18239,8 @@ function handleTyped(e,kind){
     else if(kind==="cstockex")cstExTake(f.name,ev.target.result);
     else if(kind==="alloc")parseAlloc(f.name,ev.target.result);
     else if(kind==="txn")parseTxn(f.name,ev.target.result);
-    else if(kind==="master")parseMaster(f.name,ev.target.result);
+    else if(kind==="master")await parseMaster(f.name,ev.target.result);
+    else if(kind==="psi")parsePSI(f.name,ev.target.result);
     else if(kind==="ana")parseAnalytics(f.name,ev.target.result);
     else if(kind==="dci")parseDCI(f.name,ev.target.result);
     else if(kind==="pjpout")parseOutlet(f.name,ev.target.result);
@@ -17688,6 +18270,7 @@ document.getElementById("fileCStockEx").addEventListener("change",e=>handleTyped
 document.getElementById("fileAlloc").addEventListener("change",e=>handleTyped(e,"alloc"));
 document.getElementById("fileTxn").addEventListener("change",e=>handleTyped(e,"txn"));
 document.getElementById("fileMaster").addEventListener("change",e=>handleTyped(e,"master"));
+document.getElementById("filePSI").addEventListener("change",e=>handleTyped(e,"psi"));
 document.getElementById("fileAna").addEventListener("change",e=>handleTyped(e,"ana"));
 document.getElementById("fileDCI").addEventListener("change",e=>handleTyped(e,"dci"));
 

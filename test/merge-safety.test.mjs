@@ -1731,5 +1731,85 @@ console.log("TEST 30 — 🎁 ดัชนียอดขายของโป�
         recOrd(null) === null && recOrd({}) === null);
 }
 
+console.log("TEST 33 — 📥 PSI (คลังรับของเข้าจากศูนย์) และ MASTER.det (น้ำหนัก/ขนาดลัง)");
+{
+  /* PSI เป็น section ใหม่ · rows เป็นแมป "วันรับเข้า|รหัส" · days เป็นสรุปรายวัน
+     ไฟล์ PSI กรองมาบางช่วงได้ ⇒ อัพรอบใหม่ต้องไม่ลบวันเก่า (keyMerge)
+     และแท็บที่เปิดค้างไว้ตั้งแต่ก่อนมีช่องนี้ ต้องลบของทั้งก้อนไม่ได้ */
+  const base = JSON.parse(JSON.stringify(server));
+  const srv = JSON.parse(JSON.stringify(base));
+  srv.PSI = { rows: {
+      "2026-11-17|90000001": { cs: 35, v: 13072, inv: ["3100000001"], cr: "2026-11-16" },
+      "2026-11-17|90000002": { cs: 160, v: 65566, inv: ["3100000001"], cr: "2026-11-16" } },
+    days: { "2026-11-17": { n: 2, cs: 195, v: 78638, iv: 1, at: 50000, by: "admin1", file: "PSI_17.xlsx" } },
+    up: 50000 };
+
+  const oldTab = JSON.parse(JSON.stringify(base));
+  delete oldTab.PSI;
+  const p1 = mergeState(srv, oldTab);
+  check("🛟 แท็บที่ไม่เคยรู้จัก PSI บันทึกทับ ของที่คลังรับเข้ายังอยู่ครบ",
+        Object.keys(p1.PSI.rows).length === 2 && p1.PSI.rows["2026-11-17|90000001"].cs === 35,
+        JSON.stringify(Object.keys(p1.PSI.rows)));
+
+  const newFile = JSON.parse(JSON.stringify(base));
+  newFile.PSI = { rows: { "2026-11-25|90000009": { cs: 7, v: 999, inv: ["3100000009"], cr: "2026-11-24" } },
+    days: { "2026-11-25": { n: 1, cs: 7, v: 999, iv: 1, at: 60000, by: "admin1", file: "PSI_25.xlsx" } },
+    up: 60000 };
+  const p2 = mergeState(p1, newFile);
+  check("🔑 อัพไฟล์ที่กรองมาแค่วันเดียว วันเก่ายังอยู่ครบ และวันใหม่ถูกเพิ่ม",
+        Object.keys(p2.PSI.rows).length === 3 && !!p2.PSI.rows["2026-11-17|90000001"] &&
+        !!p2.PSI.rows["2026-11-25|90000009"] && Object.keys(p2.PSI.days).length === 2,
+        JSON.stringify(Object.keys(p2.PSI.rows)));
+
+  const fix = JSON.parse(JSON.stringify(base));
+  fix.PSI = { rows: { "2026-11-17|90000001": { cs: 40, v: 14000, inv: ["3100000001"], cr: "2026-11-16" } },
+    days: { "2026-11-17": { n: 2, cs: 200, v: 80000, iv: 1, at: 70000, by: "admin2", file: "PSI_fix.xlsx" } },
+    up: 70000 };
+  const p3 = mergeState(p2, fix);
+  check("🔑 อัพไฟล์เดิมซ้ำ (ศูนย์แก้ตัวเลข) รอบใหม่ชนะ และคีย์อื่นไม่ถูกแตะ",
+        p3.PSI.rows["2026-11-17|90000001"].cs === 40 &&
+        p3.PSI.rows["2026-11-17|90000002"].cs === 160 &&
+        p3.PSI.days["2026-11-17"].by === "admin2",
+        JSON.stringify(p3.PSI.rows["2026-11-17|90000001"]));
+
+  const stale = JSON.parse(JSON.stringify(base));
+  stale.PSI = { rows: {}, days: { "2026-11-17": { n: 2, cs: 195, v: 78638, iv: 1, at: 50000,
+    by: "admin1", file: "PSI_17.xlsx" } }, up: 50000 };
+  const p4 = mergeState(p3, stale);
+  check("🛟 แท็บที่ค้างไว้ตั้งแต่เช้าบันทึกทับ ไม่ดึงสรุปรายวันกลับไปเป็นของเก่า",
+        p4.PSI.days["2026-11-17"].by === "admin2" && Object.keys(p4.PSI.rows).length === 3,
+        JSON.stringify(p4.PSI.days["2026-11-17"]));
+
+  const blank = JSON.parse(JSON.stringify(base));
+  blank.PSI = { rows: {}, days: {}, up: 0 };
+  const p5 = mergeState(p4, blank);
+  check("🛟 ไคลเอนต์ที่โหลดไม่ขึ้น (PSI ว่าง) ลบของที่รับเข้าไม่ได้",
+        Object.keys(p5.PSI.rows).length === 3 && Object.keys(p5.PSI.days).length === 2);
+
+  /* MASTER.det — น้ำหนัก/ขนาดลังต่อรหัส จากไฟล์ master ของ dcode
+     merge ทีละรหัสเหมือน items · ไม่งั้นไฟล์ master ที่ใหม่กว่าแต่มีรายละเอียดน้อยกว่า
+     (หรือแท็บที่ไม่เคยรู้จักช่องนี้) จะลบของเดิมทิ้ง */
+  const mSrv = JSON.parse(JSON.stringify(base));
+  mSrv.MASTER = { date: "2026-11-26", up: 50000,
+    items: { "90000001": "สินค้า A", "90000002": "สินค้า B" },
+    det: { "90000001": { ps: 36, gw: 5.625, w: 225, l: 365, h: 220 },
+           "90000002": { ps: 6, gw: 16.38, w: 272, l: 447, h: 284 } } };
+  const mOld = JSON.parse(JSON.stringify(base));
+  mOld.MASTER = { date: "2026-12-01", up: 60000, items: { "90000003": "สินค้า C" } };
+  const m1 = mergeState(mSrv, mOld);
+  check("🛟 ไฟล์ master รุ่นเก่า (ไม่มีน้ำหนัก/ขนาดลัง) อัพทับ ของเดิมยังอยู่ครบ",
+        !!m1.MASTER.det && Object.keys(m1.MASTER.det).length === 2 &&
+        m1.MASTER.det["90000001"].gw === 5.625 && Object.keys(m1.MASTER.items).length === 3,
+        JSON.stringify(Object.keys(m1.MASTER.det || {})));
+  const mNew = JSON.parse(JSON.stringify(base));
+  mNew.MASTER = { date: "2026-12-02", up: 70000, items: { "90000001": "สินค้า A ชื่อใหม่" },
+    det: { "90000001": { ps: 36, gw: 5.7, w: 225, l: 365, h: 220 } } };
+  const m2 = mergeState(m1, mNew);
+  check("🔑 อัพ master รอบใหม่ รหัสที่มีในไฟล์อัพเดต รหัสอื่นไม่หาย",
+        m2.MASTER.det["90000001"].gw === 5.7 && m2.MASTER.det["90000002"].gw === 16.38 &&
+        m2.MASTER.items["90000001"] === "สินค้า A ชื่อใหม่" && !!m2.MASTER.items["90000003"],
+        JSON.stringify(m2.MASTER.det));
+}
+
 console.log("\n" + (fail === 0 ? "ALL PASS (" + pass + " checks) — ข้อมูลเก่าไม่หาย" : fail + " FAILED of " + (pass + fail)));
 process.exit(fail === 0 ? 0 : 1);

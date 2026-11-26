@@ -165,11 +165,11 @@ const ROWS=[
  /* 26 พ.ย. 69 เพิ่มหมวด 📋 สถานะออเดอร์ ซึ่งเจ้าของสั่งว่า "ทุกคนเข้ามาดูได้" (อ่านอย่างเดียว)
     ทีม role จึงเห็นเพิ่มอีกหนึ่งกลุ่ม แต่หน้าแรกที่ลงยังเหมือนเดิม */
  t('🔑 หัวหน้าเซลล์ (sup) เห็นเฉพาะโปรโมชั่น · สถานะออเดอร์ · ออเดอร์พิเศษ และลงที่หน้าโปรโมชั่น',
-   who.sup.groups==='promo,otrk,spord'&&who.sup.home==='promo'&&who.sup.tab==='promo',
+   who.sup.groups==='promo,psib,otrk,spord'&&who.sup.home==='promo'&&who.sup.tab==='promo',
    JSON.stringify(who.sup));
  t('🔑 ...และกรอก/แก้โปรโมชั่นได้',who.sup.edit===true);
  t('🛟 ทีมคลังยังไม่เห็นแท็บโปรโมชั่น และยังลงที่ออเดอร์พิเศษเหมือนเดิม',
-   who.wh.groups.split(',').indexOf('promo')<0&&who.wh.groups==='otrk,spord'&&
+   who.wh.groups.split(',').indexOf('promo')<0&&who.wh.groups==='psib,otrk,spord'&&
    who.wh.home==='spord',JSON.stringify(who.wh));
  t('🔑 แท็บโปรโมชั่นกลับมาแล้วสำหรับเซลล์และผู้จัดการ',
    who.sales.groups.indexOf('promo')>=0&&who.manager.groups.indexOf('promo')>=0,who.manager.groups);

@@ -157,6 +157,11 @@ function pickBiggerStore(a, b) { const am = ((a && a.months) || []).length, bm =
 //   - an empty side never wins (crashed / old tab without MASTER cannot erase it).
 // No `up` on either side (data from before parseMaster stamped it) = the client wins ties, exactly
 // as pickBiggerMaster did, and the union still keeps every server-only code.
+// `det` (27 Nov 26) holds what the dcode Product Master adds per code — pack size, case
+// weight, case W/L/H and the file's own Status. It merges exactly like `items`, per code, for
+// the same reason: a tab that has never heard of the field sends no `det` at all, and a newer
+// master that happens to carry detail for fewer codes must not erase the rest. Newest-wins on
+// the whole object (the old Object.assign) would have done both.
 function mergeMaster(a, b) {
   const ai = (a && a.items) || {}, bi = (b && b.items) || {};
   const an = Object.keys(ai).length, bn = Object.keys(bi).length;
@@ -164,7 +169,10 @@ function mergeMaster(a, b) {
   if (!an) return b;
   const bNewer = ((b && b.up) || 0) >= ((a && a.up) || 0);
   const newer = bNewer ? b : a, older = bNewer ? a : b;
-  return Object.assign({}, newer, { items: Object.assign({}, older.items, newer.items) });
+  const det = Object.assign({}, older.det || {}, newer.det || {});
+  const out = Object.assign({}, newer, { items: Object.assign({}, older.items, newer.items) });
+  if (Object.keys(det).length) out.det = det; else delete out.det;
+  return out;
 }
 // The eB2B contest table is a full snapshot of the whole window, re-uploaded each time a
 // fresh Migration Report arrives, so "keep the fresher one" is right — but never let an
@@ -437,6 +445,19 @@ function mergeState(server, c) {
                    alc: csAlc,
                    up: Math.max(sCs.up || 0, cCs.up || 0) };
 
+  // PSI — คลังรับของเข้าจากศูนย์ (ไฟล์ PSI ชีต Export) เจ้าของสั่ง 27 พ.ย. 69
+  //   rows["วันที่รับเข้า|รหัสสินค้า"] = {cs,pc,v,inv:[],cr} · days["วันที่รับเข้า"] = {n,cs,v,iv,up,...}
+  // ทั้งสองเป็นแมปคีย์เดียว อัพไฟล์ใหม่ = เขียนทับเฉพาะคีย์ที่ไฟล์นั้นมี (keyMerge)
+  //   - ไฟล์ที่กรองมาแค่บางวัน จึง **ลบวันอื่นไม่ได้** (กฎเดียวกับ parseDailyDcode)
+  //   - แท็บเก่าที่ไม่เคยรู้จัก PSI ส่ง undefined มา ⇒ ของเดิมบนเซิร์ฟเวอร์อยู่ครบ
+  //   - rows กับ days แยกกัน เพราะ days เป็นแค่สรุป/บันทึกว่าใครอัพ ไม่ใช่ข้อมูลสินค้า
+  const sPsi = s.PSI || {}, cPsi = c.PSI || {};
+  const PSI = {
+    rows: keyMerge(sPsi.rows, cPsi.rows),
+    days: newestByAt(sPsi.days, cPsi.days),
+    up: Math.max(sPsi.up || 0, cPsi.up || 0),
+  };
+
   return {
     DATA,
     STORE: pickBiggerStore(s.STORE, c.STORE),
@@ -458,6 +479,7 @@ function mergeState(server, c) {
     PROMO,
     PJP,
     CSTOCK,
+    PSI,
     savedAt: Date.now(),
   };
 }

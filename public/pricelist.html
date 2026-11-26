@@ -454,12 +454,23 @@ function cell(lab,val,sub,cls){
 }
 function num(v){return '<span class="v">'+baht(v)+'</span>';}
 function dash(){return '<span class="dash">—</span>';}
+function dimTxt(it){
+  var d=it&&it.d;
+  if(!d||d.length<4||(!d[0]&&!d[1]))return '';
+  var out=[];
+  if(d[0])out.push('ลัง '+(Math.round(d[0]*100)/100)+' กก.');
+  if(d[1]&&d[2]&&d[3])out.push('กล่อง '+[d[1],d[2],d[3]].map(function(v){return Math.round(v)/10;}).join('×')+' ซม.');
+  return out.join(' · ');
+}
 function rowHtml(r){
   var nm=prName(r.code,r.it).nm;
    
   var sz=['<span class="code">รหัส '+esc(r.code)+'</span>',esc(r.it.s)];
   if(r.it.p>1)sz.push(r.it.p+' ชิ้น/หีบ');
   if(r.it.ip>1)sz.push('แพ็ค '+r.it.ip+' ชิ้น');
+   
+  var dm=dimTxt(r.it);
+  if(dm)sz.push(dm);
   var h='<tr class="prow"><td class="nmcell"><b>'+esc(nm)+'</b>'+
     '<div class="sz">'+sz.join(' · ')+'</div>'+
     ((r.it.b&&nm.indexOf(r.it.b)<0)?'<span class="br">'+esc(r.it.b)+'</span>':'')+'</td>';

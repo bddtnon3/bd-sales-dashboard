@@ -166,9 +166,11 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  t('เว็บเดิม: ประตูแอดมินไม่มีผล — เซลล์ล็อกอินเว็บเดิมได้ตามปกติ',tabsM.gate===true);
  /* 18 พ.ย. 69 ซ่อนกลุ่ม "promo" ไว้ก่อน · 24 พ.ย. 69 เจ้าของสั่งเอากลับมา
     26 พ.ย. 69 เพิ่ม "otrk" (สถานะออเดอร์) และย้าย spord มาต่อท้าย price → 11 กลุ่มบนเว็บเดิม
+    27 พ.ย. 69 เพิ่ม "psib" (สถานะออเดอร์ (ซื้อ) — ของที่ศูนย์ส่งมาให้เรา) ไว้ "ตรงกลางของ
+    การสั่งของ และสต็อค" ตามที่เจ้าของสั่ง และหมวดเดิมเปลี่ยนชื่อเป็น (ขาย) → 12 กลุ่ม
     ตัวเลขนี้ขยับตาม TAB_GROUPS ทุกครั้งที่เพิ่ม/ซ่อน/ย้ายกลุ่ม */
- t('เว็บเดิม: กลุ่มแท็บเหมือนเดิมทุกกลุ่ม (11 กลุ่ม) ไม่มี DCODE',
-   tabsM.m.join(',')==='sales,pjp,kpi,promo,order,stock,price,otrk,spord,plan,shop',tabsM.m.join(','));
+ t('เว็บเดิม: กลุ่มแท็บเหมือนเดิมทุกกลุ่ม (12 กลุ่ม) ไม่มี DCODE',
+   tabsM.m.join(',')==='sales,pjp,kpi,promo,order,psib,stock,price,otrk,spord,plan,shop',tabsM.m.join(','));
  t('เว็บเดิม: เซลล์ก็ไม่เห็น DCODE',tabsM.s.indexOf('dcode')<0&&tabsM.s.length>=8,tabsM.s.join(','));
  t('เว็บเดิม: กดไปกลุ่ม DCODE ไม่ได้ (อยู่บนเว็บแอดมินเท่านั้น)',tabsM.cur!=='dcode',tabsM.cur);
  t('เว็บเดิม: ธงยังเป็น "main" และชื่อเว็บเดิม',tabsM.site==='main'&&tabsM.title==='BD Sales Dashboard',tabsM.site+' | '+tabsM.title);

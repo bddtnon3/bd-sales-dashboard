@@ -392,9 +392,9 @@ const ORIGIN='https://bd-spord.test/';
     ทีมคลัง/สายส่งจึงเห็น 2 กลุ่ม — หน้าสถานะออเดอร์อ่านอย่างเดียว ไม่ได้เปิดสิทธิ์เขียนอะไรเพิ่ม
     ส่วนยอดขาย/ราคา/ต้นทุน ยังปิดเหมือนเดิม */
  t('🔑 ทีมคลังเห็นได้แค่ สถานะออเดอร์ + ออเดอร์พิเศษ และเข้าหน้าออเดอร์พิเศษให้เลย',
-   who.wh.groups==='otrk,spord'&&who.wh.tabs==='spord'&&who.wh.tab==='spord',JSON.stringify(who.wh));
+   who.wh.groups==='psib,otrk,spord'&&who.wh.tabs==='spord'&&who.wh.tab==='spord',JSON.stringify(who.wh));
  t('🔑 ทีมสายส่งก็เหมือนกัน — ไม่เห็นยอดขาย/ราคา/ต้นทุน',
-   who.ds.groups==='otrk,spord'&&who.ds.tabs==='spord',JSON.stringify(who.ds));
+   who.ds.groups==='psib,otrk,spord'&&who.ds.tabs==='spord',JSON.stringify(who.ds));
  t('เซลล์ยังเห็นทุกกลุ่มเหมือนเดิม และเข้าหน้ายอดขายเป็นหน้าแรก',
    who.sales.tab==='sales'&&who.sales.groups.indexOf('sales')===0&&
    who.sales.stock==='stock,cstock',JSON.stringify(who.sales));   /* เซลล์ไม่เห็นรายงานสต็อค (ต้นทุน) */
@@ -957,6 +957,46 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
    adm.cmp.n.ok===1&&adm.cmp.n.diff===1&&adm.cmp.n.noKey===1,JSON.stringify(adm.cmp.n));
  t('🛟 เลข GIN ที่ไม่มีในไฟล์ ต้องฟ้อง ไม่ใช่เงียบ',
    adm.miss.join(',')==='999'&&/ไม่พบเลข GIN ในไฟล์/.test(adm.missTxt),adm.miss.join(','));
+
+ /* 🚚 สรุปรายสายบนหน้าแอดมินตรวจ — เจ้าของสั่ง 27 พ.ย. 69
+    *"ช่วยทำสรุปจำนวน แยกเป็นแต่ละสายให้แอดมินตรวจสอบ สามารถกดเลือกดูได้ว่า ทั้งหมดของวันนี้
+      เป็นของสายนั้น ๆ กี่ลัง สินค้าอะไรบ้าง และเป็นกี่ลังกี่ชิ้น"* */
+ const lnSum=await ev(async()=>{
+   __as('manager',null,'แอดมิน 1');SP.sec='adm';SP.day='2026-11-20';SP.cmpLn='';
+   const snap=()=>JSON.stringify([CSTOCK,ORDERS,POSTATUS,STOREDAILY]);
+   const before=snap();
+   renderSpord();
+   const cmp=spCmp('B20261118-01','2026-11-20');
+   const L=spCmpLines(cmp);
+   const cards=[...document.querySelectorAll('.sl-card')].length;
+   const wrap=document.querySelector('.sl-wrap');
+   const head=((wrap&&wrap.closest('.panel'))||{textContent:''}).textContent.replace(/\s+/g,' ');
+   const rowsAll=document.querySelectorAll('#spBody table.sp-kt tbody tr').length;
+   /* กดที่สายแรก = กางรายการสินค้า และกรองตารางล่างให้เหลือสายนั้น */
+   const ln=L[0].ln;
+   spCmpLn(ln);
+   const open=document.querySelectorAll('.sl-card.on .sl-tb tbody tr').length;
+   const rowsOne=document.querySelectorAll('#spBody table.sp-kt tbody tr').length;
+   const note=/กำลังดูเฉพาะสาย/.test(document.getElementById('spBody').textContent);
+   spCmpLn(ln);   /* กดซ้ำ = ปิด */
+   const back=document.querySelectorAll('#spBody table.sp-kt tbody tr').length;
+   return {lines:L.map(x=>x.ln),cards:cards,head:head,ln:ln,
+     items:L[0].items.length,open:open,rowsAll:rowsAll,rowsOne:rowsOne,back:back,note:note,
+     off:SP.cmpLn,same:snap()===before};
+ });
+ t('🔑 มีสรุปรายสายบนหน้าแอดมินตรวจ หนึ่งการ์ดต่อหนึ่งสาย',
+   lnSum.cards===lnSum.lines.length&&lnSum.cards>0&&/สรุปรายสาย/.test(lnSum.head),
+   lnSum.lines.join(',')+' · '+lnSum.cards+' การ์ด');
+ t('...บอกจำนวนลังรวมของสายนั้น และแยกขาย/แถม',
+   /ลัง/.test(lnSum.head)&&/ขาย/.test(lnSum.head)&&/แถม/.test(lnSum.head),lnSum.head.slice(0,140));
+ t('🔑 กดที่สายแล้วกางรายการสินค้าของสายนั้นออกมา (กี่ลังกี่ชิ้น)',
+   lnSum.open===lnSum.items&&lnSum.open>0,lnSum.open+' แถว จาก '+lnSum.items+' รายการ');
+ t('🔑 ...และกรองตารางรายละเอียดให้เหลือเฉพาะสายนั้น พร้อมบอกว่ากำลังกรองอยู่',
+   lnSum.rowsOne<lnSum.rowsAll&&lnSum.rowsOne>0&&lnSum.note,
+   lnSum.rowsOne+' / '+lnSum.rowsAll);
+ t('กดชื่อสายซ้ำ = กลับไปดูทุกสาย',lnSum.back===lnSum.rowsAll&&lnSum.off==='',
+   lnSum.back+' / '+lnSum.rowsAll+' · cmpLn="'+lnSum.off+'"');
+ t('🛟 สรุปรายสายคิดสดตอนวาดหน้า ไม่เขียนอะไรลงข้อมูลเลย',lnSum.same);
  /* ⚠️ ของเดิมเคยตรวจว่า "หน้าเขียนบอก" — เลิกเขียนบอกแล้ว (ข้อมูลภายใน) จึงตรวจของจริงแทน:
     ไฟล์ทั้งก้อนต้องไม่ถูกส่งขึ้นเซิร์ฟเวอร์ ส่งขึ้นเฉพาะผลสรุปของรหัสที่อยู่ในใบนั้น */
  t('🛟 ไฟล์ allocation ไม่ถูกส่งขึ้นเซิร์ฟเวอร์ — ส่งแค่ผลตรวจของรหัสในใบนี้',

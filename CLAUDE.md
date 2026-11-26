@@ -14,8 +14,9 @@ the app UI; the sales team sees everything live. Features (all are tabs in one p
 earns from them).
 **ราคา & ทุน** (the two monthly Unilever price files: the หัวเสือ quote prices the depot sells at —
 also published to shop customers as a public catalogue — and the BUM cost file, manager-only).
-The pages sit in **11 top-level tab groups** on the main site (among them **📋 สถานะออเดอร์** and
-**📦 ออเดอร์พิเศษ**, in that order right after 💰 ราคา & ทุน) (`TAB_GROUPS`/`renderTabs`), several of
+The pages sit in **12 top-level tab groups** on the main site (among them **📥 สถานะออเดอร์ (ซื้อ)**
+between 🛒 การสั่งของ and 📦 สต็อก, and **📋 สถานะออเดอร์ (ขาย)** and **📦 ออเดอร์พิเศษ**, in that
+order right after 💰 ราคา & ทุน) (`TAB_GROUPS`/`renderTabs`), several of
 which open a row of sub-tabs. The per-page keys (`CURTAB`) did not change when the grouping was added —
 see `HANDOFF.md` §5 before touching the tab bar. A 10th group, **🧾 DCODE**, carries `site:"admin"` and
 exists only on the **admin site** (`/admin`, see "Admin site + DCODE" below).
@@ -96,12 +97,15 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (308 checks against the real `api/save.js`, the real
+  running **`node test/merge-safety.test.mjs`** (315 checks against the real `api/save.js`, the real
   `api/ordtrk.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
-  tombstones, the shared planner (`PLAN.items`/`done`/`del`), the monthly promotions and their prize
+  tombstones, goods receipts from the centre (`PSI.rows`/`days` — a PSI export filtered to one day
+  must not delete the days already read, and a tab from before the section existed must not blank it),
+  the product master's per-code detail (`MASTER.det` — an old-format master upload must not erase the
+  weights and case sizes the dcode file gave), the shared planner (`PLAN.items`/`done`/`del`), the monthly promotions and their prize
   money (`PROMO.items`/`res`/`del`), the PJP visit plan (`PJP.out`/`plan`/`done`/`cfg` — a new
   month must not erase the last one, a Master file must not delete a shop it stopped listing, an
   untick must not be undone by a stale tab, and a tab from before visit notes existed must not
@@ -707,7 +711,48 @@ code, never printed.
   moves `selectedIndex` and dispatches `change`, so it is exactly a dropdown pick and **cannot
   touch data**. Prove both with **`node test/browser/datestep.test.cjs`** (72 checks, including a
   byte-for-byte comparison of every stored blob before and after every button on every page).
-  The **📋 สถานะออเดอร์** tab group (`renderOtrk`) answers *"where is this order?"* for the whole
+  The **📥 สถานะออเดอร์ (ซื้อ)** tab group (`renderPsi`/`parsePSI`) answers the other half of the
+  question: *what did we order from Unilever, and when did it reach our warehouse?* The owner asked
+  for it on 27 Nov 26 — *"หมวด สถานะออเดอร์ (ซื้อ) โดยวางไว้ตรงกลางของ การสั่งของ และ สต็อค ส่วนตัวเดิม
+  ที่ชื่อซ้ำ ให้ปรับเป็น สถานะออเดอร์ (ขาย) … จับรหัสสินค้าที่สั่งได้หัก drop ออกไป แล้ว match ให้เข้ากับ
+  สถานะของไฟล์นี้"* — so the group sits between 🛒 การสั่งของ and 📦 สต็อก, and the older group was
+  renamed **(ขาย)**. **The page keys (`CURTAB`) did not change**: the new one is `psib`, the old one
+  is still `otrk`; renaming a key would break every remembered tab and history entry.
+  It reads one file, **`PSI_ddmmyyyy.xlsx`** (sheet `Export`, 31 columns), and every claim below was
+  measured on the owner's real file before anything was written (194 rows, 28 invoices, 137 codes):
+  **the last two rows are not data** — a `Total` row and an `Applied filters:` row, exactly like the
+  dcode daily sales file, and both are skipped *and reported*; `Received Qty` equalled `Invoice Qty`
+  on all 192 real rows with `Variance` 0 everywhere and no row in pieces (UOM is `CS` throughout) —
+  but the reader still handles both and **reports** a variance or a pieces row rather than hiding it;
+  **the key is the Invoice RECEIVING date**, not the day the centre invoiced, because the question is
+  "when did it reach our warehouse" (measured: same day 56 rows, +1 day 136, never further); and
+  **one code can arrive on several days** (43 codes came more than once, 42 of them on different
+  days), so `psiGot` sums every round from the order date onward and names the latest.
+  It is stored in the main snapshot as `PSI.rows["YYYY-MM-DD|code"]` + `PSI.days["YYYY-MM-DD"]`,
+  **not** a side blob: measured, 10 days is 15 KB ⇒ ~44 KB a month, the same order as `STOREDAILY`
+  and nothing like `ordtrk`'s 0.5 MB a month — and living in the same snapshot is what lets the
+  receive-date badge read live with no second fetch. A PSI export can be filtered to part of a
+  period, so a new upload **writes only the keys it carries** and says so (the `parseDailyDcode`
+  rule); a header it needs that is missing **throws and stores nothing**.
+  The page is **strictly read-only** over PSI/ORDERS/POSTATUS with its state on the non-synced
+  `PSIV`, and has two sub-tabs: **📥 ของเข้าคลัง** (per receiving day — products, cases, value,
+  invoice numbers, banded by the order form's own categories) and **🔎 สั่งไป → ได้ของหรือยัง**,
+  which is the reconciliation the owner asked for: per code, ศูนย์สั่ง → หัก Drop → **ควรได้** →
+  เข้าคลังแล้ว → วันที่เข้า. `ควรได้` is the quantity the Drop file says was actually shipped
+  (`dropD`, falling back to ordered − dropped), never a guess. **Four statuses, and the fourth is
+  the one that matters**: ✅ เข้าครบ · 🟡 เข้าบางส่วน · 🕓 ยังไม่เข้า · ⛔ โดน Drop ทั้งหมด, plus
+  **⏳ ยังไม่ได้อัพไฟล์ PSI ที่ครอบวันนี้** — "no file yet" and "not arrived" are different facts and
+  must never share a cell, or a day nobody has uploaded reads as the centre failing to ship.
+  **The receive date is appended to the existing order-status badge** (`psiPill` inside
+  `reqStatusCell`), so every page that shows a product's order status — the manager's combined
+  request table, the rep's own request page, ขอแล้วสั่งไม่ได้ — gains it at once. It is a **separate
+  pill, never merged into the Drop badge**: the Drop file is the centre's answer, PSI is our
+  warehouse's, and they are different steps. With no PSI file covering that round the pill is
+  **silent**, never "ยังไม่เข้า". Prove it with
+  **`node test/browser/psi.test.cjs`** (45 checks, self-contained with made-up codes; 47 with the
+  real file via `PSI_FILE=/path/PSI_ddmmyyyy.xlsx`, which never enters the repo) plus the `PSI`
+  cases in `merge-safety`.
+  The **📋 สถานะออเดอร์ (ขาย)** tab group (`renderOtrk`) answers *"where is this order?"* for the whole
   team. The owner's words, 26 Nov 26, after the analysis below: *"เราเจอหัวใจสำคัญละ เชื่อมด้วย
   เลขออเดอร์เดียวทั้งระบบฝั่งการขาย"*. It is **two steps, by his instruction** — *"ตอนนี้เรามีแค่
   2 ขั้นตอน คือเซลล์คีย์ คลังจัด … GIN มันมาจาก Good issue note คือใบจัดของของฝั่งคลัง ในอนาคตเรา
@@ -820,6 +865,43 @@ code, never printed.
   **`node test/browser/ordtrk.test.cjs`** (99 checks, self-contained with made-up codes; 105 with the
   real file via `ORDTRK_TXN=/path/Transaction_Inquiry_....xlsx`, which holds real shop names and
   never enters the repo) plus the `api/ordtrk.js` cases in `merge-safety`.
+  **📚 The product master has two formats and both must keep working** (`parseMaster` dispatches to
+  **`parseMasterDcode`** on the headers `Item Code` + `Status`, which the old `Item_Code` file does
+  not have). The owner sent dcode's `Product_Master_ddmmyyyy.xlsx` on 27 Nov 26 — *"ใช้แทนไฟล์เดิม
+  แต่รอบนี้ไฟล์ละเอียดขึ้นเยอะ … มีขนาดลังและน้ำหนักของแต่ละสินค้า โดยข้อมูลพวกนี้ให้ใช้กับข้อมูลสินค้า
+  หน้าเวปแคตาลอคได้เลยนะ เพราะลูกค้าหลาย ๆ คนต้องการน้ำหนักขนาดลังด้วย"*. Measured on his real file
+  (34,267 rows / 33,693 codes, last row `No filters applied`):
+  **it is the whole country's material list, not the depot's** — so storing every name alone would
+  be 1.4 MB against a MASTER that has always been 75 KB. It therefore keeps only the codes the app
+  already knows (old master ∪ order form ∪ price file ∪ stock ∪ ORDERS ∪ PSI ∪ …, ~1,900 for this
+  depot ≈ 230 KB, the `pmCodeSet` rule) and **reports how many it skipped**; a code the depot starts
+  ordering arrives with that round's order form by itself. On a machine that knows **fewer than 200
+  codes at all** (a fresh install) it falls back to every `Active` code with a Thai name and says
+  which rule it used — and that test is on the size of the **known** set, never on how many codes
+  the file happened to match, or a master with little overlap would switch rules silently.
+  `MASTER.det[code]` holds `ps` · `gw`/`nw` (kg per case) · `w`/`l`/`h` (mm) and `st` only when the
+  status is not `Active`. It merges **per code** like `items` (`mergeMaster`), so an old-format
+  upload cannot erase it.
+  **`Status` is a real signal and `New` does not mean "new product to sell"**: measured, every one
+  of the 1,271 order-form codes and all 1,355 price-file codes is `Active`, while the 359 codes in
+  the old master that read `New` are in **neither** file — so `New` = the code exists but is not
+  open for ordering yet.
+  ⚠️ **The file has no replacement-product column.** The owner thought column W held it; column W is
+  `Alternate Item Description` — 201 rows of 33,693 (0.6%), 78 of them the item's own name repeated
+  and the rest an English spelling of the same product, and **not one** of the codes the depot
+  receives has one. `Lead Base Pack` (S/T) is not it either: it resolves to 11–20 active codes per
+  pack and crosses flavours (สุกี้ชาบู → ต้มยำ), so answering "buy this instead" from it would be
+  wrong. The real answer to "which code do I order now" stays the order form's own colours
+  (`poWhy`/`psSwap`). Tell the owner that plainly rather than shipping a guess.
+  **The catalogue gets weight and case size through the price file, not through MASTER**
+  (`prDimOf`/`prDimTxt` in the app, `dimTxt` in `src/pricelist.html` — the same formula in two
+  places, compared by the test): the public page is a standalone file that may only call
+  `/api/pricelist`, so `parseHuasuer` attaches `it.d = [gw, w, l, h]` from `pmDet(code)` at
+  parse time, exactly as it already attaches the ordering-system name in `it.o`. The in-app price
+  table reads `pmDet` **live** first, so uploading a master shows there immediately; the public
+  catalogue needs the price file uploaded once more, and the master's upload log says so.
+  `parseMasterDcode` awaits `prLoad()` first, because without it 75 of the 1,355 catalogue codes
+  would not count as "known" and would lose their weight.
   The **💰 ราคา & ทุน** tab group (`renderPrice`/`renderCost`) reads the two monthly Unilever price
   files. Its rules are dense and were measured, not guessed — read `HANDOFF.md` §5 before touching
   any of it. The ones easiest to get wrong: a Unilever round runs **the 25th → the 24th**, not a
@@ -1039,6 +1121,19 @@ code, never printed.
   still on 🧊 สต็อคกลาง. **`spSent(sid)` is the one answer to "how many cases have left the
   warehouse"** (allocation for D, lot clearings for A/B); the month card, the tab and the manager
   report all call it, or a card shows 0% while the tab inside shows 27%.
+  **🚚 Each admin-check day opens with a per-line summary** (`spCmpLines`/`spLineSumHtml`/`spLnCs`,
+  owner 27 Nov 26: *"ช่วยทำสรุปจำนวน แยกเป็นแต่ละสายให้แอดมินตรวจสอบ สามารถกดเลือกดูได้ว่า ทั้งหมดของ
+  วันนี้ เป็นของสายนั้น ๆ กี่ลัง สินค้าอะไรบ้าง และเป็นกี่ลังกี่ชิ้น"*). One card per line — สาย ·
+  รวมกี่ลัง · ขาย/แถม · NIV — and tapping it both **expands that line's products** (cases + pieces
+  per code, with what the rep keyed beside it) and **filters the detail table below to that line**,
+  with a banner saying so; tapping again returns to all lines. The state is `SP.cmpLn` on the
+  non-synced `SP`, and the whole thing is computed at render time — it stores nothing.
+  **Cases are summed in pieces and split back at the end** (`alPcs`/`alSplit`), never by adding
+  case counts, because every code has a different case size and the allocation file mixes
+  ลัง/แพ็ค/ชิ้น in one row; a row that cannot be converted is **counted and named on the card**,
+  never guessed at 1. The card header is a CSS grid, so สาย / จำนวนลัง / เงิน line up down the
+  column and can be compared at a glance; on a phone it folds to two rows and the product list
+  folds to cards rather than scrolling sideways.
   **📋 รายการที่ขายออกไปแล้ว** (`spSoldHtml`) is the ตัวกระจาย page's detail list: per product, cases
   sold, free goods, **how many shops it reached** and the money, all from the stored check. `alPick`
   counts distinct shops per line·code and stores **only the count** (`rows[].sh`, `shop[code]`), never
@@ -1317,7 +1412,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (222 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (228 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1330,7 +1425,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (222 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (228 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
@@ -1422,6 +1517,9 @@ code, never printed.
 - `api/*.js` — Vercel serverless functions (ESM): `login`, `data` (read newest non-empty blob),
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write),
   `apply` (PUBLIC shop application → its own `bd-lead-*` blob), `leads` (manager-only read).
+- **`PSI`** (in the main snapshot, no endpoint of its own) — goods received from the centre, read
+  from `PSI_ddmmyyyy.xlsx` by `parsePSI`. Uploaded from the one upload button under the category
+  **📥 สถานะออเดอร์ (ซื้อ)**. See the 📥 section above for the measured rules.
 - `api/ordtrk.js` — the 📋 order-tracking index, fed by **two** files (the warehouse's allocation
   report and the reps' Transaction Inquiry): manager/admin upload, **everyone** reads.
   Its own blob prefix (`bd-ordtrk-`), **sharded by month**, never a read or a write of `bd-data-*`
