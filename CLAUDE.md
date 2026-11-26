@@ -1209,19 +1209,27 @@ code, never printed.
   still on 🧊 สต็อคกลาง. **`spSent(sid)` is the one answer to "how many cases have left the
   warehouse"** (allocation for D, lot clearings for A/B); the month card, the tab and the manager
   report all call it, or a card shows 0% while the tab inside shows 27%.
-  **🚚 Each admin-check day opens with a per-line summary** (`spCmpLines`/`spLineSumHtml`/`spLnCs`,
-  owner 27 Nov 26: *"ช่วยทำสรุปจำนวน แยกเป็นแต่ละสายให้แอดมินตรวจสอบ สามารถกดเลือกดูได้ว่า ทั้งหมดของ
-  วันนี้ เป็นของสายนั้น ๆ กี่ลัง สินค้าอะไรบ้าง และเป็นกี่ลังกี่ชิ้น"*). One card per line — สาย ·
-  รวมกี่ลัง · ขาย/แถม · NIV — and tapping it both **expands that line's products** (cases + pieces
-  per code, with what the rep keyed beside it) and **filters the detail table below to that line**,
-  with a banner saying so; tapping again returns to all lines. The state is `SP.cmpLn` on the
-  non-synced `SP`, and the whole thing is computed at render time — it stores nothing.
-  **Cases are summed in pieces and split back at the end** (`alPcs`/`alSplit`), never by adding
-  case counts, because every code has a different case size and the allocation file mixes
-  ลัง/แพ็ค/ชิ้น in one row; a row that cannot be converted is **counted and named on the card**,
-  never guessed at 1. The card header is a CSS grid, so สาย / จำนวนลัง / เงิน line up down the
-  column and can be compared at a glance; on a phone it folds to two rows and the product list
-  folds to cards rather than scrolling sideways.
+  **📦 Each admin-check day opens with a per-PRODUCT summary** (`spCmpProd`/`spProdSumHtml`, owner
+  28 Nov 26: *"สรุปยอดจำนวนสินค้าแต่ละรายการหน่อย ว่ามีคีย์ออกไปทั้งหมดกี่ลัง เป็นของสายไหนกี่ลัง
+  ตรงกี่ลัง ขาดกี่ลัง … แอดมินไม่ต้องการดูเป็นรายงานรายสายแบบนี้ แต่ต้องการดูสรุปยอดรวมของสินค้า
+  ทั้งหมด ผลต่างมาจากส่วนไหน แค่นั้นพอ"*). **The unit of comparison is the product code, not the
+  line**: one row per code — 📲 เซลล์คีย์ · 🚚 คลังจัด · ✅ ตรง · ขาด/เกิน — with the lines as small
+  chips inside that row, so "เป็นของสายไหนกี่ลัง" is answered without a section of its own. A chip
+  shows what the warehouse **shipped** for that line and turns red when that line's keyed figure
+  disagrees, because a code can total correctly for the slip while two lines have it swapped.
+  Above the table, five cards and a **"ผลต่างมาจากส่วนไหน"** line that splits the difference into
+  its causes: คลังจัด แต่เซลล์ไม่ได้คีย์ · เซลล์คีย์ แต่คลังไม่ได้จัด · จำนวนไม่ตรงกัน.
+  **ตรง/ขาด/เกิน are computed per code and only then summed** — short 5 cases of one code and over
+  5 of another is not "ตรง", the same rule as the daily check; and quantities are summed in pieces
+  and split back at the end (`alPcs`/`alSplit`), never by adding case counts, because every code has
+  a different case size and the file mixes ลัง/แพ็ค/ชิ้น in one row. A row that cannot be converted
+  is **counted and named**, never guessed at 1 — and that is why `spCmp` now **borrows a code's case
+  size** from another row of the same code, or from `MASTER.det[code].ps`, when the allocation file
+  has no row for it: those are exactly the "เซลล์คีย์ แต่คลังไม่ได้จัด" rows, so without the fallback
+  the whole ขาด figure vanished. On a phone the table folds to one card per code (`.sp-pfold`).
+  **The old per-line report (`spCmpLines`/`spLineSumHtml`/`spLnCs`) is retired, not deleted** — the
+  functions still work; putting the one call back in `spAdmHtml` restores the whole block, the same
+  way a retired tab comes back. `SP.cmpLn` and its filter are untouched and now driven by the chips.
   **📋 รายการที่ขายออกไปแล้ว** (`spSoldHtml`) is the ตัวกระจาย page's detail list: per product, cases
   sold, free goods, **how many shops it reached** and the money, all from the stored check. `alPick`
   counts distinct shops per line·code and stores **only the count** (`rows[].sh`, `shop[code]`), never
@@ -1306,7 +1314,7 @@ code, never printed.
   one — otherwise the button asked for the file while the answer was already on its way. Reading is
   manager-only, like the check itself. Prove it with the `api/alloc.js` cases in
   **`node test/merge-safety.test.mjs`** (330 checks) and the round-trip cases in
-  **`node test/browser/spord.test.cjs`** (298 checks).
+  **`node test/browser/spord.test.cjs`** (302 checks).
   **④ คลังจัดส่ง is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
@@ -1547,7 +1555,7 @@ code, never printed.
   on consecutive lines would join into a 20-digit run and both vanish. Typing is still there,
   unchanged, under *— หรือพิมพ์เลขเอง —*. The picker is not a data upload, so the one-upload-button
   rule does not apply. Prove it with the self-contained cases in
-  **`node test/browser/spord.test.cjs`** (298 checks) and, against the owner's real screenshots,
+  **`node test/browser/spord.test.cjs`** (302 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
@@ -1655,16 +1663,20 @@ code, never printed.
   says 0"** from **"the file has not billed this yet"**, which the page reports as
   *ไฟล์ยังไม่ลงเงิน*. `parseDailyDcode` also stores `g` (GSV) on the order index; a file uploaded
   before that says so and asks for one re-upload rather than showing 0.
-  **③ The day's check exports** to Excel (`spRepXlsx`, สรุป + รายการ sheets) or PDF through the
-  browser's own print (`spRepPrint` into `#prArea`). Both read `spCmp`, so the document and the
-  screen can never disagree, and the filename stays ASCII (`fnAscii` — Chromium drops a Thai
-  `a.download` name *and* its extension).
+  **③ The day's check exports** to Excel (`spRepXlsx`, สรุป + **รายสินค้า** + รายการ sheets) or PDF
+  through the browser's own print (`spRepPrint` into `#prArea`). Both read `spCmp`, so the document
+  and the screen can never disagree, and the filename stays ASCII (`fnAscii` — Chromium drops a Thai
+  `a.download` name *and* its extension). The PDF follows the screen's order (28 Nov 26): the
+  summary band, **ผลต่างมาจากส่วนไหน**, then **สรุปรายสินค้า**, and only then the detail — which is
+  **cut to the rows that disagree** and to 8 columns, because the old 19-column table printed every
+  row and was unreadable. Nothing is lost: every ลัง/แพ็ค/ชิ้น figure of every row is still in the
+  Excel's รายการ sheet, and the PDF says so.
   **How long from picking to billing** (the owner asked, 26 Nov 26): matching Order Number across
   the two files, **46.7% of orders are invoiced the same day, 43.3% the next day, 9.2% two days
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (298 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (302 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1677,7 +1689,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (298 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (302 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

@@ -1034,45 +1034,74 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🛟 เลข GIN ที่ไม่มีในไฟล์ ต้องฟ้อง ไม่ใช่เงียบ',
    adm.miss.join(',')==='999'&&/ไม่พบเลข GIN ในไฟล์/.test(adm.missTxt),adm.miss.join(','));
 
- /* 🚚 สรุปรายสายบนหน้าแอดมินตรวจ — เจ้าของสั่ง 27 พ.ย. 69
-    *"ช่วยทำสรุปจำนวน แยกเป็นแต่ละสายให้แอดมินตรวจสอบ สามารถกดเลือกดูได้ว่า ทั้งหมดของวันนี้
-      เป็นของสายนั้น ๆ กี่ลัง สินค้าอะไรบ้าง และเป็นกี่ลังกี่ชิ้น"* */
- const lnSum=await ev(async()=>{
+ /* 📦 สรุปรายสินค้าบนหน้าแอดมินตรวจ — เจ้าของสั่ง 28 พ.ย. 69 ให้เลิกดูรายสาย
+    *"ต้องการดูสรุปยอดรวมของสินค้าทั้งหมด ผลต่างมาจากส่วนไหน แค่นั้นพอ"*
+    ของเดิม (สรุปรายสาย) ไม่ได้ลบทิ้ง แค่ไม่ถูกเรียกแล้ว — spCmpLines ยังทำงานได้เหมือนเดิม */
+ const pdSum=await ev(async()=>{
    __as('manager',null,'แอดมิน 1');SP.sec='adm';SP.day='2026-11-20';SP.cmpLn='';
    const snap=()=>JSON.stringify([CSTOCK,ORDERS,POSTATUS,STOREDAILY]);
    const before=snap();
    renderSpord();
    const cmp=spCmp('B20261118-01','2026-11-20');
-   const L=spCmpLines(cmp);
-   const cards=[...document.querySelectorAll('.sl-card')].length;
-   const wrap=document.querySelector('.sl-wrap');
-   const head=((wrap&&wrap.closest('.panel'))||{textContent:''}).textContent.replace(/\s+/g,' ');
-   const rowsAll=document.querySelectorAll('#spBody table.sp-kt tbody tr').length;
-   /* กดที่สายแรก = กางรายการสินค้า และกรองตารางล่างให้เหลือสายนั้น */
-   const ln=L[0].ln;
+   const P=spCmpProd(cmp);
+   const tbl=document.querySelectorAll('#spBody table.sp-rt');
+   const prodTbl=tbl[0];
+   const head=((prodTbl&&prodTbl.closest('.panel'))||{textContent:''}).textContent.replace(/\s+/g,' ');
+   const prodRows=prodTbl?prodTbl.querySelectorAll('tbody tr').length:0;
+   const chips=[...document.querySelectorAll('.sp-lnchip')].map(b=>b.textContent.replace(/\s+/g,' ').trim());
+   /* ตารางรายละเอียดคือตัวที่สอง — นับเฉพาะแถวข้อมูล ไม่เอาแถบหัวกอง */
+   const detRows=()=>[...document.querySelectorAll('#spBody table.sp-rt')].slice(1)
+     .flatMap(t=>[...t.querySelectorAll('tbody tr')]).filter(r=>!r.classList.contains('sp-band')).length;
+   const bands=[...document.querySelectorAll('#spBody table.sp-rt tr.sp-band')]
+     .map(r=>r.textContent.replace(/\s+/g,' ').trim());
+   const cls=[...document.querySelectorAll('#spBody table.sp-rt')].slice(1)
+     .flatMap(t=>[...t.querySelectorAll('tbody tr')]).filter(r=>!r.classList.contains('sp-band'))
+     .map(r=>r.className);
+   const rowsAll=detRows();
+   /* กดชิปสายในแถวสินค้า = กรองตารางล่างให้เหลือสายนั้น (ความสามารถเดิมยังอยู่) */
+   const ln=P.prod[0].lnOrd[0].ln;
    spCmpLn(ln);
-   const open=document.querySelectorAll('.sl-card.on .sl-tb tbody tr').length;
-   const rowsOne=document.querySelectorAll('#spBody table.sp-kt tbody tr').length;
+   const rowsOne=detRows();
    const note=/กำลังดูเฉพาะสาย/.test(document.getElementById('spBody').textContent);
    spCmpLn(ln);   /* กดซ้ำ = ปิด */
-   const back=document.querySelectorAll('#spBody table.sp-kt tbody tr').length;
-   return {lines:L.map(x=>x.ln),cards:cards,head:head,ln:ln,
-     items:L[0].items.length,open:open,rowsAll:rowsAll,rowsOne:rowsOne,back:back,note:note,
-     off:SP.cmpLn,same:snap()===before};
+   const back=detRows();
+   /* 🖨 ไฟล์ PDF ต้องขึ้นสรุปรายสินค้าด้วย ไม่ใช่มีแต่ตารางยาว ๆ */
+   spRepPrint('B20261118-01','2026-11-20');
+   const pr=document.getElementById('prArea').textContent.replace(/\s+/g,' ');
+   return {codes:P.prod.map(x=>x.code),n:P.n,tot:P.tot,head:head,prodRows:prodRows,
+     chips:chips,bands:bands,cls:cls,rowsAll:rowsAll,rowsOne:rowsOne,back:back,note:note,
+     ln:ln,off:SP.cmpLn,pr:pr,same:snap()===before,
+     lnStillWorks:spCmpLines(cmp).length};
  });
- t('🔑 มีสรุปรายสายบนหน้าแอดมินตรวจ หนึ่งการ์ดต่อหนึ่งสาย',
-   lnSum.cards===lnSum.lines.length&&lnSum.cards>0&&/สรุปรายสาย/.test(lnSum.head),
-   lnSum.lines.join(',')+' · '+lnSum.cards+' การ์ด');
- t('...บอกจำนวนลังรวมของสายนั้น และแยกขาย/แถม',
-   /ลัง/.test(lnSum.head)&&/ขาย/.test(lnSum.head)&&/แถม/.test(lnSum.head),lnSum.head.slice(0,140));
- t('🔑 กดที่สายแล้วกางรายการสินค้าของสายนั้นออกมา (กี่ลังกี่ชิ้น)',
-   lnSum.open===lnSum.items&&lnSum.open>0,lnSum.open+' แถว จาก '+lnSum.items+' รายการ');
- t('🔑 ...และกรองตารางรายละเอียดให้เหลือเฉพาะสายนั้น พร้อมบอกว่ากำลังกรองอยู่',
-   lnSum.rowsOne<lnSum.rowsAll&&lnSum.rowsOne>0&&lnSum.note,
-   lnSum.rowsOne+' / '+lnSum.rowsAll);
- t('กดชื่อสายซ้ำ = กลับไปดูทุกสาย',lnSum.back===lnSum.rowsAll&&lnSum.off==='',
-   lnSum.back+' / '+lnSum.rowsAll+' · cmpLn="'+lnSum.off+'"');
- t('🛟 สรุปรายสายคิดสดตอนวาดหน้า ไม่เขียนอะไรลงข้อมูลเลย',lnSum.same);
+ t('📦 หน้าแอดมินตรวจขึ้น "สรุปรายสินค้า" หนึ่งแถวต่อหนึ่งรหัส ไม่ใช่รายสาย',
+   pdSum.prodRows===pdSum.codes.length&&pdSum.prodRows>0&&
+   /สรุปรายสินค้า/.test(pdSum.head)&&!/สรุปรายสาย/.test(pdSum.head),
+   pdSum.codes.join(',')+' · '+pdSum.prodRows+' แถว');
+ t('📦 ...บอก เซลล์คีย์ / คลังจัด / ตรง / ขาด-เกิน เป็นลัง+ชิ้น ไม่มีทศนิยม',
+   /เซลล์คีย์/.test(pdSum.head)&&/คลังจัด/.test(pdSum.head)&&/ตรง/.test(pdSum.head)&&
+   /ขาด/.test(pdSum.head)&&!/\d+\.\d+\s*ลัง/.test(pdSum.head),
+   (pdSum.head.match(/[\d.,]+ ?ลัง/g)||[]).join(' | ').slice(0,160));
+ t('📦 ...และบอกว่า "ผลต่างมาจากส่วนไหน" แยกเป็นกอง',
+   /ผลต่างมาจากส่วนไหน/.test(pdSum.head)&&
+   (/คลังจัด แต่เซลล์ไม่ได้คีย์/.test(pdSum.head)||/เซลล์คีย์ แต่คลังไม่ได้จัด/.test(pdSum.head)||
+    /จำนวนไม่ตรงกัน/.test(pdSum.head)),pdSum.head.slice(0,200));
+ t('🔑 แต่ละรหัสบอกด้วยว่าเป็นของสายไหนกี่ลัง (ชิปสาย)',
+   pdSum.chips.length>0&&/^[A-Z]{2}\d{2} /.test(pdSum.chips[0]),pdSum.chips.join(' | '));
+ t('🎨 ตารางรายละเอียดแยกสีตามประเภท และจัดกองให้อยู่ติดกัน',
+   pdSum.bands.length>=2&&pdSum.cls.length>0&&
+   new Set(pdSum.cls).size>=2&&pdSum.cls.every(c=>/^r-(ok|diff|nokey|noalloc)$/.test(c)),
+   pdSum.bands.join(' | ')+' → '+pdSum.cls.join(','));
+ t('🔑 กดชิปสายแล้วกรองตารางรายละเอียดให้เหลือสายนั้น พร้อมบอกว่ากำลังกรองอยู่',
+   pdSum.rowsOne<pdSum.rowsAll&&pdSum.rowsOne>0&&pdSum.note,
+   pdSum.rowsOne+' / '+pdSum.rowsAll);
+ t('กดชิปสายซ้ำ = กลับไปดูทุกสาย',pdSum.back===pdSum.rowsAll&&pdSum.off==='',
+   pdSum.back+' / '+pdSum.rowsAll+' · cmpLn="'+pdSum.off+'"');
+ t('🖨 ไฟล์ PDF ขึ้นสรุปรายสินค้า + ผลต่างมาจากส่วนไหน และตัดเหลือเฉพาะแถวที่ไม่ตรง',
+   /สรุปรายสินค้า/.test(pdSum.pr)&&/ผลต่างมาจาก|ตรงกันหมด/.test(pdSum.pr)&&
+   /รายการที่ไม่ตรง/.test(pdSum.pr),pdSum.pr.slice(0,220));
+ t('🛟 สรุปรายสินค้าคิดสดตอนวาดหน้า ไม่เขียนอะไรลงข้อมูลเลย',pdSum.same);
+ t('🛟 ของเดิม (สรุปรายสาย) ไม่ได้ถูกลบทิ้ง เอาบรรทัดเรียกกลับเข้าไปก็ได้คืน',
+   pdSum.lnStillWorks>0,pdSum.lnStillWorks+' สาย');
 
  /* 🔢 เลขออเดอร์หลักท้าย (เจ้าของสั่ง 27 พ.ย. 69: 5 หลัก แล้วเปลี่ยนเป็น "หกหลัก" วันเดียวกัน)
     วัดก่อนทำจากไฟล์จริง 2,096 เลข 12 วัน: 5 หลักท้ายชนกัน 10 กลุ่ม (~1%) · 6 หลักท้ายชน 0
