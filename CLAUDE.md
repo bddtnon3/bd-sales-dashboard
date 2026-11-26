@@ -243,7 +243,7 @@ out of it. Opening hours are 08.00–17.00, Mon–Sat, closed Sunday.
   (`.cst-bulk.stick`; a bulk button with nothing ticked warns; copying ticked rows moves the ticks to the
   copies). `dcCheck` blocks the file on a missing PO/outlet/line/SKU/quantity and asks first on
   inactive outlets, a line that differs from the outlet's, unknown codes and duplicates.
-- Prove it with **`node test/browser/dcode.test.cjs`** (102 checks; 104 with the real outlet file via
+- Prove it with **`node test/browser/dcode.test.cjs`** (103 checks; 104 with the real outlet file via
   `DCODE_OUTLET=/path/Master_Outlet_Data.xlsx` — that file holds customer data and never enters the
   repo). Rules and the analysis of the real files: `HANDOFF.md` §5.
 
@@ -287,6 +287,13 @@ screen. Two separate fixes, and the distinction now has a name:
   which is both true and the house rule against role narration.
 - **Still shared with the admins — the owner decided this, 26 Nov 26.** Asked whether the BUM cost
   file should be locked to his own account, he answered **"ปล่อยไว้ได้เลย"**: admin1–4 keep it.
+  **⚠️ Updated 28 Nov 26 — the cost file moved SITE, not role**: *"ในเวปของเซลล์ให้เอาข้อมูล bum
+  ออกไปนะ ใส่แค่หัวเสือก็พอ"*. 📉 ต้นทุน now carries `site:"admin"` (a new per-tab check in `tabOk`),
+  the price group joined `ADMIN_SITE_GROUPS`, and `peBumOk` requires `bumSiteOk()` — so the BUM view,
+  the 📕 chip on รายการสั่งก่อนหมดโปร and 🎁 ของแถมตามโปร all live on **/admin only**, while the main
+  site keeps the หัวเสือ catalogue. The same four people still open it, just on the admin site, so
+  this is a workspace split and **not** a permission change; `api/price.js` is untouched, and the
+  page falls back to the หัวเสือ comparison rather than claiming the account cannot open it.
   So the BUM view (`peBumOk`, and `api/price.js` returning `bum` to any role `manager`),
   วิเคราะห์การสั่งของ, the auto-PO calculator and the DCI page stay **role-gated, not owner-gated**.
   **Do not "fix" this later** — it is a decision, not an oversight. If he ever reverses it, the
@@ -496,7 +503,7 @@ code, never printed.
   populated) and so can look further than BUM's two — but it must keep saying out loud that its W%
   merges on-invoice and rebate and that it sees less than BUM.
   Both work **with no order form at all**, which is the whole point. Prove it with
-  **`node test/browser/promoend.test.cjs`** (55 checks, self-contained with made-up codes; 58 with
+  **`node test/browser/promoend.test.cjs`** (56 checks, self-contained with made-up codes; 58 with
   the real forms via `ORDER_BLANK_A=…/ใบ24.xlsm ORDER_BLANK_B=…/ใบ25.xlsm`, which never enter the repo).
   Note the real BUM file is ~28 MB with a 239 MB `sheet1.xml`: the browser parses it in ~45 s and
   ~650 MB of heap, so never load it into a test by spreading its bytes into a JS array.
@@ -905,14 +912,30 @@ code, never printed.
   **`node test/browser/psi.test.cjs`** (112 checks, self-contained with made-up codes; 115 with the
   real file via `PSI_FILE=/path/PSI_Detail_Report_3.xlsx` — either format — which never enters the
   repo) plus the `PSI` cases in `merge-safety`.
+  **📦 A unit toggle on the two product reports** (`UQ`/`uqTogHtml`/`uqTxt`, owner 28 Nov 26:
+  *"ทำให้รีพอทกดดูสลับได้ว่าจะดูเป็นแบบ ลังชิ้น หรือชิ้น … รวมไปถึงหน้าออเดอร์พิเศษ ที่แอดมินตรวจ
+  … เพราะผมจำได้มันขึ้นซ้อน ๆ กันมันดูลายตามาก ๆ"*). It is **one shared toggle**, remembered per
+  device in `localStorage` (never synced, every access in try/catch), used by 📦 ยอดรายสินค้า on
+  สถานะออเดอร์ (ขาย) and by 📦 สรุปรายสินค้า on the admin check. Pieces mode only applies to
+  **per-product** tables, where that code's own case size is known; the per-ORDER table stays
+  ลัง+ชิ้น because converting a mix of codes needs every code's case size. A code whose case size is
+  unknown shows **`?` and is counted in a banner** — never guessed. The admin check's totals read
+  the `pcs` the comparison already accumulates rather than multiplying a case total back, since
+  every code has a different case size.
+  **🚫 And `otCsCell` must never print a fractional case again** — it was the last place that did,
+  which is how *"1,646.75 ลัง *"* reached the owner's screen on 28 Nov 26 (*"กำชับหลายรอบแล้ว …
+  ห้ามเป็นเศษงง ๆ แบบนี้"*, the fourth time he has had to say it). A figure that cannot be split
+  prints **whole cases with the `*`**, exactly as `otQty` already did.
   **🧭 1st Sale / 2nd Sale — the vocabulary the team must share** (`saleScopeHtml`). The owner had
   to explain it himself on 28 Nov 26 after the allocation file was discussed on the buying side:
   *"ส่วนไฟล์ allocation มันคนละส่วนกันนะ นั่นคือฝั่งที่ศูนย์ขายให้ลูกค้า ส่วนที่เรากำลังทำ มันคือส่วนที่
   ศูนย์สั่งของเข้า นับเป็นยอดซื้อ unilever เรียก 1st sale และฝั่งขายเรียก 2nd sale ทำเวปให้สื่อสารให้
   คนใช้งานเข้าใจทั้งหมดนี้ด้วยนะ"*. So both groups open with a band naming which side they are:
-  **📥 (ซื้อ) = ยอดซื้อ · 1st Sale**, Unilever → the depot, fed by the order form, the Drop file and
-  PSI; **📋 (ขาย) = ยอดขาย · 2nd Sale**, the depot → shops, fed by the allocation file, the daily
-  sales file and the Transaction Inquiry. Each band states the chain, names the files, and **points
+  **📥 (ซื้อ) = ยอดซื้อ · 1st Sale**, Unilever → the depot, and the owner listed its files
+  exhaustively — *"1st sale มีแค่ ใบสั่งซื้อ ใบ drop PSI มูลค่าสต็อค ไฟล์สต็อค เท่านั้นเลย"*;
+  **📋 (ขาย) = ยอดขาย · 2nd Sale**, the depot → shops, and he listed those too — the allocation
+  file, the daily sales file, **the Transaction Inquiry, PJP / Outlet Master, โปรโมชั่น & เงินรางวัล
+  and the ตัวกระจาย special orders**. Each band states the chain, names the files, and **points
   at the other group** so nobody lands on the wrong side again. It is written **once** and called
   from both pages — split in two and they drift apart. ⚠️ This is "what this number counts", which
   the user needs in order to work, not a narration of how the system is built; it does not loosen
@@ -1051,7 +1074,7 @@ code, never printed.
   cancelled ones) — so it must NOT count as billed. This is the same `cs===undefined` test `spRow`,
   `spCases` and `spShops` make; `x.sl.inv` never existed on that index, so the old fallback was dead
   code. Prove it with
-  **`node test/browser/ordtrk.test.cjs`** (108 checks, self-contained with made-up codes; 114 with the
+  **`node test/browser/ordtrk.test.cjs`** (112 checks, self-contained with made-up codes; 114 with the
   real file via `ORDTRK_TXN=/path/Transaction_Inquiry_....xlsx`, which holds real shop names and
   never enters the repo) plus the `api/ordtrk.js` cases in `merge-safety`.
   **📚 The product master has two formats and both must keep working** (`parseMaster` dispatches to

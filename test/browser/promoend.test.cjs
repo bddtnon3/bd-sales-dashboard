@@ -49,6 +49,10 @@ const P_NONE  ='โอโมน้ำซากุระโรแมนซ์';
   window.alert=m=>{window.__alert=String(m)};window.confirm=()=>true;
   window.fetch=()=>Promise.resolve({ok:true,json:()=>Promise.resolve({})});
   S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};
+  /* 📕 ข้อมูล BUM อยู่บนเว็บแอดมินเท่านั้นแล้ว (28 พ.ย. 69) — ชุดนี้ทดสอบตัวฟีเจอร์
+     จึงจำลองว่ากำลังเปิดจาก /admin · ส่วน "เว็บเซลล์ต้องไม่มี BUM" มีเช็กแยกไว้ต่างหาก */
+  window.bumSiteOk=()=>true;
+
   DATA.lines={};DATA.focus_order=[];
   Object.keys(FOCUS_MAP).forEach(c=>{DATA.lines[c]={display:FOCUS_MAP[c],
     type:'CT',focus:true,name:'',emp:''};});
@@ -273,8 +277,17 @@ const P_NONE  ='โอโมน้ำซากุระโรแมนซ์';
    S.user={id:'CT11',role:'sales',name:'เซลล์'};
    PE.only='bum';renderPromoEnd();
    const tx3=document.getElementById('peBody').textContent.replace(/\s+/g,' ');
-   o.salesBlocked=/บัญชีนี้เปิดส่วนนี้ไม่ได้/.test(tx3)&&tx3.indexOf('90000001')<0;
    o.salesHasBum=peHasBum();
+   o.salesSec=peSec();
+   o.salesChip=/เช็คจากไฟล์ BUM/.test(document.getElementById('peBody').innerHTML);
+   o.salesNoFig=tx3.indexOf('90000001')<0;
+   /* 🏢 และบนเว็บเซลล์ แม้แต่ manager ก็ต้องไม่เห็น BUM (28 พ.ย. 69) */
+   S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};
+   window.bumSiteOk=()=>false;
+   PE.only='bum';renderPromoEnd();
+   o.siteSec=peSec();o.siteHasBum=peHasBum();
+   o.siteChip=/เช็คจากไฟล์ BUM/.test(document.getElementById('peBody').innerHTML);
+   window.bumSiteOk=()=>true;
    PRICE=JSON.parse(keepP);S.user=JSON.parse(keepU);PE.only='gone';renderPromoEnd();
    return o;});
  t('🔑 ไฟล์ BUM มีสองรอบในไฟล์เดียว — เทียบได้โดยไม่ต้องรอใบสั่งวันที่ 25',
@@ -300,7 +313,13 @@ const P_NONE  ='โอโมน้ำซากุระโรแมนซ์';
  t('🛟 ไฟล์ BUM รุ่นเก่า (ไม่มีช่องเงื่อนไข) ต้องยังคิดส่วนลดได้ ไม่พัง',bum.oldOk);
  t('...และบอกให้อัพไฟล์เดิมซ้ำ ถ้าอยากเห็นเงื่อนไขละเอียด',bum.oldWarn);
  t('🔒 เซลล์ต้องไม่เห็นตัวเลขจากไฟล์ BUM เลย (เป็นต้นทุนของศูนย์)',
-   bum.salesBlocked&&bum.salesHasBum===false,JSON.stringify({b:bum.salesBlocked,h:bum.salesHasBum}));
+   bum.salesHasBum===false&&bum.salesSec!=='bum'&&!bum.salesChip&&bum.salesNoFig,
+   JSON.stringify({h:bum.salesHasBum,sec:bum.salesSec,chip:bum.salesChip}));
+ /* 28 พ.ย. 69: *"ในเวปของเซลล์ให้เอาข้อมูล bum ออกไปนะ ใส่แค่หัวเสือก็พอ"* — เป็นการแยก "เว็บ"
+    ไม่ใช่แยกสิทธิ์: คนเดิมเปิดที่ /admin ได้เหมือนเดิม */
+ t('🔒 บนเว็บเซลล์ แม้แต่ manager ก็ไม่เห็นไฟล์ BUM — ถอยไปหัวเสือ ไม่ใช่ขึ้นว่าบัญชีเปิดไม่ได้',
+   bum.siteHasBum===false&&bum.siteSec==='pr'&&!bum.siteChip,
+   JSON.stringify({h:bum.siteHasBum,sec:bum.siteSec,chip:bum.siteChip}));
 
  /* ---------- 6จ) 📕 ไม่มีใบสั่งเลย ก็ต้องเช็คโปรหมดจากไฟล์ราคาได้ ----------
     นี่คือหัวใจของสิ่งที่เจ้าของขอ: ไม่ต้องรอใบสั่งวันที่ 25 */

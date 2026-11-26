@@ -37,6 +37,9 @@ const ORIGIN='https://bd-spord.test/';
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   window.Chart=function(){return{destroy(){}}};
+  /* 📕 ข้อมูล BUM อยู่บนเว็บแอดมินเท่านั้นแล้ว (28 พ.ย. 69) — 🎁 ของแถมตามโปร อ่านบล็อค BBF
+     จากไฟล์ BUM ชุดนี้จึงจำลองว่าเปิดจาก /admin (เช็ก "เว็บเซลล์ไม่มี BUM" อยู่ใน promoend) */
+  window.bumSiteOk=()=>true;
   window.ulog=()=>{};window.syncToServer=()=>{window.__sync++};
   window.alert=m=>{window.__alert=m};window.confirm=()=>true;
   window.prompt=(q,d)=>(window.__prompt===undefined?(d||''):window.__prompt);

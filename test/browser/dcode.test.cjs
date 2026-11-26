@@ -136,8 +136,12 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
    const subs={};top.forEach(k=>{const g=TAB_GROUPS.filter(x=>x.k===k)[0];subs[k]=g.tabs.filter(tabOk).map(x=>x.t);});
    return {top:top,subs:subs};});
  /* 18 พ.ย. 69: ออเดอร์พิเศษแยกออกมาเป็นหมวดใหญ่ของตัวเอง และอยู่บนเว็บแอดมินด้วย */
- t('🛠 เว็บแอดมินมีแค่ ยอดขาย · การสั่งของ · สต็อก · สถานะออเดอร์ · ออเดอร์พิเศษ · ปฏิทิน + DCODE (เรียงตามนี้)',
-   tabsA.top.join(',')==='sales,order,stock,otrk,spord,plan,dcode',tabsA.top.join(','));
+ /* 28 พ.ย. 69: ราคา & ทุน ขึ้นเว็บแอดมินด้วย เพราะ 📉 ต้นทุน (ไฟล์ BUM) ย้ายมาอยู่ที่นี่ที่เดียว
+    (เจ้าของ: *"ในเวปของเซลล์ให้เอาข้อมูล bum ออกไปนะ ใส่แค่หัวเสือก็พอ"*) */
+ t('🛠 เว็บแอดมินมี ยอดขาย · การสั่งของ · สต็อก · ราคา&ทุน · สถานะออเดอร์ · ออเดอร์พิเศษ · ปฏิทิน + DCODE',
+   tabsA.top.join(',')==='sales,order,stock,price,otrk,spord,plan,dcode',tabsA.top.join(','));
+ t('🔑 เว็บแอดมินเห็นทั้งแคตาลอคหัวเสือและต้นทุน BUM',
+   (tabsA.subs.price||[]).join(',')==='price,cost',JSON.stringify(tabsA.subs.price));
  t('...แท็บย่อยในกลุ่มยังอยู่ครบเหมือนเว็บเดิม ("เอาให้ข้อมูลเหมือนเดิมให้หมด")',
    tabsA.subs.sales.join(',')==='sales,ana'&&tabsA.subs.order.join(',')==='order,pos,ordhist'&&
    tabsA.subs.stock.join(',')==='stock,strep,cstock'&&tabsA.subs.spord.join(',')==='spord'&&
@@ -149,8 +153,8 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
      catch(e){bad.push(k+':'+e.message);}});
    _switchTab('sales');return bad;});
  t('...ทุกหน้าใน 5 กลุ่มเปิดได้บนเว็บแอดมิน ไม่มี error',pagesA.length===0,pagesA.join(' · ')||'ok');
- const offA=await ev(()=>{_switchTab('sales');switchGroup('pjp');switchGroup('kpi');switchGroup('price');return CURTAB;});
- t('...กดกลุ่มที่ไม่ได้อยู่บนเว็บแอดมิน (PJP/KPI/ราคา) ไม่พาไปไหน',offA==='sales',offA);
+ const offA=await ev(()=>{_switchTab('sales');switchGroup('pjp');switchGroup('kpi');switchGroup('promo');return CURTAB;});
+ t('...กดกลุ่มที่ไม่ได้อยู่บนเว็บแอดมิน (PJP/KPI/โปรโมชั่น) ไม่พาไปไหน',offA==='sales',offA);
  const lnA=await ev(()=>{const a=document.getElementById('siteLink');return {h:a.getAttribute('href'),t:a.textContent};});
  t('...หัวเว็บมีลิงก์ไปเว็บทีมขาย',lnA.h==='/'&&/ทีมขาย/.test(lnA.t),JSON.stringify(lnA));
 
@@ -213,8 +217,8 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  const g3=await ev(()=>({app:!document.getElementById('app').classList.contains('hidden'),T:TOKEN,
    who:document.getElementById('uName').textContent,tok:localStorage.getItem('bd_token'),
    tabs:[...document.querySelectorAll('#tabTop .tab')].map(b=>b.dataset.grp).join(',')}));
- t('🔓 บัญชี admin1 (สิทธิ์ manager) เข้าเว็บแอดมินได้ แล้วเห็น 7 กลุ่ม',
-   g3.app&&g3.T==='MGR.TOKEN'&&g3.tabs==='sales,order,stock,otrk,spord,plan,dcode',JSON.stringify(g3)+' '+dialogs.join(' | '));
+ t('🔓 บัญชี admin1 (สิทธิ์ manager) เข้าเว็บแอดมินได้ แล้วเห็นครบทุกกลุ่มของเว็บแอดมิน',
+   g3.app&&g3.T==='MGR.TOKEN'&&g3.tabs==='sales,order,stock,price,otrk,spord,plan,dcode',JSON.stringify(g3)+' '+dialogs.join(' | '));
  t('...ล็อกอินชุดเดียวกับเว็บเดิม (/api/login + /api/data ตัวเดียวกัน)',
    API.calls.indexOf('/api/login')>=0&&API.calls.indexOf('/api/data')>=0,API.calls.join(' '));
  /* เจ้าของสั่ง: "ใช้รหัสแอดมินเข้าได้เท่านั้นนะ ที่ตั้งไว้ 4 คน รวมถึง manager ด้วย เข้าได้หมด" */

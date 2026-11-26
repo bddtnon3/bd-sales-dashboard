@@ -397,6 +397,37 @@ const ORIGIN='https://bd-ordtrk.test/';
    /สาย CT11/.test(prod.ct11),prod.ct11.slice(0,140));
  t('🛟 บอกจำนวนใบที่ยังไม่มีรายสินค้า ไม่ปัดทิ้งเงียบ ๆ',/ยังไม่มีรายสินค้า/.test(prod.all),'');
 
+ /* 📦 ห้ามมีลังทศนิยมหลุดออกมาอีก — เจ้าของเจอ "1,646.75 ลัง *" บนหน้านี้ 28 พ.ย. 69
+    และกำชับเป็นรอบที่สี่ว่า "ให้เป็น ...ลัง...ชิ้น และรวม ....ชิ้น เท่านั้น"
+    พร้อมปุ่มสลับหน่วย ลัง+ชิ้น / ชิ้นอย่างเดียว */
+ const uq=await ev(async()=>{
+   const M=OT.m,C=OT.cache[M];
+   /* รหัสที่ไม่รู้ขนาดลัง + เศษ → เดิมพิมพ์ "12.75 ลัง *" ออกมา */
+   C.ord['00000777']={d:'2026-11-18',l:'209611',s:'9000001',c:12.75,n:1,v:100};
+   C.det['00000777']={'88880001':[12.75,0]};
+   if(typeof MASTER!=='undefined'&&MASTER&&MASTER.det)delete MASTER.det['88880001'];
+   OT.line='all';OT.day='all';OT.st='all';
+   try{localStorage.removeItem('bduq');}catch(e){}
+   UQ={m:'cs',_l:0};
+   otSetSec('prod');await new Promise(r=>setTimeout(r,120));
+   const cs=document.getElementById('otBody').textContent.replace(/\s+/g,' ');
+   const hasTog=/หน่วยที่แสดง/.test(cs)&&/ลัง \+ ชิ้น/.test(cs)&&/ชิ้นอย่างเดียว/.test(cs);
+   uqSet('pc');await new Promise(r=>setTimeout(r,120));
+   const pc=document.getElementById('otBody').textContent.replace(/\s+/g,' ');
+   let kept='';try{kept=localStorage.getItem('bduq')||'';}catch(e){}
+   uqSet('cs');otSetSec('list');
+   delete C.ord['00000777'];delete C.det['00000777'];   /* เก็บกวาด อย่าให้ไปกวนเช็กถัดไป */
+   return {cs:cs,pc:pc,hasTog:hasTog,kept:kept,
+     dCs:(cs.match(/\d+\.\d+ ?ลัง/g)||[]).join(' | '),
+     dPc:(pc.match(/\d+\.\d+ ?(ลัง|ชิ้น)/g)||[]).join(' | ')};});
+ t('🔑 ไม่มีลังทศนิยมหลุดออกมาอีกเลย ทั้งสองโหมด',!uq.dCs&&!uq.dPc,
+   (uq.dCs||'')+' / '+(uq.dPc||'')||'(ไม่มี)');
+ t('🔑 มีปุ่มสลับหน่วย ลัง + ชิ้น / ชิ้นอย่างเดียว',uq.hasTog,uq.cs.slice(0,120));
+ t('🔑 โหมดชิ้นแปลงด้วยขนาดลังของรหัสนั้นเอง และจำไว้ในเครื่อง',
+   /ชิ้น/.test(uq.pc)&&uq.kept==='pc',uq.kept);
+ t('🛟 รหัสที่ไม่รู้ขนาดลัง โหมดชิ้นขึ้น "?" และบอกไว้ ไม่เดาให้',
+   /\?/.test(uq.pc)&&/ยังไม่รู้ขนาดลัง/.test(uq.pc),uq.pc.slice(-240));
+
  /* ================= 6) ค้นเลขออเดอร์ ================= */
  const find=await ev(async()=>{
    otAskOpen();

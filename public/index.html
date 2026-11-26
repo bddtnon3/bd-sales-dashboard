@@ -737,6 +737,20 @@ main.wide{max-width:1560px}
   .ot-tbl td.ot-no>*{text-align:left}
   .ot-tbl tr.on>td,.ot-tbl tbody tr:hover>td{background:transparent;box-shadow:none}
   .ot-tbl tr.ot-det>td{display:block;padding:0}
+   
+  .ot-ptbl thead{display:none}
+  .ot-ptbl,.ot-ptbl tbody,.ot-ptbl tr,.ot-ptbl td{display:block;width:auto}
+  .ot-ptbl tbody tr{border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+    margin-bottom:10px;background:#fff}
+  .ot-ptbl td{border:0;padding:3px 0;text-align:left!important;
+    display:flex;justify-content:space-between;align-items:baseline;gap:14px}
+  .ot-ptbl td::before{content:attr(data-l);color:var(--muted);font-size:12px;
+    flex:0 0 auto;white-space:nowrap}
+  .ot-ptbl td>*{text-align:right}
+  .ot-ptbl td[data-l="สินค้า"]{display:block;border-bottom:1px solid var(--line);
+    padding-bottom:6px;margin-bottom:4px;text-align:left!important}
+  .ot-ptbl td[data-l="สินค้า"]::before{content:""}
+  .ot-ptbl td[data-l="สินค้า"]>*{text-align:left}
 }
  
 @media(max-width:760px){
@@ -3218,7 +3232,7 @@ const TAB_GROUPS=[
    
   {k:"price",nm:"💰 ราคา & ทุน",tabs:[
     {t:"price",nm:"แคตาลอคราคาขาย"},
-    {t:"cost",nm:"📉 ต้นทุน & เทียบรอบ",role:"manager"}]},
+    {t:"cost",nm:"📉 ต้นทุน & เทียบรอบ",role:"manager",site:"admin"}]},
    
   {k:"otrk",nm:"📋 สถานะออเดอร์ (ขาย)",tabs:[
     {t:"otrk",nm:"สถานะออเดอร์ (ขาย)",role:["manager","sales","sup","wh","ds"]}]},
@@ -3258,13 +3272,17 @@ function bdRoleOf(acc){
 function tabIsTeam(r){return TEAM_ROLES.indexOf(r||tabRole())>=0;}
 function tabHome(r){return TEAM_HOME[r||tabRole()]||"sales";}
 function tabOk(x){
+   
+  if(x.site&&x.site!==BD_SITE)return false;
   const r=tabRole();
   if(Array.isArray(x.role))return x.role.indexOf(r)>=0;
   if(tabIsTeam(r))return x.role===r;           
   return !x.role||x.role===r;
 }
  
-const ADMIN_SITE_GROUPS=["sales","order","otrk","spord","stock","plan","dcode"];
+function bumSiteOk(){return BD_SITE==="admin";}
+ 
+const ADMIN_SITE_GROUPS=["sales","order","otrk","spord","stock","price","plan","dcode"];
 function tabGrpOnSite(g){
   if(BD_SITE==="admin")return ADMIN_SITE_GROUPS.indexOf(g.k)>=0;
   return g.site!=="admin";
@@ -7578,7 +7596,9 @@ function renderReqBack(){
 let PE={a:"",b:"",kind:"all",only:"",q:"",pi:null};
 function peHasBum(){return !!(peBumOk()&&typeof PRICE!=="undefined"&&PRICE&&PRICE.bum
   &&PRICE.bum.items&&Object.keys(PRICE.bum.items).length);}
-function peSec(){return PE.only||(peHasBum()?"bum":"gone");}
+ 
+function peSec(){const s=PE.only||(peHasBum()?"bum":"gone");
+  return (s==="bum"&&!peBumOk())?"pr":s;}
 function peRounds(){return psDates().slice().sort();}
  
 function pePick(){
@@ -7641,7 +7661,7 @@ function peHasPm(day){
   return false;
 }
  
-function peBumOk(){return !!(S.user&&S.user.role==="manager");}
+function peBumOk(){return bumSiteOk()&&!!(S.user&&S.user.role==="manager");}
  
 function peBumPair(){
   const bum=(typeof PRICE!=="undefined"&&PRICE&&PRICE.bum)||null;
@@ -7882,7 +7902,7 @@ function peSetPi(i){PE.pi=i;renderPromoEnd();}
  
 function peFileTabs(cur){
   const sec=cur||peSec();
-  const b1=`<button type="button" class="pos-st${sec==="bum"?" on":""}" onclick="peSetOnly('bum')">📕 เช็คจากไฟล์ BUM</button>`;
+  const b1=peBumOk()?`<button type="button" class="pos-st${sec==="bum"?" on":""}" onclick="peSetOnly('bum')">📕 เช็คจากไฟล์ BUM</button>`:"";
   const b2=`<button type="button" class="pos-st${sec==="pr"?" on":""}" onclick="peSetOnly('pr')">🏷 เทียบไฟล์หัวเสือ</button>`;
   return b1+b2;
 }
@@ -7891,7 +7911,7 @@ function renderPromoEnd(){
   const ds=peRounds();
   if(!ds.length){
      
-    const sec0=peSec()==="pr"?"pr":"bum";
+    const sec0=(peSec()==="pr"||!peBumOk())?"pr":"bum";
     el.innerHTML=`<div class="panel"><div class="insight">ยังไม่มีใบสั่ง/ใบเปล่าในระบบ — อัพ <b>🔎 ใบเปล่า — ดูโปรฯ ก่อนสั่ง</b> หรือ <b>🛒 ใบสั่งของ</b> ก่อน แล้วหน้านี้จะเทียบโปรจากใบให้ด้วย</div></div>`+
       `<div class="panel"><div class="pos-subtabs" style="margin-bottom:10px">${peFileTabs(sec0)}</div>`+
       (sec0==="pr"?pePrHtml():peBumHtml())+`</div>`;
@@ -12866,6 +12886,44 @@ function spCsTxt(cs,pc){
   return (c?B(c)+" <small>ลัง</small>":"")+(c&&p?" ":"")+(p?B(p)+" <small>ชิ้น</small>":"");
 }
  
+var UQ={m:"cs",_l:0};
+ 
+function uqLoad(){if(UQ._l)return;UQ._l=1;
+  try{const v=localStorage.getItem("bduq");if(v==="pc"||v==="cs")UQ.m=v;}catch(e){}}
+function uqIsPc(){uqLoad();return UQ.m==="pc";}
+function uqSet(v){
+  UQ._l=1;UQ.m=(v==="pc")?"pc":"cs";
+  try{localStorage.setItem("bduq",UQ.m);}catch(e){}
+  if(CURTAB==="otrk"&&typeof renderOtrk==="function")renderOtrk();
+  else if(CURTAB==="spord"&&typeof renderSpord==="function")renderSpord();
+}
+function uqTogHtml(){
+  uqLoad();
+  const b=(v,t)=>`<button type="button" class="rq-chip${UQ.m===v?"":" off"}" onclick="uqSet('${v}')">${t}</button>`;
+  return `<div class="rq-lines" style="margin:0 0 10px">
+    <span class="psub" style="align-self:center;margin-right:4px">หน่วยที่แสดง</span>
+    ${b("cs","📦 ลัง + ชิ้น")}${b("pc","🔢 ชิ้นอย่างเดียว")}</div>`;
+}
+ 
+function uqTxt(cs,pc,pk){
+  const c=Math.round(+cs||0),p=Math.round((+pc||0)*100)/100,q=+pk||0;
+  if(!uqIsPc())return spCsTxt(c,p);
+  if(q>0)return (Math.round(c*q+p)).toLocaleString()+" <small>ชิ้น</small>";
+  if(!c)return spCsTxt(0,p);               
+  return '<span class="psub" title="ไม่รู้ขนาดลังของรหัสนี้">?</span>';
+}
+ 
+function uqUnk(list){
+  if(!uqIsPc())return 0;
+  return (list||[]).filter(x=>(+x.cs||0)>0&&!(+x.pk>0)).length;
+}
+function uqUnkNote(n){
+  if(!n)return "";
+  return `<div class="note" style="margin-top:8px">⚠️ มี <b>${n}</b> รายการที่ยังไม่รู้ขนาดลัง
+    จึงแปลงเป็นชิ้นไม่ได้ (ขึ้น <b>?</b>) — ระบบไม่เดาให้ · อัพไฟล์ <b>Product Master</b> ของ dcode
+    สักครั้งแล้วจะแปลงได้เอง หรือกดดูแบบ <b>ลัง + ชิ้น</b> แทน</div>`;
+}
+ 
 function spDiffTxt(dw,dp){
   const w=Math.round(+dw||0),p=Math.round((+dp||0)*100)/100;
   if(!w&&!p)return "ตรง";
@@ -13567,9 +13625,10 @@ function spCmpProd(cmp){
     L.k+=kp;L.a+=sp+fp;
   });
   const Q=(p,pk)=>alSplit(p,pk)||{cs:0,pc:0,pcs:p};
-  const acc={k:{cs:0,pc:0},a:{cs:0,pc:0},ok:{cs:0,pc:0},sh:{cs:0,pc:0},ov:{cs:0,pc:0},
-             nk:{cs:0,pc:0},na:{cs:0,pc:0},df:{cs:0,pc:0}};
-  const add=(d,q)=>{d.cs+=q.cs;d.pc+=q.pc;};
+   
+  const Z=()=>({cs:0,pc:0,pcs:0});
+  const acc={k:Z(),a:Z(),ok:Z(),sh:Z(),ov:Z(),nk:Z(),na:Z(),df:Z()};
+  const add=(d,q,p)=>{d.cs+=q.cs;d.pc+=q.pc;d.pcs+=(+p||0);};
   let bad=0;
   ord.forEach(t=>{
     t.d=t.aPcs-t.kPcs;
@@ -13582,11 +13641,12 @@ function spCmpProd(cmp){
         :(t.d===0?"ok":(t.d<0?"short":"over")));
     t.lnOrd.sort((a,b)=>String(a.ln).localeCompare(String(b.ln)));
     bad+=t.bad;
-    add(acc.k,t.qK);add(acc.a,t.qA);add(acc.ok,t.qOk);add(acc.sh,t.qSh);add(acc.ov,t.qOv);
+    add(acc.k,t.qK,t.kPcs);add(acc.a,t.qA,t.aPcs);add(acc.ok,t.qOk,t.okPcs);
+    add(acc.sh,t.qSh,t.shPcs);add(acc.ov,t.qOv,t.ovPcs);
      
-    if(t.st==="noKey")add(acc.nk,t.qOv);
-    else if(t.st==="noAlloc")add(acc.na,t.qSh);
-    else if(t.d!==0){add(acc.df,t.d<0?t.qSh:t.qOv);}
+    if(t.st==="noKey")add(acc.nk,t.qOv,t.ovPcs);
+    else if(t.st==="noAlloc")add(acc.na,t.qSh,t.shPcs);
+    else if(t.d!==0){add(acc.df,t.d<0?t.qSh:t.qOv,t.d<0?t.shPcs:t.ovPcs);}
   });
   const R=o=>{o.pc=Math.round(o.pc*100)/100;return o;};
   Object.keys(acc).forEach(k=>R(acc[k]));
@@ -15878,7 +15938,11 @@ function spProdSumHtml(cmp){
   const P=spCmpProd(cmp),T=P.tot;
   if(!P.prod.length)return "";
   const only=SP.cmpLn||"";
-  const q=o=>spCsTxt(o.cs,o.pc);
+   
+  const q=o=>uqIsPc()?((Math.round(+o.pcs||0)).toLocaleString()+" <small>ชิ้น</small>")
+                     :spCsTxt(o.cs,o.pc);
+   
+  const qp=(o,pk)=>uqTxt(o.cs,o.pc,pk);
   const dash='<span style="color:var(--muted)">–</span>';
   const why=[];
   if(T.nk.cs||T.nk.pc)why.push(`<span class="pm-item">🟡 <span>คลังจัด แต่เซลล์ไม่ได้คีย์</span> <b>${q(T.nk)}</b></span>`);
@@ -15892,21 +15956,22 @@ function spProdSumHtml(cmp){
       return `<button type="button" class="sp-lnchip${only===L.ln?" on":(bad?" bad":"")}"
         onclick="event.stopPropagation();spCmpLn('${anaEsc(L.ln)}')"
         title="${anaEsc(L.ln)} · คลังจัด ${L.a} ชิ้น · เซลล์คีย์ ${L.k} ชิ้น">${anaEsc(L.ln)} <b>${
-        ql?spCsTxt(ql.cs,ql.pc):"0 <small>ลัง</small>"}</b></button>`;}).join("");
+        ql?qp(ql,t.pk):"0 <small>ลัง</small>"}</b></button>`;}).join("");
     return `<tr class="${st[1]}">
       <td class="l"><b>${anaEsc(t.nm||oname(t.code)||("รหัส "+t.code))}</b>
         <span class="psub" style="display:block">รหัส ${anaEsc(t.code)}${
           t.pk?" · ลังละ "+t.pk+" ชิ้น":""}</span>
         <span class="sp-lnrow">${chips}</span></td>
-      <td data-l="📲 เซลล์คีย์"><span>${t.kPcs?q(t.qK):dash}</span></td>
-      <td data-l="🚚 คลังจัด"><span>${t.aPcs?q(t.qA):dash}</span></td>
-      <td data-l="✅ ตรง"><span>${t.okPcs?q(t.qOk):dash}</span></td>
-      <td data-l="ขาด / เกิน"><span>${t.shPcs?'<b class="down">'+q(t.qSh)+'</b>'
-        :(t.ovPcs?'<b class="up">+'+q(t.qOv)+'</b>':dash)}</span></td>
+      <td data-l="📲 เซลล์คีย์"><span>${t.kPcs?qp(t.qK,t.pk):dash}</span></td>
+      <td data-l="🚚 คลังจัด"><span>${t.aPcs?qp(t.qA,t.pk):dash}</span></td>
+      <td data-l="✅ ตรง"><span>${t.okPcs?qp(t.qOk,t.pk):dash}</span></td>
+      <td data-l="ขาด / เกิน"><span>${t.shPcs?'<b class="down">'+qp(t.qSh,t.pk)+'</b>'
+        :(t.ovPcs?'<b class="up">+'+qp(t.qOv,t.pk)+'</b>':dash)}</span></td>
       <td class="l" data-l="ผล"><span>${st[0]}${t.bad?'<span class="psub down" style="display:block">แปลงหน่วยไม่ได้ '+
         t.bad+' แถว ('+anaEsc(t.badLn.join(" "))+')</span>':""}</span></td></tr>`;}).join("");
   return `<div class="panel" style="margin-top:12px">
     <h3>📦 สรุปรายสินค้า — คีย์เท่าไหร่ คลังจัดเท่าไหร่</h3>
+    ${uqTogHtml()}
     <div class="cards sp-c5" style="margin-top:10px">
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k">📲 เซลล์คีย์รวม</div>
         <div class="v" style="font-size:20px">${q(T.k)}</div><div class="s">ทุกสายรวมกัน</div></div>
@@ -16532,11 +16597,14 @@ function saleScopeHtml(kind){
            คลังรับเข้า (ไฟล์ PSI) → <b>วันที่คลังรับเข้า</b><br>
            ไฟล์ <b>PSI</b> บอกแค่ว่า <b>คลังกดรับของเข้าไปแล้วเท่าไหร่</b> —
            ของที่ยังไม่เข้า ระบบคิดจาก <b>ใบสั่งซื้อ − ใบ Drop</b> เทียบกับจำนวนที่รับเข้า และชนให้เองทุกรอบ<br>
+           <b>ฝั่งซื้อมีแค่ 5 ไฟล์นี้:</b> ใบสั่งซื้อ · ใบ Drop · PSI · ไฟล์สต็อค · มูลค่าสต็อค<br>
            <span style="color:var(--muted)">คนละเรื่องกับ <b>2nd Sale</b> (ของที่เราขายออกให้ร้านค้า)
            ซึ่งอยู่ที่หมวด <b>📋 สถานะออเดอร์ (ขาย)</b></span>`
         : `ของที่ <b>ศูนย์เราขายออกให้ร้านค้า</b><br>
            <b>ลูกโซ่:</b> ① เซลล์คีย์ออเดอร์ → ② คลังจัดของ (เลข GIN) → ออกบิล<br>
-           ไฟล์: <b>ใบจัดของ (allocation)</b> · ไฟล์ยอดขายรายวัน · ไฟล์รายการสั่งซื้อ<br>
+           <b>ฝั่งขายใช้ไฟล์เหล่านี้:</b> ใบจัดของ (allocation) · ยอดขายรายวัน ·
+           รายการสั่งซื้อ (Transaction Inquiry) · PJP / Outlet Master ·
+           โปรโมชั่น &amp; เงินรางวัล · ออเดอร์พิเศษ (ตัวกระจาย)<br>
            <span style="color:var(--muted)">คนละเรื่องกับ <b>1st Sale</b> (ของที่ศูนย์สั่งซื้อเข้าคลัง)
            ซึ่งอยู่ที่หมวด <b>📥 สถานะออเดอร์ (ซื้อ)</b></span>`}
     </div></div>`;
@@ -18973,9 +19041,11 @@ function otDetHtml(x){
       — อัพไฟล์ <b>Product Master</b> ของ dcode แล้วจะแยกให้เอง</div>`:"");
 }
  
+ 
 function otCsCell(code,frac,pk){
   const q=otCsOf(code,frac,pk);
-  return q?spCsTxt(q.cs,q.pc):(otN(frac,2)+' <small>ลัง</small> <b class="down">*</b>');
+  if(q)return uqTxt(q.cs,q.pc,otPk(code,pk));
+  return uqTxt(Math.round(+frac||0),0,0)+' <b class="down">*</b>';
 }
 function otTblHtml(rows,note){
   if(!rows.length)return `<div class="panel"><div class="insight">${anaEsc(note||"ไม่มีออเดอร์ที่ตรงกับที่เลือก")}</div></div>`;
@@ -19005,18 +19075,27 @@ function otProdHtml(rows){
   if(!p){otEnsure(true);return `<div class="panel"><div class="insight">กำลังโหลดรายสินค้า…</div></div>`;}
   const noDet=rows.filter(x=>!((OT.cache[OT.m]||{}).det||{})[x.k]).length;
   if(!p.length)return `<div class="panel"><div class="insight">ยังไม่มีรายสินค้าของใบที่เลือก — อัพไฟล์ใบจัดของที่ครอบวันเหล่านี้อีกครั้ง</div></div>`;
+   
+  const unk=uqUnk(p.map(r=>({cs:(otCsOf(r.c,r.s,r.pk)||{cs:Math.round(+r.s||0)}).cs||0,
+    pk:otPk(r.c,r.pk)})));
+  const old=p.filter(r=>!otCsOf(r.c,r.s,r.pk)).length;
   return `<div class="panel"><h3>📦 ยอดรายสินค้า ${anaEsc(OT.line&&OT.line!=="all"?"สาย "+OT.line:"ทุกสาย")}</h3>
     <div class="psub">รวมจาก ${otN(rows.length,0)} ใบที่กรองไว้${
       noDet?` · <b class="down">มี ${noDet} ใบที่ยังไม่มีรายสินค้า</b> (อัพไฟล์ใบจัดของที่ครอบวันนั้นอีกครั้ง)`:""}</div>
-    <div class="tblwrap"><table class="grp-tbl"><thead><tr>
+    ${uqTogHtml()}
+    <div class="tblwrap"><table class="grp-tbl ot-ptbl"><thead><tr>
       <th>สินค้า</th><th style="text-align:right">ขาย</th><th style="text-align:right">แถม</th>
       <th style="text-align:right">กี่ใบ</th><th style="text-align:right">กี่ร้าน</th></tr></thead>
-    <tbody>${p.map(r=>`<tr><td>${anaEsc(oname(r.c)||("รหัส "+r.c))}
+    <tbody>${p.map(r=>`<tr><td data-l="สินค้า">${anaEsc(oname(r.c)||("รหัส "+r.c))}
       <br><span class="psub">${anaEsc(r.c)}</span></td>
-      <td style="text-align:right"><b>${otCsCell(r.c,r.s,r.pk)}</b></td>
-      <td style="text-align:right">${r.f?otCsCell(r.c,r.f,r.pk):"–"}</td>
-      <td style="text-align:right">${otN(r.n,0)}</td>
-      <td style="text-align:right">${otN(Object.keys(r.sh).length,0)}</td></tr>`).join("")}</tbody></table></div></div>`;
+      <td data-l="ขาย" style="text-align:right"><b>${otCsCell(r.c,r.s,r.pk)}</b></td>
+      <td data-l="แถม" style="text-align:right">${r.f?otCsCell(r.c,r.f,r.pk):"–"}</td>
+      <td data-l="กี่ใบ" style="text-align:right">${otN(r.n,0)}</td>
+      <td data-l="กี่ร้าน" style="text-align:right">${otN(Object.keys(r.sh).length,0)}</td></tr>`).join("")}</tbody></table></div>
+    ${uqUnkNote(unk)}
+    ${old?`<div class="note" style="margin-top:8px">* <b>${old}</b> รายการมาจากไฟล์ที่อัพไว้ก่อนระบบแยก
+      ลัง/ชิ้น จึงขึ้นเฉพาะลังเต็ม เศษยังแยกไม่ได้ — อัพไฟล์ใบจัดของที่ครอบวันเหล่านั้นอีกครั้ง
+      แล้วจะแยกให้เอง ข้อมูลเดิมไม่หาย</div>`:""}</div>`;
 }
 function otAskHtml(){
   if(!OT.ask)return "";
