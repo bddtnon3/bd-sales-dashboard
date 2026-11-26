@@ -135,12 +135,15 @@ const ROWS=[
    __as('manager','ผู้จัดการ');return o;});
  /* หัวหน้าเซลล์เห็นสองกลุ่มที่เป็นงานของตัวเอง: โปรโมชั่น (ลงที่หน้านี้) กับ ออเดอร์พิเศษ
     (ตั้งเป้ารายสัยให้เซลล์คีย์ — เพิ่ม 26 พ.ย. 69) · นอกนั้นยังไม่เห็น */
- t('🔑 หัวหน้าเซลล์ (sup) เห็นเฉพาะโปรโมชั่นกับออเดอร์พิเศษ และลงที่หน้าโปรโมชั่น',
-   who.sup.groups==='promo,spord'&&who.sup.home==='promo'&&who.sup.tab==='promo',
+ /* 26 พ.ย. 69 เพิ่มหมวด 📋 สถานะออเดอร์ ซึ่งเจ้าของสั่งว่า "ทุกคนเข้ามาดูได้" (อ่านอย่างเดียว)
+    ทีม role จึงเห็นเพิ่มอีกหนึ่งกลุ่ม แต่หน้าแรกที่ลงยังเหมือนเดิม */
+ t('🔑 หัวหน้าเซลล์ (sup) เห็นเฉพาะโปรโมชั่น · สถานะออเดอร์ · ออเดอร์พิเศษ และลงที่หน้าโปรโมชั่น',
+   who.sup.groups==='promo,otrk,spord'&&who.sup.home==='promo'&&who.sup.tab==='promo',
    JSON.stringify(who.sup));
  t('🔑 ...และกรอก/แก้โปรโมชั่นได้',who.sup.edit===true);
  t('🛟 ทีมคลังยังไม่เห็นแท็บโปรโมชั่น และยังลงที่ออเดอร์พิเศษเหมือนเดิม',
-   who.wh.groups==='spord'&&who.wh.home==='spord',JSON.stringify(who.wh));
+   who.wh.groups.split(',').indexOf('promo')<0&&who.wh.groups==='otrk,spord'&&
+   who.wh.home==='spord',JSON.stringify(who.wh));
  t('🔑 แท็บโปรโมชั่นกลับมาแล้วสำหรับเซลล์และผู้จัดการ',
    who.sales.groups.indexOf('promo')>=0&&who.manager.groups.indexOf('promo')>=0,who.manager.groups);
  t('🛟 เซลล์ดูได้อย่างเดียว แก้ไม่ได้',who.sales.edit===false&&who.manager.edit===true);

@@ -504,6 +504,29 @@ main.wide{max-width:1560px}
 .cst-rt tr.done>td{background:#F4FAF6}
  
 .cst-rt tr.on>td{background:#E3EEFD;box-shadow:inset 3px 0 0 var(--blue)}
+ 
+.ot-tbl tr.on>td{background:#E3EEFD;box-shadow:inset 3px 0 0 var(--blue)}
+.ot-tbl tr.ot-det>td{background:#F7F9FC;padding:10px 12px}
+.ot-tbl tbody tr:hover>td{background:#F3F7FE}
+ 
+@media(max-width:760px){
+  .ot-tbl thead{display:none}
+  .ot-tbl,.ot-tbl tbody,.ot-tbl tr,.ot-tbl td{display:block;width:auto}
+  .ot-tbl tbody tr{border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+    margin-bottom:10px;background:#fff}
+  .ot-tbl tbody tr.on{border-color:var(--blue);background:#F3F7FE}
+  .ot-tbl tbody tr.ot-det{padding:0;border:0;margin-top:-6px}
+  .ot-tbl td{border:0;padding:3px 0;text-align:left!important;
+    display:flex;justify-content:space-between;align-items:baseline;gap:14px}
+  .ot-tbl td::before{content:attr(data-l);color:var(--muted);font-size:12px;
+    flex:0 0 auto;white-space:nowrap}
+  .ot-tbl td>*{text-align:right}
+  .ot-tbl td.ot-no{display:block;border-bottom:1px solid var(--line);
+    padding-bottom:6px;margin-bottom:4px}
+  .ot-tbl td.ot-no>*{text-align:left}
+  .ot-tbl tr.on>td,.ot-tbl tbody tr:hover>td{background:transparent;box-shadow:none}
+  .ot-tbl tr.ot-det>td{display:block;padding:0}
+}
 .cst-rt .tk{width:74px;white-space:nowrap}
 .cst-rt input[type=checkbox]{width:19px;height:19px;cursor:pointer}
 .cst-rt .psub{font-size:11px;line-height:1.45}
@@ -1537,6 +1560,30 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       </div>
       <div class="panel" id="spBar" style="font-weight:700"></div>
       <div id="spBody"></div>
+    </div>
+
+    
+    <div id="otrkView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>เดือน</label>
+          <div class="dstep"><button type="button" class="dstep-b" onclick="selStep('otMon',-1)" title="เดือนก่อนหน้า">◀</button>
+          <select id="otMon" data-rev="1" onchange="otSetMon(this.value)"></select>
+          <button type="button" class="dstep-b" onclick="selStep('otMon',1)" title="เดือนถัดไป">▶</button></div></div>
+        <div class="ctl"><label>สายวิ่ง</label>
+          <div class="dstep"><button type="button" class="dstep-b" onclick="selStep('otLine',-1)" title="สายก่อนหน้า">◀</button>
+          <select id="otLine" onchange="OT.line=this.value;renderOtrk()"></select>
+          <button type="button" class="dstep-b" onclick="selStep('otLine',1)" title="สายถัดไป">▶</button></div></div>
+        <div class="ctl"><label>วันที่เซลล์คีย์</label>
+          <div class="dstep"><button type="button" class="dstep-b" onclick="selStep('otDay',-1)" title="วันก่อนหน้า">◀</button>
+          <select id="otDay" data-rev="1" onchange="OT.day=this.value;renderOtrk()"></select>
+          <button type="button" class="dstep-b" onclick="selStep('otDay',1)" title="วันถัดไป">▶</button></div></div>
+        <div class="ctl"><label>สถานะ</label>
+          <select id="otSt" onchange="OT.st=this.value;renderOtrk()"></select></div>
+        <div class="spacer"></div>
+        <div class="ctl"><label>&nbsp;</label>
+          <button class="upload-btn" onclick="otAskOpen()">🔎 ค้นเลขออเดอร์</button></div>
+      </div>
+      <div id="otBody"></div>
     </div>
 
     <div id="posView" class="hidden">
@@ -2807,8 +2854,6 @@ const TAB_GROUPS=[
    
    
    
-  {k:"spord",nm:"📦 ออเดอร์พิเศษ",tabs:[
-    {t:"spord",nm:"ออเดอร์พิเศษ",role:["manager","sales","sup","wh","ds"]}]},
   {k:"stock",nm:"📦 สต็อก",tabs:[
     {t:"stock",nm:"สต็อคปัจจุบัน",role:["manager","sales"]},
     {t:"cstock",nm:"🧊 สต็อคกลาง (เดิม)",role:["manager","sales"]}]},
@@ -2816,6 +2861,11 @@ const TAB_GROUPS=[
   {k:"price",nm:"💰 ราคา & ทุน",tabs:[
     {t:"price",nm:"แคตาลอคราคาขาย"},
     {t:"cost",nm:"📉 ต้นทุน & เทียบรอบ",role:"manager"}]},
+   
+  {k:"otrk",nm:"📋 สถานะออเดอร์",tabs:[
+    {t:"otrk",nm:"สถานะออเดอร์",role:["manager","sales","sup","wh","ds"]}]},
+  {k:"spord",nm:"📦 ออเดอร์พิเศษ",tabs:[
+    {t:"spord",nm:"ออเดอร์พิเศษ",role:["manager","sales","sup","wh","ds"]}]},
   {k:"plan",nm:"🗓 ปฏิทินงาน",badge:true,tabs:[{t:"plan",nm:"ปฏิทินงาน"}]},
   {k:"shop",nm:"🏪 สมัครร้านค้าใหม่",nmSales:"🏪 ร้านใหม่ของฉัน",tabs:[
     {t:"lead",nm:"ใบสมัครร้านค้า",role:"manager"},
@@ -2856,7 +2906,7 @@ function tabOk(x){
   return !x.role||x.role===r;
 }
  
-const ADMIN_SITE_GROUPS=["sales","order","spord","stock","plan","dcode"];
+const ADMIN_SITE_GROUPS=["sales","order","otrk","spord","stock","plan","dcode"];
 function tabGrpOnSite(g){
   if(BD_SITE==="admin")return ADMIN_SITE_GROUPS.indexOf(g.k)>=0;
   return g.site!=="admin";
@@ -2931,6 +2981,7 @@ function _switchTab(t){
   document.getElementById("stockView").classList.toggle("hidden",t!=="stock");
   document.getElementById("cstockView").classList.toggle("hidden",t!=="cstock");
   document.getElementById("spordView").classList.toggle("hidden",t!=="spord");
+  document.getElementById("otrkView").classList.toggle("hidden",t!=="otrk");
   document.getElementById("posView").classList.toggle("hidden",t!=="pos");
   document.getElementById("dciView").classList.toggle("hidden",t!=="dci");
   document.getElementById("leadView").classList.toggle("hidden",t!=="lead");
@@ -2952,6 +3003,7 @@ function _switchTab(t){
   if(t==="stock")renderStock();
   if(t==="cstock")renderCStock();
   if(t==="spord")renderSpord();
+  if(t==="otrk")renderOtrk();
   if(t==="pos")renderPOS();
   if(t==="dci")renderDCI();
   if(t==="lead")ldRefresh();
@@ -11456,6 +11508,96 @@ function alDate(v){
   if(m)return m[3]+"-"+String(+m[2]).padStart(2,"0")+"-"+String(+m[1]).padStart(2,"0");
   return "";
 }
+ 
+const OT_ST={"Delivered":"D","Ready to dispatch/Invoiced":"R","Sent to Locus":"L",
+  "Confirmed":"C","Ordered":"O","UnSuccessful Delivery":"U"};
+const OT_TH={D:"ส่งถึงร้านแล้ว",R:"คลังจัดของแล้ว",L:"เข้าระบบขนส่งแล้ว",
+  C:"ยืนยันออเดอร์แล้ว",O:"เพิ่งคีย์เข้ามา",U:"ส่งไม่สำเร็จ"};
+const OT_SEQ=["O","C","L","R","D","U"];
+function otTail(v,pre){const s=String(v==null?"":v).trim().toUpperCase();
+  return s.indexOf(pre)===0?s.slice(pre.length):s;}
+function otFull(v,pre){const s=String(v==null?"":v).trim();
+  return s&&/^\d+$/.test(s)?pre+s:s;}
+ 
+function otCeq(cs,sh,pc,pk,shr){
+  const q=+pk||0,a=+cs||0,b=+sh||0,c=+pc||0;
+  if(!q)return (b||c)?null:a;
+  if(b&&!shr)return null;
+  return a+(b*(shr||0)+c)/q;
+}
+function otTake(ix,x,col,ocol,dd,gin){
+  const no=String(x[col.no]==null?"":x[col.no]).trim().toUpperCase();
+  if(!no||no==="NA"||!dd)return;
+  const key=otTail(no,"BDD01");
+  const o=ix[key]||(ix[key]={ym:dd.slice(0,7),d:+dd.slice(8,10),
+    l:String(x[col.pj]==null?"":x[col.pj]).trim(),
+    s:col.out!=null?String(x[col.out]==null?"":x[col.out]).trim():"",
+    g:"",t:"",i:"",c:0,v:0,x:0,cd:{}});
+  if(gin&&!o.g)o.g=gin;
+  if(ocol.os!=null&&!o.t){const s=String(x[ocol.os]==null?"":x[ocol.os]).trim();
+    if(s)o.t=OT_ST[s]||s;}
+  if(!o.i){const iv=String(x[col.inv]==null?"":x[col.inv]).trim().toUpperCase();
+    if(iv&&iv!=="NA")o.i=otTail(iv,"BDD09");}
+  if(ocol.niv!=null)o.v+=alNum(x[ocol.niv]);
+  const pk=alNum(x[col.pk]),shr=alShrink(x[col.nm],pk);
+  const sv=otCeq(alNum(x[col.sc]),alNum(x[col.ss]),alNum(x[col.sp]),pk,shr);
+  const fv=otCeq(alNum(x[col.fc]),alNum(x[col.fs]),alNum(x[col.fp]),pk,shr);
+  if(sv==null||fv==null){o.x++;return;}
+  o.c+=sv+fv;
+  const cd=String(x[col.code]==null?"":x[col.code]).trim();
+  if(cd){const q=o.cd[cd]||(o.cd[cd]=[0,0]);q[0]+=sv;q[1]+=fv;}
+}
+ 
+function otSplit(ix){
+  const by={};
+  Object.keys(ix).forEach(k=>{
+    const o=ix[k],m=o.ym;if(!m)return;
+    const B=by[m]||(by[m]={ord:{},det:{}});
+    const r={d:o.d,l:o.l,s:o.s,c:Math.round(o.c*1000)/1000,
+      n:Object.keys(o.cd).length};
+    if(o.g)r.g=o.g;if(o.t)r.t=o.t;if(o.i)r.i=o.i;
+    if(o.v)r.v=Math.round(o.v*100)/100;
+    if(o.x)r.x=o.x;
+    B.ord[k]=r;
+    const cd={};Object.keys(o.cd).forEach(c=>{
+      cd[c]=[Math.round(o.cd[c][0]*1000)/1000,Math.round(o.cd[c][1]*1000)/1000];});
+    if(Object.keys(cd).length)B.det[k]=cd;
+  });
+  return by;
+}
+async function otPush(ix,file,d1,d2){
+  const by=otSplit(ix),ms=Object.keys(by).sort();
+  if(!ms.length)return;
+   
+  const u=+String(d2||"").replace(/-/g,"")||0;
+  ms.forEach(m=>{Object.keys(by[m].ord).forEach(k=>{by[m].ord[k].u=u;});});
+  if(typeof TOKEN==="undefined"||!TOKEN){
+    ulog("⚠️ โหมดออฟไลน์ — ยังไม่ได้ส่งสถานะออเดอร์ขึ้นเซิร์ฟเวอร์");return;}
+  for(const m of ms){
+    const payload={m:m,ord:by[m].ord,det:by[m].det,file:file,d1:d1,d2:d2};
+    const txt=JSON.stringify(payload);
+    let body=txt,headers={"Content-Type":"application/json","Authorization":"Bearer "+TOKEN};
+    try{
+      if(typeof CompressionStream!=="undefined"){
+        const cs=new Blob([txt]).stream().pipeThrough(new CompressionStream("gzip"));
+        body=await new Response(cs).arrayBuffer();
+        headers={"Content-Type":"application/octet-stream","x-body-gzip":"1","Authorization":"Bearer "+TOKEN};
+      }
+    }catch(e){}
+    try{
+      const r=await fetch("/api/ordtrk",{method:"POST",headers:headers,body:body});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+      OT.cache[m]=null;
+      ulog("✅ สถานะออเดอร์เดือน "+m+": บันทึกแล้ว (ส่งไป "+j.add.toLocaleString()+
+        " ใบ · เดือนนี้มีทั้งหมด "+j.n.toLocaleString()+" ใบ)");
+    }catch(ex){
+      ulog("❌ สถานะออเดอร์เดือน "+m+" ไม่สำเร็จ: "+ex.message+" — ข้อมูลเดิมบนเซิร์ฟเวอร์ยังอยู่ครบ");
+    }
+  }
+  OT.months=null;
+  if(typeof CURTAB!=="undefined"&&CURTAB==="otrk"&&typeof renderOtrk==="function")renderOtrk();
+}
 function parseAlloc(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
   const sh=wb.SheetNames.filter(s=>/export/i.test(s))[0]||wb.SheetNames[0];
@@ -11476,14 +11618,17 @@ function parseAlloc(name,buf){
   const hasMoney=(ocol.gsv!=null)&&(ocol.niv!=null);
   if(ocol.out!=null)col.out=ocol.out;       
   const noShop=(ocol.out==null);
-  const g={},days={},stat={};let n=0,skip=0,noGin=0,tg=0,tn=0;
+  const g={},days={},stat={},oix={};let n=0,skip=0,noGin=0,tg=0,tn=0;
   for(let r=1;r<A.length;r++){
     const x=A[r];if(!x)continue;
     const code=String(x[col.code]==null?"":x[col.code]).trim();
     if(!code){skip++;continue;}
     const gin=String(x[col.gin]==null?"":x[col.gin]).trim();
+    const dd=alDate(x[col.d]);
+     
+    otTake(oix,x,col,ocol,dd,gin);
     if(!gin){noGin++;continue;}
-    const ln=alLine(x[col.pj],x[col.pn]), dd=alDate(x[col.d]);
+    const ln=alLine(x[col.pj],x[col.pn]);
     if(dd)days[dd]=(days[dd]||0)+1;
     const G=g[gin]||(g[gin]={n:0,d:{},ln:{},o:{},od:{}});
     G.n++;if(dd)G.d[dd]=1;
@@ -11525,6 +11670,24 @@ function parseAlloc(name,buf){
       :"<br><b class='down'>💵 ไฟล์นี้ไม่มีช่อง "+onone.join(" / ")+"</b> — จะประเมินมูลค่าจากไฟล์ราคาหัวเสือแทน")+
     (sl.length?"<br><span class='psub'>สถานะออเดอร์: "+sl.join(" · ")+"</span>":"")+
     "<br><span class='psub'>เข้าไปที่ใบออเดอร์ แล้วใส่เลข GIN ของแต่ละวันเพื่อบันทึกผลตรวจ</span>");
+   
+  ALLOC.ord=oix;
+  const ok=Object.keys(oix);
+  if(ok.length){
+    const od={};ok.forEach(k=>{od[oix[k].ym+"-"+String(oix[k].d).padStart(2,"0")]=1;});
+    const dk=Object.keys(od).sort(),od1=dk[0],od2=dk[dk.length-1];
+    const noG=ok.filter(k=>!oix[k].g).length;
+    const bad=ok.filter(k=>oix[k].x).length;
+    const unk={};ok.forEach(k=>{const t=oix[k].t;if(t&&!OT_TH[t])unk[t]=(unk[t]||0)+1;});
+    const uk=Object.keys(unk);
+    ALLOC.od1=od1;ALLOC.od2=od2;ALLOC.ordN=ok.length;
+    ulog("📋 สถานะออเดอร์: <b>"+ok.length.toLocaleString()+"</b> ใบ · "+od1+" ถึง "+od2+
+      " · คลังยังไม่จัด <b>"+noG.toLocaleString()+"</b> ใบ"+
+      (bad?" · <b class='down'>แปลงหน่วยไม่ได้ "+bad+" ใบ (มีแพ็คแต่ไม่รู้ขนาดแพ็ค — ไม่ได้เดาให้)</b>":"")+
+      (uk.length?"<br><b class='down'>สถานะที่ยังไม่รู้จัก: "+uk.map(x=>anaEsc(x)+" ("+unk[x]+")").join(" · ")+
+        "</b> — เก็บข้อความเดิมไว้ ไม่ได้เดา แจ้งให้ปรับโปรแกรมได้":""));
+    otPush(oix,name,od1,od2);
+  }
   if(typeof renderSpord==="function"&&CURTAB==="spord")renderSpord();
   return ALLOC;
 }
@@ -15377,6 +15540,301 @@ async function prLoad(force){
   prAfterLoad();
 }
  
+let OT={m:"",line:"",day:"all",st:"all",sec:"list",cache:{},months:null,
+        err:"",busy:0,q:"",ask:0,hits:null,open:"",note:""};
+function otApi(){return typeof TOKEN!=="undefined"&&!!TOKEN;}
+function otN(v,d){const n=+v||0;return n.toLocaleString(undefined,{maximumFractionDigits:d===undefined?1:d});}
+ 
+function otNorm(v){
+  const s=String(v==null?"":v).trim().toUpperCase().replace(/[\s,]+/g,"");
+  if(!s)return null;
+  let d=/^BDD\d+$/.test(s)?s.slice(3):s;
+  if(!/^\d+$/.test(d))return {raw:s};
+  if(d.length>=10&&d.slice(0,2)==="09")return {inv:d.slice(2).replace(/^0+(?=\d)/,"").padStart(8,"0"),raw:s};
+  if(d.length>=10&&d.slice(0,2)==="01")d=d.slice(2);
+  return {k:d.padStart(8,"0"),raw:s};
+}
+function otFullNo(k){return otFull(k,"BDD01");}
+function otInvNo(v){return v?otFull(v,"BDD09"):"";}
+ 
+function otSales(k){
+  const ix=((typeof STOREDAILY!=="undefined"&&STOREDAILY&&STOREDAILY.ord)||{});
+  return ix[otFullNo(k)]||null;
+}
+function otLineOf(r){const l=(r&&r.l)||"";return l?alLine(l,""):"";}
+function otStTxt(t){return t?(OT_TH[t]||t):"";}
+ 
+async function otLoadMonths(){
+  if(OT.months)return OT.months;
+  if(!otApi()){OT.months=[];return OT.months;}
+  try{
+    const r=await fetch("/api/ordtrk",{headers:{"Authorization":"Bearer "+TOKEN}});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+    OT.months=(j.months||[]).map(x=>x.m);
+  }catch(ex){OT.err=ex.message;OT.months=[];}
+  return OT.months;
+}
+async function otLoad(m,full){
+  if(!m)return null;
+  const got=OT.cache[m];
+  if(got&&(!full||got.det))return got;
+  if(!otApi()){OT.cache[m]={ord:{},det:{},none:1};return OT.cache[m];}
+  OT.busy++;
+  try{
+    const r=await fetch("/api/ordtrk?m="+encodeURIComponent(m)+(full?"&full=1":""),
+      {headers:{"Authorization":"Bearer "+TOKEN}});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+    OT.cache[m]={ord:j.ord||{},det:full?(j.det||{}):null,meta:j.meta||null,none:j.none?1:0};
+  }catch(ex){OT.err=ex.message;OT.cache[m]=OT.cache[m]||{ord:{},det:null,err:ex.message};}
+  OT.busy--;
+  return OT.cache[m];
+}
+function otEnsure(full){
+   
+  const m=OT.m;
+  if(!m)return false;
+  const got=OT.cache[m];
+  if(got&&(!full||got.det))return true;
+  otLoad(m,full).then(()=>{if(CURTAB==="otrk")renderOtrk();});
+  return false;
+}
+ 
+function otRows(){
+  const C=OT.cache[OT.m];if(!C)return [];
+  const o=C.ord||{},out=[];
+  Object.keys(o).forEach(k=>{
+    const r=o[k];
+    out.push({k:k,r:r,no:otFullNo(k),ln:otLineOf(r),
+      d:OT.m+"-"+String(r.d||0).padStart(2,"0"),sl:otSales(k)});
+  });
+  out.sort((a,b)=>(a.d<b.d?1:a.d>b.d?-1:(a.k<b.k?-1:1)));
+  return out;
+}
+function otPass(x){
+  if(OT.line&&OT.line!=="all"&&x.ln!==OT.line)return false;
+  if(OT.day!=="all"&&x.d!==OT.day)return false;
+  if(OT.st==="no"&&x.r.g)return false;
+  if(OT.st==="yes"&&!x.r.g)return false;
+  if(OT.st&&OT.st!=="all"&&OT.st!=="no"&&OT.st!=="yes"&&x.r.t!==OT.st)return false;
+  return true;
+}
+function otSetMon(m){OT.m=m;OT.day="all";OT.open="";renderOtrk();}
+function otSetSec(s){OT.sec=s;OT.open="";renderOtrk();}
+function otAskOpen(){OT.ask=OT.ask?0:1;renderOtrk();
+  if(OT.ask)setTimeout(()=>{const e=document.getElementById("otQ");if(e)e.focus();},30);}
+function otRowTog(k){OT.open=(OT.open===k)?"":k;renderOtrk();}
+ 
+async function otFind(){
+  const raw=String(OT.q||"");
+  const toks=raw.split(/[\s,;|]+/).map(s=>s.trim()).filter(Boolean);
+  if(!toks.length){OT.hits=null;renderOtrk();return;}
+  const want=[];const seen={};
+  toks.slice(0,500).forEach(t=>{const n=otNorm(t);if(!n)return;
+    const id=n.k||n.inv||n.raw;if(seen[id])return;seen[id]=1;want.push(n);});
+  OT.busy++;OT.hits={rows:[],miss:[],scan:0};renderOtrk();
+  const months=(await otLoadMonths()).slice();
+  if(OT.m&&months.indexOf(OT.m)<0)months.unshift(OT.m);
+  const found={};
+  for(const m of months){
+    const C=await otLoad(m,false);
+    const o=(C&&C.ord)||{};
+    const inv={};Object.keys(o).forEach(k=>{if(o[k].i)inv[o[k].i]=k;});
+    want.forEach(w=>{
+      const id=w.k||w.inv||w.raw;
+      if(found[id])return;
+      const k=w.k&&o[w.k]?w.k:(w.inv&&inv[w.inv]?inv[w.inv]:"");
+      if(!k)return;
+      found[id]={m:m,k:k,r:o[k],no:otFullNo(k),ln:otLineOf(o[k]),
+        d:m+"-"+String(o[k].d||0).padStart(2,"0"),sl:otSales(k),ask:w.raw};
+    });
+    OT.hits.scan++;
+    if(Object.keys(found).length>=want.length)break;
+  }
+  OT.hits={rows:want.map(w=>found[w.k||w.inv||w.raw]).filter(Boolean),
+    miss:want.filter(w=>!found[w.k||w.inv||w.raw]).map(w=>w.raw),
+    scan:OT.hits.scan,n:want.length};
+  OT.busy--;
+  renderOtrk();
+}
+function otClear(){OT.q="";OT.hits=null;renderOtrk();}
+ 
+ 
+function otStepHtml(x){
+  const g=x.r.g;
+  return `<td data-l="① เซลล์คีย์"><b>${anaEsc(fmtDate(x.d))}</b>${x.sl&&x.sl.k&&x.sl.k!==x.d
+      ?`<br><span class="psub down">ไฟล์ยอดขายว่า ${anaEsc(fmtDate(x.sl.k))}</span>`:""}</td>
+    <td data-l="② คลังจัดของ">${g?`<b>GIN ${anaEsc(g)}</b>`:`<span class="down">ยังไม่จัด</span>`}
+      ${x.r.t?`<br><span class="psub">${anaEsc(otStTxt(x.r.t))}</span>`:""}</td>`;
+}
+function otRowHtml(x){
+  const nm=(typeof cstStoreName==="function")?cstStoreName(x.r.s):"";
+  const money=x.r.v?THB(x.r.v):(x.sl&&x.sl.v?THB(x.sl.v):"–");
+  const inv=x.r.i?otInvNo(x.r.i):((x.sl&&x.sl.inv)||"");
+  return `<tr class="${OT.open===x.k?"on":""}" onclick="otRowTog('${anaEsc(x.k)}')" style="cursor:pointer">
+    <td class="ot-no"><b>${anaEsc(x.no)}</b>${inv?`<br><span class="psub">บิล ${anaEsc(inv)}</span>`:""}</td>
+    <td data-l="ร้าน">${anaEsc(nm||("ร้าน "+(x.r.s||"ไม่ระบุ")))}${nm&&x.r.s?`<br><span class="psub">${anaEsc(x.r.s)}</span>`:""}</td>
+    <td data-l="สาย">${anaEsc(x.ln||"?")}</td>
+    ${otStepHtml(x)}
+    <td data-l="จำนวน (ลัง)" style="text-align:right">${otN(x.r.c,1)}${x.r.x?`<br><span class="psub down">อีก ${x.r.x} แถวแปลงหน่วยไม่ได้</span>`:""}</td>
+    <td data-l="มูลค่า" style="text-align:right">${money}</td></tr>`+
+    (OT.open===x.k?`<tr class="ot-det"><td colspan="7">${otDetHtml(x)}</td></tr>`:"");
+}
+ 
+function otDetHtml(x){
+  const C=OT.cache[OT.m===x.m||!x.m?OT.m:x.m];
+  const det=C&&C.det?C.det[x.k]:null;
+  if(!C||!C.det){
+    otEnsure(true);
+    return `<div class="psub">กำลังโหลดรายสินค้าในใบนี้…</div>`;
+  }
+   
+  if(!det)return `<div class="psub">${x.r.x
+    ?`ใบนี้มี ${x.r.x} แถวที่ไฟล์บอกเป็น "แพ็ค" แต่ชื่อสินค้าไม่ได้บอกว่าแพ็คละกี่ชิ้น จึงไม่ได้เดาจำนวนให้ — ดูจำนวนจริงได้ที่ไฟล์ใบจัดของ`
+    :"ไฟล์ใบจัดของรอบที่อัพไว้ ยังไม่มีรายสินค้าของใบนี้ — อัพไฟล์ใบจัดของที่ครอบวันนี้อีกครั้ง แล้วจะขึ้นเอง"}</div>`;
+  const rows=Object.keys(det).map(c=>({c:c,s:det[c][0],f:det[c][1]}))
+    .sort((a,b)=>(b.s+b.f)-(a.s+a.f));
+  return `<div class="tblwrap"><table class="grp-tbl"><thead><tr>
+      <th>สินค้า</th><th style="text-align:right">ขาย (ลัง)</th><th style="text-align:right">แถม (ลัง)</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${anaEsc(oname(r.c)||("รหัส "+r.c))}
+      <br><span class="psub">${anaEsc(r.c)}</span></td>
+      <td style="text-align:right">${otN(r.s,2)}</td>
+      <td style="text-align:right">${r.f?otN(r.f,2):"–"}</td></tr>`).join("")}</tbody></table></div>`;
+}
+function otTblHtml(rows,note){
+  if(!rows.length)return `<div class="panel"><div class="insight">${anaEsc(note||"ไม่มีออเดอร์ที่ตรงกับที่เลือก")}</div></div>`;
+  return `<div class="panel"><div class="tblwrap"><table class="grp-tbl ot-tbl"><thead><tr>
+      <th>เลขออเดอร์</th><th>ร้าน</th><th>สาย</th>
+      <th>① เซลล์คีย์</th><th>② คลังจัดของ</th>
+      <th style="text-align:right">ลัง</th><th style="text-align:right">มูลค่า</th></tr></thead>
+    <tbody>${rows.map(otRowHtml).join("")}</tbody></table></div>
+    <div class="psub" style="margin-top:8px">แตะที่แถวเพื่อดูรายสินค้าในใบนั้น</div></div>`;
+}
+ 
+function otProd(rows){
+  const C=OT.cache[OT.m];
+  if(!C||!C.det)return null;
+  const m={};
+  rows.forEach(x=>{
+    const d=C.det[x.k];if(!d)return;
+    Object.keys(d).forEach(c=>{
+      const e=m[c]||(m[c]={c:c,s:0,f:0,n:0,sh:{}});
+      e.s+=d[c][0];e.f+=d[c][1];e.n++;if(x.r.s)e.sh[x.r.s]=1;});
+  });
+  return Object.keys(m).map(c=>m[c]).sort((a,b)=>(b.s+b.f)-(a.s+a.f));
+}
+function otProdHtml(rows){
+  const p=otProd(rows);
+  if(!p){otEnsure(true);return `<div class="panel"><div class="insight">กำลังโหลดรายสินค้า…</div></div>`;}
+  const noDet=rows.filter(x=>!((OT.cache[OT.m]||{}).det||{})[x.k]).length;
+  if(!p.length)return `<div class="panel"><div class="insight">ยังไม่มีรายสินค้าของใบที่เลือก — อัพไฟล์ใบจัดของที่ครอบวันเหล่านี้อีกครั้ง</div></div>`;
+  return `<div class="panel"><h3>📦 ยอดรายสินค้า ${anaEsc(OT.line&&OT.line!=="all"?"สาย "+OT.line:"ทุกสาย")}</h3>
+    <div class="psub">รวมจาก ${otN(rows.length,0)} ใบที่กรองไว้${
+      noDet?` · <b class="down">มี ${noDet} ใบที่ยังไม่มีรายสินค้า</b> (อัพไฟล์ใบจัดของที่ครอบวันนั้นอีกครั้ง)`:""}</div>
+    <div class="tblwrap"><table class="grp-tbl"><thead><tr>
+      <th>สินค้า</th><th style="text-align:right">ขาย (ลัง)</th><th style="text-align:right">แถม (ลัง)</th>
+      <th style="text-align:right">กี่ใบ</th><th style="text-align:right">กี่ร้าน</th></tr></thead>
+    <tbody>${p.map(r=>`<tr><td>${anaEsc(oname(r.c)||("รหัส "+r.c))}
+      <br><span class="psub">${anaEsc(r.c)}</span></td>
+      <td style="text-align:right"><b>${otN(r.s,2)}</b></td>
+      <td style="text-align:right">${r.f?otN(r.f,2):"–"}</td>
+      <td style="text-align:right">${otN(r.n,0)}</td>
+      <td style="text-align:right">${otN(Object.keys(r.sh).length,0)}</td></tr>`).join("")}</tbody></table></div></div>`;
+}
+function otAskHtml(){
+  if(!OT.ask)return "";
+  const h=OT.hits;
+  return `<div class="panel" id="otAsk">
+    <h3>🔎 ค้นเลขออเดอร์</h3>
+    <div class="psub">พิมพ์ทีละเลขก็ได้ หรือวางมาทั้งคอลัมน์จาก Excel ก็ได้ (คั่นด้วยบรรทัด เว้นวรรค หรือ comma)
+      · รับทั้งเลขออเดอร์ <b>BDD01…</b> เลขบิล <b>BDD09…</b> และเลขท้ายเฉย ๆ</div>
+    <textarea id="otQ" rows="4" style="width:100%;margin-top:8px;padding:10px;border:1.5px solid var(--line);
+      border-radius:9px;font-size:16px;font-family:inherit"
+      placeholder="BDD0100000312&#10;BDD0100000345&#10;…"
+      oninput="OT.q=this.value">${anaEsc(OT.q||"")}</textarea>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="upload-btn" onclick="otFind()">🔎 ค้นหา</button>
+      <button class="upload-btn" onclick="otClear()">ล้าง</button></div>
+    ${h?(OT.busy?`<div class="psub" style="margin-top:10px">กำลังค้น… (อ่านไปแล้ว ${h.scan||0} เดือน)</div>`
+      :`<div style="margin-top:10px">
+        <div class="psub">ค้น ${otN(h.n||0,0)} เลข · เจอ <b>${otN((h.rows||[]).length,0)}</b>${
+          (h.miss||[]).length?` · <b class="down">ไม่เจอ ${h.miss.length}</b>`:""}</div>
+        ${(h.miss||[]).length?`<div class="psub down" style="margin-top:4px">ไม่เจอ: ${
+          anaEsc(h.miss.slice(0,30).join(" · "))}${h.miss.length>30?" …":""}<br>
+          เลขเหล่านี้อาจยังไม่ได้อัพไฟล์ใบจัดของที่ครอบวันนั้น — ไม่ได้แปลว่าไม่มีออเดอร์</div>`:""}
+        ${(h.rows||[]).length?otTblHtml(h.rows):""}</div>`):""}</div>`;
+}
+function renderOtrk(){
+  const body=document.getElementById("otBody");if(!body)return;
+   
+  if(OT.line===""){const mine=(typeof spMyLine==="function")?spMyLine():"";OT.line=mine||"all";}
+  const months=OT.months;
+  if(months===null){otLoadMonths().then(()=>{if(CURTAB==="otrk")renderOtrk();});
+    body.innerHTML=`<div class="panel"><div class="insight">กำลังโหลด…</div></div>`;return;}
+  if(!OT.m)OT.m=months[0]||(typeof todayISO==="function"?todayISO().slice(0,7):"");
+   
+  const msel=document.getElementById("otMon");
+  if(msel){const all=months.slice();if(OT.m&&all.indexOf(OT.m)<0)all.unshift(OT.m);
+    msel.innerHTML=all.map(m=>`<option value="${anaEsc(m)}"${m===OT.m?" selected":""}>${anaEsc(fmtMonth(m))}</option>`).join("");}
+  const ready=otEnsure(false);
+  const all=ready?otRows():[];
+  const lns=[];const sawL={};
+  all.forEach(x=>{if(x.ln&&!sawL[x.ln]){sawL[x.ln]=1;lns.push(x.ln);}});
+  lns.sort((a,b)=>FOCUS_ORDER.indexOf(spLnKey?spLnKey(a):a)-FOCUS_ORDER.indexOf(spLnKey?spLnKey(b):b));
+  const lsel=document.getElementById("otLine");
+  if(lsel){const opts=["all"].concat(lns);
+    if(OT.line!=="all"&&opts.indexOf(OT.line)<0)opts.push(OT.line);
+    lsel.innerHTML=opts.map(v=>`<option value="${anaEsc(v)}"${v===OT.line?" selected":""}>${
+      v==="all"?"ทุกสาย":anaEsc(v)}</option>`).join("");}
+  const days=[];const sawD={};
+  all.forEach(x=>{if(!sawD[x.d]){sawD[x.d]=1;days.push(x.d);}});
+  days.sort();
+  const dsel=document.getElementById("otDay");
+  if(dsel){if(OT.day!=="all"&&days.indexOf(OT.day)<0)OT.day="all";
+    dsel.innerHTML=`<option value="all"${OT.day==="all"?" selected":""}>ทุกวัน</option>`+
+      days.map(d=>`<option value="${anaEsc(d)}"${d===OT.day?" selected":""}>${anaEsc(fmtDate(d))}</option>`).join("");}
+  const ssel=document.getElementById("otSt");
+  if(ssel)ssel.innerHTML=`<option value="all"${OT.st==="all"?" selected":""}>ทั้งหมด</option>`+
+    `<option value="no"${OT.st==="no"?" selected":""}>🕗 คลังยังไม่จัด</option>`+
+    `<option value="yes"${OT.st==="yes"?" selected":""}>✅ คลังจัดแล้ว</option>`+
+    OT_SEQ.map(t=>`<option value="${t}"${OT.st===t?" selected":""}>${anaEsc(OT_TH[t])}</option>`).join("");
+   
+  if(!ready){body.innerHTML=`<div class="panel"><div class="insight">กำลังโหลดสถานะออเดอร์…</div></div>`;return;}
+  const C=OT.cache[OT.m]||{};
+  if(OT.err&&!all.length){
+    body.innerHTML=`<div class="panel"><div class="insight">อ่านข้อมูลไม่ได้: ${anaEsc(OT.err)} — ลองรีเฟรชอีกครั้ง</div></div>`;return;}
+  if(!all.length){
+    body.innerHTML=otAskHtml()+`<div class="panel"><div class="insight">
+      เดือนนี้ยังไม่มีข้อมูล — ข้อมูลมาจากไฟล์ใบจัดของของคลัง ให้แอดมินอัพไฟล์นั้นก่อน
+      (ปุ่มอัพโหลด → 📦 ออเดอร์พิเศษ → ไฟล์ใบจัดของ)</div></div>`;return;}
+  const rows=all.filter(otPass);
+  const nG=rows.filter(x=>x.r.g).length;
+  const nInv=rows.filter(x=>x.r.i||(x.sl&&x.sl.v)).length;
+  const cs=rows.reduce((a,x)=>a+(+x.r.c||0),0);
+  const val=rows.reduce((a,x)=>a+(+x.r.v||(x.sl?+x.sl.v:0)||0),0);
+  const meta=C.meta||{};
+  const cards=`<div class="cards">
+    <div class="card"><div class="k">ออเดอร์ที่เลือก</div><div class="v">${otN(rows.length,0)}</div>
+      <div class="s">จากทั้งเดือน ${otN(all.length,0)} ใบ</div></div>
+    <div class="card"><div class="k">② คลังจัดของแล้ว</div><div class="v">${otN(nG,0)}</div>
+      <div class="s">${rows.length?otN(nG*100/rows.length,1)+"% ของที่เลือก":""}</div></div>
+    <div class="card"><div class="k">🕗 คลังยังไม่จัด</div><div class="v ${rows.length-nG?"down":""}">${otN(rows.length-nG,0)}</div>
+      <div class="s">ออกบิลแล้ว ${otN(nInv,0)} ใบ</div></div>
+    <div class="card"><div class="k">รวมจำนวน</div><div class="v">${otN(cs,0)}</div><div class="s">ลัง</div></div>
+    <div class="card"><div class="k">มูลค่า (NIV)</div><div class="v">${THBk(val)}</div><div class="s">${THB(val)}</div></div></div>`;
+  const seg=`<div class="panel" style="padding:12px 14px">
+    <div class="seg">
+      <button class="${OT.sec==="list"?"on":""}" onclick="otSetSec('list')">📋 รายใบ</button>
+      <button class="${OT.sec==="prod"?"on":""}" onclick="otSetSec('prod')">📦 ยอดรายสินค้า</button>
+    </div>
+    <div class="psub" style="margin-top:8px">① เซลล์คีย์ = วันที่สร้างใบสั่งซื้อ ·
+      ② คลังจัดของ = เลข GIN (ใบจัดของของคลัง)${
+      meta.file?` · ไฟล์ล่าสุด ${anaEsc(meta.file)}${meta.d2?" (ถึง "+anaEsc(fmtDate(meta.d2))+")":""}`:""}</div></div>`;
+  body.innerHTML=otAskHtml()+cards+seg+
+    (OT.sec==="prod"?otProdHtml(rows):otTblHtml(rows));
+}
+ 
 let PRV={i:null,q:"",cat:"all",view:"pct",hide:true};
 function prSetRound(i){PRV.i=i;renderPrice();}
 function prStepRound(n){
@@ -16285,7 +16743,7 @@ const UP_CATS={sales:"📊 ยอดขาย",kpi:"🎯 eB2B & Self Ordering",e
   dci:"📈 DCI Score",ana:"🧪 วิเคราะห์เชิงลึก",pjp:"🗺 PJP & ร้านค้า",
   dcode:"🧾 DCODE",price:"💰 ราคา & ทุน"};
 const UP_TAB={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",
-  cstock:"cstock",spord:"spord",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price",dcode:"dcode"};
+  cstock:"cstock",spord:"spord",otrk:"spord",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price",dcode:"dcode"};
 const UP_SUB={spord:"ไฟล์ใบจัดของจากคลัง — อ่านในเครื่องนี้เพื่อตรวจกับที่เซลล์คีย์ ไม่ได้เก็บไฟล์ขึ้นเซิร์ฟเวอร์",
   cstock:"ไฟล์ที่แอดมินถือเอง — ไฟล์ร้านที่ตัดบิลเข้า (Ex.export) หรือฟอร์ม Excel แบบเดิม · การตัดบิลใหม่ให้กรอกที่แท็บ 🧾 ใบตัดบิล",
   price:"สองไฟล์ราคาที่ Unilever ส่งมาทุกเดือน — เก็บแยกจากข้อมูลยอดขาย ไม่กระทบกัน"};
@@ -16420,6 +16878,8 @@ function parseDailyDcode(name,rows,hdr,H){
      
     cFc=col("Free Quantity in Aggr.CS"),cFp=col("Free Quantity in Aggr.PC"),
      
+     
+    cCre=col("Sales Order Creation Date"),
     cNo=col("Order Number"),cInv=col("Invoice Number");
   const N=(r,i)=>{if(i<0)return 0;const v=parseFloat(String(r[i]==null?"":r[i]).replace(/,/g,""));return isNaN(v)?0:v;};
   const S=(r,i)=>i<0?"":String(r[i]==null?"":r[i]).trim();
@@ -16475,6 +16935,7 @@ function parseDailyDcode(name,rows,hdr,H){
       const o=ordx[no]||(ordx[no]={s:sc,l:code,d:dkey,v:0,c:0,cs:0,pc:0,g:0});
       o.v+=niv;o.c++;o.cs+=N(r,cCs);o.pc+=N(r,cPc);
       if(cGsv>=0)o.g=(+o.g||0)+N(r,cGsv);
+      if(cCre>=0){const kk=toYMD(r[cCre]);if(kk)o.k=kk;}
       if(sc)o.s=sc;o.l=code;o.d=dkey;
     });
     if(cDoc>=0){const d=S(r,cDoc)||"(ว่าง)";docs[d]=(docs[d]||0)+1;}

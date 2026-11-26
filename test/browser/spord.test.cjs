@@ -379,10 +379,13 @@ const ORIGIN='https://bd-spord.test/';
        tabs:(tabVisible().filter(x=>x.g.k==='spord')[0]||{tabs:[]}).tabs.map(x=>x.t).join(','),
        stock:(tabVisible().filter(x=>x.g.k==='stock')[0]||{tabs:[]}).tabs.map(x=>x.t).join(',')};});
    return o;});
- t('🔑 ทีมคลังเห็นได้กลุ่มเดียวทั้งเว็บ และเข้าหน้าออเดอร์พิเศษให้เลย',
-   who.wh.groups==='spord'&&who.wh.tabs==='spord'&&who.wh.tab==='spord',JSON.stringify(who.wh));
+ /* 26 พ.ย. 69 เจ้าของเพิ่มหมวด 📋 สถานะออเดอร์ และสั่งว่า "ทุกคนเข้ามาดูได้"
+    ทีมคลัง/สายส่งจึงเห็น 2 กลุ่ม — หน้าสถานะออเดอร์อ่านอย่างเดียว ไม่ได้เปิดสิทธิ์เขียนอะไรเพิ่ม
+    ส่วนยอดขาย/ราคา/ต้นทุน ยังปิดเหมือนเดิม */
+ t('🔑 ทีมคลังเห็นได้แค่ สถานะออเดอร์ + ออเดอร์พิเศษ และเข้าหน้าออเดอร์พิเศษให้เลย',
+   who.wh.groups==='otrk,spord'&&who.wh.tabs==='spord'&&who.wh.tab==='spord',JSON.stringify(who.wh));
  t('🔑 ทีมสายส่งก็เหมือนกัน — ไม่เห็นยอดขาย/ราคา/ต้นทุน',
-   who.ds.groups==='spord'&&who.ds.tabs==='spord',JSON.stringify(who.ds));
+   who.ds.groups==='otrk,spord'&&who.ds.tabs==='spord',JSON.stringify(who.ds));
  t('เซลล์ยังเห็นทุกกลุ่มเหมือนเดิม และเข้าหน้ายอดขายเป็นหน้าแรก',
    who.sales.tab==='sales'&&who.sales.groups.indexOf('sales')===0&&
    who.sales.stock==='stock,cstock',JSON.stringify(who.sales));

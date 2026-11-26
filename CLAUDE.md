@@ -14,7 +14,8 @@ the app UI; the sales team sees everything live. Features (all are tabs in one p
 earns from them).
 **ราคา & ทุน** (the two monthly Unilever price files: the หัวเสือ quote prices the depot sells at —
 also published to shop customers as a public catalogue — and the BUM cost file, manager-only).
-The pages sit in **10 top-level tab groups** on the main site (one of them **📦 ออเดอร์พิเศษ**) (`TAB_GROUPS`/`renderTabs`), several of
+The pages sit in **11 top-level tab groups** on the main site (among them **📋 สถานะออเดอร์** and
+**📦 ออเดอร์พิเศษ**, in that order right after 💰 ราคา & ทุน) (`TAB_GROUPS`/`renderTabs`), several of
 which open a row of sub-tabs. The per-page keys (`CURTAB`) did not change when the grouping was added —
 see `HANDOFF.md` §5 before touching the tab bar. A 10th group, **🧾 DCODE**, carries `site:"admin"` and
 exists only on the **admin site** (`/admin`, see "Admin site + DCODE" below).
@@ -95,7 +96,8 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (271 checks against the real `api/save.js` and the
+  running **`node test/merge-safety.test.mjs`** (296 checks against the real `api/save.js`, the real
+  `api/ordtrk.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
   status, DCI periods, MINSTOCK tombstones, KPI date-keyed rounds + `KPI.meta` + `KPI.del`
@@ -636,7 +638,7 @@ code, never printed.
   via `api/promoimg.js` — never into the state; the state keeps only the URL
   (`PROMO.items[id].imgs` for slides, `.reps` for the report a result was typed from).
   Rules: `HANDOFF.md` §5.
-  The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 9 groups,
+  The tab bar itself is rendered from **`TAB_GROUPS`** (`renderTabs`/`switchGroup`): 11 groups,
   each holding one or more pages, role-gated per page. Adding a page means adding it to that
   table — never add a hand-written `.tab` button back into the markup. Retiring a finished
   feature means removing its entry there and nothing else: the eB2B opening contest ended in
@@ -655,6 +657,60 @@ code, never printed.
   moves `selectedIndex` and dispatches `change`, so it is exactly a dropdown pick and **cannot
   touch data**. Prove both with **`node test/browser/datestep.test.cjs`** (72 checks, including a
   byte-for-byte comparison of every stored blob before and after every button on every page).
+  The **📋 สถานะออเดอร์** tab group (`renderOtrk`) answers *"where is this order?"* for the whole
+  team. The owner's words, 26 Nov 26, after the analysis below: *"เราเจอหัวใจสำคัญละ เชื่อมด้วย
+  เลขออเดอร์เดียวทั้งระบบฝั่งการขาย"*. It is **two steps, by his instruction** — *"ตอนนี้เรามีแค่
+  2 ขั้นตอน คือเซลล์คีย์ คลังจัด … GIN มันมาจาก Good issue note คือใบจัดของของฝั่งคลัง ในอนาคตเรา
+  ค่อยไปเพิ่มส่วนของการส่งของอีกที"*: **① เซลล์คีย์** (the order's creation date) and
+  **② คลังจัดของ** (its GIN). **Do not add a delivery step until he asks.**
+  **The join key is the order number `BDD01…`**, and every claim here was measured on his real
+  files first (allocation 10,428 rows / 1,789 orders · daily sales 15–23 Nov 26, 7,902 rows /
+  1,401 orders):
+  the same number is in **both** files (allocation col M `Order Number`, daily sales col L
+  `หมายเลขคำสั่งซื้อ (Order Number)`); **1 order = 1 shop · 1 creation date · 1 invoice · 1 GIN ·
+  1 status**, 0 violations in 1,789 (the one order carrying three lines is `BDD0100000003` on the
+  dummy outlet `T0000164400`, not a real shop); where both files hold the order they **agree
+  1,401/1,401 — 100% on shop, line, creation date AND invoice number**; the 133 that match in one
+  file only are simply **not invoiced yet** (120 of them the file's last day, billed the morning
+  after), so an unmatched number is **reported as "not uploaded yet", never as 0**; invoice numbers
+  are 1-to-1 too (1,645 invoices, 0 covering two orders), so either number finds the order;
+  **a GIN is not a key** — 1 order never has 2 GINs, but 1 GIN covers up to **88 orders** across
+  lines, days and shops, so it is step ②'s *evidence*, not the spine; and **order numbers never
+  overlap between days** (0/10), which is why a typed number can be routed to a month.
+  Timing, measured: **46.7% invoiced the same day, 43.3% +1, 9.2% +2, 0.9% beyond**.
+  **The data lives OUTSIDE `bd-data-*`**, in its own month-sharded blob behind `api/ordtrk.js` —
+  the same reasoning as the two price files, and for the same reason: measured, the index grows by
+  **~0.5 MB a month for ever** (1,789 orders in 10 days ⇒ ~3,900 a month), and merged into the main
+  snapshot that is ~6 MB a year re-read, re-merged and copied into 8 rolling backups on every save.
+  `lib/snapshot.js` holds the reasoning and `ORDTRK_PREFIX`. **Never move it into `mergeState`.**
+  Four rules that are easy to get wrong:
+  **`parseAlloc` must build the index BEFORE the line that skips rows with no GIN** — those rows
+  (963 of them, 144 orders in the real file) are exactly the "warehouse hasn't picked it yet" cases
+  this page exists to show; **a status it does not recognise is stored verbatim and reported**
+  (`OT_ST`/`OT_TH`, the `poClosedKind` rule), never mapped to the nearest known one; **quantity is
+  stored as fractional cases** (`otCeq` = cases + (packs × pack size + pieces) ÷ case size), the
+  same unit the daily sales file uses, and a row whose pack size cannot be read from the product
+  name is **counted and reported, never guessed at 1** — such a row contributes no product
+  breakdown either, and the page says which of the two reasons applies; and **`u` is the last day
+  the FILE covers**, not the upload clock, so re-uploading an old export cannot drag a Delivered
+  order back to Confirmed. Merging is field-by-field, so a fresher file that happens to carry no
+  GIN cannot blank one already known (the `mergeExOne` lesson).
+  `parseDailyDcode` also stores **`k` = the Sales Order Creation Date** on `STOREDAILY.ord`
+  (optional lookup — a file uploaded before that still parses, and the page simply has no sales-side
+  cross-check for it). `d` on that record is the INVOICE date and answers a different question;
+  using it for "when did the rep key it" would be wrong on 53% of orders.
+  The page is **strictly read-only** over everything, its state lives on the non-synced `OT`, and
+  **every role sees it** — the owner said *"ทุกคนเข้ามาดูได้"*, so `wh`/`ds`/`sup` carry explicit
+  `role` entries and now see two groups, not one. A `sales` account **opens on its own line**.
+  Three ways in, all on one page: the line/day/status pickers, **🔎 ค้นเลขออเดอร์** which takes one
+  number or a whole column pasted from Excel (`otFind` — it accepts `BDD01…`, `BDD09…` or a bare
+  tail, walks months newest→oldest until every number is found, and **names the ones it could not
+  find** rather than printing a silent "not there"), and **📦 ยอดรายสินค้า**, which is what a rep
+  filtered to their own line reads. On a phone the 7-column table folds into one card per order
+  (`@media` + `data-l` labels), because ① and ② scrolled off the right edge otherwise — the same
+  lesson as the rep's entry cards in ออเดอร์พิเศษ. Prove it with
+  **`node test/browser/ordtrk.test.cjs`** (69 checks, self-contained with made-up codes) plus the
+  `api/ordtrk.js` cases in `merge-safety`.
   The **💰 ราคา & ทุน** tab group (`renderPrice`/`renderCost`) reads the two monthly Unilever price
   files. Its rules are dense and were measured, not guessed — read `HANDOFF.md` §5 before touching
   any of it. The ones easiest to get wrong: a Unilever round runs **the 25th → the 24th**, not a
@@ -1068,7 +1124,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (193 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (194 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1081,7 +1137,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (193 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (194 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
@@ -1163,6 +1219,12 @@ code, never printed.
 - `api/*.js` — Vercel serverless functions (ESM): `login`, `data` (read newest non-empty blob),
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write),
   `apply` (PUBLIC shop application → its own `bd-lead-*` blob), `leads` (manager-only read).
+- `api/ordtrk.js` — the 📋 order-tracking index: manager/admin upload, **everyone** reads.
+  Its own blob prefix (`bd-ordtrk-`), **sharded by month**, never a read or a write of `bd-data-*`
+  — see the 📋 section above for why. GET with no month lists the months from the blob NAMES
+  (one listing, no download); `?m=YYYY-MM` returns that month; `det` (the per-order product
+  breakdown) comes back only for `?full=1`. A write MERGES per order; which side wins is decided
+  by `u`, **the last day the FILE covers**, never the upload clock.
 - `api/promo.js` — the supervisor (`sup`) writes ONE promotion per call (`PROMO.items[id]`), or the
   manager deletes one (`PROMO.del[id]`). It rebuilds the record from known fields only and must
   never write `PROMO.sales`.
