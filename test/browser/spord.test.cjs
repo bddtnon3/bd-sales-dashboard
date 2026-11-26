@@ -22,7 +22,9 @@ const ORIGIN='https://bd-spord.test/';
 
 (async()=>{
  const b=await chromium.launch({executablePath:BROWSER,args:['--no-sandbox']});
- const pg=await (await b.newContext({viewport:{width:1280,height:950}})).newPage();
+ /* ⚠️ เขตเวลาของคนใช้จริง (ไทย) ไม่ใช่ UTC — ดูเหตุผลใน datestep.test.cjs */
+ const pg=await (await b.newContext({viewport:{width:1280,height:950},
+   timezoneId:'Asia/Bangkok'})).newPage();
  const errs=[];pg.on('pageerror',e=>errs.push(String(e)));
  const html=fs.readFileSync(PAGE,'utf8');
  await pg.route(ORIGIN+'**',r=>r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}));
@@ -2186,6 +2188,37 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    'ดึง '+alf.calls+' ครั้ง · ได้ไฟล์ '+alf.got+' · ถามหาไฟล์ '+alf.asked+' ครั้ง');
  t('📥 ...แล้วตรวจ GIN ต่อได้เลย ผลตรวจถูกบันทึกตามปกติ',
    alf.rows.indexOf('CT11|64849613')>=0,alf.rows.join(' , '));
+
+ /* ================================================================
+  * 19) 📅 ปุ่ม ◀ ▶ ของช่องวันที่ ต้องขยับ "หนึ่งวัน" พอดี (เจ้าของแจ้ง 27 พ.ย. 69
+  *     *"ปุ่มนี่กดไม่ไป ปรับแก้หน่อย"* — เป็นบั๊กเขตเวลา: toISOString() แปลงเป็น UTC
+  *     บนเครื่องเวลาไทยจึง +1 วันแล้วได้วันเดิม และ −1 วันแล้วข้ามไปสองวัน
+  *     ⚠️ เทสต์นี้มีความหมายก็ต่อเมื่อเบราว์เซอร์ตั้งเขตเวลาไทย (ตั้งไว้แล้วที่ newContext)
+  * ================================================================ */
+ const step=await ev(()=>{
+   __reset();__slip();__as('manager',null,'แอดมิน 1');_switchTab('spord');
+   SP.view='slip';SP.sid='B20261118-01';SP.sec='adm';SP.day='2026-11-23';renderSpord();
+   const o={tz:Intl.DateTimeFormat().resolvedOptions().timeZone,start:spDay('B20261118-01')};
+   spStepDay(1);o.fwd=SP.day;
+   spStepDay(-1);o.back=SP.day;
+   spStepDay(-1);o.back2=SP.day;
+   /* ข้ามสิ้นเดือนก็ต้องถูก */
+   spSetDay('2026-11-30');spStepDay(1);o.nextMon=SP.day;
+   spSetDay('2026-12-01');spStepDay(-1);o.prevMon=SP.day;
+   /* todayISO ต้องเป็นวันตามปฏิทินของเครื่อง ไม่ใช่ของ UTC */
+   const n=new Date();
+   o.today=todayISO();
+   o.local=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+   return o;});
+ t('📅 กด ▶ แล้วไปวันถัดไปพอดีหนึ่งวัน',step.fwd==='2026-11-24',
+   step.start+' → '+step.fwd+'  (เขตเวลา '+step.tz+')');
+ t('📅 กด ◀ แล้วถอยพอดีหนึ่งวัน ไม่ข้ามสองวัน',
+   step.back==='2026-11-23'&&step.back2==='2026-11-22',step.back+' → '+step.back2);
+ t('📅 ข้ามสิ้นเดือน/ต้นเดือนถูกต้อง',
+   step.nextMon==='2026-12-01'&&step.prevMon==='2026-11-30',
+   step.nextMon+' · '+step.prevMon);
+ t('📅 todayISO ตรงกับวันบนปฏิทินของเครื่อง ไม่ใช่ของ UTC',
+   step.today===step.local,step.today+' vs '+step.local);
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

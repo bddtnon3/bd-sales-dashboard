@@ -85,7 +85,11 @@ const boot=`
 
 (async()=>{
  const b=await chromium.launch({executablePath:BROWSER,args:['--no-sandbox']});
- const pg=await (await b.newContext({viewport:{width:1400,height:1000}})).newPage();
+ /* ⚠️ ต้องรันในเขตเวลาของคนใช้จริง (ไทย = UTC+7) ไม่ใช่ UTC ของเครื่องทดสอบ —
+    ปุ่มเลื่อนวันเคยพังเฉพาะบนเครื่องเวลาไทย เพราะ toISOString() แปลงเป็น UTC แล้ววันเพี้ยน
+    ไปหนึ่งวัน ส่วนในเครื่องทดสอบ UTC กลับทำงานถูก จึงไม่มีเทสต์ไหนจับได้เลย (27 พ.ย. 69) */
+ const pg=await (await b.newContext({viewport:{width:1400,height:1000},
+   timezoneId:'Asia/Bangkok'})).newPage();
  const errs=[];pg.on('pageerror',e=>errs.push(String(e)));
  await pg.setContent(fs.readFileSync(path.join(ROOT,'public','index.html'),'utf8'),{waitUntil:'domcontentloaded'});
  await pg.evaluate(boot);

@@ -722,8 +722,19 @@ code, never printed.
   use `.reverse()`) must carry **`data-rev="1"`**; one filled oldest-first (quarters) must not, and
   `#keySel` sets the flag per period in `initKeys`. `selStep` never reimplements a handler: it
   moves `selectedIndex` and dispatches `change`, so it is exactly a dropdown pick and **cannot
-  touch data**. Prove both with **`node test/browser/datestep.test.cjs`** (72 checks, including a
+  touch data**. Prove both with **`node test/browser/datestep.test.cjs`** (78 checks, including a
   byte-for-byte comparison of every stored blob before and after every button on every page).
+  **📅 Never build a calendar date with `toISOString()`** (`ymdOf`/`ymOf`, owner 27 Nov 26:
+  *"ปุ่มนี่กดไม่ไป ปรับแก้หน่อย"*). It converts to UTC, and every phone in the depot is on UTC+7,
+  so a date taken from **local midnight** is a day out *every time*: measured under
+  `TZ=Asia/Bangkok`, `spStepDay(+1)` from the 23rd returned the 23rd and `spStepDay(-1)` returned
+  the 21st — ▶ appeared dead and ◀ skipped a day. On a real instant it is a day out whenever local
+  time is before 07:00. **The test machine runs in UTC, where all of it works, so nothing caught
+  it** — `datestep` and `spord` now create their browser context with
+  `timezoneId:'Asia/Bangkok'`, and `spord.test.cjs` asserts each step moves exactly one day across
+  a month boundary. Everything that wants "the date on the user's calendar" goes through `ymdOf`.
+  The one correct use that stays is a date built with `Date.UTC(...)` and read back with `getUTC*`
+  (the Excel serial converter and the PJP calendar): both sides are UTC, so they cannot drift.
   The **📥 สถานะออเดอร์ (ซื้อ)** tab group (`renderPsi`/`parsePSI`) answers the other half of the
   question: *what did we order from Unilever, and when did it reach our warehouse?* The owner asked
   for it on 27 Nov 26 — *"หมวด สถานะออเดอร์ (ซื้อ) โดยวางไว้ตรงกลางของ การสั่งของ และ สต็อค ส่วนตัวเดิม
@@ -751,8 +762,19 @@ code, never printed.
   `PSIV`, and has two sub-tabs: **📥 ของเข้าคลัง** (per receiving day — products, cases, value,
   invoice numbers, banded by the order form's own categories) and **🔎 สั่งไป → ได้ของหรือยัง**,
   which is the reconciliation the owner asked for: per code, ศูนย์สั่ง → หัก Drop → **ควรได้** →
-  เข้าคลังแล้ว → วันที่เข้า. `ควรได้` is the quantity the Drop file says was actually shipped
-  (`dropD`, falling back to ordered − dropped), never a guess. **Four statuses, and the fourth is
+  เข้าคลังแล้ว → **ขาดอีก** → วันที่เข้า. `ควรได้` is the quantity the Drop file says was actually
+  shipped (`dropD`, falling back to ordered − dropped), never a guess, and `ขาดอีก` is
+  `ควรได้ − เข้าคลังแล้ว` — the one number the owner wants from the page.
+  **⚠️ An arrival belongs to ONE order round** (`psiGotFor`/`psiOrdByCode`, owner 27 Nov 26:
+  *"เหมือนมันขึ้นโชว์จำนวนของที่สั่งเป็นวันเดียวกันที่ของเข้า … ผมต้องการให้ระบบ track ได้ว่าการ
+  สั่งของหักดรอปรอบวันนั้น ๆ … ครบตามออเดอร์นั้น ๆ หรือไม่ และขาดอีกกี่ลัง"*). `psiGot` sums **every**
+  round from the order date onward, which is right for the badge on a product's status but wrong
+  here: a code ordered twice had the second round's goods counted into the first, so the first read
+  ✅ เข้าครบ while it was still short, and the same cases were counted twice. An arrival now belongs
+  to the **latest order round of that code at or before the centre's invoice date** (`cr`, falling
+  back to the receiving date, which is never more than a day apart), so the allocation is
+  one-to-one. Goods that arrive **before** the code's first order round still count for it, or real
+  stock would vanish from the page. **Four statuses, and the fourth is
   the one that matters**: ✅ เข้าครบ · 🟡 เข้าบางส่วน · 🕓 ยังไม่เข้า · ⛔ โดน Drop ทั้งหมด, plus
   **⏳ ยังไม่ได้อัพไฟล์ PSI ที่ครอบวันนี้** — "no file yet" and "not arrived" are different facts and
   must never share a cell, or a day nobody has uploaded reads as the centre failing to ship.
@@ -762,7 +784,7 @@ code, never printed.
   pill, never merged into the Drop badge**: the Drop file is the centre's answer, PSI is our
   warehouse's, and they are different steps. With no PSI file covering that round the pill is
   **silent**, never "ยังไม่เข้า". Prove it with
-  **`node test/browser/psi.test.cjs`** (45 checks, self-contained with made-up codes; 47 with the
+  **`node test/browser/psi.test.cjs`** (49 checks, self-contained with made-up codes; 47 with the
   real file via `PSI_FILE=/path/PSI_ddmmyyyy.xlsx`, which never enters the repo) plus the `PSI`
   cases in `merge-safety`.
   The **📋 สถานะออเดอร์ (ขาย)** tab group (`renderOtrk`) answers *"where is this order?"* for the whole
@@ -1231,7 +1253,7 @@ code, never printed.
   one — otherwise the button asked for the file while the answer was already on its way. Reading is
   manager-only, like the check itself. Prove it with the `api/alloc.js` cases in
   **`node test/merge-safety.test.mjs`** (325 checks) and the round-trip cases in
-  **`node test/browser/spord.test.cjs`** (278 checks).
+  **`node test/browser/spord.test.cjs`** (282 checks).
   **④ คลังส่งออก is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
@@ -1460,7 +1482,7 @@ code, never printed.
   on consecutive lines would join into a 20-digit run and both vanish. Typing is still there,
   unchanged, under *— หรือพิมพ์เลขเอง —*. The picker is not a data upload, so the one-upload-button
   rule does not apply. Prove it with the self-contained cases in
-  **`node test/browser/spord.test.cjs`** (278 checks) and, against the owner's real screenshots,
+  **`node test/browser/spord.test.cjs`** (282 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
@@ -1577,7 +1599,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (278 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (282 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1590,7 +1612,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (278 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (282 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

@@ -2618,7 +2618,7 @@ function weekId(dstr){
   const day=(dt.getDay()+6)%7; 
   const mon=new Date(dt); mon.setDate(dt.getDate()-day);
   const sun=new Date(mon); sun.setDate(mon.getDate()+6);
-  return mon.toISOString().slice(0,10)+"__"+sun.toISOString().slice(0,10);
+  return ymdOf(mon)+"__"+ymdOf(sun);
 }
 const MONTH_TH=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
 function fmtMonth(m){const[y,mo]=m.split("-");return MONTH_TH[+mo-1]+" "+(+y+543);}
@@ -2628,7 +2628,7 @@ function fmtDateTime(ms){if(!ms)return "";const d=new Date(ms);const ds=d.getFul
 let CAL={dates:null,month:null,pick:null,sel:null};
 function openCal(dates,current,onPick){
   CAL.dates=new Set(dates||[]);CAL.pick=onPick;CAL.sel=current||null;
-  const base=current||([...CAL.dates].sort().pop())||new Date().toISOString().slice(0,10);
+  const base=current||([...CAL.dates].sort().pop())||todayISO();
   CAL.month=new Date(base+"T00:00:00");CAL.month.setDate(1);
   renderCal();document.getElementById("calModal").classList.remove("hidden");
 }
@@ -5764,7 +5764,7 @@ function renderPromoRes(){
        
       ((it.reps||[]).length?`<div class="pm-reps"><span class="psub">📎 รูปรีพอร์ทต้นฉบับ:</span>`+
         it.reps.map((R,i)=>`<a class="pm-rep" href="${anaEsc(R.u)}" target="_blank" rel="noopener"
-            title="${anaEsc((R.line?R.line+" · ":"")+(R.at?fmtDate(new Date(R.at).toISOString().slice(0,10)):""))}">
+            title="${anaEsc((R.line?R.line+" · ":"")+(R.at?fmtDate(ymdOf(R.at)):""))}">
             <img src="${anaEsc(R.u)}" alt="รีพอร์ท ${i+1}" loading="lazy">
             <span>${anaEsc(R.line||("รูปที่ "+(i+1)))}</span></a>`).join("")+`</div>`:"")+
       (rs.length?`<div style="margin-top:10px">`+grpTable(
@@ -9163,7 +9163,7 @@ function ldAll(){
     const sale=ldSales(m.store);
     return {l:l,m:m,st:st,store:m.store||"",line:m.line||"",
       niv:(sale&&sale.niv)||0,storeName:(sale&&sale.name)||"",
-      month:(l.at?new Date(l.at):new Date()).toISOString().slice(0,7)};
+      month:ymOf(l.at?new Date(l.at):new Date())};
   });
 }
 function ldRows(){
@@ -9740,7 +9740,14 @@ function toast(msg,ms){
   el.textContent=msg;el.style.display="block";
   clearTimeout(TOAST_T);TOAST_T=setTimeout(()=>{el.style.display="none";},ms||2600);
 }
-function todayISO(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+ 
+function ymdOf(d){
+  const t=(d instanceof Date)?d:new Date(d);
+  if(isNaN(t.getTime()))return "";
+  return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+}
+function ymOf(d){return ymdOf(d).slice(0,7);}
+function todayISO(){return ymdOf(new Date());}
  
 function orderRoundDate(){const now=new Date();const d=new Date(now);if(now.getHours()>=9)d.setDate(d.getDate()+1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function reqDatesFor(code){return Object.keys((REQUESTS&&REQUESTS.data)||{}).filter(d=>REQUESTS.data[d]&&REQUESTS.data[d][code]).sort();}
@@ -10355,7 +10362,7 @@ function parseStock(name,buf){
     if(nm&&!names[code])names[code]=nm;
   }
   if(!out.length)throw new Error("ไม่พบรายการสินค้าในไฟล์สต็อก");
-  const d=fnameDate(name)||new Date().toISOString().slice(0,10);
+  const d=fnameDate(name)||todayISO();
   STOCKD={date:d,rows:out,names:names,up:Date.now(),src:"old"};stkBust();
   if(!ORDERS.names)ORDERS.names={};Object.keys(names).forEach(c=>{ORDERS.names[c]=names[c];});
   ulog("✅ "+name+" (สต็อก) → "+out.length+" รายการ (ขาย "+out.filter(x=>x.wh==="sale").length+" / แถม "+out.filter(x=>x.wh==="gift").length+") · ณ "+fmtDate(d));
@@ -13636,7 +13643,7 @@ function spYm(sl){
   const d=String((sl&&sl.d)||"");
   if(/^\d{4}-\d{2}/.test(d))return d.slice(0,7);
   const at=(sl&&(sl.at||sl.up))||0;
-  return at?new Date(at).toISOString().slice(0,7):"ไม่ระบุ";
+  return at?ymOf(at):"ไม่ระบุ";
 }
  
 function spYears(){
@@ -14641,7 +14648,7 @@ function spDayPick(sid){
 function spStepDay(n){
   const d=spDay(SP.sid),t=new Date(d+"T00:00:00");
   t.setDate(t.getDate()+n);
-  spSetDay(t.toISOString().slice(0,10));
+  spSetDay(ymdOf(t));
 }
 function spKeyHtml(sid){
   const ymd=spDay(sid),codes=spSlipCodes(sid),lines=spSlipLines(sid);
@@ -15751,7 +15758,7 @@ async function parseMasterDcode(name,A,hdr){
     if(r.st==="Inactive")nInact++;
     det[c]=o;
   });
-  MASTER={date:fnameDate(name)||new Date().toISOString().slice(0,10),
+  MASTER={date:fnameDate(name)||todayISO(),
     items:items,det:det,src:"dcode",up:Date.now()};
   const skipped=total-keep.length;
   ulog("📚 "+name+" (Master dcode) → ไฟล์มี <b>"+total.toLocaleString()+"</b> รหัสทั้งประเทศ · "+
@@ -15787,7 +15794,7 @@ async function parseMaster(name,buf){
   if(!Object.keys(items).length)throw new Error("ไม่พบรายการสินค้าใน master data");
    
   const keepDet=(MASTER&&MASTER.det)||null;
-  MASTER={date:fnameDate(name)||new Date().toISOString().slice(0,10),items:items,up:Date.now()};
+  MASTER={date:fnameDate(name)||todayISO(),items:items,up:Date.now()};
   if(keepDet&&Object.keys(keepDet).length)MASTER.det=keepDet;
   ulog("✅ "+name+" (Master Data) → "+Object.keys(items).length+" รายการ (ใช้ค้นหาคำขอ + เติมชื่อสินค้าที่หมดสต็อก + เลือก SKU ในหน้า DCODE)");
   pgBust();
@@ -15809,6 +15816,40 @@ function psiOrdDates(){
     return x&&Object.keys(orderedMerged(x)).length;}).slice().sort();
 }
  
+let _psiOrdC=null;
+function psiOrdBust(){_psiOrdC=null;}
+ 
+function psiOrdByCode(){
+  const ds=psiOrdDates();
+  if(_psiOrdC&&_psiOrdC.n===ds.length)return _psiOrdC.m;
+  const D=((ORDERS&&ORDERS.data)||{}),m={};
+  ds.forEach(d=>{
+    const om=orderedMerged(D[d]||{});
+    Object.keys(om).forEach(c=>{(m[c]=m[c]||[]).push(d);});
+  });
+  Object.keys(m).forEach(c=>m[c].sort());
+  _psiOrdC={m:m,n:ds.length};return m;
+}
+ 
+function psiGotFor(code,ymd){
+  const a=psiIdx()[String(code)];if(!a||!a.length)return null;
+  const ds=psiOrdByCode()[String(code)]||[];
+  const i=ds.indexOf(ymd);
+  const next=(i>=0&&i<ds.length-1)?ds[i+1]:"";
+  const first=ds.length?ds[0]:ymd;
+  const hit=a.filter(x=>{
+    const w=x.cr||x.d||"";
+    if(!w)return false;
+    if(next&&w>=next)return false;             
+    if(w<ymd&&ymd!==first)return false;        
+    return true;
+  });
+  if(!hit.length)return null;
+  const last=hit[hit.length-1];
+  return {d:last.d,cs:Math.round(hit.reduce((s,x)=>s+x.cs,0)*100)/100,
+    n:hit.length,inv:last.inv,cr:last.cr};
+}
+ 
 function psiCheck(ymd){
   const day=((ORDERS&&ORDERS.data)||{})[ymd];
   if(!day)return {rows:[],has:false};
@@ -15820,15 +15861,18 @@ function psiCheck(ymd){
     const drop=e?dropQ(e):0;
      
     const exp=e?(dropD(e)||Math.max(0,(dropO(e)||ord)-drop)):(res?ord:ord);
-    const g=psiGot(c,ymd);
+    const g=psiGotFor(c,ymd);
     const got=g?g.cs:0;
+    const ex=Math.round(exp*100)/100;
     let st;
     if(!cov)st="nofile";
-    else if(exp<=0)st="dropall";
+    else if(ex<=0)st="dropall";
     else if(!g)st="wait";
-    else if(got+0.001>=exp)st="full";
+    else if(got+0.001>=ex)st="full";
     else st="part";
-    return {code:c,ord:ord,drop:drop,exp:Math.round(exp*100)/100,got:Math.round(got*100)/100,
+     
+    const short=(st==="nofile"||st==="dropall")?null:Math.max(0,Math.round((ex-got)*100)/100);
+    return {code:c,ord:ord,drop:drop,exp:ex,got:Math.round(got*100)/100,short:short,
       d:g?g.d:"",inv:g?g.inv:[],st:st,res:res};
   });
   return {rows:rows,has:true,cov:cov,res:res};
@@ -15908,7 +15952,10 @@ function psiChkHtml(){
   const d=PSIV.ord,R=psiCheck(d);
   const cnt={full:0,part:0,wait:0,dropall:0,nofile:0};
   R.rows.forEach(r=>{cnt[r.st]=(cnt[r.st]||0)+1;});
-  const sum=R.rows.reduce((s,r)=>({ord:s.ord+r.ord,exp:s.exp+r.exp,got:s.got+r.got}),{ord:0,exp:0,got:0});
+  const sum=R.rows.reduce((s,r)=>({ord:s.ord+r.ord,drop:s.drop+r.drop,exp:s.exp+r.exp,
+    got:s.got+r.got,short:s.short+(r.short||0),
+    nShort:s.nShort+((r.short||0)>0.001?1:0)}),
+    {ord:0,drop:0,exp:0,got:0,short:0,nShort:0});
   const only=PSIV.only;
   const show=R.rows.filter(r=>only==="all"||r.st===only);
   const opt=ds.slice().reverse().map(x=>`<option value="${x}"${x===d?" selected":""}>${anaEsc(fmtDate(x))}</option>`).join("");
@@ -15925,11 +15972,13 @@ function psiChkHtml(){
           `<td data-l="Drop">${r.drop?`<b class="down">${psiN(r.drop)}</b>`:"-"}</td>`+
           `<td data-l="ควรได้"><b>${psiN(r.exp)}</b></td>`+
           `<td data-l="เข้าคลังแล้ว">${r.st==="nofile"?'<span class="psub">รอไฟล์</span>':(r.got?`<b>${psiN(r.got)}</b>`:'<span class="psub">0</span>')}</td>`+
+          `<td data-l="ขาดอีก">${r.short===null?'<span class="psub">-</span>'
+            :(r.short>0.001?`<b class="down">${psiN(r.short)}</b>`:'<span class="up">ครบ</span>')}</td>`+
           `<td data-l="วันที่เข้า">${r.d?anaEsc(fmtDayMon(r.d)):"-"}</td>`+
           `<td data-l="สถานะ" style="text-align:left"><span class="pill ${S.p}">${S.i} ${S.t}</span></td></tr>`;})};
   });
-  const tbl=grpTable([{h:"สินค้า",a:"l"},{h:"ศูนย์สั่ง"},{h:"Drop"},{h:"ควรได้"},
-      {h:"เข้าคลังแล้ว"},{h:"วันที่เข้า"},{h:"สถานะ",a:"l"}],
+  const tbl=grpTable([{h:"สินค้า",a:"l"},{h:"ศูนย์สั่ง"},{h:"หัก Drop"},{h:"ควรได้"},
+      {h:"เข้าคลังแล้ว"},{h:"ขาดอีก"},{h:"วันที่เข้า"},{h:"สถานะ",a:"l"}],
     bands,{alwaysBand:true,cls:"psi-tbl",empty:'<div class="insight">ไม่มีรายการที่ตรงกับที่เลือกไว้</div>'});
   const note=!R.cov
     ? `<div class="note">⏳ <b>ยังไม่ได้อัพไฟล์ PSI ที่ครอบวันนี้</b> — ระบบจึงยังตอบไม่ได้ว่าของเข้าคลังหรือยัง
@@ -15945,17 +15994,23 @@ function psiChkHtml(){
     <div class="cards">
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">ศูนย์สั่ง</div>
         <div class="v">${psiN(sum.ord)}</div><div class="s">ลัง · ${R.rows.length} รายการ</div></div>
-      <div class="card"><div class="k">ควรได้ (หัก Drop)</div>
-        <div class="v">${psiN(sum.exp)}</div><div class="s">ลัง</div></div>
+      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">หัก Drop</div>
+        <div class="v down">${sum.drop?psiN(sum.drop):"-"}</div><div class="s">ลัง</div></div>
+      <div class="card"><div class="k">ควรได้</div>
+        <div class="v">${psiN(sum.exp)}</div><div class="s">ลัง · สั่ง − Drop</div></div>
       <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">เข้าคลังแล้ว</div>
         <div class="v up">${R.cov?psiN(sum.got):"-"}</div><div class="s">${R.cov?"ลัง":"ยังไม่มีไฟล์ PSI"}</div></div>
-      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">ยังไม่เข้า</div>
-        <div class="v down">${cnt.wait||0}</div><div class="s">รายการ · เข้าบางส่วน ${cnt.part||0}</div></div>
+      <div class="card" style="border-top:3px solid #8a6500"><div class="k" style="color:#8a6500">ขาดอีก</div>
+        <div class="v" style="color:${sum.short>0.001?"var(--bad)":"var(--good)"}">${
+          R.cov?psiN(sum.short):"-"}</div>
+        <div class="s">${R.cov?(sum.short>0.001?("ลัง · "+sum.nShort+" รายการ"):"ครบทั้งรอบแล้ว")
+          :"ยังไม่มีไฟล์ PSI"}</div></div>
     </div>
     <div class="panel"><h3>🔎 ใบสั่งรอบ ${anaEsc(fmtDate(d))} → ของเข้าคลัง</h3>
-      <div class="psub"><b>ควรได้</b> = จำนวนที่ศูนย์ส่งจริงตามใบ Drop (สั่งแล้วหักที่โดน Drop ออก) ·
-        <b>เข้าคลังแล้ว</b> = รวมทุกรอบที่ไฟล์ PSI บอกว่าเข้า ตั้งแต่วันที่สั่งเป็นต้นไป ·
-        หนึ่งรหัสเข้าได้หลายวัน ระบบรวมให้แล้ว</div>
+      <div class="psub"><b>ควรได้</b> = ศูนย์สั่ง − หัก Drop (จำนวนที่ศูนย์ส่งจริงตามใบ Drop) ·
+        <b>ขาดอีก</b> = ควรได้ − เข้าคลังแล้ว · <b>เข้าคลังแล้ว</b> นับเฉพาะของที่เป็น
+        <b>ของรอบนี้</b> คือของที่ศูนย์ออกบิลตั้งแต่รอบนี้ไปจนถึงก่อนรอบถัดไปของรหัสนั้น —
+        รหัสที่สั่งซ้ำหลายรอบจึงไม่เอาของรอบหลังมานับให้รอบนี้ · หนึ่งรหัสเข้าได้หลายวัน ระบบรวมให้แล้ว</div>
       ${note}
       <div class="rq-lines" style="margin:10px 0">
         ${chip("all","ทั้งหมด",R.rows.length)}
@@ -16033,7 +16088,7 @@ function parsePSI(name,buf){
     (skipNo?" · ข้ามแถวที่ไม่ใช่สินค้า "+skipNo:"")+
     (warn.length?"<br>⚠️ "+warn.join(" · "):"")+
     "<br>วันอื่นที่เคยอัพไว้อยู่ครบเหมือนเดิม ไฟล์ที่กรองมาบางช่วงจึงลบของเก่าไม่ได้");
-  psiBust();psiCrBust();pgBust();
+  psiBust();psiCrBust();psiOrdBust();pgBust();
   if(CURTAB==="psib")renderPsi();
   syncToServer();
 }
@@ -16091,7 +16146,7 @@ function psiCrOf(ymd){
   const ds=psiDays();
   if(!ds.length)return null;
   const t=new Date(d+"T00:00:00");t.setDate(t.getDate()+2);
-  const lim=t.toISOString().slice(0,10);
+  const lim=ymdOf(t);
    
   return ds.some(x=>x>=lim)?{v:0,n:0,cs:0,rec:[]}:null;
 }

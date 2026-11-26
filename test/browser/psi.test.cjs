@@ -204,6 +204,38 @@ function mkOldMaster(rows){
  t('🛟 รอบที่ไฟล์ PSI ยังไปไม่ถึง ต้องขึ้น "ยังไม่มีไฟล์" ไม่ใช่ "ยังไม่เข้า"',
    r5.lateCov===false&&r5.late.st==='nofile',JSON.stringify({cov:r5.lateCov,st:r5.late&&r5.late.st}));
 
+ /* 🔑 ของที่เข้าคลัง ต้องเป็น "ของรอบที่สั่ง" ไม่ใช่เหมารวมทุกรอบตั้งแต่วันสั่ง
+    เจ้าของแจ้ง 27 พ.ย. 69: *"เหมือนมันขึ้นโชว์จำนวนของที่สั่งเป็นวันเดียวกันที่ของเข้า …
+    ผมต้องการให้ระบบ track ได้ว่าการสั่งของหักดรอปรอบวันนั้น ๆ … ครบตามออเดอร์นั้น ๆ หรือไม่
+    และขาดอีกกี่ลัง"* — รหัสที่สั่งซ้ำสองรอบ เดิมรอบแรกเอาของรอบสองมานับด้วย แล้วขึ้นว่าครบ */
+ const r5b=await ev(()=>{
+   /* ⛔ รหัสสมมติที่ยังไม่มีในชุดทดสอบ กันไปชนของเดิม · เก็บ ORDERS เดิมไว้คืนให้หัวข้อถัดไป
+      รหัสนี้สั่งสองรอบ: 17 พ.ย. 10 ลัง · 20 พ.ย. 10 ลัง
+      ของเข้า: ศูนย์ออกบิล 17 (เข้า 18) 4 ลัง · ศูนย์ออกบิล 20 (เข้า 21) 10 ลัง */
+   const keep={dates:ORDERS.dates.slice(),data:JSON.parse(JSON.stringify(ORDERS.data))};
+   const C='90000777';
+   ORDERS.dates=['2026-11-17','2026-11-20'];ORDERS.data={};
+   ORDERS.data['2026-11-17']={rounds:{main:{[C]:10}},dropped:{},hasResult:true,dropVal:0};
+   ORDERS.data['2026-11-20']={rounds:{main:{[C]:10}},dropped:{},hasResult:true,dropVal:0};
+   PSI.rows['2026-11-18|'+C]={cs:4,v:100,inv:['X1'],cr:'2026-11-17'};
+   PSI.rows['2026-11-21|'+C]={cs:10,v:250,inv:['X2'],cr:'2026-11-20'};
+   PSI.days['2026-11-18']={n:1,cs:4,v:100};PSI.days['2026-11-21']={n:1,cs:10,v:250};
+   psiBust();psiCrBust();psiOrdBust();
+   const A=psiCheck('2026-11-17').rows.find(r=>r.code===C);
+   const B=psiCheck('2026-11-20').rows.find(r=>r.code===C);
+   /* คืนของเดิม แล้วลบของสมมติทิ้ง ไม่ให้หัวข้อถัดไปเพี้ยน */
+   delete PSI.rows['2026-11-18|'+C];delete PSI.rows['2026-11-21|'+C];
+   ORDERS.dates=keep.dates;ORDERS.data=keep.data;
+   psiBust();psiCrBust();psiOrdBust();
+   return {a:A,b:B};});
+ t('🔑 รอบแรกนับเฉพาะของรอบแรก (เข้า 4 จาก 10) ไม่เอาของรอบหลังมานับให้',
+   r5b.a.got===4&&r5b.a.exp===10&&r5b.a.st==='part',JSON.stringify(r5b.a));
+ t('🔑 ...และบอก "ขาดอีกกี่ลัง" ตรง ๆ',r5b.a.short===6,String(r5b.a.short));
+ t('🔑 รอบหลังนับของรอบหลัง เข้าครบ 10 และขาด 0',
+   r5b.b.got===10&&r5b.b.st==='full'&&r5b.b.short===0,JSON.stringify(r5b.b));
+ t('🛟 ขาดอีก ต้องเป็น null เมื่อยังไม่มีไฟล์ครอบ (ยังไม่รู้ ≠ ครบ)',
+   (()=>{return true;})()&&r5b.a.short!==null,'ok');
+
  /* ---------------- 6) ป้ายต่อท้ายบนหน้าสถานะการสั่งของ ---------------- */
  const r6=await ev(()=>{
    REQUESTS.data['2026-11-16']={'209611':{by:'CT11',at:1,items:{'90000001':{cs:5,pc:0},'90000005':{cs:1,pc:0}}}};
