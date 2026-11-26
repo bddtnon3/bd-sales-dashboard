@@ -110,16 +110,59 @@ const BROWSER=require('./_chrome.cjs').chromePath();
    ui.rows+' แถว · อาทิตย์ '+ui.sun);
  t('หัวตารางแยก 1st / 2nd ชัดเจน',
    /1st/.test(ui.head)&&/2nd/.test(ui.head)&&/CON −15%/.test(ui.head),ui.head.slice(0,90));
+ /* ⚠️ ตั้งแต่ 27 พ.ย. 69 มีช่อง "📥 ของเข้าคลัง (NIV)" คั่นก่อนช่อง 2nd (จากไฟล์ PSI) */
  t('แถววันที่ 2 พ.ย. โชว์ตัวเลขครบทั้ง 4 ช่อง',
-   ui.r2[2]==='850,000.00'&&ui.r2[3]==='50,000.00'&&ui.r2[4]==='800,000.00'&&ui.r2[5]==='900,000.00',
+   ui.r2[2]==='850,000.00'&&ui.r2[3]==='50,000.00'&&ui.r2[4]==='800,000.00'&&ui.r2[6]==='900,000.00',
    ui.r2.join(' | '));
  t('แถววันที่ไม่มีใบสั่ง แต่เปิดบิลแล้วยอด 0 → 1st เป็นขีด · 2nd เป็น 0.00',
-   ui.r4[2]==='-'&&ui.r4[4]==='-'&&ui.r4[5]==='0.00',ui.r4.join(' | '));
+   ui.r4[2]==='-'&&ui.r4[4]==='-'&&ui.r4[6]==='0.00',ui.r4.join(' | '));
+ t('🛟 ยังไม่มีไฟล์ PSI → ช่องของเข้าคลังเป็นขีด ไม่ใช่ 0',
+   ui.r2[5]==='-'&&ui.r4[5]==='-',ui.r2[5]+' / '+ui.r4[5]);
  t('มีแถวรวมทั้งเดือนท้ายตาราง',
-   /รวมทั้งเดือน/.test(ui.foot[0])&&ui.foot[3]==='1,290,000.00'&&ui.foot[4]==='1,020,000.00',
+   /รวมทั้งเดือน/.test(ui.foot[0])&&ui.foot[3]==='1,290,000.00'&&ui.foot[5]==='1,020,000.00',
    ui.foot.join(' | '));
  t('การ์ดสรุปบอกยอดรวมและวันทำงานที่ผ่านมา',
    /1st/.test(ui.cards)&&/2nd/.test(ui.cards)&&/1,360,000.00/.test(ui.cards),ui.cards.slice(0,80));
+
+ /* ---------- 3ข) 📥 ของเข้าคลัง (NIV) จากไฟล์ PSI (เจ้าของสั่ง 27 พ.ย. 69) ----------
+    *"ทำให้ยอดโชว์สรุป NIV จากวันที่คลังรับเข้า ไปขึ้นโชว์ในรายงานหน้าประวัติการสั่งของ …
+      มันจะตรงวันที่กับยอด Delivery ในตารางพอดี"*
+    ⚠️ วัดกับไฟล์จริงแล้ว ต้องจับด้วย "วันที่ศูนย์ออกบิล" (cr) ไม่ใช่วันที่คลังรับเข้า
+       — จับด้วยวันรับเข้าจะเลื่อนไปหนึ่งวันและไม่ตรงกับไฟล์ของเจ้าของเลย
+    ⛔ ตัวเลขสมมติขึ้นเอง รีโปเป็นสาธารณะ */
+ const psiUi=await ev(()=>{
+   PSI={rows:{},days:{},up:1};
+   /* ศูนย์ออกบิล 2 พ.ย. → คลังรับเข้า 3 พ.ย. (เลื่อนหนึ่งวัน เหมือนของจริง) */
+   PSI.rows['2026-11-03|90000001']={cs:10,v:120000,inv:['A1'],cr:'2026-11-02'};
+   PSI.rows['2026-11-03|90000002']={cs:5,v:80000,inv:['A1'],cr:'2026-11-02'};
+   /* ศูนย์ออกบิล 5 พ.ย. → รับเข้าวันเดียวกัน */
+   PSI.rows['2026-11-05|90000001']={cs:7,v:70000,inv:['A2'],cr:'2026-11-05'};
+   PSI.days['2026-11-03']={n:2,cs:15,v:200000};
+   PSI.days['2026-11-05']={n:1,cs:7,v:70000};
+   psiBust();psiCrBust();
+   renderOrdHist();
+   const tb=document.querySelector('#ohBody .oh-tbl');
+   const cell=d=>{const r=[...tb.querySelectorAll('tbody tr')]
+     .find(tr=>tr.children[0].textContent.trim().indexOf(d)===0);
+     return r?r.children[5].textContent.trim():'(ไม่เจอแถว)';};
+   return {d2:cell('2 พ.ย.'),d3:cell('3 พ.ย.'),d5:cell('5 พ.ย.'),d20:cell('20 พ.ย.'),
+     foot:[...tb.querySelectorAll('tfoot td')].map(x=>x.textContent.trim()),
+     head:[...tb.querySelectorAll('thead th')].map(x=>x.textContent.trim()).join(' | '),
+     cards:document.querySelector('#ohBody .cards').textContent.replace(/\s+/g,' '),
+     note:document.getElementById('ohBody').textContent.replace(/\s+/g,' ')};});
+ t('📥 ยอด NIV ของที่เข้าคลัง ขึ้นตาม "วันที่ศูนย์ออกบิล" ไม่ใช่วันที่คลังรับเข้า',
+   psiUi.d2==='200,000.00'&&psiUi.d5==='70,000.00',
+   '2 พ.ย. = '+psiUi.d2+' · 5 พ.ย. = '+psiUi.d5);
+ t('🛟 วันที่ไฟล์ครอบถึงแล้วแต่ศูนย์ไม่ได้ออกบิล = 0 จริง ๆ (ไม่ใช่ขีด)',
+   psiUi.d3==='0',psiUi.d3);
+ t('🛟 วันที่ยังไม่มีไฟล์ PSI ครอบถึง = ขีด ห้ามเป็น 0',psiUi.d20==='-',psiUi.d20);
+ t('📥 มีคอลัมน์และแถวรวมของตัวเอง',
+   /ของเข้าคลัง/.test(psiUi.head)&&psiUi.foot[4]==='270,000.00',
+   psiUi.foot.join(' | '));
+ t('📥 การ์ดสรุปเดือนมียอดของเข้าคลังด้วย',
+   /ของเข้าคลัง/.test(psiUi.cards)&&/270,000.00/.test(psiUi.cards),psiUi.cards.slice(-140));
+ t('🛟 ...และเขียนบอกว่าไม่ใช่ไฟล์ BI Report ของยูนิลีเวอร์',
+   /ไม่ใช่ไฟล์ BI Report/.test(psiUi.note),psiUi.note.slice(-160));
 
  /* ---------- 4) เลือกเดือน ◀ ▶ ---------- */
  const mon=await ev(()=>{const sel=document.getElementById('ohSel');
@@ -154,7 +197,7 @@ const BROWSER=require('./_chrome.cjs').chromePath();
    /ประวัติการสั่งของ/.test(wb.SheetNames[0])&&aoa.length===36,
    wb.SheetNames.join(',')+' · '+aoa.length+' แถว');
  t('...ตัวเลขในไฟล์ตรงกับหน้าจอ',
-   totRow[2]===1360000&&totRow[4]===1290000&&totRow[5]===1020000,JSON.stringify(totRow));
+   totRow[2]===1360000&&totRow[4]===1290000&&totRow[6]===1020000,JSON.stringify(totRow));
  t('...มีหมายเหตุบอกว่า 1st เป็นประมาณการ ไม่ใช่ยอดจากใบแจ้งหนี้',
    aoa.some(r=>/ประมาณการ/.test(String(r[1]||''))));
 

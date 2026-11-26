@@ -302,6 +302,51 @@ function seed(a){
    (a.LOTS||[]).forEach(l=>{CSTOCK.lots[l.id]=JSON.parse(JSON.stringify(l));CSTOCK.lots[l.id].up=1000;});
    CST.only='open';CST.q='';CST.open={};renderCStock();},{LOTS});
 
+ /* ---------- 6ค) 📦 สรุปสต็อคกลาง "รายสินค้า" (เจ้าของสั่ง 27 พ.ย. 69) ----------
+    *"ให้สรุปออกมาเป็นสต็อคกลาง … ให้เวลาสั่งของแล้วเลื่อนไปดูสต็อคกลางที่ตัดบิลไว้แต่ยัง
+      ไม่ส่งของ มีจำนวนทั้งหมดเท่าไหร่ สรุปมูลค่าออกมาเป็นเท่าไหร่"*
+    หน้าเดิมเรียงตาม "ใบ" · หน้านี้ม้วนรวมเป็น "รหัสสินค้า" ข้ามทุกใบ */
+ const sum=await ev(()=>{
+   const s0=window.__sync,p0=window.__posts.length;
+   cstSetSec('sum');CST.only='open';CST.q='';renderCStock();
+   const box=document.getElementById('cstSum');
+   const rows=[...box.querySelectorAll('.cst-sum tbody tr')].map(tr=>
+     [...tr.children].map(td=>td.textContent.trim().replace(/\s+/g,' ')));
+   const by={};cstSumRows().forEach(r=>{by[r.code]={cs:r.cs,out:r.out,left:r.left};});
+   const o={rows:rows,by:by,
+     foot:[...box.querySelectorAll('.cst-sum tfoot td')].map(x=>x.textContent.trim()),
+     txt:box.textContent.replace(/\s+/g,' '),
+     cardsHidden:document.getElementById('cstCards').style.display==='none',
+     listHidden:document.getElementById('cstBody').classList.contains('hidden'),
+     sync:window.__sync-s0,posts:window.__posts.length-p0};
+   /* กรองด้วยคำค้น */
+   CST.q='โอโม';renderCStock();
+   o.qRows=document.querySelectorAll('#cstSum .cst-sum tbody tr').length;
+   CST.q='';
+   /* เปลี่ยนเป็น "ทั้งหมด" ต้องเห็นรหัสที่เคลียร์หมดแล้วด้วย */
+   cstSetOnly('all');renderCStock();
+   o.allRows=document.querySelectorAll('#cstSum .cst-sum tbody tr').length;
+   cstSetOnly('open');cstSetSec('list');renderCStock();
+   return o;});
+ t('📦 หน้าสต็อคกลางมีหน้า "สรุปรายสินค้า" และเป็นหน้าแรกที่เปิดเจอ',
+   sum.rows.length>0&&/สรุปสต็อคกลาง/.test(sum.txt)&&sum.listHidden,
+   sum.rows.length+' รหัส');
+ t('📦 คงค้าง = ตัดบิลไว้ − ส่งออกแล้ว ม้วนรวมข้ามทุกใบต่อรหัส',
+   Object.keys(sum.by).every(c=>Math.abs(sum.by[c].cs-sum.by[c].out-sum.by[c].left)<0.011),
+   JSON.stringify(sum.by).slice(0,200));
+ t('📦 มีแถวรวมท้ายตาราง บอกทั้งจำนวนและมูลค่า',
+   /รวม/.test(sum.foot[0]||'')&&sum.foot.length>=6&&/฿/.test(sum.foot[4]||''),
+   sum.foot.join(' | '));
+ t('🛟 ลอตเก่าที่ไม่มีรหัสสินค้า ต้องไม่หายไปจากสรุป (จัดกลุ่มด้วยชื่อแทน)',
+   sum.rows.some(r=>/ไม่มีรหัส/.test(r[0])),sum.rows.map(r=>r[0]).join(' , '));
+ t('📦 ค้นหาแล้วกรองรหัสให้',sum.qRows>0&&sum.qRows<sum.rows.length,
+   sum.qRows+' จาก '+sum.rows.length);
+ t('📦 เลือก "ทั้งหมด" เห็นรหัสที่เคลียร์หมดแล้วด้วย',sum.allRows>=sum.rows.length,
+   sum.allRows+' ≥ '+sum.rows.length);
+ t('🔑 ไม่โชว์การ์ดซ้ำสองชุดคนละหน่วย (ลอต vs รหัสสินค้า)',sum.cardsHidden,'ok');
+ t('🛟 หน้าสรุปอ่านอย่างเดียว ไม่สั่งบันทึกอะไรเลย',
+   sum.sync===0&&sum.posts===0,'sync +'+sum.sync+' · posts +'+sum.posts);
+
  /* ---------- 7) 🛟 อ่านอย่างเดียว ---------- */
  const syncBase=await ev(()=>window.__sync);   /* การอัพไฟล์ก่อนหน้านี้สั่ง sync ไปแล้วตามปกติ */
  const before=await ev(new Function('return '+BLOBS));

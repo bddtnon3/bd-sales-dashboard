@@ -523,6 +523,16 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .oh-tbl .oh-w{color:var(--muted);font-size:12px}
 .oh-tbl th.oh-g1{background:#FFF4E0;color:#8a6500}
 .oh-tbl th.oh-g2{background:#EAF7EE;color:var(--good)}
+/* 📥 ของเข้าคลัง (NIV) — คนละก้อนกับ 1st/2nd จึงต้องมีสีของตัวเอง ไม่ใช่กลืนไปกับช่องข้าง ๆ */
+/* 📦 สรุปสต็อคกลางรายสินค้า — ให้ตัวเลขอ่านเป็นคอลัมน์เหมือนหน้าสต็อคปัจจุบัน */
+.cst-sum td,.cst-sum th{text-align:right;white-space:nowrap}
+.cst-sum td.l,.cst-sum th.l{text-align:left;white-space:normal}
+.cst-sum code{font-size:12.5px;color:var(--muted)}
+.cst-sum tr.cst-sum-done>td{background:#F7FAF8;color:var(--muted)}
+.cst-sum .psub{margin:0}
+.oh-tbl th.oh-g3{background:#F3EEFB;color:#5B3FA8}
+.oh-tbl td.oh-g3{background:#FBF9FE}
+.oh-tbl tr.oh-tot>td.oh-g3{background:#EFE8FA;color:#5B3FA8}
 .oh-tbl tr.sun>td{background:#FDECEC}
 .oh-tbl tr.sat>td{background:#F5F8FD}
 .oh-tbl tr.oh-tot>td{background:var(--blue-soft);font-weight:800;color:var(--blue-dark);
@@ -1877,7 +1887,8 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
     <div id="cstockView" class="hidden">
       <div class="controls">
         <div class="ctl" id="cstSecBox" style="display:none"><label>หน้าจอ</label><div class="seg" id="cstSec">
-          <button data-s="list" class="on" onclick="cstSetSec('list')">📦 รายการค้าง</button>
+          <button data-s="sum" class="on" onclick="cstSetSec('sum')">📦 สรุปรายสินค้า</button>
+          <button data-s="list" onclick="cstSetSec('list')">🧾 รายการค้าง (รายใบ)</button>
           <button data-s="bill" onclick="cstSetSec('bill')">🧾 ใบตัดบิล</button>
           <button data-s="rep" onclick="cstSetSec('rep')">📊 รายงานย้อนหลัง</button>
         </div></div>
@@ -1896,6 +1907,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       </div>
       <div class="kpi-monthbar" id="cstBar"></div>
       <div class="cards" id="cstCards"></div>
+      <div id="cstSum" class="hidden"></div>
       <div id="cstBill" class="hidden"></div>
       <div id="cstRep" class="hidden"></div>
       <div id="cstBody"></div>
@@ -8731,7 +8743,11 @@ function ohSum(rows){
   return rows.reduce((a,r)=>{
     if(r.v){a.c85+=r.v.c85;a.drop+=r.v.drop;a.net+=r.v.net;a.nOrd++;}
     if(r.s!==null){a.sale+=r.s;a.nSale++;}
-    return a;},{c85:0,drop:0,net:0,sale:0,nOrd:0,nSale:0});
+    /* 📥 ของที่เข้าคลังจริง — คนละคำถามกับ "สั่งไปเท่าไหร่" จึงนับวันของตัวเอง
+       วันที่ยังไม่มีไฟล์ PSI ครอบถึง เป็น null ต้องไม่นับเป็น 0 */
+    const pv=psiCrOf(r.d);
+    if(pv){a.psi+=pv.v;if(pv.n)a.nPsi++;}else a.psiWait++;
+    return a;},{c85:0,drop:0,net:0,sale:0,nOrd:0,nSale:0,psi:0,nPsi:0,psiWait:0});
 }
 /* วันทำงานที่ผ่านมาแล้ว (จ.–ส. · อาทิตย์ศูนย์ปิด) — ช่องซ้ายบนของไฟล์เจ้าของ */
 function ohWork(ym,rows){
@@ -8774,17 +8790,23 @@ function renderOrdHist(){
       <div class="v" style="font-size:20px">${THBk(tot.net)}</div><div class="s">${ohN(tot.net)} บาท</div></div>
     <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">2nd · ขายออกให้ร้านค้า</div>
       <div class="v up" style="font-size:20px">${THBk(tot.sale)}</div><div class="s">${ohN(tot.sale)} บาท · ${tot.nSale} วันที่เปิดบิล</div></div>
+    <div class="card" style="border-top:3px solid #8a6500"><div class="k" style="color:#8a6500">📥 ของเข้าคลัง (NIV)</div>
+      <div class="v" style="font-size:20px">${tot.nPsi?THBk(tot.psi):'<span style="color:var(--muted)">–</span>'}</div>
+      <div class="s">${tot.nPsi?(ohN(tot.psi)+" บาท · "+tot.nPsi+" วันที่ออกบิล"):"ยังไม่มีไฟล์ PSI"}${
+        tot.psiWait?' · <span class="down">รออีก '+tot.psiWait+' วัน</span>':""}</div></div>
     <div class="card"><div class="k">2nd เทียบ 1st</div>
       <div class="v" style="font-size:20px">${tot.net>0?pct+"%":"–"}</div><div class="s">ขายออก ÷ ซื้อเข้า (หลังหัก Drop)</div></div>
   </div>`;
   const row=r=>{
     const cls=r.dow===0?" sun":(r.dow===6?" sat":"");
     const no='<span class="psub">-</span>';
+    const pv=psiCrOf(r.d);
     return `<tr class="oh-r${cls}">
       <td class="oh-d">${fmtDayMon(r.d)}</td><td class="oh-w">${OH_DOW[r.dow]}</td>
       <td>${r.v?ohN(r.v.c85):no}</td>
       <td>${r.v&&r.v.drop?'<span class="down">'+ohN(r.v.drop)+'</span>':no}</td>
       <td>${r.v?"<b>"+ohN(r.v.net)+"</b>":no}</td>
+      <td class="oh-g3">${pv?(pv.n?ohN(pv.v):'<span class="psub">0</span>'):no}</td>
       <td>${r.s===null?no:'<b class="up">'+ohN(r.s)+'</b>'}</td></tr>`;
   };
   h+=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -8795,15 +8817,21 @@ function renderOrdHist(){
       <b>Order (CON −15%)</b> มาจากมูลค่า CON Confirm ของใบสั่งวันนั้น หัก 15% ตามที่ศูนย์ใช้ประมาณการ —
       <b>เป็นตัวเลขประมาณการ ไม่ใช่ยอดจากใบแจ้งหนี้</b> · <b>หัก Drop</b> มาจาก Drop Value ในใบ Drop วันนั้น ·
       <b>2nd</b> มาจากไฟล์ยอดขายรายวัน (รวมทุกสาย)
+      <br><b>📥 ของเข้าคลัง (NIV)</b> มาจากไฟล์ PSI ที่คลังรับของเข้า จับตาม <b>วันที่ศูนย์ออกบิล</b>
+      จึงตรงวันกับช่องซ้ายมือ — <b>ไม่ใช่ไฟล์ BI Report ของยูนิลีเวอร์</b> แต่วัดแล้วใกล้กันมาก
+      (ไฟล์ BI มีรายการคืนของ/ลดหนี้ติดลบซึ่งไฟล์ PSI ไม่มี) · วันที่ยังไม่มีไฟล์ PSI ครอบถึง
+      จะขึ้นขีด ไม่ใช่ 0${tot.psiWait?' — ตอนนี้ยังรออยู่ <b>'+tot.psiWait+'</b> วัน':""}
     </div>
     <div class="tblwrap"><table class="grp-tbl oh-tbl"><thead>
       <tr><th rowspan="2">วันที่</th><th rowspan="2">วัน</th>
           <th colspan="3" class="oh-g1">1st — ซื้อเข้าจากยูนิลีเวอร์</th>
+          <th rowspan="2" class="oh-g3">📥 ของเข้าคลัง (NIV)</th>
           <th rowspan="2" class="oh-g2">2nd — ขายออกให้ร้านค้า</th></tr>
       <tr><th class="oh-g1">Order (CON −15%)</th><th class="oh-g1">หัก Drop</th><th class="oh-g1">Order − Drop</th></tr>
       </thead><tbody>${rows.map(row).join("")}</tbody>
       <tfoot><tr class="oh-tot"><td colspan="2">รวมทั้งเดือน</td>
         <td>${ohN(tot.c85)}</td><td>${ohN(tot.drop)}</td><td><b>${ohN(tot.net)}</b></td>
+        <td class="oh-g3"><b>${tot.nPsi?ohN(tot.psi):'<span class="psub">-</span>'}</b></td>
         <td><b>${ohN(tot.sale)}</b></td></tr></tfoot></table></div></div>`;
   el.innerHTML=h;
 }
@@ -8815,14 +8843,17 @@ function ohXlsx(){
     ["เดือน",cstYmTh(ym),"","วันทำงานผ่านมาแล้ว",wk.used+" / "+wk.tot+" วัน"],
     ["หมายเหตุ","1st Order = CON Confirm × 0.85 (ประมาณการ) · หัก Drop = Drop Value · 2nd = ยอดขายรายวันรวมทุกสาย"],
     [""],
-    ["วันที่","วัน","1st Order (CON -15%)","หัก Drop","1st Order - Drop","2nd ขายออก"]];
-  rows.forEach(r=>a.push([fmtDate(r.d),OH_DOW[r.dow],
-    r.v?Math.round(r.v.c85*100)/100:"",r.v?Math.round(r.v.drop*100)/100:"",
-    r.v?Math.round(r.v.net*100)/100:"",r.s===null?"":Math.round(r.s*100)/100]));
+    ["วันที่","วัน","1st Order (CON -15%)","หัก Drop","1st Order - Drop","ของเข้าคลัง (NIV)","2nd ขายออก"]];
+  rows.forEach(r=>{const pv=psiCrOf(r.d);
+    a.push([fmtDate(r.d),OH_DOW[r.dow],
+      r.v?Math.round(r.v.c85*100)/100:"",r.v?Math.round(r.v.drop*100)/100:"",
+      r.v?Math.round(r.v.net*100)/100:"",
+      pv?Math.round(pv.v*100)/100:"",r.s===null?"":Math.round(r.s*100)/100]);});
   a.push(["รวมทั้งเดือน","",Math.round(tot.c85*100)/100,Math.round(tot.drop*100)/100,
-    Math.round(tot.net*100)/100,Math.round(tot.sale*100)/100]);
+    Math.round(tot.net*100)/100,tot.nPsi?Math.round(tot.psi*100)/100:"",
+    Math.round(tot.sale*100)/100]);
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(a);
-  ws["!cols"]=[{wch:16},{wch:7},{wch:20},{wch:14},{wch:20},{wch:18}];
+  ws["!cols"]=[{wch:16},{wch:7},{wch:20},{wch:14},{wch:20},{wch:18},{wch:18}];
   XLSX.utils.book_append_sheet(wb,ws,"ประวัติการสั่งของ");
   const out=XLSX.write(wb,{bookType:"xlsx",type:"array"});
   msDownload(new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),
@@ -11583,6 +11614,115 @@ function cstList(){const C=cstOk();
     .sort((a,b)=>{const A=cstDone(a)?1:0,B=cstDone(b)?1:0;
       return A-B||String(b.d||"").localeCompare(String(a.d||""))||String(a.id).localeCompare(String(b.id));});}
 const CST_OLD=30;    /* ค้างเกินกี่วันถือว่า "ลืม" — ตัวเลขนี้เปลี่ยนได้ตามที่เจ้าของบอก */
+/* ============================================================================
+ * 📦 สรุปสต็อคกลาง "รายสินค้า" — เจ้าของสั่ง 27 พ.ย. 69
+ *   *"สตอคกลางเดิม ให้ปรับเป็นแสดงจำนวนที่สรุปมาจากออเดอร์พิเศษ … ที่รวมจำนวนสินค้าที่ยัง
+ *     ค้างในคลังของออเดอร์พิเศษ ให้สรุปออกมาเป็นสต็อคกลาง โดยออกแบบ Template ให้หน้าตา
+ *     คล้ายกันไปในทางเดียวกันกับหน้า สต็อคปัจจุบัน ให้เวลาสั่งของแล้วเลื่อนไปดูสต็อคกลาง
+ *     ที่ตัดบิลไว้แต่ยังไม่ส่งของ มีจำนวนทั้งหมดเท่าไหร่ สรุปมูลค่าออกมาเป็นเท่าไหร่"*
+ *
+ * หน้าเดิมเรียงตาม "ใบตัดบิล" ซึ่งเป็นมุมของคนทำงาน (ใบไหนเคลียร์ถึงไหน) · หน้านี้เป็นมุมของ
+ * คนสั่งของ: **รหัสนี้ยังค้างอยู่ในคลังกี่ลัง** จะได้ไม่สั่งซ้ำของที่มีอยู่แล้ว
+ *
+ * ⚠️ คงค้าง = ตัดบิลไว้ − ส่งออกไปแล้ว คำนวณสดจาก clr[] ทุกครั้ง (กฎ cstLeft — ห้ามอ่านจากฟิลด์)
+ * ⚠️ มูลค่าเอาจากบิลจริงก่อน (cstVal ซึ่งมาจากไฟล์ร้านค้า) เหลือเท่าไหร่คิดตามสัดส่วนที่ยังไม่ส่ง
+ *    รหัสที่ไม่มีบิลจึงประเมินจากไฟล์ราคาหัวเสือ และ **ต้องติดป้าย (ประเมิน)** ไม่ใช่กลืนรวมกัน
+ * ⚠️ รหัสที่ยังหาราคาไม่ได้เลย ต้อง **นับแล้วบอก** ห้ามรวมเป็น 0 (กฎเดียวกับรายงานสต็อค)
+ * ⚠️ อ่านอย่างเดียวทั้งหน้า — ไม่เขียนอะไรลง CSTOCK เลย
+ * ==========================================================================*/
+function cstSumRows(){
+  const by={},rd=(typeof alRoundAt==="function")?alRoundAt(todayISO()):null;
+  cstList().forEach(l=>{
+    /* ⚠️ ลอตเก่าที่นำเข้ามาไม่มีรหัสสินค้า มีแต่ชื่อ — ห้ามทิ้ง ไม่งั้นของที่ค้างจริงหายไปจากสรุป
+       จึงจัดกลุ่มด้วยรหัสเมื่อมี และด้วยชื่อเมื่อไม่มี · ไม่มีทั้งคู่ก็ยังรวมไว้ที่ "(ไม่ระบุ)" */
+    const code=String((l&&l.code)||"").trim();
+    const nm=String((l&&l.nm)||"").trim();
+    const key=code||(nm?"nm:"+nm:"(ไม่ระบุ)");
+    const e=by[key]||(by[key]={code:code,nm:"",cs:0,out:0,left:0,pc:0,
+      val:0,est:0,noPz:0,lots:0,open:0,old:0,last:""});
+    if(!e.nm)e.nm=nm||(code?oname(code):"")||"";
+    const left=cstLeft(l),cs=+l.cs||0;
+    e.cs+=cs;e.out+=cstClrCs(l);e.left+=left;e.pc+=(+l.pc||0);e.lots++;
+    if(l.d&&l.d>e.last)e.last=l.d;
+    if(left>0){
+      e.open++;
+      if(cstAge(l)>=CST_OLD)e.old++;
+      const v=cstVal(l);
+      if(v&&cs>0)e.val+=v*(left/cs);
+      else{
+        const pz=(typeof alPrice==="function")?alPrice(code,rd?rd.i:-1):null;
+        if(pz&&pz.wsCs)e.est+=pz.wsCs*left;else e.noPz++;
+      }
+    }
+  });
+  return Object.keys(by).map(k=>{const e=by[k];
+    e.left=Math.round(e.left*100)/100;e.cs=Math.round(e.cs*100)/100;
+    e.out=Math.round(e.out*100)/100;
+    e.val=Math.round(e.val*100)/100;e.est=Math.round(e.est*100)/100;
+    e.tot=Math.round((e.val+e.est)*100)/100;
+    return e;})
+    .sort((a,b)=>(b.left-a.left)||String(a.code||a.nm).localeCompare(String(b.code||b.nm)));
+}
+function cstSumHtml(){
+  const q=String(CST.q||"").trim().toLowerCase();
+  const all=cstSumRows();
+  const openOnly=CST.only!=="all";
+  let rows=openOnly?all.filter(r=>r.left>0.0001):all;
+  if(q)rows=rows.filter(r=>(r.code+" "+r.nm).toLowerCase().indexOf(q)>=0);
+  const T=rows.reduce((a,r)=>{a.left+=r.left;a.cs+=r.cs;a.out+=r.out;a.val+=r.val;
+    a.est+=r.est;a.noPz+=r.noPz;a.old+=r.old;return a;},
+    {left:0,cs:0,out:0,val:0,est:0,noPz:0,old:0});
+  const B=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  if(!all.length)return `<div class="panel"><div class="insight">
+    ยังไม่มีของที่ตัดบิลค้างไว้ — เปิดใบตัดบิลที่ <b>🧾 ใบตัดบิล</b> หรือที่ 📦 ออเดอร์พิเศษ</div></div>`;
+  const pct=T.cs>0?Math.round((T.cs-T.left)/T.cs*1000)/10:0;
+  return `<div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h3>📦 สรุปสต็อคกลาง — รายสินค้า</h3>
+      <div class="psub">ของที่ตัดบิลไว้แล้วแต่ยังไม่ได้ส่งออก · รวมทุกใบ ทุกออเดอร์พิเศษ</div></div>
+    <div class="psub" style="margin-bottom:10px">
+      <b>คงค้าง</b> = ตัดบิลไว้ − ส่งออกไปแล้ว (คิดสดจากรายการที่เคลียร์ทุกครั้ง) ·
+      <b>มูลค่า</b> เอาจากบิลจริงก่อน รหัสที่ยังไม่มีบิลประเมินจากไฟล์ราคาหัวเสือและติดป้ายไว้ ·
+      ${openOnly?"กำลังดูเฉพาะรหัสที่ยังค้าง":"กำลังดูทุกรหัส"} — เปลี่ยนได้ที่ช่อง <b>แสดง</b> ด้านบน
+      ${T.noPz?`<br><b class="down">⚠️ มี ${T.noPz} รหัสที่ยังไม่มีราคาในไฟล์ จึงยังคิดมูลค่าไม่ได้ (ไม่ได้นับเป็น 0)</b>`:""}
+    </div>
+    <div class="cards" style="margin-top:4px">
+      <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">รหัสที่ยังค้าง</div>
+        <div class="v">${B(rows.filter(r=>r.left>0.0001).length)}</div><div class="s">รหัสสินค้า</div></div>
+      <div class="card"><div class="k">คงค้างรวม</div>
+        <div class="v">${B(T.left)}</div><div class="s">ลัง · ตัดบิลไว้ ${B(T.cs)} ลัง</div></div>
+      <div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">มูลค่าที่ยังค้าง</div>
+        <div class="v" style="font-size:20px">${THB(T.val+T.est)}</div>
+        <div class="s">${T.est?"จากบิล "+THB(T.val)+" · <b>ประเมิน "+THB(T.est)+"</b>":"จากบิลจริง"}</div></div>
+      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">ส่งออกไปแล้ว</div>
+        <div class="v up" style="font-size:20px">${pct}%</div><div class="s">${B(T.out)} จาก ${B(T.cs)} ลัง</div></div>
+    </div>
+    ${q?`<div class="rq-note" style="margin-top:4px">🔎 ค้นหา "<b>${anaEsc(CST.q)}</b>" — เจอ ${rows.length} รหัส</div>`:""}
+    <div class="tblwrap" style="margin-top:12px"><table class="grp-tbl cst-sum"><thead><tr>
+      <th class="l">รหัส</th><th class="l">สินค้า</th><th>ตัดบิลไว้</th><th>ส่งออกแล้ว</th>
+      <th>คงค้าง</th><th>มูลค่าคงค้าง</th><th class="l">ล่าสุด</th></tr></thead><tbody>${
+      rows.slice(0,800).map(r=>{
+        const p=cstPct(r.cs,r.left);
+        return `<tr${r.left>0.0001?"":' class="cst-sum-done"'}>
+          <td class="l">${r.code?'<code>'+anaEsc(r.code)+'</code>'
+            :'<span class="psub">ไม่มีรหัส</span>'}</td>
+          <td class="l">${anaEsc(r.nm)||'<span class="psub">(ไม่มีชื่อ)</span>'}
+            <span class="psub" style="display:block">${r.lots} ลอต${
+              r.old?' · <b class="down">ค้างเกิน '+CST_OLD+' วัน '+r.old+' ลอต</b>':""}</span></td>
+          <td>${B(r.cs)}</td><td>${B(r.out)}</td>
+          <td><b style="color:${cstPctCol(p)}">${B(r.left)}</b>${
+            r.pc?'<span class="psub" style="display:block">+ '+B(r.pc)+' ชิ้น</span>':""}</td>
+          <td>${r.tot?THB(r.tot):'<span class="psub">-</span>'}${
+            r.est?'<span class="psub" style="display:block">ประเมิน</span>':""}${
+            (!r.tot&&r.noPz)?'<span class="psub" style="display:block">ไม่มีราคา</span>':""}</td>
+          <td class="l psub">${r.last?fmtDate(r.last):"-"}</td></tr>`;}).join("")}
+      </tbody>
+      <tfoot><tr class="oh-tot"><td colspan="2">รวม ${B(rows.length)} รหัส</td>
+        <td>${B(T.cs)}</td><td>${B(T.out)}</td><td><b>${B(T.left)}</b></td>
+        <td><b>${THB(T.val+T.est)}</b></td><td></td></tr></tfoot></table></div>
+    ${rows.length>800?'<div class="psub" style="margin-top:6px">แสดง 800 รหัสแรก — ใช้ช่องค้นหาด้านบนเพื่อหาที่ต้องการ</div>':""}
+  </div>`;
+}
 /* ---------- ใบตัดบิล (slip) ----------
    แถวสินค้าของใบ "อ่านจาก lots" เสมอ ไม่เก็บซ้ำในเรคอร์ดใบ — ถ้าเก็บสองที่
    พอเคลียร์ของออกไปแล้ว ตัวเลขสองที่จะไม่ตรงกัน แล้วใครจะรู้ว่าอันไหนจริง */
@@ -12213,11 +12353,13 @@ function cstImport(){
 /* ---------- หน้าจอ ---------- */
 /* sel = รายการในหน้ารายการค้างที่ "ติ๊กเลือกไว้" (คนละอันกับ sel ของแถวในฟอร์ม)
    _shown = รายการที่แสดงอยู่จริงต่อก้อน ใช้ตอนกด "เลือกทั้งใบ" ให้เลือกเฉพาะที่เห็น */
-let CST={q:"",only:"open",open:{},sec:"list",f:null,exFor:"",clr:null,sopen:{},st:0,_auto:0,
+/* sec ตั้งต้นเป็น "sum" — เจ้าของสั่ง 27 พ.ย. 69 ให้หน้าสต็อคกลางเปิดมาเจอ "สรุปรายสินค้า"
+   แบบเดียวกับหน้าสต็อคปัจจุบัน ส่วนรายการรายใบยังอยู่ที่ชิปถัดไป */
+let CST={q:"",only:"open",open:{},sec:"sum",f:null,exFor:"",clr:null,sopen:{},st:0,_auto:0,
   sel:{},_shown:{},exMan:null,ry:"",rm:"",row:{}};
 function cstSetOnly(v){CST.only=v;renderCStock();}
 function cstSetSec(v){
-  CST.sec=(v==="bill"&&cstMgr())?"bill":(v==="rep"?"rep":"list");
+  CST.sec=(v==="bill"&&cstMgr())?"bill":(v==="rep"?"rep":(v==="sum"?"sum":"list"));
   if(CST.sec==="bill"&&!CST.f){const d=cstDraftLoad();if(d){CST.f=d;CST.fRest=1;}}
   renderCStock();
 }
@@ -14044,6 +14186,23 @@ function alPcs(o,pk,shr){
   if(sh&&!shr)return null;
   return cs*q+sh*(shr||0)+pc;
 }
+/* ============================================================================
+ * 📦 "N ลัง M ชิ้น" ไม่ใช่ลังทศนิยม (เจ้าของสั่ง 27 พ.ย. 69)
+ *   *"ทำไมหน่วยชิ้นลัง มันเป็นเศษทศนิยม ปรับให้มันเป็น ....ลัง .....ชิ้น ไปเลยได้ไหมดูง่าย ๆ
+ *     กับเลขข้างล่างรวมกี่ชิ้นก็สรุปให้อีกที"*
+ *
+ * เดิมการ์ดโชว์ `ชิ้นทั้งหมด ÷ ขนาดลัง` รวมข้ามรหัส จึงออกมาเป็น 11.67 ลัง ซึ่งอ่านแล้วไม่รู้ว่า
+ * จะหยิบของจริงกี่ลัง · ตอนนี้บวก **ลังเต็มของแต่ละรหัส** กับ **เศษชิ้นของแต่ละรหัส** แยกกัน
+ * แล้วค่อยเขียนออกมา — ได้ตัวเลขที่หยิบของตามได้จริง และไม่มีทศนิยมเลย
+ * ⚠️ เศษชิ้นรวมกันเกินหนึ่งลังได้ (คนละรหัสคนละขนาดลัง) ซึ่งถูกต้องแล้ว ห้ามเอาไปหารต่อ
+ * ⚠️ บรรทัดล่างยังบอก "รวมกี่ชิ้น" ไว้เหมือนเดิม เพราะเป็นตัวที่เอาไปเทียบกับไฟล์ได้ตรง ๆ
+ * ==========================================================================*/
+function spCsTxt(cs,pc){
+  const B=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+  const c=Math.round(+cs||0),p=Math.round((+pc||0)*100)/100;
+  if(!c&&!p)return "0 <small>ลัง</small>";
+  return (c?B(c)+" <small>ลัง</small>":"")+(c&&p?" ":"")+(p?B(p)+" <small>ชิ้น</small>":"");
+}
 /* ชิ้นรวม → "N ลัง M ชิ้น" */
 function alSplit(pcs,pk){
   const q=+pk||0;
@@ -14054,9 +14213,11 @@ function alQtyTxt(o,pk,shr){
   const pcs=alPcs(o,pk,shr),sp=alSplit(pcs,pk);
   const raw=[o&&o.cs?o.cs+" ลัง":"",o&&o.sh?o.sh+" แพ็ค":"",o&&o.pc?o.pc+" ชิ้น":""]
     .filter(Boolean).join(" + ");
-  if(!sp)return {txt:raw||"0",sub:(o&&o.sh)?'<span class="down">ไม่รู้ขนาดแพ็ค</span>':"",pcs:null};
+  if(!sp)return {txt:raw||"0",sub:(o&&o.sh)?'<span class="down">ไม่รู้ขนาดแพ็ค</span>':"",
+    pcs:null,cs:null,pc:null};
   const main=[sp.cs?sp.cs+" ลัง":"",sp.pc?sp.pc+" ชิ้น":""].filter(Boolean).join(" ")||"0";
-  return {txt:main,sub:raw&&raw!==main?raw:"",pcs:pcs};
+  /* cs/pc = ลังเต็ม + เศษชิ้น ของรหัสนี้ · เอาไปบวกกันข้ามรหัสได้โดยไม่เกิดทศนิยม */
+  return {txt:main,sub:raw&&raw!==main?raw:"",pcs:pcs,cs:sp.cs,pc:sp.pc};
 }
 /* ---------- มูลค่า — ไฟล์ใบจัดของ **ไม่มีช่องมูลค่าเลย** ----------
    เจ้าของถามถึง GSV / NIV · ไฟล์มีแค่ A-AD และไม่มีช่องเงินสักช่อง
@@ -14726,7 +14887,10 @@ function spCmp(sid,ymd){
      ⚠️ ไฟล์เก่า 30 ช่องไม่มีช่องเงิน → ถอยไปประเมินทั้งคู่ และ **บอกบนหน้าเว็บ** */
   const rd=alRoundAt(ymd);
   const fromFile=!!(g&&g.money);
+  /* cwS/cpS = ลังเต็ม + เศษชิ้น (บวกของแต่ละรหัสเข้าด้วยกัน ไม่มีทศนิยม)
+     csS/csF ยังเก็บไว้เป็นลังแบบทศนิยม สำหรับไฟล์ Excel ที่ส่งออก */
   const sum={sGsv:0,sNiv:0,fNiv:0,pcsS:0,pcsF:0,noPrice:0,noShr:0,csS:0,csF:0,
+    cwS:0,cpS:0,cwF:0,cpF:0,
     rGsv:0,rNiv:0,ordN:0,ordHit:0,ordWait:0,rNoGsv:0,src:fromFile?"file":"price",noMoney:0};
   /* 💵 ยอด "ทั้งออเดอร์" — คนละคำถามกับยอดสินค้าในใบนี้ เพราะหนึ่งเลขออเดอร์มีสินค้าตัวอื่น
      ที่ไม่อยู่ในใบนี้ด้วย · จับคู่ด้วยเลข Order Number ซึ่งเป็นเลขเดียวกับไฟล์ยอดขายรายวัน
@@ -14756,8 +14920,10 @@ function spCmp(sid,ymd){
          จึงนับเฉพาะแถวที่มีของแถมจริง ไม่ใช่นับทุกแถวให้คนตกใจเปล่า ๆ */
       if(!pz&&(!fromFile||(pf!=null&&pf>0)))sum.noPrice++;
       if((r.aTot.sh||0)&&!r.shr)sum.noShr++;
-      if(ps!=null){sum.pcsS+=ps;if(r.pk>0)sum.csS+=ps/r.pk;}
-      if(pf!=null){sum.pcsF+=pf;if(r.pk>0)sum.csF+=pf/r.pk;}
+      if(ps!=null){sum.pcsS+=ps;if(r.pk>0)sum.csS+=ps/r.pk;
+        if(r.qS&&r.qS.cs!=null){sum.cwS+=r.qS.cs;sum.cpS+=r.qS.pc;}}
+      if(pf!=null){sum.pcsF+=pf;if(r.pk>0)sum.csF+=pf/r.pk;
+        if(r.qF&&r.qF.cs!=null){sum.cwF+=r.qF.cs;sum.cpF+=r.qF.pc;}}
       /* 💵 ของขาย: ถ้าไฟล์มีช่องเงิน ใช้ของไฟล์ · ไม่มี ค่อยประเมินจากไฟล์ราคา */
       if(fromFile){
         r.gsv=+r.a.g||0;r.niv=+r.a.v||0;r.est=0;
@@ -14815,17 +14981,20 @@ function spCmpLines(cmp){
   });
   return out;
 }
-/* รวมชิ้นของหลายรหัสให้เป็น "X ลัง Y ชิ้น" ไม่ได้ เพราะลังละไม่เท่ากัน —
-   จึงรายงานเป็นลังแบบทศนิยมรวม (ผลบวกของ ชิ้น ÷ ลังละ) ซึ่งตรงกับการ์ดสรุปของหน้านี้อยู่แล้ว */
+/* รวมเป็น "X ลัง Y ชิ้น" โดยบวก **ลังเต็มของแต่ละรหัส** กับ **เศษชิ้นของแต่ละรหัส** แยกกัน
+   (เจ้าของสั่ง 27 พ.ย. 69 ให้เลิกโชว์ลังทศนิยม) · cs ทศนิยมยังคืนไว้ให้ไฟล์ Excel ใช้
+   ⚠️ เศษชิ้นรวมกันเกินหนึ่งลังได้ เพราะแต่ละรหัสลังละไม่เท่ากัน — ห้ามเอาไปหารต่อ */
 function spLnCs(items,pick){
-  let cs=0,pc=0,bad=0;
+  let cs=0,pc=0,bad=0,cw=0,cp=0;
   (items||[]).forEach(it=>{
     const q=pick==="f"?it.qF:(pick==="k"?it.qK:it.qS);
     if(!q||q.pcs==null){if(pick!=="k"&&it.st!=="noAlloc")bad++;return;}
     pc+=q.pcs;
     if(it.pk>0)cs+=q.pcs/it.pk;
+    if(q.cs!=null){cw+=q.cs;cp+=q.pc;}
   });
-  return {cs:Math.round(cs*100)/100,pc:pc,bad:bad};
+  return {cs:Math.round(cs*100)/100,pc:pc,bad:bad,
+    cw:cw,cp:Math.round(cp*100)/100};
 }
 function spCmpLn(v){SP.cmpLn=(SP.cmpLn===v)?"":v;renderSpord();}
 function spRole(){return (S.user&&S.user.role)||"";}
@@ -17093,10 +17262,12 @@ function spAdmHtml(sid){
     <td>${ST[r.st]}${r.allocDiff&&r.qT?'<br><span class="psub down">คลังจัดจริงไม่เท่าที่สั่ง</span>':""}</td></tr>`).join("");
   const S=cmp.sum||{},FF=S.src==="file";
   h+=`<div class="cards" style="margin-top:12px">
-      <div class="card"><div class="k">ขายออกไป</div><div class="v">${B(Math.round(S.csS*100)/100)}</div>
-        <div class="s">ลัง · ${B(S.pcsS)} ชิ้น</div></div>
-      <div class="card"><div class="k">ของแถม</div><div class="v">${B(Math.round(S.csF*100)/100)}</div>
-        <div class="s">ลัง · ${B(S.pcsF)} ชิ้น</div></div>
+      <div class="card"><div class="k">ขายออกไป</div>
+        <div class="v">${spCsTxt(S.cwS,S.cpS)}</div>
+        <div class="s">รวม ${B(S.pcsS)} ชิ้น</div></div>
+      <div class="card"><div class="k">ของแถม</div>
+        <div class="v">${spCsTxt(S.cwF,S.cpF)}</div>
+        <div class="s">รวม ${B(S.pcsF)} ชิ้น</div></div>
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k">💰 ยอดสินค้าในใบนี้${
         FF?' <span class="sp-ok">จากไฟล์</span>':' <span class="sp-warn">ประเมิน</span>'}</div>
         <div class="v" style="font-size:20px">${M(S.sNiv)}</div>
@@ -17107,7 +17278,9 @@ function spAdmHtml(sid){
           :"ยังไม่มีไฟล์ยอดขายของวันนี้"}</div></div>
     </div>
     <div class="psub" style="margin-top:8px">
-      • <b>ยอดสินค้าในใบนี้</b> = เฉพาะสินค้าที่อยู่ในใบออเดอร์ใบนี้
+      • <b>ลัง/ชิ้น</b> = ลังเต็มของแต่ละรหัสบวกกัน และเศษชิ้นของแต่ละรหัสบวกกัน
+      (เศษรวมกันเกินหนึ่งลังได้ เพราะแต่ละรหัสขนาดลังไม่เท่ากัน)
+      <br>• <b>ยอดสินค้าในใบนี้</b> = เฉพาะสินค้าที่อยู่ในใบออเดอร์ใบนี้
       <br>• <b>ยอดทั้งออเดอร์</b> = ยอดของทุกเลขออเดอร์ในรอบนี้ <b>รวมสินค้าตัวอื่นด้วย</b> จึงสูงกว่าเป็นปกติ
       ${FF?"":'<br><b class="down">⚠️ ไฟล์ใบจัดของรอบนี้ไม่มีช่อง GSV / NIV — ตัวเลขเงินเป็นค่าประเมิน</b>'}
       ${S.ordWait?'<br><b class="down">⚠️ อีก '+S.ordWait+' เลขยังไม่มีไฟล์ยอดขายของวันนั้น — ยอดจะขึ้นเองเมื่ออัพไฟล์</b>':""}
@@ -17140,10 +17313,10 @@ function spLineSumHtml(cmp,FF){
   const only=SP.cmpLn||"";
   /* 0 ที่ไม่มีของ ให้ขึ้นขีดจาง ๆ — ตัวเลข 0 เต็ม ๆ อ่านปนกับจำนวนจริงแล้วลายตา */
   const qtxt=q=>(q&&q.txt&&q.txt!=="0")?anaEsc(q.txt):'<span class="psub">-</span>';
-  const tot={cs:0,pc:0,n:0,niv:0};
+  const tot={cw:0,cp:0,pc:0,n:0,niv:0};
   L.forEach(e=>{const a=spLnCs(e.items,"s"),f=spLnCs(e.items,"f");
-    e._s=a;e._f=f;e._cs=Math.round((a.cs+f.cs)*100)/100;e._pc=a.pc+f.pc;
-    tot.cs+=e._cs;tot.pc+=e._pc;tot.n+=e.n;tot.niv+=e.niv;});
+    e._s=a;e._f=f;e._cw=a.cw+f.cw;e._cp=Math.round((a.cp+f.cp)*100)/100;e._pc=a.pc+f.pc;
+    tot.cw+=e._cw;tot.cp+=e._cp;tot.pc+=e._pc;tot.n+=e.n;tot.niv+=e.niv;});
   const cards=L.map(e=>{
     const on=only===e.ln;
     const warn=[];
@@ -17165,8 +17338,8 @@ function spLineSumHtml(cmp,FF){
       <button type="button" class="sl-head" onclick="spCmpLn('${anaEsc(e.ln)}')"
         title="${on?"กดเพื่อปิด":"กดเพื่อดูสินค้าของสายนี้"}">
         <span class="sl-ln">${anaEsc(e.ln)}</span>
-        <span class="sl-big">${B(e._cs)} <small>ลัง</small></span>
-        <span class="sl-sub">${e.n} รายการ · ขาย ${B(e._s.cs)} ลัง · แถม ${B(e._f.cs)} ลัง</span>
+        <span class="sl-big">${spCsTxt(e._cw,e._cp)}</span>
+        <span class="sl-sub">${e.n} รายการ · ขาย ${spCsTxt(e._s.cw,e._s.cp)} · แถม ${spCsTxt(e._f.cw,e._f.cp)}</span>
         <span class="sl-money">${M(e.niv)} <small>NIV${FF?"":" (ประเมิน)"}</small></span>
         <span class="sl-x">${on?"▲ ปิด":"▼ ดูสินค้า"}</span>
       </button>
@@ -17175,10 +17348,10 @@ function spLineSumHtml(cmp,FF){
   }).join("");
   return `<div class="panel" style="margin-top:12px;padding:14px">
     <h4 style="margin:0 0 4px">🚚 สรุปรายสาย · ${L.length} สาย</h4>
-    <div class="psub" style="margin-bottom:10px">รวมทั้งวัน <b>${B(tot.cs)} ลัง</b> ·
-      ${tot.n} รายการ · NIV ${M(tot.niv)}${FF?"":" (ประเมิน)"} ·
+    <div class="psub" style="margin-bottom:10px">รวมทั้งวัน <b>${spCsTxt(tot.cw,tot.cp)}</b>
+      (รวม ${B(tot.pc)} ชิ้น) · ${tot.n} รายการ · NIV ${M(tot.niv)}${FF?"":" (ประเมิน)"} ·
       <b>กดที่สายเพื่อดูว่าของสายนั้นมีสินค้าอะไร กี่ลังกี่ชิ้น</b>
-      <br>จำนวนลังรวมคิดจาก "ชิ้นทั้งหมด ÷ ลังละกี่ชิ้น" ของแต่ละรหัส จึงมีทศนิยมได้</div>
+      <br>ลังเต็มของแต่ละรหัสบวกกัน และเศษชิ้นของแต่ละรหัสบวกกัน (เศษรวมกันเกินหนึ่งลังได้)</div>
     <div class="sl-wrap">${cards}</div></div>`;
 }
 /* ---------- 📄 เอกสารผลตรวจรายวัน — Excel / PDF ----------
@@ -17382,7 +17555,7 @@ function renderCStock(){
    const b=document.querySelector('#cstSec button[data-s="bill"]');
    if(b)b.classList.toggle("hidden",!mgr);}
   {const q=document.getElementById("cstQBox"),o=document.getElementById("cstOnlyBox");
-   const show=CST.sec==="list"?"":"none";
+   const show=(CST.sec==="list"||CST.sec==="sum")?"":"none";
    if(q)q.style.display=show;if(o)o.style.display=show;}
   {const r=document.getElementById("cstRep");if(r){
      r.classList.toggle("hidden",CST.sec!=="rep");
@@ -17392,6 +17565,14 @@ function renderCStock(){
      b.innerHTML=CST.sec==="bill"?cstBillHtml():"";
      if(CST.sec==="bill")cstBillAfter();}}
   {const b=document.getElementById("cstBody");if(b)b.classList.toggle("hidden",CST.sec!=="list");}
+  {const u=document.getElementById("cstSum");if(u){
+     u.classList.toggle("hidden",CST.sec!=="sum");
+     u.innerHTML=CST.sec==="sum"?cstSumHtml():"";}
+   /* แถวการ์ดรวมด้านบนพูดเป็น "ลอต" ส่วนหน้าสรุปพูดเป็น "รหัสสินค้า" — โชว์พร้อมกันแล้ว
+      ตัวเลขชุดเดียวกันจะขึ้นสองที่ด้วยคนละหน่วย ซึ่งเป็นกับดักเดิมที่เคยทำให้เจ้าของงง
+      จึงซ่อนแถวบนในหน้านี้ แล้วให้การ์ดในหน้าเป็นตัวหลัก (เหมือนหน้าสต็อคปัจจุบัน) */
+   const cc=document.getElementById("cstCards");
+   if(cc)cc.style.display=(CST.sec==="sum")?"none":"";}
   const all=cstList();
   const openL=all.filter(l=>!cstDone(l)),doneL=all.filter(cstDone);
   const leftCs=openL.reduce((s,l)=>s+cstLeft(l),0);
@@ -17408,7 +17589,7 @@ function renderCStock(){
     `<div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">เคลียร์หมดแล้ว</div><div class="v up">${doneL.length}</div><div class="s">ลอต</div></div>`;
   /* การ์ดด้านบนเป็นตัวเลข "ตอนนี้" ใช้ร่วมกันทุกหน้า จึงวาดก่อนเสมอ
      แล้วหน้ารายงานค่อยจบตรงนี้ — ไม่ต้องวาดรายการค้างทับ (และ cstBody ถูกซ่อนอยู่แล้ว) */
-  if(CST.sec==="rep")return;
+  if(CST.sec==="rep"||CST.sec==="sum")return;
   if(!all.length){
     document.getElementById("cstBody").innerHTML=`<div class="panel"><div class="insight">
       ยังไม่มีข้อมูลสต็อคกลาง${mgr?' — กด <b>➕ ตัดบิลใหม่</b> ด้านบน แล้วกรอกในเว็บได้เลย':" — รอแอดมินลงข้อมูล"}
@@ -17850,7 +18031,7 @@ function parsePSI(name,buf){
     (skipNo?" · ข้ามแถวที่ไม่ใช่สินค้า "+skipNo:"")+
     (warn.length?"<br>⚠️ "+warn.join(" · "):"")+
     "<br>วันอื่นที่เคยอัพไว้อยู่ครบเหมือนเดิม ไฟล์ที่กรองมาบางช่วงจึงลบของเก่าไม่ได้");
-  psiBust();pgBust();
+  psiBust();psiCrBust();pgBust();
   if(CURTAB==="psib")renderPsi();
   syncToServer();
 }
@@ -17884,6 +18065,57 @@ function psiCovers(ymd){
   return ds.length?ds.some(d=>d>=ymd):false;
 }
 function psiDays(){return Object.keys(psiOk().days||{}).sort();}
+/* ============================================================================
+ * 📥 มูลค่าของที่รับเข้า แยกตาม "วันที่ศูนย์ออกบิล" — ใช้เติมในหน้าประวัติการสั่งของ
+ *
+ * เจ้าของสั่ง 27 พ.ย. 69: *"ทำให้ยอดโชว์สรุป NIV จากวันที่คลังรับเข้า ไปขึ้นโชว์ในรายงานหน้า
+ * ประวัติการสั่งของ … มันจะตรงวันที่กับยอด Delivery ในตารางพอดี"*
+ *
+ * 📏 วัดกับไฟล์จริง (PSI_26112026.xlsx · 186 แถว) เทียบกับคอลัมน์ BI Report (NIV) Delivery
+ *    ในไฟล์ Excel ของเจ้าของ — จับคู่สองแบบแล้วเทียบ:
+ *      จับด้วย "วันที่คลังรับเข้า" → เลื่อนไปหนึ่งวันและกระจายคนละวัน **ไม่ตรงเลย**
+ *      จับด้วย "วันที่ศูนย์ออกบิล" → ตรงวัน และตัวเลขใกล้กันมาก:
+ *        16 พ.ย. 765,785.00 ↔ BI 765,785.09   (ต่าง 0.09 บาท)
+ *        18 พ.ย. 1,409,364.00 ↔ BI 1,409,360.65 (ต่าง 3.35 บาท · 0.0002%)
+ *        20 พ.ย. 2,208,447.00 ↔ BI 2,195,118.63 (ต่าง 0.6%)
+ *        24 พ.ย. 2,764,061.00 ↔ BI 2,759,043.54 (ต่าง 0.18%)
+ *    ⇒ **คีย์ที่ถูกคือ `cr` (วันที่ศูนย์ออกบิล) ไม่ใช่วันรับเข้า**
+ *
+ * ⚠️ มันไม่ใช่ "BI Report" ของยูนิลีเวอร์ และห้ามเขียนบนหน้าว่าเป็นตัวเดียวกัน — ไฟล์ BI
+ *    มีรายการติดลบ (คืนของ/ลดหนี้: 2, 23, 30 พ.ย. ในไฟล์เจ้าของ) ซึ่งไฟล์ PSI ไม่มีเลย
+ *    จึงเป็น "มูลค่าของที่เข้าคลังเรา" ที่บังเอิญใกล้กันมาก ไม่ใช่ตัวเดียวกัน
+ * ⚠️ วันที่ยังไม่มีไฟล์ PSI ครอบถึง ต้องขึ้นขีด ไม่ใช่ 0 (กฎเดิมของทั้งหน้า)
+ *    วัดแล้วของเข้าคลัง "วันเดียวกัน 56 แถว · +1 วัน 136 แถว" ไม่เคยเกินนั้น จึงถือว่า
+ *    วันออกบิล D จะรู้ผลครบก็ต่อเมื่อมีไฟล์ที่ครอบถึง D+2 แล้ว
+ * ==========================================================================*/
+let _psiCr=null;
+function psiCrBust(){_psiCr=null;}
+function psiCrIdx(){
+  if(_psiCr)return _psiCr;
+  const P=psiOk(),m={};
+  Object.keys(P.rows||{}).forEach(k=>{
+    const r=P.rows[k]||{},c=String(r.cr||"");
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(c))return;
+    const e=m[c]||(m[c]={v:0,n:0,cs:0,rec:{}});
+    e.v+=+r.v||0;e.cs+=+r.cs||0;e.n++;
+    const d=k.slice(0,k.indexOf("|"));if(d)e.rec[d]=1;
+  });
+  Object.keys(m).forEach(c=>{m[c].v=Math.round(m[c].v*100)/100;
+    m[c].cs=Math.round(m[c].cs*100)/100;m[c].rec=Object.keys(m[c].rec).sort();});
+  _psiCr=m;return m;
+}
+/* คืน null = ยังไม่มีไฟล์ที่ครอบวันนั้น (ห้ามแสดงเป็น 0) */
+function psiCrOf(ymd){
+  const d=String(ymd||"");if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return null;
+  const hit=psiCrIdx()[d];
+  if(hit)return hit;
+  const ds=psiDays();
+  if(!ds.length)return null;
+  const t=new Date(d+"T00:00:00");t.setDate(t.getDate()+2);
+  const lim=t.toISOString().slice(0,10);
+  /* มีไฟล์ครอบถึง D+2 แล้วแต่ไม่มีของวันนั้นเลย = ศูนย์ไม่ได้ออกบิลวันนั้นจริง ๆ */
+  return ds.some(x=>x>=lim)?{v:0,n:0,cs:0,rec:[]}:null;
+}
 
 /* Daily Drop Report parser (clean table: Material / Material Description) */
 function parseDrop(name,buf){

@@ -514,10 +514,22 @@ code, never printed.
   the two must keep rendering differently. The −15% figure is an **estimate**, not an invoice total,
   and the page must keep saying so. The file's fourth column, **BI Report (NIV)**, comes from
   Unilever's own BI report, which the app has never been given — leave it out rather than guess it
-  from the numbers we hold. **Everyone can open the page** (the owner asked for that explicitly,
+  from the numbers we hold. **What the page DOES carry since 27 Nov 26 is 📥 ของเข้าคลัง (NIV)**
+  (`psiCrIdx`/`psiCrOf`, owner: *"ทำให้ยอดโชว์สรุป NIV จากวันที่คลังรับเข้า ไปขึ้นโชว์ในรายงานหน้า
+  ประวัติการสั่งของ … มันจะตรงวันที่กับยอด Delivery ในตารางพอดี"*), read from the PSI file.
+  **It is keyed on the centre's INVOICE date (`cr`), not the warehouse's receiving date** — measured
+  against his own spreadsheet, receiving-date keying is shifted a day, splits across days and
+  matches nothing, while invoice-date keying lands on the same row and the same figure:
+  16 Nov 765,785.00 vs his 765,785.09 · 18 Nov 1,409,364.00 vs 1,409,360.65 · 20 Nov
+  2,208,447.00 vs 2,195,118.63 · 24 Nov 2,764,061.00 vs 2,759,043.54. **It is still not the BI
+  report and the page must keep saying so**: his BI column carries negative rows (returns and
+  credits, three of them that month) which the PSI file does not have at all, so this is "what
+  reached our warehouse", a different thing that happens to land within 0.0–0.6%. A day with no PSI
+  file covering it (nothing read up to that day + 2, since goods arrive same-day or +1) shows a
+  dash and is counted in a banner, never a 0. **Everyone can open the page** (the owner asked for that explicitly,
   even though the CON Confirm card on ภาพรวมสั่งของ is manager-only), and it is read-only over
   ORDERS/DATA with the month on the non-synced `ORD.hm`. Prove it with
-  **`node test/browser/ordhist.test.cjs`** (28 checks, self-contained, made-up figures — the repo
+  **`node test/browser/ordhist.test.cjs`** (35 checks, self-contained, made-up figures — the repo
   is public, so never commit the depot's real revenue).
   The manager's combined request table (`renderSalesRequests`) carries a **line filter** of chips
   (`rqTog`/`rqOnly`/`rqAll`). It stores the lines **switched off** (`ORD.rqOff`), not the ones
@@ -1077,7 +1089,7 @@ code, never printed.
   id, or a clearing that references a lot that does not exist — swallowing that last one would make
   the remaining quantity read higher than reality. When writing the template, a formula cell must
   carry a cached `v` as well as `f`: **SheetJS drops formula cells with no value**. Prove all of it
-  with **`node test/browser/cstock.test.cjs`** (239 checks; it must load the page over a real origin,
+  with **`node test/browser/cstock.test.cjs`** (253 checks; it must load the page over a real origin,
   not `setContent`, or the draft's localStorage is blocked). Rules: `HANDOFF.md` §5.
   **A slip is named `วันที่ · N รายการ · N ลัง`** (`spSlipTitle`/`spDateShort`, owner 26 Nov 26:
   *"ใช้วันที่ - จำนวนสินค้า - จำนวนลัง ขึ้นแทน เช่น 11 พ.ย. 7 รายการ 160 ลัง"*). It replaced the
@@ -1600,7 +1612,7 @@ code, never printed.
   removed them because the reps' order numbers now carry the line and the destination — while
   **ผู้รับผิดชอบ (ทั้งใบ) in the slip header stays**. It only hides inputs: `r.ln`/`r.own` remain
   fields, old slips still show their line everywhere, and the สต็อคกลาง form keeps every column
-  (its 229 checks still pass).
+  (its 253 checks still pass).
   And **the destination
   shops now come from the order numbers the reps key, not from an uploaded Ex.export file**
   (`spShops`/`spShopsHtml`, shown to every team) — *"ต่อจากนี้เราจะต้องให้เซลล์มาลงข้อมูลเองว่า
