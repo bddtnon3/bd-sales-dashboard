@@ -97,7 +97,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (315 checks against the real `api/save.js`, the real
+  running **`node test/merge-safety.test.mjs`** (325 checks against the real `api/save.js`, the real
   `api/ordtrk.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
@@ -1179,7 +1179,7 @@ code, never printed.
   silently demoted a 🎯 ตัวกระจาย slip to ตัดบิลรอส่ง — **always read the type through `SP_GRP`**.
   **The 📥 allocation upload sits at the top beside ➕ สร้างออเดอร์ใหม่** (`spAlBtnHtml`/`#spAlBox`),
   not inside one slip's admin tab — *"ไฟล์นี้อัปทีเดียวใช้ได้ทั้งระบบ"*. It is the one exception to
-  the single-upload-button rule, because `ALLOC` is never stored in the state.
+  the single-upload-button rule.
   **But "not stored" must never read as "not uploaded"** (the owner, 26 Nov 26: *"ผมอัพไฟล์
   allocation ไปหลายรอบมาก ทำไมมันไม่เซฟให้ … ถ้าไม่มีอะไรเปลี่ยนแปลง ให้คงไว้ตามเดิม ไม่ต้องลบออก"*).
   Measured on his real 1.7 MB file: the upload **did** save — 1,789 orders / 452 KB posted to
@@ -1190,11 +1190,36 @@ code, never printed.
   *ยังไม่ได้อัพไฟล์*, which is exactly why he uploaded again and again. `parseAlloc` now also writes a
   **tiny note** — `CSTOCK.alc = {up,file,d1,d2,n,days,by,byName}`, a few hundred bytes, the file name
   and the days it covered, never the file — and `spAlcRec`/`spAlcTxt`/`spAlLabel`/`spAdmHtml` read it
-  when `ALLOC` is gone, naming the file and saying the saved checks are still there. A re-upload is
-  asked for **only to check a new day**, and the message says that. `alc` is a field on `CSTOCK`,
-  which `api/save.js` rebuilds from an explicit list, so it needed `pickNewerAlc` there (newer `up`
-  wins; a tab that has never heard of the field can never blank it) and three cases in
-  `merge-safety`.
+  when `ALLOC` is gone, naming the file and saying the saved checks are still there. `alc` is a
+  field on `CSTOCK`, which `api/save.js` rebuilds from an explicit list, so it needed
+  `pickNewerAlc` there (newer `up` wins; a tab that has never heard of the field can never blank
+  it) and three cases in `merge-safety`.
+  **📥 …and on 27 Nov 26 the file itself was finally kept** (`api/alloc.js`, `ALLOC_PREFIX`,
+  `alPack`/`alUnpack`/`alPush`/`alFetch`). The note was not enough: the check genuinely needs the
+  file for any day nobody has checked yet, so a phone that had never read it still asked for it —
+  *"ตอนกดตรวจเลขจริงมันขึ้นให้อัปไฟล์ ซึ่งไม่แน่ใจว่าทำไมต้องอัป … เพราะผมอัพไฟล์ Allocation ไปแล้ว"*.
+  The answer is to keep the file, not to word the prompt better. **It gets its own month-sharded
+  blob, never `bd-data-*`** — the ORDTRK reasoning exactly. Measured on his real export (9,465 rows
+  · 144 GINs · 10 days): the in-memory structure is 1,960 KB, and **776 KB / 125 KB gzipped** in
+  the compact form stored (product names and pack sizes deduped into one map per month, zero
+  quantities dropped, shop codes as an array) ⇒ ~2.3 MB / 376 KB gzipped a month, which a phone
+  downloads fine and which is far under Vercel's 4.5 MB request cap. Verified end to end against
+  that file: 144 GINs stored with none dropped, a second upload of the same file changes nothing,
+  and the check comes back **identical to the satang** after the round trip — the only values that
+  move are Excel's own float noise (`1500.0000001199999` → `1500`), which every screen already
+  printed as 1,500.
+  Three rules: **inside one GIN the side covering MORE DAYS wins, not the newer upload**
+  (`pickGin`) — a GIN usually spans several days (measured: 117 of 145), so an export filtered to
+  the last day holds only part of it and newest-wins would quietly shrink it, making the earlier
+  day's check under-report; **a GIN that spans a month boundary is written into both months**, or a
+  check on the 1st cannot see a GIN that started on the 30th; and the name/pack maps **only grow**,
+  so a file that does not mention a code can never drop the name another file gave it. The page
+  fetches the month by itself when the admin opens the check (`alHasMon`/`AL_WAIT`, one request per
+  month per tab) and `spGinGo` waits for that same in-flight request rather than firing a second
+  one — otherwise the button asked for the file while the answer was already on its way. Reading is
+  manager-only, like the check itself. Prove it with the `api/alloc.js` cases in
+  **`node test/merge-safety.test.mjs`** (325 checks) and the round-trip cases in
+  **`node test/browser/spord.test.cjs`** (278 checks).
   **④ คลังส่งออก is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
@@ -1423,7 +1448,7 @@ code, never printed.
   on consecutive lines would join into a 20-digit run and both vanish. Typing is still there,
   unchanged, under *— หรือพิมพ์เลขเอง —*. The picker is not a data upload, so the one-upload-button
   rule does not apply. Prove it with the self-contained cases in
-  **`node test/browser/spord.test.cjs`** (274 checks) and, against the owner's real screenshots,
+  **`node test/browser/spord.test.cjs`** (278 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
@@ -1476,9 +1501,10 @@ code, never printed.
   **both** `Sale/Free Order` (R–W) and `Sale/Free Allocated` (X–AC), which **differ on 603 sale and
   37 free rows** — the owner named R–W, so that is the figure compared, and the Allocated column is
   shown underneath when it disagrees rather than silently picked.
-  **The allocation file is never stored** (`ALLOC` is in memory, not synced); only the **result** the
-  admin saves goes into the state, aggregated and **restricted to the codes in that slip** (the
-  `pmCodeSet` rule), so a 10,428-row file cannot bloat the snapshot. The page says this out loud.
+  **The allocation file never enters the synced state.** Since 27 Nov 26 it IS kept, but in its own
+  month-sharded blob behind `api/alloc.js` (see the 📥 paragraph above) — `bd-data-*` is untouched,
+  and only the **result** the admin saves goes into the state, aggregated and **restricted to the
+  codes in that slip** (the `pmCodeSet` rule), so a 10,428-row file cannot bloat the snapshot.
   Two new keyed maps carry the two sides, **never one record**:
   `CSTOCK.key["sid|YYYY-MM-DD|CT11"]` and `CSTOCK.gin["sid|YYYY-MM-DD"]`, merged newest-wins per key
   (`newestByAt`) so a tab left open on one side cannot erase the other's work — and deleting the slip
@@ -1539,7 +1565,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (274 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (278 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1552,7 +1578,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (274 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (278 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
@@ -1654,6 +1680,10 @@ code, never printed.
   (one listing, no download); `?m=YYYY-MM` returns that month; `det` (the per-order product
   breakdown) comes back only for `?full=1`. A write MERGES per order; which side wins is decided
   by `u`, **the last day the FILE covers**, never the upload clock.
+- `api/alloc.js` — the warehouse's picking file (Order Allocation Report), kept so the GIN check
+  works on any device without re-picking it. Its own blob prefix (`bd-alloc-`), **sharded by
+  month**, never a read or a write of `bd-data-*`. Manager only, both ways. A write MERGES per GIN
+  and **the side covering more days wins** — see the 📥 paragraph in the ออเดอร์พิเศษ section.
 - `api/promo.js` — the supervisor (`sup`) writes ONE promotion per call (`PROMO.items[id]`), or the
   manager deletes one (`PROMO.del[id]`). It rebuilds the record from known fields only and must
   never write `PROMO.sales`.

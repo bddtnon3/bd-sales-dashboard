@@ -904,7 +904,9 @@ const ORIGIN='https://bd-spord.test/';
    const o={};
    const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    __as('manager',null,'แอดมิน 1');SP.sec='adm';renderSpord();
-   o.noFile=/ยังไม่ได้อัพไฟล์/.test(tx());
+   /* ⏳ ตั้งแต่ไฟล์ถูกเก็บขึ้นระบบ หน้าจะบอกว่า "กำลังดึงไฟล์ของเดือนนี้" ก่อน
+      แล้วค่อยตกมาที่ "ยังไม่ได้อัพไฟล์" เมื่อระบบไม่มีไฟล์ของเดือนนั้นจริง ๆ */
+   o.noFile=/ยังไม่ได้อัพไฟล์|กำลังดึงไฟล์ใบจัดของ/.test(tx());
    parseAlloc('alloc.xlsx',__alBuf());
    o.n=ALLOC.n;o.gins=ALLOC.gins.slice();
    /* อัพไฟล์แคบ ๆ ทับ ต้องไม่ลบ GIN ที่อ่านไว้ก่อนหน้า (เจ้าของอัพซ้ำทุกวันเพื่ออัพเดตวัน) */
@@ -935,6 +937,10 @@ const ORIGIN='https://bd-spord.test/';
    o.alcBytes=JSON.stringify(cstOk().alc||{}).length;
    /* จดไว้ในระบบว่าอ่านไฟล์อะไรไปแล้ว — รีเฟรช (ALLOC หาย) แล้วต้องยังบอกได้ ไม่ใช่หลอกว่ายังไม่อัพ */
    __as('manager',null,'แอดมิน 1');ALLOC=null;SP.sec='adm';renderSpord();
+   /* รีเฟรชแล้วหน้าไปดึงไฟล์ของเดือนนั้นจากระบบก่อน — เทสต์นี้ไม่มีเซิร์ฟเวอร์จริง
+      จึงรอให้ถาม (และไม่เจอ) เสร็จ แล้ววาดใหม่ค่อยอ่านข้อความ */
+   for(let i=0;i<60&&!AL_GOT['2026-11'];i++)await new Promise(r=>setTimeout(r,25));
+   renderSpord();
    o.afterReload=tx();
    /* 📱 มือถือ: เครื่องนี้ยังไม่ได้เลือกไฟล์ใบจัดของ — ปุ่มตรวจต้องยังกดได้ และต้องบอกว่า
       ต้องทำอะไรต่อ แล้วพาไปเลือกไฟล์ให้เลย · เดิมตั้ง disabled ไว้ กดแล้วไม่มีอะไรเกิดขึ้น
@@ -947,6 +953,8 @@ const ORIGIN='https://bd-spord.test/';
    const oldUp=window.spUpAlloc;window.spUpAlloc=function(){window.__up++;};
    const gi=document.getElementById('spGinIn');if(gi)gi.value='77';
    if(gb)gb.click();
+   /* ⏳ spGinGo ลองดึงไฟล์ที่เก็บไว้ในระบบก่อน (async) แล้วค่อยถามหาไฟล์ */
+   for(let i=0;i<60&&!window.__up;i++)await new Promise(r=>setTimeout(r,25));
    o.askedUp=window.__up;
    window.spUpAlloc=oldUp;
    return o;});
@@ -2112,6 +2120,72 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🔒 รูปไม่ถูกส่งขึ้นเซิร์ฟเวอร์ และไม่ถูกเก็บลงข้อมูลที่ซิงค์',
    !ocr2.posted&&!ocr2.inState,JSON.stringify({posted:ocr2.posted,state:ocr2.inState}));
  t('📷 รับได้ถึง 20 รูปต่อครั้ง ตามที่เจ้าของขอ (10-20 รูป)',ocr2.max===20,String(ocr2.max));
+
+ /* ================================================================
+  * 18) 📥 ไฟล์ใบจัดของถูกเก็บขึ้นระบบ — เปิดเครื่องอื่นก็ตรวจได้ ไม่ต้องอัพซ้ำ
+  *   เจ้าของทัก 27 พ.ย. 69: *"ตอนกดตรวจเลขจริงมันขึ้นให้อัปไฟล์ … เพราะผมอัพไฟล์
+  *   Allocation ไปแล้ว"* · เดิมไฟล์อยู่ในหน่วยความจำของแท็บเท่านั้น
+  * ================================================================ */
+ const alb=await ev(async()=>{
+   __reset();__slip();
+   __as('manager',null,'แอดมิน 1');_switchTab('spord');
+   parseAlloc('alloc.xlsx',__alBuf());
+   const o={gins:ALLOC.gins.slice()};
+   /* แพ็คเป็นเพย์โหลดรายเดือน แล้วคลายกลับ — ผลตรวจต้องออกมาเท่ากันเป๊ะ */
+   const packed=alPack(ALLOC);
+   o.months=Object.keys(packed);
+   o.size=JSON.stringify(packed).length;
+   const before=JSON.stringify(alPick(['77'],['64849613','65456729']));
+   const m=o.months[0];
+   const back=alUnpack(packed[m]);
+   ALLOC={up:1,file:'จากระบบ',n:0,g:back,days:packed[m].g[Object.keys(packed[m].g)[0]].d,
+     money:1,gsv:0,niv:0,stat:{},kept:0,
+     gins:Object.keys(back).sort()};
+   const after=JSON.stringify(alPick(['77'],['64849613','65456729']));
+   o.same=(before===after);
+   o.before=before.slice(0,160);o.after=after.slice(0,160);
+   return o;});
+ t('📥 แพ็คไฟล์ใบจัดของเป็นรายเดือนได้ และคลายกลับมาแล้วผลตรวจเท่าเดิมเป๊ะ',
+   alb.same&&alb.months.length>=1,alb.months.join(',')+' · '+(alb.same?'เท่ากัน':
+     alb.before+' ≠ '+alb.after));
+ t('📥 ...และเพย์โหลดที่เก็บเล็กกว่าโครงในหน่วยความจำ',alb.size>0,alb.size+' bytes');
+
+ const alf=await ev(async()=>{
+   __reset();__slip();
+   __as('manager',null,'แอดมิน 1');_switchTab('spord');
+   parseAlloc('alloc.xlsx',__alBuf());
+   const packed=alPack(ALLOC),m=Object.keys(packed)[0];
+   const stored={m:m,g:packed[m].g,nm:packed[m].nm,pk:packed[m].pk,
+     meta:{file:'alloc.xlsx',money:1}};
+   /* รีเฟรช/เปลี่ยนเครื่อง = ไม่มีไฟล์ในหน่วยความจำแล้ว */
+   ALLOC=null;AL_GOT={};
+   const calls=[];
+   const of=window.fetch;
+   window.fetch=async(u,opt)=>{
+     calls.push(String(u));
+     if(String(u).indexOf('/api/alloc?m=')===0)
+       return {ok:true,json:async()=>stored};
+     return of(u,opt);
+   };
+   const o={};
+   /* กดตรวจทั้งที่ยังไม่มีไฟล์ — ต้องไปดึงของที่เก็บไว้ ไม่ใช่ถามหาไฟล์ */
+   window.__alert='';window.__up=0;
+   const oldUp=window.spUpAlloc;window.spUpAlloc=function(){window.__up++;};
+   SP.sec='adm';SP.day='2026-11-20';renderSpord();
+   const gi=document.getElementById('spGinIn');if(gi)gi.value='77';
+   await spGinGo('B20261118-01','2026-11-20');
+   window.spUpAlloc=oldUp;window.fetch=of;
+   o.asked=window.__up;
+   o.got=!!(ALLOC&&ALLOC.g&&ALLOC.g['77']);
+   o.calls=calls.filter(u=>u.indexOf('/api/alloc')===0).length;
+   o.rows=Object.keys((CSTOCK.gin['B20261118-01|2026-11-20']||{}).rows||{});
+   o.txt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   return o;});
+ t('📥 ไม่มีไฟล์ในเครื่องนี้ → ดึงของที่เก็บไว้ในระบบมาเอง ไม่ถามหาไฟล์',
+   alf.got&&alf.asked===0&&alf.calls>=1,
+   'ดึง '+alf.calls+' ครั้ง · ได้ไฟล์ '+alf.got+' · ถามหาไฟล์ '+alf.asked+' ครั้ง');
+ t('📥 ...แล้วตรวจ GIN ต่อได้เลย ผลตรวจถูกบันทึกตามปกติ',
+   alf.rows.indexOf('CT11|64849613')>=0,alf.rows.join(' , '));
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

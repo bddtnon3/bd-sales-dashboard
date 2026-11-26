@@ -12193,6 +12193,135 @@ async function otPush(ix,file,d1,d2){
   if(typeof CURTAB!=="undefined"&&CURTAB==="otrk"&&typeof renderOtrk==="function")renderOtrk();
 }
  
+const AL_Q=["sc","ss","sp","fc","fs","fp","xc","xs","xp","yc","ys","yp","g","v","mn"];
+ 
+function alPack(A){
+  if(!A||!A.g)return {};
+  const out={};
+  Object.keys(A.g).forEach(gin=>{
+    const G=A.g[gin],days=Object.keys(G.d||{}).sort();
+    const rec={n:G.n||0,d:days,o:Object.keys(G.o||{}),ln:{},od:G.od||{}};
+    const months={};
+    days.forEach(d=>{months[String(d).slice(0,7)]=1;});
+    Object.keys(G.ln||{}).forEach(l=>{
+      const L={};
+      Object.keys(G.ln[l]).forEach(c=>{
+        const it=G.ln[l][c],r={};
+        AL_Q.forEach(q=>{if(it[q])r[q]=it[q];});
+        const sh=Object.keys(it.sh||{});if(sh.length)r.s=sh;
+        L[c]=r;
+      });
+      rec.ln[l]=L;
+    });
+     
+    const ms=Object.keys(months);
+    if(!ms.length)(A.days||[]).forEach(d=>{ms.push(String(d).slice(0,7));});
+    ms.forEach(m=>{
+      const P=out[m]||(out[m]={m:m,g:{},nm:{},pk:{}});
+      P.g[gin]=rec;
+      Object.keys(G.ln||{}).forEach(l=>Object.keys(G.ln[l]).forEach(c=>{
+        const it=G.ln[l][c];
+        if(it.nm&&!P.nm[c])P.nm[c]=it.nm;
+        if(it.pk&&!P.pk[c])P.pk[c]=it.pk;
+      }));
+    });
+  });
+  return out;
+}
+ 
+function alUnpack(rec){
+  const g={},nm=(rec&&rec.nm)||{},pk=(rec&&rec.pk)||{};
+  Object.keys((rec&&rec.g)||{}).forEach(gin=>{
+    const R=rec.g[gin],G={n:R.n||0,d:{},ln:{},o:{},od:R.od||{}};
+    (R.d||[]).forEach(d=>{G.d[d]=1;});
+    (R.o||[]).forEach(o=>{G.o[o]=1;});
+    Object.keys(R.ln||{}).forEach(l=>{
+      const L={};
+      Object.keys(R.ln[l]).forEach(c=>{
+        const r=R.ln[l][c],it={sc:0,ss:0,sp:0,fc:0,fs:0,fp:0,xc:0,xs:0,xp:0,yc:0,ys:0,yp:0,
+          g:0,v:0,mn:0,sh:{},nm:nm[c]||"",pk:+pk[c]||0};
+        AL_Q.forEach(q=>{if(r[q])it[q]=+r[q]||0;});
+        (r.s||[]).forEach(s=>{it.sh[s]=1;});
+        L[c]=it;
+      });
+      G.ln[l]=L;
+    });
+    g[gin]=G;
+  });
+  return g;
+}
+ 
+function alMerge(g,days,extra){
+  const gAll=(ALLOC&&ALLOC.g)?Object.assign({},ALLOC.g):{};
+  Object.keys(g||{}).forEach(k=>{if(!gAll[k])gAll[k]=g[k];});
+  const dAll={};((ALLOC&&ALLOC.days)||[]).forEach(d=>{dAll[d]=1;});
+  (days||[]).forEach(d=>{dAll[d]=1;});
+  ALLOC=Object.assign({up:Date.now(),file:"",n:0,money:0,gsv:0,niv:0,stat:{},kept:0},
+    ALLOC||{},extra||{},{g:gAll,days:Object.keys(dAll).sort(),
+    gins:Object.keys(gAll).sort((a,b)=>alNum(a)-alNum(b)||a.localeCompare(b))});
+  return ALLOC;
+}
+async function alPush(file,d1,d2,money){
+  const by=alPack(ALLOC),ms=Object.keys(by).sort();
+  if(!ms.length)return;
+  if(typeof TOKEN==="undefined"||!TOKEN){
+    ulog("⚠️ โหมดออฟไลน์ — ยังไม่ได้ส่งไฟล์ใบจัดของขึ้นเซิร์ฟเวอร์");return;}
+  for(const m of ms){
+    const payload=Object.assign({},by[m],{file:file,d1:d1,d2:d2,money:money?1:0});
+    const txt=JSON.stringify(payload);
+    let body=txt,headers={"Content-Type":"application/json","Authorization":"Bearer "+TOKEN};
+    try{
+      if(typeof CompressionStream!=="undefined"){
+        const cs=new Blob([txt]).stream().pipeThrough(new CompressionStream("gzip"));
+        body=await new Response(cs).arrayBuffer();
+        headers={"Content-Type":"application/octet-stream","x-body-gzip":"1","Authorization":"Bearer "+TOKEN};
+      }
+    }catch(e){}
+    try{
+      const r=await fetch("/api/alloc",{method:"POST",headers:headers,body:body});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+      AL_GOT[m]=1;
+      ulog("✅ ไฟล์ใบจัดของเดือน "+m+": เก็บขึ้นระบบแล้ว (ส่งไป "+Object.keys(by[m].g).length+
+        " เลข GIN · เดือนนี้มีทั้งหมด "+j.n+" เลข) — เครื่องอื่นเปิดตรวจได้เลย ไม่ต้องอัพซ้ำ");
+    }catch(ex){
+      ulog("❌ เก็บไฟล์ใบจัดของเดือน "+m+" ไม่สำเร็จ: "+ex.message+
+        " — ข้อมูลเดิมบนเซิร์ฟเวอร์ยังอยู่ครบ และตรวจในเครื่องนี้ได้ตามปกติ");
+    }
+  }
+}
+ 
+let AL_GOT={},AL_WAIT={};
+function alHasMon(ym){
+  if(AL_GOT[ym])return true;
+  if(!ALLOC||!ALLOC.days)return false;
+  return (ALLOC.days||[]).some(d=>String(d).slice(0,7)===ym);
+}
+ 
+function alFetch(ym){
+  if(!/^\d{4}-\d{2}$/.test(String(ym||"")))return Promise.resolve(false);
+  if(AL_GOT[ym])return Promise.resolve(false);
+  if(AL_WAIT[ym])return AL_WAIT[ym];
+  if(typeof TOKEN==="undefined"||!TOKEN)return Promise.resolve(false);
+  const run=(async()=>{
+    try{
+      const r=await fetch("/api/alloc?m="+encodeURIComponent(ym),
+        {headers:{"Authorization":"Bearer "+TOKEN}});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+      AL_GOT[ym]=1;
+      if(j.none||!j.g||!Object.keys(j.g).length)return false;
+      const days={};Object.keys(j.g).forEach(k=>{(j.g[k].d||[]).forEach(d=>{days[d]=1;});});
+      alMerge(alUnpack(j),Object.keys(days).sort(),
+        {file:(j.meta&&j.meta.file)||"",money:(j.meta&&j.meta.money)?1:0});
+      return true;
+    }catch(e){AL_GOT[ym]=1;return false;}
+  })();
+  AL_WAIT[ym]=run;
+  run.then(()=>{delete AL_WAIT[ym];},()=>{delete AL_WAIT[ym];});
+  return run;
+}
+ 
 const TX_H={no:"เลขที่เอกสาร",sh:"รหัสร้านค้า",ln:"หมายเลข PJP",d:"วันที่เอกสาร"};
 const TX_O={nm:"ชื่อร้านค้ายาว",tm:"เวลาสั่งซื้อ",dd:"วันที่จัดส่ง",da:"วันที่จัดส่งจริง",
   ref:"เลขอ้างอิง DDT",
@@ -12458,6 +12587,9 @@ function parseAlloc(name,buf){
       if(typeof syncToServer==="function")syncToServer();
     }catch(e){}
   }
+   
+  AL_GOT={};
+  alPush(name,ds[0]||"",ds[ds.length-1]||"",hasMoney);
   if(typeof renderSpord==="function"&&CURTAB==="spord")renderSpord();
   return ALLOC;
 }
@@ -14998,6 +15130,11 @@ function spKeyLineSave(sid,ymd,ln){
 function spAdmHtml(sid){
   const ymd=spDay(sid),can=spAdmOk();
   const g=spGinRec(sid,ymd),cmp=spCmp(sid,ymd);
+   
+  const ym=String(ymd||"").slice(0,7);
+  if(can&&ym&&!alHasMon(ym)){
+    alFetch(ym).then(ok=>{if(ok&&CURTAB==="spord")renderSpord();});
+  }
   const haveFile=!!ALLOC;
   let h=`<div class="panel"><h3>🔎 ฝั่งแอดมิน — ตรวจของที่คลังจัดออก วันที่ ${fmtDate(ymd)}</h3>
     <div class="psub">ใส่ <b>เลข GIN</b> ของวันนั้น แล้วกดตรวจ · ไฟล์ใบจัดของอัพที่ปุ่ม
@@ -15007,11 +15144,14 @@ function spAdmHtml(sid){
      
     h+=`<div class="cst-fb" style="margin-top:10px">
       ${haveFile?`<span class="psub">✅ อ่านไฟล์ <b>${anaEsc(ALLOC.file)}</b> แล้ว ·
-        ${ALLOC.n.toLocaleString()} แถว · ${ALLOC.gins.length} เลข GIN ·
+        ${(ALLOC.n||0).toLocaleString()} แถว · ${ALLOC.gins.length} เลข GIN ·
         ${anaEsc(ALLOC.days[0]||"")} ถึง ${anaEsc(ALLOC.days[ALLOC.days.length-1]||"")}</span>`
-        :(spAlcTxt()
-          ?`<span class="psub">📋 ${spAlcTxt()}<br>ผลตรวจที่บันทึกไว้แล้วยังอยู่ครบ — จะตรวจวันใหม่ ให้กด <b>📥 ไฟล์ใบจัดของ</b> ด้านบนอีกครั้ง</span>`
-          :`<span class="psub">ยังไม่ได้อัพไฟล์ — กด <b>📥 ไฟล์ใบจัดของ</b> ด้านบน</span>`)}</div>
+        :(AL_WAIT[ym]||!AL_GOT[ym]
+           
+          ?`<span class="psub">⏳ กำลังดึงไฟล์ใบจัดของของเดือนนี้จากระบบ …</span>`
+          :(spAlcTxt()
+            ?`<span class="psub">📋 ${spAlcTxt()}<br>ผลตรวจที่บันทึกไว้แล้วยังอยู่ครบ — เดือนนี้ยังไม่มีไฟล์ในระบบ กด <b>📥 ไฟล์ใบจัดของ</b> ด้านบนเพื่ออ่านไฟล์เข้าไปหนึ่งครั้ง</span>`
+            :`<span class="psub">ยังไม่ได้อัพไฟล์ — กด <b>📥 ไฟล์ใบจัดของ</b> ด้านบน</span>`))}</div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
         <label class="psub" style="min-width:120px">เลข GIN ของวันนี้</label>
         <input id="spGinIn" value="${anaEsc(((g&&g.g)||[]).join(", "))}"
@@ -15299,15 +15439,23 @@ function spAlBtnHtml(){
   return `<button class="upload-btn" onclick="spUpAlloc()">📥 ไฟล์ใบจัดของ</button>`+
     `<span class="psub">${note}</span>`;
 }
-function spGinGo(sid,ymd){
+async function spGinGo(sid,ymd){
   const el=document.getElementById("spGinIn");
   const gins=String((el&&el.value)||"").split(/[,\s]+/).map(x=>x.trim()).filter(Boolean);
   if(!gins.length){alert("ใส่เลข GIN อย่างน้อยหนึ่งเลข");return;}
    
   if(!ALLOC){
-    if(confirm("ต้องเลือกไฟล์ใบจัดของก่อน จึงจะตรวจเลข GIN ได้\n\n"+
+    const ym=String(ymd||"").slice(0,7);
+    if(ym&&!alHasMon(ym)){
+      try{await alFetch(ym);}catch(e){}
+      if(ALLOC&&CURTAB==="spord")renderSpord();
+    }
+  }
+   
+  if(!ALLOC){
+    if(confirm("เดือนนี้ยังไม่มีไฟล์ใบจัดของในระบบ — ต้องอ่านไฟล์เข้าไปหนึ่งครั้งก่อน\n\n"+
       (spAlcTxt()?"ผลตรวจที่บันทึกไว้แล้วยังอยู่ครบ ไม่ได้หายไปไหน\n\n":"")+
-      "เลือกไฟล์เลยไหม?"))spUpAlloc();
+      "อ่านเข้าไปแล้วเครื่องอื่นเปิดตรวจได้เลย ไม่ต้องอัพซ้ำ\n\nเลือกไฟล์เลยไหม?"))spUpAlloc();
     return;}
   spGinSave(sid,ymd,gins);
 }
