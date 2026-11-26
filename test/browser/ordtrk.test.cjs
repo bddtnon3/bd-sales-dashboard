@@ -72,9 +72,12 @@ const ORIGIN='https://bd-ordtrk.test/';
   window.__db={
    '2026-11':{meta:{file:'alloc.xlsx',d1:'2026-11-15',d2:'2026-11-24'},
      ord:{
-      '00000101':{d:17,l:'209611',s:'9000001',g:'44',t:'D',i:'00000501',c:12,v:5000,n:2,u:20261124},
+      /* ใบใหม่: เก็บลังเต็ม + เศษชิ้นมาด้วย ⇒ ต้องขึ้น "12 ลัง 7 ชิ้น" ไม่ใช่ 12.58 */
+      '00000101':{d:17,l:'209611',s:'9000001',g:'44',t:'D',i:'00000501',
+        c:12.583,w:12,p:7,v:5000,n:2,u:20261124},
       '00000102':{d:17,l:'209612',s:'9000002',t:'C',c:5,v:2000,n:1,u:20261124},
-      '00000103':{d:18,l:'209611',s:'9000003',g:'45',t:'R',c:8,v:3000,n:1,u:20261124,x:1}},
+      /* ใบเก่า: รอบที่อัพก่อนมีช่องลัง/ชิ้น เก็บแต่ลังทศนิยม ⇒ ต้องขึ้นลังเต็ม + ดอกจัน */
+      '00000103':{d:18,l:'209611',s:'9000003',g:'45',t:'R',c:8.25,v:3000,n:1,u:20261124,x:1}},
      det:{'00000101':{'1001':[10,2],'1002':[2,0]},'00000103':{'1001':[8,0]}}},
    '2026-10':{meta:{file:'old.xlsx',d2:'2026-10-31'},
      ord:{'00000050':{d:5,l:'209611',s:'9000001',g:'12',t:'D',i:'00000400',c:3,v:900,n:1,u:20261031}},
@@ -180,6 +183,9 @@ const ORIGIN='https://bd-ordtrk.test/';
        u:(p.ord[Object.keys(p.ord)[0]]||{}).u,d1:p.d1,d2:p.d2,
        det:Object.keys(p.det||{}).length,sample:p.ord['00000201']||null,
        noGin:p.ord['00000202']||null})),
+     detPk:(((window.__posts[0]||{}).det||{})['00000201']||{})['1001']
+       ?(((window.__posts[0].det)['00000201'])['1001'])[2]:null,
+     sent:((window.__posts[0]||{}).ord||{})['00000204']||null,
      log:(window.__log||[]).filter(x=>/สถานะออเดอร์/.test(x)).join(' ')};});
  t('🔑 เก็บครบทุกใบในไฟล์ รวมใบที่คลังยังไม่จัด',
    parsed.keys==='00000201,00000202,00000203,00000204',parsed.keys);
@@ -193,6 +199,13 @@ const ORIGIN='https://bd-ordtrk.test/';
    !!parsed.d&&parsed.d.t==='Zzz Brand New',JSON.stringify(parsed.d));
  t('🔑 จำนวนคิดเป็นลังทศนิยม (1 ลัง + 18 ชิ้น + แถม 1 ลัง = 2.5)',
    !!parsed.d&&Math.abs(parsed.d.c-2.5)<0.001,parsed.d&&parsed.d.c);
+ /* 📦 เจ้าของสั่งซ้ำ 28 พ.ย. 69: ห้ามโชว์ลังทศนิยม — เก็บลังเต็ม + เศษชิ้น ไว้ด้วย
+    (1×36 + 18) + (1×36) = 90 ชิ้น · ลังละ 36 ⇒ 2 ลัง 18 ชิ้น */
+ t('📦 เก็บ "ลังเต็ม + เศษชิ้น" มาด้วย ไม่ได้มีแต่ลังทศนิยม',
+   !!parsed.sent&&parsed.sent.w===2&&parsed.sent.p===18&&Math.abs(parsed.sent.c-2.5)<0.001,
+   JSON.stringify(parsed.sent));
+ t('📦 รายสินค้าพกขนาดลังมาด้วย (ต่อท้าย ของเก่าสองช่องยังอ่านได้)',
+   parsed.detPk===36,parsed.detPk);
  t('🔑 ส่งขึ้นเซิร์ฟเวอร์แยกเป็นรายเดือน',
    parsed.posts.length===1&&parsed.posts[0].m==='2026-11'&&parsed.posts[0].n===4,
    JSON.stringify(parsed.posts.map(p=>p.m+':'+p.n)));
@@ -235,9 +248,18 @@ const ORIGIN='https://bd-ordtrk.test/';
  t('🔑 ขึ้นชื่อร้าน ไม่ใช่รหัสร้านเปล่า ๆ',
    /ร้านทดสอบ ก/.test(scr.body)&&/ร้านทดสอบ ค/.test(scr.body),scr.body.slice(0,160));
  t('🛟 ร้านที่ยังไม่รู้จักชื่อ ขึ้นรหัสไว้ ไม่ใช่ช่องว่าง',/ร้าน 9000002/.test(scr.body),'');
+ /* 📦 เจ้าของสั่งซ้ำ 28 พ.ย. 69 — ทั้งหน้าห้ามมีลังทศนิยม */
+ t('📦 ใบที่เก็บลัง/ชิ้นไว้ ขึ้น "12 ลัง 7 ชิ้น" ไม่ใช่ 12.58',
+   /12\s*ลัง\s*7\s*ชิ้น/.test(scr.body)&&!/12\.58/.test(scr.body),
+   (scr.body.match(/[\d.,]+ ?ลัง[^·]{0,12}/g)||[]).join(" | ").slice(0,200));
+ t('📦 ไม่มีลังทศนิยมเหลืออยู่บนหน้าจอเลย',
+   !/\d+\.\d+\s*ลัง/.test(scr.body),
+   (scr.body.match(/\d+\.\d+ ?ลัง/g)||[]).join(" | "));
+ t('🛟 ใบจากรอบที่ยังไม่ได้แยกชิ้น ติดดอกจันและมีคำอธิบายครั้งเดียว ไม่ปัดเงียบ ๆ',
+   /\*/.test(scr.body)&&/ยังไม่ได้แยกชิ้น|ก่อนระบบแยก/.test(scr.body),scr.body.slice(-200));
  /* 📱 บนมือถือหัวตารางถูกซ่อน แล้วใช้ data-l เป็นป้ายกำกับแทน — ทุกช่องต้องมี */
  t('📱 ทุกช่องมีป้ายกำกับสำหรับจอมือถือ (ยกเว้นช่องเลขออเดอร์ที่เป็นหัวการ์ด)',
-   scr.lbl==='ร้าน|สาย|① เซลล์คีย์|② คลังจัดของ|จำนวน (ลัง)|มูลค่า',scr.lbl);
+   scr.lbl==='ร้าน|สาย|① เซลล์คีย์|② คลังจัดของ|จำนวน|มูลค่า',scr.lbl);
 
  /* ---- กรอง ---- */
  const filt=await ev(()=>{
@@ -310,6 +332,45 @@ const ORIGIN='https://bd-ordtrk.test/';
    fRef.b.n===0&&fRef.b.miss.join(',')==='9999999999'&&/9999999999/.test(fRef.body),
    JSON.stringify(fRef.b));
 
+ /* ---- 🧾 เลขที่เซลล์กดมาในแอพ: ที่เก็บของหน้านี้ไม่มี rf แต่ไฟล์ยอดขายมี ----
+    เจ้าของสั่ง 28 พ.ย. 69 ให้หน้านี้จับเลขเดียวกับที่หน้าออเดอร์พิเศษรับ (รวม 6 หลักท้าย) */
+ const fSale=await ev(async()=>{
+   const C=OT.cache['2026-11'];
+   delete C.ord['00000101'].rf;            /* รอบที่อัพแต่ไฟล์ใบจัดของ ไม่มีช่องนี้ */
+   if(typeof STOREDAILY==='undefined'||!STOREDAILY)STOREDAILY={data:{}};
+   if(!STOREDAILY.ord)STOREDAILY.ord={};
+   STOREDAILY.ord['BDD0100000101']={s:'9000001',l:'209611',d:'2026-11-17',
+     v:2000,c:2,cs:5,pc:7,rf:'1034700101'};
+   /* ใบที่ที่เก็บยังไม่รู้จักเลย — ไฟล์ยอดขายรู้จัก ต้องตอบได้ ไม่ใช่ "ไม่เจอ" */
+   STOREDAILY.ord['BDD0100000909']={s:'9000003',l:'209612',d:'2026-11-19',
+     v:900,c:1,cs:3,pc:0,rf:'1034700909'};
+   if(typeof spRfBust==='function')spRfBust();
+   OT.ask=1;
+   OT.q='1034700101';await otFind();
+   const full={n:(OT.hits.rows||[]).length,no:(OT.hits.rows[0]||{}).no};
+   OT.q='700101';await otFind();            /* 6 หลักท้าย */
+   const tail={n:(OT.hits.rows||[]).length,no:(OT.hits.rows[0]||{}).no};
+   OT.q='1034700909';await otFind();
+   const only={n:(OT.hits.rows||[]).length,no:(OT.hits.rows[0]||{}).no,
+     sale:!!(OT.hits.rows[0]||{}).sale,miss:(OT.hits.miss||[]).slice()};
+   /* ดูเฉพาะกล่องผลค้น — ตารางหลักด้านล่างมีใบที่ "ยังไม่จัด" จริง ๆ อยู่ด้วย */
+   const body=(document.getElementById('otAsk')||{textContent:''}).textContent.replace(/\s+/g,' ');
+   OT.q='';OT.hits=null;OT.ask=0;
+   delete STOREDAILY.ord['BDD0100000101'];delete STOREDAILY.ord['BDD0100000909'];
+   if(typeof spRfBust==='function')spRfBust();
+   renderOtrk();
+   return {full:full,tail:tail,only:only,body:body};});
+ t('🔑 ที่เก็บไม่มีเลขอ้างอิง แต่ไฟล์ยอดขายมี — ยังหาเจอ (เหมือนหน้าออเดอร์พิเศษ)',
+   fSale.full.n===1&&fSale.full.no==='BDD0100000101',JSON.stringify(fSale.full));
+ t('🔑 พิมพ์แค่ 6 หลักท้าย (700101) ก็หาเจอ',
+   fSale.tail.n===1&&fSale.tail.no==='BDD0100000101',JSON.stringify(fSale.tail));
+ t('🔑 ใบที่มีแต่ในไฟล์ยอดขาย ตอบจากไฟล์ยอดขาย ไม่ใช่ "ไม่เจอ"',
+   fSale.only.n===1&&fSale.only.no==='BDD0100000909'&&fSale.only.sale&&!fSale.only.miss.length,
+   JSON.stringify(fSale.only));
+ t('🛟 ...และบอกว่า "ยังไม่ได้อัพไฟล์ใบจัดของ" ไม่ใช่ "คลังยังไม่จัด"',
+   /ยังไม่ได้อัพไฟล์ใบจัดของ/.test(fSale.body)&&!/📦 ยังไม่จัด/.test(fSale.body),
+   fSale.body.slice(-220));
+
  /* ---- กางดูรายสินค้าในใบ ---- */
  const det=await ev(async()=>{
    otRowTog('00000101');await new Promise(r=>setTimeout(r,120));
@@ -318,7 +379,7 @@ const ORIGIN='https://bd-ordtrk.test/';
    const b2=document.getElementById('otBody').textContent.replace(/\s+/g,' ');
    otRowTog('00000102');
    return {open:b1,none:b2};});
- t('🔑 แตะแถวแล้วกางรายสินค้าในใบนั้นได้',/1001/.test(det.open)&&/ขาย \(ลัง\)/.test(det.open),det.open.slice(-160));
+ t('🔑 แตะแถวแล้วกางรายสินค้าในใบนั้นได้',/1001/.test(det.open)&&/สินค้าขายแถม/.test(det.open),det.open.slice(-160));
  t('🛟 ใบที่ไฟล์ยังไม่มีรายสินค้า บอกให้อัพไฟล์ซ้ำ ไม่ใช่ขึ้น 0 เงียบ ๆ',
    /ยังไม่มีรายสินค้าของใบนี้/.test(det.none),det.none.slice(-160));
 

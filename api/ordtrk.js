@@ -84,8 +84,18 @@ export function recOrd(o) {
   const g = S(o.g, 20); if (g) r.g = g;                        // GIN No. — absent = warehouse has not issued one
   const t = S(o.t, 40); if (t) r.t = t;                        // status code, or the file's own text if unknown
   const i = S(o.i, 20); if (i) r.i = i;                        // invoice number tail
-  const c = NUM(o.c); if (c) r.c = c;                          // cases (sale + free)
-  const p = NUM(o.p); if (p) r.p = p;                          // pieces
+  const c = NUM(o.c); if (c) r.c = c;                          // cases (sale + free), may be fractional
+  /* 📦 the same quantity as whole cases + leftover pieces, split per product code with that
+     code's own case size and only then added up. The depot reads quantities as "N ลัง M ชิ้น"
+     or as pieces — never as a fraction of a case — so this is what every screen prints.
+     A record stored before this existed has neither, and the page says so rather than
+     rounding silently. */
+  /* ⚠️ written as a PAIR, always both or neither: mergeOne overrides key by key, so storing
+     only the non-zero half would let "5 ลัง" from one file meet "8 ชิ้น" from another and
+     print a quantity neither file ever stated. */
+  const w = INT(o.w), p = NUM(o.p);
+  if (w || p) { r.w = w; r.p = p; }
+  const x = INT(o.x); if (x > 0) r.x = x;                      // rows whose unit could not be read — reported, never guessed
   const v = NUM(o.v); if (v) r.v = v;                          // NIV from the file, when the file carries money
   const n = INT(o.n); if (n > 0) r.n = n;                      // how many product codes in the order
   const u = INT(o.u); if (u > 0) r.u = u;                      // last day the FILE covers, yyyymmdd
@@ -114,14 +124,17 @@ export function recOrd(o) {
   return Object.keys(r).length ? r : null;
 }
 
-/* The product breakdown of one order: {code:[saleCases, freeCases]} */
+/* The product breakdown of one order: {code:[saleCases, freeCases, caseSize?]}
+   The case size is appended, never inserted: a breakdown stored with two entries still reads
+   correctly and simply has no size, which the page then looks up in the product master. */
 export function recDet(d) {
   if (!d || typeof d !== "object") return null;
   const out = {};
   for (const k of Object.keys(d).slice(0, MAX_CODES)) {
     const code = S(k, 24); if (!code) continue;
     const a = Array.isArray(d[k]) ? d[k] : [];
-    out[code] = [NUM(a[0]), NUM(a[1])];
+    const pk = NUM(a[2]);
+    out[code] = pk > 0 ? [NUM(a[0]), NUM(a[1]), pk] : [NUM(a[0]), NUM(a[1])];
   }
   return Object.keys(out).length ? out : null;
 }

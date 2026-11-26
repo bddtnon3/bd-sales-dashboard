@@ -10663,10 +10663,12 @@ function cstPctBg(p){
 }
  
 function cstPctPill(pct,left,cs){
-  const lf=Math.round(Math.max(0,left)*100)/100;
+   
+  const lf=Math.round(Math.max(0,left));
+  const tot=Math.round(+cs||0);
   const txt=pct>=100?"✅ ส่งออกครบแล้ว"
-    :(pct<=0?"ยังไม่ได้ส่งออกเลย · ค้าง <b>"+lf.toLocaleString()+"</b> / "+(+cs||0).toLocaleString()+" ลัง"
-            :"ส่งออกแล้ว "+pct+"% · ค้าง <b>"+lf.toLocaleString()+"</b> / "+(+cs||0).toLocaleString()+" ลัง");
+    :(pct<=0?"ยังไม่ได้ส่งออกเลย · ค้าง <b>"+lf.toLocaleString()+"</b> / "+tot.toLocaleString()+" ลัง"
+            :"ส่งออกแล้ว "+pct+"% · ค้าง <b>"+lf.toLocaleString()+"</b> / "+tot.toLocaleString()+" ลัง");
   return `<span class="pill" style="background:${cstPctBg(pct)};color:${cstPctCol(pct)}">${txt}</span>`;
 }
 function cstPctBar(pct){
@@ -12258,7 +12260,7 @@ function otTake(ix,x,col,ocol,dd,gin){
   const o=ix[key]||(ix[key]={ym:dd.slice(0,7),d:+dd.slice(8,10),
     l:String(x[col.pj]==null?"":x[col.pj]).trim(),
     s:col.out!=null?String(x[col.out]==null?"":x[col.out]).trim():"",
-    g:"",t:"",i:"",c:0,v:0,x:0,cd:{}});
+    g:"",t:"",i:"",c:0,v:0,x:0,cd:{},pk:{}});
   if(gin&&!o.g)o.g=gin;
   if(ocol.os!=null&&!o.t){const s=String(x[ocol.os]==null?"":x[ocol.os]).trim();
     if(s)o.t=OT_ST[s]||s;}
@@ -12271,7 +12273,9 @@ function otTake(ix,x,col,ocol,dd,gin){
   if(sv==null||fv==null){o.x++;return;}
   o.c+=sv+fv;
   const cd=String(x[col.code]==null?"":x[col.code]).trim();
-  if(cd){const q=o.cd[cd]||(o.cd[cd]=[0,0]);q[0]+=sv;q[1]+=fv;}
+  if(cd){const q=o.cd[cd]||(o.cd[cd]=[0,0]);q[0]+=sv;q[1]+=fv;
+     
+    if(pk&&!o.pk[cd])o.pk[cd]=pk;}
 }
  
 function otSplit(ix){
@@ -12279,7 +12283,15 @@ function otSplit(ix){
   Object.keys(ix).forEach(k=>{
     const o=ix[k],m=o.ym;if(!m)return;
     const B=by[m]||(by[m]={ord:{},det:{}});
-    const r={d:o.d,l:o.l,s:o.s,c:Math.round(o.c*1000)/1000,
+     
+    let W=0,P=0;
+    Object.keys(o.cd).forEach(c=>{
+      const q=+o.pk[c]||0,tot=(o.cd[c][0]||0)+(o.cd[c][1]||0);
+      if(!q){W+=Math.round(tot);return;}
+      const pcs=Math.round(tot*q);
+      W+=Math.floor(pcs/q);P+=pcs%q;
+    });
+    const r={d:o.d,l:o.l,s:o.s,c:Math.round(o.c*1000)/1000,w:W,p:P,
       n:Object.keys(o.cd).length};
     if(o.g)r.g=o.g;if(o.t)r.t=o.t;if(o.i)r.i=o.i;
     if(o.v)r.v=Math.round(o.v*100)/100;
@@ -12292,8 +12304,11 @@ function otSplit(ix){
     if(o.rf)r.rf=o.rf;         
     if(o.cx)r.cx=1;
     B.ord[k]=r;
+     
     const cd={};Object.keys(o.cd).forEach(c=>{
-      cd[c]=[Math.round(o.cd[c][0]*1000)/1000,Math.round(o.cd[c][1]*1000)/1000];});
+      const q=+o.pk[c]||0;
+      cd[c]=[Math.round(o.cd[c][0]*1000)/1000,Math.round(o.cd[c][1]*1000)/1000];
+      if(q)cd[c].push(q);});
     if(Object.keys(cd).length)B.det[k]=cd;
   });
   return by;
@@ -12758,6 +12773,20 @@ function spCsTxt(cs,pc){
   return (c?B(c)+" <small>ลัง</small>":"")+(c&&p?" ":"")+(p?B(p)+" <small>ชิ้น</small>":"");
 }
  
+function spDiffTxt(dw,dp){
+  const w=Math.round(+dw||0),p=Math.round((+dp||0)*100)/100;
+  if(!w&&!p)return "ตรง";
+  const one=(v,u)=>(v>0?"+":"−")+Math.abs(v).toLocaleString()+" <small>"+u+"</small>";
+  return [w?one(w,"ลัง"):"",p?one(p,"ชิ้น"):""].filter(Boolean).join(" ");
+}
+ 
+function spQ(cases,pk){
+  const q=+pk||0,c=+cases||0;
+  if(q<=0)return {cs:Math.round(c),pc:0};
+  const pcs=Math.round(Math.abs(c)*q),sg=c<0?-1:1;
+  return {cs:sg*Math.floor(pcs/q),pc:sg*(pcs%q)};
+}
+ 
 function alSplit(pcs,pk){
   const q=+pk||0;
   if(pcs==null||q<=0)return null;
@@ -13099,6 +13128,29 @@ function spRepLineSave(sid,ymd,ln){
   spRepSave(sid,ymd,ln,it,no);
 }
  
+function spRepHas(r){
+  if(!r)return false;
+  if(r.it&&Object.keys(r.it).length)return true;
+  return Array.isArray(r.no)&&r.no.length>0;
+}
+function spRepDelBtn(sid,ymd,ln){
+  if(spRole()!=="manager")return "";
+  return ` <button class="btn-mini sp-cancel" onclick="event.stopPropagation();spRepLineDel('${
+    anaEsc(sid)}','${anaEsc(ymd)}','${anaEsc(ln)}')">🗑 ลบ</button>`;
+}
+async function spRepLineDel(sid,ymd,ln){
+  if(spRole()!=="manager"){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return;}
+  const rec=spRepRec(sid,ymd,ln);
+  if(!spRepHas(rec)){alert("สายนี้ยังไม่ได้คีย์อะไรไว้ในวันนี้");return;}
+  const nIt=Object.keys((rec&&rec.it)||{}).length;
+  const nNo=((rec&&rec.no)||[]).length;
+  if(!confirm("ลบของที่สาย "+ln+" คีย์ไว้ วันที่ "+fmtDate(ymd)+" ?\n\n"+
+    (nIt?"· จำนวนสินค้า "+nIt+" รายการ\n":"")+
+    (nNo?"· เลขออเดอร์ "+nNo+" เลข\n":"")+
+    "\nเป้าที่ซุปตั้งไว้ไม่ถูกลบ และประวัติการกรอกยังอยู่"))return;
+  await spRepSave(sid,ymd,ln,{},[]);
+}
+ 
 function spNoLive(ln){
   const el=document.getElementById("spRNo_"+ln),box=document.getElementById("spRNoInfo_"+ln);
   if(!el||!box)return;
@@ -13107,12 +13159,11 @@ function spNoLive(ln){
 function spNoInfoHtml(list,ln){
   if(!list.length)return `<span class="psub">ยังไม่ได้ใส่เลข</span>`;
   const o=spNoSum(list,ln?{l:spLineCode(ln)}:null);
-  const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
   const chip=(t,c)=>`<span class="pm-item${c?" "+c:""}">${t}</span>`;
   let h=`<div class="pm-chips" style="margin:6px 0 0">`+
     chip(`<b>${o.n}</b> <span>เลขที่ใส่</span>`)+
     chip(`<b>${o.found}</b> <span>เจอในระบบ</span>`,o.found===o.n?"up":"")+
-    (o.cs?chip(`<b>${N(o.cs)}</b> <span>ลัง</span>`):"")+
+    ((o.cs||o.pc)?chip(spCsTxt(o.cs,o.pc)):"")+
     (o.v?chip(`<b>${THB(o.v)}</b>`):"")+
     (o.nShop?chip(`<b>${o.nShop}</b> <span>ร้าน</span>`):"")+
     (o.cx?chip(`<b>${o.cx}</b> <span>ใบที่ยกเลิก</span>`,"down"):"")+`</div>`;
@@ -13134,14 +13185,17 @@ function spTrack(sid,ymd){
       const v=o.it[c]||{};t.cs+=(+v.sc||0)+(+v.fc||0);t.pc+=(+v.sp||0)+(+v.fp||0);});return t;};
     const T=sum(tg[ln]);
     let R=sum(rp[ln]),rSrc="typed";
-    const has=!!tg[ln],done=!!rp[ln];
+     
+    const has=!!tg[ln],done=spRepHas(rp[ln]);
      
     const nos=(rp[ln]&&Array.isArray(rp[ln].no))?rp[ln].no:[];
     const O=nos.length?spNoSum(nos,{l:spLineCode(ln)}):null;
      
-    if(O&&!R.cs&&!R.pc){R={cs:O.cs,pc:0};rSrc="order";}
+    if(O&&!R.cs&&!R.pc){R={cs:O.cs,pc:O.pc};rSrc="order";}
+     
     const left=Math.round((T.cs-R.cs)*100)/100;
-    return {ln:ln,tgt:T,rep:R,rSrc:rSrc,has:has,done:done,left:left,ord:O,
+    const leftP=Math.round((T.pc-R.pc)*100)/100;
+    return {ln:ln,tgt:T,rep:R,rSrc:rSrc,has:has,done:done,left:left,leftP:leftP,ord:O,
       rec:rp[ln]||null,n:(rp[ln]&&rp[ln].n)||0,
       st:!has?"noTgt":(!done?"wait":(left>0?"short":(left<0?"over":"ok")))};
   });
@@ -13804,19 +13858,25 @@ function spRptRows(sid){
   const R=x=>Math.round(x*100)/100;
    
   const alloc=spGrpOf(spSlip(sid))==="D"?(()=>{const m={};
-    spAllOut(sid).days.forEach(x=>{m[x.d]=(m[x.d]||0)+x.cs;});return m;})():null;
+    spAllOut(sid).days.forEach(x=>{const e=m[x.d]||(m[x.d]={cs:0,w:0,p:0});
+      e.cs+=x.cs;e.w+=x.w;e.p+=x.p;});return m;})():null;
   return spRptDays(sid).map(d=>{
     const cut=lots.filter(l=>l.d===d).reduce((a,l)=>a+(+l.cs||0),0);
-    let out=0;
-    if(alloc)out=alloc[d]||0;
-    else lots.forEach(l=>((l.clr)||[]).forEach(c=>{if(c&&c.d===d)out+=(+c.cs||0);}));
+    const cutP=lots.filter(l=>l.d===d).reduce((a,l)=>a+(+l.pc||0),0);
+    let out=0,outW=0,outP=0;
+    if(alloc){const a=alloc[d]||{cs:0,w:0,p:0};out=a.cs;outW=a.w;outP=a.p;}
+    else lots.forEach(l=>((l.clr)||[]).forEach(c=>{if(c&&c.d===d){out+=(+c.cs||0);outW+=(+c.cs||0);
+      outP+=(+c.pc||0);}}));
     const rp=spRepByLine(sid,d);
-    let keyed=0;Object.keys(rp).forEach(ln=>{const it=(rp[ln]||{}).it||{};
-      Object.keys(it).forEach(c=>{const v=it[c]||{};keyed+=(+v.sc||0)+(+v.fc||0);});});
+    let keyed=0,keyP=0;Object.keys(rp).forEach(ln=>{const it=(rp[ln]||{}).it||{};
+      Object.keys(it).forEach(c=>{const v=it[c]||{};keyed+=(+v.sc||0)+(+v.fc||0);
+        keyP+=(+v.sp||0)+(+v.fp||0);});});
     const mn=spRptMoney(sid,d);
     const sale=(typeof ohSale==="function")?ohSale(d):null;
     const niv=mn?mn.niv:null;
-    return {d:d,cut:R(cut),out:R(out),keyed:R(keyed),gsv:mn?R(mn.gsv):null,niv:niv==null?null:R(niv),
+    return {d:d,cut:R(cut),out:R(out),keyed:R(keyed),
+      cutQ:{cs:cut,pc:R(cutP)},outQ:{cs:outW,pc:R(outP)},keyQ:{cs:keyed,pc:R(keyP)},
+      gsv:mn?R(mn.gsv):null,niv:niv==null?null:R(niv),
       sale:sale==null?null:R(sale),
       net:(sale==null||niv==null)?null:R(sale-niv),
       pct:(sale&&niv!=null)?Math.round(niv/sale*1000)/10:null};
@@ -13835,11 +13895,18 @@ function spRptHtml(sid){
   const noNet=rows.filter(r=>r.net==null).length;
   const pct=cut>0?Math.round((cut-left)/cut*100):0;
   const kpct=cut>0?Math.round(keyed/cut*100):0;
+   
+  const T=rows.reduce((a,r)=>{["cut","key","out"].forEach((k,i)=>{
+    const q=[r.cutQ,r.keyQ,r.outQ][i];a[k].cs+=q.cs;a[k].pc+=q.pc;});return a;},
+    {cut:{cs:0,pc:0},key:{cs:0,pc:0},out:{cs:0,pc:0}});
+  ["cut","key","out"].forEach(k=>{T[k].pc=Math.round(T[k].pc*100)/100;});
   const bar=(p,col)=>`<div style="height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px">
     <div style="height:100%;width:${Math.max(0,Math.min(100,p))}%;background:${col}"></div></div>`;
   const body=rows.map(r=>`<tr>
     <td class="l"><b>${fmtDate(r.d)}</b></td>
-    <td>${r.cut?R(r.cut):"-"}</td><td>${r.keyed?R(r.keyed):"-"}</td><td>${r.out?R(r.out):"-"}</td>
+    <td>${(r.cutQ.cs||r.cutQ.pc)?spCsTxt(r.cutQ.cs,r.cutQ.pc):"-"}</td>
+    <td>${(r.keyQ.cs||r.keyQ.pc)?spCsTxt(r.keyQ.cs,r.keyQ.pc):"-"}</td>
+    <td>${(r.outQ.cs||r.outQ.pc)?spCsTxt(r.outQ.cs,r.outQ.pc):"-"}</td>
     <td>${r.niv==null?'<span style="color:var(--muted)">รอแอดมินตรวจ</span>':THB(r.niv)}</td>
     <td>${r.sale==null?'<span style="color:var(--muted)">รอไฟล์ยอดขาย</span>':THB(r.sale)}</td>
     <td>${r.net==null?'<span style="color:var(--muted)">—</span>':"<b>"+THB(r.net)+"</b>"}</td>
@@ -13847,13 +13914,16 @@ function spRptHtml(sid){
   return `<div class="panel">
     <h3>📊 รายงานใบนี้</h3>
     <div class="cards" style="margin-top:10px">
-      <div class="card"><div class="k">ตัดบิลไว้</div><div class="v">${R(cut)}</div><div class="s">ลัง</div></div>
+      <div class="card"><div class="k">ตัดบิลไว้</div>
+        <div class="v" style="font-size:20px">${spCsTxt(T.cut.cs,T.cut.pc)}</div><div class="s">ตามใบตัดบิล</div></div>
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k">เซลล์คีย์แล้ว</div>
-        <div class="v">${R(keyed)}</div><div class="s">ลัง · ${kpct}% ของที่ตัดบิล</div>${bar(kpct,"var(--blue)")}</div>
+        <div class="v" style="font-size:20px">${spCsTxt(T.key.cs,T.key.pc)}</div>
+        <div class="s">${kpct}% ของที่ตัดบิล</div>${bar(kpct,"var(--blue)")}</div>
       <div class="card" style="border-top:3px solid ${cstPctCol(pct)}"><div class="k">ส่งออกแล้ว</div>
-        <div class="v">${R(cut-left)}</div><div class="s">ลัง · ${pct}%</div>${bar(pct,cstPctCol(pct))}</div>
+        <div class="v" style="font-size:20px">${spCsTxt(T.out.cs,T.out.pc)}</div>
+        <div class="s">${pct}% ของที่ตัดบิล</div>${bar(pct,cstPctCol(pct))}</div>
       <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">ยังค้างรอส่ง</div>
-        <div class="v">${R(left)}</div><div class="s">ลัง</div></div>
+        <div class="v" style="font-size:20px">${spCsTxt(left,0)}</div><div class="s">ลัง</div></div>
     </div>
     <div class="cards" style="margin-top:10px">
       <div class="card" style="border-top:3px solid var(--good)"><div class="k">มูลค่าใบนี้ (NIV)</div>
@@ -13866,7 +13936,7 @@ function spRptHtml(sid){
       "ยอดขายหลังหักออเดอร์พิเศษ" ไม่ได้</b> — ต้องมีทั้งผลตรวจของแอดมิน (มูลค่า) และไฟล์ยอดขายของวันนั้น
       จึงจะหักได้ ระบบจะไม่เดาให้</div>`:""}
     <div class="tblwrap sp-freeze" style="margin-top:12px"><table class="sp-kt">
-      <thead><tr><th class="l">วันที่</th><th>ตัดบิล (ลัง)</th><th>เซลล์คีย์ (ลัง)</th><th>ส่งออก (ลัง)</th>
+      <thead><tr><th class="l">วันที่</th><th>ตัดบิล</th><th>เซลล์คีย์</th><th>ส่งออก</th>
         <th>มูลค่าออเดอร์พิเศษ</th><th>ยอดขายทั้งวัน</th><th>หักแล้วเหลือ</th><th>คิดเป็น %</th></tr></thead>
       <tbody>${body||'<tr><td colspan="8" class="l">ยังไม่มีรายการของใบนี้</td></tr>'}</tbody></table></div>
     <div class="psub" style="margin-top:8px">
@@ -13880,8 +13950,9 @@ function spRptHtml(sid){
  
 function spAllOut(sid){
   const C=spKeyOk(),codes=spSlipCodes(sid);
-  const nmOf={},cutOf={},order={};
-  codes.forEach((c,i)=>{nmOf[c.code]=c.nm||"";cutOf[c.code]=+c.cs||0;order[c.code]=i;});
+  const nmOf={},cutOf={},cutPOf={},order={};
+  codes.forEach((c,i)=>{nmOf[c.code]=c.nm||"";cutOf[c.code]=+c.cs||0;cutPOf[c.code]=+c.pc||0;
+    order[c.code]=i;});
   const by={},lines={},days=[],gset={},shopMax={},mech={};
   let noPk=0,noShr=0;
   Object.keys(C.gin||{}).forEach(k=>{
@@ -13889,7 +13960,7 @@ function spAllOut(sid){
     const r=C.gin[k];if(!r||r.del)return;
     const rows=r.rows||{},ks=Object.keys(rows),gs=(r.g||[]).slice();
     if(!ks.length&&!gs.length)return;
-    const day={d:p[1],g:gs,n:ks.length,at:r.at||0,by:r.byName||r.by||"",cs:0};
+    const day={d:p[1],g:gs,n:ks.length,at:r.at||0,by:r.byName||r.by||"",cs:0,w:0,p:0};
     days.push(day);
      
     Object.keys(r.shop||{}).forEach(c=>{shopMax[c]=Math.max(shopMax[c]||0,+r.shop[c]||0);});
@@ -13903,34 +13974,46 @@ function spAllOut(sid){
       const free={cs:+a.fc||0,sh:+a.fs||0,pc:+a.fp||0};
       const ps=alPcs(sale,pk,shr),pf=alPcs(free,pk,shr);
       if(!pk)noPk++;else if((sale.sh||free.sh)&&!shr)noShr++;
-      const t=by[code]||(by[code]={code:code,nm:nm,pk:pk,sCs:0,fCs:0,un:0,shop:0,g:0,v:0,
+      const t=by[code]||(by[code]={code:code,nm:nm,pk:pk,sCs:0,fCs:0,sP:0,fP:0,un:0,shop:0,g:0,v:0,
         sRaw:{cs:0,sh:0,pc:0},fRaw:{cs:0,sh:0,pc:0},
-        raw:{cs:0,sh:0,pc:0},cut:cutOf[code]||0,i:order[code]==null?9e6:order[code]});
+        raw:{cs:0,sh:0,pc:0},cut:cutOf[code]||0,cutP:cutPOf[code]||0,
+        i:order[code]==null?9e6:order[code]});
       if(!t.nm&&nm)t.nm=nm;
       if(!t.pk&&pk)t.pk=pk;
       t.raw.cs+=sale.cs+free.cs;t.raw.sh+=sale.sh+free.sh;t.raw.pc+=sale.pc+free.pc;
       t.sRaw.cs+=sale.cs;t.sRaw.sh+=sale.sh;t.sRaw.pc+=sale.pc;
       t.fRaw.cs+=free.cs;t.fRaw.sh+=free.sh;t.fRaw.pc+=free.pc;
       t.g+=(+a.g||0);t.v+=(+a.v||0);
-      const L=lines[ln]||(lines[ln]={ln:ln,cs:0,n:0,un:0});
+      const L=lines[ln]||(lines[ln]={ln:ln,cs:0,n:0,un:0,w:0,p:0});
       L.n++;
-      if(ps!=null&&pk>0){t.sCs+=ps/pk;L.cs+=ps/pk;day.cs+=ps/pk;}else{t.un++;L.un++;}
-      if(pf!=null&&pk>0){t.fCs+=pf/pk;L.cs+=pf/pk;day.cs+=pf/pk;}
+       
+      const add=(pcs)=>{const sp=alSplit(pcs,pk);if(!sp)return;
+        L.w+=sp.cs;L.p+=sp.pc;day.w+=sp.cs;day.p+=sp.pc;};
+      if(ps!=null&&pk>0){t.sCs+=ps/pk;t.sP+=ps;L.cs+=ps/pk;day.cs+=ps/pk;add(ps);}else{t.un++;L.un++;}
+      if(pf!=null&&pk>0){t.fCs+=pf/pk;t.fP+=pf;L.cs+=pf/pk;day.cs+=pf/pk;add(pf);}
       else if(free.cs||free.sh||free.pc){t.un++;L.un++;}
     });
   });
-  const prod=codes.map(c=>by[c.code]||{code:c.code,nm:c.nm||"",pk:0,sCs:0,fCs:0,un:0,shop:0,g:0,v:0,
+  const prod=codes.map(c=>by[c.code]||{code:c.code,nm:c.nm||"",pk:0,sCs:0,fCs:0,sP:0,fP:0,un:0,shop:0,g:0,v:0,
     sRaw:{cs:0,sh:0,pc:0},fRaw:{cs:0,sh:0,pc:0},
-    raw:{cs:0,sh:0,pc:0},cut:+c.cs||0,i:order[c.code]});
+    raw:{cs:0,sh:0,pc:0},cut:+c.cs||0,cutP:+c.pc||0,i:order[c.code]});
   Object.keys(by).forEach(c=>{if(order[c]==null)prod.push(by[c]);});
   prod.forEach(t=>{t.shop=shopMax[t.code]||0;});
   const out=prod.reduce((a,t)=>a+t.sCs+t.fCs,0);
   const cut=prod.reduce((a,t)=>a+(+t.cut||0),0);
+   
+  const outQ={w:0,p:0},cutQ={w:0,p:0};
+  prod.forEach(t=>{
+    const sp=alSplit(t.sP+t.fP,t.pk);
+    if(sp){outQ.w+=sp.cs;outQ.p+=sp.pc;}else outQ.w+=Math.round(t.sCs+t.fCs);
+    cutQ.w+=+t.cut||0;cutQ.p+=+t.cutP||0;
+  });
+  outQ.p=Math.round(outQ.p*100)/100;cutQ.p=Math.round(cutQ.p*100)/100;
   days.sort((a,b)=>String(a.d).localeCompare(String(b.d)));
   const lnArr=Object.keys(lines).map(k=>lines[k])
     .sort((a,b)=>FOCUS_ORDER.indexOf(spLnKey(a.ln))-FOCUS_ORDER.indexOf(spLnKey(b.ln)));
   return {prod:prod,lines:lnArr,days:days,gins:Object.keys(gset),mech:mech,
-    out:out,cut:cut,noPk:noPk,noShr:noShr,
+    out:out,cut:cut,outQ:outQ,cutQ:cutQ,noPk:noPk,noShr:noShr,
     gsv:prod.reduce((a,t)=>a+(+t.g||0),0),niv:prod.reduce((a,t)=>a+(+t.v||0),0)};
 }
  
@@ -13973,6 +14056,7 @@ function spBbf(sid){
   const chk=Object.keys(want).map(k=>{
     const g=by[k],w=want[k],got=g?g.fCs:0,d=got-w.exp;
     return {code:k,nm:(g&&g.nm)||"",inSlip:!!g,exp:w.exp,got:got,d:d,from:w.from,
+      pk:(g&&g.pk)||0,gotP:g?g.fP:0,
       st:!g?"noRow":(Math.abs(d)<=Math.max(0.5,w.exp*0.07)?"ok":(d<0?"short":"over"))};
   }).filter(c=>c.exp>0||c.got>0)
     .sort((a,b)=>String(a.code).localeCompare(String(b.code)));
@@ -14018,8 +14102,10 @@ function spBbfHtml(sid){
         <span class="psub" style="display:block">รหัส ${anaEsc(c.code)}</span>
         <span style="display:block;margin-top:3px">${ST[c.st]}${
           Math.abs(c.d)<0.005?"":' <span class="psub" style="color:#8a6500">'+
-          ((c.d>0?"+":"")+N(c.d))+" ลัง</span>"}</span></td>
-      <td>${N(c.exp)}</td><td><b>${N(c.got)}</b></td></tr>`).join("")}
+          spDiffTxt(spQ(c.d,c.pk).cs,spQ(c.d,c.pk).pc)+"</span>"}</span></td>
+      <td>${spCsTxt(spQ(c.exp,c.pk).cs,spQ(c.exp,c.pk).pc)}</td>
+      <td><b>${(c.pk>0&&alSplit(c.gotP,c.pk))?spCsTxt(alSplit(c.gotP,c.pk).cs,alSplit(c.gotP,c.pk).pc)
+        :N(c.got)+" <small>ลัง</small>"}</b></td></tr>`).join("")}
     </tbody></table></div>
     <div class="note" style="margin-top:8px;color:var(--mid)">
       “ควรแถม” คิดจากยอดรวมทั้งใบตามสูตรของไฟล์ BUM จึงเป็น <b>ค่าประเมิน</b> —
@@ -14041,7 +14127,9 @@ function spSent(sid){
   const cut=lots.reduce((a,l)=>a+(+l.cs||0),0);
   if(spGrpOf(spSlip(sid))==="D"){
     const o=spAllOut(sid);
-    return {cut:cut,out:o.out,left:Math.max(0,cut-o.out),src:"alloc"};
+     
+    const out=o.outQ.w;
+    return {cut:cut,out:out,outP:o.outQ.p,left:Math.max(0,cut-out),src:"alloc"};
   }
   const left=lots.reduce((a,l)=>a+cstLeft(l),0);
   return {cut:cut,out:Math.max(0,cut-left),left:left,src:"lots"};
@@ -14277,12 +14365,14 @@ function spOutAllocHtml(sid){
   const diff=o.out-o.cut;
    
   let h=spOutChkHtml(sid)+head+`<div class="cards" style="margin-top:10px">
-    <div class="card"><div class="k">ตัดบิลไว้ในใบนี้</div><div class="v">${N(o.cut)}</div><div class="s">ลัง</div></div>
+    <div class="card"><div class="k">ตัดบิลไว้ในใบนี้</div>
+      <div class="v" style="font-size:20px">${spCsTxt(o.cutQ.w,o.cutQ.p)}</div><div class="s">ตามใบตัดบิล</div></div>
     <div class="card" style="border-top:3px solid ${cstPctCol(bar)}"><div class="k">คลังจัดออกแล้ว</div>
-      <div class="v">${N(o.out)}</div><div class="s">ลัง · ${pct}% ของที่ตัดบิล</div></div>
+      <div class="v" style="font-size:20px">${spCsTxt(o.outQ.w,o.outQ.p)}</div><div class="s">${pct}% ของที่ตัดบิล</div></div>
     <div class="card" style="border-top:3px solid ${diff<0?"var(--warn)":"var(--good)"}">
-      <div class="k" style="${diff<0?"color:#8a6500":""}">${diff<0?"ยังไม่ได้จัด":"จัดเกินที่ตัดบิล"}</div>
-      <div class="v">${N(Math.abs(diff))}</div><div class="s">ลัง</div></div>
+      <div class="k" style="${diff<0?"color:#8a6500":""}">ส่วนต่าง</div>
+      <div class="v" style="font-size:20px">${spDiffTxt(o.outQ.w-o.cutQ.w,o.outQ.p-o.cutQ.p)}</div>
+      <div class="s">${diff<0?"คลังยังจัดไม่ครบที่ตัดบิล":"คลังจัดครบ/เกินที่ตัดบิล"}</div></div>
     <div class="card"><div class="k">วันที่ตรวจแล้ว</div><div class="v">${o.days.length}</div>
       <div class="s">${o.gins.length} เลข GIN</div></div>
   </div>${cstPctBar(bar)}`;
@@ -14301,23 +14391,28 @@ function spOutAllocHtml(sid){
     o.prod.map(t=>{
       const tot=t.sCs+t.fCs,d=tot-(+t.cut||0);
       const col=Math.abs(d)<0.005?"var(--good)":(d<0?"#8a6500":"var(--blue)");
+       
+      const q=alSplit(t.sP+t.fP,t.pk),qs=alSplit(t.sP,t.pk),qf=alSplit(t.fP,t.pk);
+      const dW=(q?q.cs:Math.round(tot))-(+t.cut||0),dP=(q?q.pc:0)-(+t.cutP||0);
       return `<tr><td style="text-align:left"><b>${anaEsc(t.nm||oname(t.code)||("รหัส "+t.code))}</b>
           <span class="psub" style="display:block">รหัส ${anaEsc(t.code)}${
             t.pk?" · ลังละ "+N(t.pk)+" ชิ้น":' · <span class="down">ไม่รู้ขนาดบรรจุ</span>'}</span></td>
-        <td>${N(t.cut)}</td>
-        <td><b>${N(tot)}</b>${(t.sCs||t.fCs)?'<span class="psub" style="display:block">ขาย '+
-          N(t.sCs)+(t.fCs?" · แถม "+N(t.fCs):"")+"</span>":""}</td>
-        <td style="color:${col}"><b>${Math.abs(d)<0.005?"ตรง":(d>0?"+":"")+N(d)}</b></td></tr>`;
+        <td>${spCsTxt(t.cut,t.cutP)}</td>
+        <td><b>${q?spCsTxt(q.cs,q.pc):N(tot)+" <small>ลัง</small>"}</b>${(t.sCs||t.fCs)?
+          '<span class="psub" style="display:block">ขาย '+(qs?spCsTxt(qs.cs,qs.pc):N(t.sCs))+
+          (t.fCs?" · แถม "+(qf?spCsTxt(qf.cs,qf.pc):N(t.fCs)):"")+"</span>":""}</td>
+        <td style="color:${col}"><b>${spDiffTxt(dW,dP)}</b></td></tr>`;
     }).join("")}
-    <tr><td style="text-align:left"><b>รวม</b></td><td><b>${N(o.cut)}</b></td>
-      <td><b>${N(o.out)}</b></td><td><b>${N(diff)}</b></td></tr></tbody></table></div></div>`;
+    <tr><td style="text-align:left"><b>รวม</b></td><td><b>${spCsTxt(o.cutQ.w,o.cutQ.p)}</b></td>
+      <td><b>${spCsTxt(o.outQ.w,o.outQ.p)}</b></td>
+      <td><b>${spDiffTxt(o.outQ.w-o.cutQ.w,o.outQ.p-o.cutQ.p)}</b></td></tr></tbody></table></div></div>`;
    
   if(o.lines.length)h+=`<div class="panel" style="margin-top:12px"><h3>🚚 แยกตามสาย</h3>
     <div class="tblwrap"><table class="cst-rt"><thead><tr>
-      <th style="text-align:left">สาย</th><th>รายการ</th><th>จัดออกแล้ว (ลัง)</th></tr></thead><tbody>${
+      <th style="text-align:left">สาย</th><th>รายการ</th><th>จัดออกแล้ว</th></tr></thead><tbody>${
     o.lines.map(l=>`<tr><td style="text-align:left"><b>${anaEsc(
         ((DATA.lines||{})[l.ln]||{}).display||FOCUS_MAP[spLnKey(l.ln)]||l.ln)}</b></td>
-      <td>${l.n}</td><td><b>${N(l.cs)}</b>${l.un?' <span class="psub">('+l.un+' แถวแปลงไม่ได้)</span>':""}</td></tr>`).join("")}
+      <td>${l.n}</td><td><b>${spCsTxt(l.w,l.p)}</b>${l.un?' <span class="psub">('+l.un+' แถวแปลงไม่ได้)</span>':""}</td></tr>`).join("")}
     </tbody></table></div></div>`;
    
   h+=`<div class="panel" style="margin-top:12px"><h3>📅 วันที่ที่นับรวมไว้</h3>
@@ -15298,7 +15393,8 @@ function spOrdFind(txt,hint){
 }
  
 function spNoSum(list,hint){
-  const o={n:0,cs:0,v:0,shops:{},found:0,wait:0,miss:[],rows:[],cx:0,dup:0,amb:[]};
+   
+  const o={n:0,cs:0,pc:0,v:0,shops:{},found:0,wait:0,miss:[],rows:[],cx:0,dup:0,amb:[]};
   (list||[]).forEach(t=>{
     o.n++;
     const f=spOrdFind(t,hint);
@@ -15309,11 +15405,11 @@ function spNoSum(list,hint){
     const r=f.r;
     if(r.cx)o.cx++;
     if(r.s)o.shops[r.s]=1;
-    if(r.cs===undefined)o.wait++;else o.cs+=+r.cs||0;
+    if(r.cs===undefined)o.wait++;else{o.cs+=+r.cs||0;o.pc+=+r.pc||0;}
     o.v+=+r.v||0;
     o.rows.push({ask:t,no:f.no,r:r,via:f.via});
   });
-  o.cs=Math.round(o.cs*100)/100;o.v=Math.round(o.v*100)/100;
+  o.cs=Math.round(o.cs*100)/100;o.pc=Math.round(o.pc*100)/100;o.v=Math.round(o.v*100)/100;
   o.nShop=Object.keys(o.shops).length;
   return o;
 }
@@ -15327,16 +15423,20 @@ const SP_TRK={ok:['<span class="sp-ok">✓ ครบเป้า</span>',"var(--
 function spOrdCell(x){
   const o=x.ord;
   if(!o||!o.n)return '<span class="psub">—</span>';
-  const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
   const bits=[];
   if(o.miss.length)bits.push('<span class="psub down">หาไม่เจอ '+o.miss.length+'</span>');
   if(o.wait)bits.push('<span class="psub">รอไฟล์ยอดขาย '+o.wait+'</span>');
   const know=o.found-o.wait;
   if(!know)return '<span class="psub">'+(bits.join(" · ")||"—")+'</span>';
-  const diff=Math.round((o.cs-(x.rep&&x.rep.cs||0))*100)/100;
-  const cls=(!o.miss.length&&!o.wait&&Math.abs(diff)<0.01)?"up":(Math.abs(diff)>=0.01?"down":"");
-  return '<b class="'+cls+'">'+N(o.cs)+'</b>'+
-    (Math.abs(diff)>=0.01?'<span class="psub" style="display:block">ต่าง '+(diff>0?"+":"")+N(diff)+'</span>':"")+
+   
+  const dcs=Math.round((o.cs-(x.rep&&x.rep.cs||0))*100)/100;
+  const dpc=Math.round((o.pc-(x.rep&&x.rep.pc||0))*100)/100;
+  const diff=Math.abs(dcs)+Math.abs(dpc);
+  const cls=(!o.miss.length&&!o.wait&&diff<0.01)?"up":(diff>=0.01?"down":"");
+  const sgn=(dcs||dpc)>=0?"+":"-";
+  return '<b class="'+cls+'">'+spCsTxt(o.cs,o.pc)+'</b>'+
+    (diff>=0.01?'<span class="psub" style="display:block">ต่าง '+sgn+" "+
+      spCsTxt(Math.abs(dcs),Math.abs(dpc))+'</span>':"")+
     (bits.length?'<span class="psub" style="display:block">'+bits.join(" · ")+'</span>':"");
 }
 function spTrackHtml(sid,ymd,tr){
@@ -15360,11 +15460,13 @@ function spTrackHtml(sid,ymd,tr){
     </div>`;
   const rows=show.map(x=>`<tr>
     <td class="l"><b>${anaEsc(x.ln)}</b></td>
-    ${tg?`<td>${x.tgt.cs||"-"}${x.tgt.pc?'<span class="psub" style="display:block">+'+x.tgt.pc+' ชิ้น</span>':""}</td>`:""}
-    <td>${x.done?`<button class="btn-ghost" style="padding:2px 9px;font-weight:700"
-        onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(x.ln)}')">${x.rep.cs||0}</button>`:"-"}</td>
+    ${tg?`<td>${(x.tgt.cs||x.tgt.pc)?spCsTxt(x.tgt.cs,x.tgt.pc):"-"}</td>`:""}
+    <td>${x.done?`<button class="btn-ghost btn-mini" style="font-weight:700"
+        onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(x.ln)}')">${spCsTxt(x.rep.cs,x.rep.pc)}</button>${
+        spRepDelBtn(sid,ymd,x.ln)}`:"-"}</td>
     <td>${spOrdCell(x)}</td>
-    ${tg?`<td>${x.st==="short"?'<b class="down">'+x.left+'</b>':(x.st==="over"?'<b class="up">+'+(-x.left)+'</b>':"-")}</td>
+    ${tg?`<td>${(x.st==="short"||x.st==="over")
+      ?`<b class="${x.st==="short"?"down":"up"}">${spDiffTxt(-x.left,-x.leftP)}</b>`:"-"}</td>
     <td>${SP_TRK[x.st][0]}</td>`:""}
     <td class="l">${x.rec?`<span class="psub">${anaEsc(x.rec.byName||x.rec.by||"")} · ${fmtDateTime(x.rec.at)}${
       x.n?" · แก้ไป "+(x.n-1)+" ครั้ง":""}</span>`:'<span class="psub">—</span>'}</td></tr>`).join("");
@@ -15372,7 +15474,7 @@ function spTrackHtml(sid,ymd,tr){
     <h3>📋 ${one?"สรุปของสายฉัน":(tg?"ติดตามการคีย์รายสาย":"จำนวนที่เซลล์คีย์")} · ${fmtDate(ymd)}</h3>
     ${cards}
     <div class="tblwrap" style="margin-top:10px"><table class="sp-kt">
-      <thead><tr><th class="l">สาย</th>${tg?"<th>เป้า (ลัง)</th>":""}<th>คีย์จริง (ลัง)</th>
+      <thead><tr><th class="l">สาย</th>${tg?"<th>เป้า</th>":""}<th>คีย์จริง</th>
         <th>🧾 จากเลขออเดอร์</th>${
         tg?"<th>ยังขาด</th><th>ผล</th>":""}<th class="l">กรอกเมื่อ</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
@@ -17878,6 +17980,38 @@ let OT={m:"",line:"",day:"all",st:"all",sec:"list",cache:{},months:null,
 function otApi(){return typeof TOKEN!=="undefined"&&!!TOKEN;}
 function otN(v,d){const n=+v||0;return n.toLocaleString(undefined,{maximumFractionDigits:d===undefined?1:d});}
  
+function otPk(code,pk){
+  const q=+pk||0;if(q>0)return q;
+  const m=(typeof pmDet==="function")?pmDet(code):null;    
+  return (m&&+m.ps>0)?+m.ps:0;
+}
+ 
+function otCsOf(code,frac,pk){
+  const q=otPk(code,pk),f=+frac||0;
+  if(q<=0)return (Math.abs(f%1)>1e-9)?null:{cs:Math.round(f),pc:0};
+  const pcs=Math.round(f*q);
+  return {cs:Math.floor(pcs/q),pc:Math.round((pcs%q)*100)/100};
+}
+ 
+function otQty(r){
+  if(r&&(r.w!==undefined||r.p!==undefined))return {cs:+r.w||0,pc:+r.p||0,ok:1};
+  const c=+((r&&r.c)||0);
+  return {cs:Math.round(c),pc:0,ok:(Math.abs(c%1)>1e-9)?0:1};
+}
+function otOld(r){return !otQty(r).ok;}
+function otQtyHtml(r){
+  const q=otQty(r);
+  return spCsTxt(q.cs,q.pc)+(q.ok?"":' <b class="down">*</b>');
+}
+ 
+function otOldNote(rows){
+  const n=(rows||[]).filter(x=>otOld(x.r)).length;
+  if(!n)return "";
+  return `<div class="note" style="margin:10px 0 0">* <b>${otN(n,0)}</b> ใบมาจากไฟล์ที่อัพไว้ก่อนระบบแยก
+    ลัง/ชิ้น จึงขึ้นเฉพาะลังเต็ม เศษยังไม่ได้แยกเป็นชิ้น — อัพไฟล์ใบจัดของที่ครอบวันเหล่านั้นอีกครั้ง
+    แล้วจะแยกให้เอง ข้อมูลเดิมไม่หาย</div>`;
+}
+ 
 function otNorm(v){
   const s=String(v==null?"":v).trim().toUpperCase().replace(/[\s,]+/g,"");
   if(!s)return null;
@@ -17908,9 +18042,10 @@ function otInvPill(x){
     :`<span class="ot-pill no">🧾 ยังไม่ออกบิล</span>`;
 }
 function otGinPill(x){
-  return otHasGin(x)
-    ?`<span class="ot-pill ok">📦 GIN ${anaEsc(x.r.g)}</span>`
-    :`<span class="ot-pill no">📦 ยังไม่จัด</span>`;
+  if(otHasGin(x))return `<span class="ot-pill ok">📦 GIN ${anaEsc(x.r.g)}</span>`;
+   
+  if(x&&x.sale)return `<span class="ot-pill">📦 ยังไม่ได้อัพไฟล์ใบจัดของ</span>`;
+  return `<span class="ot-pill no">📦 ยังไม่จัด</span>`;
 }
 function otStTxt(t){return t?(OT_TH[t]||t):"";}
  
@@ -17994,7 +18129,16 @@ async function otFind(){
   const want=[];const seen={};
   toks.slice(0,500).forEach(t=>{const n=otNorm(t);if(!n)return;
     const id=n.k||n.inv||n.raw;if(seen[id])return;seen[id]=1;want.push(n);});
-  OT.busy++;OT.hits={rows:[],miss:[],scan:0};renderOtrk();
+   
+  const amb=[];
+  if(typeof spOrdFind==="function")want.forEach(w=>{
+    const f=spOrdFind(w.raw,null);
+    if(!f)return;
+    if(f.amb){amb.push({t:w.raw,list:f.amb});return;}
+    const k2=otTail(String(f.no||""),"BDD01");
+    if(k2&&/^\d+$/.test(k2)){w.k2=k2;w.sl=f.r||null;}
+  });
+  OT.busy++;OT.hits={rows:[],miss:[],amb:amb,scan:0};renderOtrk();
   const months=(await otLoadMonths()).slice();
   if(OT.m&&months.indexOf(OT.m)<0)months.unshift(OT.m);
   const found={};
@@ -18007,8 +18151,9 @@ async function otFind(){
     want.forEach(w=>{
       const id=w.k||w.inv||w.raw;
       if(found[id])return;
-      const k=w.k&&o[w.k]?w.k:(w.inv&&inv[w.inv]?inv[w.inv]
-        :(w.rf&&ref[w.rf]?ref[w.rf]:""));
+      const k=w.k&&o[w.k]?w.k:(w.k2&&o[w.k2]?w.k2
+        :(w.inv&&inv[w.inv]?inv[w.inv]
+        :(w.rf&&ref[w.rf]?ref[w.rf]:"")));
       if(!k)return;
       found[id]={m:m,k:k,r:o[k],no:otFullNo(k),ln:otLineOf(o[k]),
         d:m+"-"+String(o[k].d||0).padStart(2,"0"),sl:otSales(k),ask:w.raw};
@@ -18016,9 +18161,22 @@ async function otFind(){
     OT.hits.scan++;
     if(Object.keys(found).length>=want.length)break;
   }
-  OT.hits={rows:want.map(w=>found[w.k||w.inv||w.raw]).filter(Boolean),
-    miss:want.filter(w=>!found[w.k||w.inv||w.raw]).map(w=>w.raw),
-    scan:OT.hits.scan,n:want.length};
+   
+  want.forEach(w=>{
+    const id=w.k||w.inv||w.raw;
+    if(found[id]||!w.k2||!w.sl)return;
+    const r=w.sl,dd=String(r.d||r.k||"");
+    found[id]={m:dd.slice(0,7),k:w.k2,sale:1,ask:w.raw,no:otFullNo(w.k2),
+      d:dd,sl:r,ln:otLineOf({l:r.l}),
+      r:{d:+dd.slice(8,10)||0,l:r.l||"",s:r.s||"",c:+r.cs||0,
+         w:+r.cs||0,p:+r.pc||0,v:+r.v||0,n:+r.c||0,rf:r.rf||""}};
+  });
+   
+  const once={};
+  OT.hits={rows:want.map(w=>found[w.k||w.inv||w.raw]).filter(Boolean)
+      .filter(x=>{const id=x.m+"|"+x.k;if(once[id])return false;once[id]=1;return true;}),
+    miss:want.filter(w=>!found[w.k||w.inv||w.raw]&&!amb.some(a=>a.t===w.raw)).map(w=>w.raw),
+    amb:amb,scan:OT.hits.scan,n:want.length};
   OT.busy--;
   renderOtrk();
 }
@@ -18042,7 +18200,8 @@ function otRowHtml(x){
       nm&&x.r.s?`<br><span class="psub">${anaEsc(x.r.s)}</span>`:""}</div></td>
     <td data-l="สาย">${anaEsc(x.ln||"?")}</td>
     ${otStepHtml(x)}
-    <td data-l="จำนวน (ลัง)" style="text-align:right">${otN(x.r.c,1)}${x.r.x?`<br><span class="psub down">อีก ${x.r.x} แถวแปลงหน่วยไม่ได้</span>`:""}</td>
+    <td data-l="จำนวน" style="text-align:right"><span>${otQtyHtml(x.r)}${
+      x.r.x?`<br><span class="psub down">อีก ${x.r.x} แถวแปลงหน่วยไม่ได้</span>`:""}</span></td>
     <td data-l="มูลค่า" style="text-align:right">${money}</td></tr>`+
     (OT.open===x.k?`<tr class="ot-det"><td colspan="7">${otDetHtml(x)}</td></tr>`:"");
 }
@@ -18061,6 +18220,9 @@ function otShipHtml(x){
   return `<div class="pm-chips" style="margin:0 0 10px">`+out.join("")+`</div>`;
 }
 function otDetHtml(x){
+   
+  if(x&&x.sale)return otShipHtml(x)+`<div class="psub">ใบนี้รู้จักจากไฟล์ยอดขายของวันที่ ${
+    anaEsc(fmtDate(x.d))} — ยังไม่ได้อัพไฟล์ใบจัดของที่ครอบวันนั้น จึงยังไม่มีรายสินค้าและเลข GIN</div>`;
   const C=OT.cache[OT.m===x.m||!x.m?OT.m:x.m];
   const det=C&&C.det?C.det[x.k]:null;
   const ship=otShipHtml(x);
@@ -18072,23 +18234,31 @@ function otDetHtml(x){
   if(!det)return ship+`<div class="psub">${x.r.x
     ?`ใบนี้มี ${x.r.x} แถวที่ไฟล์บอกเป็น "แพ็ค" แต่ชื่อสินค้าไม่ได้บอกว่าแพ็คละกี่ชิ้น จึงไม่ได้เดาจำนวนให้ — ดูจำนวนจริงได้ที่ไฟล์ใบจัดของ`
     :"ไฟล์ใบจัดของรอบที่อัพไว้ ยังไม่มีรายสินค้าของใบนี้ — อัพไฟล์ใบจัดของที่ครอบวันนี้อีกครั้ง แล้วจะขึ้นเอง"}</div>`;
-  const rows=Object.keys(det).map(c=>({c:c,s:det[c][0],f:det[c][1]}))
+  const rows=Object.keys(det).map(c=>({c:c,s:det[c][0],f:det[c][1],pk:det[c][2]}))
     .sort((a,b)=>(b.s+b.f)-(a.s+a.f));
+  const nUn=rows.filter(r=>!otCsOf(r.c,r.s+r.f,r.pk)).length;
   return ship+`<div class="tblwrap"><table class="grp-tbl"><thead><tr>
-      <th>สินค้า</th><th style="text-align:right">ขาย (ลัง)</th><th style="text-align:right">แถม (ลัง)</th></tr></thead>
+      <th>สินค้า</th><th style="text-align:right">ขาย</th><th style="text-align:right">แถม</th></tr></thead>
     <tbody>${rows.map(r=>`<tr><td>${anaEsc(oname(r.c)||("รหัส "+r.c))}
       <br><span class="psub">${anaEsc(r.c)}</span></td>
-      <td style="text-align:right">${otN(r.s,2)}</td>
-      <td style="text-align:right">${r.f?otN(r.f,2):"–"}</td></tr>`).join("")}</tbody></table></div>`;
+      <td style="text-align:right">${otCsCell(r.c,r.s,r.pk)}</td>
+      <td style="text-align:right">${r.f?otCsCell(r.c,r.f,r.pk):"–"}</td></tr>`).join("")}</tbody></table></div>`+
+    (nUn?`<div class="psub down" style="margin-top:6px">* ${nUn} รหัสยังไม่รู้ขนาดลัง จึงยังแยกชิ้นไม่ได้
+      — อัพไฟล์ <b>Product Master</b> ของ dcode แล้วจะแยกให้เอง</div>`:"");
+}
+ 
+function otCsCell(code,frac,pk){
+  const q=otCsOf(code,frac,pk);
+  return q?spCsTxt(q.cs,q.pc):(otN(frac,2)+' <small>ลัง</small> <b class="down">*</b>');
 }
 function otTblHtml(rows,note){
   if(!rows.length)return `<div class="panel"><div class="insight">${anaEsc(note||"ไม่มีออเดอร์ที่ตรงกับที่เลือก")}</div></div>`;
   return `<div class="panel"><div class="tblwrap"><table class="grp-tbl ot-tbl"><thead><tr>
       <th>เลขออเดอร์</th><th>ร้าน</th><th>สาย</th>
       <th>① เซลล์คีย์</th><th>② คลังจัดของ</th>
-      <th style="text-align:right">ลัง</th><th style="text-align:right">มูลค่า</th></tr></thead>
+      <th style="text-align:right">จำนวน</th><th style="text-align:right">มูลค่า</th></tr></thead>
     <tbody>${rows.map(otRowHtml).join("")}</tbody></table></div>
-    <div class="psub" style="margin-top:8px">แตะที่แถวเพื่อดูรายสินค้าในใบนั้น</div></div>`;
+    <div class="psub" style="margin-top:8px">แตะที่แถวเพื่อดูรายสินค้าในใบนั้น</div>${otOldNote(rows)}</div>`;
 }
  
 function otProd(rows){
@@ -18098,8 +18268,9 @@ function otProd(rows){
   rows.forEach(x=>{
     const d=C.det[x.k];if(!d)return;
     Object.keys(d).forEach(c=>{
-      const e=m[c]||(m[c]={c:c,s:0,f:0,n:0,sh:{}});
-      e.s+=d[c][0];e.f+=d[c][1];e.n++;if(x.r.s)e.sh[x.r.s]=1;});
+      const e=m[c]||(m[c]={c:c,s:0,f:0,n:0,sh:{},pk:0});
+      e.s+=d[c][0];e.f+=d[c][1];e.n++;if(d[c][2]&&!e.pk)e.pk=d[c][2];
+      if(x.r.s)e.sh[x.r.s]=1;});
   });
   return Object.keys(m).map(c=>m[c]).sort((a,b)=>(b.s+b.f)-(a.s+a.f));
 }
@@ -18112,12 +18283,12 @@ function otProdHtml(rows){
     <div class="psub">รวมจาก ${otN(rows.length,0)} ใบที่กรองไว้${
       noDet?` · <b class="down">มี ${noDet} ใบที่ยังไม่มีรายสินค้า</b> (อัพไฟล์ใบจัดของที่ครอบวันนั้นอีกครั้ง)`:""}</div>
     <div class="tblwrap"><table class="grp-tbl"><thead><tr>
-      <th>สินค้า</th><th style="text-align:right">ขาย (ลัง)</th><th style="text-align:right">แถม (ลัง)</th>
+      <th>สินค้า</th><th style="text-align:right">ขาย</th><th style="text-align:right">แถม</th>
       <th style="text-align:right">กี่ใบ</th><th style="text-align:right">กี่ร้าน</th></tr></thead>
     <tbody>${p.map(r=>`<tr><td>${anaEsc(oname(r.c)||("รหัส "+r.c))}
       <br><span class="psub">${anaEsc(r.c)}</span></td>
-      <td style="text-align:right"><b>${otN(r.s,2)}</b></td>
-      <td style="text-align:right">${r.f?otN(r.f,2):"–"}</td>
+      <td style="text-align:right"><b>${otCsCell(r.c,r.s,r.pk)}</b></td>
+      <td style="text-align:right">${r.f?otCsCell(r.c,r.f,r.pk):"–"}</td>
       <td style="text-align:right">${otN(r.n,0)}</td>
       <td style="text-align:right">${otN(Object.keys(r.sh).length,0)}</td></tr>`).join("")}</tbody></table></div></div>`;
 }
@@ -18127,7 +18298,8 @@ function otAskHtml(){
   return `<div class="panel" id="otAsk">
     <h3>🔎 ค้นเลขออเดอร์</h3>
     <div class="psub">พิมพ์ทีละเลขก็ได้ หรือวางมาทั้งคอลัมน์จาก Excel ก็ได้ (คั่นด้วยบรรทัด เว้นวรรค หรือ comma)
-      · รับทั้งเลขออเดอร์ <b>BDD01…</b> เลขบิล <b>BDD09…</b> และเลขท้ายเฉย ๆ</div>
+      · รับทั้งเลขออเดอร์ <b>BDD01…</b> เลขบิล <b>BDD09…</b>
+      <b>เลขคำสั่งซื้อที่เซลล์กดมาในแอพ</b> (เช่น 1034715426) หรือ <b>6 หลักท้าย</b> ของเลขนั้น</div>
     <textarea id="otQ" rows="4" style="width:100%;margin-top:8px;padding:10px;border:1.5px solid var(--line);
       border-radius:9px;font-size:16px;font-family:inherit"
       placeholder="BDD0100000312&#10;BDD0100000345&#10;…"
@@ -18137,11 +18309,17 @@ function otAskHtml(){
       <button class="upload-btn" onclick="otClear()">ล้าง</button></div>
     ${h?(OT.busy?`<div class="psub" style="margin-top:10px">กำลังค้น… (อ่านไปแล้ว ${h.scan||0} เดือน)</div>`
       :`<div style="margin-top:10px">
-        <div class="psub">ค้น ${otN(h.n||0,0)} เลข · เจอ <b>${otN((h.rows||[]).length,0)}</b>${
+        <div class="psub">ค้น ${otN(h.n||0,0)} เลข · เจอ <b>${otN((h.rows||[]).length,0)} ใบ</b>${
           (h.miss||[]).length?` · <b class="down">ไม่เจอ ${h.miss.length}</b>`:""}</div>
         ${(h.miss||[]).length?`<div class="psub down" style="margin-top:4px">ไม่เจอ: ${
           anaEsc(h.miss.slice(0,30).join(" · "))}${h.miss.length>30?" …":""}<br>
           เลขเหล่านี้อาจยังไม่ได้อัพไฟล์ใบจัดของที่ครอบวันนั้น — ไม่ได้แปลว่าไม่มีออเดอร์</div>`:""}
+        ${(h.amb||[]).length?`<div class="psub down" style="margin-top:4px">⚠️ ตรงกับหลายใบ ${
+          h.amb.slice(0,5).map(a=>"<b>"+anaEsc(a.t)+"</b> → "+a.list.slice(0,3).map(anaEsc).join(" / ")).join(" · ")
+          }${h.amb.length>5?" …":""} — ใส่เลขเต็มให้ไม่ซ้ำ</div>`:""}
+        ${(h.rows||[]).some(x=>x&&x.sale)?`<div class="psub" style="margin-top:4px">
+          บางใบรู้จักจาก <b>ไฟล์ยอดขาย</b> เท่านั้น เพราะยังไม่ได้อัพไฟล์ใบจัดของที่ครอบวันนั้น —
+          จึงยังไม่รู้เลข GIN ของใบเหล่านั้น</div>`:""}
         ${(h.rows||[]).length?otTblHtml(h.rows):""}</div>`):""}</div>`;
 }
 function renderOtrk(){
@@ -18195,7 +18373,9 @@ function renderOtrk(){
   const rows=all.filter(otPass);
   const nG=rows.filter(x=>x.r.g).length;
   const nInv=rows.filter(otHasInv).length;
-  const cs=rows.reduce((a,x)=>a+(+x.r.c||0),0);
+   
+  const qty=rows.reduce((a,x)=>{const q=otQty(x.r);a.cs+=q.cs;a.pc+=q.pc;if(!q.ok)a.old++;return a;},
+    {cs:0,pc:0,old:0});
   const val=rows.reduce((a,x)=>a+(+x.r.v||(x.sl?+x.sl.v:0)||0),0);
   const meta=C.meta||{};
   const cards=`<div class="cards">
@@ -18207,7 +18387,8 @@ function renderOtrk(){
       <div class="s">ยังไม่มีเลข GIN</div></div>
     <div class="card"><div class="k">🧾 ยังไม่ออกบิล</div><div class="v ${rows.length-nInv?"down":""}">${otN(rows.length-nInv,0)}</div>
       <div class="s">ออกบิลแล้ว ${otN(nInv,0)} ใบ</div></div>
-    <div class="card"><div class="k">รวมจำนวน</div><div class="v">${otN(cs,0)}</div><div class="s">ลัง</div></div>
+    <div class="card"><div class="k">รวมจำนวน</div><div class="v" style="font-size:20px">${spCsTxt(qty.cs,qty.pc)}</div>
+      <div class="s">${qty.old?`<b class="down">${otN(qty.old,0)} ใบยังไม่ได้แยกชิ้น</b>`:"ลังเต็ม + เศษชิ้น"}</div></div>
     <div class="card"><div class="k">มูลค่า (NIV)</div><div class="v">${THBk(val)}</div><div class="s">${THB(val)}</div></div></div>`;
   const seg=`<div class="panel" style="padding:12px 14px">
     <div class="seg">

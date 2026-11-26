@@ -209,6 +209,54 @@ const ORIGIN='https://bd-spord.test/';
    rep.trk.rSrc==='order'&&rep.trk.st==='over',
    JSON.stringify(rep.trk&&{tgt:rep.trk.tgt.cs,rep:rep.trk.rep.cs,src:rep.trk.rSrc,st:rep.trk.st}));
  t('🔑 ซุปดึงเป้าออกเป็นไฟล์ส่งให้เซลล์ได้',rep.supExport);
+
+ /* ---- 🗑 ผู้จัดการลบของที่เซลล์คีย์ไว้ (เจ้าของสั่ง 28 พ.ย. 69 ช่วงทดลองใช้) ----
+    กฎเดิมของโปรเจ็กต์: เขียนทับเป็น it:{} no:[] **ห้ามลบคีย์ทิ้ง** แท็บเก่าจะ union กลับมา */
+ const repDel=await ev(async()=>{
+   const K='B20261118-01|2026-11-20|CT11';
+   const o={};
+   /* ซุปกดลบไม่ได้ — ปุ่มไม่ขึ้น และต่อให้เรียกฟังก์ชันตรง ๆ ก็ต้องไม่ยิง */
+   __as('sup',null,'หัวหน้าเซลล์');SP.sec='rep';SP.day='2026-11-20';renderSpord();
+   o.supNoBtn=!/🗑 ลบ/.test(document.getElementById('spBody').textContent);
+   const b0=window.__posts.length;
+   await spRepLineDel('B20261118-01','2026-11-20','CT11');
+   o.supNoPost=window.__posts.length===b0;
+   o.supKept=(CSTOCK.rep[K].no||[]).length;
+   /* ผู้จัดการกดลบได้ */
+   __as('manager','','ผู้จัดการ');SP.sec='rep';renderSpord();
+   o.mgrBtn=/🗑 ลบ/.test(document.getElementById('spBody').textContent);
+   o.before=JSON.parse(JSON.stringify(CSTOCK.rep[K]));
+   await spRepLineDel('B20261118-01','2026-11-20','CT11');
+   const r=CSTOCK.rep[K];
+   o.stillThere=!!r;                       /* คีย์ยังอยู่ (tombstone) ไม่ได้ลบทิ้ง */
+   o.nNo=(r.no||[]).length;o.nIt=Object.keys(r.it||{}).length;
+   o.hist=(r.h||[]).length;                /* ประวัติยังอยู่ และมีรายการลบเพิ่มเข้าไป */
+   o.quota=r.n;                            /* โควต้าของเซลล์ไม่ถูกรีเซ็ต */
+   o.act=(window.__posts[window.__posts.length-1]||{}).b;
+   o.trk=spTrack('B20261118-01','2026-11-20').filter(x=>x.ln==='CT11')[0];
+   /* เป้าที่ซุปตั้งไว้ต้องไม่ถูกแตะ */
+   o.tgtKept=Object.keys(((CSTOCK.key['B20261118-01|2026-11-20|CT11']||{}).it)||{}).length;
+   /* กดลบซ้ำ: ไม่มีอะไรให้ลบแล้ว ต้องไม่ยิงอีก */
+   const b1=window.__posts.length;
+   await spRepLineDel('B20261118-01','2026-11-20','CT11');
+   o.twice=window.__posts.length===b1;
+   return o;});
+ t('🔒 หัวหน้าเซลล์ลบของเซลล์ไม่ได้ ทั้งปุ่มและฟังก์ชัน',
+   repDel.supNoBtn&&repDel.supNoPost&&repDel.supKept===2,
+   JSON.stringify({btn:repDel.supNoBtn,post:repDel.supNoPost,kept:repDel.supKept}));
+ t('🔑 ผู้จัดการกดลบจำนวน/เลขออเดอร์ที่เซลล์คีย์ไว้ได้',
+   repDel.mgrBtn&&repDel.nNo===0&&repDel.nIt===0&&repDel.act&&repDel.act.act==='rep',
+   JSON.stringify({btn:repDel.mgrBtn,no:repDel.nNo,it:repDel.nIt}));
+ t('🛟 ลบแล้วเขียนทับเป็นค่าว่าง ไม่ลบคีย์ทิ้ง (แท็บเก่าจะไม่ union ของเดิมกลับมา)',
+   repDel.stillThere,String(repDel.stillThere));
+ t('🛟 ประวัติการกรอกยังอยู่ครบ และโควต้าของเซลล์ไม่ถูกรีเซ็ต',
+   repDel.hist>repDel.before.h.length-1&&repDel.quota===repDel.before.n,
+   JSON.stringify({h:repDel.hist,was:repDel.before.h.length,n:repDel.quota,wasN:repDel.before.n}));
+ t('🔑 ลบแล้วตารางติดตามอ่านว่า "ยังไม่ได้คีย์" ไม่ใช่ "คีย์แล้ว 0 ลัง"',
+   repDel.trk&&repDel.trk.done===false&&repDel.trk.st==='wait',
+   JSON.stringify(repDel.trk&&{done:repDel.trk.done,st:repDel.trk.st}));
+ t('🛟 เป้าที่ซุปตั้งไว้ไม่ถูกลบไปด้วย',repDel.tgtKept>0,repDel.tgtKept);
+ t('🛟 กดลบซ้ำตอนไม่มีอะไรให้ลบ ต้องไม่ยิงขึ้นเซิร์ฟเวอร์',repDel.twice,String(repDel.twice));
  /* ใบ A/B ไม่มีขั้นซุปจด ⇒ หน้าเซลล์คีย์ต้องไม่มีช่อง "เป้า / ยังขาด / ผล" ให้เข้าใจผิด
     ว่ามีใครลืมตั้งเป้า (เจ้าของสั่ง 26 พ.ย. 69 ให้ใบสองแบบนี้เริ่มที่เซลล์เลย) */
  const noTgt=await ev(()=>{
@@ -1387,10 +1435,16 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🔑 คลังจัดส่งของใบตัวกระจาย คิดจากไฟล์ใบจัดของล้วน ๆ ไม่ต้องรอซุปจด/เซลล์คีย์',
    dist.keyed===0&&Math.round(dist.sum.out)===19&&dist.sum.cut===70,
    JSON.stringify({keyed:dist.keyed,out:dist.sum.out,cut:dist.sum.cut}));
- t('🔑 ...ขึ้นเป็นรายงาน: ตัดบิลไว้ / คลังจัดออกแล้ว / ยังไม่ได้จัด / วันที่ตรวจ',
+ t('🔑 ...ขึ้นเป็นรายงาน: ตัดบิลไว้ / คลังจัดออกแล้ว / ส่วนต่าง / วันที่ตรวจ',
    /คลังจัดออกแล้ว/.test(dist.tx)&&/ตัดบิลไว้ในใบนี้/.test(dist.tx)&&
-   /ยังไม่ได้จัด/.test(dist.tx)&&/วันที่ตรวจแล้ว/.test(dist.tx)&&/27%/.test(dist.tx),
+   /ส่วนต่าง/.test(dist.tx)&&/คลังยังจัดไม่ครบที่ตัดบิล/.test(dist.tx)&&
+   /วันที่ตรวจแล้ว/.test(dist.tx)&&/27%/.test(dist.tx),
    dist.tx.slice(0,150));
+ /* 📦 ห้ามมีลังทศนิยมบนหน้าจอ — 19 ลังจาก 70 ที่ตัดบิลไว้ ⇒ ส่วนต่าง −51 ลัง */
+ t('📦 ตัวเลขบนการ์ดเป็น "ลัง/ชิ้น" ไม่ใช่ลังทศนิยม',
+   /70\s*ลัง/.test(dist.tx)&&/19\s*ลัง/.test(dist.tx)&&/−51\s*ลัง/.test(dist.tx)&&
+   !/\d+\.\d+\s*ลัง/.test(dist.tx),
+   (dist.tx.match(/[\d.,]+ ?ลัง/g)||[]).join(" | ").slice(0,200));
  t('🔑 ...อ่านจากผลตรวจที่บันทึกไว้ ไม่ต้องอัพไฟล์ซ้ำ (รีเฟรชแล้วตัวเลขยังอยู่)',
    dist.sum.days.length===2&&dist.sum.gins.join(',')==='77,78',
    JSON.stringify({d:dist.sum.days.map(x=>x.d),g:dist.sum.gins}));

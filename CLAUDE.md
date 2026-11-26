@@ -97,7 +97,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (325 checks against the real `api/save.js`, the real
+  running **`node test/merge-safety.test.mjs`** (330 checks against the real `api/save.js`, the real
   `api/ordtrk.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
@@ -724,6 +724,21 @@ code, never printed.
   moves `selectedIndex` and dispatches `change`, so it is exactly a dropdown pick and **cannot
   touch data**. Prove both with **`node test/browser/datestep.test.cjs`** (78 checks, including a
   byte-for-byte comparison of every stored blob before and after every button on every page).
+  **📦 A quantity is "N ลัง M ชิ้น" or plain ชิ้น — never a fraction of a case, anywhere on the
+  site.** The owner has said it three times and the third was impatient (28 Nov 26: *"ช่วยปรับเลขที่
+  ขึ้นโชว์ ที่เป็นทศนิยมให้เป็น ...ลัง....ชิ้น เหมือนเดิม จุดนี้เจอหลายรอบแล้วนะ … ทั้งเวปเลย เพราะเรา
+  ดูจำนวนเป็นแบบ ลัง ชิ้น หรือ ชิ้น สองแบบนี้เท่านั้น"*). The files mix ลัง/แพ็ค/ชิ้น in one row, so
+  the arithmetic is done in **pieces** and split back at the very end — and the split is made **per
+  product code with that code's own case size, then added**, never by summing fractional cases and
+  dividing once, which gives a number nobody can pick stock against. Helpers: **`spCsTxt(cs,pc)`**
+  for a quantity, **`spDiffTxt(dw,dp)`** for a difference (ลัง and ชิ้น carry their own sign and are
+  never collapsed into one number), `alSplit`/`alQtyTxt` for pieces→ลัง/ชิ้น, `otQty`/`otCsCell` on
+  the order-status page. Leftover pieces **can add up to more than one case** across codes — that is
+  correct and must not be divided again. A row whose unit cannot be read is **counted and named**,
+  never guessed at 1; a stored figure that cannot be split back says so with a `*` and a banner.
+  Column headers therefore read **จำนวน / เป้า / คีย์จริง**, not "(ลัง)", since the cell carries both
+  units. Prove it on the pages that touch quantities with the `ลัง` assertions in
+  **`ordtrk.test.cjs`** and **`spord.test.cjs`**, which fail on any `\d+\.\d+ ลัง` reaching the screen.
   **📅 Never build a calendar date with `toISOString()`** (`ymdOf`/`ymOf`, owner 27 Nov 26:
   *"ปุ่มนี่กดไม่ไป ปรับแก้หน่อย"*). It converts to UTC, and every phone in the depot is on UTC+7,
   so a date taken from **local midnight** is a day out *every time*: measured under
@@ -825,6 +840,16 @@ code, never printed.
   the FILE covers**, not the upload clock, so re-uploading an old export cannot drag a Delivered
   order back to Confirmed. Merging is field-by-field, so a fresher file that happens to carry no
   GIN cannot blank one already known (the `mergeExOne` lesson).
+  **📦 …but a fractional case is never shown to anyone** (see the ลัง/ชิ้น rule below): `otSplit`
+  also stores **`w` = whole cases and `p` = leftover pieces**, split per product code with that
+  code's own case size and only then added up, and `det[code]` gained a **third element, the case
+  size** (appended, so a breakdown stored with two still reads). Three rules: `recOrd` writes `w`
+  and `p` **as a pair, always both or neither**, because `mergeOne` overrides key by key and storing
+  only the non-zero half would let "5 ลัง" from one file meet "8 ชิ้น" from another; `x` (the rows
+  whose unit could not be read) is now kept by the server too — it was silently dropped, so the
+  page's own warning could never fire on stored data; and a round uploaded **before** these fields
+  existed holds only the fraction and cannot be split back, so the page prints the whole cases with
+  a **`*`** and one banner naming how many orders are affected — never a silent rounding.
   **A third file feeds this page — the one the reps' own keying produces** (`parseTxn`, owner
   26 Nov 26: *"ผมสามารถดึงรายงานส่วนแรกของการขายเลย คือส่วนที่เซลล์คีย์เข้าระบบ … เป็นไฟล์ที่เกิดขึ้น
   ก่อนแอดมินจะส่งไปสร้าง GIN"*). `Transaction_Inquiry_<ddmmyyyy>.xlsx`, sheet `DataExtract`,
@@ -863,6 +888,18 @@ code, never printed.
   Mobility 1,737 · B2B 353 · BO 17. It is stored as `rf` on `STOREDAILY.ord` and on the order-track
   record, filled by both readers (the Transaction file fills only where empty, as it does for every
   other field), and `otNorm`/`otFind` accept it so 🔎 ค้นเลขออเดอร์ takes it like any other number.
+  **…but the order-track blob only gets `rf` from the Transaction file**, so a month where only the
+  allocation file was uploaded has none and the search answered *ไม่เจอ* for the one number a rep
+  can actually quote (owner, 28 Nov 26: *"ช่วยปรับให้หน้าเสิจออเดอร์ ให้จับเป็นรหัสออเดอร์ที่เซลล์
+  กดมา (แบบเดียวกันกับที่อัพในเซลล์คีย์ ส่วนของออเดอร์พิเศษ)"*). `otFind` now resolves every typed
+  number through **`spOrdFind`** first — the same function ออเดอร์พิเศษ uses, so the two pages accept
+  exactly the same things, including the **6-digit tail** — turns it into a `BDD01…` number and looks
+  **that** up in the months. Three rules: a tail matching more than one reference is **reported, never
+  picked** (`spOrdFind`'s own rule); when the blob has no such order but `STOREDAILY.ord` does, the
+  row is built **from the sales file** and flagged `sale:1`, whose GIN pill reads **"ยังไม่ได้อัพไฟล์
+  ใบจัดของ"** and never "ยังไม่จัด" — not-read and not-picked are different facts; and the full number
+  and its tail resolve to one order, so the rows are **deduped by month+key** or the same order would
+  be listed twice from one pasted column.
   **Two traps:** the daily file also has `หมายเลขใบแจ้งหนี้ (Reference Invoice Number)` right beside
   it, so the column must be matched on the **exact `(Reference Number)` suffix** (`dsColOf`), not by
   `indexOf`; and `STOREDAILY.ord` is keyed by the **invoice number as well as the order number**, and
@@ -877,8 +914,9 @@ code, never printed.
   **every role sees it** — the owner said *"ทุกคนเข้ามาดูได้"*, so `wh`/`ds`/`sup` carry explicit
   `role` entries and now see two groups, not one. A `sales` account **opens on its own line**.
   Three ways in, all on one page: the line/day/status pickers, **🔎 ค้นเลขออเดอร์** which takes one
-  number or a whole column pasted from Excel (`otFind` — it accepts `BDD01…`, `BDD09…` or a bare
-  tail, walks months newest→oldest until every number is found, and **names the ones it could not
+  number or a whole column pasted from Excel (`otFind` — it accepts `BDD01…`, `BDD09…`, the app's own
+  `1034715426`, its 6-digit tail, or a bare order tail, walks months newest→oldest until every number
+  is found, and **names the ones it could not
   find** rather than printing a silent "not there"), and **📦 ยอดรายสินค้า**, which is what a rep
   filtered to their own line reads. On a phone the 7-column table folds into one card per order
   (`@media` + `data-l` labels), because ① and ② scrolled off the right edge otherwise — the same
@@ -897,7 +935,7 @@ code, never printed.
   cancelled ones) — so it must NOT count as billed. This is the same `cs===undefined` test `spRow`,
   `spCases` and `spShops` make; `x.sl.inv` never existed on that index, so the old fallback was dead
   code. Prove it with
-  **`node test/browser/ordtrk.test.cjs`** (99 checks, self-contained with made-up codes; 105 with the
+  **`node test/browser/ordtrk.test.cjs`** (108 checks, self-contained with made-up codes; 114 with the
   real file via `ORDTRK_TXN=/path/Transaction_Inquiry_....xlsx`, which holds real shop names and
   never enters the repo) plus the `api/ordtrk.js` cases in `merge-safety`.
   **📚 The product master has two formats and both must keep working** (`parseMaster` dispatches to
@@ -1267,8 +1305,8 @@ code, never printed.
   month per tab) and `spGinGo` waits for that same in-flight request rather than firing a second
   one — otherwise the button asked for the file while the answer was already on its way. Reading is
   manager-only, like the check itself. Prove it with the `api/alloc.js` cases in
-  **`node test/merge-safety.test.mjs`** (325 checks) and the round-trip cases in
-  **`node test/browser/spord.test.cjs`** (290 checks).
+  **`node test/merge-safety.test.mjs`** (330 checks) and the round-trip cases in
+  **`node test/browser/spord.test.cjs`** (298 checks).
   **④ คลังจัดส่ง is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
@@ -1359,6 +1397,18 @@ code, never printed.
   `n` takes the **max**, and `h` is unioned by timestamp — newest-wins on the whole record would let
   a stale tab reset the edit quota and drop a history entry. A rep's page shows **only their own
   line**; the 12-line target table is the supervisor's.
+  **🗑 …and the manager can clear what a rep keyed** (`spRepDelBtn`/`spRepLineDel`, owner 28 Nov 26:
+  *"ช่วยปรับให้ manager เข้าไปกดลบจำนวนที่เซลล์คีย์เข้ามาได้ในออเดอร์พิเศษ ช่วงนี้ผมทดลองใช้งานมันอยู่
+  ปรับแบบนี้ไปก่อน"*). The button sits beside that line's keyed figure in the tracking table and
+  writes **`it:{}` + `no:[]` over the record, never a key delete** — the `ok:0` / `del:1` / `it:{}`
+  rule, or a tab left open since morning would union the old numbers straight back. It needed no
+  server change: `api/spord.js` already lets a `manager` write `act:"rep"` for any line. Three
+  things it must not do: **reset `n`** (the rep's edit quota — `mergeRepOne` takes the max, so a
+  reset is pushed back anyway, and that is exactly what stops a stale tab unlocking itself),
+  **touch the supervisor's target** (a different map, `CSTOCK.key`), or **drop the history** — `h`
+  keeps growing, so the record still says who cleared it and when. Because the record survives as a
+  tombstone, "has this line keyed?" must be measured on its CONTENT (**`spRepHas`**, used by
+  `spTrack`), not on the key existing, or a cleared line reads as "คีย์แล้ว 0 ลัง".
   **🗑 The supervisor (and the manager) can edit or cancel a line's target**
   (`spKeyLineCancel`, owner 27 Nov 26: *"ส่วนของที่ซุปคีย์ให้กระจาย ฝากปรับแก้ ให้เข้าแก้จำนวนหรือ
   กดยกเลิกการสั่งได้ ทำได้ทั้งซุปและ Manager"*). The quantities were always editable — what was
@@ -1497,7 +1547,7 @@ code, never printed.
   on consecutive lines would join into a 20-digit run and both vanish. Typing is still there,
   unchanged, under *— หรือพิมพ์เลขเอง —*. The picker is not a data upload, so the one-upload-button
   rule does not apply. Prove it with the self-contained cases in
-  **`node test/browser/spord.test.cjs`** (290 checks) and, against the owner's real screenshots,
+  **`node test/browser/spord.test.cjs`** (298 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
@@ -1614,7 +1664,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (290 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (298 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1627,7 +1677,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (290 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (298 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
