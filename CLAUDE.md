@@ -1150,10 +1150,24 @@ code, never printed.
   ahead, so no picker is ever capped at today) — and `spDay` opens on **today, else the nearest
   un-keyed day**, never the furthest future one. The day picker is hidden there, since that list is
   the picker.
-  **The rep's entry is cards, not a table** (`spRepMineHtml`): the team keys from Android phones, so
-  each product is a card with four large fields; `inputmode="decimal"` brings up the number pad and
-  the fields are ≥16px, or a mobile browser zooms in on focus and the page jumps. The save button is
-  sticky at the foot of the card list. The 7-column table is what made this unusable on a phone.
+  **The rep no longer types any quantity — only the day's order numbers** (`spRepMineHtml`, owner
+  27 Nov 26: *"ปรับให้เซลล์แต่ละสาย ไม่ต้องเข้ามากรอกตัวเลขแล้ว แต่หน้าที่คือมากรอกเลขออเดอร์ 10 หลัก
+  เท่านั้นก็พอ"*). The page is the order-number box first, then a **read-only** list of what the
+  supervisor set for that line. The quantity fields that were there before are gone, but the stored
+  `it` is **carried over on every save** (`spRepLineSave` reads the previous record), so the figures
+  old days already hold are never zeroed, and `spTrack`/`spRepJobs` derive the keyed figure from the
+  order numbers instead (`rSrc:"order"`).
+  **Both entry tables are 4 columns with a frozen left edge** — `สินค้า · รหัส · ลัง · ชิ้น`
+  (`.sp-kt.sp-k4` inside `.tblwrap.sp-freeze`): the name and the code are `position:sticky;left:0`
+  so they stay put while the thumb scrolls, and the header is sticky too. The owner asked for
+  exactly this after the 7-column table proved unreadable on a phone (*"ให้ freeze pane ชื่อสินค้า
+  รหัส จำนวนลัง จำนวนชิ้น … และปรับให้เหลือแค่ 4 colum แนวตั้ง"*). Measured at 390px: the wrapper is
+  320/320 — **no horizontal page scroll** — with columns 118/64/69/69, and 497/164/216/216 at 1280px.
+  The per-line 💾 button sits in a flex row inside the line header (`.sp-k4-lh`); it was
+  `float:right` once and got clipped off the right edge on a phone.
+  **The free-goods columns went with it** (owner: *"ให้เหลือแค่ ลัง ชิ้น แค่นี้พอ ไม่ต้องมีแถม"*):
+  `spKeyLineSave` carries the stored `fc`/`fp` over the same way, and the Excel/PDF export
+  (`spTgtRows`) is 5 columns with the free goods folded into the totals.
   **👤 Each rep owns their own line's daily figure** (owner, 26 Nov 26). The flow he set:
   ① the supervisor types each line's **target** for that day (`CSTOCK.key`, unchanged) → ② exports it
   as Excel/PDF to send the reps (`spTgtXlsx`/`spTgtPrint`) → ③ **the rep logs in with their own line's
@@ -1161,10 +1175,15 @@ code, never printed.
   through `api/spord.js` `act:"rep"`) → ④ the supervisor chases whoever is short (`spTrack`/`spTrackHtml`).
   **Target and actual are different numbers and must never be added together.** Three rules, all
   checked **on the server** against the stored record, never by hiding a button:
-  a rep may **save once and change it once** (`REP_MAX` = 2) and only for **their own line**
+  a rep may save **`REP_MAX` times a day per line** and only for **their own line**
   (`LINE_OF` maps `209611` → `CT11`); the **supervisor cannot edit a rep's figure at all**, only read
   it — the owner said so in as many words — while a `manager` can, because otherwise a rep who
-  burns both saves on a mistake is stuck. Every save **appends to `h`** and never overwrites, so
+  burns their saves on a mistake is stuck. **`REP_MAX` was 2 and is now 10**, in both the template
+  and `api/spord.js` (they must stay in step): 2 was right while the rep typed a *quantity*, which is
+  one number typed once, but from 27 Nov 26 they type **order numbers, which arrive all day** — five
+  in the morning, six more after lunch — so a 2-save quota ran out before noon. The confirm box now
+  appears only in the last 3 saves, because asking on every one is friction on a flow that repeats.
+  Every save **appends to `h`** and never overwrites, so
   tapping a quantity opens the history: when it was first entered, when it changed, by whom.
   `mergeState` therefore merges this map **field by field** (`mergeRepOne`): the newer `it` wins,
   `n` takes the **max**, and `h` is unioned by timestamp — newest-wins on the whole record would let
@@ -1298,7 +1317,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (219 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (222 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1311,7 +1330,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (219 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (222 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
@@ -1360,6 +1379,16 @@ code, never printed.
   ทุกหมวด. The cstock test walks every tab to prove each mapped one opens its own category, that
   switching to another category works without leaving the page, and that no page carries a second
   upload button.
+  **A button must look like a button.** `.btn-ghost` is the site's secondary button (40 uses) and
+  carried only a `background` and a `color` — inside `.modal-actions` another rule finished the job,
+  so everywhere else it rendered as the browser's bare default. That is what the owner saw on
+  ← กลับไปรายการใบ and 🔒 ล็อก (27 Nov 26: *"ปรับให้ปุ่มเห็นชัด อ่านง่าย คนเห็นแล้วเข้าใจว่าต้องกด"*),
+  and it was never those two screens' fault. The class now carries its own border, radius, padding
+  and a 40px minimum height, with `.btn-mini` (32px) for buttons inside a table row. Two more:
+  **`.backbtn` in the header needs `white-space:nowrap`** — it wrapped to two lines on a phone and
+  pushed the 54px header to 110px, which is what shoved the avatar and ออก out of line; and
+  **a save button is never a dashed outline** (`.sp-save button` is solid blue now) — a dashed border
+  is what `.upload-btn` uses to say *drop a file here*, a different thing entirely.
 - `test/browser/_chrome.cjs` — finds the installed Chromium at run time. Never hard-code a
   `/opt/pw-browsers/chromium-NNNN/...` path in a test again: the image moved once and took all 15
   browser tests down with it.

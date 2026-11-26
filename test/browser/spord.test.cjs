@@ -138,33 +138,40 @@ const ORIGIN='https://bd-spord.test/';
    const o={};
    const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    SP.sec='rep';renderSpord();
-   o.supNoInput=!document.getElementById('spR_CT11_64849613_sc');   /* ซุปกรอกของเซลล์ไม่ได้ */
+   o.supNoInput=!document.getElementById('spRNo_CT11');   /* ซุปกรอกของเซลล์ไม่ได้ */
    o.supSeesTrack=/ติดตามการคีย์รายสาย/.test(tx())&&/รอเซลล์คีย์/.test(tx());
    SP.sec='key';renderSpord();
    o.supExport=typeof spTgtXlsx==='function'&&spTgtRows('B20261118-01','2026-11-20').body.length>0;
 
-   /* เซลล์ CT11 เข้ามากรอกของตัวเอง */
+   /* เซลล์ CT11 เข้ามา "ใส่เลขออเดอร์" ของสายตัวเอง (27 พ.ย. 69 เลิกกรอกจำนวนแล้ว)
+      ตั้งดัชนีไว้ให้สองเลขนี้มีจริง ระบบจะได้หายอดเองได้ */
+   STOREDAILY.ord['BDD0100008801']={s:'4862383',l:'209611',d:'2026-11-20',v:1000,c:2,cs:8,pc:0,rf:'1034800001'};
+   STOREDAILY.ord['BDD0100008802']={s:'4862365',l:'209611',d:'2026-11-20',v:900,c:2,cs:4,pc:0,rf:'1034800002'};
+   spRfBust();
    __as('sales','209611','CT11 · เซลล์');_switchTab('spord');
    SP.sid='B20261118-01';SP.view='slip';SP.sec='rep';SP.day='2026-11-20';renderSpord();
    o.myLine=spMyLine();
-   o.hasMine=!!document.getElementById('spR_CT11_64849613_sc');
-   o.notOther=!document.getElementById('spR_CT12_64849613_sc');
-   document.getElementById('spR_CT11_64849613_sc').value='8';
-   document.getElementById('spR_CT11_64849613_fc').value='1';
-   await spRepSave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:8,sp:0,fc:1,fp:0}});
+   o.hasMine=!!document.getElementById('spRNo_CT11');
+   o.notOther=!document.getElementById('spRNo_CT12');
+   o.noQty=!document.getElementById('spR_CT11_64849613_sc');   /* ไม่มีช่องกรอกจำนวนแล้ว */
+   o.seesTgt=/รายการที่ต้องคีย์วันนี้/.test(tx())&&/64849613/.test(tx());
+   await spRepSave('B20261118-01','2026-11-20','CT11',{},['1034800001']);
    o.post1=window.__posts[window.__posts.length-1];
    let r=CSTOCK.rep['B20261118-01|2026-11-20|CT11'];
    o.n1=r&&r.n; o.h1=r&&r.h.length;
-   o.left1=spRepLeft(r);
-   /* แก้ครั้งที่ 1 (ครั้งสุดท้ายที่ทำได้) */
-   await spRepSave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:11,sp:0,fc:1,fp:0}});
+   o.left1=spRepLeft(r);o.max=REP_MAX;
+   /* บันทึกซ้ำ — เลขออเดอร์ทยอยเกิดทั้งวัน เซลล์ต้องเพิ่มแล้วเซฟใหม่ได้หลายรอบ */
+   await spRepSave('B20261118-01','2026-11-20','CT11',{},['1034800001','1034800002']);
    r=CSTOCK.rep['B20261118-01|2026-11-20|CT11'];
-   o.n2=r&&r.n; o.h2=r&&r.h.length; o.left2=spRepLeft(r); o.cur=r&&r.it['64849613'].sc;
-   /* ครั้งที่ 3 ต้องถูกปฏิเสธ */
+   o.n2=r&&r.n; o.h2=r&&r.h.length; o.left2=spRepLeft(r); o.cur=(r&&r.no||[]).length;
+   /* เซฟจนครบโควต้าของวัน แล้วครั้งถัดไปต้องถูกปฏิเสธ */
+   let guard=0;
+   while(spRepLeft(CSTOCK.rep['B20261118-01|2026-11-20|CT11'])>0&&guard++<50)
+     await spRepSave('B20261118-01','2026-11-20','CT11',{},['1034800001','1034800002']);
    const before=window.__posts.length;
-   o.third=await spRepSave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:99,sp:0,fc:0,fp:0}});
+   o.third=await spRepSave('B20261118-01','2026-11-20','CT11',{},['9999999999']);
    o.noExtraPost=window.__posts.length===before;
-   o.stillCur=CSTOCK.rep['B20261118-01|2026-11-20|CT11'].it['64849613'].sc;
+   o.stillCur=(CSTOCK.rep['B20261118-01|2026-11-20|CT11'].no||[]).join(',');
    /* ประวัติ */
    renderSpord();
    spHistOpen('B20261118-01','2026-11-20','CT11');
@@ -174,42 +181,44 @@ const ORIGIN='https://bd-spord.test/';
    /* ซุปกลับมาดู: เห็นของเซลล์ แต่แก้ไม่ได้ */
    __as('sup',null,'หัวหน้าเซลล์');SP.sec='rep';renderSpord();
    const b2=window.__posts.length;
-   o.supBlocked=await spRepSave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:1,sp:0,fc:0,fp:0}});
+   o.supBlocked=await spRepSave('B20261118-01','2026-11-20','CT11',{},['1034800001']);
    o.supNoPost=window.__posts.length===b2;
    o.trk=spTrack('B20261118-01','2026-11-20').filter(x=>x.ln==='CT11')[0];
    o.supTxt=tx();
    return o;});
- t('🔑 เซลล์กรอก "จำนวนที่คีย์จริง" ของสายตัวเองได้',
-   rep.myLine==='CT11'&&rep.hasMine&&rep.post1&&rep.post1.u==='/api/spord'&&rep.post1.b.act==='rep',
-   JSON.stringify({line:rep.myLine,act:rep.post1&&rep.post1.b.act}));
+ t('🔑 เซลล์ใส่ "เลขออเดอร์" ของสายตัวเองได้ และไม่ต้องกรอกจำนวนแล้ว',
+   rep.myLine==='CT11'&&rep.hasMine&&rep.noQty&&rep.post1&&rep.post1.u==='/api/spord'&&rep.post1.b.act==='rep',
+   JSON.stringify({line:rep.myLine,noQty:rep.noQty,act:rep.post1&&rep.post1.b.act}));
+ t('🔑 ...แต่ยังเห็นรายการที่ต้องไปคีย์ของวันนั้น',rep.seesTgt);
  t('🔒 ...และเห็นช่องกรอกเฉพาะสายตัวเอง ไม่ใช่ของสายอื่น',rep.hasMine&&rep.notOther);
- t('🔑 แก้ได้อีกครั้งเดียว แล้วตัวเลขใหม่ชนะ',
-   rep.left1===1&&rep.n2===2&&rep.left2===0&&rep.cur===11,
-   JSON.stringify({left1:rep.left1,n2:rep.n2,left2:rep.left2,cur:rep.cur}));
- t('🛟 ครั้งที่สามต้องถูกปฏิเสธ ไม่ยิงขึ้นเซิร์ฟเวอร์ และตัวเลขเดิมไม่เปลี่ยน',
-   rep.third===false&&rep.noExtraPost&&rep.stillCur===11,
+ t('🔑 เซลล์กดบันทึกเพิ่มได้หลายรอบในวันเดียว แล้วเลขชุดใหม่ชนะ',
+   rep.max>=5&&rep.left1===rep.max-1&&rep.n2===2&&rep.left2===rep.max-2&&rep.cur===2,
+   JSON.stringify({max:rep.max,left1:rep.left1,n2:rep.n2,left2:rep.left2,cur:rep.cur}));
+ t('🛟 ครบโควต้าของวันแล้วต้องถูกปฏิเสธ ไม่ยิงขึ้นเซิร์ฟเวอร์ และของเดิมไม่เปลี่ยน',
+   rep.third===false&&rep.noExtraPost&&rep.stillCur==='1034800001,1034800002',
    JSON.stringify({third:rep.third,cur:rep.stillCur}));
  t('🔑 กดดูประวัติได้ว่ากรอกเมื่อไหร่ แก้เมื่อไหร่ (ทุกครั้งเก็บไว้ ไม่ทับของเดิม)',
    rep.h1===1&&rep.h2===2&&rep.histShown&&/ครั้งล่าสุด/.test(rep.hist),
    JSON.stringify({h1:rep.h1,h2:rep.h2}));
  t('🔒 หัวหน้าเซลล์แก้จำนวนของเซลล์ไม่ได้เลย ดูได้อย่างเดียว',
    rep.supNoInput&&rep.supBlocked===false&&rep.supNoPost);
- t('🔑 ซุปเห็นตารางติดตามว่าสายไหนคีย์ครบเป้าแล้ว',
-   rep.supSeesTrack&&rep.trk&&rep.trk.tgt.cs===11&&rep.trk.rep.cs===12&&rep.trk.st==='over',
-   JSON.stringify(rep.trk&&{tgt:rep.trk.tgt.cs,rep:rep.trk.rep.cs,st:rep.trk.st}));
+ t('🔑 ซุปเห็นตารางติดตาม และยอด "คีย์จริง" มาจากเลขออเดอร์ที่เซลล์ใส่ (8+4=12)',
+   rep.supSeesTrack&&rep.trk&&rep.trk.tgt.cs===11&&rep.trk.rep.cs===12&&
+   rep.trk.rSrc==='order'&&rep.trk.st==='over',
+   JSON.stringify(rep.trk&&{tgt:rep.trk.tgt.cs,rep:rep.trk.rep.cs,src:rep.trk.rSrc,st:rep.trk.st}));
  t('🔑 ซุปดึงเป้าออกเป็นไฟล์ส่งให้เซลล์ได้',rep.supExport);
  /* ใบ A/B ไม่มีขั้นซุปจด ⇒ หน้าเซลล์คีย์ต้องไม่มีช่อง "เป้า / ยังขาด / ผล" ให้เข้าใจผิด
     ว่ามีใครลืมตั้งเป้า (เจ้าของสั่ง 26 พ.ย. 69 ให้ใบสองแบบนี้เริ่มที่เซลล์เลย) */
  const noTgt=await ev(()=>{
    CSTOCK.slips['B20261118-01'].g='A';
    __as('sales','209611','CT11 · เซลล์');SP.sec='rep';SP.day='2026-11-22';renderSpord();
-   const ths=[...document.querySelectorAll('#spBody .sp-rf label')].map(x=>x.textContent.trim());
+   const ths=[...document.querySelectorAll('#spBody .sp-k4 thead th')].map(x=>x.textContent.trim());
    const tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   const box=!!document.getElementById('spRNo_CT11');
    CSTOCK.slips['B20261118-01'].g='D';
-   return {ths:ths,tx:tx};});
- t('🔑 ใบที่ไม่มีขั้นซุปจด ไม่มีช่อง "เป้า" ให้เข้าใจผิดว่าใครลืมตั้งเป้า',
-   !noTgt.ths.some(x=>/เป้า/.test(x))&&!/ยังไม่ได้ตั้งเป้า/.test(noTgt.tx)&&
-   !/· เป้า/.test(noTgt.tx)&&noTgt.ths.some(x=>/ขาย \(ลัง\)/.test(x)),
+   return {ths:ths,tx:tx,box:box};});
+ t('🔑 ใบที่ไม่มีขั้นซุปจด ไม่โชว์เป้าให้เข้าใจผิดว่าใครลืมตั้ง แต่ยังใส่เลขออเดอร์ได้',
+   !/ยังไม่ได้ตั้งเป้า/.test(noTgt.tx)&&!/· เป้า/.test(noTgt.tx)&&noTgt.box,
    noTgt.ths.join(' | '));
 
 
@@ -849,11 +858,14 @@ const ORIGIN='https://bd-spord.test/';
    const o={};
    const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    o.chips=[...document.querySelectorAll('#spTabs .tab2')].map(x=>x.textContent.trim());
-   o.showsName=/โอโมน้ำ ซากุระ/.test(tx())&&/รหัส 64849613/.test(tx());
+   o.showsName=/โอโมน้ำ ซากุระ/.test(tx())&&/64849613/.test(tx());
    o.hasInputs=!!document.getElementById('spK_CT11_64849613_sc');
    /* sup กรอกแล้วบันทึก */
-   document.getElementById('spK_CT11_64849613_sc').value='5';
-   document.getElementById('spK_CT11_64849613_fc').value='1';
+   /* ช่องแถมถูกเอาออกเมื่อ 27 พ.ย. 69 — เหลือ ลัง/ชิ้น เท่านั้น */
+   o.noFree=!document.getElementById('spK_CT11_64849613_fc');
+   o.cols=[...document.querySelectorAll('#spBody .sp-k4 thead th')].map(x=>x.textContent.trim());
+   o.frozen=!!document.querySelector('#spBody .sp-k4 td.c1');
+   document.getElementById('spK_CT11_64849613_sc').value='6';
    document.getElementById('spK_CT11_65456729_sc').value='3';
    await spKeyLineSave('B20261118-01','2026-11-20','CT11');
    o.post=window.__posts[window.__posts.length-1];
@@ -872,15 +884,18 @@ const ORIGIN='https://bd-spord.test/';
    /แอดมินตรวจ/.test(two.chips[2])&&/คลังส่งออก/.test(two.chips[3]),two.chips.join(' | '));
  t('🔑 ใบออเดอร์โชว์ชื่อสินค้า ไม่ใช่รหัสเปล่า ๆ (เจ้าของบอกว่า "ขึ้นแค่รหัสมันตามดูยาก")',
    two.showsName);
- t('🔑 หัวหน้าเซลล์กรอก ขาย/แถม เป็น ลัง+ชิ้น ได้ทุกสาย',two.hasInputs);
+ t('🔑 หัวหน้าเซลล์กรอกเป็น ลัง + ชิ้น ได้ทุกสาย',two.hasInputs);
+ t('🔑 ตารางเหลือ 4 คอลัมน์ สินค้า · รหัส · ลัง · ชิ้น และไม่มีช่องแถมแล้ว',
+   two.noFree&&two.cols.join(' | ')==='สินค้า | รหัส | ลัง | ชิ้น',two.cols.join(' | '));
+ t('📌 ...และชื่อสินค้ากับรหัสค้างไว้ซ้ายมือตอนเลื่อน (freeze)',two.frozen);
  t('...กดบันทึกแล้วส่งผ่าน api/spord (ไม่ใช่ save ทั้งก้อน)',
    two.post&&two.post.u==='/api/spord'&&two.post.b.act==='key'&&
    two.post.b.ln==='CT11'&&two.post.b.d==='2026-11-20',JSON.stringify(two.post&&two.post.b));
- t('...เก็บแยกของขายกับของแถมไว้ให้ตรวจได้',
-   two.rec&&two.rec.it['64849613'].sc===5&&two.rec.it['64849613'].fc===1&&
-   two.rec.it['65456729'].sc===3,JSON.stringify(two.rec&&two.rec.it));
- t('🔑 ...แต่ยอดรวมขึ้นใบใหญ่ รวมขาย+แถมเข้าด้วยกันตามที่เจ้าของสั่ง',
-   /รวมส่งขึ้นใบใหญ่/.test(two.cards)&&two.sum['64849613'].sc===5&&two.sum['64849613'].fc===1);
+ t('...เก็บจำนวนที่กรอกไว้ถูกต้อง',
+   two.rec&&two.rec.it['64849613'].sc===6&&two.rec.it['65456729'].sc===3,
+   JSON.stringify(two.rec&&two.rec.it));
+ t('🔑 ...และยอดรวมขึ้นใบใหญ่ตามที่เจ้าของสั่ง',
+   /เป้าวันนี้ทั้งใบ/.test(two.cards)&&two.sum['64849613'].sc===6);
  t('🔒 เซลล์เห็นหน้า "สายของฉัน" แก้เป้าของหัวหน้าเซลล์ไม่ได้ และไม่เห็นสายอื่น',
    two.salesRead&&two.salesSees&&two.salesNoOther,
    JSON.stringify({mine:two.salesRead,sees:two.salesSees,noOther:two.salesNoOther}));
@@ -1574,7 +1589,9 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
    o.jobs=[...document.querySelectorAll('#spBody .sp-job .sp-jd')].map(x=>x.textContent.trim());
    o.tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    o.cards=document.querySelectorAll('#spBody .sp-rc').length;
-   o.inputs=[...document.querySelectorAll('#spBody .sp-rc input')]
+   o.noBox=!!document.getElementById('spRNo_CT11');
+   o.tgtCols=[...document.querySelectorAll('#spBody .sp-k4 thead th')].map(x=>x.textContent.trim());
+   o.inputs=[...document.querySelectorAll('#spBody .sp-rno textarea')]
      .map(x=>x.getAttribute('inputmode')).join(',');
    o.noTable=document.querySelectorAll('#spBody .sp-kt').length;
    o.days=spDays('B20261118-01');
@@ -1591,12 +1608,12 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
    rep2.days.length===3,rep2.jobs.join(' | '));
  t('🔒 ...แต่ไม่เห็นวันของสายอื่น (ซุปตั้งเป้า CT12 ไว้ในวันเดียวกัน)',
    rep2.days.indexOf(rep2.T0)>=0&&rep2.days.length===3,rep2.days.join(','));
- t('🔑 หน้ากรอกเป็นการ์ดต่อสินค้า กรอกบนมือถือได้ ไม่ใช่ตารางกว้าง ๆ',
-   rep2.cards===2&&rep2.noTable===0&&/decimal/.test(rep2.inputs)&&
-   rep2.inputs.split(',').every(x=>x==='decimal'),
+ t('🔑 หน้าเซลล์เหลือแค่ช่องใส่เลขออเดอร์ ไม่มีการ์ดกรอกจำนวนแล้ว (27 พ.ย. 69)',
+   rep2.cards===0&&rep2.noBox&&rep2.inputs==='numeric',
    rep2.cards+' การ์ด · inputmode='+rep2.inputs);
- t('🔑 ...และบอกเป้าที่ซุปตั้งไว้บนการ์ด',/เป้า/.test(rep2.tx)&&/ครีมทาผิว เอ/.test(rep2.tx),
-   rep2.tx.slice(rep2.tx.indexOf('ครีมทาผิว'),rep2.tx.indexOf('ครีมทาผิว')+70));
+ t('🔑 ...แต่ยังเห็นรายการที่ต้องไปคีย์ เป็นตาราง 4 คอลัมน์ที่ freeze ชื่อ/รหัสไว้',
+   rep2.tgtCols.join(' | ')==='สินค้าที่ต้องคีย์ | รหัส | ลัง | ชิ้น'&&/ครีมทาผิว เอ/.test(rep2.tx),
+   rep2.tgtCols.join(' | '));
 
  /* ================================================================
   * 🧾 เลขคำสั่งซื้อที่เซลล์เห็นในแอพ (#1034715426) — เจ้าของเรียกว่าชิ้นสุดท้ายของจิ๊กซอว์
@@ -1655,8 +1672,6 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
    const el=document.getElementById('spRNo_CT11');
    if(el){el.value='1034715426 1034715427';el.dispatchEvent(new Event('input'));}
    o.live=document.getElementById('spRNoInfo_CT11').textContent.replace(/\s+/g,' ');
-   /* กรอกจำนวนไม่ตรงกับของจริง (17 ลัง) เพื่อให้แอดมินเห็นว่าต่าง */
-   const q=document.getElementById('spR_CT11_AAA1_sc');if(q)q.value='20';
    window.__posts=[];
    await spRepLineSave('B20261118-01',D,'CT11');
    await new Promise(r=>setTimeout(r,60));
@@ -1684,9 +1699,9 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
  t('🔑 ...และอ่านกลับมาขึ้นในช่องเหมือนเดิม',refSave.back==='1034715426 1034715427',refSave.back);
  t('🔑 ฝั่งแอดมินเห็นช่อง "จากเลขออเดอร์" ที่ระบบหาเอง',refSave.col&&!!refSave.ord,
    JSON.stringify(refSave.ord));
- t('🔑 ...และฟ้องเมื่อจำนวนที่เซลล์คีย์ไม่ตรงกับของจริง (คีย์ 20 · ของจริง 17)',
-   refSave.ord&&refSave.ord.cs===17&&refSave.rep===20&&refSave.diff,
-   'ระบบ '+(refSave.ord&&refSave.ord.cs)+' · คีย์ '+refSave.rep);
+ t('🔑 ...และยอด "คีย์จริง" มาจากเลขออเดอร์ ไม่ใช่ตัวเลขที่ใครพิมพ์ (17 ลัง)',
+   refSave.ord&&refSave.ord.cs===17&&refSave.rep===17,
+   'ระบบ '+(refSave.ord&&refSave.ord.cs)+' · คีย์จริง '+refSave.rep);
 
  /* ================================================================
   * 16) 🧑 บัญชีแอดมิน 1-4 ไม่ใช่บัญชีผู้จัดการ (เจ้าของเจอเอง 26 พ.ย. 69)
