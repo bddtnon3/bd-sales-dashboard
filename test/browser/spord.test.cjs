@@ -579,6 +579,37 @@ const ORIGIN='https://bd-spord.test/';
    /1\s*ใบออเดอร์/.test(nav.mon.replace(/\s/g,' '))&&
    /เซลล์คีย์/.test(nav.mon)&&/แอดมินตรวจ/.test(nav.mon),nav.mon.slice(0,150));
  t('...ช่องเลือกใบซ่อนไว้ตอนอยู่หน้าเลือกเดือน (ไม่รกตา)',nav.slipBox==='none',nav.slipBox);
+ /* 📅 เจ้าของสั่ง 26 พ.ย. 69: *"หน้าบันทึกแล้วของแอดมิน ให้ขึ้นเป็นสีทึบในปฏิทินแทน
+    ไม่ต้องขึ้นวันข้าง ๆ แบบนี้ ไม่งั้นมันจะลิสออกมาเยอะมากแน่ ๆ"* */
+ const cal=await ev(()=>{
+   const sid='B20261118-01',C=spKeyOk();
+   C.gin[sid+'|2026-11-18']={at:Date.now(),rows:{'1001':{cs:1}},g:['44']};
+   SP.sid=sid;SP.day='2026-11-18';SP.cm='';
+   const h=spCalHtml(sid);
+   const box=document.createElement('div');box.innerHTML=h;
+   const cells=[...box.querySelectorAll('.cal-day')];
+   const has=cells.filter(c=>c.classList.contains('has')).map(c=>c.textContent.trim());
+   const chk=cells.filter(c=>c.classList.contains('chk')).map(c=>c.textContent.trim());
+   const sel=cells.filter(c=>c.classList.contains('sel')).map(c=>c.textContent.trim());
+   SP.cm='';spCalStep(-1);const prev=spCalMon(sid);
+   spCalStep(1);const back=spCalMon(sid);
+   const before=JSON.stringify(CSTOCK);
+   spSetDay('2026-11-20');const afterMon=spCalMon(sid);
+   const same=before===JSON.stringify(CSTOCK);
+   delete C.gin[sid+'|2026-11-18'];SP.day='';SP.cm='';
+   return {html:h,has:has.join(','),chk:chk.join(','),sel:sel.join(','),
+     prev:prev,back:back,afterMon:afterMon,same:same,
+     chips:/pl-cb/.test(h),head:/พ\.ย\. 2569/.test(h)};});
+ t('📅 วันที่มีข้อมูลขึ้นเป็นสีทึบในปฏิทิน ไม่ใช่ลิสต์วันข้าง ๆ',
+   cal.has.length>0&&!cal.chips&&cal.head,cal.has+' | chips='+cal.chips);
+ t('📅 วันที่แอดมินตรวจแล้วมีสีของตัวเอง แยกจากวันที่แค่มีข้อมูล',
+   cal.chk==='18'&&cal.has.indexOf('18')>=0,'has='+cal.has+' chk='+cal.chk);
+ t('📅 วันที่เลือกอยู่ถูกไฮไลต์',cal.sel==='18',cal.sel);
+ t('📅 เดือนที่ปฏิทินโชว์แยกจากวันที่เลือก (กดย้อนเดือนแล้วไม่เด้งกลับ)',
+   cal.prev==='2026-10'&&cal.back==='2026-11',cal.prev+' → '+cal.back);
+ t('📅 กดวันในปฏิทินแล้วปฏิทินตามไปเดือนนั้น',cal.afterMon==='2026-11',cal.afterMon);
+ t('🛟 ปฏิทินไม่แตะข้อมูลเลย',cal.same,'');
+
  /* 🐞 เจ้าของทักเอง 26 พ.ย. 69: การ์ดเดือนขึ้น "แอดมินตรวจ 2 วัน" แต่เข้าไปในใบแล้วไม่มีอะไรเลย
     สาเหตุ: spMonGin/spMonKeyed นับแค่ "มีคีย์อยู่" จึงนับทั้งวันที่กดยกเลิกผลตรวจไปแล้ว (del:1)
     และเรคอร์ดเปล่า ๆ ที่เหลือจากการเซฟแล้วลบข้อความออก */

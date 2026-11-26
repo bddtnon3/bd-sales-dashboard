@@ -96,7 +96,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (296 checks against the real `api/save.js`, the real
+  running **`node test/merge-safety.test.mjs`** (300 checks against the real `api/save.js`, the real
   `api/ordtrk.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
@@ -724,6 +724,33 @@ code, never printed.
   the FILE covers**, not the upload clock, so re-uploading an old export cannot drag a Delivered
   order back to Confirmed. Merging is field-by-field, so a fresher file that happens to carry no
   GIN cannot blank one already known (the `mergeExOne` lesson).
+  **A third file feeds this page — the one the reps' own keying produces** (`parseTxn`, owner
+  26 Nov 26: *"ผมสามารถดึงรายงานส่วนแรกของการขายเลย คือส่วนที่เซลล์คีย์เข้าระบบ … เป็นไฟล์ที่เกิดขึ้น
+  ก่อนแอดมินจะส่งไปสร้าง GIN"*). `Transaction_Inquiry_<ddmmyyyy>.xlsx`, sheet `DataExtract`,
+  recognised by `เลขที่เอกสาร` + `เวลาสั่งซื้อ` (`txIsTxn`), and it is **the master list of the
+  three**: measured on his real file (2,107 rows, 15–26 Nov 26), **1 เลขเอกสาร = 1 แถว, 2,107/2,107**;
+  every order in the allocation file is in it (**1,789/1,789**) and every order in the daily sales
+  file is too (**1,401/1,401**), with **nothing the other two have that it lacks**. It agrees with
+  the allocation file on shop 1,789/1,789, creation date 1,789/1,789 and GIN 1,644/1,645, and with
+  the sales file on invoice number and NIV **1,401/1,401 (100%)**. It carries **318 orders the
+  allocation file does not** — 46 cancelled plus the days that export did not reach — and three
+  columns nothing else has: **เวลาสั่งซื้อ, วันที่จัดส่ง, วันที่จัดส่งจริง**.
+  Four rules: **the file uses two date formats** — `วันที่เอกสาร`/`วันที่จัดส่ง`/`invoicedate` are
+  `dd-mm-yyyy` while **`วันที่จัดส่งจริง` is `yyyy-mm-dd hh:mm:ss`**, so `txDate` and `txIso` are
+  separate and must not be swapped; **delivery dates are stored as day OFFSETS** from the creation
+  date (`dp`/`dv`), so a delivery in the next month cannot fall outside that month's blob, and an
+  absent offset means *not delivered* — `recOrd` must test "was a value sent at all", because
+  `INT(undefined)` is 0 and 0 would read as *delivered the same day*; **cancelled orders are kept
+  and flagged `cx`** so the page can show them, but are **never** written into `STOREDAILY.ord`,
+  which is a sales index; and because the file is **header-level with no product codes**, it fills
+  `STOREDAILY.ord` **only where a field is empty** (never overwriting the sales file's figures),
+  marks the record `tx:1` and **writes no `cs`/`pc`/`c`** — every reader of that index therefore
+  tests `cs===undefined` and says *รอไฟล์ยอดขาย* instead of printing 0 (`spRow`, `spCases`,
+  `spShops`). For the same reason it **cannot feed the promotions tracker**, which needs per-product
+  quantities. Measured and worth not over-claiming: **วันที่จัดส่งจริง equals วันที่จัดส่ง in
+  1,677/1,677 rows**, so that column proves *delivered / not delivered*, never *late*.
+  Its upload button is **on this page** (`otUpTxn`), the second documented exception to the
+  one-upload-button rule, for the same reason as the allocation file: one upload serves the system.
   `parseDailyDcode` also stores **`k` = the Sales Order Creation Date** on `STOREDAILY.ord`
   (optional lookup — a file uploaded before that still parses, and the page simply has no sales-side
   cross-check for it). `d` on that record is the INVOICE date and answers a different question;
@@ -738,8 +765,9 @@ code, never printed.
   filtered to their own line reads. On a phone the 7-column table folds into one card per order
   (`@media` + `data-l` labels), because ① and ② scrolled off the right edge otherwise — the same
   lesson as the rep's entry cards in ออเดอร์พิเศษ. Prove it with
-  **`node test/browser/ordtrk.test.cjs`** (69 checks, self-contained with made-up codes) plus the
-  `api/ordtrk.js` cases in `merge-safety`.
+  **`node test/browser/ordtrk.test.cjs`** (88 checks, self-contained with made-up codes; 94 with the
+  real file via `ORDTRK_TXN=/path/Transaction_Inquiry_....xlsx`, which holds real shop names and
+  never enters the repo) plus the `api/ordtrk.js` cases in `merge-safety`.
   The **💰 ราคา & ทุน** tab group (`renderPrice`/`renderCost`) reads the two monthly Unilever price
   files. Its rules are dense and were measured, not guessed — read `HANDOFF.md` §5 before touching
   any of it. The ones easiest to get wrong: a Unilever round runs **the 25th → the 24th**, not a
@@ -996,6 +1024,11 @@ code, never printed.
   **The ← ย้อนกลับ button steps inside the page** (`spNavPush`/`spNavBack`, `SP.hist`): tab → slip
   list → month, and only then out to another tab. `NAV` alone holds tabs, so it used to jump
   straight out of the group.
+  **The day picker is a month calendar, not a list of chips** (`spCalHtml`, owner 26 Nov 26:
+  *"หน้าบันทึกแล้วของแอดมิน ให้ขึ้นเป็นสีทึบในปฏิทินแทน ไม่ต้องขึ้นวันข้าง ๆ แบบนี้ ไม่งั้นมันจะลิส
+  ออกมาเยอะมากแน่ ๆ"*): days with data are solid blue, days the admin has checked solid green, the
+  selected day outlined. **`SP.cm` (the month shown) is separate from `SP.day` (the day selected)** —
+  the `PJ.ym`/`PJ.d` rule — or stepping back a month snaps forward again on every render.
   **`spDays` must test for real content, not for a key** (`spDayHas`): deleting here writes an empty
   record or `del:1` rather than removing the key, so the date chips kept showing days the owner had
   already cleared. **Every counter that walks `CSTOCK.key`/`CSTOCK.gin` must go through `spDayHas`
@@ -1157,7 +1190,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (197 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (203 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1170,7 +1203,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (197 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (203 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
@@ -1252,7 +1285,8 @@ code, never printed.
 - `api/*.js` — Vercel serverless functions (ESM): `login`, `data` (read newest non-empty blob),
   `save` (manager save + gzip + mergeState + 8 backups), `request` (sales-only request write),
   `apply` (PUBLIC shop application → its own `bd-lead-*` blob), `leads` (manager-only read).
-- `api/ordtrk.js` — the 📋 order-tracking index: manager/admin upload, **everyone** reads.
+- `api/ordtrk.js` — the 📋 order-tracking index, fed by **two** files (the warehouse's allocation
+  report and the reps' Transaction Inquiry): manager/admin upload, **everyone** reads.
   Its own blob prefix (`bd-ordtrk-`), **sharded by month**, never a read or a write of `bd-data-*`
   — see the 📋 section above for why. GET with no month lists the months from the blob NAMES
   (one listing, no download); `?m=YYYY-MM` returns that month; `det` (the per-order product

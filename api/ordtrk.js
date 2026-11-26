@@ -89,6 +89,22 @@ export function recOrd(o) {
   const v = NUM(o.v); if (v) r.v = v;                          // NIV from the file, when the file carries money
   const n = INT(o.n); if (n > 0) r.n = n;                      // how many product codes in the order
   const u = INT(o.u); if (u > 0) r.u = u;                      // last day the FILE covers, yyyymmdd
+  /* ---- from the Transaction Inquiry file (the rep's own keying log), which the
+     allocation file cannot give: the time of day, the delivery dates and the channel.
+     Delivery dates are stored as DAY OFFSETS from the creation date, not as dates, so a
+     delivery that lands in the next month cannot fall outside this month's blob. ---- */
+  const tm = S(o.tm, 5); if (/^\d{1,2}:\d{2}$/.test(tm)) r.tm = tm;   // เวลาสั่งซื้อ HH:MM
+  /* ⚠️ ต้องเช็กว่า "มีค่าส่งมาจริง" ก่อน — INT(undefined) คืน 0 และ 0 ก็ผ่านช่วง 0..120
+     ช่องที่ไม่มีข้อมูลจะกลายเป็น "ส่งวันเดียวกับที่คีย์" ซึ่งเป็นการโกหก (เทสต์จับได้) */
+  const DAY = (v) => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = Math.round(Number(v));
+    return (Number.isFinite(n) && n >= 0 && n <= 120) ? n : null;
+  };
+  const dp = DAY(o.dp); if (dp !== null) r.dp = dp;                   // +วัน ถึงวันนัดส่ง
+  const dv = DAY(o.dv); if (dv !== null) r.dv = dv;                   // +วัน ถึงวันส่งจริง (ไม่มี = ยังไม่ส่ง)
+  const cn = S(o.cn, 1); if (cn) r.cn = cn;                           // ช่องทาง M/B/O
+  if (o.cx) r.cx = 1;                                                 // ยกเลิกแล้ว
   return Object.keys(r).length ? r : null;
 }
 

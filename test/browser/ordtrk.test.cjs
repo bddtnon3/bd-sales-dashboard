@@ -18,6 +18,9 @@ const {chromium}=require('playwright-core');
 const ROOT=path.resolve(__dirname,'..','..');
 const PAGE=path.join(ROOT,'public','index.html');
 const BROWSER=require('./_chrome.cjs').chromePath();
+/* ไฟล์จริงของเจ้าของมีชื่อ/รหัสร้านจริง จึงไม่เข้ารีโป — ตรวจเพิ่มได้ด้วย
+   ORDTRK_TXN=/path/Transaction_Inquiry_....xlsx node test/browser/ordtrk.test.cjs */
+const REAL=process.env.ORDTRK_TXN&&fs.existsSync(process.env.ORDTRK_TXN)?process.env.ORDTRK_TXN:null;
 /* ต้องเสิร์ฟผ่าน origin จริง ไม่ใช่ setContent — ไม่งั้นเบราว์เซอร์ห้ามแตะ localStorage
    แล้วโค้ดส่วนอื่นของหน้าเว็บจะโยน SecurityError (บทเรียนเดียวกับ cstock/sreq) */
 const ORIGIN='https://bd-ordtrk.test/';
@@ -111,7 +114,8 @@ const ORIGIN='https://bd-ordtrk.test/';
  ['manager','sales','sup','wh','ds'].forEach(r=>{
    t('🔑 '+r+' เห็นหมวดสถานะออเดอร์',/(^|,)otrk(,|$)/.test(grp.roles[r]),grp.roles[r]);});
  t('🛟 เว็บแอดมินก็มีหมวดนี้',/(^|,)otrk(,|$)/.test(grp.admin),grp.admin);
- t('🛟 ปุ่มอัพโหลดบนหน้านี้เปิดหมวดที่มีไฟล์ใบจัดของ',grp.upTab==='spord',grp.upTab);
+ t('🛟 ปุ่มอัพโหลดบนหน้านี้เปิดหมวดของหน้านี้เอง (มีไฟล์รายการสั่งซื้ออยู่ในนั้น)',
+   grp.upTab==='otrk',grp.upTab);
 
  /* ================= 2) แปลงเลขที่พิมพ์เข้ามา ================= */
  const nm=await ev(()=>({
@@ -329,6 +333,149 @@ const ORIGIN='https://bd-ordtrk.test/';
  t('🛟 ...และไม่มีการเขียนขึ้นเซิร์ฟเวอร์เลย',syncA===syncB,syncB+' → '+syncA);
  const posts=await ev(()=>window.__posts.length);
  t('🛟 ...ไม่มีการ POST ไป /api/ordtrk จากการดูหน้าเว็บ',posts===1,posts);
+
+
+ /* ================= 9) 📥 ไฟล์รายการสั่งซื้อ (ฝั่งเซลล์คีย์) =================
+    เจ้าของส่งไฟล์นี้มา 26 พ.ย. 69 — เป็นไฟล์ "ก่อน" จะกลายเป็นใบจัดของ
+    วัดกับไฟล์จริงแล้ว: 1 เลขเอกสาร = 1 แถว เสมอ และครอบคลุมเลขของอีกสองไฟล์ครบ 100% */
+ const txn=await ev(async()=>{
+   const H=['เลขที่เอกสาร','รหัสร้านค้า','ชื่อร้านค้ายาว','PJP เซลล์แมน/PJP สายส่ง',
+     'PJP เซลล์/PJP คนส่งของ','รหัส Section','ชื่อส่วน','หมายเลข PJP','เวลาสั่งซื้อ',
+     'วันที่เอกสาร','วันที่จัดส่ง','วันที่จัดส่งจริง','จำนวนรวม (GSV)','ส่วนเพิ่มราคา',
+     'จำนวนส่วนลด','DYP.......NIV','มูลค่าภาษี','จํานวนเงินที่ได้รับ',
+     'DYP.......CreditNoteAdjustment','ยอดสุทธิ','DYP.......NetPayable','สถานะเอกสาร',
+     'สถานะการดำเนินการ','ช่องทางความต้องการ','เลขอ้างอิง DDT','หมายเลขใบจัดสินค้า',
+     'เลขที่อ้างอิงใบแจ้งหนี้','เลขที่ใบแจ้งหนี้','DYP.......invoicedate'];
+   const R=(no,sh,nm,ln,tm,d,dd,da,gsv,niv,ds,ws,ch,gin,inv,ivd)=>
+     [no,sh,nm,ln+' / TH20960001','เซลล์ ก / คนส่ง','SC'+ln+'F210',ln+'_THU',ln,tm,
+      d,dd,da,gsv,0,0,niv,0,0,0,0,0,ds,ws,ch,'1034',gin,'',inv,ivd];
+   const rows=[H,
+     /* ส่งถึงร้านแล้ว — มีครบทุกอย่าง */
+     R('BDD0100000301','9000001','ร้าน ก','209611','10:22:11','17-11-2026','19-11-2026',
+       '2026-11-19 14:05:10','1,277.38','820.38','Delivered','Delivered','Mobility (MOB)','44','BDD0900000701','19-11-2026'),
+     /* เพิ่งคีย์ — ยังไม่มี GIN ยังไม่ออกบิล ยังไม่ส่ง */
+     R('BDD0100000302','9000002','ร้าน ข','209612','09:05:00','17-11-2026','18-11-2026','',
+       '500','400','Ordered','Confirmed','Business to Business (B2B)','','',''),
+     /* ⚠️ ใบที่ยกเลิก — ต้องเก็บไว้ให้เห็น แต่ห้ามนับเป็นยอดขาย */
+     R('BDD0100000303','9000003','ร้าน ค','209611','11:00:00','18-11-2026','20-11-2026','',
+       '900','700','Cancelled','Cancelled','Mobility (MOB)','','',''),
+     /* สายที่ยังไม่รู้จัก — เก็บไว้ ไม่เดา */
+     R('BDD0100000304','9000004','ร้าน ง','2096VSM','08:30:00','18-11-2026','19-11-2026','',
+       '100','90','Ordered','Sent to Locus','Back Office (BO)','45','','')];
+   const ws2=XLSX.utils.aoa_to_sheet(rows),wb=XLSX.utils.book_new();
+   XLSX.utils.book_append_sheet(wb,ws2,'DataExtract');
+   const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+   /* เรคอร์ดที่ไฟล์ยอดขายเขียนไว้แล้ว ต้องไม่ถูกทับ */
+   STOREDAILY.ord['BDD0100000301']={s:'9000001',l:'209611',d:'2026-11-19',v:820.38,c:5,cs:3,pc:0,g:1277.38};
+   window.__posts=[];window.__log=[];
+   const isT=txIsTxn(rows[0]);
+   const old=XLSX.utils.sheet_to_json(XLSX.read(buf,{type:'array'}).Sheets['DataExtract'],{header:1})[0];
+   parseTxn('Transaction_Inquiry_26112026.xlsx',buf);
+   await new Promise(r=>setTimeout(r,80));
+   const P=window.__posts[0]||{ord:{}};
+   return {isT:isT,notT:txIsTxn(['Order Creation Date','PJP Code','GIN No.']),
+     keys:Object.keys(P.ord).sort().join(','),
+     a:P.ord['00000301']||null,b:P.ord['00000302']||null,c:P.ord['00000303']||null,d:P.ord['00000304']||null,
+     sd:JSON.parse(JSON.stringify(STOREDAILY.ord)),
+     log:(window.__log||[]).join(' ')};});
+ t('🔑 รู้จักไฟล์รายการสั่งซื้อจากหัวตาราง และไม่สับสนกับไฟล์ใบจัดของ',
+   txn.isT===true&&txn.notT===false,txn.isT+'/'+txn.notT);
+ t('🔑 อ่านครบทุกใบ รวมใบที่ยกเลิก',
+   txn.keys==='00000301,00000302,00000303,00000304',txn.keys);
+ t('🔑 เก็บเวลาสั่งซื้อ (ไฟล์ใบจัดของไม่มีช่องนี้เลย)',
+   txn.a&&txn.a.tm==='10:22'&&txn.b.tm==='09:05',JSON.stringify(txn.a));
+ t('🔑 วันนัดส่ง/วันส่งจริง เก็บเป็นจำนวนวันนับจากวันคีย์ (ข้ามเดือนก็ไม่หลุดก้อน)',
+   txn.a&&txn.a.dp===2&&txn.a.dv===2,JSON.stringify(txn.a));
+ t('🔑 ...และสองช่องนี้คนละรูปแบบวันที่ (dd-mm-yyyy กับ yyyy-mm-dd hh:mm:ss) อ่านถูกทั้งคู่',
+   txn.a&&txn.a.dv===2&&txn.b.dp===1&&txn.b.dv===undefined,JSON.stringify(txn.b));
+ t('🔑 ใบที่ยังไม่ส่ง ไม่มีวันส่งจริง (ไม่ใช่เดาเป็นวันนัด)',
+   txn.b&&txn.b.dv===undefined&&txn.d.dv===undefined,JSON.stringify(txn.b));
+ t('🔑 เก็บ GIN · เลขบิล · สถานะ · ช่องทาง',
+   txn.a&&txn.a.g==='44'&&txn.a.i==='00000701'&&txn.a.t==='D'&&txn.a.cn==='M'&&
+   txn.b.cn==='B'&&txn.d.cn==='O',JSON.stringify(txn.a));
+ t('🔑 ใบที่ยกเลิกติดธงไว้ ไม่ได้ทิ้ง',txn.c&&txn.c.cx===1&&txn.c.t==='X',JSON.stringify(txn.c));
+ t('🛟 ...แต่ห้ามเข้าดัชนีเลขออเดอร์ที่หน้าอื่นใช้ (ไม่ใช่ยอดขาย)',
+   !txn.sd['BDD0100000303'],Object.keys(txn.sd).join(','));
+ t('🔑 เติมดัชนีเลขออเดอร์ให้ใบที่ไฟล์ยอดขายยังไม่มี',
+   !!txn.sd['BDD0100000302']&&txn.sd['BDD0100000302'].s==='9000002'&&
+   txn.sd['BDD0100000302'].tx===1,JSON.stringify(txn.sd['BDD0100000302']));
+ t('🔑 ...แต่ไม่ใส่จำนวนลัง เพราะไฟล์นี้ไม่มีรายสินค้า (ห้ามขึ้น 0 เงียบ ๆ)',
+   txn.sd['BDD0100000302'].cs===undefined&&txn.sd['BDD0100000302'].c===undefined,
+   JSON.stringify(txn.sd['BDD0100000302']));
+ t('🛟 เรคอร์ดที่ไฟล์ยอดขายเขียนไว้แล้ว ต้องไม่ถูกทับ (จำนวนและวันออกบิลยังอยู่)',
+   txn.sd['BDD0100000301'].cs===3&&txn.sd['BDD0100000301'].c===5&&
+   txn.sd['BDD0100000301'].d==='2026-11-19',JSON.stringify(txn.sd['BDD0100000301']));
+ t('🛟 ...แต่เติมช่องที่ยังว่างให้ (วันที่เซลล์คีย์)',
+   txn.sd['BDD0100000301'].k==='2026-11-17',JSON.stringify(txn.sd['BDD0100000301']));
+ t('🔑 รายงานจำนวนใบ ใบที่ยกเลิก และสายที่ยังไม่รู้จัก',
+   /ยกเลิก 1 ใบ/.test(txn.log)&&/2096VSM/.test(txn.log)&&/4<\/b> ใบ/.test(txn.log),
+   txn.log.slice(0,240));
+
+ const noHdr=await ev(()=>{
+   const rows=[['เลขที่เอกสาร','เวลาสั่งซื้อ','รหัสร้านค้า'],['BDD0100000401','09:00','9000001']];
+   const ws2=XLSX.utils.aoa_to_sheet(rows),wb=XLSX.utils.book_new();
+   XLSX.utils.book_append_sheet(wb,ws2,'DataExtract');
+   const before=JSON.stringify(STOREDAILY.ord);
+   let err='';
+   try{parseTxn('x.xlsx',XLSX.write(wb,{type:'array',bookType:'xlsx'}));}catch(e){err=e.message;}
+   return {err:err,same:before===JSON.stringify(STOREDAILY.ord)};});
+ t('🛟 หัวตารางที่ต้องมีหายไป → โยน error และไม่เก็บอะไรเลย',
+   /ไม่พบหัวตาราง/.test(noHdr.err)&&noHdr.same,noHdr.err.slice(0,80));
+
+ /* หน้าจอต้องขึ้นข้อมูลใหม่ */
+ const ui=await ev(async()=>{
+   OT={m:'2026-11',line:'all',day:'all',st:'all',sec:'list',cache:{},months:['2026-11'],
+     err:'',busy:0,q:'',ask:0,hits:null,open:'',note:''};
+   window.__db['2026-11'].ord['00000301']={d:17,l:'209611',s:'9000001',g:'44',t:'D',i:'00000701',
+     c:3,v:820,n:1,u:20261126,tm:'10:22',dp:2,dv:2,cn:'M'};
+   window.__db['2026-11'].ord['00000303']={d:18,l:'209611',s:'9000003',t:'X',c:0,v:700,n:0,
+     u:20261126,tm:'11:00',dp:2,cx:1,cn:'M'};
+   _switchTab('otrk');await new Promise(r=>setTimeout(r,250));
+   const b1=document.getElementById('otBody').textContent.replace(/\s+/g,' ');
+   otRowTog('00000301');await new Promise(r=>setTimeout(r,150));
+   const b2=document.getElementById('otBody').textContent.replace(/\s+/g,' ');
+   otRowTog('00000301');
+   const st=[...document.querySelectorAll('#otSt option')].map(x=>x.value).join(',');
+   return {list:b1,det:b2,st:st};});
+ t('🔑 ตารางขึ้นเวลาที่เซลล์คีย์',/10:22 น\./.test(ui.list),ui.list.slice(0,200));
+ t('🔑 ใบที่ยกเลิกมีป้ายบอกชัด',/ยกเลิก/.test(ui.list),'');
+ t('🔑 กางแถวแล้วเห็นวันนัดส่ง/วันส่งจริง/ช่องทาง',
+   /นัดส่ง/.test(ui.det)&&/ส่งแล้ว/.test(ui.det)&&/Mobility/.test(ui.det),ui.det.slice(-260));
+ t('🛟 กรองสถานะได้ครบทุกแบบที่ไฟล์ส่งมา รวม ยกเลิกแล้ว',
+   /,X$/.test(ui.st)&&/F/.test(ui.st),ui.st);
+
+
+ /* ================= 10) 📄 ไฟล์จริง (ถ้ามี) ================= */
+ if(REAL){
+   const rr=await ev(async(b64)=>{
+     const bin=atob(b64),u8=new Uint8Array(bin.length);
+     for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);
+     STOREDAILY={data:{},ord:{}};window.__posts=[];window.__log=[];
+     const r=parseTxn('Transaction_Inquiry.xlsx',u8.buffer);
+     await new Promise(x=>setTimeout(x,120));
+     const all={};window.__posts.forEach(p=>Object.keys(p.ord).forEach(k=>all[k]=p.ord[k]));
+     const ks=Object.keys(all);
+     const cnt=f=>ks.filter(k=>f(all[k])).length;
+     return {n:r.n,d1:r.d1,d2:r.d2,cx:r.cx,orders:ks.length,
+       months:window.__posts.map(p=>p.m).sort().join(','),
+       tm:cnt(o=>o.tm),dp:cnt(o=>o.dp!==undefined),dv:cnt(o=>o.dv!==undefined),
+       gin:cnt(o=>o.g),inv:cnt(o=>o.i),sd:Object.keys(STOREDAILY.ord).length,
+       noCs:Object.keys(STOREDAILY.ord).every(k=>STOREDAILY.ord[k].cs===undefined),
+       kb:Math.round(JSON.stringify(all).length/1024)};
+   },fs.readFileSync(REAL).toString('base64'));
+   t('📄 ไฟล์จริง: 1 เลขเอกสาร = 1 ใบ (ไม่มีเลขซ้ำ)',rr.orders===rr.n,rr.orders+'/'+rr.n);
+   t('📄 ไฟล์จริง: เวลาสั่งซื้อและวันนัดส่งครบทุกใบ',rr.tm===rr.n&&rr.dp===rr.n,
+     rr.tm+' / '+rr.dp+' จาก '+rr.n);
+   t('📄 ไฟล์จริง: วันส่งจริงมีเฉพาะใบที่ส่งแล้ว (ไม่ใช่ทุกใบ)',rr.dv>0&&rr.dv<rr.n,
+     rr.dv+' จาก '+rr.n);
+   t('📄 ไฟล์จริง: มีใบที่ยกเลิก และไม่เข้าดัชนีเลขออเดอร์',rr.cx>0&&rr.sd===rr.n-rr.cx,
+     'ยกเลิก '+rr.cx+' · ดัชนี '+rr.sd+' จาก '+rr.n);
+   t('📄 ไฟล์จริง: ไม่มีเรคอร์ดไหนใส่จำนวนลังมั่ว',rr.noCs,'');
+   t('📄 ไฟล์จริง: แยกก้อนเป็นรายเดือน และขนาดไม่บวม',
+     /^\d{4}-\d{2}/.test(rr.months)&&rr.kb<600,rr.months+' · '+rr.kb+' KB');
+ }else{
+   console.log('  (ข้าม 6 ข้อของไฟล์จริง — ตั้ง ORDTRK_TXN=/path/Transaction_Inquiry_....xlsx เพื่อตรวจเพิ่ม)');
+ }
 
  t('ไม่มี JavaScript error ตลอดเทสต์',errs.length===0,errs.slice(0,2).join(' | '));
 

@@ -220,6 +220,18 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   color:var(--blue);border-radius:9px;font:700 12.5px/1 inherit;cursor:pointer}
 .cal-status button:hover{background:var(--blue);color:#fff}
 .cal-dot{width:12px;height:12px;border-radius:4px;background:var(--blue-soft);border:1px solid var(--blue);display:inline-block}
+/* 📅 ปฏิทินเล็กในหน้าออเดอร์พิเศษ — วันที่มีข้อมูล/แอดมินตรวจแล้วเป็น "สีทึบ" ตามที่เจ้าของสั่ง
+   แทนการลิสต์วันเป็นชิปข้าง ๆ ซึ่งยาวเป็นแถวเมื่อทำงานมาทั้งเดือน */
+.sp-cal{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff;min-width:250px}
+/* ปฏิทินสูงกว่าช่องวันที่ — ถ้าไม่บังคับ flex-start ช่องวันที่จะถูกดันลงไปชิดก้นปฏิทิน */
+.sp-daybar{align-items:flex-start}
+.sp-cal .cal-day{cursor:pointer;padding:7px 0;font-size:13px}
+.sp-cal .cal-day:empty{cursor:default}
+.cal-day.chk{background:var(--good);color:#fff;font-weight:800}
+.cal-day.chk:hover{background:#0F7A52;color:#fff}
+.cal-day.sel{outline:2.5px solid var(--blue);outline-offset:-2px}
+.cal-day.today{text-decoration:underline;text-underline-offset:3px}
+.cal-dot.chk{background:var(--good);border-color:var(--good)}
 /* sales request modal */
 #reqModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px}
 /* กล่อง "บันทึกว่าขายออกไปแล้ว" ของสต็อคกลาง — ต้องมีกฎของตัวเอง ไม่งั้นมันจะไหลไปท้ายหน้า
@@ -1682,6 +1694,10 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <div class="spacer"></div>
         <div class="ctl"><label>&nbsp;</label>
           <button class="upload-btn" onclick="otAskOpen()">🔎 ค้นเลขออเดอร์</button></div>
+        <!-- ⚠️ ข้อยกเว้นที่สองของกฎ "ปุ่มอัพโหลดปุ่มเดียวทั้งเว็บ" เหมือนปุ่มไฟล์ใบจัดของ:
+             ไฟล์นี้อัพทีเดียวใช้ได้ทั้งระบบ และเจ้าของสั่งให้ปุ่มอยู่หน้านี้ตรง ๆ -->
+        <div class="ctl" id="otUpBox" style="display:none"><label id="otUpLab">&nbsp;</label>
+          <button class="upload-btn" onclick="otUpTxn()">📥 ไฟล์รายการสั่งซื้อ</button></div>
       </div>
       <div id="otBody"></div>
     </div>
@@ -1964,6 +1980,10 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="up-row" data-group="spord">
         <label class="drop up-stock" for="fileAlloc">📥 <b>ใบจัดของจากคลัง (Allocation)</b><small>ไฟล์ <b>Order_Allocation_Report…xlsx</b> · ใช้ตรวจว่าคลังจัดของตรงกับที่เซลล์คีย์ไหม </small></label>
         <input id="fileAlloc" type="file" accept=".xlsx,.xls" multiple class="hidden">
+      </div>
+      <div class="up-row" data-group="otrk">
+        <label class="drop up-stock" for="fileTxn">📋 <b>รายการสั่งซื้อ (ฝั่งเซลล์คีย์)</b><small>ไฟล์ <b>Transaction_Inquiry…xlsx</b> · ใบที่เซลล์คีย์เข้าระบบ ก่อนคลังจะสร้างเลขใบจัดสินค้า · มีเวลาสั่งซื้อ วันนัดส่ง และวันส่งจริง</small></label>
+        <input id="fileTxn" type="file" accept=".xlsx,.xls" multiple class="hidden">
       </div>
       <div class="up-row" data-group="cstock">
         <label class="drop up-stock" for="fileCStockEx">🏪 <b>ร้านที่ตัดบิลเข้า</b><small>ไฟล์ <b>Ex.export.xlsx</b> (รอบเดียว) หรือ <b>ไฟล์สรุป Stock ของแอดมิน 2</b> (หลายลอตในไฟล์เดียว ระบบแยกให้เอง) · <b>แนบทีหลังได้</b> จับคู่ใบตัดบิลจากวันที่ให้อัตโนมัติ</small></label>
@@ -12901,10 +12921,13 @@ function alDate(v){
  *    เพราะมันโตเดือนละ ~0.5 MB ตลอดไป (ดูเหตุผลเต็มใน lib/snapshot.js)
  * ========================================================================== */
 const OT_ST={"Delivered":"D","Ready to dispatch/Invoiced":"R","Sent to Locus":"L",
-  "Confirmed":"C","Ordered":"O","UnSuccessful Delivery":"U"};
+  "Confirmed":"C","Ordered":"O","UnSuccessful Delivery":"U",
+  /* สามสถานะนี้มีเฉพาะในไฟล์รายการสั่งซื้อ ไฟล์ใบจัดของไม่เคยส่งมา */
+  "Out for delivery":"F","Planning completed":"P","Cancelled":"X"};
 const OT_TH={D:"ส่งถึงร้านแล้ว",R:"คลังจัดของแล้ว",L:"เข้าระบบขนส่งแล้ว",
-  C:"ยืนยันออเดอร์แล้ว",O:"เพิ่งคีย์เข้ามา",U:"ส่งไม่สำเร็จ"};
-const OT_SEQ=["O","C","L","R","D","U"];
+  C:"ยืนยันออเดอร์แล้ว",O:"เพิ่งคีย์เข้ามา",U:"ส่งไม่สำเร็จ",
+  F:"ออกส่งแล้ว",P:"วางแผนส่งแล้ว",X:"ยกเลิกแล้ว"};
+const OT_SEQ=["O","C","P","L","R","F","D","U","X"];
 function otTail(v,pre){const s=String(v==null?"":v).trim().toUpperCase();
   return s.indexOf(pre)===0?s.slice(pre.length):s;}
 function otFull(v,pre){const s=String(v==null?"":v).trim();
@@ -12949,6 +12972,12 @@ function otSplit(ix){
     if(o.g)r.g=o.g;if(o.t)r.t=o.t;if(o.i)r.i=o.i;
     if(o.v)r.v=Math.round(o.v*100)/100;
     if(o.x)r.x=o.x;
+    /* จากไฟล์รายการสั่งซื้อ — ไฟล์ใบจัดของไม่มีช่องพวกนี้เลย จึงไม่ถูกเขียนทับ (merge ทีละช่อง) */
+    if(o.tm)r.tm=o.tm;
+    if(o.dp!==undefined&&o.dp!==null)r.dp=o.dp;
+    if(o.dv!==undefined&&o.dv!==null)r.dv=o.dv;
+    if(o.cn)r.cn=o.cn;
+    if(o.cx)r.cx=1;
     B.ord[k]=r;
     const cd={};Object.keys(o.cd).forEach(c=>{
       cd[c]=[Math.round(o.cd[c][0]*1000)/1000,Math.round(o.cd[c][1]*1000)/1000];});
@@ -12989,6 +13018,143 @@ async function otPush(ix,file,d1,d2){
   }
   OT.months=null;
   if(typeof CURTAB!=="undefined"&&CURTAB==="otrk"&&typeof renderOtrk==="function")renderOtrk();
+}
+/* ==========================================================================
+ * 📥 ไฟล์รายการสั่งซื้อ (Transaction Inquiry) — "ฝั่งเซลล์คีย์" ก่อนไปเป็นใบจัดของ
+ *
+ * เจ้าของส่งมา 26 พ.ย. 69: *"ผมสามารถดึงรายงานส่วนแรกของการขายเลย คือส่วนที่เซลล์คีย์เข้าระบบ
+ * … เป็นไฟล์ที่เกิดขึ้นก่อนแอดมินจะส่งไปสร้าง GIN นั่นคือไฟล์ก่อนที่จะมาเป็น allocation"*
+ *
+ * 🔑 วัดกับไฟล์จริง (Transaction_Inquiry_26112026.xlsx · 2,107 แถว · 15-26 พ.ย. 69) ก่อนเขียนโค้ด:
+ *   · **1 เลขเอกสาร = 1 แถว เสมอ (2,107/2,107)** — สะอาดกว่าไฟล์ใบจัดของที่เป็นรายสินค้า
+ *   · เป็น **ตัวแม่ของทั้งสามไฟล์**: เลขของไฟล์ใบจัดของเจอครบ **1,789/1,789** และของไฟล์ยอดขาย
+ *     เจอครบ **1,401/1,401** · ไม่มีเลขไหนที่อีกสองไฟล์มีแล้วไฟล์นี้ไม่มีเลย
+ *   · ตรงกับไฟล์ใบจัดของ: ร้าน 1,789/1,789 · วันคีย์ 1,789/1,789 · GIN 1,644/1,645 ·
+ *     NIV คลาดไม่ถึง 1 บาท 1,777/1,789 · (สายต่างกัน 1 ใบ คือใบร้านทดสอบ Dummy2096)
+ *   · ตรงกับไฟล์ยอดขาย: เลขบิล **1,401/1,401** · NIV **1,401/1,401** (100%)
+ *   · มีเพิ่มจากไฟล์ใบจัดของ **318 ใบ** = ยกเลิก 46 ใบ + ของวันที่ 25-26 ที่ไฟล์นั้นยังไม่ครอบ
+ *
+ * ⚠️ สามกับดักของไฟล์นี้
+ *   1. **วันที่ในไฟล์มีสองรูปแบบ** — `วันที่เอกสาร` / `วันที่จัดส่ง` / `invoicedate` เป็น
+ *      `dd-mm-yyyy` แต่ **`วันที่จัดส่งจริง` เป็น `yyyy-mm-dd hh:mm:ss`** อ่านด้วยตัวเดียวกันไม่ได้
+ *   2. **มีใบที่ยกเลิก (Cancelled 46 ใบ)** — เก็บไว้และติดธง `cx` ให้เห็น แต่ **ห้ามเอาไปนับเป็นยอดขาย**
+ *      และห้ามเขียนลงดัชนีเลขออเดอร์ที่หน้าอื่นใช้
+ *   3. **ไฟล์นี้เป็นระดับ "ใบ" ไม่มีรหัสสินค้า** จึงเติมยอดรายสินค้าให้โปรโมชั่นไม่ได้
+ *      ⇒ เขียนลง STOREDAILY.ord แบบ "เติมช่องที่ยังว่าง" เท่านั้น **ห้ามใส่ cs/pc/c**
+ *         และติดธง tx:1 ไว้ เพื่อให้หน้าออเดอร์พิเศษรู้ว่ายังไม่รู้จำนวนลัง (ห้ามขึ้น 0 เงียบ ๆ)
+ * ========================================================================== */
+const TX_H={no:"เลขที่เอกสาร",sh:"รหัสร้านค้า",ln:"หมายเลข PJP",d:"วันที่เอกสาร"};
+const TX_O={nm:"ชื่อร้านค้ายาว",tm:"เวลาสั่งซื้อ",dd:"วันที่จัดส่ง",da:"วันที่จัดส่งจริง",
+  gin:"หมายเลขใบจัดสินค้า",inv:"เลขที่ใบแจ้งหนี้",ivd:"DYP.......invoicedate",
+  gsv:"จำนวนรวม (GSV)",niv:"DYP.......NIV",ds:"สถานะเอกสาร",ws:"สถานะการดำเนินการ",ch:"ช่องทางความต้องการ"};
+const TX_CH={"Mobility (MOB)":"M","Business to Business (B2B)":"B","Back Office (BO)":"O"};
+/* dd-mm-yyyy (ช่องวันที่ส่วนใหญ่ของไฟล์นี้) */
+function txDate(v){
+  const m=String(v==null?"":v).trim().match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  return m?m[3]+"-"+String(+m[2]).padStart(2,"0")+"-"+String(+m[1]).padStart(2,"0"):"";
+}
+/* yyyy-mm-dd hh:mm:ss — มีเฉพาะช่อง "วันที่จัดส่งจริง" ห้ามใช้ txDate กับช่องนี้ */
+function txIso(v){const m=String(v==null?"":v).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[0]:"";}
+function txTime(v){const m=String(v==null?"":v).trim().match(/^(\d{1,2}):(\d{2})/);
+  return m?String(+m[1]).padStart(2,"0")+":"+m[2]:"";}
+function txNum(v){const n=parseFloat(String(v==null?"":v).replace(/[, ]/g,""));return isFinite(n)?n:0;}
+function txGap(a,b){
+  if(!a||!b)return null;
+  const g=Math.round((Date.parse(b+"T00:00:00")-Date.parse(a+"T00:00:00"))/86400000);
+  return (isFinite(g)&&g>=0&&g<=120)?g:null;
+}
+function txIsTxn(H){
+  const h=(H||[]).map(x=>String(x==null?"":x).trim());
+  return h.indexOf(TX_H.no)>=0&&h.indexOf(TX_O.tm)>=0;
+}
+function parseTxn(name,buf){
+  const wb=XLSX.read(buf,{type:"array"});
+  const sh=wb.SheetNames.filter(s=>/dataextract|export/i.test(s))[0]||wb.SheetNames[0];
+  const A=XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1,defval:null,raw:true});
+  if(A.length<2)throw new Error("ไฟล์ว่าง — ไม่ใช่ไฟล์รายการสั่งซื้อหรือเปล่า?");
+  const hdr=(A[0]||[]).map(x=>String(x==null?"":x).replace(/\s+/g," ").trim());
+  const col={},miss=[];
+  Object.keys(TX_H).forEach(k=>{const i=hdr.indexOf(TX_H[k]);if(i<0)miss.push(TX_H[k]);else col[k]=i;});
+  if(miss.length)throw new Error("ไม่พบหัวตาราง: "+miss.join(" · ")+
+    " — ไฟล์รายการสั่งซื้อเปลี่ยนรูปแบบ ยังไม่บันทึกอะไรทั้งนั้น แจ้งให้ปรับโปรแกรมได้");
+  const oc={},onone=[];
+  Object.keys(TX_O).forEach(k=>{const i=hdr.indexOf(TX_O[k]);if(i<0)onone.push(TX_O[k]);else oc[k]=i;});
+  const S=(r,i)=>(i==null||i<0)?"":String(r[i]==null?"":r[i]).trim();
+  const ix={},days={},unk={},st={};
+  let n=0,skip=0,cx=0,noGin=0,noInv=0;
+  for(let r=1;r<A.length;r++){
+    const x=A[r];if(!x)continue;
+    const no=S(x,col.no).toUpperCase();
+    if(!no||no==="NA"){if(S(x,col.sh))skip++;continue;}
+    const d=txDate(x[col.d]);
+    if(!d){skip++;continue;}
+    const lnRaw=S(x,col.ln),ln=dsLineKey(lnRaw);
+    if(lnRaw&&!FOCUS_MAP[ln])unk[lnRaw]=(unk[lnRaw]||0)+1;
+    const ds=S(x,oc.ds),ws=S(x,oc.ws);
+    const cancel=/cancel/i.test(ds)||/cancel/i.test(ws);
+    if(cancel)cx++;
+    if(ws)st[ws]=(st[ws]||0)+1;
+    const gin=S(x,oc.gin),inv=S(x,oc.inv).toUpperCase();
+    if(!gin)noGin++;
+    if(!inv)noInv++;
+    days[d]=(days[d]||0)+1;
+    const o={ym:d.slice(0,7),d:+d.slice(8,10),full:d,l:lnRaw,s:S(x,col.sh),
+      g:gin,t:ws?(OT_ST[ws]||ws):"",i:otTail(inv,"BDD09"),
+      c:0,v:txNum(x[oc.niv]),gsv:txNum(x[oc.gsv]),x:0,cd:{},
+      tm:txTime(x[oc.tm]),nm:S(x,oc.nm),
+      cx:cancel?1:0,cn:TX_CH[S(x,oc.ch)]||"",
+      ivd:txDate(x[oc.ivd])};
+    const gp=txGap(d,txDate(x[oc.dd]));if(gp!==null)o.dp=gp;
+    const gv=txGap(d,txIso(x[oc.da]));if(gv!==null)o.dv=gv;
+    ix[otTail(no,"BDD01")]=o;
+    n++;
+  }
+  if(!n)throw new Error("ไม่พบแถวข้อมูลในไฟล์ (ต้องมีเลขที่เอกสารและวันที่เอกสาร)");
+  const ds=Object.keys(days).sort();
+  const d1=ds[0],d2=ds[ds.length-1];
+  /* ---- เติมดัชนีเลขออเดอร์ที่หน้าอื่นใช้ — "เติมช่องที่ว่าง" เท่านั้น ----
+     ไฟล์ยอดขายรายวันเป็นเจ้าของตัวเลขจำนวนและวันออกบิล ไฟล์นี้จึงห้ามทับ
+     และห้ามใส่ cs/pc/c เพราะไฟล์นี้ไม่มีรายสินค้า (ขึ้น 0 จะกลายเป็นโกหก) */
+  if(!STOREDAILY||typeof STOREDAILY!=="object")STOREDAILY={data:{}};
+  if(!STOREDAILY.ord)STOREDAILY.ord={};
+  let addO=0,fillO=0;
+  Object.keys(ix).forEach(k=>{
+    const o=ix[k];if(o.cx)return;                  /* ใบที่ยกเลิก ไม่ใช่ยอดขาย */
+    const full=otFull(k,"BDD01");
+    const cur=STOREDAILY.ord[full];
+    if(!cur){
+      const rec={s:o.s,l:dsLineKey(o.l),k:o.full,v:Math.round(o.v*100)/100,tx:1};
+      if(o.gsv)rec.g=Math.round(o.gsv*100)/100;
+      if(o.ivd)rec.d=o.ivd;
+      STOREDAILY.ord[full]=rec;addO++;
+    }else{
+      let hit=0;
+      if(!cur.k&&o.full){cur.k=o.full;hit=1;}
+      if(!cur.s&&o.s){cur.s=o.s;hit=1;}
+      if(!cur.l&&o.l){cur.l=dsLineKey(o.l);hit=1;}
+      if(!cur.d&&o.ivd){cur.d=o.ivd;hit=1;}
+      if(!(+cur.v)&&o.v){cur.v=Math.round(o.v*100)/100;hit=1;}
+      if(!(+cur.g)&&o.gsv){cur.g=Math.round(o.gsv*100)/100;hit=1;}
+      if(hit)fillO++;
+    }
+  });
+  const uk=Object.keys(unk);
+  const sl=Object.keys(st).sort((a,b)=>st[b]-st[a]).map(k=>anaEsc(k)+" "+st[k]);
+  ulog("📥 รายการสั่งซื้อ (ฝั่งเซลล์คีย์): อ่านได้ <b>"+n.toLocaleString()+"</b> ใบ · วันที่ "+
+    fmtDate(d1)+" ถึง "+fmtDate(d2)+
+    (cx?" · <b class='down'>ยกเลิก "+cx+" ใบ</b> (เก็บไว้ให้เห็น แต่ไม่นับเป็นยอดขาย)":"")+
+    (skip?" · ข้ามแถวที่ไม่มีเลข/วันที่ "+skip:"")+
+    "<br>🏪 ดัชนีเลขออเดอร์: เพิ่มใหม่ <b>"+addO.toLocaleString()+"</b> ใบ · เติมข้อมูลที่ขาด "+
+    fillO.toLocaleString()+" ใบ <span class='psub'>(ไฟล์นี้ไม่มีรายสินค้า จึงยังไม่รู้จำนวนลัง — รอไฟล์ยอดขายรายวัน)</span>"+
+    "<br>🚚 ยังไม่มีเลขใบจัดสินค้า "+noGin.toLocaleString()+" ใบ · ยังไม่ออกบิล "+noInv.toLocaleString()+" ใบ"+
+    (sl.length?"<br><span class='psub'>สถานะ: "+sl.join(" · ")+"</span>":"")+
+    (uk.length?"<br><b class='down'>สายที่ยังไม่รู้จัก: "+uk.map(x=>anaEsc(x)+" ("+unk[x]+")").join(" · ")+
+      "</b> — เก็บไว้ใต้รหัสนั้น ไม่ได้เดา":"")+
+    (onone.length?"<br><span class='psub'>ไฟล์นี้ไม่มีช่อง "+onone.map(anaEsc).join(" / ")+"</span>":""));
+  otPush(ix,name,d1,d2);
+  if(typeof syncToServer==="function")syncToServer();
+  if(typeof CURTAB!=="undefined"&&CURTAB==="otrk"&&typeof renderOtrk==="function")renderOtrk();
+  return {n:n,d1:d1,d2:d2,cx:cx};
 }
 function parseAlloc(name,buf){
   const wb=XLSX.read(buf,{type:"array"});
@@ -13266,7 +13432,7 @@ function alPick(gins,codes){
   return out;
 }
 
-let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:"",sec:"key",day:"",gin:""};
+let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:"",sec:"key",day:"",gin:"",cm:""};
 function spOk(){const C=cstOk();if(!C.sub)C.sub={};if(!C.subdel)C.subdel={};return C;}
 /* ---------- สองฝั่งของงาน: ฝั่งเซลล์ (sup) กับ ฝั่งแอดมิน ----------
    เจ้าของย่อจาก 6 ขั้นตอนเหลือ 2 เมื่อ 25 พ.ย. 69 — *"เริ่มจากง่าย ๆ ก่อน เป็นแค่ฝั่งเซลล์และ
@@ -13372,7 +13538,7 @@ function spDay(sid){
   }
   return ds[ds.length-1];
 }
-function spSetDay(v){SP.day=v||"";renderSpord();}
+function spSetDay(v){SP.day=v||"";if(v)SP.cm=String(v).slice(0,7);renderSpord();}
 /* เลื่อนวงล้อให้เดือนปัจจุบันมาอยู่บนสุด — ปีอื่นที่ไม่ใช่ปีนี้ให้เริ่มที่บนสุดตามปกติ
    ⚠️ ไม่ใช้ scrollIntoView เพราะมันลากทั้งหน้าจอตามไปด้วย ใช้ scrollTop ของตัวกล่องเอง */
 function spMonScroll(){
@@ -13892,7 +14058,7 @@ function spRow(r,opt){
   const stage=spStage(r),nx=spNext(r);
   const pills=SP_STEPS.map(st=>{const on=spOn(r,st.k);
     return `<span class="pj-kp ${on?"ok":"nd"}" title="${st.n}${on&&r[st.k].byName?" · "+anaEsc(r[st.k].byName):""}">${st.ic}${on?"✓":""}</span>`;}).join("");
-  const info=o?`<span class="psub">${anaEsc(nm)} · ${o.c} รายการ · ${THB(o.v)}</span>`
+  const info=o?`<span class="psub">${anaEsc(nm)} · ${o.c===undefined?"รอไฟล์ยอดขาย (ยังไม่รู้จำนวน)":o.c+" รายการ"} · ${THB(o.v)}</span>`
     :`<span class="psub" style="color:var(--mid)">⏳ รอไฟล์ยอดขายของวันนั้น แล้วชื่อร้านจะขึ้นเอง</span>`;
   const ln=r.ln?((DATA.lines||{})[r.ln]||{}).display||FOCUS_MAP[r.ln]||r.ln:"";
   const btn=(opt&&opt.tick)?SP_STEPS.filter(st=>spCanTick(st)&&(opt.only?st.k===opt.only:true)).map(st=>{
@@ -14160,7 +14326,8 @@ function spCases(sid){
   let keyed=0,sent=0,wait=0;
   spSubs(sid).forEach(r=>{
     const o=spOrd(r.no);
-    if(!o){wait++;return;}
+    /* cs ไม่มี = เรคอร์ดมาจากไฟล์รายการสั่งซื้อซึ่งไม่มีรายสินค้า — ยังไม่รู้จำนวน ห้ามนับเป็น 0 */
+    if(!o||o.cs===undefined||o.cs===null){wait++;return;}
     const cs=+o.cs||0;keyed+=cs;
     if(spOn(r,"s5"))sent+=cs;          /* สายส่งส่งของเสร็จแล้ว = จบ loop ของเลขนั้น */
   });
@@ -14658,7 +14825,7 @@ function spGinNoteHtml(sid){
   const cur=spGinRec(sid,ymd);
   return `<div class="panel"><h3>🧾 ของออกไปกับเลข GIN ไหน</h3>
     <div class="psub">เลือกวันที่ แล้วใส่เลข GIN ที่คลังจัดของออกไปในวันนั้น</div>
-    <div class="controls" style="margin:10px 0 0">${spDayPick(sid)}</div>
+    <div class="controls sp-daybar" style="margin:10px 0 0">${spDayPick(sid)}</div>
     ${can?`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
       <label class="psub" style="min-width:110px">เลข GIN ${fmtDate(ymd)}</label>
       <input id="spGinNo" value="${anaEsc(((cur&&cur.g)||[]).join(", "))}"
@@ -14724,8 +14891,9 @@ function spShops(sid){
   spSubs(sid).forEach(r=>{
     const o=spOrd(r.no);
     if(!o||!o.s){wait.push(r.no);return;}
-    const e=map[o.s]||(map[o.s]={c:o.s,n:spShop(o.s)||("ร้าน "+o.s),v:0,n0:0,ln:r.ln,nos:[]});
-    e.v+=(+o.v||0);e.n0+=(+o.c||0);e.nos.push(r.no);
+    const e=map[o.s]||(map[o.s]={c:o.s,n:spShop(o.s)||("ร้าน "+o.s),v:0,n0:0,nq:0,ln:r.ln,nos:[]});
+    e.v+=(+o.v||0);e.nos.push(r.no);
+    if(o.c===undefined||o.c===null)e.nq++;else e.n0+=(+o.c||0);
   });
   const rows=Object.keys(map).map(k=>map[k]).sort((a,b)=>b.v-a.v);
   return {rows:rows,wait:wait};
@@ -14966,7 +15134,7 @@ function renderSpord(){
       let H=`<div class="panel"><div class="cst-fb">
           <button class="btn-ghost" onclick="spBack()">◀ กลับไปรายการใบ</button>
           <span class="psub">${SP.ym&&SP.ym!=="ไม่ระบุ"?fmtMonth(SP.ym):""}</span></div>
-        ${withDay?`<div class="controls" style="margin:10px 0 0">${spDayPick(SP.sid)}</div>`:""}</div>`;
+        ${withDay?`<div class="controls sp-daybar" style="margin:10px 0 0">${spDayPick(SP.sid)}</div>`:""}</div>`;
       if(sec==="key"){body.innerHTML=H+spKeyHtml(SP.sid);return;}
       if(sec==="rep"){body.innerHTML=H+spRepTabHtml(SP.sid);return;}
       if(sec==="adm"){body.innerHTML=H+spAdmHtml(SP.sid);return;}
@@ -15054,10 +15222,50 @@ function spOldHtml(){
 /* ---------- ① ฝั่งเซลล์: หัวหน้าเซลล์กรอกจำนวนที่เซลล์คีย์รายวัน ----------
    หน้าตาเหมือนไฟล์เทมเพลตของเจ้าของ: สายวิ่ง × สินค้า → จำนวนขาย / จำนวนแถม
    ⚠️ ใบออเดอร์ต้องโชว์ "ชื่อสินค้า" ไม่ใช่รหัสเปล่า ๆ (เจ้าของบอกว่า "ขึ้นแค่รหัสมันตามดูยาก") */
+/* เดือนที่ปฏิทินกำลังโชว์ — แยกจากวันที่เลือกไว้ (หลักเดียวกับ PJ.ym / PJ.d ของหน้า PJP)
+   ไม่งั้นกดเดือนก่อนหน้าแล้วหน้าจะเด้งกลับมาเดือนของวันที่เลือกทุกครั้ง */
+function spCalMon(sid){
+  if(SP.cm)return SP.cm;
+  return String(spDay(sid)||todayISO()).slice(0,7);
+}
+function spCalStep(n){
+  const m=spCalMon(SP.sid),d=new Date(+m.slice(0,4),+m.slice(5,7)-1+n,1);
+  SP.cm=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+  renderSpord();
+}
+/* 📅 ปฏิทินแทนรายการวัน — เจ้าของสั่ง 26 พ.ย. 69: *"หน้าบันทึกแล้วของแอดมิน ให้ขึ้นเป็นสีทึบ
+   ในปฏิทินแทน ไม่ต้องขึ้นวันข้าง ๆ แบบนี้ ไม่งั้นมันจะลิสออกมาเยอะมากแน่ ๆ"*
+   เดิมเป็นชิปเรียงกันทุกวันที่มีข้อมูล ใบที่ทำมาทั้งเดือนจึงกลายเป็นแถวชิปยาวเหยียด */
+function spCalHtml(sid){
+  const ds=spDays(sid),cur=spDay(sid),ym=spCalMon(sid);
+  const has={};ds.forEach(d=>has[d]=1);
+  const chk={};ds.forEach(d=>{if(spDayHas(spGinRec(sid,d)))chk[d]=1;});
+  const last=new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();
+  const first=new Date(ym+"-01T00:00:00");
+  const lead=(first.getDay()+6)%7;                 /* จันทร์ = ช่องแรก */
+  const DOW=["จ","อ","พ","พฤ","ศ","ส","อา"];
+  const cells=[];
+  for(let i=0;i<lead;i++)cells.push("");
+  for(let i=1;i<=last;i++)cells.push(ym+"-"+String(i).padStart(2,"0"));
+  const nIn=Object.keys(has).filter(d=>d.slice(0,7)===ym).length;
+  const nChk=Object.keys(chk).filter(d=>d.slice(0,7)===ym).length;
+  return `<div class="sp-cal">
+    <div class="cal-head" style="margin-bottom:6px">
+      <button type="button" onclick="spCalStep(-1)" title="เดือนก่อนหน้า">◀</button>
+      <div style="flex:1;text-align:center;font-weight:800;font-size:14px">${anaEsc(fmtMonth(ym))}</div>
+      <button type="button" onclick="spCalStep(1)" title="เดือนถัดไป">▶</button></div>
+    <div class="cal-grid">${DOW.map(x=>`<div class="cal-wd">${x}</div>`).join("")}${
+      cells.map(d=>{
+        if(!d)return `<div class="cal-day"></div>`;
+        const cls=(has[d]?" has":"")+(chk[d]?" chk":"")+(d===cur?" sel":"")+(d===todayISO()?" today":"");
+        return `<div class="cal-day${cls}" onclick="spSetDay('${d}')"
+          title="${anaEsc(fmtDate(d))}${has[d]?" · มีข้อมูลแล้ว":""}${chk[d]?" · แอดมินตรวจแล้ว":""}">${+d.slice(8,10)}</div>`;
+      }).join("")}</div>
+    <div class="cal-legend"><span class="cal-dot"></span> มีข้อมูล ${nIn} วัน
+      <span class="cal-dot chk" style="margin-left:10px"></span> แอดมินตรวจแล้ว ${nChk} วัน</div></div>`;
+}
 function spDayPick(sid){
-  const ds=spDays(sid),cur=spDay(sid);
-  const opts=ds.slice().reverse();
-  if(opts.indexOf(cur)<0)opts.unshift(cur);
+  const cur=spDay(sid);
   return `<div class="ctl"><label>วันที่</label>
     <div class="dstep">
       <button type="button" class="dstep-b" title="วันก่อนหน้า" onclick="spStepDay(-1)">◀</button>
@@ -15065,10 +15273,7 @@ function spDayPick(sid){
         style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px">
       <button type="button" class="dstep-b" title="วันถัดไป" onclick="spStepDay(1)">▶</button>
     </div></div>
-    ${ds.length?`<div class="ctl"><label>วันที่มีข้อมูลแล้ว</label><div class="pl-chips">${
-      opts.filter(d=>ds.indexOf(d)>=0).map(d=>`<button type="button" class="pl-cb${d===cur?" on":""}"
-        onclick="spSetDay('${d}')">${fmtDate(d)}${spGinRec(sid,d)?" 🔎":""}</button>`).join("")
-    }</div></div>`:""}`;
+    <div class="ctl"><label>ปฏิทิน</label>${spCalHtml(sid)}</div>`;
 }
 function spStepDay(n){
   const d=spDay(SP.sid),t=new Date(d+"T00:00:00");
@@ -17548,6 +17753,11 @@ function otPass(x){
   if(OT.st&&OT.st!=="all"&&OT.st!=="no"&&OT.st!=="yes"&&x.r.t!==OT.st)return false;
   return true;
 }
+function otUpTxn(){
+  if(!(typeof spAdmOk==="function"?spAdmOk():((S.user&&S.user.role)==="manager"))){
+    alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return;}
+  const el=document.getElementById("fileTxn");if(el)el.click();
+}
 function otSetMon(m){OT.m=m;OT.day="all";OT.open="";renderOtrk();}
 function otSetSec(s){OT.sec=s;OT.open="";renderOtrk();}
 function otAskOpen(){OT.ask=OT.ask?0:1;renderOtrk();
@@ -17594,7 +17804,8 @@ function otClear(){OT.q="";OT.hits=null;renderOtrk();}
    (ดู @media ของ .ot-tbl) ถ้าลืมใส่ แถวบนมือถือจะกลายเป็นตัวเลขลอย ๆ ไม่รู้ว่าคืออะไร */
 function otStepHtml(x){
   const g=x.r.g;
-  return `<td data-l="① เซลล์คีย์"><b>${anaEsc(fmtDate(x.d))}</b>${x.sl&&x.sl.k&&x.sl.k!==x.d
+  return `<td data-l="① เซลล์คีย์"><b>${anaEsc(fmtDate(x.d))}</b>${
+      x.r.tm?` <span class="psub">${anaEsc(x.r.tm)} น.</span>`:""}${x.sl&&x.sl.k&&x.sl.k!==x.d
       ?`<br><span class="psub down">ไฟล์ยอดขายว่า ${anaEsc(fmtDate(x.sl.k))}</span>`:""}</td>
     <td data-l="② คลังจัดของ">${g?`<b>GIN ${anaEsc(g)}</b>`:`<span class="down">ยังไม่จัด</span>`}
       ${x.r.t?`<br><span class="psub">${anaEsc(otStTxt(x.r.t))}</span>`:""}</td>`;
@@ -17604,7 +17815,8 @@ function otRowHtml(x){
   const money=x.r.v?THB(x.r.v):(x.sl&&x.sl.v?THB(x.sl.v):"–");
   const inv=x.r.i?otInvNo(x.r.i):((x.sl&&x.sl.inv)||"");
   return `<tr class="${OT.open===x.k?"on":""}" onclick="otRowTog('${anaEsc(x.k)}')" style="cursor:pointer">
-    <td class="ot-no"><b>${anaEsc(x.no)}</b>${inv?`<br><span class="psub">บิล ${anaEsc(inv)}</span>`:""}</td>
+    <td class="ot-no"><b>${anaEsc(x.no)}</b>${x.r.cx?' <span class="pm-chip" style="background:var(--bad);color:#fff">ยกเลิก</span>':""}${
+      inv?`<br><span class="psub">บิล ${anaEsc(inv)}</span>`:""}</td>
     <td data-l="ร้าน">${anaEsc(nm||("ร้าน "+(x.r.s||"ไม่ระบุ")))}${nm&&x.r.s?`<br><span class="psub">${anaEsc(x.r.s)}</span>`:""}</td>
     <td data-l="สาย">${anaEsc(x.ln||"?")}</td>
     ${otStepHtml(x)}
@@ -17614,20 +17826,34 @@ function otRowHtml(x){
 }
 /* รายสินค้าในใบ — อยู่คนละก้อนกับหัวออเดอร์ (โหลดเมื่อกางดูเท่านั้น)
    เพราะรายสินค้าทำให้ข้อมูลโตเกือบเท่าตัว (วัดแล้ว 246 KB → 451 KB ต่อ 10 วัน) */
+/* 🚚 ข้อมูลการส่ง — เป็น "ข้อมูล" ไม่ใช่ขั้นตอนที่ 3 เจ้าของสั่งให้เหลือ 2 ขั้นก่อน
+   วัดจากไฟล์จริง: วันส่งจริง = วันนัดส่ง ทุกใบ (1,677/1,677) ⇒ ช่องนี้บอกได้แค่ "ส่งแล้ว/ยังไม่ส่ง"
+   ห้ามเอาไปทำรายงาน "ส่งช้า" เพราะไฟล์ไม่เคยบอกว่าส่งช้า */
+function otShipHtml(x){
+  const r=x.r,ymd=g=>dayShift(x.d,g);
+  if(r.dp===undefined&&r.dv===undefined)return "";
+  const out=[];
+  if(r.dp!==undefined)out.push(`<span class="pm-item">📅 <span>นัดส่ง</span> <b>${anaEsc(fmtDate(ymd(r.dp)))}</b></span>`);
+  if(r.dv!==undefined)out.push(`<span class="pm-item up">🚚 <span>ส่งแล้ว</span> <b>${anaEsc(fmtDate(ymd(r.dv)))}</b></span>`);
+  else if(!r.cx)out.push(`<span class="pm-item"><span class="down">ยังไม่ได้ส่ง</span></span>`);
+  if(r.cn)out.push(`<span class="pm-item"><span>ช่องทาง</span> <b>${r.cn==="M"?"Mobility":r.cn==="B"?"eB2B":"Back Office"}</b></span>`);
+  return `<div class="pm-chips" style="margin:0 0 10px">`+out.join("")+`</div>`;
+}
 function otDetHtml(x){
   const C=OT.cache[OT.m===x.m||!x.m?OT.m:x.m];
   const det=C&&C.det?C.det[x.k]:null;
+  const ship=otShipHtml(x);
   if(!C||!C.det){
     otEnsure(true);
-    return `<div class="psub">กำลังโหลดรายสินค้าในใบนี้…</div>`;
+    return ship+`<div class="psub">กำลังโหลดรายสินค้าในใบนี้…</div>`;
   }
   /* แยกสองสาเหตุออกจากกัน: ไฟล์ไม่ได้ให้มา กับ "ให้มาแต่แปลงหน่วยไม่ได้ เลยไม่เดา" */
-  if(!det)return `<div class="psub">${x.r.x
+  if(!det)return ship+`<div class="psub">${x.r.x
     ?`ใบนี้มี ${x.r.x} แถวที่ไฟล์บอกเป็น "แพ็ค" แต่ชื่อสินค้าไม่ได้บอกว่าแพ็คละกี่ชิ้น จึงไม่ได้เดาจำนวนให้ — ดูจำนวนจริงได้ที่ไฟล์ใบจัดของ`
     :"ไฟล์ใบจัดของรอบที่อัพไว้ ยังไม่มีรายสินค้าของใบนี้ — อัพไฟล์ใบจัดของที่ครอบวันนี้อีกครั้ง แล้วจะขึ้นเอง"}</div>`;
   const rows=Object.keys(det).map(c=>({c:c,s:det[c][0],f:det[c][1]}))
     .sort((a,b)=>(b.s+b.f)-(a.s+a.f));
-  return `<div class="tblwrap"><table class="grp-tbl"><thead><tr>
+  return ship+`<div class="tblwrap"><table class="grp-tbl"><thead><tr>
       <th>สินค้า</th><th style="text-align:right">ขาย (ลัง)</th><th style="text-align:right">แถม (ลัง)</th></tr></thead>
     <tbody>${rows.map(r=>`<tr><td>${anaEsc(oname(r.c)||("รหัส "+r.c))}
       <br><span class="psub">${anaEsc(r.c)}</span></td>
@@ -17711,6 +17937,8 @@ function renderOtrk(){
   const msel=document.getElementById("otMon");
   if(msel){const all=months.slice();if(OT.m&&all.indexOf(OT.m)<0)all.unshift(OT.m);
     msel.innerHTML=all.map(m=>`<option value="${anaEsc(m)}"${m===OT.m?" selected":""}>${anaEsc(fmtMonth(m))}</option>`).join("");}
+  {const ub=document.getElementById("otUpBox");
+   if(ub)ub.style.display=(typeof spAdmOk==="function"?spAdmOk():false)?"":"none";}
   const ready=otEnsure(false);
   const all=ready?otRows():[];
   const lns=[];const sawL={};
@@ -18741,10 +18969,11 @@ function renderDcode(){
 const UP_CATS={sales:"📊 ยอดขาย",kpi:"🎯 eB2B & Self Ordering",eb:"🏆 แข่งขันเปิด eB2B",
   ps:"⭐ Perfect Store",order:"🛒 การสั่งของ",stock:"📦 สต็อก",cstock:"🧊 สต็อคกลาง",spord:"📦 ออเดอร์พิเศษ",
   dci:"📈 DCI Score",ana:"🧪 วิเคราะห์เชิงลึก",pjp:"🗺 PJP & ร้านค้า",
-  dcode:"🧾 DCODE",price:"💰 ราคา & ทุน"};
+  dcode:"🧾 DCODE",price:"💰 ราคา & ทุน",otrk:"📋 สถานะออเดอร์"};
 const UP_TAB={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",
-  cstock:"cstock",spord:"spord",otrk:"spord",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price",dcode:"dcode"};
-const UP_SUB={spord:"ไฟล์ใบจัดของจากคลัง — อ่านในเครื่องนี้เพื่อตรวจกับที่เซลล์คีย์ ไม่ได้เก็บไฟล์ขึ้นเซิร์ฟเวอร์",
+  cstock:"cstock",spord:"spord",otrk:"otrk",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price",dcode:"dcode"};
+const UP_SUB={otrk:"ไฟล์ที่เซลล์คีย์เข้าระบบ — ใช้ได้ทั้งหน้าสถานะออเดอร์และตรวจกับออเดอร์พิเศษ จับคู่ด้วยเลขออเดอร์เดียวกัน",
+  spord:"ไฟล์ใบจัดของจากคลัง — อ่านในเครื่องนี้เพื่อตรวจกับที่เซลล์คีย์ ไม่ได้เก็บไฟล์ขึ้นเซิร์ฟเวอร์",
   cstock:"ไฟล์ที่แอดมินถือเอง — ไฟล์ร้านที่ตัดบิลเข้า (Ex.export) หรือฟอร์ม Excel แบบเดิม · การตัดบิลใหม่ให้กรอกที่แท็บ 🧾 ใบตัดบิล",
   price:"สองไฟล์ราคาที่ Unilever ส่งมาทุกเดือน — เก็บแยกจากข้อมูลยอดขาย ไม่กระทบกัน"};
 let UP={cat:null};
@@ -18804,6 +19033,7 @@ function handleTyped(e,kind){
     else if(kind==="cstock")parseCStock(f.name,ev.target.result);
     else if(kind==="cstockex")cstExTake(f.name,ev.target.result);
     else if(kind==="alloc")parseAlloc(f.name,ev.target.result);
+    else if(kind==="txn")parseTxn(f.name,ev.target.result);
     else if(kind==="master")parseMaster(f.name,ev.target.result);
     else if(kind==="ana")parseAnalytics(f.name,ev.target.result);
     else if(kind==="dci")parseDCI(f.name,ev.target.result);
@@ -18832,6 +19062,7 @@ document.getElementById("fileStock2").addEventListener("change",e=>handleTyped(e
 document.getElementById("fileCStock").addEventListener("change",e=>handleTyped(e,"cstock"));
 document.getElementById("fileCStockEx").addEventListener("change",e=>handleTyped(e,"cstockex"));
 document.getElementById("fileAlloc").addEventListener("change",e=>handleTyped(e,"alloc"));
+document.getElementById("fileTxn").addEventListener("change",e=>handleTyped(e,"txn"));
 document.getElementById("fileMaster").addEventListener("change",e=>handleTyped(e,"master"));
 document.getElementById("fileAna").addEventListener("change",e=>handleTyped(e,"ana"));
 document.getElementById("fileDCI").addEventListener("change",e=>handleTyped(e,"dci"));
