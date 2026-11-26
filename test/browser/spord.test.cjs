@@ -822,7 +822,7 @@ const ORIGIN='https://bd-spord.test/';
    };
    /* ไฟล์ allocation จำลอง — โครงเดียวกับไฟล์จริง (หัวตารางตรงตัว)
       old=1 → ไฟล์รุ่นเก่า 29 ช่อง ไม่มี GSV/NIV (ต้องยังอ่านได้ และถอยไปประเมินจากไฟล์ราคา) */
-   window.__alBuf=(old)=>{
+   window.__alBuf=(old,gin)=>{
      const H=['Order Creation Date','Distributor Code','Distributor Name','Salesman Name',
        'PJP Code','PJP Name','Route Type','Outlet Code','Outlet Name','Outlet Subtype',
        'GIN No.','Invoice No.','Order Number','Order Type','Product Code','Product Description',
@@ -834,7 +834,7 @@ const ORIGIN='https://bd-spord.test/';
      const row=(pj,pn,gin,code,nm,sc,fc,xc,gsv,niv)=>[46341,'15389839','บีดี','2096',pj,pn,'CT','T1','ร้าน','sub',
        gin,'INV1','BDD0100000111','B2B',code,nm,12,sc,0,0,fc,0,0,xc,0,0,fc,0,0]
        .concat(old?[]:['Full',fc?'Full':'',  'Delivered',gsv,niv]);
-     const A=[H,
+     const A=gin?[H,row('209611','CT_HPC_211',gin,'64849613','โอโมน้ำ ซากุระ',1,0,1,300,220)]:[H,
        row('209611','CT_HPC_211','77','64849613','โอโมน้ำ ซากุระ',5,1,5,1500,1100),
        row('209611','CT_HPC_211','77','65456729','บรีสเอกเซล',2,0,2,800,610),   /* ตั้งใจให้ไม่ตรงกับที่เซลล์คีย์ (3) */
        row('209612','CT_HPC_212','77','64849613','โอโมน้ำ ซากุระ',2,0,1,600,440),
@@ -889,9 +889,13 @@ const ORIGIN='https://bd-spord.test/';
    const o={};
    const tx=()=>document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    __as('manager',null,'แอดมิน 1');SP.sec='adm';renderSpord();
-   o.noFile=/ยังไม่ได้อัพไฟล์ในเครื่องนี้/.test(tx());
+   o.noFile=/ยังไม่ได้อัพไฟล์/.test(tx());
    parseAlloc('alloc.xlsx',__alBuf());
    o.n=ALLOC.n;o.gins=ALLOC.gins.slice();
+   /* อัพไฟล์แคบ ๆ ทับ ต้องไม่ลบ GIN ที่อ่านไว้ก่อนหน้า (เจ้าของอัพซ้ำทุกวันเพื่ออัพเดตวัน) */
+   parseAlloc('alloc2.xlsx',__alBuf(false,'79'));
+   o.gins2=ALLOC.gins.slice();
+   o.alc=JSON.parse(JSON.stringify(cstOk().alc||null));
    SP.sec='adm';renderSpord();
    document.getElementById('spGinIn').value='77';
    await spGinGo('B20261118-01','2026-11-20');
@@ -913,10 +917,21 @@ const ORIGIN='https://bd-spord.test/';
      Object.keys(CSTOCK).indexOf('alloc')>=0;
    o.ginRowKeys=[...new Set((window.__posts||[]).filter(p=>p.b&&p.b.act==='gin')
      .flatMap(p=>Object.keys(p.b.rows||{})))];
+   o.alcBytes=JSON.stringify(cstOk().alc||{}).length;
+   /* จดไว้ในระบบว่าอ่านไฟล์อะไรไปแล้ว — รีเฟรช (ALLOC หาย) แล้วต้องยังบอกได้ ไม่ใช่หลอกว่ายังไม่อัพ */
+   __as('manager',null,'แอดมิน 1');ALLOC=null;SP.sec='adm';renderSpord();
+   o.afterReload=tx();
    return o;});
  t('🔑 อ่านไฟล์ allocation ของคลังได้ (หาคอลัมน์จากหัวตาราง ไม่ใช่ตำแหน่ง)',
    adm.n===4&&adm.gins.join(',')==='77,78',adm.n+' แถว · GIN '+adm.gins.join(','));
  t('...ยังไม่อัพไฟล์ ก็บอกตรง ๆ ไม่ใช่หน้าว่าง',adm.noFile);
+t('🔑 อัพไฟล์ใหม่ทับ ไม่ลบ GIN เดิมที่อ่านไว้แล้ว (อัพซ้ำได้ทุกวัน)',
+  adm.gins2.join(',')==='77,78,79',adm.gins2.join(','));
+t('🔑 จดไว้ว่าอ่านไฟล์อะไรไปแล้ว รีเฟรชแล้วไม่หลอกว่า "ยังไม่ได้อัพไฟล์"',
+  !!adm.alc&&adm.alc.file==='alloc2.xlsx'&&!/ยังไม่ได้อัพไฟล์/.test(adm.afterReload)&&
+  /alloc2\.xlsx/.test(adm.afterReload)&&/ยังอยู่ครบ/.test(adm.afterReload),
+  (adm.afterReload||'').slice(0,160));
+t('...แต่จดแค่ชื่อไฟล์กับช่วงวัน ไม่ใช่ทั้งไฟล์',adm.alcBytes<600,adm.alcBytes+' bytes');
  t('🔑 ใส่เลข GIN แล้วเทียบกับที่เซลล์คีย์ได้ (เฉพาะรหัสที่อยู่ในใบนี้)',
    adm.rows&&adm.rows.indexOf('CT11|64849613')>=0&&adm.rows.indexOf('CT12|64849613')>=0,
    JSON.stringify(adm.rows));

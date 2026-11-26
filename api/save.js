@@ -107,6 +107,15 @@ function mergeRep(server, client) {
   for (const k of new Set([...Object.keys(s), ...Object.keys(c)])) out[k] = mergeRepOne(s[k], c[k]);
   return out;
 }
+/* The allocation-file note: one record, newest `up` wins, and an old tab that has never
+   heard of it (undefined) can never blank the one the server holds. */
+function pickNewerAlc(a, b) {
+  const A = a && typeof a === "object" ? a : null;
+  const B = b && typeof b === "object" ? b : null;
+  if (!A) return B;
+  if (!B) return A;
+  return (+B.up || 0) >= (+A.up || 0) ? B : A;
+}
 function mergeExOne(a, b) {
   if (!a) return b;
   if (!b) return a;
@@ -410,8 +419,15 @@ function mergeState(server, c) {
       for (const kk of Object.keys(m)) if (kk.slice(0, k.length + 1) === k + "|") delete m[kk];
     }
   }
+  // WARNING: CSTOCK is rebuilt from an EXPLICIT field list, so a new field that is not
+  // named here vanishes on the first save - the same trap STOREDAILY.ord documents.
+  // `alc` is the small "which allocation file has been read, covering which days" record.
+  // It is never the file's data, only a note of what was read, so newest-wins is right -
+  // but a client that does not know the field must not blank it, hence the || fallback.
+  const csAlc = pickNewerAlc(sCs.alc, cCs.alc);
   const CSTOCK = { lots: csLots, del: csDel, slips: csSlips, sdel: csSdel, ex: csEx,
                    sub: csSub, subdel: csSubDel, key: csKey, gin: csGin, rep: csRep,
+                   alc: csAlc,
                    up: Math.max(sCs.up || 0, cCs.up || 0) };
 
   return {

@@ -1377,11 +1377,39 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
   check("🔑 เซลล์อีกสายบันทึก ไม่ลบของสายแรก",
         !!r3.CSTOCK.rep[RK] && !!r3.CSTOCK.rep[B1 + "|2026-11-20|CT12"],
         JSON.stringify(Object.keys(r3.CSTOCK.rep)));
+  /* 📥 บันทึกย่อว่าอ่านไฟล์ใบจัดของอะไรไปแล้ว (CSTOCK.alc)
+     ⚠️ ตัวไฟล์เองไม่เคยเก็บขึ้นระบบ เก็บแค่ชื่อไฟล์กับช่วงวัน เพื่อให้หน้าเว็บบอกได้ว่า
+     อ่านอะไรไปแล้ว แทนที่จะขึ้นว่า "ยังไม่ได้อัพไฟล์" ทุกครั้งที่รีเฟรช
+     mergeState สร้าง CSTOCK ใหม่จากรายชื่อช่อง ลืมใส่ alc = บันทึกย่อหายทั้งก้อน */
+  const alcSrv = JSON.parse(JSON.stringify(r3));
+  alcSrv.CSTOCK.alc = { up: 60000, file: "Order_Allocation.xlsx", d1: "2026-11-15",
+    d2: "2026-11-24", n: 1789, days: ["2026-11-15", "2026-11-24"], by: "admin1" };
+  const oldTabA = JSON.parse(JSON.stringify(base));
+  oldTabA.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, up: 54000 };
+  const a1 = mergeState(alcSrv, oldTabA);
+  check("🛟 แท็บรุ่นก่อนบันทึกทับ บันทึกย่อไฟล์ใบจัดของยังอยู่",
+        !!(a1.CSTOCK.alc || {}).file && a1.CSTOCK.alc.n === 1789,
+        JSON.stringify(a1.CSTOCK.alc));
+  const newA = JSON.parse(JSON.stringify(base));
+  newA.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {},
+    alc: { up: 70000, file: "Order_Allocation_26.xlsx", d1: "2026-11-15", d2: "2026-11-26", n: 1920 },
+    up: 70000 };
+  const a2 = mergeState(a1, newA);
+  check("🔑 อัพไฟล์ใหม่ บันทึกย่อขยับตาม (อันที่ใหม่กว่าชนะ)",
+        a2.CSTOCK.alc.d2 === "2026-11-26" && a2.CSTOCK.alc.n === 1920);
+  const staleA = JSON.parse(JSON.stringify(base));
+  staleA.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {},
+    alc: { up: 60000, file: "เก่า.xlsx", d1: "2026-11-01", d2: "2026-11-10", n: 10 }, up: 60000 };
+  const a3 = mergeState(a2, staleA);
+  check("🛟 แท็บที่ค้างไว้ตั้งแต่เช้าบันทึกทับ ไม่ดึงบันทึกย่อกลับไปเป็นของเก่า",
+        a3.CSTOCK.alc.d2 === "2026-11-26" && a3.CSTOCK.alc.file === "Order_Allocation_26.xlsx",
+        JSON.stringify(a3.CSTOCK.alc));
+
   /* ลบใบออเดอร์ = งานสองฝั่งของใบนั้นหายตามไป ไม่ทิ้งเศษค้าง */
   const killSlip = JSON.parse(JSON.stringify(base));
   killSlip.CSTOCK = { lots: {}, del: {}, slips: {}, ex: {}, sub: {}, subdel: {}, key: {}, gin: {},
     sdel: { [B1]: 30000 }, up: 30000 };
-  const t5 = mergeState(r3, killSlip);
+  const t5 = mergeState(a3, killSlip);
   check("🛟 ลบใบออเดอร์ทิ้ง งานทุกฝั่งของใบนั้นไม่ค้างเป็นเศษ",
         !Object.keys(t5.CSTOCK.key || {}).some((k) => k.indexOf(B1 + "|") === 0) &&
         !Object.keys(t5.CSTOCK.gin || {}).some((k) => k.indexOf(B1 + "|") === 0) &&

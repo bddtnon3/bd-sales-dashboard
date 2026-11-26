@@ -13,6 +13,7 @@ const XLSX=require('xlsx');
 const ROOT=path.resolve(__dirname,'..','..');
 const PAGE=path.join(ROOT,'public','index.html');
 const BROWSER=require('./_chrome.cjs').chromePath();
+const THBfmt=n=>'฿'+Math.round(n).toLocaleString('en-US');
 
 /* หัวตารางของจริงจากไฟล์ dcode (34 คอลัมน์ · เรียงตามไฟล์) */
 const H=['หมวดหมู่','แบรนด์','รหัสสินค้า','ชื่อสินค้า','คลังสินค้า','Batch','ประเภทสต็อก','ราคาถัวเฉลี่ย',
@@ -205,6 +206,52 @@ function mkOld(rows){
    old.n===2&&old.src==='old'&&old.sale===1&&old.gift===1,
    old.n+' แถว · src='+old.src+' · ขาย '+old.sale+'/แถม '+old.gift);
  t('...และยังเก็บขนาดบรรจุของไฟล์เดิมไว้ตามเดิม',old.r0&&old.r0.d==='12',old.r0&&old.r0.d);
+
+ /* ---------- 8.5) 💰 มูลค่าสต็อก รายหมวด/รายแบรนด์ (เจ้าของสั่ง 26 พ.ย. 69) ----------
+    มูลค่าต้องอ่านจากช่องในไฟล์ ไม่ใช่คูณเอง · แถวที่ไฟล์ไม่ลงมูลค่าต้องนับแล้วบอก ไม่ใช่รวมเป็น 0 */
+ const val=await ev(a=>{
+   parseStock('DataExtract_161126.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)));
+   STK.wh='sale';STK.vsec='cat';STK.vcat='';STK.vbr='';
+   document.getElementById('stockSearch').value='';
+   document.getElementById('stockZero').checked=false;
+   renderStock();
+   const box=document.getElementById('stockValBox');
+   const tx=()=>box.textContent.replace(/\s+/g,' ');
+   const o={};
+   const rows=STOCKD.rows.filter(r=>r.wh==='sale');
+   o.sum=Math.round(rows.reduce((x,r)=>x+(+r.v||0),0)*100)/100;
+   o.cat=tx();
+   o.catCells=[...box.querySelectorAll('.sv-tbl tbody tr td:first-child')].map(e=>e.textContent.trim().split(' ')[0]);
+   /* กดเข้าไปในหมวด → ต้องเห็นแบรนด์ข้างใน ไม่ใช่ทั้งคลัง */
+   const first=box.querySelector('.sv-tbl tbody tr.cl');
+   o.clickable=!!first;
+   if(first)first.click();
+   o.drill=document.getElementById('stockValBox').textContent.replace(/\s+/g,' ');
+   o.vcat=STK.vcat;
+   /* แบรนด์ */
+   stkVSec('br');
+   o.br=[...document.querySelectorAll('#stockValBox .sv-tbl tbody tr td:first-child')]
+     .map(e=>e.textContent.trim().split(' ')[0]);
+   /* คลังแถม ของไฟล์ dcode มีมูลค่าไหม */
+   STK.wh='gift';stkVSec('cat');
+   o.gift=document.getElementById('stockValBox').textContent.replace(/\s+/g,' ');
+   STK.wh='sale';stkVSec('cat');
+   /* เซลล์ต้องไม่เห็นต้นทุน */
+   const u=S.user;S.user={id:'209611',role:'sales',name:'เซลล์',code:'2096_11'};
+   renderStock();o.sales=document.getElementById('stockValBox').innerHTML;
+   S.user=u;renderStock();
+   return o;},{b64:mkDc(rows)});
+ t('💰 มูลค่าสต็อก: รวมมูลค่าจากช่องในไฟล์ ไม่ใช่คูณเอง',
+   val.cat.indexOf(THBfmt(val.sum))>=0,
+   'ไฟล์รวมได้ '+val.sum+' · หน้าจอ: '+val.cat.slice(0,140));
+ t('🔑 แยกตามหมวดได้ (หมวดมาจากไฟล์ dcode)',
+   val.catCells.length>=3,JSON.stringify(val.catCells));
+ t('🔑 กดที่หมวดแล้วเจาะเข้าไปดูแบรนด์ข้างในได้',
+   val.clickable&&!!val.vcat&&/ย้อนกลับ/.test(val.drill),val.vcat+' · '+val.drill.slice(0,120));
+ t('🔑 แยกตามแบรนด์ได้',val.br.length>=3&&val.br.join(' ').indexOf('OMO')>=0,JSON.stringify(val.br));
+ t('🛟 แถวที่ไฟล์ไม่ได้ลงมูลค่า ต้องบอก ไม่ใช่รวมเป็น 0',
+   /ไฟล์ไม่ได้ลงมูลค่า/.test(val.gift),val.gift.slice(0,160));
+ t('🔒 เซลล์เปิดหน้าสต็อก ไม่เห็นมูลค่า/ต้นทุน',val.sales==='',val.sales.slice(0,80));
 
  /* ---------- 9) ไฟล์จริง (ถ้ามีในเครื่อง — ไม่อยู่ในรีโป) ---------- */
  const REAL=process.env.DCODE_STOCK;

@@ -96,7 +96,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (300 checks against the real `api/save.js`, the real
+  running **`node test/merge-safety.test.mjs`** (303 checks against the real `api/save.js`, the real
   `api/ordtrk.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
@@ -108,7 +108,8 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   strip a rep's note off the record it shares with the tick), central stock (`CSTOCK.lots`/`del` and
   the in-app bill-cut slips `slips`/`sdel`/`ex` — a tab that submitted the slip before the shop file
   was attached must not delete that file, and uploading the file later must not wipe a note typed in
-  between), the product master (`mergeMaster` — every upload takes effect, no code is ever lost), and
+  between; and `alc`, the note saying which allocation file has already been read, which a tab from
+  before that field existed must not blank and a stale tab must not roll back), the product master (`mergeMaster` — every upload takes effect, no code is ever lost), and
   the seed-republish path). It must print `ALL PASS`. Add a case for every new section.
 
 - The **two monthly price files live OUTSIDE `bd-data-*`** and `PRICE` is deliberately **not** part
@@ -764,8 +765,22 @@ code, never printed.
   find** rather than printing a silent "not there"), and **📦 ยอดรายสินค้า**, which is what a rep
   filtered to their own line reads. On a phone the 7-column table folds into one card per order
   (`@media` + `data-l` labels), because ① and ② scrolled off the right edge otherwise — the same
-  lesson as the rep's entry cards in ออเดอร์พิเศษ. Prove it with
-  **`node test/browser/ordtrk.test.cjs`** (88 checks, self-contained with made-up codes; 94 with the
+  lesson as the rep's entry cards in ออเดอร์พิเศษ. A `<td>` that folds must hold its lines in **one
+  element**, or the flex row turns `<br>` into a second flex item and a long shop name pushes the
+  code off the card.
+  **Every row carries two badges and the filter covers both** (`otInvPill`/`otGinPill`/`OT_FILT`,
+  the owner's order 26 Nov 26: *"ตัวไหนที่มีบิลแล้ว หรือมี GIN หรือยังไม่มี ขึ้นป้ายแถบระบุไว้ให้หน่อย
+  หรือเพิ่มกดฟิลเตอให้เลือกดูได้เฉพาะรายการบิลยังไม่ออก GIN ยังไม่ออก"*): 🧾 บิล and 📦 GIN, green
+  when done and red when not, never a blank cell. The status picker is grouped — บิล (ยังไม่ออก /
+  ออกแล้ว) · คลังจัดของ (ยังไม่จัด / จัดแล้ว) · **ค้างทั้งสองอย่าง** · the file's own statuses — and
+  a summary card counts ยังไม่ออกบิล beside คลังยังไม่จัด.
+  **"ออกบิลแล้ว" has two sources and one trap** (`otHasInv`): the invoice number stored on the order,
+  or the order appearing in the daily sales file, which IS a list of bills. But a record written by
+  **`parseTxn` carries `tx:1` and no `cs`**, and that file holds orders that are not billed yet (and
+  cancelled ones) — so it must NOT count as billed. This is the same `cs===undefined` test `spRow`,
+  `spCases` and `spShops` make; `x.sl.inv` never existed on that index, so the old fallback was dead
+  code. Prove it with
+  **`node test/browser/ordtrk.test.cjs`** (95 checks, self-contained with made-up codes; 101 with the
   real file via `ORDTRK_TXN=/path/Transaction_Inquiry_....xlsx`, which holds real shop names and
   never enters the repo) plus the `api/ordtrk.js` cases in `merge-safety`.
   The **💰 ราคา & ทุน** tab group (`renderPrice`/`renderCost`) reads the two monthly Unilever price
@@ -803,9 +818,25 @@ code, never printed.
   406/550 rows and agreed with the product name in 50); and columns are found by **exact header
   text**, so a header dcode renames **throws and stores nothing** instead of writing zeros over
   good stock. An unknown `ประเภทสต็อก` is kept in the sale warehouse and **reported**, never
-  dropped. Prove it with **`node test/browser/stockdc.test.cjs`** (27 checks, self-contained with
-  made-up figures; 29 with the real file via `DCODE_STOCK=/path/DataExtract.xlsx`, which never
+  dropped. Prove it with **`node test/browser/stockdc.test.cjs`** (33 checks, self-contained with
+  made-up figures; 35 with the real file via `DCODE_STOCK=/path/DataExtract.xlsx`, which never
   enters the repo).
+  **💰 มูลค่าสต็อก** (`stkValHtml`/`stkValGrp`/`stkValAgg`, the owner's order 26 Nov 26 — *"ให้ขึ้น
+  โชว์มูลค่ารวมของสินค้าหน่อย และทำให้กดแยกดูมูลค่ารายหมวด รายแบรนด์ได้ด้วยนะ"*) sits between the
+  cards and the list, and is **manager-only** — the same gate the ต้นทุน columns already carried,
+  because it is cost data. Four rules, each one this file states elsewhere: the money is **read from
+  the file's own value column (`v`), never recomputed** from ราคาถัวเฉลี่ย × จำนวน (dcode gives no
+  pack size and the file rounds — the NTT rule); that column pairs with the **closing** quantity, so
+  the ลัง beside it is `r.e`, labelled ยอดปิดวัน, never คงเหลือปัจจุบัน; a row the file left
+  **without a value is counted and named, never summed as 0** (the old file marks the gift warehouse
+  by `มูลค่า = 0`, so that whole warehouse has no value and the page says so instead of printing ฿0);
+  and **หมวด/แบรนด์ exist only in the dcode file**, so with the old file those two chips are disabled
+  and the page says why, rather than showing one `(ไม่ระบุ)` band. Category names are shown **as the
+  file writes them** (`FABRIC SOLUTIONS`, …): `CAT_TH` holds the price file's own abbreviations and
+  does not fit this column, and a guessed translation would be worse than the name the owner already
+  reads in dcode. Clicking a category drills into its brands and then its products (`stkVOpen`/
+  `stkVBack`, state on the non-synced `STK`), and the panel follows the search box — when it does, it
+  says how many of the warehouse's rows it is counting.
   **Everyone sees it** ("เพื่อให้ทางเซลล์ไปขายกันมา"), only the admin writes: every writing
   function tests `cstMgr()` itself, never relying on the button being hidden.
   The admin now **types the bill-cut slip in the app** (`cstNew`/`cstSlipSave`), not in Excel —
@@ -1011,6 +1042,21 @@ code, never printed.
   **The 📥 allocation upload sits at the top beside ➕ สร้างออเดอร์ใหม่** (`spAlBtnHtml`/`#spAlBox`),
   not inside one slip's admin tab — *"ไฟล์นี้อัปทีเดียวใช้ได้ทั้งระบบ"*. It is the one exception to
   the single-upload-button rule, because `ALLOC` is never stored in the state.
+  **But "not stored" must never read as "not uploaded"** (the owner, 26 Nov 26: *"ผมอัพไฟล์
+  allocation ไปหลายรอบมาก ทำไมมันไม่เซฟให้ … ถ้าไม่มีอะไรเปลี่ยนแปลง ให้คงไว้ตามเดิม ไม่ต้องลบออก"*).
+  Measured on his real 1.7 MB file: the upload **did** save — 1,789 orders / 452 KB posted to
+  `/api/ordtrk`, no error. Two real defects sat behind the complaint, and both are fixed:
+  **① `parseAlloc` replaced `ALLOC` instead of merging it**, so a narrower export dropped the days
+  already read — it now unions the GIN map and the day list and reports how many it carried over
+  (`kept`); **② every label read the memory-only `ALLOC`**, so after each refresh the page said
+  *ยังไม่ได้อัพไฟล์*, which is exactly why he uploaded again and again. `parseAlloc` now also writes a
+  **tiny note** — `CSTOCK.alc = {up,file,d1,d2,n,days,by,byName}`, a few hundred bytes, the file name
+  and the days it covered, never the file — and `spAlcRec`/`spAlcTxt`/`spAlLabel`/`spAdmHtml` read it
+  when `ALLOC` is gone, naming the file and saying the saved checks are still there. A re-upload is
+  asked for **only to check a new day**, and the message says that. `alc` is a field on `CSTOCK`,
+  which `api/save.js` rebuilds from an explicit list, so it needed `pickNewerAlc` there (newer `up`
+  wins; a tab that has never heard of the field can never blank it) and three cases in
+  `merge-safety`.
   **④ คลังส่งออก is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
@@ -1029,6 +1075,11 @@ code, never printed.
   ออกมาเยอะมากแน่ ๆ"*): days with data are solid blue, days the admin has checked solid green, the
   selected day outlined. **`SP.cm` (the month shown) is separate from `SP.day` (the day selected)** —
   the `PJ.ym`/`PJ.d` rule — or stepping back a month snaps forward again on every render.
+  Its **◀ ▶ are 44px and blue**: they inherited `.cal-head`'s 34px grey, the smallest tap target on
+  the page while every other stepper is a 39×40 blue `.dstep-b`, and a thumb that misses reads as
+  *"ปุ่มเลื่อนซ้ายกดไม่ได้"* (26 Nov 26). The buttons themselves always worked — measured at 390px,
+  `elementFromPoint` returned the button and a real click stepped 11 → 10 → 09 — so the fix is the
+  target, not the handler.
   **`spDays` must test for real content, not for a key** (`spDayHas`): deleting here writes an empty
   record or `del:1` rather than removing the key, so the date chips kept showing days the owner had
   already cleared. **Every counter that walks `CSTOCK.key`/`CSTOCK.gin` must go through `spDayHas`
@@ -1190,7 +1241,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (203 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (206 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1203,7 +1254,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (203 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (206 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

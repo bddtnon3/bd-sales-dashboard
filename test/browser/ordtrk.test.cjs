@@ -222,7 +222,8 @@ const ORIGIN='https://bd-ordtrk.test/';
  t('🔑 เลือกเดือนได้ทุกเดือนที่มีข้อมูล',scr.mon==='2026-11,2026-10',scr.mon);
  t('🔑 เลือกสายได้จากสายที่มีจริงในเดือนนั้น',scr.line==='all,CT11,CT12',scr.line);
  t('🔑 เลือกวันที่เซลล์คีย์ได้',scr.day==='all,2026-11-17,2026-11-18',scr.day);
- t('🔑 กรองตามสถานะได้ รวมถึง "คลังยังไม่จัด"',/^all,no,yes,/.test(scr.st),scr.st);
+ t('🔑 กรองตามสถานะได้ ทั้งเรื่องบิลและเรื่องคลังจัดของ',
+   /^all,ino,iyes,no,yes,both,/.test(scr.st),scr.st);
  t('🔑 ขึ้นครบทุกใบของเดือนนั้น',scr.rows===3,scr.rows);
  t('🔑 ตารางมีสองขั้นตอน: เซลล์คีย์ และคลังจัดของ',
    /① เซลล์คีย์/.test(scr.body)&&/② คลังจัดของ/.test(scr.body),scr.body.slice(0,120));
@@ -252,6 +253,44 @@ const ORIGIN='https://bd-ordtrk.test/';
  t('🔑 กรองวันที่เซลล์คีย์ได้ (18 พ.ย. มี 1 ใบ)',filt.b===1,filt.b);
  t('🔑 กรอง "คลังยังไม่จัด" ได้ (1 ใบ)',filt.c===1&&/ยังไม่จัด/.test(filt.noBody),filt.c);
  t('🔑 กรอง "คลังจัดแล้ว" ได้ (2 ใบ)',filt.d===2,filt.d);
+
+ /* ---- 🧾 ป้ายบอกว่าออกบิลแล้ว / มี GIN แล้ว + ฟิลเตอร์ของทั้งสองเรื่อง (เจ้าของสั่ง 26 พ.ย. 69)
+    ⚠️ "ออกบิลแล้ว" มีสองทาง: เลขบิลที่เก็บกับออเดอร์ หรือไฟล์ยอดขายรายวันมีใบนี้
+    แต่เรคอร์ดที่มาจากไฟล์ Transaction Inquiry (tx:1 — ไม่มี cs) ไม่นับ */
+ const badge=await ev(()=>{
+   const C=OT.cache['2026-11'];
+   /* ใบที่ยังไม่ออกบิลและคลังยังไม่จัด — ของจริงมีเยอะ แต่ในชุดทดสอบยังไม่มี */
+   C.ord['00000104']={d:17,l:'209612',s:'9000002',t:'C',c:2,v:700,n:1,u:20261124};
+   const n=()=>document.querySelectorAll('#otBody .ot-tbl tbody tr').length;
+   const tx=()=>document.getElementById('otBody').textContent.replace(/\s+/g,' ');
+   const o={};
+   OT.line='all';OT.day='all';OT.st='all';renderOtrk();
+   o.all=n();o.body=tx();
+   o.pills=[...document.querySelectorAll('#otBody .ot-pill')].map(e=>e.textContent.trim());
+   OT.st='ino';renderOtrk();o.ino=n();o.inoBody=tx();
+   OT.st='iyes';renderOtrk();o.iyes=n();
+   OT.st='both';renderOtrk();o.both=n();o.bothBody=tx();
+   OT.st='all';delete C.ord['00000104'];renderOtrk();o.after=n();
+   /* ใบที่รู้จักจากไฟล์ Transaction Inquiry อย่างเดียว ยังไม่ถือว่าออกบิล */
+   const keep=STOREDAILY.ord['BDD0100000103'];
+   STOREDAILY.ord['BDD0100000103']={s:'9000003',l:'209611',d:'2026-11-18',tx:1};
+   o.txNotInv=!otHasInv({k:'00000103',r:C.ord['00000103'],sl:STOREDAILY.ord['BDD0100000103']});
+   if(keep)STOREDAILY.ord['BDD0100000103']=keep;else delete STOREDAILY.ord['BDD0100000103'];
+   renderOtrk();
+   return o;});
+ t('🔑 ทุกใบมีป้ายบอกทั้งเรื่องบิลและเรื่อง GIN',
+   badge.pills.length===badge.all*2&&badge.pills.some(x=>/^🧾 บิล /.test(x))&&
+   badge.pills.some(x=>x==='🧾 ยังไม่ออกบิล')&&badge.pills.some(x=>/^📦 GIN /.test(x))&&
+   badge.pills.some(x=>x==='📦 ยังไม่จัด'),JSON.stringify(badge.pills));
+ t('🔑 กรองเฉพาะ "ยังไม่ออกบิล" ได้ (2 ใบ)',badge.ino===2&&/ยังไม่ออกบิล/.test(badge.inoBody),badge.ino);
+ t('🔑 กรองเฉพาะ "ออกบิลแล้ว" ได้ (2 ใบ)',badge.iyes===2,badge.iyes);
+ t('🔑 กรองเฉพาะใบที่ค้างทั้งสองอย่าง (ยังไม่ออกบิล + ยังไม่มี GIN) ได้ (1 ใบ)',
+   badge.both===1&&/ยังไม่ออกบิล/.test(badge.bothBody)&&/ยังไม่จัด/.test(badge.bothBody),badge.both);
+ t('🔑 การ์ดสรุปมีช่อง "ยังไม่ออกบิล" แยกจาก "คลังยังไม่จัด"',
+   /🧾 ยังไม่ออกบิล/.test(badge.body)&&/🕗 คลังยังไม่จัด/.test(badge.body),'');
+ t('🛟 ใบที่รู้จักจากไฟล์รายการสั่งซื้ออย่างเดียว ยังไม่นับว่าออกบิล (ไฟล์นั้นมีใบที่ยังไม่ออกบิลด้วย)',
+   badge.txNotInv,badge.txNotInv);
+ t('🛟 ลบใบที่เพิ่มไว้ทดสอบออกแล้ว กลับมาเท่าเดิม',badge.after===3,badge.after);
 
  /* ---- กางดูรายสินค้าในใบ ---- */
  const det=await ev(async()=>{

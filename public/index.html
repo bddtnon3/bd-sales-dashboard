@@ -70,6 +70,8 @@ main{max-width:1180px;margin:0 auto;padding:22px}
 .seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
 .seg button{border:none;background:none;padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;color:var(--muted)}
 .seg button.on{background:var(--blue);color:#fff}
+ 
+.seg button[disabled]{opacity:.45;cursor:not-allowed}
 .ctl select{padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:150px;background:#fff}
 .chk{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink);font-weight:600}
 .chk input{width:16px;height:16px;accent-color:var(--blue)}
@@ -224,6 +226,12 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
  
 .sp-daybar{align-items:flex-start}
 .sp-cal .cal-day{cursor:pointer;padding:7px 0;font-size:13px}
+ 
+.sp-cal .cal-head{gap:6px;margin-bottom:8px}
+.sp-cal .cal-head button{width:44px;height:44px;font-size:18px;border:1.5px solid var(--line);
+  background:#fff;color:var(--blue);border-radius:10px}
+.sp-cal .cal-head button:hover{background:var(--blue-soft);border-color:var(--blue)}
+.sp-cal .cal-head button:active{background:var(--blue);color:#fff}
 .sp-cal .cal-day:empty{cursor:default}
 .cal-day.chk{background:var(--good);color:#fff;font-weight:800}
 .cal-day.chk:hover{background:#0F7A52;color:#fff}
@@ -518,6 +526,22 @@ main.wide{max-width:1560px}
  
 .ot-tbl tr.on>td{background:#E3EEFD;box-shadow:inset 3px 0 0 var(--blue)}
 .ot-tbl tr.ot-det>td{background:#F7F9FC;padding:10px 12px}
+ 
+ 
+.sv-tbl{width:100%;border-collapse:collapse;font-size:14px}
+.sv-tbl th{font-size:12px;color:var(--muted);font-weight:700;text-align:right;
+  padding:6px 10px;border-bottom:1.5px solid var(--line);white-space:nowrap}
+.sv-tbl th:first-child{text-align:left}
+.sv-tbl td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;vertical-align:middle}
+.sv-tbl td:first-child{text-align:left}
+.sv-tbl tr.cl{cursor:pointer}
+.sv-tbl tr.cl:hover>td{background:#F3F7FE}
+.sv-bar{height:7px;border-radius:999px;background:var(--line);overflow:hidden;min-width:60px;margin-top:4px}
+.sv-bar>i{display:block;height:100%;background:var(--blue);border-radius:999px}
+.ot-pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;
+  font-weight:700;border:1px solid transparent;white-space:nowrap;line-height:1.7}
+.ot-pill.ok{background:#E9F7EF;color:var(--good);border-color:#BFE6CD}
+.ot-pill.no{background:#FDECEC;color:var(--bad);border-color:#F6C9C9}
 .ot-tbl tbody tr:hover>td{background:#F3F7FE}
  
 @media(max-width:760px){
@@ -1546,6 +1570,7 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="kpi-monthbar" id="stockBar"></div>
       <div class="rc-hint">⌨️ <b>ไล่ดูทีละรายการ</b> — คลิกที่บรรทัดไหนก็ได้ แล้วกดลูกศร <b>↑ ↓</b> เลื่อนทีละบรรทัด · <b>PgUp/PgDn</b> ทีละ 10 · <b>Home/End</b> บรรทัดแรก/สุดท้าย · <b>Esc</b> เลิกไฮไลต์</div>
       <div class="cards" id="stockCards"></div>
+      <div id="stockValBox"></div>
       <div class="panel" id="stockTable"></div>
     </div>
 
@@ -9766,7 +9791,8 @@ function renderSalesRequests(){
 }
 
  
-let STK={wh:"sale"};
+ 
+let STK={wh:"sale",vsec:"cat",vcat:"",vbr:""};
 document.getElementById("stockWh").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;STK.wh=b.dataset.w;setSeg("stockWh","w",STK.wh);renderStock();});
 function cspcTotal(s){const m=String(s||"").split("/");const cs=parseInt(m[0])||0,pc=parseInt(m[1])||0;return cs*1000+pc;}  
  
@@ -9774,6 +9800,88 @@ function stkSearchMatch(row,tokens){
   const hay=((row.n||"")+" "+row.c+" "+(row.br||"")+" "+(row.cat||"")).toLowerCase();
   return tokens.every(t=>hay.indexOf(t)>=0);}
 function stkLow(iStr){const s=String(iStr==null?"":iStr).trim();if(!s)return false;const neg=s.indexOf("-")>=0;const m=s.match(/-?\d+/g)||[];const cs=parseInt(m[0])||0,pc=parseInt(m[1])||0;return neg||(cs===0&&pc===0)||cs<0||pc<0;}
+ 
+function stkCs(r){return stkParse(r&&r.e).cs;}
+function stkValAgg(list){
+  let val=0,cs=0,noVal=0;
+  list.forEach(r=>{const v=+r.v||0;cs+=stkCs(r);if(v>0)val+=v;else noVal++;});
+  return {val:val,cs:cs,noVal:noVal,n:list.length};
+}
+function stkHasKey(rows,k){return rows.some(r=>r[k]);}
+function stkValGrp(list,key){
+  const m={};
+  list.forEach(r=>{
+    const raw=key==="prod"?((r.n||"")+" · "+r.c):(r[key]||"");
+    const k=String(raw).trim()||"(ไฟล์ไม่ได้ระบุ)";
+    const g=m[k]||(m[k]={k:k,n:0,cs:0,val:0,noVal:0,code:r.c});
+    g.n++;g.cs+=stkCs(r);
+    const v=+r.v||0;if(v>0)g.val+=v;else g.noVal++;
+  });
+  return Object.keys(m).map(k=>m[k]).sort((a,b)=>b.val-a.val||b.cs-a.cs||(a.k<b.k?-1:1));
+}
+function stkVSec(v){STK.vsec=v;STK.vcat="";STK.vbr="";renderStock();}
+function stkVOpen(t,v){if(t==="cat"){STK.vcat=v;STK.vbr="";}else if(t==="br")STK.vbr=v;renderStock();}
+function stkVBack(){if(STK.vbr)STK.vbr="";else STK.vcat="";renderStock();}
+function stkValHtml(list,rowsAll){
+  const hasCat=stkHasKey(rowsAll,"cat"),hasBr=stkHasKey(rowsAll,"br");
+  if(!hasCat&&STK.vsec==="cat")STK.vsec=hasBr?"br":"prod";
+  if(!hasBr&&STK.vsec==="br")STK.vsec="prod";
+  if(!hasCat)STK.vcat="";
+  if(!hasBr)STK.vbr="";
+   
+  let sub=list,key=STK.vsec,crumb=[];
+  if(STK.vcat){sub=sub.filter(r=>(String(r.cat||"").trim()||"(ไฟล์ไม่ได้ระบุ)")===STK.vcat);
+    crumb.push(STK.vcat);key=hasBr?"br":"prod";}
+  if(STK.vbr){sub=sub.filter(r=>(String(r.br||"").trim()||"(ไฟล์ไม่ได้ระบุ)")===STK.vbr);
+    crumb.push(STK.vbr);key="prod";}
+  const tot=stkValAgg(sub),grp=stkValGrp(sub,key);
+  const max=grp.reduce((a,g)=>Math.max(a,g.val),0);
+  const none=tot.val<=0&&tot.noVal===tot.n;
+  const kTH={cat:"หมวด",br:"แบรนด์",prod:"สินค้า"};
+  const segBtn=(v,t,on)=>`<button class="${STK.vsec===v?"on":""}"${
+    on?"":" disabled title=\"ไฟล์นี้ไม่มีข้อมูลนี้มาด้วย\""} onclick="stkVSec('${v}')">${t}</button>`;
+  const head=`<div class="seg">${segBtn("cat","📂 รายหมวด",hasCat)}${
+    segBtn("br","🏷 รายแบรนด์",hasBr)}${segBtn("prod","📦 รายสินค้า",1)}</div>`;
+  const back=crumb.length?`<div style="margin:10px 0 0">
+    <button class="backbtn" onclick="stkVBack()">← ย้อนกลับ</button>
+    <span class="psub" style="margin-left:8px">กำลังดู <b>${anaEsc(crumb.join(" → "))}</b></span></div>`:"";
+  const body=none
+    ?`<div class="insight">ไฟล์ไม่ได้ลงมูลค่าของ${STK.wh==="sale"?"คลังขาย":"คลังแถม"}มาด้วย
+       (${tot.n.toLocaleString()} รายการ) — ยังไม่มีมูลค่าให้รวม ไม่ใช่มูลค่าเป็น 0</div>`
+    :`<div class="tblwrap"><table class="sv-tbl"><thead><tr>
+        <th>${kTH[key]}</th><th>รายการ</th><th>ลัง (ปิดวัน)</th><th>มูลค่า</th><th>สัดส่วน</th>
+      </tr></thead><tbody>${grp.slice(0,200).map(g=>{
+        const pct=tot.val>0?g.val*100/tot.val:0;
+        const can=(key==="cat"&&hasBr)||(key==="br"&&!STK.vbr);
+        return `<tr class="${can?"cl":""}"${can?` onclick="stkVOpen('${key}',${JSON.stringify(g.k).replace(/"/g,"&quot;")})"`:""}>
+          <td>${anaEsc(g.k)}${can?' <span class="psub">▸</span>':""}${
+            g.noVal?`<br><span class="psub down">${g.noVal} รายการไฟล์ไม่ได้ลงมูลค่า</span>`:""}</td>
+          <td>${g.n.toLocaleString()}</td>
+          <td>${g.cs.toLocaleString()}</td>
+          <td><b>${THB(g.val)}</b></td>
+          <td style="min-width:110px"><span class="psub">${pct.toFixed(1)}%</span>
+            <div class="sv-bar"><i style="width:${max>0?Math.max(2,g.val*100/max):0}%"></i></div></td></tr>`;
+      }).join("")}</tbody></table></div>${
+      grp.length>200?`<div class="psub" style="margin-top:8px">แสดง 200 อันดับแรกจาก ${grp.length.toLocaleString()} ${kTH[key]}</div>`:""}`;
+  return `<div class="panel">
+    <h3>💰 มูลค่าสต็อก — ${STK.wh==="sale"?"คลังขาย":"คลังแถม"}</h3>
+    <div class="cards" style="margin:10px 0">
+      <div class="card"><div class="k">มูลค่ารวม</div><div class="v">${none?"–":THBk(tot.val)}</div>
+        <div class="s">${none?"ไฟล์ไม่ได้ลงมูลค่า":THB(tot.val)}</div></div>
+      <div class="card"><div class="k">รายการ</div><div class="v">${tot.n.toLocaleString()}</div>
+        <div class="s">${tot.cs.toLocaleString()} ลัง (ยอดปิดวัน)</div></div>
+      ${tot.noVal&&!none?`<div class="card"><div class="k">ไฟล์ไม่ได้ลงมูลค่า</div>
+        <div class="v down">${tot.noVal.toLocaleString()}</div><div class="s">ไม่ได้นับเป็น 0</div></div>`:""}
+    </div>
+    ${head}${back}
+    ${list.length<rowsAll.length?`<div class="note" style="margin:10px 0 0">🔍 กำลังนับเฉพาะ
+      <b>${list.length.toLocaleString()}</b> รายการที่กรองไว้ จากทั้งคลัง ${rowsAll.length.toLocaleString()} รายการ
+      — ล้างช่องค้นหาเพื่อดูมูลค่าทั้งคลัง</div>`:""}
+    <div class="psub" style="margin:10px 0 6px">มูลค่ามาจากช่องมูลค่าในไฟล์โดยตรง ผูกกับ
+      <b>ยอดปิดวัน</b> (คนละตัวกับคงเหลือปัจจุบัน)${
+      hasCat||hasBr?"":" · ไฟล์นี้ไม่มีหมวด/แบรนด์มาด้วย จึงแยกได้แค่รายสินค้า"}</div>
+    ${body}</div>`;
+}
 function renderStock(){
   const bar=document.getElementById("stockBar");if(!bar)return;
   const rows=(STOCKD&&STOCKD.rows)||[];
@@ -9796,6 +9904,8 @@ function renderStock(){
     <div class="card"><div class="k">คำค้น</div><div class="v" style="font-size:16px">${tokens.length?tokens.join(" + "):"(ทั้งหมด)"}</div><div class="s">จับถึงตัวอักษร/เลข</div></div>`;
   const isMgr=S.user&&S.user.role==="manager";
   document.getElementById("stockValWrap").style.display=isMgr?"":"none";
+  {const vb=document.getElementById("stockValBox");
+   if(vb)vb.innerHTML=isMgr?stkValHtml(list,whRows):"";}
   const showVal=isMgr&&document.getElementById("stockVal").checked;
   const rowsH=list.slice(0,800).map(r=>{const low=isLow(r);
     return `<tr${low?' style="background:#FDF3F3"':''}><td>${r.c}</td><td style="text-align:left">${r.n||"-"}</td>${showVal?`<td style="text-align:right">${r.d||"-"}</td>`:""}<td style="text-align:right">${r.e||"-"}</td>${showVal?`<td style="text-align:right">${(r.j||0)>0?THB(r.j):"-"}</td>`:""}${showVal?`<td style="text-align:right">${(r.v||0)>0?THB(r.v):"-"}</td>`:""}<td style="text-align:right" class="${(r.po&&r.po!=="0"&&r.po!=="0/0")?'up':''}">${r.po||"-"}</td><td style="text-align:right">${r.h||"-"}</td><td style="text-align:right" class="${low?'down':''}"><b>${r.i||"-"}</b></td></tr>`;}).join("");
@@ -11932,8 +12042,14 @@ function parseAlloc(name,buf){
   }
   if(!n)throw new Error("ไม่พบแถวข้อมูลในไฟล์ (ต้องมีรหัสสินค้าและเลข GIN)");
   const ds=Object.keys(days).sort();
-  ALLOC={up:Date.now(),file:name,n:n,g:g,days:ds,money:hasMoney?1:0,gsv:tg,niv:tn,stat:stat,noShop:noShop?1:0,
-    nomoney:onone,gins:Object.keys(g).sort((a,b)=>alNum(a)-alNum(b)||a.localeCompare(b))};
+   
+  const gAll=(ALLOC&&ALLOC.g)?Object.assign({},ALLOC.g):{};
+  Object.keys(g).forEach(k=>{gAll[k]=g[k];});
+  const dAll={};((ALLOC&&ALLOC.days)||[]).forEach(d=>{dAll[d]=1;});ds.forEach(d=>{dAll[d]=1;});
+  const kept=Object.keys(gAll).length-Object.keys(g).length;
+  ALLOC={up:Date.now(),file:name,n:n,g:gAll,days:Object.keys(dAll).sort(),
+    money:hasMoney?1:0,gsv:tg,niv:tn,stat:stat,noShop:noShop?1:0,kept:kept,
+    nomoney:onone,gins:Object.keys(gAll).sort((a,b)=>alNum(a)-alNum(b)||a.localeCompare(b))};
   const sl=Object.keys(stat).sort((a,b)=>stat[b]-stat[a]).map(k=>anaEsc(k)+" "+stat[k]);
   ulog("📥 ใบจัดของ (allocation): อ่านได้ <b>"+n.toLocaleString()+"</b> แถว · <b>"+
     ALLOC.gins.length+"</b> เลข GIN · วันที่ "+(ds[0]||"-")+" ถึง "+(ds[ds.length-1]||"-")+
@@ -11961,6 +12077,18 @@ function parseAlloc(name,buf){
       (uk.length?"<br><b class='down'>สถานะที่ยังไม่รู้จัก: "+uk.map(x=>anaEsc(x)+" ("+unk[x]+")").join(" · ")+
         "</b> — เก็บข้อความเดิมไว้ ไม่ได้เดา แจ้งให้ปรับโปรแกรมได้":""));
     otPush(oix,name,od1,od2);
+     
+    try{
+      const C=cstOk();
+      const old=(C.alc&&typeof C.alc==="object")?C.alc:null;
+      const dset={};((old&&old.days)||[]).forEach(d=>{dset[d]=1;});
+      (ALLOC.days||[]).forEach(d=>{dset[d]=1;});
+      C.alc={up:Date.now(),file:String(name||"").slice(0,120),
+        d1:od1,d2:od2,n:ok.length,
+        days:Object.keys(dset).sort().slice(-120),
+        by:(S.user&&S.user.id)||"",byName:(S.user&&S.user.name)||""};
+      if(typeof syncToServer==="function")syncToServer();
+    }catch(e){}
   }
   if(typeof renderSpord==="function"&&CURTAB==="spord")renderSpord();
   return ALLOC;
@@ -13998,7 +14126,9 @@ function spAdmHtml(sid){
       ${haveFile?`<span class="psub">✅ อ่านไฟล์ <b>${anaEsc(ALLOC.file)}</b> แล้ว ·
         ${ALLOC.n.toLocaleString()} แถว · ${ALLOC.gins.length} เลข GIN ·
         ${anaEsc(ALLOC.days[0]||"")} ถึง ${anaEsc(ALLOC.days[ALLOC.days.length-1]||"")}</span>`
-        :`<span class="psub">ยังไม่ได้อัพไฟล์ในเครื่องนี้ — กด <b>📥 ไฟล์ใบจัดของ</b> ด้านบน</span>`}</div>
+        :(spAlcTxt()
+          ?`<span class="psub">📋 ${spAlcTxt()}<br>ผลตรวจที่บันทึกไว้แล้วยังอยู่ครบ — จะตรวจวันใหม่ ให้กด <b>📥 ไฟล์ใบจัดของ</b> ด้านบนอีกครั้ง</span>`
+          :`<span class="psub">ยังไม่ได้อัพไฟล์ — กด <b>📥 ไฟล์ใบจัดของ</b> ด้านบน</span>`)}</div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
         <label class="psub" style="min-width:120px">เลข GIN ของวันนี้</label>
         <input id="spGinIn" value="${anaEsc(((g&&g.g)||[]).join(", "))}"
@@ -14203,22 +14333,40 @@ function spUpAlloc(){
   if(el)el.click();else alert("ไม่พบช่องอัพไฟล์");
 }
  
+function spAlcRec(){
+  const C=(typeof cstOk==="function")?cstOk():null;
+  const a=C&&C.alc;
+  return (a&&typeof a==="object"&&a.file)?a:null;
+}
+function spAlcTxt(){
+  const a=spAlcRec();
+  if(!a)return "";
+  return "ไฟล์ล่าสุดที่อ่านไปแล้ว <b>"+anaEsc(a.file)+"</b>"+
+    ((a.d1&&a.d2)?" · ครอบวันที่ "+anaEsc(fmtDate(a.d1))+" ถึง "+anaEsc(fmtDate(a.d2)):"")+
+    (a.n?" · "+(+a.n).toLocaleString()+" ใบ":"");
+}
 function spAlLabel(){
-  if(!ALLOC)return "ยังไม่ได้อัพไฟล์";
-  return "✅ "+ALLOC.n.toLocaleString()+" แถว · "+ALLOC.gins.length+" GIN";
+  if(ALLOC)return "✅ "+ALLOC.n.toLocaleString()+" แถว · "+ALLOC.gins.length+" GIN";
+  const a=spAlcRec();
+  if(a&&a.d2)return "📋 อ่านไปแล้วถึง "+fmtDate(a.d2);
+  return "ยังไม่ได้อัพไฟล์";
 }
 function spAlBtnHtml(){
   if(!spAdmOk())return "";
+  const note=ALLOC
+    ? "✅ อ่านไฟล์ <b>"+anaEsc(ALLOC.file)+"</b> แล้ว · "+ALLOC.n.toLocaleString()+" แถว · "+
+      ALLOC.gins.length+" เลข GIN"+(ALLOC.kept>0?" <span class='up'>(รวมกับที่อ่านไว้ก่อนหน้าอีก "+ALLOC.kept+" GIN)</span>":"")
+    : (spAlcTxt()||"อัพไฟล์ทีเดียว ใช้ได้ทุกใบทุกวัน");
   return `<button class="upload-btn" onclick="spUpAlloc()">📥 ไฟล์ใบจัดของ</button>`+
-    `<span class="psub">${ALLOC?"✅ อ่านไฟล์ <b>"+anaEsc(ALLOC.file)+"</b> แล้ว · "+
-      ALLOC.n.toLocaleString()+" แถว · "+ALLOC.gins.length+" เลข GIN":
-      "อัพไฟล์ทีเดียว ใช้ได้ทุกใบทุกวัน"}</span>`;
+    `<span class="psub">${note}</span>`;
 }
 function spGinGo(sid,ymd){
   const el=document.getElementById("spGinIn");
   const gins=String((el&&el.value)||"").split(/[,\s]+/).map(x=>x.trim()).filter(Boolean);
   if(!gins.length){alert("ใส่เลข GIN อย่างน้อยหนึ่งเลข");return;}
-  if(!ALLOC){alert("ยังไม่ได้อัพไฟล์ allocation ในเครื่องนี้");return;}
+  if(!ALLOC){alert(spAlcTxt()
+    ?"ต้องกด 📥 ไฟล์ใบจัดของ อีกครั้งก่อนตรวจวันใหม่\n\nผลตรวจที่บันทึกไว้แล้วยังอยู่ครบ ไม่ได้หายไปไหน"
+    :"ยังไม่ได้อัพไฟล์ใบจัดของ — กด 📥 ไฟล์ใบจัดของ ด้านบนก่อน");return;}
   spGinSave(sid,ymd,gins);
 }
 
@@ -15874,6 +16022,21 @@ function otSales(k){
   return ix[otFullNo(k)]||null;
 }
 function otLineOf(r){const l=(r&&r.l)||"";return l?alLine(l,""):"";}
+ 
+function otInvNoOf(x){return x&&x.r&&x.r.i?otInvNo(x.r.i):"";}
+function otHasInv(x){return !!(x&&((x.r&&x.r.i)||(x.sl&&x.sl.cs!==undefined)));}
+function otHasGin(x){return !!(x&&x.r&&x.r.g);}
+function otInvPill(x){
+  const no=otInvNoOf(x);
+  return otHasInv(x)
+    ?`<span class="ot-pill ok">🧾 ${no?"บิล "+anaEsc(no):"ออกบิลแล้ว"}</span>`
+    :`<span class="ot-pill no">🧾 ยังไม่ออกบิล</span>`;
+}
+function otGinPill(x){
+  return otHasGin(x)
+    ?`<span class="ot-pill ok">📦 GIN ${anaEsc(x.r.g)}</span>`
+    :`<span class="ot-pill no">📦 ยังไม่จัด</span>`;
+}
 function otStTxt(t){return t?(OT_TH[t]||t):"";}
  
 async function otLoadMonths(){
@@ -15924,12 +16087,18 @@ function otRows(){
   out.sort((a,b)=>(a.d<b.d?1:a.d>b.d?-1:(a.k<b.k?-1:1)));
   return out;
 }
+const OT_FILT={
+  no:   x=>!otHasGin(x),
+  yes:  x=>otHasGin(x),
+  ino:  x=>!otHasInv(x),
+  iyes: x=>otHasInv(x),
+  both: x=>!otHasInv(x)&&!otHasGin(x)};
 function otPass(x){
   if(OT.line&&OT.line!=="all"&&x.ln!==OT.line)return false;
   if(OT.day!=="all"&&x.d!==OT.day)return false;
-  if(OT.st==="no"&&x.r.g)return false;
-  if(OT.st==="yes"&&!x.r.g)return false;
-  if(OT.st&&OT.st!=="all"&&OT.st!=="no"&&OT.st!=="yes"&&x.r.t!==OT.st)return false;
+  const f=OT_FILT[OT.st];
+  if(f)return f(x);
+  if(OT.st&&OT.st!=="all"&&x.r.t!==OT.st)return false;
   return true;
 }
 function otUpTxn(){
@@ -15979,21 +16148,20 @@ function otClear(){OT.q="";OT.hits=null;renderOtrk();}
  
  
 function otStepHtml(x){
-  const g=x.r.g;
   return `<td data-l="① เซลล์คีย์"><b>${anaEsc(fmtDate(x.d))}</b>${
       x.r.tm?` <span class="psub">${anaEsc(x.r.tm)} น.</span>`:""}${x.sl&&x.sl.k&&x.sl.k!==x.d
       ?`<br><span class="psub down">ไฟล์ยอดขายว่า ${anaEsc(fmtDate(x.sl.k))}</span>`:""}</td>
-    <td data-l="② คลังจัดของ">${g?`<b>GIN ${anaEsc(g)}</b>`:`<span class="down">ยังไม่จัด</span>`}
-      ${x.r.t?`<br><span class="psub">${anaEsc(otStTxt(x.r.t))}</span>`:""}</td>`;
+    <td data-l="② คลังจัดของ">${otGinPill(x)}${
+      x.r.t?`<br><span class="psub">${anaEsc(otStTxt(x.r.t))}</span>`:""}</td>`;
 }
 function otRowHtml(x){
   const nm=(typeof cstStoreName==="function")?cstStoreName(x.r.s):"";
   const money=x.r.v?THB(x.r.v):(x.sl&&x.sl.v?THB(x.sl.v):"–");
-  const inv=x.r.i?otInvNo(x.r.i):((x.sl&&x.sl.inv)||"");
   return `<tr class="${OT.open===x.k?"on":""}" onclick="otRowTog('${anaEsc(x.k)}')" style="cursor:pointer">
-    <td class="ot-no"><b>${anaEsc(x.no)}</b>${x.r.cx?' <span class="pm-chip" style="background:var(--bad);color:#fff">ยกเลิก</span>':""}${
-      inv?`<br><span class="psub">บิล ${anaEsc(inv)}</span>`:""}</td>
-    <td data-l="ร้าน">${anaEsc(nm||("ร้าน "+(x.r.s||"ไม่ระบุ")))}${nm&&x.r.s?`<br><span class="psub">${anaEsc(x.r.s)}</span>`:""}</td>
+    <td class="ot-no"><b>${anaEsc(x.no)}</b>${x.r.cx?' <span class="pm-chip" style="background:var(--bad);color:#fff">ยกเลิก</span>':""}
+      <br>${otInvPill(x)}</td>
+    <td data-l="ร้าน"><div>${anaEsc(nm||("ร้าน "+(x.r.s||"ไม่ระบุ")))}${
+      nm&&x.r.s?`<br><span class="psub">${anaEsc(x.r.s)}</span>`:""}</div></td>
     <td data-l="สาย">${anaEsc(x.ln||"?")}</td>
     ${otStepHtml(x)}
     <td data-l="จำนวน (ลัง)" style="text-align:right">${otN(x.r.c,1)}${x.r.x?`<br><span class="psub down">อีก ${x.r.x} แถวแปลงหน่วยไม่ได้</span>`:""}</td>
@@ -16128,10 +16296,13 @@ function renderOtrk(){
     dsel.innerHTML=`<option value="all"${OT.day==="all"?" selected":""}>ทุกวัน</option>`+
       days.map(d=>`<option value="${anaEsc(d)}"${d===OT.day?" selected":""}>${anaEsc(fmtDate(d))}</option>`).join("");}
   const ssel=document.getElementById("otSt");
-  if(ssel)ssel.innerHTML=`<option value="all"${OT.st==="all"?" selected":""}>ทั้งหมด</option>`+
-    `<option value="no"${OT.st==="no"?" selected":""}>🕗 คลังยังไม่จัด</option>`+
-    `<option value="yes"${OT.st==="yes"?" selected":""}>✅ คลังจัดแล้ว</option>`+
-    OT_SEQ.map(t=>`<option value="${t}"${OT.st===t?" selected":""}>${anaEsc(OT_TH[t])}</option>`).join("");
+  const opt=(v,t)=>`<option value="${v}"${OT.st===v?" selected":""}>${anaEsc(t)}</option>`;
+  if(ssel)ssel.innerHTML=opt("all","ทั้งหมด")+
+    `<optgroup label="🧾 บิล">`+opt("ino","ยังไม่ออกบิล")+opt("iyes","ออกบิลแล้ว")+`</optgroup>`+
+    `<optgroup label="📦 คลังจัดของ (GIN)">`+opt("no","ยังไม่จัด (ไม่มี GIN)")+opt("yes","จัดแล้ว (มี GIN)")+`</optgroup>`+
+    `<optgroup label="⚠️ ค้างทั้งสองอย่าง">`+opt("both","ยังไม่ออกบิล + ยังไม่มี GIN")+`</optgroup>`+
+    `<optgroup label="สถานะในระบบ">`+
+      OT_SEQ.map(t=>opt(t,OT_TH[t])).join("")+`</optgroup>`;
    
   if(!ready){body.innerHTML=`<div class="panel"><div class="insight">กำลังโหลดสถานะออเดอร์…</div></div>`;return;}
   const C=OT.cache[OT.m]||{};
@@ -16143,7 +16314,7 @@ function renderOtrk(){
       (ปุ่มอัพโหลด → 📦 ออเดอร์พิเศษ → ไฟล์ใบจัดของ)</div></div>`;return;}
   const rows=all.filter(otPass);
   const nG=rows.filter(x=>x.r.g).length;
-  const nInv=rows.filter(x=>x.r.i||(x.sl&&x.sl.v)).length;
+  const nInv=rows.filter(otHasInv).length;
   const cs=rows.reduce((a,x)=>a+(+x.r.c||0),0);
   const val=rows.reduce((a,x)=>a+(+x.r.v||(x.sl?+x.sl.v:0)||0),0);
   const meta=C.meta||{};
@@ -16153,6 +16324,8 @@ function renderOtrk(){
     <div class="card"><div class="k">② คลังจัดของแล้ว</div><div class="v">${otN(nG,0)}</div>
       <div class="s">${rows.length?otN(nG*100/rows.length,1)+"% ของที่เลือก":""}</div></div>
     <div class="card"><div class="k">🕗 คลังยังไม่จัด</div><div class="v ${rows.length-nG?"down":""}">${otN(rows.length-nG,0)}</div>
+      <div class="s">ยังไม่มีเลข GIN</div></div>
+    <div class="card"><div class="k">🧾 ยังไม่ออกบิล</div><div class="v ${rows.length-nInv?"down":""}">${otN(rows.length-nInv,0)}</div>
       <div class="s">ออกบิลแล้ว ${otN(nInv,0)} ใบ</div></div>
     <div class="card"><div class="k">รวมจำนวน</div><div class="v">${otN(cs,0)}</div><div class="s">ลัง</div></div>
     <div class="card"><div class="k">มูลค่า (NIV)</div><div class="v">${THBk(val)}</div><div class="s">${THB(val)}</div></div></div>`;
