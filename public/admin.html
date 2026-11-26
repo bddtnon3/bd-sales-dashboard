@@ -129,6 +129,12 @@ tbody tr:hover{background:var(--bg)}
 .btn-ghost:hover{background:var(--blue-soft);border-color:var(--blue)}
 .btn-ghost:active{background:var(--blue);border-color:var(--blue);color:#fff}
  
+.btn-go{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;
+  font-size:14px;font-weight:800;line-height:1.2;min-height:40px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;box-shadow:0 1px 4px rgba(27,78,163,.22)}
+.btn-go:hover{background:var(--blue-dark)}
+.btn-go:active{transform:translateY(1px)}
+ 
 .modal-actions .btn-ghost{background:var(--bg);color:var(--muted);border:1.5px solid var(--line)}
 .modal-actions .btn-ghost:hover{background:#ECEFF4;color:var(--ink)}
  
@@ -239,10 +245,18 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cal-status button:hover{background:var(--blue);color:#fff}
 .cal-dot{width:12px;height:12px;border-radius:4px;background:var(--blue-soft);border:1px solid var(--blue);display:inline-block}
  
-.sp-cal{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff;min-width:250px}
+ 
+.sp-cal{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;
+  width:100%;box-sizing:border-box}
+.sp-calc{flex:1 1 100%;min-width:0}
  
 .sp-daybar{align-items:flex-start}
-.sp-cal .cal-day{cursor:pointer;padding:7px 0;font-size:13px}
+.sp-cal .cal-grid{gap:6px}
+.sp-cal .cal-wd{font-size:12.5px;padding:2px 0}
+.sp-cal .cal-day{cursor:pointer;padding:0;font-size:16px;min-height:46px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-weight:700}
+@media(max-width:400px){.sp-cal{padding:8px}.sp-cal .cal-grid{gap:4px}
+  .sp-cal .cal-day{min-height:42px;font-size:15px}}
  
 .sp-cal .cal-head{gap:6px;margin-bottom:8px}
 .sp-cal .cal-head button{width:44px;height:44px;font-size:18px;border:1.5px solid var(--line);
@@ -255,6 +269,49 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cal-day.sel{outline:2.5px solid var(--blue);outline-offset:-2px}
 .cal-day.today{text-decoration:underline;text-underline-offset:3px}
 .cal-dot.chk{background:var(--good);border-color:var(--good)}
+ 
+.cal-day.jr{background:#FDECEA;color:var(--bad);font-weight:800;box-shadow:inset 0 0 0 1.5px #F3C9C4}
+.cal-day.jr.jx{background:var(--bad);color:#fff;box-shadow:inset 0 0 0 1.5px var(--bad)}
+.cal-day.jk{background:#EAF7F0;color:#0F7A52;font-weight:800;box-shadow:inset 0 0 0 1.5px #BFE6D2}
+.cal-day.jg{background:var(--good);color:#fff;font-weight:800}
+ 
+.cal-lg{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin-right:10px}
+.cal-dot.jr{background:#FDECEA;border-color:var(--bad)}
+.cal-dot.jx{background:var(--bad);border-color:var(--bad)}
+.cal-dot.jk{background:#EAF7F0;border-color:#0F7A52}
+.cal-dot.jg{background:var(--good);border-color:var(--good)}
+ 
+.sp-flow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fbfdff;margin-top:10px}
+.sp-flow-d{font-size:13px;color:var(--ink);margin-bottom:8px}
+.sp-flow-d .psub{display:inline;margin:0}
+.sp-flow-r{display:flex;align-items:stretch;gap:6px;flex-wrap:nowrap}
+.sp-flow-a{align-self:center;color:var(--muted);font-size:12px;flex:0 0 auto}
+.sp-flow-s{flex:1 1 0;min-width:0;text-align:left;background:#fff;border:1.5px solid var(--line);
+  border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.sp-flow-s.ok{background:#F4FBF6;border-color:#BFE6D2}
+.sp-flow-s.on{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
+.sp-flow-t{font-size:11px;color:var(--muted);font-weight:700}
+.sp-flow-n{font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap}
+.sp-flow-v{font-size:12px;font-weight:700;color:var(--muted)}
+.sp-flow-s.ok .sp-flow-v{color:var(--good)}
+ 
+@media(max-width:620px){
+  .sp-flow-r{flex-direction:column}
+  .sp-flow-s{flex:0 0 auto;flex-direction:row;align-items:center;gap:8px;min-height:44px}
+  .sp-flow-t{flex:0 0 94px;line-height:1.3}
+  .sp-flow-n{flex:1 1 auto;white-space:normal}
+  .sp-flow-v{flex:0 0 auto;text-align:right}
+  .sp-flow-a{align-self:center;transform:rotate(90deg);margin:-2px 0}
+}
+ 
+.sp-mebox{border:1px solid var(--line);border-left:4px solid var(--good);border-radius:10px;
+  padding:10px 12px;margin-top:10px;background:#fff}
+.sp-mebox.bad{border-left-color:var(--bad);background:#FFFBFA}
+.sp-mebox .psub{margin:0}
+.sp-mehd{font-size:13.5px;margin-bottom:4px}
+.sp-mebad{margin-top:8px;font-size:13px;background:#FDECEA;border-radius:8px;padding:8px 10px;color:var(--ink)}
+.sp-mebad ul{margin:6px 0 0;padding-left:20px}
+.sp-mebad li{font-size:12.5px;line-height:1.7;font-family:ui-monospace,monospace}
  
 #reqModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px}
  
@@ -12523,7 +12580,8 @@ function alPick(gins,codes){
   return out;
 }
 
-let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:"",sec:"key",day:"",gin:"",cm:"",cmpLn:""};
+ 
+let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:"",sec:"",day:"",gin:"",cm:"",cmpLn:"",me:0};
 function spOk(){const C=cstOk();if(!C.sub)C.sub={};if(!C.subdel)C.subdel={};return C;}
  
 function spSupOk(){const r=spRole();return r==="sup"||r==="manager";}
@@ -12609,7 +12667,12 @@ function spDay(sid){
       return past.length?past[past.length-1]:open[0];
     }
   }
-  return ds[ds.length-1];
+   
+  const t2=todayISO();
+  if(ds.indexOf(t2)>=0)return t2;
+  const back=ds.filter(d=>d<=t2);
+  if(back.length)return back[back.length-1];
+  return ds[0];
 }
 function spSetDay(v){SP.day=v||"";if(v)SP.cm=String(v).slice(0,7);renderSpord();}
  
@@ -12639,8 +12702,8 @@ function spTabsOn(sl){
  
 function spSec(){
   const ks=spTabsOn().map(x=>x.k);
-  if(ks.indexOf(SP.sec)>=0)return SP.sec;
-  if(SP_TABS.some(x=>x.off&&x.k===SP.sec))return SP.sec;    
+  if(SP.sec&&ks.indexOf(SP.sec)>=0)return SP.sec;
+  if(SP.sec&&SP_TABS.some(x=>x.off&&x.k===SP.sec))return SP.sec;   
   if(spRole()==="sales"&&ks.indexOf("rep")>=0)return "rep";
   return ks[0]||"rep";
 }
@@ -12822,9 +12885,16 @@ function spRenderKeep(){
   const a=document.activeElement;
   const id=(a&&a.id)||"";
   const ss=(a&&typeof a.selectionStart==="number")?a.selectionStart:null;
+   
+  const wraps=[];
+  document.querySelectorAll("#spordView .tblwrap").forEach(el=>{
+    wraps.push([el.scrollTop,el.scrollLeft]);});
   renderSpord();
   const back=()=>{
     try{window.scrollTo(0,y);}catch(e){}
+    const now=document.querySelectorAll("#spordView .tblwrap");
+    for(let i=0;i<now.length&&i<wraps.length;i++){
+      try{now[i].scrollTop=wraps[i][0];now[i].scrollLeft=wraps[i][1];}catch(e){}}
     if(!id)return;
     const el=document.getElementById(id);
     if(!el||typeof el.focus!=="function")return;
@@ -13831,7 +13901,7 @@ function spGinNoteHtml(sid){
         placeholder="เช่น 141, 142 (คั่นด้วยจุลภาคได้)"
         style="padding:10px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:16px;
           font-family:ui-monospace,monospace;min-width:220px;flex:1">
-      <button class="upload-btn" onclick="spGinNote('${anaEsc(sid)}','${ymd}')">💾 บันทึก</button></div>`
+      <button class="btn-go" onclick="spGinNote('${anaEsc(sid)}','${ymd}')">💾 บันทึก</button></div>`
       :`<div class="insight" style="margin-top:10px">ดูอย่างเดียว</div>`}
     ${all.length?`<div class="tblwrap" style="margin-top:12px"><table class="cst-rt"><thead><tr>
       <th style="text-align:left">วันที่</th><th>เลข GIN</th><th>บันทึกโดย</th></tr></thead><tbody>${
@@ -13979,6 +14049,18 @@ function renderSpord(){
   }
   const C=spOk(),role=spRole(),sls=spSlipsView();
    
+  if(spMineOnly()&&!SP.me&&SP.view!=="slip"&&SP.view!=="new"){
+    SP.me=1;
+    const js=spRepJobsAll(spMyLine()),t=todayISO();
+    const open=js.filter(x=>!x.done);
+    const pick=open.filter(x=>x.d<=t)[0]                        
+      ||open.slice().sort((a,b)=>String(a.d).localeCompare(String(b.d)))[0]||js[0];
+    if(pick&&spSlip(pick.sid)){
+      SP.sid=pick.sid;SP.ym=spYm(spSlip(pick.sid));SP.view="slip";SP.sec="rep";SP.day=pick.d;
+      SP.cm=String(pick.d).slice(0,7);
+    }
+  }
+   
    
   const keepSid=SP.view==="slip"&&SP.sid&&spSlip(SP.sid);
   const sel=document.getElementById("spSlip");
@@ -14103,10 +14185,12 @@ function renderSpord(){
        if(tb){tb.innerHTML=spTabsOn(slNow).map(x=>chip(x.k,x.lb)).join("");tb.style.display="";}}
        
       const withDay=SP_DAYTABS.indexOf(sec)>=0&&!(sec==="rep"&&spRole()==="sales");
+       
+      const flow=SP_DAYTABS.indexOf(sec)>=0?spFlowHtml(SP.sid,spDay(SP.sid)):"";
       let H=`<div class="panel"><div class="cst-fb">
           <button type="button" class="btn-ghost" onclick="spBack()">← กลับไปรายการใบ</button>
           <span class="psub">${SP.ym&&SP.ym!=="ไม่ระบุ"?fmtMonth(SP.ym):""}</span></div>
-        ${withDay?`<div class="controls sp-daybar" style="margin:10px 0 0">${spDayPick(SP.sid)}</div>`:""}</div>`;
+        ${flow}${withDay?`<div class="controls sp-daybar" style="margin:10px 0 0">${spDayPick(SP.sid)}</div>`:""}</div>`;
       if(sec==="key"){body.innerHTML=H+spKeyHtml(SP.sid);return;}
       if(sec==="rep"){body.innerHTML=H+spRepTabHtml(SP.sid);return;}
       if(sec==="adm"){body.innerHTML=H+spAdmHtml(SP.sid);return;}
@@ -14231,6 +14315,31 @@ function spCalHtml(sid){
     <div class="cal-legend"><span class="cal-dot"></span> มีข้อมูล ${nIn} วัน
       <span class="cal-dot chk" style="margin-left:10px"></span> แอดมินตรวจแล้ว ${nChk} วัน</div></div>`;
 }
+ 
+function spFlowHtml(sid,ymd){
+  const on=spTabsOn(spSlip(sid)).map(x=>x.k),cur=spSec();
+  const nTg=Object.keys(spKeyByLine(sid,ymd)).length;
+  const rp=spRepByLine(sid,ymd);
+  const nRp=Object.keys(rp).filter(ln=>{const r=rp[ln];
+    return spDayHas(r)||(Array.isArray(r.no)&&r.no.length);}).length;
+  const g=spGinRec(sid,ymd);
+  const steps=[];
+  if(on.indexOf("key")>=0)steps.push({k:"key",ic:"✍️",nm:"ซุปตั้งเป้า",tm:"เช้า / เย็นวันก่อน",
+    ok:nTg>0,txt:nTg?nTg+" สาย":"ยังไม่ตั้ง"});
+  if(on.indexOf("rep")>=0)steps.push({k:"rep",ic:"📲",nm:"เซลล์คีย์",tm:"บ่าย",
+    ok:nRp>0&&(!nTg||nRp>=nTg),txt:nRp?(nRp+(nTg?" / "+nTg:"")+" สาย"):"ยังไม่คีย์"});
+  if(on.indexOf("adm")>=0)steps.push({k:"adm",ic:"🔎",nm:"แอดมินตรวจ",tm:"เย็น",
+    ok:spDayHas(g),txt:spDayHas(g)?"ตรวจแล้ว":"ยังไม่ตรวจ"});
+  if(steps.length<2)return "";
+  return `<div class="sp-flow">
+    <div class="sp-flow-d">🗓 <b>${fmtDate(ymd)}</b> — ทั้งสามขั้นเป็นของวันเดียวกัน</div>
+    <div class="sp-flow-r">${steps.map((s,i)=>
+      `${i?'<span class="sp-flow-a">▶</span>':""}<button type="button"
+        class="sp-flow-s${s.ok?" ok":""}${s.k===cur?" on":""}" onclick="spSetSec('${s.k}')">
+        <span class="sp-flow-t">${s.tm}</span>
+        <span class="sp-flow-n">${s.ic} ${anaEsc(s.nm)}</span>
+        <span class="sp-flow-v">${s.ok?"✓ ":""}${anaEsc(s.txt)}</span></button>`).join("")}</div></div>`;
+}
 function spDayPick(sid){
   const cur=spDay(sid);
   return `<div class="ctl"><label>วันที่</label>
@@ -14240,7 +14349,7 @@ function spDayPick(sid){
         style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px">
       <button type="button" class="dstep-b" title="วันถัดไป" onclick="spStepDay(1)">▶</button>
     </div></div>
-    <div class="ctl"><label>ปฏิทิน</label>${spCalHtml(sid)}</div>`;
+    <div class="ctl sp-calc"><label>ปฏิทิน — กดเลือกวัน</label>${spCalHtml(sid)}</div>`;
 }
 function spStepDay(n){
   const d=spDay(SP.sid),t=new Date(d+"T00:00:00");
@@ -14355,36 +14464,146 @@ function spRepTabHtml(sid,ymd){
 function spHasTgt(sid){return spGrpOf(spSlip(sid))==="D";}
  
  
+function spMeChk(sid,ymd,ln){
+  const o={sid:sid,d:ymd,ln:ln,st:"none",has:false,nNo:0,cs:0,wait:0,miss:0,amb:0,
+    chk:0,bad:[],extra:[],fwait:0,gap:0};
+  const tgt=spKeyByLine(sid,ymd)[ln]||null;
+  const rec=spRepRec(sid,ymd,ln);
+  const nos=(rec&&Array.isArray(rec.no))?rec.no.slice():[];
+  o.has=!!tgt;o.nNo=nos.length;
+  const sum=nos.length?spNoSum(nos,{l:spLineCode(ln)}):null;
+  if(sum){o.cs=sum.cs;o.wait=sum.wait;o.miss=sum.miss.length;o.amb=sum.amb.length;}
+  if(!nos.length&&!(rec&&spDayHas(rec))){o.st=tgt?"todo":"none";return o;}
+  const g=spGinRec(sid,ymd);
+  if(!spDayHas(g)){o.st="keyed";return o;}
+  o.chk=1;
+  const inFile={};((g.ords)||[]).forEach(x=>{inFile[String(x).toUpperCase()]=1;});
+  const mine={};
+  (sum?sum.rows:[]).forEach(r=>{
+    const full=String(r.no||"").toUpperCase();
+    mine[full]=1;
+    if(inFile[full])return;
+    const cs=(r.r&&r.r.cs!==undefined)?(+r.r.cs||0):null;
+    o.bad.push({no:r.ask,full:r.no,cs:cs});
+    if(cs!=null)o.gap+=cs;
+  });
+  const lc=spLineCode(ln);
+  Object.keys(inFile).forEach(x=>{
+    if(mine[x])return;
+    const r=spOrd(x);
+    if(!r){o.fwait++;return;}
+    if(String(r.l||"")!==String(lc))return;
+    o.extra.push({full:x,cs:(r.cs!==undefined)?(+r.cs||0):null});
+  });
+  o.gap=Math.round(o.gap*100)/100;
+  o.st=(o.bad.length||o.extra.length)?"bad":"ok";
+  return o;
+}
+ 
+const SP_ME_RANK={bad:4,todo:3,keyed:2,ok:1,none:0};
+function spMeDays(ln){
+  const out={};
+  if(!ln)return out;
+  spRepJobsAll(ln).forEach(j=>{
+    const c=spMeChk(j.sid,j.d,ln);
+    c.slip=j.slip;c.tc=j.tc;c.tp=j.tp;c.done=j.done;
+    const e=out[j.d]||(out[j.d]={d:j.d,jobs:[],st:"none"});
+    e.jobs.push(c);
+    if(SP_ME_RANK[c.st]>SP_ME_RANK[e.st])e.st=c.st;
+  });
+  return out;
+}
+const SP_ME_ST={
+  todo:{cls:"jr",ic:"🔴",nm:"ยังไม่ได้คีย์เลขออเดอร์"},
+  bad :{cls:"jr jx",ic:"🔴",nm:"ไม่ตรงกับที่คลังจัดออก"},
+  keyed:{cls:"jk",ic:"🟢",nm:"คีย์แล้ว — รอแอดมินตรวจ"},
+  ok  :{cls:"jg",ic:"🟢",nm:"ตรงกับที่คลังจัดออก"},
+  none:{cls:"",ic:"",nm:""}
+};
+ 
 function spRepHomeHtml(sid){
   const ln=spMyLine();if(!ln)return "";
-  const all=spRepJobsAll(ln),cur=spDay(sid),today=todayISO();
+  const days=spMeDays(ln),ks=Object.keys(days).sort();
+  const cur=spDay(sid),today=todayISO();
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
-  if(!all.length)return `<div class="panel"><h3>📋 งานของสาย ${anaEsc(ln)}</h3>
+  if(!ks.length)return `<div class="panel"><h3>📋 งานของสาย ${anaEsc(ln)}</h3>
     <div class="insight" style="margin-top:8px">ยังไม่มีวันที่ต้องคีย์ของสายคุณ —
     รอหัวหน้าเซลล์ตั้งจำนวนให้ก่อน</div></div>`;
-  const wait=all.filter(x=>!x.done).length;
-  const ahead=all.filter(x=>x.d>today&&!x.done).length;
-  const nSlip=Object.keys(all.reduce((m,x)=>{m[x.sid]=1;return m;},{})).length;
-  return `<div class="panel"><h3>📋 งานของสาย ${anaEsc(ln)} · ทุกวัน</h3>
-    <div class="psub">${wait?("ยังไม่ได้คีย์ <b>"+wait+"</b> วัน"):"คีย์ครบทุกวันแล้ว"}${
-      ahead?' · ล่วงหน้า <b>'+ahead+'</b> วัน คีย์ไว้ก่อนได้เลย':""}
-      · กดที่วันเพื่อกรอก${nSlip>1?" · รวมทุกใบออเดอร์แล้ว ("+nSlip+" ใบ)":""}</div>
-    <div class="sp-jobs">${all.map(x=>{
-      const fut=x.d>today;
-      const other=x.sid!==sid;
-      const st=x.done
-        ? (x.has&&x.rc>=x.tc?'<span class="sp-ok">✓ คีย์ครบตามเป้า</span>'
-            :(x.has?'<span class="sp-bad">คีย์แล้ว ยังไม่ถึงเป้า</span>':'<span class="sp-ok">✓ คีย์แล้ว</span>'))
-        : '<span class="sp-warn">ยังไม่ได้คีย์</span>';
-      return `<button type="button" class="sp-job${(x.d===cur&&!other)?" on":""}${x.done?" done":""}"
-          onclick="spGoJob('${anaEsc(x.sid)}','${x.d}')">
-        <span class="sp-jd">${fmtDate(x.d)}${fut?' <span class="pill">ล่วงหน้า</span>':""}</span>
-        <span class="sp-js">${st}${x.has?'<span class="psub" style="display:block">เป้า '+
-          N(x.tc)+" ลัง"+(x.tp?" + "+N(x.tp)+" ชิ้น":"")+
-          (x.done?" · คีย์ "+N(x.rc)+" ลัง":"")+"</span>":
-          (x.done?'<span class="psub" style="display:block">คีย์ '+N(x.rc)+" ลัง</span>":"")}${
-          other?'<span class="psub" style="display:block">ใบ '+anaEsc(spSlipTitle(x.sid)||x.sid)+"</span>":""}</span>
-        <span class="cst-ar">▶</span></button>`;}).join("")}</div></div>`;
+  const ym=spCalMon(sid);
+  const cnt=s=>ks.filter(d=>days[d].st===s).length;
+   
+  const cntM=s=>ks.filter(d=>days[d].st===s&&d.slice(0,7)===spCalMon(sid)).length;
+  const nTodo=cnt("todo"),nBad=cnt("bad");
+  const ahead=ks.filter(d=>d>today&&days[d].st==="todo").length;
+  const nSlip=Object.keys(ks.reduce((m,d)=>{days[d].jobs.forEach(j=>{m[j.sid]=1;});return m;},{})).length;
+  const last=new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();
+  const lead=(new Date(ym+"-01T00:00:00").getDay()+6)%7;
+  const DOW=["จ","อ","พ","พฤ","ศ","ส","อา"];
+  const cells=[];for(let i=0;i<lead;i++)cells.push("");
+  for(let i=1;i<=last;i++)cells.push(ym+"-"+String(i).padStart(2,"0"));
+  const cal=`<div class="sp-cal" style="margin-top:10px">
+    <div class="cal-head" style="margin-bottom:6px">
+      <button type="button" onclick="spCalStep(-1)" title="เดือนก่อนหน้า">◀</button>
+      <div style="flex:1;text-align:center;font-weight:800;font-size:15px">${anaEsc(fmtMonth(ym))}</div>
+      <button type="button" onclick="spCalStep(1)" title="เดือนถัดไป">▶</button></div>
+    <div class="cal-grid">${DOW.map(x=>`<div class="cal-wd">${x}</div>`).join("")}${
+      cells.map(d=>{
+        if(!d)return `<div class="cal-day"></div>`;
+        const e=days[d];
+        if(!e)return `<div class="cal-day${d===todayISO()?" today":""}">${+d.slice(8,10)}</div>`;
+        const S=SP_ME_ST[e.st]||SP_ME_ST.none;
+        const go=e.jobs[0];
+        return `<div class="cal-day ${S.cls}${d===cur?" sel":""}${d===todayISO()?" today":""}"
+          onclick="spGoJob('${anaEsc(go.sid)}','${d}')"
+          title="${anaEsc(fmtDate(d))} · ${anaEsc(S.nm)}">${+d.slice(8,10)}</div>`;
+      }).join("")}</div>
+    <div class="cal-legend">
+      <span class="cal-lg"><span class="cal-dot jr"></span> ยังไม่คีย์ ${cntM("todo")}</span>
+      <span class="cal-lg"><span class="cal-dot jk"></span> รอตรวจ ${cntM("keyed")}</span>
+      <span class="cal-lg"><span class="cal-dot jg"></span> ตรงกัน ${cntM("ok")}</span>
+      <span class="cal-lg"><span class="cal-dot jx"></span> ไม่ตรง ${cntM("bad")}</span>
+      <span class="psub" style="margin:0">(เดือนนี้)</span></div></div>`;
+   
+  const sel=days[cur];
+  let det="";
+  if(sel){
+    det=sel.jobs.map(c=>{
+      const S=SP_ME_ST[c.st]||SP_ME_ST.none;
+      const other=c.sid!==sid;
+      let b=`<div class="sp-mebox${c.st==="bad"?" bad":""}">
+        <div class="sp-mehd">${S.ic} <b>${anaEsc(S.nm)}</b>${
+          other?' <span class="psub">· ใบ '+anaEsc(spSlipTitle(c.sid)||c.sid)+"</span>":""}</div>
+        <div class="psub">${c.has?"เป้า <b>"+N(c.tc)+"</b> ลัง"+(c.tp?" + "+N(c.tp)+" ชิ้น":""):"ไม่มีเป้าของวันนี้"}
+          ${c.nNo?" · ใส่เลขไว้ <b>"+c.nNo+"</b> เลข":""}${c.cs?" · ระบบหาได้ <b>"+N(c.cs)+"</b> ลัง":""}</div>`;
+       
+      if(c.wait||c.miss||c.amb)b+=`<div class="psub" style="margin-top:4px">${
+        c.wait?"⏳ <b>"+c.wait+"</b> เลขยังไม่รู้จำนวนลัง — รอไฟล์ยอดขายของวันนั้น ":""}${
+        c.miss?'<span class="down">❓ ยังหาไม่เจอ <b>'+c.miss+"</b> เลข</span> ":""}${
+        c.amb?'<span class="down">⚠️ <b>'+c.amb+"</b> เลขตรงกับหลายใบ ใส่เลขเต็มให้ไม่ซ้ำ</span>":""}</div>`;
+      if(c.bad.length)b+=`<div class="sp-mebad">⚠️ <b>${c.bad.length}</b> เลขที่คุณคีย์ไว้
+        ยังไม่อยู่ในของที่คลังจัดออก${c.gap?" — ห่างกัน <b>"+N(c.gap)+"</b> ลัง":""}
+        <ul>${c.bad.slice(0,12).map(x=>`<li><b>${anaEsc(x.no)}</b>${
+          x.full&&x.full!==x.no?' <span class="psub">('+anaEsc(x.full)+")</span>":""}${
+          x.cs!=null?" · "+N(x.cs)+" ลัง":' <span class="psub">· รอไฟล์ยอดขาย</span>'}</li>`).join("")}${
+          c.bad.length>12?"<li>…</li>":""}</ul></div>`;
+      if(c.extra.length)b+=`<div class="sp-mebad">📦 คลังจัดออกไปแล้ว <b>${c.extra.length}</b> เลข
+        ที่คุณยังไม่ได้คีย์ไว้
+        <ul>${c.extra.slice(0,12).map(x=>`<li><b>${anaEsc(x.full)}</b>${
+          x.cs!=null?" · "+N(x.cs)+" ลัง":' <span class="psub">· รอไฟล์ยอดขาย</span>'}</li>`).join("")}${
+          c.extra.length>12?"<li>…</li>":""}</ul></div>`;
+      if(c.fwait)b+=`<div class="psub" style="margin-top:4px">⏳ ใบจัดของมีอีก <b>${c.fwait}</b> เลข
+        ที่ยังไม่รู้ว่าสายไหน — รอไฟล์ยอดขายของวันนั้น</div>`;
+      if(other)b+=`<div style="margin-top:8px"><button type="button" class="btn-ghost btn-mini"
+        onclick="spGoJob('${anaEsc(c.sid)}','${c.d}')">เปิดใบนี้เพื่อกรอก ▶</button></div>`;
+      return b+`</div>`;
+    }).join("");
+  }
+  return `<div class="panel"><h3>📅 ปฏิทินงานของสาย ${anaEsc(ln)}</h3>
+    <div class="psub">${nTodo?("ยังไม่ได้คีย์ <b>"+nTodo+"</b> วัน"):"คีย์ครบทุกวันแล้ว"}${
+      nBad?' · <b class="down">ไม่ตรง '+nBad+' วัน</b>':""}${
+      ahead?" · ล่วงหน้า <b>"+ahead+"</b> วัน คีย์ไว้ก่อนได้เลย":""} · กดวันในปฏิทินเพื่อกรอก${
+      nSlip>1?" · รวมทุกใบออเดอร์แล้ว ("+nSlip+" ใบ)":""}</div>
+    ${cal}${det}</div>`;
 }
  
 function spRepMineHtml(sid,ymd){
@@ -14703,7 +14922,7 @@ function spAdmHtml(sid){
           placeholder="เช่น 141, 142 (คั่นด้วยจุลภาคได้)"
           style="padding:10px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:16px;
             font-family:ui-monospace,monospace;min-width:240px;flex:1">
-        <button class="upload-btn" ${haveFile?"":"disabled"}
+        <button class="btn-go"
           onclick="spGinGo('${anaEsc(sid)}','${ymd}')">🔎 ตรวจและบันทึก</button></div>
       ${haveFile?`<div class="psub" style="margin-top:6px">เลข GIN ที่มีในไฟล์: ${
         ALLOC.gins.slice(0,40).map(x=>`<code>${anaEsc(x)}</code>`).join(" ")}${
@@ -14988,9 +15207,12 @@ function spGinGo(sid,ymd){
   const el=document.getElementById("spGinIn");
   const gins=String((el&&el.value)||"").split(/[,\s]+/).map(x=>x.trim()).filter(Boolean);
   if(!gins.length){alert("ใส่เลข GIN อย่างน้อยหนึ่งเลข");return;}
-  if(!ALLOC){alert(spAlcTxt()
-    ?"ต้องกด 📥 ไฟล์ใบจัดของ อีกครั้งก่อนตรวจวันใหม่\n\nผลตรวจที่บันทึกไว้แล้วยังอยู่ครบ ไม่ได้หายไปไหน"
-    :"ยังไม่ได้อัพไฟล์ใบจัดของ — กด 📥 ไฟล์ใบจัดของ ด้านบนก่อน");return;}
+   
+  if(!ALLOC){
+    if(confirm("ต้องเลือกไฟล์ใบจัดของก่อน จึงจะตรวจเลข GIN ได้\n\n"+
+      (spAlcTxt()?"ผลตรวจที่บันทึกไว้แล้วยังอยู่ครบ ไม่ได้หายไปไหน\n\n":"")+
+      "เลือกไฟล์เลยไหม?"))spUpAlloc();
+    return;}
   spGinSave(sid,ymd,gins);
 }
 

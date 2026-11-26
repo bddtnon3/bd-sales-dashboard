@@ -936,6 +936,19 @@ const ORIGIN='https://bd-spord.test/';
    /* จดไว้ในระบบว่าอ่านไฟล์อะไรไปแล้ว — รีเฟรช (ALLOC หาย) แล้วต้องยังบอกได้ ไม่ใช่หลอกว่ายังไม่อัพ */
    __as('manager',null,'แอดมิน 1');ALLOC=null;SP.sec='adm';renderSpord();
    o.afterReload=tx();
+   /* 📱 มือถือ: เครื่องนี้ยังไม่ได้เลือกไฟล์ใบจัดของ — ปุ่มตรวจต้องยังกดได้ และต้องบอกว่า
+      ต้องทำอะไรต่อ แล้วพาไปเลือกไฟล์ให้เลย · เดิมตั้ง disabled ไว้ กดแล้วไม่มีอะไรเกิดขึ้น
+      (เจ้าของเจอบนมือถือ 27 พ.ย. 69: *"กดปุ่มแล้วไม่มีอะไรเกิดขึ้น แต่วันนี้ทำในคอมทำได้"*) */
+   const gb=[...document.querySelectorAll('#spBody button')]
+     .find(b=>/ตรวจและบันทึก/.test(b.textContent));
+   o.ginBtn=!!gb;o.ginDis=!!(gb&&gb.disabled);
+   o.ginDash=gb?getComputedStyle(gb).borderStyle:'';
+   window.__alert='';window.__up=0;
+   const oldUp=window.spUpAlloc;window.spUpAlloc=function(){window.__up++;};
+   const gi=document.getElementById('spGinIn');if(gi)gi.value='77';
+   if(gb)gb.click();
+   o.askedUp=window.__up;
+   window.spUpAlloc=oldUp;
    return o;});
  t('🔑 อ่านไฟล์ allocation ของคลังได้ (หาคอลัมน์จากหัวตาราง ไม่ใช่ตำแหน่ง)',
    adm.n===4&&adm.gins.join(',')==='77,78',adm.n+' แถว · GIN '+adm.gins.join(','));
@@ -947,6 +960,11 @@ t('🔑 จดไว้ว่าอ่านไฟล์อะไรไปแล
   /alloc2\.xlsx/.test(adm.afterReload)&&/ยังอยู่ครบ/.test(adm.afterReload),
   (adm.afterReload||'').slice(0,160));
 t('...แต่จดแค่ชื่อไฟล์กับช่วงวัน ไม่ใช่ทั้งไฟล์',adm.alcBytes<600,adm.alcBytes+' bytes');
+/* 📱 ปุ่มตรวจ GIN ต้องกดได้เสมอ — ปุ่มที่กดไม่ได้แบบไม่บอกอะไรคือสิ่งที่ห้ามมี */
+t('🔑 ยังไม่ได้เลือกไฟล์ในเครื่องนี้ ปุ่มตรวจ GIN ก็ต้องยังกดได้ (มือถือ)',
+  adm.ginBtn&&!adm.ginDis,'มีปุ่ม '+adm.ginBtn+' · disabled '+adm.ginDis);
+t('🔑 ...กดแล้วพาไปเลือกไฟล์ให้เลย ไม่ใช่เงียบ',adm.askedUp===1,'เรียกเลือกไฟล์ '+adm.askedUp+' ครั้ง');
+t('🛟 ...และปุ่มตรวจไม่ใช่กรอบประแบบช่องลากไฟล์',adm.ginDash==='none',adm.ginDash);
  t('🔑 ใส่เลข GIN แล้วเทียบกับที่เซลล์คีย์ได้ (เฉพาะรหัสที่อยู่ในใบนี้)',
    adm.rows&&adm.rows.indexOf('CT11|64849613')>=0&&adm.rows.indexOf('CT12|64849613')>=0,
    JSON.stringify(adm.rows));
@@ -1037,20 +1055,41 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
    tail.sum.found===2&&tail.sum.cs===16&&tail.sum.amb===0,JSON.stringify(tail.sum));
  t('🛟 เลขที่ไม่มีในระบบยังตอบว่าไม่เจอ ไม่ใช่จับมั่ว',tail.none===null,String(tail.none));
 
- /* 💾 กดบันทึกแล้วหน้าต้องไม่เด้งขึ้นบนสุด (เจ้าของแจ้ง 27 พ.ย. 69) */
+ /* 💾 กดบันทึก/กดยกเลิกแล้วหน้าต้องไม่เด้งขึ้นสายบนสุด (เจ้าของแจ้งสองรอบ 27 พ.ย. 69)
+    ⚠️ ตัวที่เลื่อนจริงคือ **กล่องตาราง** — .tblwrap.sp-freeze มี max-height + overflow:auto
+       เพื่อ freeze หัวตาราง ฉะนั้น window.scrollY ไม่ได้ขยับเลย เทสต์เดิมที่วัดแต่ scrollY
+       จึงผ่านทั้งที่ของจริงยังเด้งอยู่ · ต้องวัด scrollTop ของกล่องด้วย */
  const keep=await ev(async()=>{
-   __as('sup',null,'หัวหน้าเซลล์');SP.sec='key';SP.day='2026-11-20';renderSpord();
+   __as('sup',null,'หัวหน้าเซลล์');SP.view='slip';SP.sid='B20261118-01';
+   SP.sec='key';SP.day='2026-11-20';renderSpord();
    document.body.style.minHeight='4000px';
    window.scrollTo(0,900);
-   const before=window.scrollY;
+   const box=document.querySelector('#spordView .tblwrap.sp-freeze');
+   if(box)box.scrollTop=220;
+   const before=window.scrollY,bBefore=box?box.scrollTop:-1;
    await spKeySave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:2,sp:0,fc:0,fp:0}});
-   const after=window.scrollY;
+   const b2=document.querySelector('#spordView .tblwrap.sp-freeze');
+   const after=window.scrollY,bAfter=b2?b2.scrollTop:-1;
+   /* 🗑 ยกเลิกสายนี้ ก็ต้องค้างที่เดิมเหมือนกัน (ปุ่มอยู่ล่างสุดของตาราง)
+      ⚠️ ใช้สาย CT12 ไม่ใช่ CT11 — เทสต์ถัดไปใช้งานของ CT11 วันนี้อยู่ */
+   await spKeySave('B20261118-01','2026-11-20','CT12',{'64849613':{sc:3,sp:0,fc:0,fp:0}});
+   const b3=document.querySelector('#spordView .tblwrap.sp-freeze');
+   if(b3)b3.scrollTop=240;
+   await spKeyLineCancel('B20261118-01','2026-11-20','CT12');
+   const b4=document.querySelector('#spordView .tblwrap.sp-freeze');
+   const cAfter=b4?b4.scrollTop:-1;
    document.body.style.minHeight='';
-   return {before:before,after:after,has:typeof spRenderKeep==='function'};
+   return {before:before,after:after,bBefore:bBefore,bAfter:bAfter,cAfter:cAfter,
+     has:typeof spRenderKeep==='function'};
  });
  t('🔑 กดบันทึกแล้วหน้าค้างอยู่ตำแหน่งเดิม ไม่เด้งขึ้นสายบนสุด',
    keep.has&&keep.before>0&&Math.abs(keep.after-keep.before)<40,
    'ก่อน '+keep.before+' → หลัง '+keep.after);
+ t('🔑 ...และกล่องตารางที่เลื่อนเองก็ต้องค้างที่เดิม (ตัวนี้คือที่เด้งจริง)',
+   keep.bBefore>0&&Math.abs(keep.bAfter-keep.bBefore)<20,
+   'ก่อน '+keep.bBefore+' → หลัง '+keep.bAfter);
+ t('🔑 กดยกเลิกสายนี้ ก็ไม่เด้งขึ้นสายบนสุด',
+   Math.abs(keep.cAfter-240)<20,'ก่อน 240 → หลัง '+keep.cAfter);
 
  /* 📅 เซลล์ต้องเห็น "ทุกวัน ทุกใบ" (เจ้าของสั่ง 27 พ.ย. 69)
     ซุปเปิดใบใหม่ต่อหนึ่งออเดอร์ ถ้าอ่านเฉพาะใบที่เปิดอยู่ เซลล์จะเห็นวันเดียว */
@@ -1061,22 +1100,27 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
    CSTOCK.key['B20261128-02|2026-11-28|CT11']={it:{'64849613':{sc:5,sp:0}},by:'sup',at:9};
    CSTOCK.key['B20261128-02|2026-12-02|CT11']={it:{'64849613':{sc:7,sp:0}},by:'sup',at:9};
    __as('sales','209611','CT11 · เซลล์');
-   SP.sid='B20261118-01';SP.view='slip';SP.sec='rep';renderSpord();
+   SP.sid='B20261118-01';SP.view='slip';SP.sec='rep';SP.day='';SP.cm='2026-11';renderSpord();
    const all=spRepJobsAll('CT11').map(j=>j.sid+'/'+j.d);
    const one=spRepJobs('B20261118-01','CT11').map(j=>j.d);
-   const btns=[...document.querySelectorAll('.sp-job')].length;
+   /* 📅 ตั้งแต่ 27 พ.ย. 69 รายการวันของเซลล์เป็น "ปฏิทิน" ไม่ใช่ลิสต์ปุ่มต่อวันแล้ว */
+   const cells=[...document.querySelectorAll('#spBody .sp-cal .cal-day[onclick]')];
+   const btns=cells.length;
    const txt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    /* กดวันของใบอื่น ต้องเปิดใบนั้นให้เลย */
-   const other=[...document.querySelectorAll('.sp-job')]
-     .find(b=>/2 ธ\.ค\.|28 พ\.ย\./.test(b.textContent));
+   const other=cells.find(c=>String(c.getAttribute('onclick')||'').indexOf('B20261128-02')>=0);
    if(other)other.click();
-   return {all:all,one:one,btns:btns,txt:txt,sid:SP.sid,day:SP.day};
+   return {all:all,one:one,btns:btns,txt:txt,sid:SP.sid,day:SP.day,
+     meDays:Object.keys(spMeDays('CT11')).sort().join(',')};
  });
  t('🔑 เซลล์เห็นวันของทุกใบ ไม่ใช่แค่ใบที่เปิดอยู่',
    days.all.length>days.one.length&&days.all.some(x=>x.indexOf('B20261128-02/')===0),
    days.all.join(' , ')+' | ใบเดียว: '+days.one.join(' , '));
  t('...และบอกว่ารวมมาจากกี่ใบ พร้อมนับวันล่วงหน้าให้',
-   /รวมทุกใบออเดอร์แล้ว/.test(days.txt)&&/ล่วงหน้า/.test(days.txt),days.txt.slice(0,140));
+   /รวมทุกใบออเดอร์แล้ว/.test(days.txt)&&/ล่วงหน้า/.test(days.txt),
+   days.meDays+' || '+days.txt.slice(0,400));
+ t('🔑 วันที่มีงานกดได้จากปฏิทิน (แทนลิสต์ปุ่มต่อวันแบบเดิม)',
+   days.btns>=2,days.btns+' วันที่กดได้');
  t('🔑 กดวันของใบอื่น ระบบเปิดใบนั้นแล้วไปวันนั้นให้เลย',
    days.sid==='B20261128-02'&&(days.day==='2026-11-28'||days.day==='2026-12-02'),
    days.sid+' / '+days.day);
@@ -1753,7 +1797,8 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
    spOpenSlip('B20261118-01');
    o.sec=SP.sec;
    o.chips=[...document.querySelectorAll('#spTabs .tab2')].map(x=>x.textContent.trim());
-   o.jobs=[...document.querySelectorAll('#spBody .sp-job .sp-jd')].map(x=>x.textContent.trim());
+   o.cal=[...document.querySelectorAll('#spBody .sp-cal .cal-day[onclick]')]
+     .map(x=>x.textContent.trim()+':'+x.className.replace(/cal-day\s*/,'').replace(/\s*today\s*/,' ').trim());
    o.tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
    o.cards=document.querySelectorAll('#spBody .sp-rc').length;
    o.noBox=!!document.getElementById('spRNo_CT11');
@@ -1770,9 +1815,13 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
    rep2.list===1&&rep2.mgrList===2,'เซลล์เห็น '+rep2.list+' ใบ · ผู้จัดการเห็น '+rep2.mgrList+' ใบ');
  t('🔑 เปิดใบแล้วเซลล์ลงที่หมวด "เซลล์คีย์" ทันที ไม่ต้องหาเอง',
    rep2.sec==='rep'&&rep2.chips.length>=3,rep2.sec+' | '+rep2.chips.join(' | '));
+ /* 📅 เจ้าของสั่ง 27 พ.ย. 69 ให้รายการวันของเซลล์เป็นปฏิทิน — แดง = ยังไม่ได้คีย์
+    เขียวอ่อน = คีย์แล้วรอแอดมินตรวจ · วันล่วงหน้ายังต้องนับให้เห็น (ซุปตั้งข้ามสัปดาห์) */
  t('🔑 เห็นงานย้อนหลังและวันข้างหน้าที่ซุปตั้งไว้ข้ามสัปดาห์',
-   rep2.jobs.length===3&&rep2.jobs.some(x=>/ล่วงหน้า/.test(x))&&
-   rep2.days.length===3,rep2.jobs.join(' | '));
+   rep2.days.length===3&&/ล่วงหน้า/.test(rep2.tx)&&rep2.cal.length>=2,
+   rep2.days.join(',')+' | '+rep2.cal.join(' | '));
+ t('🔑 ปฏิทินของเซลล์ลงสี: ยังไม่คีย์ = แดง · คีย์แล้วรอตรวจ = เขียว',
+   rep2.cal.some(x=>/\bjr\b/.test(x))&&rep2.cal.some(x=>/\bjk\b/.test(x)),rep2.cal.join(' | '));
  t('🔒 ...แต่ไม่เห็นวันของสายอื่น (ซุปตั้งเป้า CT12 ไว้ในวันเดียวกัน)',
    rep2.days.indexOf(rep2.T0)>=0&&rep2.days.length===3,rep2.days.join(','));
  t('🔑 หน้าเซลล์เหลือแค่ช่องใส่เลขออเดอร์ ไม่มีการ์ดกรอกจำนวนแล้ว (27 พ.ย. 69)',
@@ -1909,6 +1958,79 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
  t('🛟 bdOwner แยกถูก และ bdIsAdminAcc ไม่เหมาบัญชีผู้จัดการเข้าไปด้วย',
    !acct.ownA&&acct.ownM&&acct.admAcc&&!acct.admAcc2,
    JSON.stringify({ownA:acct.ownA,ownM:acct.ownM,a:acct.admAcc,m:acct.admAcc2}));
+
+ /* ================================================================
+  * 16) 🕘 จังหวะงานวันเดียวกัน + ปฏิทินของเซลล์ (เจ้าของสั่ง 27 พ.ย. 69)
+  *   *"ให้ช่วงเวลาวันที่ซุปกำหนดเป้าเป็นเช้าของวันนั้น ๆ หรือเย็นเมื่อวาน และเซลล์คีย์เป็น
+  *     วันนั้น ๆ ช่วงบ่าย และวันที่แอดมินมาตรวจเป็นตอนเย็นของวันนั้น ๆ"*
+  *   *"พอกรอกเลขออเดอร์ไปแล้วให้ขึ้นสีเขียว แต่ถ้าจำนวนหลังแอดมินตรวจไม่ตรงกัน ให้ขึ้นสีแดง
+  *     ในวันนั้น ๆ และระบุว่าเป็นออเดอร์ไหนที่ไม่ตรงกัน และห่างกันเป็นจำนวนเท่าไหร่"*
+  * ================================================================ */
+ const tflow=await ev(async()=>{
+   __reset();
+   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10)};
+   const T0=T(0),T1=T(1);
+   CSTOCK.slips['B20261118-01'].g='D';
+   CSTOCK.lots['LF1']={id:'LF1',sl:'B20261118-01',d:T0,code:'AAA1',nm:'ครีมทาผิว เอ',
+     cs:40,pc:0,sq:0,ln:'CT11',clr:[],up:1};
+   if(!CSTOCK.key)CSTOCK.key={};if(!CSTOCK.rep)CSTOCK.rep={};if(!CSTOCK.gin)CSTOCK.gin={};
+   /* ⛔ เลขออเดอร์/รหัสร้านสมมติขึ้นเอง — รีโปเป็นสาธารณะ */
+   STOREDAILY.ord['BDD0100007001']={s:'4862383',l:'209611',d:T0,v:3500,c:3,cs:12,pc:0,rf:'1034700001'};
+   STOREDAILY.ord['BDD0100007003']={s:'4862365',l:'209611',d:T0,v:900,c:2,cs:5,pc:0,rf:'1034700003'};
+   /* ซุปตั้งเป้าวันนี้ และ "ล่วงหน้า" พรุ่งนี้ — ค่าตั้งต้นต้องเป็นวันนี้ ไม่ใช่วันล่วงหน้าสุด */
+   CSTOCK.key['B20261118-01|'+T0+'|CT11']={it:{'AAA1':{sc:6,sp:0}},by:'sup',at:10};
+   CSTOCK.key['B20261118-01|'+T1+'|CT11']={it:{'AAA1':{sc:9,sp:0}},by:'sup',at:10};
+   __as('sup',null,'หัวหน้าเซลล์');_switchTab('spord');
+   SP.view='slip';SP.sid='B20261118-01';SP.sec='key';SP.day='';SP.me=1;renderSpord();
+   const o={day:spDay('B20261118-01'),T0:T0,T1:T1};
+   o.flow=document.querySelectorAll('#spBody .sp-flow-s').length;
+   o.flowTx=(document.querySelector('#spBody .sp-flow')||{textContent:''})
+     .textContent.replace(/\s+/g,' ');
+   /* 👤 เซลล์: เปิดหมวดนี้มาต้องลงที่ 📲 เซลล์คีย์ ไม่ใช่ ✍️ ซุปจด */
+   __as('sales','209611','CT11 · เซลล์');_switchTab('spord');
+   SP.view='mon';SP.ym='';SP.sid='';SP.sec='';SP.day='';SP.cm='';SP.me=0;renderSpord();
+   o.repView=SP.view;o.repSec=spSec();o.repDay=SP.day;
+   /* 🔴 ยังไม่ใส่เลข = แดง */
+   o.cal0=[...document.querySelectorAll('#spBody .sp-cal .cal-day[onclick]')]
+     .map(x=>x.textContent.trim()+':'+x.className.replace('cal-day','').trim());
+   o.box=(()=>{const c=document.querySelector('#spBody .sp-cal .cal-day[onclick]');
+     return c?Math.round(c.getBoundingClientRect().height):0;})();
+   /* 🟢 ใส่เลขแล้ว (แอดมินยังไม่ตรวจ) */
+   CSTOCK.rep['B20261118-01|'+T0+'|CT11']={it:{},no:['BDD0100007001'],by:'209611',at:20,n:1};
+   renderSpord();
+   o.st1=spMeChk('B20261118-01',T0,'CT11').st;
+   /* 🔎 แอดมินตรวจแล้ว และใบจัดของมีเลขนั้น = ตรงกัน */
+   CSTOCK.gin['B20261118-01|'+T0]={g:['77'],rows:{'CT11|AAA1':{sc:6,sp:0,nm:'ครีมทาผิว เอ',pk:12}},
+     ords:['BDD0100007001'],dd:[T0],by:'manager',at:30};
+   renderSpord();
+   o.st2=spMeChk('B20261118-01',T0,'CT11').st;
+   o.cal2=[...document.querySelectorAll('#spBody .sp-cal .cal-day[onclick]')]
+     .map(x=>x.className.replace('cal-day','').trim()).join(' | ');
+   /* 🔴 เซลล์ใส่อีกเลขที่คลังไม่ได้จัด = ไม่ตรง + ต้องบอกเลขและผลต่าง */
+   CSTOCK.rep['B20261118-01|'+T0+'|CT11'].no=['BDD0100007001','BDD0100007003'];
+   renderSpord();
+   const c3=spMeChk('B20261118-01',T0,'CT11');
+   o.st3=c3.st;o.bad=c3.bad.map(x=>x.no+'/'+x.cs).join(',');o.gap=c3.gap;
+   o.tx3=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   return o;});
+ t('🕘 ค่าตั้งต้นของทั้งสามขั้นเป็น "วันนี้" ไม่ใช่วันล่วงหน้าที่ซุปตั้งไว้',
+   tflow.day===tflow.T0,tflow.day+' (วันนี้ '+tflow.T0+' · ล่วงหน้า '+tflow.T1+')');
+ t('🕘 มีแถบจังหวะงาน เช้า → บ่าย → เย็น ของวันเดียวกัน',
+   tflow.flow===3&&/เช้า/.test(tflow.flowTx)&&/บ่าย/.test(tflow.flowTx)&&/เย็น/.test(tflow.flowTx)&&
+   /ทั้งสามขั้นเป็นของวันเดียวกัน/.test(tflow.flowTx),tflow.flowTx.slice(0,120));
+ t('🔑 เซลล์เปิดหมวดออเดอร์พิเศษมา ลงที่ "เซลล์คีย์" ทันที ไม่ผ่านหน้าซุปจด',
+   tflow.repSec==='rep'&&tflow.repView==='slip'&&tflow.repDay===tflow.T0,
+   tflow.repView+'/'+tflow.repSec+'/'+tflow.repDay);
+ t('📅 ปฏิทินของเซลล์ช่องวันใหญ่พอกดด้วยนิ้ว (>= 42px)',tflow.box>=42,tflow.box+'px');
+ t('🔴 ยังไม่ใส่เลขออเดอร์ = วันนั้นขึ้นแดง',
+   tflow.cal0.some(x=>/\bjr\b/.test(x))&&tflow.st1==='keyed',
+   tflow.cal0.join(' | ')+' · ใส่เลขแล้ว='+tflow.st1);
+ t('🟢 แอดมินตรวจแล้วตรงกัน = ขึ้นเขียว',
+   tflow.st2==='ok'&&/\bjg\b/.test(tflow.cal2),tflow.st2+' · '+tflow.cal2);
+ t('🔴 ตรวจแล้วไม่ตรง = แดง และบอกว่าเลขไหน ห่างกันกี่ลัง',
+   tflow.st3==='bad'&&/BDD0100007003/.test(tflow.bad)&&tflow.gap>0&&
+   /ห่างกัน/.test(tflow.tx3)&&/BDD0100007003/.test(tflow.tx3),
+   tflow.st3+' · '+tflow.bad+' · ห่าง '+tflow.gap);
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

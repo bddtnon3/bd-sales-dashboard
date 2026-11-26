@@ -1299,21 +1299,73 @@ code, never printed.
   (`spRepJobsAll`/`spGoJob`, owner 27 Nov 26: *"ช่วยปรับให้เซลล์เห็นทุกวันหน่อย ตอนนี้มันเห็นแค่
   วันนั้นวันเดียว เพราะซุปจะสั่งล่วงหน้าหลายวัน เซลล์มากดสั่งวันข้างหน้าได้"*). `spRepJobs` reads
   one slip, and the supervisor opens a new slip per order, so a rep saw only that slip's days and
-  had to walk back out to the month list to find the rest. The list now sweeps every slip that is
-  not deleted, newest day first — so the days set ahead sit at the top, badged **ล่วงหน้า** — names
-  the slip on rows from another slip, and tapping one **opens that slip and lands on that day**.
-  It is screen tidying only: `spSlips()` is unfiltered and every write is still checked in
-  `api/spord.js`. The entry card's headings carry the day they are for, never "วันนี้", or a rep
-  keying Friday's work on Wednesday reads the wrong date.
+  had to walk back out to the month list to find the rest. It now sweeps every slip that is not
+  deleted, names the slip on anything from another slip, and tapping one **opens that slip and
+  lands on that day**. It is screen tidying only: `spSlips()` is unfiltered and every write is
+  still checked in `api/spord.js`. The entry card's headings carry the day they are for, never
+  "วันนี้", or a rep keying Friday's work on Wednesday reads the wrong date.
+  **…and that list is now a CALENDAR with four colours** (`spMeChk`/`spMeDays`/`spRepHomeHtml`,
+  owner 27 Nov 26: *"หน้าตารางงานออเดอร์ล่วงหน้าให้ปรับเป็นหน้าปฏิทินไปเลย แล้วให้ขึ้นเป็นสีแดง
+  คล้าย ๆ เหมือนของแอดมินว่ามีงานค้างในวันนั้น ๆ แล้วพอกรอกเลขออเดอร์ไปแล้วให้ขึ้นสีเขียว แต่ถ้า
+  จำนวนหลังแอดมินตรวจไม่ตรงกัน ให้ขึ้นสีแดงในวันนั้น ๆ และระบุว่าเป็นออเดอร์ไหนที่ไม่ตรงกัน และ
+  ห่างกันเป็นจำนวนเท่าไหร่"*): **todo** 🔴 target set, no order numbers · **keyed** 🟢 pale, numbers
+  in but the admin has not checked · **ok** 🟢 checked and agreed · **bad** 🔴 solid, checked and
+  disagreeing. Three rules, each one this file states elsewhere:
+  **the comparison is made on ORDER NUMBERS, never on cases** — the cases the system totals from
+  the rep's numbers are the *whole order*, while the admin's check counts only the slip's own
+  products, so subtracting them prints "ไม่ตรง" on orders that are perfectly correct (the
+  *ยอดสินค้าในใบนี้ / ยอดทั้งออเดอร์* rule); a number the system **cannot find yet**, or an order
+  with no sales file for that day, is *ยังไม่รู้* and is listed separately — never red, or a late
+  file would accuse the rep; and the reverse direction (the warehouse shipped an order the rep did
+  not key) needs the order's **line**, which the picking list does not carry, so it is read from
+  `STOREDAILY.ord` and anything still unknown is counted as *รอไฟล์*, never assumed to be this
+  line's. The gap in cases is summed **per unmatched order** (`r.cs`), which is apples to apples.
+  A day with jobs in two slips takes the **worst** status, because what the rep must see is what
+  is still outstanding. The month shown (`SP.cm`) is separate from the day selected (`SP.day`) —
+  the `PJ.ym`/`PJ.d` rule — and the legend counts the month on screen while the header counts
+  every month, each labelled, so the two numbers can never read as contradicting each other.
+  **👤 A rep opening the group lands on their own keying page** (`SP.me`, owner 27 Nov 26:
+  *"ให้ในส่วนออร์เดอร์พิเศษเปิดเข้ามาแล้วเจอหมวดเซลล์คีย์เลย ไม่ต้องพาไปหน้าซุปจดก่อนให้งง"*) —
+  month → slip → tab was three taps, and **`SP.sec` started at `"key"`**, which `spSec()` honours
+  whenever that tab exists, so a rep landed on ✍️ ซุปจด. `SP.sec` now starts **empty** and
+  `spSec()` falls through to the role rule; `renderSpord` additionally opens the slip holding their
+  nearest unkeyed day, once per page load. Screen tidying only — ← กลับไปรายการใบ still walks out.
   **💾 Saving must not scroll the page back to the top** (`spRenderKeep`, the owner on the same day:
-  *"หน้านี้เวลากดบันทึก มันเด้งขึ้นไปสายบนสุด"*). `renderSpord` rewrites the whole view's
-  `innerHTML`, so the document height drops to zero for an instant, the browser clamps `scrollY`
-  to 0, and the supervisor who just filled line 8 is thrown back to line 1. Every save path
-  (`spKeySave`, `spRepSave`, and both of their rollback branches) goes through `spRenderKeep`,
-  which restores the scroll position **twice** — once immediately and once in
-  `requestAnimationFrame`, because the browser finishes laying out after the first — and restores
-  the focused field and caret with it. Use it only for "saved, now redraw": opening a slip or
+  *"หน้านี้เวลากดบันทึก มันเด้งขึ้นไปสายบนสุด"*, and again after the first fix:
+  *"พอกดยกเลิกสายที่ต้องเลื่อนไปด้านล่าง มันกลับเด้งขึ้นมาสายบนสุดอีกแล้ว … ทำไมมันยังเด้ง ๆ
+  กลับไปบนสุดอีก"*). **The thing that scrolls is the TABLE BOX, not the page**: `.tblwrap.sp-freeze`
+  carries `max-height` + `overflow:auto` so the header can be frozen, so `window.scrollY` never
+  moved and restoring it fixed nothing — `renderSpord` rewrites the view's `innerHTML` and the new
+  box is born at `scrollTop:0`, i.e. the top line. `spRenderKeep` therefore records **every
+  `#spordView .tblwrap`'s `scrollTop`/`scrollLeft`** and restores them beside the window position,
+  **twice** — once immediately and once in `requestAnimationFrame`, because the browser finishes
+  laying out after the first — along with the focused field and caret. Every save path
+  (`spKeySave`, `spRepSave`, their rollback branches, and `spKeyLineCancel` through `spKeySave`)
+  goes through it. A test that measures only `window.scrollY` passes while the bug is still there,
+  so `spord.test.cjs` measures the box. Use it only for "saved, now redraw": opening a slip or
   switching tabs still belongs at the top.
+  **🕘 All three steps are the SAME DAY, and the page says so** (`spFlowHtml`, owner 27 Nov 26:
+  *"ฝากปรับช่วงของวันเวลาให้เข้าใจตรงกัน ให้ช่วงเวลาวันที่ซุปกำหนดเป้าเป็นเช้าของวันนั้น ๆ หรือเย็น
+  เมื่อวาน และเซลล์คีย์เป็นวันนั้น ๆ ช่วงบ่าย และวันที่แอดมินมาตรวจเป็นตอนเย็นของวันนั้น ๆ … วันนี้
+  ผมลองคีย์ไปช่วงวันที่ 26 กับ 27 แล้วเทียบกับหน้าเว็บของฝั่งเซลล์ มันใช้งานค่อนข้างลำบาก"*).
+  `spDay` used to fall back to `ds[ds.length-1]` = the latest day **with data, future days
+  included** — so a target set for the 27th on the 26th made ซุปจด and แอดมินตรวจ open on the 27th
+  while the rep's page sat on the 26th. The order is now **today → the latest day ≤ today → the
+  nearest future day**; future days are still on the calendar and one ▶ away, they just are not the
+  landing day. Above the three day-based tabs sits one read-only strip — เช้า/เย็นวันก่อน
+  ✍️ ซุปตั้งเป้า → บ่าย 📲 เซลล์คีย์ → เย็น 🔎 แอดมินตรวจ — stating the day once and how far that day
+  has got, so anyone can see who it is waiting on and tap straight there. It stacks vertically under
+  620px: a horizontally scrolling strip hid the third step, which is usually the one that matters.
+  **📅 The calendar is full width with 46px day cells** (42px under 400px), because the owner asked
+  (*"ปรับหน้าปฏิทินให้ใหญ่ใหญ่เต็มช่องกดเลือกวันได้ง่ายง่ายหน่อย"*) — it used to be a 250px box
+  squeezed beside the date field with ~28px cells, below the 44px finger target.
+  **🔎 ตรวจและบันทึก must never be a disabled button** (owner 27 Nov 26: *"ในเว็บแอดมินและ Manager
+  ไม่สามารถตรวจหมายเลข GIN ในมือถือได้ กดปุ่มแล้วไม่มีอะไรเกิดขึ้น แต่วันนี้ทำในคอมทำได้"*). The
+  picking list lives in memory only, so a phone that has not read the file this session has no
+  `ALLOC` — and the button carried `disabled` in exactly that case, so it did nothing and said
+  nothing, while the computer that had just read the file worked. `spGinGo` now runs either way and
+  offers to open the file picker (`spUpAlloc`). Both GIN buttons are `.btn-go`, a solid 40px button:
+  `.upload-btn`'s dashed outline means *drop a file here*, a different thing entirely.
   **🧾 The rep types the day's order numbers at the bottom of their entry card**
   (`spRepNoHtml`/`spNoSplit`/`spNoSum`/`spOrdFind`, the owner on 27 Nov 26: *"เซลล์ตอนที่คีย์รายวันแล้ว
   จะต้องกรอกคำสั่งซื้อทั้งหมดในออเดอร์นั้น ๆ เข้าไปในช่องล่างสุด เพื่อให้แอดมินตรวจสอบจากระบบเองได้เลย …
@@ -1453,7 +1505,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (247 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (261 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1466,7 +1518,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (247 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (261 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
