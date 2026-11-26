@@ -25,6 +25,33 @@ const PAGE=path.join(ROOT,'public','index.html');
 const BROWSER=require('./_chrome.cjs').chromePath();
 const REAL=process.env.DCODE_DAILY&&fs.existsSync(process.env.DCODE_DAILY)?process.env.DCODE_DAILY:null;
 
+/* ไฟล์ใบจัดของ (allocation) จำลอง — หัวตารางชุดเดียวกับ AL_H/AL_O ของจริง
+   รหัส/ร้าน/ตัวเลขสมมติขึ้นเองทั้งหมด (รีโปเป็นสาธารณะ) */
+const AL_HDR=['Order Creation Date','PJP Code','PJP Name','GIN No.','Product Code',
+ 'Product Description','Pack Size','Order Number','Invoice No.',
+ 'Sale Order (CS)','Sale Order (SHR)','Sale Order (PC)',
+ 'Free Order (CS)','Free Order (SHR)','Free Order (PC)',
+ 'Sale Allocated (CS)','Sale Allocated (SHR)','Sale Allocated (PC)',
+ 'Free Allocated (CS)','Free Allocated (SHR)','Free Allocated (PC)','Outlet Code','GSV','NIV'];
+const alRow=(d,pj,gin,code,nm,pk,no,sc,ss,sp,fc,out)=>
+  [d,pj,'CT_HPC_'+String(pj).slice(-2)+'1',gin,code,nm,pk,no,'',
+   sc,ss,sp,fc,0,0,sc,ss,sp,fc,0,0,out,0,0];
+function mkAl(){
+  const A=[AL_HDR,
+   /* CT11 · 10 พ.ย. · ตัวหลัก 2 ลัง(12) + 1 แพ็ค(6) + 3 ชิ้น = 33 ชิ้น · สองร้าน */
+   alRow('2026-11-10','209611','7','90000001','สินค้าหลัก 2X6X100 กรัม',12,'BDD0100000901',2,0,0,0,'8000001'),
+   alRow('2026-11-10','209611','7','90000001','สินค้าหลัก 2X6X100 กรัม',12,'BDD0100000902',0,1,3,0,'8000002'),
+   /* ของแถมคนละรหัส */
+   alRow('2026-11-10','209611','7','90000009','ของแถม 2X6X100 กรัม',12,'BDD0100000901',0,0,0,1,'8000001'),
+   /* รหัสนอกโปร ต้องไม่ถูกเก็บ */
+   alRow('2026-11-10','209611','7','90009999','สินค้านอกโปร 2X6X100 กรัม',12,'BDD0100000903',9,0,0,0,'8000003'),
+   /* CT12 · 11 พ.ย. · 1 ลัง = 12 ชิ้น */
+   alRow('2026-11-11','209612','8','90000001','สินค้าหลัก 2X6X100 กรัม',12,'BDD0100000904',1,0,0,0,'8000004')];
+  const ws=XLSX.utils.aoa_to_sheet(A),wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Export');
+  return Buffer.from(XLSX.write(wb,{type:'array',bookType:'xlsx'})).toString('base64');
+}
+
 const H=['รหัสศูนย์จัดจําหน่าย (Distributor Code)','ชื่อศูนย์จัดจําหน่าย (Distributor Name)',
  'วันที่สร้างใบสั่งซื้อ (Sales Order Creation Date)','เดือน (Calendar Month)','รหัส (PJP Code)',
  'คําอธิบาย (PJP Description)','รหัสพนักงานขาย (Salesman Code)','ชื่อพนักงานขาย (Salesman Name)',
@@ -199,6 +226,40 @@ const ROWS=[
  t('🔑 วันที่ยังไม่ได้อัพไฟล์ ต้องบอกว่า "ยังไม่ได้อัพ" ไม่ใช่ปล่อยให้ดูเหมือนครบ',
    /ยังไม่ได้อัพไฟล์ยอดขายของ/.test(mon.html),mon.html.slice(0,80));
  t('...และนับวันที่มีข้อมูลถูก (4 วันจากทั้งเดือน)',mon.days.have===4,JSON.stringify(mon.days));
+
+ /* ---------- 4.5) 🧾 ยอดที่ "เซลล์คีย์ออกไป" จากไฟล์ใบจัดของ (เจ้าของถาม 27 พ.ย. 69) ----------
+    *"ลองจับจากไฟล์ยอดขาย / allocate / transaction ได้ไหม ว่ารหัสสินค้าและชุดโปรโมชั่นพวกนี้
+      ถูกคีย์ขายออกไปทั้งหมดกี่ชุด ของแต่ละสายเซลล์"*
+    ⚠️ สองก้อนนี้คนละวันกัน (ใบจัดของ = วันเซลล์คีย์ · ไฟล์ยอดขาย = วันออกบิล) ห้ามบวกกัน */
+ const alc=await ev(a=>{
+   const o={};
+   const sales=JSON.stringify(PROMO.sales);
+   parseAlloc('Order_Allocation_Report.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)));
+   o.keys=Object.keys(PROMO.ord||{}).sort();
+   o.all=JSON.stringify(PROMO.ord);
+   o.salesSame=JSON.stringify(PROMO.sales)===sales;   /* ห้ามไปแตะก้อนของไฟล์ยอดขาย */
+   const t=pmTrack(PROMO.items['p1']);
+   o.ord11=t.ord['209611']||null;o.ord12=t.ord['209612']||null;
+   o.rows11=t.rows['209611']?t.rows['209611'].pc:null;   /* ช่องเดิมต้องไม่เปลี่ยน */
+   o.html=pmTrackHtml(PROMO.items['p1'],'');
+   o.log=(window.__log||[]).filter(x=>/โปรโมชั่น/.test(x)).slice(-1)[0]||'';
+   return o;},{b64:mkAl()});
+ t('🔑 ไฟล์ใบจัดของเก็บยอดโปรฯ เป็นคีย์ "วัน|สาย" แบบเดียวกัน แต่คนละก้อนกับไฟล์ยอดขาย',
+   alc.keys.join(' ')==='2026-11-10|209611 2026-11-11|209612'&&alc.salesSame,
+   alc.keys.join(' ')+' · salesSame='+alc.salesSame);
+ t('🛟 รหัสที่ไม่ได้อยู่ในโปร ต้องไม่ถูกเก็บ (ไฟล์หมื่นแถวจะทำให้ข้อมูลบวม)',
+   alc.all.indexOf('90009999')<0);
+ t('🔑 แปลง ลัง/แพ็ค/ชิ้น เป็นชิ้นได้ถูก (2 ลัง×12 + 1 แพ็ค×6 + 3 ชิ้น = 33)',
+   alc.ord11&&alc.ord11.pc===33,JSON.stringify(alc.ord11));
+ t('🔑 แยกรายสายได้ และนับร้านไม่ซ้ำ',
+   alc.ord11&&alc.ord11.shops===2&&alc.ord12&&alc.ord12.pc===12,
+   JSON.stringify({a:alc.ord11&&alc.ord11.shops,b:alc.ord12&&alc.ord12.pc}));
+ t('🛟 ช่อง "ทำได้" (จากบิล) ต้องไม่ถูกบวกเพิ่มจากไฟล์ใบจัดของ — คนละวันกัน นับซ้ำไม่ได้',
+   alc.rows11===12,String(alc.rows11));
+ t('🔑 ตารางขึ้นคอลัมน์ "คีย์ขายไปแล้ว" และบอกว่าห้ามเอาไปบวกกับ ทำได้',
+   /คีย์ขายไปแล้ว/.test(alc.html)&&/อย่าเอามาบวกกัน/.test(alc.html),'');
+ t('...และรายงานในล็อกว่าเก็บให้โปรกี่แถว',/โปรโมชั่น: เก็บยอดที่เซลล์คีย์ออกไป/.test(alc.log),
+   alc.log.slice(-110));
 
  /* ---------- 5) รหัสที่เพิ่มทีหลังต้องบอกให้อัพไฟล์ซ้ำ ---------- */
  const late=await ev(()=>{

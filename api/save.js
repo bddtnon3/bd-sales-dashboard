@@ -335,7 +335,14 @@ function mergeState(server, c) {
   // for DATA.daily. It is NOT touched by the `del` tombstones above: those are promotion ids,
   // and a deleted promotion must not take a day's sales reading with it.
   const prSales = newestByUp(sPr.sales, cPr.sales);
-  const PROMO = { items: prItems, res: prRes, del: prDel, sales: prSales };
+  // `ord` is the SAME shape and the same key, but read from the warehouse's allocation file
+  // instead of the daily sales file (owner, 27 Nov 26: can the tracker also count what the reps
+  // keyed out?). It is a SEPARATE map on purpose: the allocation file dates a row by the order's
+  // creation day while the sales file dates it by the invoice day — measured, they agree on only
+  // 46.7% of orders — so merging the two into one map would count an order twice. The page keeps
+  // them in separate columns for the same reason.
+  const prOrd = newestByUp(sPr.ord, cPr.ord);
+  const PROMO = { items: prItems, res: prRes, del: prDel, sales: prSales, ord: prOrd };
 
   // PJP — the monthly visit plan.
   //   out  : one record per outlet, newest upload of THAT outlet wins. A Master file that no

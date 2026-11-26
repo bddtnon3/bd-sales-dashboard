@@ -139,8 +139,8 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  t('🛠 เว็บแอดมินมีแค่ ยอดขาย · การสั่งของ · สต็อก · สถานะออเดอร์ · ออเดอร์พิเศษ · ปฏิทิน + DCODE (เรียงตามนี้)',
    tabsA.top.join(',')==='sales,order,stock,otrk,spord,plan,dcode',tabsA.top.join(','));
  t('...แท็บย่อยในกลุ่มยังอยู่ครบเหมือนเว็บเดิม ("เอาให้ข้อมูลเหมือนเดิมให้หมด")',
-   tabsA.subs.sales.join(',')==='sales,ana'&&tabsA.subs.order.join(',')==='order,pos'&&
-   tabsA.subs.stock.join(',')==='stock,cstock'&&tabsA.subs.spord.join(',')==='spord'&&
+   tabsA.subs.sales.join(',')==='sales,ana'&&tabsA.subs.order.join(',')==='order,pos,ordhist'&&
+   tabsA.subs.stock.join(',')==='stock,strep,cstock'&&tabsA.subs.spord.join(',')==='spord'&&
    tabsA.subs.plan.join(',')==='plan'&&tabsA.subs.dcode.join(',')==='dcode',
    JSON.stringify(tabsA.subs));
  const pagesA=await ev(()=>{const bad=[];

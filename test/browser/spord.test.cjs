@@ -388,9 +388,9 @@ const ORIGIN='https://bd-spord.test/';
    who.ds.groups==='otrk,spord'&&who.ds.tabs==='spord',JSON.stringify(who.ds));
  t('เซลล์ยังเห็นทุกกลุ่มเหมือนเดิม และเข้าหน้ายอดขายเป็นหน้าแรก',
    who.sales.tab==='sales'&&who.sales.groups.indexOf('sales')===0&&
-   who.sales.stock==='stock,cstock',JSON.stringify(who.sales));
+   who.sales.stock==='stock,cstock',JSON.stringify(who.sales));   /* เซลล์ไม่เห็นรายงานสต็อค (ต้นทุน) */
  t('🔑 ออเดอร์พิเศษเป็นหมวดใหญ่ของตัวเอง ไม่ได้อยู่ใต้สต็อกแล้ว',
-   who.manager.groups.indexOf('spord')>=0&&who.manager.stock==='stock,cstock'&&
+   who.manager.groups.indexOf('spord')>=0&&who.manager.stock==='stock,strep,cstock'&&
    who.manager.tabs==='spord',who.manager.groups+' | สต็อก: '+who.manager.stock);
  t('ผู้จัดการ/แอดมินเห็นครบเหมือนเดิม',who.manager.groups.split(',').length>=9,who.manager.groups);
  /* 🛟 หัวหน้าเซลล์ต้อง "มองเห็น" แท็บออเดอร์พิเศษจริง ๆ ไม่ใช่เข้าได้เพราะเทสเรียก _switchTab ตรง ๆ

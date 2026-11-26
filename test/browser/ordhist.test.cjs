@@ -57,7 +57,7 @@ const BROWSER=require('./_chrome.cjs').chromePath();
   DATA.daily['2026-11-04']={'2096_97':0,'209611':0};
   DATA.daily['2026-10-30']={'2096_97':70000,'209611':30000};
   initOrder();ORD.hm='';
-  _switchTab('order');ordSetSec('hist');
+  _switchTab('ordhist');
  `);
 
  const snap=()=>ev(()=>JSON.stringify({O:ORDERS,D:DATA.daily}));
@@ -95,14 +95,17 @@ const BROWSER=require('./_chrome.cjs').chromePath();
    const tb=el.querySelector('.oh-tbl');
    const body=[...tb.querySelectorAll('tbody tr')];
    const cells=r=>[...r.querySelectorAll('td')].map(td=>td.textContent.trim());
-   return {open:!document.getElementById('ordSecHist').classList.contains('hidden'),
-     tab:!!document.querySelector('#ordSubTabs button[data-k="hist"]'),
+   return {open:!document.getElementById('ordhistView').classList.contains('hidden'),
+     /* ยกขึ้นมาเป็นแท็บใหญ่แล้ว ต้องไม่เหลือแท็บย่อยเดิมไว้ให้เข้าสองทาง (27 พ.ย. 69) */
+     tab:TAB_GROUPS.filter(g=>g.k==='order')[0].tabs.map(x=>x.t).join(',')==='order,pos,ordhist'
+       &&!document.querySelector('#ordSubTabs button[data-k="hist"]'),
      rows:body.length,r2:cells(body[1]),r4:cells(body[3]),
      sun:body.filter(r=>r.classList.contains('sun')).length,
      foot:[...tb.querySelectorAll('tfoot td')].map(td=>td.textContent.trim()),
      head:[...tb.querySelectorAll('thead th')].map(th=>th.textContent.trim()).join(' | '),
      cards:el.querySelector('.cards').textContent.replace(/\s+/g,' ')};});
- t('มีแท็บย่อย "ประวัติการสั่งของ" และเปิดอยู่',ui.open&&ui.tab);
+ t('🔑 "ประวัติการสั่งของ" เป็นแท็บของตัวเองข้างภาพรวม/วิเคราะห์การสั่งของ แล้วเปิดอยู่',
+   ui.open&&ui.tab);
  t('ตารางขึ้นครบ 30 แถว และมีวันอาทิตย์ 5 วันทำสีไว้',ui.rows===30&&ui.sun===5,
    ui.rows+' แถว · อาทิตย์ '+ui.sun);
  t('หัวตารางแยก 1st / 2nd ชัดเจน',
@@ -133,11 +136,11 @@ const BROWSER=require('./_chrome.cjs').chromePath();
  /* ---------- 5) ทุกคนดูได้ (เจ้าของสั่ง "ให้เข้าดูได้ทุกคน") ---------- */
  const sales=await ev(()=>{const u=S.user;
    S.user={id:'ct11',role:'sales',code:'209611',name:'CT11'};
-   renderTabs();_switchTab('order');ordSetSec('hist');
-   const o={open:!document.getElementById('ordSecHist').classList.contains('hidden'),
-     tab:!!document.querySelector('#ordSubTabs button[data-k="hist"]'),
+   renderTabs();_switchTab('ordhist');
+   const o={open:!document.getElementById('ordhistView').classList.contains('hidden'),
+     tab:tabVisible().reduce((a,x)=>a.concat(x.tabs.map(y=>y.t)),[]).indexOf('ordhist')>=0,
      txt:/รวมทั้งเดือน/.test(document.getElementById('ohBody').textContent)};
-   S.user=u;renderTabs();_switchTab('order');ordSetSec('hist');return o;});
+   S.user=u;renderTabs();_switchTab('ordhist');return o;});
  t('ทีมขายเปิดดูหน้านี้ได้เหมือนกัน',sales.open&&sales.tab&&sales.txt,JSON.stringify(sales));
 
  /* ---------- 6) ⬇️ Excel ---------- */

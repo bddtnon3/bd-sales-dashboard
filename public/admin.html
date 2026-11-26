@@ -1477,7 +1477,6 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
         <button class="pos-st" data-k="drop" onclick="ordSetSec('drop')">❌ ใบ Drop (แอดมินอัพ)</button>
         <button class="pos-st" data-k="po" onclick="ordSetSec('po')">🧮 คำนวณ PO อัตโนมัติ</button>
         <button class="pos-st" data-k="pe" onclick="ordSetSec('pe')">📅 รายการสั่งก่อนหมดโปร</button>
-        <button class="pos-st" data-k="hist" onclick="ordSetSec('hist')">📊 ประวัติการสั่งของ</button>
       </div>
       <div id="ordSecReq">
         
@@ -1505,9 +1504,11 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div id="ordSecPe" class="hidden">
         <div id="peBody"></div>
       </div>
-      <div id="ordSecHist" class="hidden">
-        <div id="ohBody"></div>
-      </div>
+    </div>
+
+    
+    <div id="ordhistView" class="hidden">
+      <div id="ohBody"></div>
     </div>
 
     
@@ -1570,8 +1571,23 @@ select.ld-st{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;fo
       <div class="kpi-monthbar" id="stockBar"></div>
       <div class="rc-hint">⌨️ <b>ไล่ดูทีละรายการ</b> — คลิกที่บรรทัดไหนก็ได้ แล้วกดลูกศร <b>↑ ↓</b> เลื่อนทีละบรรทัด · <b>PgUp/PgDn</b> ทีละ 10 · <b>Home/End</b> บรรทัดแรก/สุดท้าย · <b>Esc</b> เลิกไฮไลต์</div>
       <div class="cards" id="stockCards"></div>
-      <div id="stockValBox"></div>
       <div class="panel" id="stockTable"></div>
+    </div>
+
+    
+    <div id="strepView" class="hidden">
+      <div class="controls">
+        <div class="ctl"><label>ค้นหาสินค้า (พิมพ์คีย์เวิร์ด เช่น บรีส / 110)</label><input id="strSearch" placeholder="🔍 พิมพ์ชื่อ/รหัส/แบรนด์/หมวด — เว้นวรรคเพื่อกรองหลายคำ" oninput="renderStockRep()" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;min-width:230px"></div>
+        <div class="ctl"><label>คลัง</label>
+          <div class="seg" id="strWh">
+            <button data-w="sale" class="on">🛒 คลังขาย (Sound)</button>
+            <button data-w="gift">🎁 คลังแถม (Free)</button>
+          </div>
+        </div>
+        <div class="spacer"></div>
+      </div>
+      <div class="kpi-monthbar" id="strBar"></div>
+      <div id="strBody"></div>
     </div>
 
     
@@ -2914,15 +2930,19 @@ const TAB_GROUPS=[
   {k:"promo",nm:"🎁 โปรโมชั่น & เงินรางวัล",tabs:[
     {t:"promo",nm:"โปรเดือนนี้",role:["manager","sales","sup"]},
     {t:"promores",nm:"💰 ผลงาน & เงินรางวัล",role:["manager","sales","sup"]}]},
+   
   {k:"order",nm:"🛒 การสั่งของ",tabs:[
     {t:"order",nm:"ภาพรวมสั่งของ"},
-    {t:"pos",nm:"📊 วิเคราะห์การสั่งของ",role:"manager"}]},
+    {t:"pos",nm:"📊 วิเคราะห์การสั่งของ",role:"manager"},
+    {t:"ordhist",nm:"📊 ประวัติการสั่งของ"}]},
+   
    
    
    
    
   {k:"stock",nm:"📦 สต็อก",tabs:[
     {t:"stock",nm:"สต็อคปัจจุบัน",role:["manager","sales"]},
+    {t:"strep",nm:"📊 รายงานสต็อค",role:"manager"},
     {t:"cstock",nm:"🧊 สต็อคกลาง (เดิม)",role:["manager","sales"]}]},
    
   {k:"price",nm:"💰 ราคา & ทุน",tabs:[
@@ -3046,6 +3066,8 @@ function _switchTab(t){
   document.getElementById("psView").classList.toggle("hidden",t!=="ps");
   document.getElementById("orderView").classList.toggle("hidden",t!=="order");
   document.getElementById("stockView").classList.toggle("hidden",t!=="stock");
+  document.getElementById("strepView").classList.toggle("hidden",t!=="strep");
+  document.getElementById("ordhistView").classList.toggle("hidden",t!=="ordhist");
   document.getElementById("cstockView").classList.toggle("hidden",t!=="cstock");
   document.getElementById("spordView").classList.toggle("hidden",t!=="spord");
   document.getElementById("otrkView").classList.toggle("hidden",t!=="otrk");
@@ -3068,6 +3090,8 @@ function _switchTab(t){
   if(t==="ps")renderPS();
   if(t==="order")renderOrder();
   if(t==="stock")renderStock();
+  if(t==="strep")renderStockRep();
+  if(t==="ordhist")renderOrdHist();
   if(t==="cstock")renderCStock();
   if(t==="spord")renderSpord();
   if(t==="otrk")renderOtrk();
@@ -4058,7 +4082,9 @@ let PR={m:null,scope:"all",paste:null};
  
 function pmOk(){if(!PROMO||typeof PROMO!=="object")PROMO={items:{},res:{},del:{},sales:{}};
   if(!PROMO.items)PROMO.items={};if(!PROMO.res)PROMO.res={};if(!PROMO.del)PROMO.del={};
-  if(!PROMO.sales)PROMO.sales={};return PROMO;}
+  if(!PROMO.sales)PROMO.sales={};
+   
+  if(!PROMO.ord)PROMO.ord={};return PROMO;}
 function pmAll(){
   const P=pmOk();
   return Object.keys(P.items).filter(id=>P.items[id]&&P.items[id].name&&!P.del[id])
@@ -4122,26 +4148,19 @@ function pmProdOf(it,free){
   return (it&&it.prod||[]).filter(x=>x&&x.c&&((String(x.k||"")==="f")===!!free));
 }
  
-function pmTrack(it){
-  const P=pmOk(),R=pmRange(it);
-  if(!R)return null;
-  const main={},free={};
-  pmProdOf(it,false).forEach(x=>main[x.c]=1);
-  pmProdOf(it,true).forEach(x=>free[x.c]=1);
-  if(!Object.keys(main).length&&!Object.keys(free).length)return null;
-  const min=Math.max(1,+it.min||1);
-  const rows={},shopSet={},seen={},dHave={},dAll=[];
-  for(let d=R.a;d<=R.b;d=dayShift(d,1)){dAll.push(d);if(dAll.length>400)break;}
-  Object.keys(P.sales||{}).forEach(k=>{
+ 
+function pmScanMap(map,R,main,free){
+  const rows={},shopSet={},seen={},dHave={};
+  Object.keys(map||{}).forEach(k=>{
     const i=k.indexOf("|");if(i<0)return;
     const d=k.slice(0,i),ln=k.slice(i+1);
     if(d<R.a||d>R.b)return;
-    dHave[d]=1;
-    const rec=P.sales[k],pp=(rec&&rec.p)||{};
+    const rec=map[k],pp=(rec&&rec.p)||{};
+    let any=0;
     Object.keys(pp).forEach(c=>{
       const isM=main[c],isF=free[c];
       if(!isM&&!isF)return;
-      seen[c]=1;
+      seen[c]=1;any=1;
       const e=pp[c]||{},row=rows[ln]||(rows[ln]={pc:0,cs:0,fpc:0,fcs:0,niv:0,shops:0,qual:0});
       if(isM){row.pc+=+e.pc||0;row.cs+=+e.cs||0;row.niv+=+e.niv||0;}
       if(isF){row.fpc+=+e.fp||0;row.fcs+=+e.fc||0;}
@@ -4152,7 +4171,36 @@ function pmTrack(it){
         Object.keys(sh).forEach(sc=>{sm[sc]=(sm[sc]||0)+(+sh[sc]||0);});
       }
     });
+     
+    dHave[d]=dHave[d]||(any?2:1);
   });
+  return {rows:rows,shopSet:shopSet,seen:seen,dHave:dHave};
+}
+function pmRound(rows,shopSet,min){
+  Object.keys(rows).forEach(ln=>{
+    const sm=shopSet[ln]||{},ks=Object.keys(sm);
+    rows[ln].sh=sm;rows[ln].shops=ks.length;
+    rows[ln].qual=ks.filter(sc=>sm[sc]>=min).length;
+    ["pc","cs","fpc","fcs","niv"].forEach(f=>{rows[ln][f]=Math.round(rows[ln][f]*100)/100;});
+  });
+  return rows;
+}
+function pmTrack(it){
+  const P=pmOk(),R=pmRange(it);
+  if(!R)return null;
+  const main={},free={};
+  pmProdOf(it,false).forEach(x=>main[x.c]=1);
+  pmProdOf(it,true).forEach(x=>free[x.c]=1);
+  if(!Object.keys(main).length&&!Object.keys(free).length)return null;
+  const min=Math.max(1,+it.min||1);
+  const dAll=[];
+  for(let d=R.a;d<=R.b;d=dayShift(d,1)){dAll.push(d);if(dAll.length>400)break;}
+  const A=pmScanMap(P.sales,R,main,free);
+   
+  const B=pmScanMap(P.ord,R,main,free);
+  const rows=A.rows,shopSet=A.shopSet,seen=A.seen,dHave=A.dHave;
+  pmRound(B.rows,B.shopSet,min);
+  Object.keys(B.seen).forEach(c=>{seen[c]=1;});
   Object.keys(rows).forEach(ln=>{
     const sm=shopSet[ln]||{},ks=Object.keys(sm);
      
@@ -4167,8 +4215,11 @@ function pmTrack(it){
   });
   const today=todayISO();
   const miss=dAll.filter(d=>!dHave[d]&&d<=today);
+  const oMiss=dAll.filter(d=>!B.dHave[d]&&d<=today);
   const codeMiss=Object.keys(main).concat(Object.keys(free)).filter(c=>!seen[c]);
-  return {rows:rows,min:min,range:R,days:{all:dAll.length,have:Object.keys(dHave).length,miss:miss},
+  return {rows:rows,ord:B.rows,min:min,range:R,
+          days:{all:dAll.length,have:Object.keys(dHave).length,miss:miss},
+          odays:{have:Object.keys(B.dHave).length,miss:oMiss},
           codes:{main:Object.keys(main).length,free:Object.keys(free).length,miss:codeMiss}};
 }
 function pmResKey(id,route,line){return id+"|"+route+"|"+(line||"");}
@@ -5235,6 +5286,7 @@ function pmRepRows(it,step){
     if(off&&+off.money>0)money=+off.money;
     else if(step.sm>0&&pct!==null){money=(pct>=100)?step.sm:0;mEst=true;}
     out.push({ln:c,r:r,sh:sh,act:act,tgt:tgt,est:est,pct:pct,
+      o:t.ord[c]||null,
       diff:(tgt===null?null:act-tgt),money:money,mEst:mEst,mp:pmMP(c),
       pjp:(off&&+off.pjp>0)?+off.pjp:0});
   });
@@ -5251,7 +5303,9 @@ function pmShopRow(it,x){
     (x.r.fpc?`<span class="pm-item">🎁 <b>${N(x.r.fpc)}</b> <span>ชิ้น (ของแถม)</span></span>`:"")+
     (x.r.niv?`<span class="pm-item"><b>${THB(x.r.niv)}</b> <span>NIV</span></span>`:"")+
     `<span class="pm-item"><b>${N(x.mp)}</b> <span>ร้าน M&P ในสาย</span></span>`+
-    (x.pjp?`<span class="pm-item"><b>${N(x.pjp)}</b> <span>ร้านในเขต (จากไฟล์รายงาน)</span></span>`:"")+`</div>`;
+    (x.pjp?`<span class="pm-item"><b>${N(x.pjp)}</b> <span>ร้านในเขต (จากไฟล์รายงาน)</span></span>`:"")+
+    (x.o?`<span class="pm-item">📦 <b>${N(x.o.pc)}</b> <span>ชิ้นที่คีย์ขายออกไป · ${
+      N(x.o.cs)} ลัง · ${N(x.o.shops)} ร้าน (จากใบจัดของ)</span></span>`:"")+`</div>`;
   const ks=Object.keys(sh);
   if(!ks.length)return line+`<div class="psub">ยังไม่มีร้านที่ซื้อสินค้าในโปรนี้</div>`;
    
@@ -5291,11 +5345,16 @@ function pmTrackHtml(it,me){
     `<button class="${st.i===step.i?"on":""}" onclick="pmSetStep(${st.i})">${anaEsc(st.label)} · ${st.pcs} ชิ้น${
       st.sm?" · "+pmBaht(st.sm):""}</button>`).join("")+`</div>`;
   const anyMoney=R0.rows.some(x=>x.money!==null);
+   
+  const anyOrd=R0.rows.some(x=>x.o&&(x.o.pc||x.o.cs));
+  const oCols=anyOrd?1:0;
+  const nCol=5+(anyMoney?1:0)+oCols;
   const estT=R0.rows.some(x=>x.est),estM=R0.rows.some(x=>x.mEst&&x.money);
-  const tot={act:0,tgt:0,money:0,hasT:false};
+  const tot={act:0,tgt:0,money:0,hasT:false,opc:0,osh:0};
   const body=R0.rows.map(x=>{
     tot.act+=x.act;if(x.tgt!==null){tot.tgt+=x.tgt;tot.hasT=true;}
     if(x.money)tot.money+=x.money;
+    if(x.o){tot.opc+=+x.o.pc||0;tot.osh+=+x.o.shops||0;}
     const op=PM.rep===x.ln;
     return `<tr class="${op?"on":""}${x.ln===me?" me":""}" onclick="pmRepTog('${anaEsc(x.ln)}')" style="cursor:pointer">`+
       `<td style="text-align:left"><b>${anaEsc(pmLineName(x.ln))}</b>${x.ln===me?' <span class="pm-chip">สายคุณ</span>':""}</td>`+
@@ -5303,21 +5362,27 @@ function pmTrackHtml(it,me){
       `<td data-l="ทำได้"><b>${N(x.act)}</b></td>`+
       `<td data-l="%Achieve" class="${pmPctCls(x.pct)}">${pmPctTxt(x.pct)}</td>`+
       `<td data-l="ส่วนต่าง">${x.diff===null?"—":`<b class="${x.diff>=0?"up":"down"}">${x.diff>0?"+":""}${N(x.diff)}</b>`}</td>`+
+      (anyOrd?`<td data-l="คีย์ขายไปแล้ว">${x.o?`<b>${N(x.o.pc)}</b> <span class="psub">ชิ้น</span>${
+        x.o.shops?`<br><span class="psub">${N(x.o.shops)} ร้าน</span>`:""}`:'<span class="psub">—</span>'}</td>`:"")+
       (anyMoney?`<td data-l="เงินรางวัล">${x.money===null?"—":(x.money?`<b class="up">${pmBaht(x.money)}</b>`:'<span class="psub">—</span>')}</td>`:"")+
       `</tr>`+
-      (op?`<tr class="pm-det-row"><td colspan="${anyMoney?6:5}">${pmShopRow(it,x)}</td></tr>`:"");
+      (op?`<tr class="pm-det-row"><td colspan="${nCol}">${pmShopRow(it,x)}</td></tr>`:"");
   }).join("");
   const tpct=tot.hasT&&tot.tgt>0?tot.act/tot.tgt*100:null;
   h+=`<div class="tblwrap"><table class="grp-tbl pm-rtbl"><thead><tr>`+
     `<th style="text-align:left">สาย</th><th>เป้า (ร้าน)</th><th>ทำได้</th><th>%Achieve</th><th>ส่วนต่าง</th>`+
+    (anyOrd?`<th>📦 คีย์ขายไปแล้ว</th>`:"")+
     (anyMoney?`<th>เงินรางวัล</th>`:"")+`</tr></thead><tbody>${body}`+
     `<tr class="pm-tot"><td style="text-align:left"><b>รวมทั้งศูนย์</b></td>`+
     `<td data-l="เป้า (ร้าน)">${tot.hasT?N(tot.tgt):"—"}</td><td data-l="ทำได้"><b>${N(tot.act)}</b></td>`+
     `<td data-l="%Achieve" class="${pmPctCls(tpct)}">${pmPctTxt(tpct)}</td>`+
     `<td data-l="ส่วนต่าง">${tot.hasT?`<b class="${tot.act-tot.tgt>=0?"up":"down"}">${tot.act-tot.tgt>0?"+":""}${N(tot.act-tot.tgt)}</b>`:"—"}</td>`+
+    (anyOrd?`<td data-l="คีย์ขายไปแล้ว"><b>${N(tot.opc)}</b> <span class="psub">ชิ้น</span></td>`:"")+
     (anyMoney?`<td data-l="เงินรางวัล">${tot.money?`<b class="up">${pmBaht(tot.money)}</b>`:"—"}</td>`:"")+
     `</tr></tbody></table></div>`;
-  h+=`<div class="psub" style="margin-top:8px">ทำได้ = ร้านที่ซื้อตัวหลักครบ <b>${step.pcs} ชิ้น</b> ขึ้นไปในช่วงนี้ (นับร้านไม่ซ้ำ) · แตะที่แถวเพื่อดูรายร้าน</div>`;
+  h+=`<div class="psub" style="margin-top:8px">ทำได้ = ร้านที่ซื้อตัวหลักครบ <b>${step.pcs} ชิ้น</b> ขึ้นไปในช่วงนี้ (นับร้านไม่ซ้ำ) · แตะที่แถวเพื่อดูรายร้าน${
+    anyOrd?`<br>📦 คีย์ขายไปแล้ว = จำนวนชิ้นของตัวหลักที่เซลล์คีย์ออกไป (จากไฟล์ใบจัดของ นับตาม <b>วันที่เซลล์คีย์</b>)
+      ส่วน <b>ทำได้</b> นับจากบิลที่ออกแล้ว (<b>วันที่ออกบิล</b>) — สองช่องนี้คนละเรื่องกัน <b>อย่าเอามาบวกกัน</b>`:""}</div>`;
    
   const warn=[];
   if(estT)warn.push("เป้ารายสายเป็น <b>ประมาณการ</b> (" + (+it.tgtPct) + "% ของร้าน M&P ในสาย) เพราะยังไม่ได้ใส่ไฟล์รายงานของ Unilever — "+
@@ -5325,6 +5390,13 @@ function pmTrackHtml(it,me){
   if(estM)warn.push("เงินรางวัลเป็น <b>ประมาณการ</b> จากกติกาในสไลด์ (ทำได้ถึง 100% ของเป้า = ได้เงินขั้นนั้น) ไม่ใช่ยอดที่ Unilever จ่ายจริง");
   if(t.days.miss.length)warn.push("ยังไม่ได้อัพไฟล์ยอดขายของ <b>"+t.days.miss.length+" วัน</b> ในช่วงนี้ ("+
     t.days.miss.slice(0,6).map(fmtDate).join(" · ")+(t.days.miss.length>6?" …":"")+") ตัวเลขจึงยังไม่ครบ");
+   
+  if(!t.days.have)warn.push(anyOrd
+    ?"ช่วงนี้<b>ยังไม่มีไฟล์ยอดขาย</b>เลยสักวัน ช่อง <b>ทำได้</b> จึงยังเป็น 0 — ตัวเลขที่ใช้ดูได้ตอนนี้คือช่อง <b>📦 คีย์ขายไปแล้ว</b>"
+    :"ช่วงนี้<b>ยังไม่มีไฟล์ยอดขายและไฟล์ใบจัดของ</b>เลยสักวัน ตัวเลขจึงยังเป็น 0 ทั้งตาราง (ไม่ใช่ว่าขายไม่ได้)");
+  if(anyOrd&&t.odays.miss.length)warn.push("ช่อง 📦 คีย์ขายไปแล้ว ยังขาดไฟล์ใบจัดของอีก <b>"+
+    t.odays.miss.length+" วัน</b> ("+t.odays.miss.slice(0,6).map(fmtDate).join(" · ")+
+    (t.odays.miss.length>6?" …":"")+")");
   if(t.codes.miss.length)warn.push("มี <b>"+t.codes.miss.length+" รหัส</b> ที่ยังไม่เจอยอดเลย ("+
     t.codes.miss.slice(0,6).map(anaEsc).join(" · ")+(t.codes.miss.length>6?" …":"")+
     ") — ถ้าเพิ่งเพิ่มรหัสนี้ทีหลัง ให้อัพไฟล์ยอดขายของช่วงนี้ซ้ำอีกครั้ง ระบบจะเก็บย้อนให้");
@@ -6801,7 +6873,7 @@ function initOrder(){
   const t=document.getElementById("orderDateTxt");if(t)t.textContent=ORD.date?fmtDate(ORD.date):"-";
 }
  
-const ORD_SECS={req:"ordSecReq",ord:"ordSecOrd",drop:"ordSecDrop",po:"ordSecPo",pe:"ordSecPe",hist:"ordSecHist"};
+const ORD_SECS={req:"ordSecReq",ord:"ordSecOrd",drop:"ordSecDrop",po:"ordSecPo",pe:"ordSecPe"};
 function ordSetSec(k){
   if(!ORD_SECS[k])k="req";
   ORD.sec=k;
@@ -6809,7 +6881,6 @@ function ordSetSec(k){
   document.querySelectorAll("#ordSubTabs .pos-st").forEach(b=>b.classList.toggle("on",b.dataset.k===k));
   if(k==="po")renderPoCalc();
   if(k==="pe")renderPromoEnd();
-  if(k==="hist")renderOrdHist();
 }
 function renderOrder(){
   const bar=document.getElementById("orderBar");if(!bar)return;
@@ -9792,8 +9863,9 @@ function renderSalesRequests(){
 
  
  
-let STK={wh:"sale",vsec:"cat",vcat:"",vbr:""};
+let STK={wh:"sale",rwh:"sale",vsec:"cat",vcat:"",vbr:""};
 document.getElementById("stockWh").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;STK.wh=b.dataset.w;setSeg("stockWh","w",STK.wh);renderStock();});
+document.getElementById("strWh").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;strSetWh(b.dataset.w);});
 function cspcTotal(s){const m=String(s||"").split("/");const cs=parseInt(m[0])||0,pc=parseInt(m[1])||0;return cs*1000+pc;}  
  
 function stkSearchMatch(row,tokens){
@@ -9819,10 +9891,14 @@ function stkValGrp(list,key){
   });
   return Object.keys(m).map(k=>m[k]).sort((a,b)=>b.val-a.val||b.cs-a.cs||(a.k<b.k?-1:1));
 }
-function stkVSec(v){STK.vsec=v;STK.vcat="";STK.vbr="";renderStock();}
-function stkVOpen(t,v){if(t==="cat"){STK.vcat=v;STK.vbr="";}else if(t==="br")STK.vbr=v;renderStock();}
-function stkVBack(){if(STK.vbr)STK.vbr="";else STK.vcat="";renderStock();}
-function stkValHtml(list,rowsAll){
+ 
+function stkVPaint(){
+  if(typeof CURTAB!=="undefined"&&CURTAB==="stock")renderStock();else renderStockRep();
+}
+function stkVSec(v){STK.vsec=v;STK.vcat="";STK.vbr="";stkVPaint();}
+function stkVOpen(t,v){if(t==="cat"){STK.vcat=v;STK.vbr="";}else if(t==="br")STK.vbr=v;stkVPaint();}
+function stkVBack(){if(STK.vbr)STK.vbr="";else STK.vcat="";stkVPaint();}
+function stkValHtml(list,rowsAll,wh){
   const hasCat=stkHasKey(rowsAll,"cat"),hasBr=stkHasKey(rowsAll,"br");
   if(!hasCat&&STK.vsec==="cat")STK.vsec=hasBr?"br":"prod";
   if(!hasBr&&STK.vsec==="br")STK.vsec="prod";
@@ -9837,6 +9913,7 @@ function stkValHtml(list,rowsAll){
   const tot=stkValAgg(sub),grp=stkValGrp(sub,key);
   const max=grp.reduce((a,g)=>Math.max(a,g.val),0);
   const none=tot.val<=0&&tot.noVal===tot.n;
+  const whTh=((wh||STK.wh)==="sale")?"คลังขาย":"คลังแถม";
   const kTH={cat:"หมวด",br:"แบรนด์",prod:"สินค้า"};
   const segBtn=(v,t,on)=>`<button class="${STK.vsec===v?"on":""}"${
     on?"":" disabled title=\"ไฟล์นี้ไม่มีข้อมูลนี้มาด้วย\""} onclick="stkVSec('${v}')">${t}</button>`;
@@ -9846,7 +9923,7 @@ function stkValHtml(list,rowsAll){
     <button class="backbtn" onclick="stkVBack()">← ย้อนกลับ</button>
     <span class="psub" style="margin-left:8px">กำลังดู <b>${anaEsc(crumb.join(" → "))}</b></span></div>`:"";
   const body=none
-    ?`<div class="insight">ไฟล์ไม่ได้ลงมูลค่าของ${STK.wh==="sale"?"คลังขาย":"คลังแถม"}มาด้วย
+    ?`<div class="insight">ไฟล์ไม่ได้ลงมูลค่าของ${whTh}มาด้วย
        (${tot.n.toLocaleString()} รายการ) — ยังไม่มีมูลค่าให้รวม ไม่ใช่มูลค่าเป็น 0</div>`
     :`<div class="tblwrap"><table class="sv-tbl"><thead><tr>
         <th>${kTH[key]}</th><th>รายการ</th><th>ลัง (ปิดวัน)</th><th>มูลค่า</th><th>สัดส่วน</th>
@@ -9864,7 +9941,7 @@ function stkValHtml(list,rowsAll){
       }).join("")}</tbody></table></div>${
       grp.length>200?`<div class="psub" style="margin-top:8px">แสดง 200 อันดับแรกจาก ${grp.length.toLocaleString()} ${kTH[key]}</div>`:""}`;
   return `<div class="panel">
-    <h3>💰 มูลค่าสต็อก — ${STK.wh==="sale"?"คลังขาย":"คลังแถม"}</h3>
+    <h3>💰 มูลค่าสต็อก — ${whTh}</h3>
     <div class="cards" style="margin:10px 0">
       <div class="card"><div class="k">มูลค่ารวม</div><div class="v">${none?"–":THBk(tot.val)}</div>
         <div class="s">${none?"ไฟล์ไม่ได้ลงมูลค่า":THB(tot.val)}</div></div>
@@ -9881,6 +9958,30 @@ function stkValHtml(list,rowsAll){
       <b>ยอดปิดวัน</b> (คนละตัวกับคงเหลือปัจจุบัน)${
       hasCat||hasBr?"":" · ไฟล์นี้ไม่มีหมวด/แบรนด์มาด้วย จึงแยกได้แค่รายสินค้า"}</div>
     ${body}</div>`;
+}
+ 
+function strSetWh(w){STK.rwh=w;setSeg("strWh","w",w);renderStockRep();}
+function renderStockRep(){
+  const bar=document.getElementById("strBar");if(!bar)return;
+  const body=document.getElementById("strBody");
+  if(!(S.user&&S.user.role==="manager")){
+    bar.innerHTML="📊 รายงานสต็อค";
+    body.innerHTML='<div class="panel"><div class="insight">บัญชีนี้เปิดส่วนนี้ไม่ได้</div></div>';return;}
+  const rows=(STOCKD&&STOCKD.rows)||[];
+  if(!rows.length){
+    bar.innerHTML="📊 รายงานสต็อค";
+    body.innerHTML='<div class="panel"><div class="insight">ยังไม่มีข้อมูลสต็อก — อัพไฟล์สต็อกก่อน (ปุ่มอัพโหลด → 📦)</div></div>';return;}
+  if(!STK.rwh)STK.rwh="sale";
+  setSeg("strWh","w",STK.rwh);
+  const dc=STOCKD&&STOCKD.src==="dcode";
+  bar.innerHTML=`📊 รายงานสต็อค · ศูนย์ BD · ข้อมูล ณ <b>${STOCKD.date?fmtDate(STOCKD.date):"-"}</b>${
+    STOCKD.up?` · 🕒 อัปเดตล่าสุด <b>${fmtDateTime(STOCKD.up)}</b>`:""} · ${
+    STK.rwh==="sale"?"🛒 คลังขาย":"🎁 คลังแถม"}${dc?" ("+DC_WH_TH[STK.rwh]+")":""}`;
+  const whRows=rows.filter(r=>r.wh===STK.rwh);
+  const q=((document.getElementById("strSearch")||{}).value||"").trim().toLowerCase();
+  const tokens=q.split(/\s+/).filter(Boolean);
+  const list=whRows.filter(r=>!tokens.length||stkSearchMatch(r,tokens));
+  body.innerHTML=stkValHtml(list,whRows,STK.rwh);
 }
 function renderStock(){
   const bar=document.getElementById("stockBar");if(!bar)return;
@@ -9904,8 +10005,6 @@ function renderStock(){
     <div class="card"><div class="k">คำค้น</div><div class="v" style="font-size:16px">${tokens.length?tokens.join(" + "):"(ทั้งหมด)"}</div><div class="s">จับถึงตัวอักษร/เลข</div></div>`;
   const isMgr=S.user&&S.user.role==="manager";
   document.getElementById("stockValWrap").style.display=isMgr?"":"none";
-  {const vb=document.getElementById("stockValBox");
-   if(vb)vb.innerHTML=isMgr?stkValHtml(list,whRows):"";}
   const showVal=isMgr&&document.getElementById("stockVal").checked;
   const rowsH=list.slice(0,800).map(r=>{const low=isLow(r);
     return `<tr${low?' style="background:#FDF3F3"':''}><td>${r.c}</td><td style="text-align:left">${r.n||"-"}</td>${showVal?`<td style="text-align:right">${r.d||"-"}</td>`:""}<td style="text-align:right">${r.e||"-"}</td>${showVal?`<td style="text-align:right">${(r.j||0)>0?THB(r.j):"-"}</td>`:""}${showVal?`<td style="text-align:right">${(r.v||0)>0?THB(r.v):"-"}</td>`:""}<td style="text-align:right" class="${(r.po&&r.po!=="0"&&r.po!=="0/0")?'up':''}">${r.po||"-"}</td><td style="text-align:right">${r.h||"-"}</td><td style="text-align:right" class="${low?'down':''}"><b>${r.i||"-"}</b></td></tr>`;}).join("");
@@ -12003,6 +12102,10 @@ function parseAlloc(name,buf){
   if(ocol.out!=null)col.out=ocol.out;       
   const noShop=(ocol.out==null);
   const g={},days={},stat={},oix={};let n=0,skip=0,noGin=0,tg=0,tn=0;
+   
+  const pmWant=(typeof pmCodeSet==="function")?pmCodeSet():{};
+  const pmAny=Object.keys(pmWant).length>0;
+  const pmBuf={};let pmRows=0,pmBad=0;
   for(let r=1;r<A.length;r++){
     const x=A[r];if(!x)continue;
     const code=String(x[col.code]==null?"":x[col.code]).trim();
@@ -12011,6 +12114,25 @@ function parseAlloc(name,buf){
     const dd=alDate(x[col.d]);
      
     otTake(oix,x,col,ocol,dd,gin);
+     
+    if(pmAny&&dd&&pmWant[code]){
+       
+      const lnP=dsLineKey(String(x[col.pj]==null?"":x[col.pj]).trim());
+      const kk=dd+"|"+lnP,bb=pmBuf[kk]||(pmBuf[kk]={}),
+        ee=bb[code]||(bb[code]={cs:0,pc:0,fc:0,fp:0,niv:0,sh:{}});
+      const pk=alNum(x[col.pk]),shr=alShrink(String(x[col.nm]||""),pk);
+      const sPc=alPcs({cs:alNum(x[col.sc]),sh:alNum(x[col.ss]),pc:alNum(x[col.sp])},pk,shr);
+      const fPc=alPcs({cs:alNum(x[col.fc]),sh:alNum(x[col.fs]),pc:alNum(x[col.fp])},pk,shr);
+      ee.cs+=alNum(x[col.sc]);ee.fc+=alNum(x[col.fc]);
+      if(hasMoney)ee.niv+=alNum(x[ocol.niv]);
+       
+      if(sPc==null||fPc==null)pmBad++;
+      else{
+        ee.pc+=sPc;ee.fp+=fPc;pmRows++;
+        const oc=(col.out!=null)?String(x[col.out]==null?"":x[col.out]).trim():"";
+        if(oc&&sPc)ee.sh[oc]=(ee.sh[oc]||0)+sPc;
+      }
+    }
     if(!gin){noGin++;continue;}
     const ln=alLine(x[col.pj],x[col.pn]);
     if(dd)days[dd]=(days[dd]||0)+1;
@@ -12050,6 +12172,20 @@ function parseAlloc(name,buf){
   ALLOC={up:Date.now(),file:name,n:n,g:gAll,days:Object.keys(dAll).sort(),
     money:hasMoney?1:0,gsv:tg,niv:tn,stat:stat,noShop:noShop?1:0,kept:kept,
     nomoney:onone,gins:Object.keys(gAll).sort((a,b)=>alNum(a)-alNum(b)||a.localeCompare(b))};
+   
+  let pmKeys=0;
+  if(pmAny&&typeof pmOk==="function"){
+    const P=pmOk(),now3=Date.now();
+    if(!P.ord)P.ord={};
+    Object.keys(pmBuf).forEach(k=>{
+      const pp=pmBuf[k];
+      Object.keys(pp).forEach(c=>{const e=pp[c];
+        e.cs=Math.round(e.cs*1000)/1000;e.pc=Math.round(e.pc*100)/100;
+        e.fc=Math.round(e.fc*1000)/1000;e.fp=Math.round(e.fp*100)/100;
+        e.niv=Math.round(e.niv*100)/100;});
+      P.ord[k]={up:now3,p:pp};pmKeys++;
+    });
+  }
   const sl=Object.keys(stat).sort((a,b)=>stat[b]-stat[a]).map(k=>anaEsc(k)+" "+stat[k]);
   ulog("📥 ใบจัดของ (allocation): อ่านได้ <b>"+n.toLocaleString()+"</b> แถว · <b>"+
     ALLOC.gins.length+"</b> เลข GIN · วันที่ "+(ds[0]||"-")+" ถึง "+(ds[ds.length-1]||"-")+
@@ -12059,6 +12195,10 @@ function parseAlloc(name,buf){
       "</b> · NIV รวม <b>"+Math.round(tn).toLocaleString()+"</b> (ใช้ตัวเลขจากไฟล์ ไม่ต้องประเมินจากไฟล์ราคา)"
       :"<br><b class='down'>💵 ไฟล์นี้ไม่มีช่อง "+onone.join(" / ")+"</b> — จะประเมินมูลค่าจากไฟล์ราคาหัวเสือแทน")+
     (sl.length?"<br><span class='psub'>สถานะออเดอร์: "+sl.join(" · ")+"</span>":"")+
+    (pmKeys?"<br>🎁 โปรโมชั่น: เก็บยอดที่เซลล์คีย์ออกไป <b>"+pmRows.toLocaleString()+"</b> แถว ("+
+      pmKeys.toLocaleString()+" วัน·สาย)"+
+      (pmBad?" · <b class='down'>แปลงหน่วยไม่ได้ "+pmBad+" แถว</b> (ชื่อสินค้าไม่บอกขนาดแพ็ค — ไม่ได้เดาให้)":"")
+      :(pmAny?"<br><span class='psub'>🎁 โปรโมชั่น: ไฟล์นี้ไม่มีรหัสสินค้าที่อยู่ในโปรเดือนนี้เลย</span>":""))+
     "<br><span class='psub'>เข้าไปที่ใบออเดอร์ แล้วใส่เลข GIN ของแต่ละวันเพื่อบันทึกผลตรวจ</span>");
    
   ALLOC.ord=oix;
@@ -17248,7 +17388,8 @@ const UP_CATS={sales:"📊 ยอดขาย",kpi:"🎯 eB2B & Self Ordering",e
   ps:"⭐ Perfect Store",order:"🛒 การสั่งของ",stock:"📦 สต็อก",cstock:"🧊 สต็อคกลาง",spord:"📦 ออเดอร์พิเศษ",
   dci:"📈 DCI Score",ana:"🧪 วิเคราะห์เชิงลึก",pjp:"🗺 PJP & ร้านค้า",
   dcode:"🧾 DCODE",price:"💰 ราคา & ทุน",otrk:"📋 สถานะออเดอร์"};
-const UP_TAB={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",stock:"stock",
+const UP_TAB={sales:"sales",kpi:"kpi",eb:"eb",ps:"ps",order:"order",pos:"order",ordhist:"order",
+  stock:"stock",strep:"stock",
   cstock:"cstock",spord:"spord",otrk:"otrk",ana:"ana",dci:"dci",pjp:"pjp",price:"price",cost:"price",dcode:"dcode"};
 const UP_SUB={otrk:"ไฟล์ที่เซลล์คีย์เข้าระบบ — ใช้ได้ทั้งหน้าสถานะออเดอร์และตรวจกับออเดอร์พิเศษ จับคู่ด้วยเลขออเดอร์เดียวกัน",
   spord:"ไฟล์ใบจัดของจากคลัง — อ่านในเครื่องนี้เพื่อตรวจกับที่เซลล์คีย์ ไม่ได้เก็บไฟล์ขึ้นเซิร์ฟเวอร์",

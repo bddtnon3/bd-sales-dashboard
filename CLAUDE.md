@@ -96,7 +96,7 @@ The owner was badly burned by data loss once; data safety is the #1 priority.
   and a single CDN hiccup would have republished the July seed and then evicted all 8 backups.
 - **Do NOT change any merge logic in a way that could drop old keys/sections.** If you touch
   `mergeState` / `mergeRequests` / `lib/snapshot.js`, prove old data survives before pushing by
-  running **`node test/merge-safety.test.mjs`** (303 checks against the real `api/save.js`, the real
+  running **`node test/merge-safety.test.mjs`** (306 checks against the real `api/save.js`, the real
   `api/ordtrk.js` and the
   real `lib/snapshot.js`: old browser tab without a new field, new upload vs existing keys,
   empty/crashed client, fresh blob store, manager-vs-sales requests, PS tombstones, eB2B, PO
@@ -495,9 +495,14 @@ code, never printed.
   the real forms via `ORDER_BLANK_A=…/ใบ24.xlsm ORDER_BLANK_B=…/ใบ25.xlsm`, which never enter the repo).
   Note the real BUM file is ~28 MB with a 239 MB `sheet1.xml`: the browser parses it in ~45 s and
   ~650 MB of heap, so never load it into a test by spreading its bytes into a JS array.
-  **การสั่งของ** has six sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO /
-  **📅 รายการสั่งก่อนหมดโปร** /
-  **📊 ประวัติการสั่งของ** (`renderOrdHist`), the month-at-a-glance table that replaces the Excel the
+  **การสั่งของ** has five sub-tabs (`ordSetSec`): sales requests / order form / Drop / auto-PO /
+  **📅 รายการสั่งก่อนหมดโปร**. A sixth,
+  **📊 ประวัติการสั่งของ** (`renderOrdHist`), was lifted out on 27 Nov 26 at the owner's request
+  (*"ให้ย้ายหมวด ประวัติการสั่งของ ขึ้นมาแยก ให้ไปอยู่ข้าง ๆ ภาพรวมสั่งของ และวิเคราะห์การสั่งของ"*)
+  and is now its own tab `ordhist` in the 🛒 การสั่งของ group — the page itself did not change,
+  it already drew into its own `#ohBody`; what moved is the `<div>` and the `TAB_GROUPS` entry, and
+  the old `hist` sub-tab button and `ORD_SECS` key went with it so there is only one way in. It is
+  the month-at-a-glance table that replaces the Excel the
   depot's sales contact emails every week. The owner gave the mapping himself and it reproduces his
   file to the satang: **1st Order = CON Confirm × 0.85** (`ohVal`), **1st Order − Drop = that minus
   the Drop file's `dropVal`**, **2nd = the day's `DATA.daily` summed over every line** (`ohSale`).
@@ -616,11 +621,26 @@ code, never printed.
   `parseDailyDcode` follows for `DATA.daily`. What is **not** known is said out loud: days in the
   range with no sales file yet, and codes added after the file was uploaded (which need that
   period re-uploaded), are both listed on the card rather than rendered as a silent 0.
+  **A second source answers "how many went out?"** (`PROMO.ord`, the owner on 27 Nov 26: *"ทำไมมัน
+  ไม่ขึ้น report รายงานว่าขายไปกี่ชิ้น ลองจับจากไฟล์ยอดขาย / allocate / transaction ได้ไหม"*). Of the
+  three files only two carry product codes, and the Transaction Inquiry file is header-level, so it
+  cannot. The **allocation file can** — one row carries date · line · shop · product · quantity — so
+  `parseAlloc` now also writes `PROMO.ord["YYYY-MM-DD|lineKey"]`, the same shape and the same
+  `pmCodeSet` filter as `PROMO.sales`, keyed with **`dsLineKey`** (`209611`, not the displayed
+  `CT11`) or the two maps would not meet. Three rules: it is a **separate map and the two are never
+  added** — the allocation file dates a row by the order's creation day and the sales file by the
+  invoice day, which measured agree on only 46.7% of orders, so one sum would count an order twice;
+  the page therefore shows them as **two columns**, ทำได้ (from bills) and **📦 คีย์ขายไปแล้ว** (what
+  the reps keyed), and says in as many words not to add them. Quantities go through `alPcs`, so a
+  row whose pack size cannot be read is **counted and reported, never guessed at 1**. And it is
+  accumulated **before** the line that skips rows with no GIN — goods keyed but not yet picked have
+  still been keyed. When the sales file covers no day of the range the table says so out loud and
+  points at the other column, instead of leaving a page of zeroes that reads as "sold nothing".
   `api/promo.js` writes **one `PROMO.items[id]` per call**, rebuilds the record field by field
   (so nothing unexpected can be smuggled into the state), takes `by`/`byName` from the verified
   claims, **never touches `PROMO.sales`** — a promotion must not be able to delete a month of sales
   readings — and only a `manager` may delete. Prove it with
-  **`node test/browser/promotrk.test.cjs`** (63 checks, self-contained with made-up codes; 66 with
+  **`node test/browser/promotrk.test.cjs`** (70 checks, self-contained with made-up codes; 73 with
   the real file via `DCODE_DAILY=/path/Sales_....xlsx`, which never enters the repo). Seven promotion types share one record shape
   (`PRO_TYPE`); every monthly report, whatever the promotion, reduces to the same row —
   route → PJP/Base · Target · Actual · %Achieve · money — so results are stored once as
@@ -818,13 +838,18 @@ code, never printed.
   406/550 rows and agreed with the product name in 50); and columns are found by **exact header
   text**, so a header dcode renames **throws and stores nothing** instead of writing zeros over
   good stock. An unknown `ประเภทสต็อก` is kept in the sale warehouse and **reported**, never
-  dropped. Prove it with **`node test/browser/stockdc.test.cjs`** (33 checks, self-contained with
-  made-up figures; 35 with the real file via `DCODE_STOCK=/path/DataExtract.xlsx`, which never
+  dropped. Prove it with **`node test/browser/stockdc.test.cjs`** (34 checks, self-contained with
+  made-up figures; 36 with the real file via `DCODE_STOCK=/path/DataExtract.xlsx`, which never
   enters the repo).
-  **💰 มูลค่าสต็อก** (`stkValHtml`/`stkValGrp`/`stkValAgg`, the owner's order 26 Nov 26 — *"ให้ขึ้น
-  โชว์มูลค่ารวมของสินค้าหน่อย และทำให้กดแยกดูมูลค่ารายหมวด รายแบรนด์ได้ด้วยนะ"*) sits between the
-  cards and the list, and is **manager-only** — the same gate the ต้นทุน columns already carried,
-  because it is cost data. Four rules, each one this file states elsewhere: the money is **read from
+  **📊 รายงานสต็อค is its own tab** (`strep`/`renderStockRep`/`stkValHtml`/`stkValGrp`/`stkValAgg`),
+  between สต็อคปัจจุบัน and สต็อคกลาง. The owner asked for the value breakdown on 26 Nov 26 —
+  *"ให้ขึ้นโชว์มูลค่ารวมของสินค้าหน่อย และทำให้กดแยกดูมูลค่ารายหมวด รายแบรนด์ได้ด้วยนะ"* — and the
+  next day moved it off the stock page: *"ให้ปรับไปอีก tab ข้าง ๆ … วางไว้ระหว่างสตอคปัจจุบัน และ
+  สต็อคกลาง(เดิม) แยกไปอีกหน้าเลย เพราะข้อมูลมันเยอะไปละ"*. It is **manager-only**, both as a
+  `role:"manager"` tab entry and as a check inside `renderStockRep` — the same gate the ต้นทุน
+  columns already carried, because it is cost data. Its warehouse pick is `STK.rwh`, separate from
+  the stock page's `STK.wh`, so switching one page does not move the other, and the drill-down
+  repaints through `stkVPaint` (which page is open), never `renderStock` directly. Four rules, each one this file states elsewhere: the money is **read from
   the file's own value column (`v`), never recomputed** from ราคาถัวเฉลี่ย × จำนวน (dcode gives no
   pack size and the file rounds — the NTT rule); that column pairs with the **closing** quantity, so
   the ลัง beside it is `r.e`, labelled ยอดปิดวัน, never คงเหลือปัจจุบัน; a row the file left

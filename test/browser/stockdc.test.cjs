@@ -211,35 +211,40 @@ function mkOld(rows){
     มูลค่าต้องอ่านจากช่องในไฟล์ ไม่ใช่คูณเอง · แถวที่ไฟล์ไม่ลงมูลค่าต้องนับแล้วบอก ไม่ใช่รวมเป็น 0 */
  const val=await ev(a=>{
    parseStock('DataExtract_161126.xlsx',Uint8Array.from(atob(a.b64),c=>c.charCodeAt(0)));
-   STK.wh='sale';STK.vsec='cat';STK.vcat='';STK.vbr='';
-   document.getElementById('stockSearch').value='';
-   document.getElementById('stockZero').checked=false;
-   renderStock();
-   const box=document.getElementById('stockValBox');
-   const tx=()=>box.textContent.replace(/\s+/g,' ');
+   STK.rwh='sale';STK.vsec='cat';STK.vcat='';STK.vbr='';
+   document.getElementById('strSearch').value='';
+   _switchTab('strep');
+   const box=()=>document.getElementById('strBody');
+   const tx=()=>box().textContent.replace(/\s+/g,' ');
    const o={};
    const rows=STOCKD.rows.filter(r=>r.wh==='sale');
    o.sum=Math.round(rows.reduce((x,r)=>x+(+r.v||0),0)*100)/100;
    o.cat=tx();
-   o.catCells=[...box.querySelectorAll('.sv-tbl tbody tr td:first-child')].map(e=>e.textContent.trim().split(' ')[0]);
+   o.onOwnTab=!document.getElementById('strepView').classList.contains('hidden')&&
+     document.getElementById('stockView').classList.contains('hidden');
+   o.notOnStock=(()=>{_switchTab('stock');
+     const t=document.getElementById('stockView').textContent;
+     _switchTab('strep');return t.indexOf('มูลค่าสต็อก')<0;})();
+   o.catCells=[...box().querySelectorAll('.sv-tbl tbody tr td:first-child')].map(e=>e.textContent.trim().split(' ')[0]);
    /* กดเข้าไปในหมวด → ต้องเห็นแบรนด์ข้างใน ไม่ใช่ทั้งคลัง */
-   const first=box.querySelector('.sv-tbl tbody tr.cl');
+   const first=box().querySelector('.sv-tbl tbody tr.cl');
    o.clickable=!!first;
    if(first)first.click();
-   o.drill=document.getElementById('stockValBox').textContent.replace(/\s+/g,' ');
+   o.drill=tx();
    o.vcat=STK.vcat;
    /* แบรนด์ */
    stkVSec('br');
-   o.br=[...document.querySelectorAll('#stockValBox .sv-tbl tbody tr td:first-child')]
+   o.br=[...box().querySelectorAll('.sv-tbl tbody tr td:first-child')]
      .map(e=>e.textContent.trim().split(' ')[0]);
    /* คลังแถม ของไฟล์ dcode มีมูลค่าไหม */
-   STK.wh='gift';stkVSec('cat');
-   o.gift=document.getElementById('stockValBox').textContent.replace(/\s+/g,' ');
-   STK.wh='sale';stkVSec('cat');
+   strSetWh('gift');stkVSec('cat');
+   o.gift=tx();
+   strSetWh('sale');stkVSec('cat');
    /* เซลล์ต้องไม่เห็นต้นทุน */
    const u=S.user;S.user={id:'209611',role:'sales',name:'เซลล์',code:'2096_11'};
-   renderStock();o.sales=document.getElementById('stockValBox').innerHTML;
-   S.user=u;renderStock();
+   renderStockRep();o.sales=tx();
+   o.salesTab=tabVisible().reduce((a,x)=>a.concat(x.tabs.map(y=>y.t)),[]).indexOf('strep')<0;
+   S.user=u;renderStockRep();
    return o;},{b64:mkDc(rows)});
  t('💰 มูลค่าสต็อก: รวมมูลค่าจากช่องในไฟล์ ไม่ใช่คูณเอง',
    val.cat.indexOf(THBfmt(val.sum))>=0,
@@ -251,7 +256,11 @@ function mkOld(rows){
  t('🔑 แยกตามแบรนด์ได้',val.br.length>=3&&val.br.join(' ').indexOf('OMO')>=0,JSON.stringify(val.br));
  t('🛟 แถวที่ไฟล์ไม่ได้ลงมูลค่า ต้องบอก ไม่ใช่รวมเป็น 0',
    /ไฟล์ไม่ได้ลงมูลค่า/.test(val.gift),val.gift.slice(0,160));
- t('🔒 เซลล์เปิดหน้าสต็อก ไม่เห็นมูลค่า/ต้นทุน',val.sales==='',val.sales.slice(0,80));
+ t('🔑 มูลค่าสต็อกอยู่หน้าของตัวเอง ไม่ปนกับหน้าสต็อคปัจจุบันแล้ว',
+   val.onOwnTab&&val.notOnStock,'ownTab='+val.onOwnTab+' notOnStock='+val.notOnStock);
+ t('🔒 เซลล์ไม่เห็นแท็บนี้ และถ้าเปิดได้ก็ไม่เห็นตัวเลขต้นทุน',
+   val.salesTab&&/บัญชีนี้เปิดส่วนนี้ไม่ได้/.test(val.sales)&&!/มูลค่ารวม/.test(val.sales),
+   val.sales.slice(0,80));
 
  /* ---------- 9) ไฟล์จริง (ถ้ามีในเครื่อง — ไม่อยู่ในรีโป) ---------- */
  const REAL=process.env.DCODE_STOCK;

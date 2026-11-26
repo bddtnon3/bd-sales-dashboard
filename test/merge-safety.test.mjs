@@ -1572,6 +1572,31 @@ console.log("TEST 30 — 🎁 ดัชนียอดขายของโป�
   check("🛟 ...และยอดขาย/สต็อก/ใบสั่งของเดิมไม่ถูกแตะ",
         Object.keys(m4.DATA.monthly).length === 2 && m4.ORDERS.dates.length === 2 &&
         m4.STOCKD.rows.length === 3);
+
+  /* 🧾 ก้อนที่สอง: ยอดที่เซลล์คีย์ออกไป อ่านจากไฟล์ใบจัดของ (PROMO.ord · เจ้าของถาม 27 พ.ย. 69)
+     ⚠️ คนละก้อนกับ sales โดยตั้งใจ — ใบจัดของลงวันที่เซลล์คีย์ ไฟล์ยอดขายลงวันที่ออกบิล
+        (ตรงกันแค่ 46.7%) รวมเป็นก้อนเดียวเมื่อไหร่ ออเดอร์เดียวจะถูกนับสองรอบ */
+  const alc = JSON.parse(JSON.stringify(base));
+  alc.PROMO = { items: {}, res: {}, del: {},
+    ord: { "2026-11-10|209611": { up: 6000, p: { 90000001: { cs: 2, pc: 33, fc: 1, fp: 12, sh: { S1: 24 } } } } } };
+  const o1 = mergeState(m4, alc);
+  check("🧾 ยอดจากไฟล์ใบจัดของถูกบันทึก และไม่ไปแตะยอดจากไฟล์ยอดขาย",
+        o1.PROMO.ord["2026-11-10|209611"].p["90000001"].pc === 33 &&
+        o1.PROMO.sales["2026-11-10|209611"].p["90000001"].pc === 9,
+        JSON.stringify({ ord: Object.keys(o1.PROMO.ord), sales: Object.keys(o1.PROMO.sales) }));
+  const oldTab2 = JSON.parse(JSON.stringify(base));
+  oldTab2.PROMO = { items: {}, res: {}, del: {}, sales: {} };
+  const o2 = mergeState(o1, oldTab2);
+  check("🛟 แท็บเก่าที่ไม่รู้จักก้อนนี้ บันทึกทับ → ยอดที่เก็บไว้ไม่หาย",
+        Object.keys(o2.PROMO.ord).length === 1 && Object.keys(o2.PROMO.sales).length === 2,
+        JSON.stringify({ ord: Object.keys(o2.PROMO.ord), sales: Object.keys(o2.PROMO.sales) }));
+  const alc2 = JSON.parse(JSON.stringify(base));
+  alc2.PROMO = { items: {}, res: {}, del: {},
+    ord: { "2026-11-11|209612": { up: 7000, p: { 90000001: { cs: 1, pc: 12, fc: 0, fp: 0, sh: { S4: 12 } } } } } };
+  const o3 = mergeState(o2, alc2);
+  check("🛟 อัพไฟล์ใบจัดของของอีกวัน ไม่ลบวันเดิม",
+        Object.keys(o3.PROMO.ord).sort().join(" ") === "2026-11-10|209611 2026-11-11|209612",
+        Object.keys(o3.PROMO.ord).join(" "));
 }
 
 /* ============================================================================
