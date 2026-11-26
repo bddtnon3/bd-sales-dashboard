@@ -658,7 +658,8 @@ code, never printed.
   **never** threshold to black and white, rebuild the table from word *coordinates*, and take the
   column boundaries from the *data rows only* — are in `HANDOFF.md` §5 with the numbers behind
   them. Prove it still reads the owner's real reports with
-  **`node test/browser/ocr-promo.test.cjs`** (36 checks, needs `npm i --no-save playwright-core`).
+  **`node test/browser/ocr-promo.test.cjs`** (36 checks, needs `npm i --no-save playwright-core`;
+  40 with the reps’ real order screenshots via `SP_OCRSHOT=`, which never enter the repo).
   Slide images and report screenshots both go to their own `bd-promoimg-*` blobs
   via `api/promoimg.js` — never into the state; the state keeps only the URL
   (`PROMO.items[id].imgs` for slides, `.reps` for the report a result was typed from).
@@ -1392,6 +1393,39 @@ code, never printed.
   from those numbers rather than what anyone typed — it turns red with the difference when it
   disagrees with the rep's keyed quantity, which is exactly the check the owner asked for. It works
   the same on all three slip types, because every type that has a เซลล์คีย์ step renders this card.
+  **📷 …and the rep can get those numbers in by SCREENSHOT instead of typing** (`spOcrNos`/
+  `spOcrGo`/`ocrWords`, owner 27 Nov 26: *"ปรับให้เป็นการใส่หน้าแคปหน้าจอ จากเลขออเดอร์ได้ไหม
+  ให้เซลล์แคปหน้าจอหลังกดคีย์ออเดอร์ … อัพได้ 10-20 รูป แล้วให้ระบบอ่านเลขออเดอร์อัตโนมัติ …
+  หรือจะกรอกเองเหมือนเดิมก็ได้ แต่ถ้าอัพรูป เลขจะอ่านขึ้นให้อัตโนมัติ แล้วเซลล์ตรวจเอาอย่างเดียว"*).
+  It reuses the Tesseract already vendored for the promo-report reader — no second engine and no
+  new download for anyone who does not use it. Measured on the owner's two real screenshots of the
+  app's **คำสั่งซื้อของฉัน** page, across three page-segmentation modes (6 runs):
+  **every order number read, confidence 90–92, and not one other number on the screen leaked in.**
+  That is because an order number is **ten consecutive digits** while nothing else on that screen is
+  — the invoice `#MF80478502` has letters, the date `28/11/2026` has separators, the money
+  `฿563.00` has a point, the app version `1.85(86)-v44` has brackets. **So the rule is exactly ten
+  consecutive digits; never loosen it to 6–9 digits for an image**, which would immediately collide
+  with those. Eleven digits in a row is refused too, rather than guessing which one is the misread.
+  **Speed decided the scale**: the report reader's `OCR_W` = 2800px costs 2.3–3.5 s an image, while
+  **1600px costs 1.2 s and reads exactly the same numbers**, so `SP_OCR_W` = 1600 and 20 images
+  finish in about 25 s. 2800 stays right for the Power BI tables, whose font is tiny; the order
+  number is large text. `ocrPrep` therefore takes a target width and `ocrWords` was split out of
+  `ocrRead` so this path skips the table-building step entirely.
+  Four rules: **the images are read in the browser and thrown away** — never uploaded, never in the
+  state, the `ALLOC` rule; **nothing is saved straight from OCR** — the numbers land in the same
+  textarea the rep already checks and presses บันทึก on, and `spNoInfoHtml` still reports
+  ยังหาไม่เจอ / รอไฟล์ยอดขาย / ตรงกับหลายใบ underneath, which is the real safety net against a
+  misread digit; **an image with no number found is named one by one**, never silently skipped, or
+  the rep believes the list is complete; and **the same order appearing in two screenshots is
+  normal** (it happens in the owner's own two images), so duplicates are dropped and counted.
+  A word's confidence under 70 is flagged on screen (`prCellBad`'s rule), and a number OCR split
+  across two words is recovered by a second pass **per line** — never across lines, or two numbers
+  on consecutive lines would join into a 20-digit run and both vanish. Typing is still there,
+  unchanged, under *— หรือพิมพ์เลขเอง —*. The picker is not a data upload, so the one-upload-button
+  rule does not apply. Prove it with the self-contained cases in
+  **`node test/browser/spord.test.cjs`** (274 checks) and, against the owner's real screenshots,
+  **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
+  (36 checks, 40 with the images — which never enter the repo).
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
   `renderSpord` returns the PIN screen and **draws nothing of the page** until `spPinOk()`. Two
   rules. **The repo is public, so the digits are never written into any file** — only the SHA-256
@@ -1505,7 +1539,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (261 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (274 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1518,7 +1552,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (261 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (274 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

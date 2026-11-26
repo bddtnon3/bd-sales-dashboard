@@ -313,6 +313,16 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .sp-mebad ul{margin:6px 0 0;padding-left:20px}
 .sp-mebad li{font-size:12.5px;line-height:1.7;font-family:ui-monospace,monospace}
  
+.sp-ocr{margin:10px 0 2px}
+.sp-ocrbtn{width:100%;justify-content:center;font-size:15px;min-height:48px}
+.sp-ocr .psub{margin:8px 0 0}
+.sp-ocrst{margin-top:10px;font-size:13.5px;font-weight:700;background:var(--blue-soft);
+  border-radius:8px;padding:8px 10px;color:var(--ink)}
+.sp-ocrst.ok{background:#EAF7F0;color:#0F7A52}
+.sp-ocrls{margin:8px 0 0;padding-left:20px}
+.sp-ocrls li{font-size:12.5px;line-height:1.8;word-break:break-all}
+.sp-ocror{text-align:center;color:var(--muted);font-size:12px;font-weight:700;margin:14px 0 2px}
+ 
 #reqModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px}
  
 #cstClrModal,#cstExModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:140;display:flex;align-items:center;justify-content:center;padding:14px}
@@ -5830,10 +5840,11 @@ async function ocrWorker(){
   await OCR.worker.setParameters({tessedit_pageseg_mode:"6",preserve_interword_spaces:"1"});
   return OCR.worker;
 }
-function ocrPrep(img,crop){
+ 
+function ocrPrep(img,crop,tw){
   const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;
   const cr=crop||{x:0,y:0,w:iw,h:ih};
-  const sc=Math.max(1,Math.min(4,OCR_W/Math.max(1,cr.w),OCR_MAXW/Math.max(1,cr.h)));
+  const sc=Math.max(1,Math.min(4,(tw||OCR_W)/Math.max(1,cr.w),OCR_MAXW/Math.max(1,cr.h)));
   const c=document.createElement("canvas");
   c.width=Math.max(1,Math.round(cr.w*sc));c.height=Math.max(1,Math.round(cr.h*sc));
   const x=c.getContext("2d");
@@ -5904,15 +5915,20 @@ function ocrTrim(grid){
   }
   return keep.length>=2?grid.map(r=>keep.map(i=>r[i]||{t:"",c:100})):grid;
 }
-async function ocrRead(src,crop){
+ 
+async function ocrWords(src,crop,tw){
   const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("เปิดไฟล์รูปไม่ได้"));i.src=src;});
-  const cv=ocrPrep(img,crop);
+  const cv=ocrPrep(img,crop,tw);
   const w=await ocrWorker();
   const r=await w.recognize(cv,{},{text:true,blocks:true});
   const words=[];
   ((r.data&&r.data.blocks)||[]).forEach(b=>(b.paragraphs||[]).forEach(p=>(p.lines||[]).forEach(l=>(l.words||[]).forEach(d=>{
     words.push({t:d.text,c:Math.round(d.confidence),x0:d.bbox.x0,x1:d.bbox.x1,y0:d.bbox.y0,y1:d.bbox.y1});}))));
-  return ocrTrim(ocrToGrid(words));
+  return {words:words,text:(r.data&&r.data.text)||""};
+}
+async function ocrRead(src,crop){
+  const o=await ocrWords(src,crop);
+  return ocrTrim(ocrToGrid(o.words));
 }
 function prPasteOpen(id){
   const list=PR.m?pmAll().filter(it=>it.m===PR.m).sort(pmSort):[];
@@ -14655,10 +14671,90 @@ function spRepMineHtml(sid,ymd){
   </div>`;
 }
  
+const SP_OCR_W=1600, SP_OCR_MAX=20;
+ 
+function spOcrNos(o){
+  const out=[],seen={};
+  const take=(s,c)=>{if(!s||seen[s])return;seen[s]=1;out.push({no:s,c:c});};
+  const scan=(s,c)=>{let m;const re=/(?:^|\D)(\d{10})(?!\d)/g;
+    while((m=re.exec(String(s||""))))take(m[1],c);};
+   
+  (o&&o.words||[]).forEach(w=>scan(w.t,w.c));
+   
+  String((o&&o.text)||"").split(/\n+/).forEach(line=>{
+    const before=out.length;scan(line,null);
+    if(out.length===before)scan(line.replace(/[ \t]+/g,""),null);
+  });
+  return out;
+}
+function spOcrPick(ln){const el=document.getElementById("spOcrIn_"+ln);if(el)el.click();}
+function spOcrPaint(ln){const b=document.getElementById("spOcrBox_"+ln);if(b)b.innerHTML=spOcrHtml(ln);}
+function spOcrHtml(ln){
+  const S=(SP.ocr&&SP.ocr.ln===ln)?SP.ocr:null;
+  if(!S)return "";
+  let h=S.busy
+    ? `<div class="sp-ocrst">⏳ กำลังอ่านรูปที่ <b>${S.i}</b> จาก <b>${S.n}</b> … <span class="psub">รออีกสักครู่ อย่าเพิ่งปิดหน้านี้</span></div>`
+    : `<div class="sp-ocrst ok">✅ อ่านครบ <b>${S.n}</b> รูป · ใส่เลขให้ <b>${S.add}</b> เลข${
+        S.dup?` · ซ้ำกับที่มีอยู่แล้ว ${S.dup} เลข (ไม่ใส่ซ้ำ)`:""}</div>`;
+  if(S.err)h+=`<div class="psub down">${anaEsc(S.err)}</div>`;
+  h+=`<ul class="sp-ocrls">`+S.rows.map(r=>{
+    const nm=anaEsc(String(r.n||"").slice(0,30));
+    if(r.err)return `<li class="down">⚠️ ${nm} — ${anaEsc(r.err)}</li>`;
+    if(!r.got.length)return `<li class="down">⚠️ ${nm} — ไม่เจอเลขออเดอร์ในรูปนี้</li>`;
+    return `<li>✅ ${nm} — ${r.got.map(g=>`<b>${anaEsc(g.no)}</b>${
+      g.dup?' <span class="psub">(ซ้ำ)</span>':""}${
+      (g.c!=null&&g.c<70)?' <span class="down">(อ่านไม่ชัด ตรวจเลขนี้ก่อน)</span>':""}`).join(" · ")}</li>`;
+  }).join("")+`</ul>`;
+  const none=S.rows.filter(r=>!r.got.length&&!r.err).length;
+  if(none&&!S.busy)h+=`<div class="psub down">อ่านไม่เจอเลข ${none} รูป —
+    แคปให้เห็นบรรทัด <b>คำสั่ง #…</b> ชัด ๆ แล้วลองใหม่ หรือพิมพ์เลขเองในช่องด้านล่าง</div>`;
+  return h;
+}
+async function spOcrGo(ln,files){
+  const list=Array.prototype.slice.call(files||[]);
+  if(!list.length)return;
+  const ta=document.getElementById("spRNo_"+ln);
+  if(!ta){alert("ช่องกรอกเลขหายไป ลองเปิดหน้านี้ใหม่อีกครั้ง");return;}
+  if(SP.ocr&&SP.ocr.busy){alert("กำลังอ่านรูปชุดก่อนอยู่ รอให้เสร็จก่อนนะ");return;}
+  const use=list.slice(0,SP_OCR_MAX);
+  SP.ocr={ln:ln,busy:1,n:use.length,i:0,rows:[],add:0,dup:0,
+    err:list.length>SP_OCR_MAX?("เลือกมา "+list.length+" รูป อ่านให้ "+SP_OCR_MAX+" รูปแรกก่อน ที่เหลือเลือกเพิ่มได้อีกรอบ"):""};
+  spOcrPaint(ln);
+  const have={};spNoSplit(ta.value).forEach(x=>{have[x]=1;});
+  for(let i=0;i<use.length;i++){
+    SP.ocr.i=i+1;spOcrPaint(ln);
+    const f=use[i];let got=[],bad="";
+    try{
+      const url=await new Promise((res,rej)=>{const r=new FileReader();
+        r.onload=()=>res(r.result);r.onerror=()=>rej(new Error("อ่านไฟล์รูปไม่ได้"));r.readAsDataURL(f);});
+      got=spOcrNos(await ocrWords(url,null,SP_OCR_W));
+    }catch(e){bad=(e&&e.message)?e.message:"อ่านรูปนี้ไม่ได้";}
+    const fresh=[];
+    got.forEach(g=>{if(have[g.no]){SP.ocr.dup++;g.dup=1;return;}have[g.no]=1;fresh.push(g.no);});
+    if(fresh.length){
+      ta.value=(String(ta.value||"").trim()?String(ta.value).trim()+" ":"")+fresh.join(" ");
+      SP.ocr.add+=fresh.length;
+    }
+    SP.ocr.rows.push({n:(f&&f.name)||("รูปที่ "+(i+1)),got:got,err:bad});
+    spNoLive(ln);spOcrPaint(ln);
+  }
+  SP.ocr.busy=0;spOcrPaint(ln);spNoLive(ln);
+}
+ 
 function spRepNoHtml(ln,rec,can){
   const no=(rec&&Array.isArray(rec.no))?rec.no:[];
   return `<div class="sp-rno">
     <div class="sp-rn">🧾 เลขคำสั่งซื้อของวันนี้</div>
+    ${can?`<div class="sp-ocr">
+      <input type="file" id="spOcrIn_${anaEsc(ln)}" accept="image/*" multiple class="hidden"
+        onchange="spOcrGo('${anaEsc(ln)}',this.files);this.value='';">
+      <button type="button" class="btn-go sp-ocrbtn" onclick="spOcrPick('${anaEsc(ln)}')">
+        📷 อัพรูปแคปหน้าจอ — อ่านเลขให้อัตโนมัติ</button>
+      <div class="psub">แคปหน้า <b>คำสั่งซื้อของฉัน</b> ในแอพหลังคีย์เสร็จ แล้วเลือกรูปได้เลย
+        ทีละหลายรูป (สูงสุด ${SP_OCR_MAX} รูป) · เลขที่อ่านได้จะไปอยู่ในช่องด้านล่าง
+        <b>ให้ตรวจก่อนแล้วค่อยกดบันทึก</b></div>
+      <div id="spOcrBox_${anaEsc(ln)}">${spOcrHtml(ln)}</div>
+      <div class="sp-ocror">— หรือพิมพ์เลขเอง —</div></div>`:""}
     <div class="psub">ใส่ <b>6 หลักสุดท้าย</b> ของเลขในแอพก็พอ — เลข <b>1034<u>715426</u></b> ใส่แค่ <b>715426</b>
       · หลายเลขได้ คั่นด้วยเว้นวรรคหรือขึ้นบรรทัดใหม่ · เลขเต็ม 10 หลัก หรือ <b>BDD01…</b> ก็ยังใช้ได้</div>
     ${can?`<textarea id="spRNo_${anaEsc(ln)}" rows="3" inputmode="numeric" autocomplete="off"

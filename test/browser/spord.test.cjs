@@ -2032,6 +2032,87 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    /ห่างกัน/.test(tflow.tx3)&&/BDD0100007003/.test(tflow.tx3),
    tflow.st3+' · '+tflow.bad+' · ห่าง '+tflow.gap);
 
+ /* ================================================================
+  * 17) 📷 อ่านเลขออเดอร์จากภาพแคปหน้าจอ (เจ้าของสั่ง 27 พ.ย. 69)
+  *   *"ให้เซลล์แคปหน้าจอหลังกดคีย์ออเดอร์ … อัพได้ 10-20 รูป แล้วให้ระบบอ่านเลขออเดอร์
+  *     อัตโนมัติ … หรือจะกรอกเองเหมือนเดิมก็ได้ … แล้วเซลล์ตรวจเอาอย่างเดียว"*
+  *   ตัวอ่านจริงถูกทดสอบกับสกรีนช็อตจริงใน ocr-promo.test.cjs — ชุดนี้ทดสอบ "กฎการจับเลข"
+  *   กับ "ท่อที่พาเลขไปลงช่อง" โดยสวมตัวอ่านปลอม จึงไม่ต้องโหลดตัวอ่าน 8 MB
+  * ================================================================ */
+ const ocr=await ev(async()=>{
+   const o={};
+   const R=(w,t)=>spOcrNos({words:w||[],text:t||""});
+   /* เลขออเดอร์ = ตัวเลขติดกัน 10 หลักเท่านั้น */
+   o.hit=R([{t:'#1034715426',c:91}],'คำสั่ง #1034715426').map(x=>x.no+'/'+x.c).join(',');
+   /* ⛔ เลขอื่นบนจอต้องไม่หลุดมา — วัดจากสกรีนช็อตจริงว่ามีอะไรบ้าง */
+   o.inv=R([{t:'luuduni#MF80478502',c:14}],'luuduni#MF80478502').length;
+   o.date=R([{t:'28/11/2026',c:96}],'28/11/2026').length;
+   o.baht=R([{t:'B563.00',c:88}],'B563.00 -B35.28 BO.00').length;
+   o.ver=R([{t:'1.85(86)-v44',c:90}],'1.85(86)-v44').length;
+   o.eleven=R([{t:'12345678901',c:90}],'12345678901').length;
+   /* หนึ่งรูปมีหลายใบ · และสองบรรทัดห้ามติดกันเป็นเลขเดียว */
+   o.two=R([{t:'#1034715426',c:91},{t:'#1033993299',c:92}],
+     '#1034715426\n#1033993299').map(x=>x.no).join(',');
+   o.lines=R([],'12345\n67890').length;
+   /* OCR ตัดเลขเป็นสองคำในบรรทัดเดียว — ต้องยังจับได้ (แต่ไม่รู้ความมั่นใจ) */
+   const sp=R([{t:'#1034',c:80},{t:'715426',c:80}],'คำสั่ง #1034 715426');
+   o.split=sp.map(x=>x.no+'/'+x.c).join(',');
+   return o;});
+ t('📷 จับเลขออเดอร์ 10 หลักจากรูปได้ พร้อมความมั่นใจ',ocr.hit==='1034715426/91',ocr.hit);
+ t('🛟 เลขใบแจ้งหนี้ / วันที่ / เงิน / เวอร์ชันแอพ ต้องไม่ถูกอ่านเป็นเลขออเดอร์',
+   ocr.inv===0&&ocr.date===0&&ocr.baht===0&&ocr.ver===0,
+   JSON.stringify({inv:ocr.inv,date:ocr.date,baht:ocr.baht,ver:ocr.ver}));
+ t('🛟 เลข 11 หลักไม่เดาว่าตัดหลักไหนทิ้ง — ไม่รับเลย',ocr.eleven===0,String(ocr.eleven));
+ t('📷 รูปเดียวมีหลายใบ อ่านได้ครบ',ocr.two==='1034715426,1033993299',ocr.two);
+ t('🛟 เลขคนละบรรทัดห้ามต่อกันเป็นเลขเดียว',ocr.lines===0,String(ocr.lines));
+ t('📷 OCR ตัดเลขเป็นสองคำในบรรทัดเดียว ยังจับได้',ocr.split==='1034715426/null',ocr.split);
+
+ const ocr2=await ev(async()=>{
+   __reset();
+   const T=n=>{const t=new Date();t.setDate(t.getDate()+n);return t.toISOString().slice(0,10)};
+   const D=T(0);
+   CSTOCK.slips['B20261118-01'].g='D';
+   CSTOCK.lots['LO1']={id:'LO1',sl:'B20261118-01',d:D,code:'AAA1',nm:'ครีมทาผิว เอ',
+     cs:40,pc:0,sq:0,ln:'CT11',clr:[],up:1};
+   if(!CSTOCK.key)CSTOCK.key={};
+   CSTOCK.key['B20261118-01|'+D+'|CT11']={it:{'AAA1':{sc:6,sp:0}},by:'sup',at:10};
+   __as('sales','209611','CT11 · เซลล์');_switchTab('spord');
+   SP.view='slip';SP.sid='B20261118-01';SP.sec='rep';SP.day=D;SP.me=1;SP.ocr=null;renderSpord();
+   const o={};
+   o.btn=!!document.querySelector('#spBody .sp-ocrbtn');
+   o.input=!!document.getElementById('spOcrIn_CT11');
+   o.ta=!!document.getElementById('spRNo_CT11');
+   /* สวมตัวอ่านปลอม — ตัวไฟล์เก็บข้อความที่ "อ่านได้" ไว้เอง ตัวอ่านปลอมจึงถอดกลับจาก data URL
+      รูปที่ 1 มีสองใบ · รูปที่ 2 ซ้ำกับใบในรูปแรก · รูปที่ 3 อ่านไม่เจอเลข */
+   const old=window.ocrWords;
+   window.ocrWords=async(url)=>{
+     let s="";try{s=atob(String(url).split(",")[1]||"");}catch(e){}
+     return {words:[],text:s};};
+   const mk=(n,txt)=>new File([new TextEncoder().encode(txt)],n,{type:'image/png'});
+   await spOcrGo('CT11',[mk('a.png','#1034715426\n#1033993299'),
+                         mk('b.png','#1033993299'),
+                         mk('c.png','no order number here')]);
+   window.ocrWords=old;
+   o.val=document.getElementById('spRNo_CT11').value.trim();
+   o.box=document.getElementById('spOcrBox_CT11').textContent.replace(/\s+/g,' ');
+   o.info=document.getElementById('spRNoInfo_CT11').textContent.replace(/\s+/g,' ');
+   /* ห้ามมีอะไรขึ้นเซิร์ฟเวอร์ และห้ามเก็บรูปลง state */
+   o.posted=JSON.stringify(window.__posts||[]).indexOf('image/')>=0;
+   o.inState=JSON.stringify(CSTOCK).indexOf('data:image')>=0;
+   o.max=SP_OCR_MAX;
+   return o;});
+ t('📷 การ์ดของเซลล์มีปุ่มอัพรูป และช่องพิมพ์เองยังอยู่',
+   ocr2.btn&&ocr2.input&&ocr2.ta,JSON.stringify({btn:ocr2.btn,input:ocr2.input,ta:ocr2.ta}));
+ t('📷 อ่านรูปแล้วเลขไปลงในช่องให้เลย ไม่ต้องพิมพ์',
+   ocr2.val==='1034715426 1033993299',ocr2.val);
+ t('🛟 เลขซ้ำข้ามรูป ไม่ใส่ซ้ำ และบอกว่าซ้ำกี่เลข',/ซ้ำ/.test(ocr2.box),ocr2.box.slice(0,120));
+ t('🛟 รูปที่อ่านไม่เจอเลข ต้องบอกเป็นรายใบ ห้ามเงียบ',
+   /c\.png/.test(ocr2.box)&&/ไม่เจอเลขออเดอร์ในรูปนี้/.test(ocr2.box),ocr2.box.slice(-140));
+ t('📷 สรุปใต้ช่องอัพเดตตามเลขที่อ่านได้ทันที',/เลขที่ใส่/.test(ocr2.info),ocr2.info.slice(0,90));
+ t('🔒 รูปไม่ถูกส่งขึ้นเซิร์ฟเวอร์ และไม่ถูกเก็บลงข้อมูลที่ซิงค์',
+   !ocr2.posted&&!ocr2.inState,JSON.stringify({posted:ocr2.posted,state:ocr2.inState}));
+ t('📷 รับได้ถึง 20 รูปต่อครั้ง ตามที่เจ้าของขอ (10-20 รูป)',ocr2.max===20,String(ocr2.max));
+
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};
    __as('wh',null,'ทีมคลัง 1');renderSpord();

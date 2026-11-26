@@ -225,6 +225,34 @@ const srv=http.createServer((rq,rs)=>{
  t('ไม่มีการลบโปรหรือเพิ่มโปรโดยไม่ตั้งใจ',clean.del===0&&clean.items===2,JSON.stringify(clean));
  t('โปรที่ไม่เกี่ยวไม่ถูกแก้',/"name":"Hit of the Month"/.test(clean.p2)&&!/reps/.test(clean.p2),clean.p2);
 
+ /* ================================================================
+  * 10) 📷 อ่าน "เลขออเดอร์" จากภาพแคปหน้าจอของเซลล์ (เจ้าของสั่ง 27 พ.ย. 69)
+  *   ⛔ สกรีนช็อตจริงไม่เข้ารีโป (รีโปเป็นสาธารณะ) — ส่งพาธมาทาง env แล้วเทสต์จะอ่านให้
+  *        SP_OCRSHOT=/path/a.jpg,/path/b.jpg node test/browser/ocr-promo.test.cjs
+  *   ค่าที่คาดไว้ส่งมาทาง SP_OCRSHOT_NO (คั่นด้วยจุลภาค เรียงตามรูป ใช้ | คั่นเลขในรูปเดียวกัน)
+  *   ถ้าไม่ส่ง env มา จะข้ามส่วนนี้ — กฎการจับเลขถูกทดสอบแบบ self-contained ใน spord.test.cjs
+  * ================================================================ */
+ const SHOTS=String(process.env.SP_OCRSHOT||'').split(',').map(s=>s.trim()).filter(Boolean);
+ if(SHOTS.length){
+   const WANT=String(process.env.SP_OCRSHOT_NO||'').split(',').map(s=>s.trim());
+   for(let i=0;i<SHOTS.length;i++){
+     const p=SHOTS[i];
+     const b64='data:image/'+(/\.png$/i.test(p)?'png':'jpeg')+';base64,'+fs.readFileSync(p).toString('base64');
+     const got=await ev(async(src)=>{
+       const t0=performance.now();
+       const o=await ocrWords(src,null,SP_OCR_W);
+       const nos=spOcrNos(o);
+       return {nos:nos.map(x=>x.no),conf:nos.map(x=>x.c),ms:Math.round(performance.now()-t0)};
+     },b64);
+     const exp=(WANT[i]||'').split('|').map(s=>s.trim()).filter(Boolean);
+     t('📷 อ่านเลขออเดอร์จากสกรีนช็อตจริงใบที่ '+(i+1)+' ได้ครบ'+(exp.length?'':' (ไม่ได้ส่งค่าคาดไว้มา)'),
+       exp.length?(got.nos.join(',')===exp.join(',')):(got.nos.length>0),
+       got.nos.join(',')+' · ความมั่นใจ '+got.conf.join(',')+' · '+got.ms+' ms');
+     t('   …และไม่มีเลขอื่นบนจอหลุดมาปน (เลขใบแจ้งหนี้ / วันที่ / เงิน / เวอร์ชันแอพ)',
+       got.nos.every(n=>/^\d{10}$/.test(n)),got.nos.join(','));
+   }
+ }else console.log('  (ข้าม 📷 สกรีนช็อตเลขออเดอร์ — ไม่ได้ตั้ง SP_OCRSHOT)');
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n+(x&&!c?' → '+x:''));});
  const real=errs.filter(e=>!/localStorage/.test(e));
  if(real.length){console.log('PAGE ERRORS:');real.forEach(e=>console.log('   '+e));bad+=real.length;}
