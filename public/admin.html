@@ -10449,6 +10449,8 @@ function cstOk(){
   if(!CSTOCK||typeof CSTOCK!=="object")CSTOCK={lots:{},del:{},slips:{},sdel:{},ex:{},up:0};
   if(!CSTOCK.lots)CSTOCK.lots={};if(!CSTOCK.del)CSTOCK.del={};
   if(!CSTOCK.slips)CSTOCK.slips={};if(!CSTOCK.sdel)CSTOCK.sdel={};if(!CSTOCK.ex)CSTOCK.ex={};
+   
+  if(!CSTOCK.key)CSTOCK.key={};if(!CSTOCK.gin)CSTOCK.gin={};if(!CSTOCK.rep)CSTOCK.rep={};
   return CSTOCK;
 }
  
@@ -13017,7 +13019,7 @@ function spDays(sid){
     const p=k.split("|");if(p[0]!==sid||!p[1])return;
     if(mine&&p[2]&&p[2]!==mine)return;       
     if(spDayHas(m[k]))s[p[1]]=1;});
-  scan(C.key);if(!mine)scan(C.gin);scan(spRepOk().rep);
+  scan(C.key);if(!mine)scan(C.gin);scan(spRepAll());
   return Object.keys(s).sort();
 }
 function spDay(sid){
@@ -13059,7 +13061,8 @@ const SP_TABS=[
   {k:"rpt",ic:"📊",nm:"รายงาน",mgr:1,nonum:1},
   {k:"old",ic:"🧾",nm:"เลขออเดอร์",off:1,nonum:1},
 ];
-const SP_DAYTABS=["key","rep","adm"];
+ 
+const SP_DAYTABS=["key","rep","adm","out"];
 function spTabsOn(sl){
   const g=spGrpOf(sl===undefined?spSlip(SP.sid):sl);
   let n=0;
@@ -13103,9 +13106,12 @@ function spKeyByLine(sid,ymd){
  
 const REP_MAX=10;                       
 function spRepOk(){const C=cstOk();if(!C.rep)C.rep={};return C;}
-function spRepRec(sid,ymd,ln){const r=(spRepOk().rep||{})[spKk(sid,ymd,ln)];return r||null;}
+ 
+function spRepAll(){const C=(typeof cstOk==="function")?cstOk():(typeof CSTOCK!=="undefined"?CSTOCK:null);
+  return (C&&C.rep)||{};}
+function spRepRec(sid,ymd,ln){const r=spRepAll()[spKk(sid,ymd,ln)];return r||null;}
 function spRepByLine(sid,ymd){
-  const C=spRepOk(),out={};
+  const C={rep:spRepAll()},out={};
   Object.keys(C.rep||{}).forEach(k=>{
     const p=k.split("|");if(p[0]!==sid||p[1]!==ymd)return;
     out[p[2]]=C.rep[k];
@@ -13574,7 +13580,7 @@ function spSlipHasMe(sid){
   const ln=spMyLine();if(!ln)return false;
   const hit=m=>Object.keys(m||{}).some(k=>{const p=k.split("|");
     return p[0]===sid&&p[2]===ln&&spDayHas(m[k]);});
-  return hit(spKeyOk().key)||hit(spRepOk().rep);
+  return hit(spKeyOk().key)||hit(spRepAll());
 }
  
 function spRepJobs(sid,ln){
@@ -13593,7 +13599,7 @@ function spRepJobs(sid,ln){
     }
     if(isT)e.has=1;else{e.done=1;e.at=r.at||0;e.n=+r.n||0;}
   });
-  scan(spKeyOk().key,1);scan(spRepOk().rep,0);
+  scan(spKeyOk().key,1);scan(spRepAll(),0);
   return Object.keys(got).map(d=>got[d])
     .sort((a,b)=>String(b.d).localeCompare(String(a.d)));
 }
@@ -13936,7 +13942,7 @@ function spCases(sid){
  
 function spRptOk(){return bdOwner();}
 function spRptDays(sid){
-  const C=spKeyOk(),R=spRepOk(),s={};
+  const C=spKeyOk(),R={rep:spRepAll()},s={};
   const add=m=>Object.keys(m||{}).forEach(k=>{const p=k.split("|");if(p[0]===sid&&p[1])s[p[1]]=1;});
   add(C.key);add(C.gin);add(R.rep);
   ((typeof cstSlipRows==="function"?cstSlipRows(sid):[])||[]).forEach(l=>{
@@ -14251,7 +14257,6 @@ function spMechTxt(m){
 }
 function spSoldHtml(o){
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
-  const money=o.prod.some(t=>t.g||t.v);
   const nmOf={};o.prod.forEach(t=>{nmOf[t.code]=t.nm;});
   const rows=o.prod.filter(t=>t.sRaw.cs||t.sRaw.sh||t.sRaw.pc||t.fRaw.cs||t.fRaw.sh||t.fRaw.pc);
   if(!rows.length)return "";
@@ -14260,8 +14265,7 @@ function spSoldHtml(o){
     if(m.b!==fc)buy[m.b]={m:m,fc:fc};});
    
   return `<div class="panel" style="margin-top:12px"><h3>📋 รายการที่ขายออกไปแล้ว</h3>
-    <div class="psub">จากไฟล์ใบจัดของตามเลข GIN ที่บันทึกไว้ · ของแถมแยกจากของขาย${
-      money?" · เงินเป็นตัวเลขจากไฟล์เอง":" · ไฟล์รุ่นนี้ไม่มีช่องเงิน"}</div>
+    <div class="psub">จากไฟล์ใบจัดของตามเลข GIN ที่บันทึกไว้ · ของแถมแยกจากของขาย</div>
     <div class="tblwrap" style="margin-top:10px"><table class="cst-rt"><thead><tr>
       <th style="text-align:left">สินค้า</th><th style="text-align:right">จำนวนที่ออกไป</th>
       </tr></thead><tbody>${
@@ -14281,10 +14285,8 @@ function spSoldHtml(o){
         <td style="text-align:right;white-space:nowrap">
           ${has(qs)?`<div>ขาย <b>${anaEsc(qs.main)}</b></div>`:""}
           ${has(qf)?`<div style="color:var(--blue)">แถม <b>${anaEsc(qf.main)}</b></div>`:""}
-          ${money&&t.v?`<div class="psub">${THB(t.v)}</div>`:""}</td></tr>`;
-    }).join("")}
-    ${money?`<tr><td style="text-align:left"><b>รวมยอดขาย (NIV)</b></td>
-      <td style="text-align:right"><b>${THB(o.niv)}</b></td></tr>`:""}</tbody></table></div>
+          </td></tr>`;
+    }).join("")}</tbody></table></div>
     <div class="note" style="margin-top:8px;color:var(--mid)">จำนวนร้านนับแบบไม่ซ้ำภายในวันเดียว
       และเลือกวันที่กระจายได้มากที่สุดมาแสดง ไม่ได้บวกข้ามวัน เพราะร้านเดิมสั่งซ้ำได้</div></div>`;
 }
@@ -14328,6 +14330,49 @@ function spDayChk(sid){
   });
 }
 function spChkTog(d){SP.chkD=(SP.chkD===d)?"":d;renderSpord();}
+ 
+function spOutDayHtml(sid,ymd){
+  const one=spDayChk(sid).filter(x=>x.d===ymd)[0]||null;
+  const head=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <h3>📅 ผลตรวจวันที่ ${fmtDate(ymd)}</h3>`;
+  if(!one)return head+`</div><div class="insight" style="margin-top:10px">
+    วันนี้ <b>ยังไม่ได้ตรวจ</b> — ไปที่แท็บ <b>🔎 แอดมินตรวจ</b> ใส่เลข GIN ของวันนี้แล้วกดตรวจ
+    จากนั้นผลจะขึ้นตรงนี้เอง</div></div>`;
+  const bad=one.bad.length;
+  return head+`<div class="cst-fb" style="margin:0">
+      <button class="btn-ghost btn-mini" onclick="spRepXlsx('${anaEsc(sid)}','${ymd}')">⬇️ Excel วันนี้</button>
+      <button class="btn-ghost btn-mini" onclick="spRepPrint('${anaEsc(sid)}','${ymd}')">🖨 PDF วันนี้</button>
+    </div></div>
+    <div class="psub" style="margin-top:4px">GIN ${one.g.map(anaEsc).join(" · ")||"-"}${
+      one.by?" · ตรวจโดย "+anaEsc(one.by):""}${one.at?" "+fmtDateTime(one.at):""}</div>
+    <div class="cards" style="margin-top:10px">
+      <div class="card" style="border-top:3px solid var(--blue)"><div class="k">📲 เซลล์คีย์</div>
+        <div class="v" style="font-size:20px">${spCsTxt(one.keyed.cs,one.keyed.pc)}</div><div class="s">ของวันนี้</div></div>
+      <div class="card"><div class="k">🚚 คลังจัดออก</div>
+        <div class="v" style="font-size:20px">${spCsTxt(one.out.cs,one.out.pc)}</div><div class="s">ขาย + แถม</div></div>
+      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">🔻 ขาด</div>
+        <div class="v down" style="font-size:20px">${spCsTxt(one.short.cs,one.short.pc)}</div>
+        <div class="s">คลังจัดน้อยกว่าที่คีย์</div></div>
+      <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">🔺 เกิน</div>
+        <div class="v" style="font-size:20px">${spCsTxt(one.over.cs,one.over.pc)}</div>
+        <div class="s">คลังจัดมากกว่าที่คีย์</div></div>
+      <div class="card" style="border-top:3px solid ${bad?"var(--bad)":"var(--good)"}">
+        <div class="k">ผลตรวจ</div>
+        <div class="v ${bad?"down":"up"}" style="font-size:18px">${bad?"⚠️ ไม่ตรง "+bad+" รายการ":"✅ ตรงกันทั้งวัน"}</div>
+        <div class="s">${one.n.ok} ตรง · ${one.n.noKey} เซลล์ไม่ได้คีย์ · ${one.n.noAlloc} คลังไม่ได้จัด</div></div>
+    </div>
+    ${bad?`<div class="tblwrap" style="margin-top:12px"><table class="sp-kt sp-rt"><thead><tr>
+      <th class="l">สาย</th><th class="l">สินค้า</th><th class="l">เซลล์คีย์</th>
+      <th class="l">คลังจัด</th><th class="l">ผลต่าง</th></tr></thead><tbody>${
+      one.bad.map(b=>`<tr class="${b.diff<0?"r-diff":"r-nokey"}"><td class="l">${anaEsc(b.ln)}</td>
+        <td class="l"><b>${anaEsc(b.nm||("รหัส "+b.code))}</b>
+          <span class="psub" style="display:block">รหัส ${anaEsc(b.code)}</span></td>
+        <td class="l">${anaEsc(b.k)}</td><td class="l">${anaEsc(b.a)}</td>
+        <td class="l"><b class="${b.diff<0?"down":"mid"}">${anaEsc(b.txt)}</b></td></tr>`).join("")}
+      </tbody></table></div>`:`<div class="insight" style="margin-top:10px">✅ วันนี้ตรงกันทุกรายการ</div>`}
+    ${one.un?`<div class="psub down" style="margin-top:6px">⚠️ มี ${one.un} รายการที่แปลงเป็นลัง/ชิ้นไม่ได้ จึงยังไม่ได้เทียบ</div>`:""}
+  </div>`;
+}
 function spOutChkHtml(sid){
   const L=spDayChk(sid);
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
@@ -14370,7 +14415,7 @@ function spOutChkHtml(sid){
   }).join("");
   return `<div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-      <h3>🚚 ตรวจรายวัน — เซลล์คีย์ ↔ คลังจัดของ</h3>
+      <h3>📒 ประวัติการตรวจย้อนหลัง — ทุกวันในใบนี้</h3>
       <div class="cst-fb" style="margin:0">
         <button class="btn-ghost" onclick="spChkXlsx('${anaEsc(sid)}')">⬇️ Excel ทั้งใบ</button>
         <button class="btn-ghost" onclick="spChkPrint('${anaEsc(sid)}')">🖨 PDF / พิมพ์</button></div></div>
@@ -14452,11 +14497,13 @@ function spChkPrint(sid){
 function spOutAllocHtml(sid){
   const o=spAllOut(sid);
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
+   
+  const day=spOutDayHtml(sid,spDay(sid));
   const head=`<div class="panel">
-    <h3>📦 ยอดรวมที่คลังจัดออกไป — รายสินค้า</h3>
+    <h3>📦 ยอดรวมที่คลังจัดออกไป — รายสินค้า (ทั้งใบ)</h3>
     <div class="psub">นับจากไฟล์ใบจัดของตามเลข GIN ที่แอดมินตรวจไว้ · ใบแบบ
       <b>${SP_GRP.D.ic} ${SP_GRP.D.n}</b> ดูที่ของคลังตรงกับที่เซลล์คีย์หรือไม่เป็นหลัก</div>`;
-  if(!o.days.length)return `<div class="panel"><h3>🚚 คลังจัดส่ง — ตรวจรายวัน</h3>
+  if(!o.days.length)return day+`<div class="panel" style="margin-top:12px"><h3>🚚 คลังจัดส่ง — ตรวจรายวัน</h3>
     <div class="insight" style="margin-top:10px">
     ยังไม่มีผลตรวจของใบนี้ — ให้แอดมินไปที่แท็บ <b>🔎 แอดมินตรวจ</b> ใส่เลข GIN ของแต่ละวันก่อน
     แล้วตัวเลขตรงนี้จะขึ้นเองทั้งหมด</div></div>`;
@@ -14464,7 +14511,7 @@ function spOutAllocHtml(sid){
   const bar=Math.max(0,Math.min(100,pct));
   const diff=o.out-o.cut;
    
-  let h=spOutChkHtml(sid)+head+`<div class="cards" style="margin-top:10px">
+  let h=day+spOutChkHtml(sid)+head+`<div class="cards" style="margin-top:10px">
     <div class="card"><div class="k">ตัดบิลไว้ในใบนี้</div>
       <div class="v" style="font-size:20px">${spCsTxt(o.cutQ.w,o.cutQ.p)}</div><div class="s">ตามใบตัดบิล</div></div>
     <div class="card" style="border-top:3px solid ${cstPctCol(bar)}"><div class="k">คลังจัดออกแล้ว</div>
@@ -15737,7 +15784,7 @@ function spAdmHtml(sid){
     let head="";
     if(r.st!==band){band=r.st;const bd=SBAND[r.st]||SBAND.ok;
       const cnt=shown.filter(x=>x.st===r.st).length;
-      head=`<tr class="sp-band"><td colspan="9" class="l" style="color:${bd[1]}">
+      head=`<tr class="sp-band"><td colspan="6" class="l" style="color:${bd[1]}">
         <b>${bd[0]}</b> · ${cnt} รายการ</td></tr>`;}
     return head+`<tr class="${SCLS[r.st]||""}">
     <td class="l"><b>${anaEsc(r.ln)}</b></td>
@@ -15746,9 +15793,9 @@ function spAdmHtml(sid){
     <td class="l">${r.k?qcell(r.qK):"-"}</td>
     <td class="l">${qcell(r.qS)}</td>
     <td class="l">${qcell(r.qF)}</td>
-    <td>${M(r.gsv)}</td><td>${M(r.niv)}</td><td>${M(r.fNiv)}</td>
     <td>${ST[r.st]}${r.allocDiff&&r.qT?'<br><span class="psub down">คลังจัดจริงไม่เท่าที่สั่ง</span>':""}</td></tr>`;}).join("");
-  const S=cmp.sum||{},FF=S.src==="file";
+   
+  const S=cmp.sum||{};
   h+=`<div class="cards" style="margin-top:12px">
       <div class="card"><div class="k">ขายออกไป</div>
         <div class="v">${spCsTxt(S.cwS,S.cpS)}</div>
@@ -15756,26 +15803,10 @@ function spAdmHtml(sid){
       <div class="card"><div class="k">ของแถม</div>
         <div class="v">${spCsTxt(S.cwF,S.cpF)}</div>
         <div class="s">รวม ${B(S.pcsF)} ชิ้น</div></div>
-      <div class="card" style="border-top:3px solid var(--blue)"><div class="k">💰 ยอดสินค้าในใบนี้${
-        FF?' <span class="sp-ok">จากไฟล์</span>':' <span class="sp-warn">ประเมิน</span>'}</div>
-        <div class="v" style="font-size:20px">${M(S.sNiv)}</div>
-        <div class="s">NIV · GSV ${M(S.sGsv)} · มูลค่าแถม(ประเมิน) ${M(S.fNiv)}</div></div>
-      <div class="card"><div class="k">📄 ยอดทั้งออเดอร์</div>
-        <div class="v" style="font-size:20px">${S.ordHit?M(S.rNiv):'<span style="color:var(--muted)">-</span>'}</div>
-        <div class="s">${S.ordHit?("NIV · GSV "+(S.rNoGsv>=S.ordHit?"ยังไม่มี":M(S.rGsv))+" · "+S.ordHit+"/"+S.ordN+" เลขออเดอร์")
-          :"ยังไม่มีไฟล์ยอดขายของวันนี้"}</div></div>
     </div>
     <div class="psub" style="margin-top:8px">
       • <b>ลัง/ชิ้น</b> = ลังเต็มของแต่ละรหัสบวกกัน และเศษชิ้นของแต่ละรหัสบวกกัน
       (เศษรวมกันเกินหนึ่งลังได้ เพราะแต่ละรหัสขนาดลังไม่เท่ากัน)
-      <br>• <b>ยอดสินค้าในใบนี้</b> = เฉพาะสินค้าที่อยู่ในใบออเดอร์ใบนี้
-      <br>• <b>ยอดทั้งออเดอร์</b> = ยอดของทุกเลขออเดอร์ในรอบนี้ <b>รวมสินค้าตัวอื่นด้วย</b> จึงสูงกว่าเป็นปกติ
-      ${FF?"":'<br><b class="down">⚠️ ไฟล์ใบจัดของรอบนี้ไม่มีช่อง GSV / NIV — ตัวเลขเงินเป็นค่าประเมิน</b>'}
-      ${S.ordWait?'<br><b class="down">⚠️ อีก '+S.ordWait+' เลขยังไม่มีไฟล์ยอดขายของวันนั้น — ยอดจะขึ้นเองเมื่ออัพไฟล์</b>':""}
-      ${(S.ordHit&&S.rNoGsv)?'<br><b class="down">⚠️ '+S.rNoGsv+' เลขยังไม่มี GSV — อัพไฟล์ยอดขายวันนั้นซ้ำอีกครั้ง</b>':""}
-      ${S.noMoney?'<br><b class="down">⚠️ มี '+S.noMoney+' รายการที่คลังจัดแล้วแต่ไฟล์ยังไม่ลงเงิน</b>':""}
-      ${(!FF&&!cmp.round)?'<br><b class="down">— ยังไม่มีไฟล์ราคา จึงยังคิดยอดในใบไม่ได้</b>':""}
-      ${S.noPrice?'<br><b class="down">⚠️ มี '+S.noPrice+' รายการที่ไม่มีราคาในไฟล์</b>':""}
       ${S.noShr?'<br><b class="down">⚠️ มี '+S.noShr+' รายการที่แปลงเป็นลัง/ชิ้นไม่ได้</b>':""}
     </div>
     ${spProdSumHtml(cmp)}
@@ -15785,11 +15816,10 @@ function spAdmHtml(sid){
     <div class="tblwrap" style="margin-top:8px"><table class="sp-kt sp-rt">
     <thead><tr><th class="l">สาย</th><th class="l">สินค้า</th><th class="l">เซลล์คีย์</th>
       <th class="l">คลังจัด · ขาย</th><th class="l">คลังจัด · แถม</th>
-      <th>GSV${FF?"":" (ประเมิน)"}</th><th>NIV${FF?"":" (ประเมิน)"}</th><th>มูลค่าแถม (ประเมิน)</th><th>ผล</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="9" class="l">ไม่มีรายการ</td></tr>'}</tbody></table></div>
+      <th>ผล</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="6" class="l">ไม่มีรายการ</td></tr>'}</tbody></table></div>
     <div class="psub" style="margin-top:8px">อ่านช่อง <b>Sale Order</b> กับ <b>Free Order</b> ของไฟล์
-      · จำนวนแปลงเป็น <b>ลัง + ชิ้น</b> จาก Pack Size ของไฟล์ (ช่อง Q) และขนาดแพ็คที่แกะจากชื่อสินค้า
-      ${FF?"· เงินอ่านจากช่อง <b>GSV</b> และ <b>NIV</b> ท้ายไฟล์":""}</div></div>`;
+      · จำนวนแปลงเป็น <b>ลัง + ชิ้น</b> จาก Pack Size ของไฟล์ (ช่อง Q) และขนาดแพ็คที่แกะจากชื่อสินค้า</div></div>`;
   return h;
 }
  
@@ -15910,12 +15940,11 @@ function spLineSumHtml(cmp,FF){
 function spRepRows(sid,ymd){
   const cmp=spCmp(sid,ymd),g=cmp.gin||{};
   const R2=n=>Math.round((+n||0)*100)/100;
-  const FF=(cmp.sum||{}).src==="file",sfx=FF?"":"(ประเมิน)";
+   
   const head=["สาย","รหัสสินค้า","ชื่อสินค้า","ลังละ(ชิ้น)","แพ็คละ(ชิ้น)",
     "เซลล์คีย์ ลัง","เซลล์คีย์ ชิ้น",
     "คลังขาย ลัง","คลังขาย แพ็ค","คลังขาย ชิ้น","ขายรวม(ชิ้น)",
-    "คลังแถม ลัง","คลังแถม แพ็ค","คลังแถม ชิ้น","แถมรวม(ชิ้น)",
-    "GSV"+sfx,"NIV"+sfx,"มูลค่าแถม(ประเมิน)","ผล"];
+    "คลังแถม ลัง","คลังแถม แพ็ค","คลังแถม ชิ้น","แถมรวม(ชิ้น)","ผล"];
   const ST={ok:"ตรง",diff:"ไม่ตรง",noKey:"เซลล์ไม่ได้คีย์",noAlloc:"คลังไม่ได้จัด"};
   const body=cmp.rows.map(r=>[r.ln,r.code,r.nm||(typeof oname==="function"?oname(r.code):"")||"",
     R2(r.pk),r.shr||"",
@@ -15924,7 +15953,6 @@ function spRepRows(sid,ymd){
     (r.qS&&r.qS.pcs!=null)?R2(r.qS.pcs):"",
     r.aFree?R2(r.aFree.cs):"",r.aFree?R2(r.aFree.sh):"",r.aFree?R2(r.aFree.pc):"",
     (r.qF&&r.qF.pcs!=null)?R2(r.qF.pcs):"",
-    r.gsv!=null?R2(r.gsv):"",r.niv!=null?R2(r.niv):"",r.fNiv!=null?R2(r.fNiv):"",
     ST[r.st]||r.st]);
   return {cmp:cmp,g:g,head:head,body:body};
 }
@@ -15947,20 +15975,9 @@ function spRepMeta(sid,ymd,cmp,g){
     ["ขายออกไป (ลัง)",R2(S.csS)],["ขายออกไป (ชิ้น)",R2(S.pcsS)],
     ["ของแถม (ลัง)",R2(S.csF)],["ของแถม (ชิ้น)",R2(S.pcsF)],
     [""],
-    ["ยอดสินค้าในใบนี้ GSV"+(FF?"":" (ประเมิน)"),R2(S.sGsv)],
-    ["ยอดสินค้าในใบนี้ NIV"+(FF?"":" (ประเมิน)"),R2(S.sNiv)],
-    ["มูลค่าของแถม (ประเมิน)",R2(S.fNiv)],
-    ["แหล่งที่มาของเงิน",FF?"ช่อง GSV / NIV ในไฟล์ใบจัดของ":
-      ("ประเมินจากไฟล์ราคาหัวเสือ"+(cmp.round?" รอบ "+cmp.round.lab:" (ยังไม่มีไฟล์ราคา)"))],
-    [""],
     ["เลขออเดอร์ในรอบนี้",S.ordN],["จับคู่ไฟล์ยอดขายได้",S.ordHit],["รอไฟล์ยอดขาย",S.ordWait],
-    ["ยอดทั้งออเดอร์ NIV",S.ordHit?R2(S.rNiv):""],
-    ["ยอดทั้งออเดอร์ GSV",(S.ordHit&&S.rNoGsv<S.ordHit)?R2(S.rGsv):""],
     [""],
-    ["หมายเหตุ","ยอดทั้งออเดอร์ รวมสินค้าตัวอื่นที่ไม่ได้อยู่ในใบนี้ด้วย จึงสูงกว่าเป็นปกติ"],
-    ["","มูลค่าของแถมเป็นการประเมินเสมอ เพราะไฟล์ลงเงินของแถมเป็น 0 (ให้ฟรี)"],
-    ["",S.noMoney?("คลังจัดแล้วแต่ไฟล์ยังไม่ลงเงิน "+S.noMoney+" รายการ — ปกติคือยังไม่ออกบิล"):""],
-    ["",S.noPrice?("ไม่มีราคาในไฟล์ราคา "+S.noPrice+" รายการ — ไม่ได้คิดมูลค่า ไม่ได้นับเป็น 0"):""],
+    ["หมายเหตุ","ไฟล์นี้เป็นใบตรวจจำนวน — มูลค่า (GSV/NIV) อยู่ที่หน้า 📊 รายงาน ของผู้จัดการ"],
     ["",S.noShr?("แกะขนาดแพ็คไม่ได้ "+S.noShr+" รายการ — ยังแปลงเป็นลัง/ชิ้นไม่ได้"):""],
   ];
 }
@@ -16029,8 +16046,9 @@ function spRepPrint(sid,ymd){
     <table style="border-collapse:collapse;margin-bottom:6px">
       <tr>${bd("เซลล์คีย์รวม",T(P.tot.k))}${bd("คลังจัดออกรวม",T(P.tot.a))}
         ${bd("ตรงกัน",T(P.tot.ok))}${bd("ขาด",T(P.tot.sh))}${bd("เกิน",T(P.tot.ov))}
-        ${bd("NIV ในใบนี้",M(S.sNiv))}${bd("GSV ในใบนี้",M(S.sGsv))}
-        ${bd("NIV ทั้งออเดอร์",S.ordHit?M(S.rNiv):"-")}${bd("เลขออเดอร์",S.ordHit+"/"+S.ordN)}</tr></table>
+        ${bd("ขายออกไป",spCsTxt(S.cwS,S.cpS).replace(/<[^>]*>/g,""))}
+        ${bd("ของแถม",spCsTxt(S.cwF,S.cpF).replace(/<[^>]*>/g,""))}
+        ${bd("เลขออเดอร์",S.ordHit+"/"+S.ordN)}</tr></table>
     <div style="margin-bottom:10px;font-size:11px">${why.length
       ?"<b>ผลต่างมาจาก:</b> "+anaEsc(why.join(" · ")):"<b>ทุกรายการตรงกันหมด ไม่มีผลต่าง</b>"}${
       P.bad?' · <b>แปลงหน่วยไม่ได้ '+P.bad+' แถว</b>':""}</div>
@@ -16043,28 +16061,25 @@ function spRepPrint(sid,ymd){
     <h3 style="margin:0 0 4px;font-size:13px">รายการที่ไม่ตรง (${only.length} จาก ${cmp.rows.length} แถว)</h3>
     ${only.length?(()=>{
        
-      const H=["สาย","รหัส","สินค้า","เซลล์คีย์","คลังจัด · ขาย","คลังจัด · แถม","NIV","ผล"];
+      const H=["สาย","รหัส","สินค้า","เซลล์คีย์","คลังจัด · ขาย","คลังจัด · แถม","ผล"];
       const q=x=>(x&&x.txt&&x.txt!=="0")?x.txt:"-";
       const ST2={ok:"ตรง",diff:"ไม่ตรง",noKey:"เซลล์ไม่ได้คีย์",noAlloc:"คลังไม่ได้จัด"};
       return `<table style="border-collapse:collapse;width:100%">
       <thead><tr>${H.map(h=>`<th style="border:1px solid #999;padding:3px 5px;background:#eee;font-size:10px">${anaEsc(h)}</th>`).join("")}</tr></thead>
       <tbody>${only.map(r=>`<tr style="background:${SBG[r.st]||"#fff"}">${
         [r.ln,r.code,r.nm||(typeof oname==="function"?oname(r.code):"")||"",
-         r.k?q(r.qK):"-",q(r.qS),q(r.qF),r.niv!=null?M(Math.round(r.niv*100)/100):"",
+         r.k?q(r.qK):"-",q(r.qS),q(r.qF),
          ST2[r.st]||r.st].map((v,i)=>
-        `<td style="border:1px solid #999;padding:3px 5px;${i>=3&&i<=6?"text-align:right":""}">${
+        `<td style="border:1px solid #999;padding:3px 5px;${i>=3&&i<=5?"text-align:right":""}">${
           anaEsc(String(v==null?"":v))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;})()
       :`<div style="font-size:11px">ไม่มี — ทุกแถวตรงกัน</div>`}
     <div style="margin-top:6px;font-size:10px;color:#555">ตัวเลขละเอียดระดับ ลัง/แพ็ค/ชิ้น
       ของทุกแถว อยู่ในไฟล์ Excel ชีต "รายการ"</div>
     <div style="margin-top:8px;font-size:10px;color:#555">
       ตรง / ขาด / เกิน คิดทีละรหัสสินค้าแล้วค่อยรวม (ขาดตัวหนึ่งกับเกินอีกตัวหนึ่งไม่ใช่ "ตรง") ·
-      ${S.src==="file"?"GSV/NIV อ่านจากช่องท้ายไฟล์ใบจัดของ"
-        :"GSV/NIV ประเมินจากไฟล์ราคาหัวเสือ"+(cmp.round?" รอบ "+anaEsc(cmp.round.lab):" (ยังไม่มีไฟล์ราคา)")}
-      · มูลค่าของแถมเป็นการประเมินเสมอ (ไฟล์ลงเงินของแถมเป็น 0)
-      · ยอดทั้งออเดอร์รวมสินค้าตัวอื่นนอกใบนี้${S.ordWait?" · รอไฟล์ยอดขายอีก "+S.ordWait+" เลข":""}
-      ${S.noMoney?" · ไฟล์ยังไม่ลงเงิน "+S.noMoney+" รายการ":""}
-      ${S.noPrice?" · ไม่มีราคา "+S.noPrice+" รายการ":""}${S.noShr?" · แกะขนาดแพ็คไม่ได้ "+S.noShr+" รายการ":""}
+      ใบนี้เป็นใบตรวจจำนวน — มูลค่า (GSV/NIV) อยู่ที่หน้า 📊 รายงาน ของผู้จัดการ
+      ${S.ordWait?" · รอไฟล์ยอดขายอีก "+S.ordWait+" เลข":""}${
+      S.noShr?" · แกะขนาดแพ็คไม่ได้ "+S.noShr+" รายการ":""}
       <br>พิมพ์เมื่อ ${fmtDateTime(Date.now())}</div></div>`;
   try{window.print();}catch(e){}
 }
@@ -16314,13 +16329,18 @@ async function parseMaster(name,buf){
   syncToServer();
 }
  
-let PSIV={sec:"in",day:"",ord:"",only:"all"};
+let PSIV={sec:"in",day:"",ord:"",only:"all",q:""};
 const PSI_SECS=[["in","📥 ของเข้าคลัง"],["chk","🔎 สั่งไป → ได้ของหรือยัง"]];
 function psiSetSec(k){PSIV.sec=k;renderPsi();}
 function psiSetDay(v){PSIV.day=v;renderPsi();}
 function psiSetOrd(v){PSIV.ord=v;renderPsi();}
 function psiOnly(v){PSIV.only=v;renderPsi();}
-function psiN(v){return (Math.round((+v||0)*100)/100).toLocaleString();}
+ 
+function psiSetQ(v){PSIV.q=v;renderPsi();
+  const e=document.getElementById("psiQ");
+  if(e){e.focus();try{e.setSelectionRange(e.value.length,e.value.length);}catch(x){}}}
+ 
+function psiN(v){return Math.round(+v||0).toLocaleString();}
  
 function psiOrdDates(){
   const D=(ORDERS&&ORDERS.data)||{};
@@ -16367,27 +16387,32 @@ function psiCheck(ymd){
   if(!day)return {rows:[],has:false};
   const om=orderedMerged(day),dp=day.dropped||{},res=!!day.hasResult;
   const cov=psiCovers(ymd);
+  let overDrop=0,dlvOver=0;
   const rows=Object.keys(om).map(c=>{
-    const ord=+om[c]||0;
+    const ord=Math.round((+om[c]||0)*100)/100;
     const e=(c in dp)?dp[c]:null;
-    const drop=e?dropQ(e):0;
-     
-    const exp=e?(dropD(e)||Math.max(0,(dropO(e)||ord)-drop)):(res?ord:ord);
+    const raw=e?dropQ(e):0;
+    const drop=Math.min(raw,ord);
+    if(raw>ord+0.001)overDrop++;
+    const due=Math.round((ord-drop)*100)/100;
+    if(e&&dropD(e)>due+0.001)dlvOver++;
     const g=psiGotFor(c,ymd);
-    const got=g?g.cs:0;
-    const ex=Math.round(exp*100)/100;
+    const got=g?Math.round(g.cs*100)/100:0;
     let st;
-    if(!cov)st="nofile";
-    else if(ex<=0)st="dropall";
+    if(due<=0)st="dropall";
+    else if(!cov)st="nofile";
     else if(!g)st="wait";
-    else if(got+0.001>=ex)st="full";
+    else if(got+0.001>=due)st="full";
     else st="part";
      
-    const short=(st==="nofile"||st==="dropall")?null:Math.max(0,Math.round((ex-got)*100)/100);
-    return {code:c,ord:ord,drop:drop,exp:ex,got:Math.round(got*100)/100,short:short,
+    const left=(st==="nofile"||st==="dropall")?null:Math.max(0,Math.round((due-got)*100)/100);
+    return {code:c,nm:(typeof oname==="function"?oname(c):"")||"",
+      ord:ord,drop:drop,raw:raw,due:due,got:got,left:left,
       d:g?g.d:"",inv:g?g.inv:[],st:st,res:res};
   });
-  return {rows:rows,has:true,cov:cov,res:res};
+   
+  const extra=Object.keys(dp).filter(c=>!(c in om));
+  return {rows:rows,has:true,cov:cov,res:res,overDrop:overDrop,dlvOver:dlvOver,extra:extra};
 }
 const PSI_ST={full:{i:"✅",t:"เข้าครบแล้ว",p:"g"},part:{i:"🟡",t:"เข้าบางส่วน",p:"w"},
   wait:{i:"🕓",t:"ยังไม่เข้าคลัง",p:"b"},dropall:{i:"⛔",t:"โดน Drop ทั้งหมด",p:""},
@@ -16464,38 +16489,51 @@ function psiChkHtml(){
   const d=PSIV.ord,R=psiCheck(d);
   const cnt={full:0,part:0,wait:0,dropall:0,nofile:0};
   R.rows.forEach(r=>{cnt[r.st]=(cnt[r.st]||0)+1;});
-  const sum=R.rows.reduce((s,r)=>({ord:s.ord+r.ord,drop:s.drop+r.drop,exp:s.exp+r.exp,
-    got:s.got+r.got,short:s.short+(r.short||0),
-    nShort:s.nShort+((r.short||0)>0.001?1:0)}),
-    {ord:0,drop:0,exp:0,got:0,short:0,nShort:0});
+  const sum=R.rows.reduce((s,r)=>({ord:s.ord+r.ord,drop:s.drop+r.drop,due:s.due+r.due,
+    got:s.got+r.got,left:s.left+(r.left||0),
+    nLeft:s.nLeft+((r.left||0)>0.001?1:0)}),
+    {ord:0,drop:0,due:0,got:0,left:0,nLeft:0});
   const only=PSIV.only;
-  const show=R.rows.filter(r=>only==="all"||r.st===only);
+   
+  const q=String(PSIV.q||"").trim().toLowerCase();
+  const hit=r=>!q||String(r.nm||"").toLowerCase().indexOf(q)>=0||String(r.code).indexOf(q)>=0;
+  const show=R.rows.filter(r=>(only==="all"||r.st===only)&&hit(r));
   const opt=ds.slice().reverse().map(x=>`<option value="${x}"${x===d?" selected":""}>${anaEsc(fmtDate(x))}</option>`).join("");
   const chip=(k,nm,n)=>`<button type="button" class="rq-chip${only===k?"":" off"}" onclick="psiOnly('${k}')">${nm} <span class="n">${n}</span></button>`;
   const codes=show.map(r=>r.code);
   const byCode={};show.forEach(r=>byCode[r.code]=r);
+  const PCLS={full:"r-ok",part:"r-nokey",wait:"r-noalloc",dropall:"r-diff",nofile:""};
   const bands=grpByCat(codes).map(g=>{
     const list=poSeqSort(g.list,null,null);
     return {title:`${g.icon} ${g.cat}`,sub:`· ${list.length} รายการ`,
       rows:list.map(c=>{const r=byCode[c],S=PSI_ST[r.st]||PSI_ST.wait;
-        return `<tr><td class="psi-nm" data-l="สินค้า"><b>${anaEsc(oname(c)||("รหัส "+c))}</b>`+
+        return `<tr class="${PCLS[r.st]||""}"><td class="psi-nm" data-l="สินค้า"><b>${anaEsc(r.nm||("รหัส "+c))}</b>`+
             `<div class="psub">รหัส ${anaEsc(c)}</div></td>`+
-          `<td data-l="ศูนย์สั่ง">${psiN(r.ord)}</td>`+
-          `<td data-l="Drop">${r.drop?`<b class="down">${psiN(r.drop)}</b>`:"-"}</td>`+
-          `<td data-l="ควรได้"><b>${psiN(r.exp)}</b></td>`+
-          `<td data-l="เข้าคลังแล้ว">${r.st==="nofile"?'<span class="psub">รอไฟล์</span>':(r.got?`<b>${psiN(r.got)}</b>`:'<span class="psub">0</span>')}</td>`+
-          `<td data-l="ขาดอีก">${r.short===null?'<span class="psub">-</span>'
-            :(r.short>0.001?`<b class="down">${psiN(r.short)}</b>`:'<span class="up">ครบ</span>')}</td>`+
-          `<td data-l="วันที่เข้า">${r.d?anaEsc(fmtDayMon(r.d)):"-"}</td>`+
+          `<td data-l="เราสั่ง"><span>${psiN(r.ord)}</span></td>`+
+          `<td data-l="โดน Drop"><span>${r.drop?`<b class="down">${psiN(r.drop)}</b>`:"-"}</span></td>`+
+          `<td data-l="ต้องได้"><span><b>${psiN(r.due)}</b></span></td>`+
+          `<td data-l="เข้าคลังแล้ว"><span>${r.st==="nofile"?'<span class="psub">รอไฟล์</span>'
+            :(r.got?`<b class="up">${psiN(r.got)}</b>`:'<span class="psub">0</span>')}</span></td>`+
+          `<td data-l="ยังค้าง"><span>${r.left===null?'<span class="psub">-</span>'
+            :(r.left>0.001?`<b class="down">${psiN(r.left)}</b>`:'<span class="up">ครบ</span>')}</span></td>`+
+          `<td data-l="วันที่เข้า"><span>${r.d?anaEsc(fmtDayMon(r.d)):"-"}</span></td>`+
           `<td data-l="สถานะ" style="text-align:left"><span class="pill ${S.p}">${S.i} ${S.t}</span></td></tr>`;})};
   });
-  const tbl=grpTable([{h:"สินค้า",a:"l"},{h:"ศูนย์สั่ง"},{h:"หัก Drop"},{h:"ควรได้"},
-      {h:"เข้าคลังแล้ว"},{h:"ขาดอีก"},{h:"วันที่เข้า"},{h:"สถานะ",a:"l"}],
-    bands,{alwaysBand:true,cls:"psi-tbl",empty:'<div class="insight">ไม่มีรายการที่ตรงกับที่เลือกไว้</div>'});
+  const tbl=grpTable([{h:"สินค้า",a:"l"},{h:"เราสั่ง"},{h:"โดน Drop"},{h:"ต้องได้"},
+      {h:"เข้าคลังแล้ว"},{h:"ยังค้าง"},{h:"วันที่เข้า"},{h:"สถานะ",a:"l"}],
+    bands,{alwaysBand:true,cls:"psi-tbl sp-rt",empty:'<div class="insight">ไม่มีรายการที่ตรงกับที่เลือกไว้</div>'});
+   
+  const warn=[];
+  if(R.overDrop)warn.push(`ใบ Drop ลงจำนวนมากกว่าใบสั่งของเราอยู่ <b>${R.overDrop}</b> รหัส —
+    ระบบหักได้ไม่เกินที่เราสั่ง (ไม่งั้น "ต้องได้" จะติดลบ)`);
+  if(R.dlvOver)warn.push(`ใบ Drop บอกว่าศูนย์ส่งจริงมากกว่า "เราสั่ง − Drop" อยู่ <b>${R.dlvOver}</b> รหัส`);
+  if(R.extra.length)warn.push(`ใบ Drop มี <b>${R.extra.length}</b> รหัสที่ไม่ได้อยู่ในใบสั่งของวันนี้ —
+    ไม่ได้เอามารวมในยอด (${R.extra.slice(0,6).map(anaEsc).join(" · ")}${R.extra.length>6?" …":""})`);
   const note=!R.cov
     ? `<div class="note">⏳ <b>ยังไม่ได้อัพไฟล์ PSI ที่ครอบวันนี้</b> — ระบบจึงยังตอบไม่ได้ว่าของเข้าคลังหรือยัง
          ไม่ใช่ว่าศูนย์ไม่ส่ง · อัพไฟล์ <b>PSI</b> ที่มีวันที่ตั้งแต่ ${anaEsc(fmtDate(d))} เป็นต้นไปสักครั้ง</div>`
-    : (!R.res?`<div class="note">🕓 รอบนี้ <b>ยังไม่ได้อัพใบ Drop</b> — ช่อง "ควรได้" จึงยังใช้จำนวนที่ศูนย์สั่งเต็ม ๆ อยู่</div>`:"");
+    : (!R.res?`<div class="note">🕓 รอบนี้ <b>ยังไม่ได้อัพใบ Drop</b> — ระบบจึงถือว่ายังไม่มีของถูก Drop
+         ช่อง "ต้องได้" จึงเท่ากับที่เราสั่งทั้งหมด</div>`:"");
   return `<div class="panel"><div class="controls" style="margin:0">
       <div class="ctl"><label>ใบสั่งรอบวันที่</label><div class="dstep">
         <button type="button" class="dstep-b" onclick="selStep('psiOrd',-1)" title="รอบก่อนหน้า">◀</button>
@@ -16503,33 +16541,43 @@ function psiChkHtml(){
         <button type="button" class="dstep-b" onclick="selStep('psiOrd',1)" title="รอบถัดไป">▶</button>
       </div></div>
     </div></div>
-    <div class="cards">
-      <div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">ศูนย์สั่ง</div>
+    <div class="cards sp-c5">
+      <div class="card" style="border-top:3px solid var(--blue)"><div class="k" style="color:var(--blue)">📦 เราสั่งไป</div>
         <div class="v">${psiN(sum.ord)}</div><div class="s">ลัง · ${R.rows.length} รายการ</div></div>
-      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">หัก Drop</div>
-        <div class="v down">${sum.drop?psiN(sum.drop):"-"}</div><div class="s">ลัง</div></div>
-      <div class="card"><div class="k">ควรได้</div>
-        <div class="v">${psiN(sum.exp)}</div><div class="s">ลัง · สั่ง − Drop</div></div>
-      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">เข้าคลังแล้ว</div>
-        <div class="v up">${R.cov?psiN(sum.got):"-"}</div><div class="s">${R.cov?"ลัง":"ยังไม่มีไฟล์ PSI"}</div></div>
-      <div class="card" style="border-top:3px solid #8a6500"><div class="k" style="color:#8a6500">ขาดอีก</div>
-        <div class="v" style="color:${sum.short>0.001?"var(--bad)":"var(--good)"}">${
-          R.cov?psiN(sum.short):"-"}</div>
-        <div class="s">${R.cov?(sum.short>0.001?("ลัง · "+sum.nShort+" รายการ"):"ครบทั้งรอบแล้ว")
+      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">⛔ โดน Drop</div>
+        <div class="v down">${sum.drop?psiN(sum.drop):"0"}</div>
+        <div class="s">ลัง · ${cnt.dropall||0} รายการหายทั้งตัว</div></div>
+      <div class="card"><div class="k">🎯 ต้องได้</div>
+        <div class="v">${psiN(sum.due)}</div><div class="s">ลัง · เราสั่ง − Drop</div></div>
+      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">✅ เข้าคลังแล้ว</div>
+        <div class="v up">${R.cov?psiN(sum.got):"-"}</div>
+        <div class="s">${R.cov?("ลัง · "+((cnt.full||0)+" รายการเข้าครบ")):"ยังไม่มีไฟล์ PSI"}</div></div>
+      <div class="card" style="border-top:3px solid #8a6500"><div class="k" style="color:#8a6500">🔴 ยังค้าง</div>
+        <div class="v" style="color:${sum.left>0.001?"var(--bad)":"var(--good)"}">${
+          R.cov?psiN(sum.left):"-"}</div>
+        <div class="s">${R.cov?(sum.left>0.001?("ลัง · "+sum.nLeft+" รายการ"):"เข้าครบทั้งรอบแล้ว")
           :"ยังไม่มีไฟล์ PSI"}</div></div>
     </div>
     <div class="panel"><h3>🔎 ใบสั่งรอบ ${anaEsc(fmtDate(d))} → ของเข้าคลัง</h3>
-      <div class="psub"><b>ควรได้</b> = ศูนย์สั่ง − หัก Drop (จำนวนที่ศูนย์ส่งจริงตามใบ Drop) ·
-        <b>ขาดอีก</b> = ควรได้ − เข้าคลังแล้ว · <b>เข้าคลังแล้ว</b> นับเฉพาะของที่เป็น
-        <b>ของรอบนี้</b> คือของที่ศูนย์ออกบิลตั้งแต่รอบนี้ไปจนถึงก่อนรอบถัดไปของรหัสนั้น —
-        รหัสที่สั่งซ้ำหลายรอบจึงไม่เอาของรอบหลังมานับให้รอบนี้ · หนึ่งรหัสเข้าได้หลายวัน ระบบรวมให้แล้ว</div>
+      <div class="psub"><b>ต้องได้</b> = เราสั่ง − โดน Drop · <b>ยังค้าง</b> = ต้องได้ − เข้าคลังแล้ว
+        <br><b>เข้าคลังแล้ว</b> นับเฉพาะของที่เป็น <b>ของรอบนี้</b> คือของที่ศูนย์ออกบิลตั้งแต่รอบนี้
+        ไปจนถึงก่อนรอบถัดไปของรหัสนั้น — รหัสที่สั่งซ้ำหลายรอบจึงไม่เอาของรอบหลังมานับให้รอบนี้ ·
+        หนึ่งรหัสเข้าได้หลายวัน ระบบรวมให้แล้ว</div>
       ${note}
+      ${warn.length?`<div class="note" style="margin-top:8px">⚠️ ${warn.join("<br>⚠️ ")}</div>`:""}
       <div class="rq-lines" style="margin:10px 0">
         ${chip("all","ทั้งหมด",R.rows.length)}
         ${chip("wait","🕓 ยังไม่เข้า",cnt.wait||0)}
         ${chip("part","🟡 เข้าบางส่วน",cnt.part||0)}
         ${chip("full","✅ เข้าครบ",cnt.full||0)}
         ${cnt.dropall?chip("dropall","⛔ โดน Drop ทั้งหมด",cnt.dropall):""}
+      </div>
+      <div style="margin:0 0 10px">
+        <input id="psiQ" type="search" placeholder="🔎 ค้นชื่อสินค้า หรือรหัส"
+          value="${anaEsc(PSIV.q||"")}" oninput="psiSetQ(this.value)"
+          style="width:100%;max-width:360px;padding:10px 13px;border:1.5px solid var(--line);
+            border-radius:9px;font-size:16px;font-family:inherit">
+        ${q?`<span class="psub" style="margin-left:8px">เจอ <b>${show.length}</b> จาก ${R.rows.length} รายการ</span>`:""}
       </div>
       ${tbl}</div>`;
 }

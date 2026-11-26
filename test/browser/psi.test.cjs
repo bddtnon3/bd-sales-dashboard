@@ -191,18 +191,54 @@ function mkOldMaster(rows){
    const L=psiCheck('2026-11-30'),byL={};L.rows.forEach(r=>byL[r.code]=r);
    return {by:by,cov:R.cov,late:byL['90000001'],lateCov:L.cov};
  });
- t('🔑 ควรได้ = ที่ศูนย์ส่งจริงตามใบ Drop (สั่ง 40 − Drop 5 = 35) และเข้าครบ 35',
-   r5.by['90000001'].exp===35&&r5.by['90000001'].got===35&&r5.by['90000001'].st==='full',
+ t('🔑 ต้องได้ = เราสั่ง − โดน Drop (สั่ง 40 − Drop 5 = 35) และเข้าครบ 35',
+   r5.by['90000001'].due===35&&r5.by['90000001'].got===35&&r5.by['90000001'].st==='full',
    JSON.stringify(r5.by['90000001']));
  t('ไม่ได้อยู่ในใบ Drop = ศูนย์ส่งเต็มจำนวน (160) และเข้าครบ',
-   r5.by['90000002'].exp===160&&r5.by['90000002'].st==='full',JSON.stringify(r5.by['90000002']));
- t('🔑 เข้ามาแค่บางส่วน (ควรได้ 8 เข้า 6) ต้องขึ้นว่าเข้าบางส่วน ไม่ใช่เข้าครบ',
-   r5.by['90000003'].exp===8&&r5.by['90000003'].got===6&&r5.by['90000003'].st==='part',
+   r5.by['90000002'].due===160&&r5.by['90000002'].st==='full',JSON.stringify(r5.by['90000002']));
+ t('🔑 เข้ามาแค่บางส่วน (ต้องได้ 8 เข้า 6) ต้องขึ้นว่าเข้าบางส่วน ไม่ใช่เข้าครบ',
+   r5.by['90000003'].due===8&&r5.by['90000003'].got===6&&r5.by['90000003'].st==='part',
    JSON.stringify(r5.by['90000003']));
  t('โดน Drop ทั้งหมด = ไม่ต้องรอของ',
-   r5.by['90000005'].exp===0&&r5.by['90000005'].st==='dropall',JSON.stringify(r5.by['90000005']));
+   r5.by['90000005'].due===0&&r5.by['90000005'].st==='dropall',JSON.stringify(r5.by['90000005']));
  t('🛟 รอบที่ไฟล์ PSI ยังไปไม่ถึง ต้องขึ้น "ยังไม่มีไฟล์" ไม่ใช่ "ยังไม่เข้า"',
    r5.lateCov===false&&r5.late.st==='nofile',JSON.stringify({cov:r5.lateCov,st:r5.late&&r5.late.st}));
+
+ /* ⚠️ ใบ Drop กับใบสั่งของเราเป็นคนละไฟล์ และลงจำนวนไม่ตรงกันได้ — ของเดิมพอใบ Drop ลงมากกว่า
+    "ควรได้" จะกลายเป็น 0 ทั้งที่เราสั่งไว้จริง (เจ้าของเห็นบนจอ: สั่ง 150 / Drop 300 / ควรได้ 0)
+    กฎใหม่: หักได้ไม่เกินที่เราสั่ง แล้ว **บอกออกมา** ว่ากี่รหัส · และรหัสที่อยู่ในใบ Drop
+    แต่ไม่ได้อยู่ในใบสั่งวันนี้ ต้องนับแยกไว้ ไม่เอามาปนในยอด */
+ const r5c=await ev(()=>{
+   ORDERS.dates.push('2026-11-28');
+   ORDERS.data['2026-11-28']={rounds:{main:{'90000001':150}},
+     dropped:{'90000001':{o:300,d:0,q:300},'90000009':{o:50,d:0,q:50}},hasResult:true};
+   const R=psiCheck('2026-11-28'),by={};R.rows.forEach(r=>by[r.code]=r);
+   PSIV.sec='chk';PSIV.ord='2026-11-28';PSIV.only='all';PSIV.q='';renderPsi();
+   const tx=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
+   /* 🔎 ช่องค้นหา — เจ้าของขอ "มีรายการอะไรบ้าง กดเสิจได้" */
+   const hasBox=!!document.getElementById('psiQ');
+   const dataRows=()=>[...document.querySelectorAll('#psiBody table.psi-tbl tbody tr')]
+     .filter(r=>!r.classList.contains('grp-row')).length;
+   psiSetQ('90000001');const n1=dataRows();
+   psiSetQ('ไม่มีสินค้านี้แน่นอน');const n0=dataRows();
+   psiSetQ('');PSIV.sec='in';renderPsi();
+   delete ORDERS.data['2026-11-28'];
+   ORDERS.dates=ORDERS.dates.filter(x=>x!=='2026-11-28');
+   return {r:by['90000001'],over:R.overDrop,extra:(R.extra||[]).slice(),tx:tx,
+     hasBox:hasBox,n1:n1,n0:n0};
+ });
+ t('🔑 ใบ Drop ลงมากกว่าที่เราสั่ง — หักได้ไม่เกินที่สั่ง "ต้องได้" จึงเป็น 0 ไม่ใช่ติดลบ',
+   r5c.r.ord===150&&r5c.r.raw===300&&r5c.r.drop===150&&r5c.r.due===0&&r5c.r.st==='dropall',
+   JSON.stringify(r5c.r));
+ t('🛟 ...และบอกออกมาว่ามีกี่รหัสที่สองไฟล์ไม่ตรงกัน ไม่กลืนเงียบ ๆ',
+   r5c.over===1&&/ใบ Drop ลงจำนวนมากกว่าใบสั่งของเรา/.test(r5c.tx),
+   r5c.over+' · '+r5c.tx.slice(0,160));
+ t('🛟 รหัสที่อยู่ในใบ Drop แต่ไม่ได้อยู่ในใบสั่งวันนี้ นับแยกไว้ ไม่เอามาปนในยอด',
+   r5c.extra.join(',')==='90000009'&&/ไม่ได้อยู่ในใบสั่งของวันนี้/.test(r5c.tx),
+   r5c.extra.join(','));
+ t('🔑 มีช่องค้นหาสินค้า/รหัส และกรองตารางได้จริง',
+   r5c.hasBox&&r5c.n1===1&&r5c.n0===0,
+   JSON.stringify({box:r5c.hasBox,hit:r5c.n1,miss:r5c.n0}));
 
  /* 🔑 ของที่เข้าคลัง ต้องเป็น "ของรอบที่สั่ง" ไม่ใช่เหมารวมทุกรอบตั้งแต่วันสั่ง
     เจ้าของแจ้ง 27 พ.ย. 69: *"เหมือนมันขึ้นโชว์จำนวนของที่สั่งเป็นวันเดียวกันที่ของเข้า …
@@ -229,12 +265,12 @@ function mkOldMaster(rows){
    psiBust();psiCrBust();psiOrdBust();
    return {a:A,b:B};});
  t('🔑 รอบแรกนับเฉพาะของรอบแรก (เข้า 4 จาก 10) ไม่เอาของรอบหลังมานับให้',
-   r5b.a.got===4&&r5b.a.exp===10&&r5b.a.st==='part',JSON.stringify(r5b.a));
- t('🔑 ...และบอก "ขาดอีกกี่ลัง" ตรง ๆ',r5b.a.short===6,String(r5b.a.short));
- t('🔑 รอบหลังนับของรอบหลัง เข้าครบ 10 และขาด 0',
-   r5b.b.got===10&&r5b.b.st==='full'&&r5b.b.short===0,JSON.stringify(r5b.b));
- t('🛟 ขาดอีก ต้องเป็น null เมื่อยังไม่มีไฟล์ครอบ (ยังไม่รู้ ≠ ครบ)',
-   (()=>{return true;})()&&r5b.a.short!==null,'ok');
+   r5b.a.got===4&&r5b.a.due===10&&r5b.a.st==='part',JSON.stringify(r5b.a));
+ t('🔑 ...และบอก "ยังค้างกี่ลัง" ตรง ๆ',r5b.a.left===6,String(r5b.a.left));
+ t('🔑 รอบหลังนับของรอบหลัง เข้าครบ 10 และค้าง 0',
+   r5b.b.got===10&&r5b.b.st==='full'&&r5b.b.left===0,JSON.stringify(r5b.b));
+ t('🛟 ยังค้าง ต้องเป็น null เมื่อยังไม่มีไฟล์ครอบ (ยังไม่รู้ ≠ ครบ)',
+   (()=>{return true;})()&&r5b.a.left!==null,'ok');
 
  /* ---------------- 6) ป้ายต่อท้ายบนหน้าสถานะการสั่งของ ---------------- */
  const r6=await ev(()=>{
@@ -273,8 +309,8 @@ function mkOldMaster(rows){
  t('หน้าของเข้าคลังโชว์รายการ ลัง และเลขใบกำกับของวันนั้น',
    /90000001/.test(r7.inTxt)&&/3100000001/.test(r7.inTxt),r7.inTxt.slice(0,120));
  t('เปลี่ยนวันแล้วตารางเปลี่ยนตาม',/90000004/.test(r7.d19)&&!/3100000001/.test(r7.d19),r7.d19.slice(0,120));
- t('หน้าเทียบใบสั่งโชว์ทั้งควรได้และเข้าคลังแล้ว',
-   /ควรได้/.test(r7.chk)&&/เข้าคลังแล้ว/.test(r7.chk)&&/เข้าครบแล้ว/.test(r7.chk),r7.chk.slice(0,120));
+ t('หน้าเทียบใบสั่งโชว์ทั้งต้องได้และเข้าคลังแล้ว',
+   /ต้องได้/.test(r7.chk)&&/เข้าคลังแล้ว/.test(r7.chk)&&/เข้าครบแล้ว/.test(r7.chk),r7.chk.slice(0,120));
  t('ตัวกรองสถานะใช้ได้ (เลือก "ยังไม่เข้า" แล้วรายการที่เข้าครบหายไป)',
    !/เข้าครบแล้ว/.test(r7.wait),r7.wait.slice(0,160));
  t('🛟 หน้านี้อ่านอย่างเดียว — กดทุกปุ่มแล้วข้อมูลทุกก้อนเหมือนเดิมเป๊ะ',r7.same);

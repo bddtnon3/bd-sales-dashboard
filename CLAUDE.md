@@ -793,13 +793,28 @@ code, never printed.
   the one that matters**: ✅ เข้าครบ · 🟡 เข้าบางส่วน · 🕓 ยังไม่เข้า · ⛔ โดน Drop ทั้งหมด, plus
   **⏳ ยังไม่ได้อัพไฟล์ PSI ที่ครอบวันนี้** — "no file yet" and "not arrived" are different facts and
   must never share a cell, or a day nobody has uploaded reads as the centre failing to ship.
+  **🔁 The reconciliation was rewritten on 28 Nov 26** because the numbers stopped making sense —
+  the owner's screen read *ศูนย์สั่ง 150 · หัก DROP 300 · ควรได้ 0* (*"ตัวเลขมันมั่วซั่วไปหมดแล้ว
+  ใช้ตรรกะใหม่แล้วแกะมันออกมาหน่อย เจ้าของบริษัทแค่ต้องการดูว่า ในวันนั้นเค้าสั่งของไป แล้วของทยอย
+  เข้าหมดหรือยัง และยังคงค้างอีกกี่ลัง มีรายการอะไรบ้าง กดเสิจได้"*). The cause: **the Drop file and
+  our own order form are two different files and can state different quantities**, and the old rule
+  mixed three sources (`dropD` → `dropO` → our own), so when they disagreed it printed a figure no
+  file had ever stated, and the subtraction could run past zero. There is now **one rule, readable
+  in a line**: **ต้องได้ = เราสั่ง − โดน Drop**, then **ยังค้าง = ต้องได้ − เข้าคลังแล้ว**, where
+  **โดน Drop is capped at what we ordered** (`min`) so ต้องได้ can never go negative. Where the two
+  files disagree the page **says so in a banner** — how many codes the Drop file over-states, how
+  many it delivers more than ต้องได้, and the codes it carries that are not in our order at all
+  (those are counted separately, never folded into the totals). `dropall` is decided **before**
+  `nofile`, because a fully-dropped code needs no PSI file to answer it. The page also gained the
+  **search box** he asked for (name or code) and tints each row by status. Quantities print as whole
+  cases (`psiN`), since both files count in CS.
   **The receive date is appended to the existing order-status badge** (`psiPill` inside
   `reqStatusCell`), so every page that shows a product's order status — the manager's combined
   request table, the rep's own request page, ขอแล้วสั่งไม่ได้ — gains it at once. It is a **separate
   pill, never merged into the Drop badge**: the Drop file is the centre's answer, PSI is our
   warehouse's, and they are different steps. With no PSI file covering that round the pill is
   **silent**, never "ยังไม่เข้า". Prove it with
-  **`node test/browser/psi.test.cjs`** (49 checks, self-contained with made-up codes; 47 with the
+  **`node test/browser/psi.test.cjs`** (53 checks, self-contained with made-up codes; 47 with the
   real file via `PSI_FILE=/path/PSI_ddmmyyyy.xlsx`, which never enters the repo) plus the `PSI`
   cases in `merge-safety`.
   The **📋 สถานะออเดอร์ (ขาย)** tab group (`renderOtrk`) answers *"where is this order?"* for the whole
@@ -1230,6 +1245,23 @@ code, never printed.
   **The old per-line report (`spCmpLines`/`spLineSumHtml`/`spLnCs`) is retired, not deleted** — the
   functions still work; putting the one call back in `spAdmHtml` restores the whole block, the same
   way a retired tab comes back. `SP.cmpLn` and its filter are untouched and now driven by the chips.
+  **💰 No money on the admin's two tabs** (owner, 28 Nov 26: *"ส่วนของคลังจัด และแอดมินตรวจ เอาพวก
+  NIV ออกไปละกัน เอาไปขึ้นโชว์ในรายงานของ manager อย่างเดียว แอดมินจะได้ไม่งง แล้วเน้นตรวจจำนวน
+  ชิ้น และลัง แทน"*). ③ แอดมินตรวจ and ④ คลังจัดส่ง — screens, Excel and PDF alike — carry only
+  quantities; **📊 รายงาน is the one place GSV/NIV appear**, and it is owner-gated (`spRptOk`).
+  **This hides, it does not stop storing**: `spCmp` still computes `sum.sNiv`/`sGsv`/`fNiv` and the
+  check still saves `gin[].rows[].g`/`.v`, so the report reads back unchanged and nothing has to be
+  re-uploaded if he ever wants a figure back on the admin screen.
+  **📅 ④ คลังจัดส่ง opens on the calendar, like ③** (`SP_DAYTABS` now holds `out`, owner 28 Nov 26:
+  *"flow งานส่วนของหน้าแอดมินตรวจมาคลังจัด ทำให้ต่อมาเป็นปฏิทินเหมือนกันหน่อย … โดยการเลือกวันใน
+  ปฏิทินเป็นสเตปแรก"*). Picking the day is step 1, then **`spOutDayHtml`** shows that day's result
+  — keyed · shipped · short · over · the products that disagree, with that day's Excel/PDF — and the
+  all-days table stays below as **📒 ประวัติการตรวจย้อนหลัง**. All three read the same `spDayChk`.
+  ⚠️ Putting a day picker on a read-only tab exposed a real defect: `spRepRec`/`spRepByLine` called
+  `spRepOk()`, which **creates `CSTOCK.rep` while merely drawing the page**. `cstOk()` now builds
+  `key`/`gin`/`rep` with the rest of CSTOCK's permanent shape and the readers go through
+  **`spRepAll()`**, which creates nothing — a read-only page must never become a change that a later
+  save carries to the server.
   **📋 รายการที่ขายออกไปแล้ว** (`spSoldHtml`) is the ตัวกระจาย page's detail list: per product, cases
   sold, free goods, **how many shops it reached** and the money, all from the stored check. `alPick`
   counts distinct shops per line·code and stores **only the count** (`rows[].sh`, `shop[code]`), never
@@ -1314,7 +1346,7 @@ code, never printed.
   one — otherwise the button asked for the file while the answer was already on its way. Reading is
   manager-only, like the check itself. Prove it with the `api/alloc.js` cases in
   **`node test/merge-safety.test.mjs`** (330 checks) and the round-trip cases in
-  **`node test/browser/spord.test.cjs`** (302 checks).
+  **`node test/browser/spord.test.cjs`** (304 checks).
   **④ คลังจัดส่ง is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
@@ -1555,7 +1587,7 @@ code, never printed.
   on consecutive lines would join into a 20-digit run and both vanish. Typing is still there,
   unchanged, under *— หรือพิมพ์เลขเอง —*. The picker is not a data upload, so the one-upload-button
   rule does not apply. Prove it with the self-contained cases in
-  **`node test/browser/spord.test.cjs`** (302 checks) and, against the owner's real screenshots,
+  **`node test/browser/spord.test.cjs`** (304 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
@@ -1676,7 +1708,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (302 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (304 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1689,7 +1721,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (302 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (304 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

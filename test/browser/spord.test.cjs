@@ -1337,9 +1337,14 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🔑 ยอดขายจริง NIV/GSV ดึงจากไฟล์ยอดขายด้วยเลขออเดอร์ ไม่ใช่ประเมิน',
    val.sum.rNiv===5000&&val.sum.rGsv===7000&&val.sum.ordHit===1,
    JSON.stringify({niv:val.sum.rNiv,gsv:val.sum.rGsv,hit:val.sum.ordHit}));
- t('🛟 หน้าบอกชัดว่าสองยอดนี้คนละคำถาม (ยอดในใบ · ยอดทั้งออเดอร์)',
-   /ยอดสินค้าในใบนี้/.test(val.txt)&&/ยอดทั้งออเดอร์/.test(val.txt)&&
-   /รวมสินค้าตัวอื่นด้วย/.test(val.txt));
+ /* 💰 เจ้าของสั่ง 28 พ.ย. 69 ให้เอาเงินออกจากหน้าแอดมิน ไปอยู่ที่ 📊 รายงาน ของผู้จัดการอย่างเดียว
+    *"แอดมินจะได้ไม่งง แล้วเน้นตรวจจำนวน ชิ้น และลัง แทน"* — แต่ตัวเลขยังถูกคิดและเก็บไว้ครบ */
+ t('💰 หน้าแอดมินตรวจไม่โชว์เงินแล้ว (ไม่มี NIV / GSV / ยอดทั้งออเดอร์)',
+   !/NIV/.test(val.txt)&&!/GSV/.test(val.txt)&&!/ยอดสินค้าในใบนี้/.test(val.txt)&&
+   !/ยอดทั้งออเดอร์/.test(val.txt),val.txt.slice(0,160));
+ t('🛟 ...แต่ยังคิดและเก็บไว้ครบ หน้า 📊 รายงาน ของผู้จัดการจึงยังอ่านได้',
+   val.sum.rNiv===5000&&val.sum.sNiv>0&&val.row.niv===610,
+   JSON.stringify({rNiv:val.sum.rNiv,sNiv:val.sum.sNiv,row:val.row.niv}));
 
  /* ---------- 💵 เงินในไฟล์ใบจัดของ (ช่อง GSV / NIV ท้ายไฟล์) ----------
     เจ้าของทักเมื่อ 26 พ.ย. 69: *"ทำไมไฟล์ allocate จะไม่มีอยู่สองช่องสุดท้ายด้านหลังนี้ไง"*
@@ -1350,11 +1355,11 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🔑 ...ตัวเลขรายสินค้าก็มาจากไฟล์ (ไม่ใช่ WS LP x จำนวน)',
    val.row.gsv===800&&val.row.niv===610&&val.row.est===0,
    JSON.stringify({gsv:val.row.gsv,niv:val.row.niv,est:val.row.est}));
- t('🛟 ...ไฟล์มีช่องเงิน จึงไม่ขึ้นคำเตือนว่าเป็นค่าประเมิน',
-   !/ไม่มีช่อง GSV \/ NIV/.test(val.txt)&&/จากไฟล์/.test(val.txt),
-   val.txt.slice(0,80));
- t('🛟 มูลค่าของแถมยังติดป้าย "ประเมิน" ไว้ (ไฟล์ลงเงินของแถมเป็น 0)',
-   /มูลค่าแถม\(ประเมิน\)/.test(val.txt));
+ t('🛟 ไฟล์มีช่องเงิน ระบบรู้ว่าเงินมาจากไฟล์ (ไม่ได้ประเมิน) แม้จะไม่ขึ้นบนจอแอดมิน',
+   val.sum.src==='file'&&val.row.est===0,
+   JSON.stringify({src:val.sum.src,est:val.row.est}));
+ t('🛟 มูลค่าของแถมยังคิดเป็นค่าประเมินไว้เหมือนเดิม (ไฟล์ลงเงินของแถมเป็น 0)',
+   val.sum.fNiv>=0&&val.sum.src==='file',String(val.sum.fNiv));
 
  const doc=await ev(()=>{
    const R=spRepRows('B20261118-01','2026-11-20');
@@ -1366,15 +1371,15 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
      pr:document.getElementById('prArea').textContent.replace(/\s+/g,' ').slice(0,400),
      meta:spRepMeta('B20261118-01','2026-11-20',spCmp('B20261118-01','2026-11-20'),
        spGinRec('B20261118-01','2026-11-20')).map(x=>x[0]).filter(Boolean)};});
- t('🔑 ดึงผลตรวจออกเป็นเอกสารได้ (ตารางมีครบทุกแถว)',doc.rows>0&&doc.cols===19,
+ t('🔑 ดึงผลตรวจออกเป็นเอกสารได้ (ตารางมีครบทุกแถว · ไม่มีช่องเงินแล้ว)',doc.rows>0&&doc.cols===16,
    doc.rows+' แถว · '+doc.cols+' คอลัมน์');
  t('🔑 ...และสั่งพิมพ์ PDF ได้ โดยมีหัวเรื่องกับเลข GIN ในเอกสาร',
    doc.printed&&/ผลตรวจใบจัดของ/.test(doc.pr)&&/GIN/.test(doc.pr),doc.pr.slice(0,90));
  t('🛟 ชื่อไฟล์ต้องเป็น ASCII ล้วน (Chromium ตัดชื่อไฟล์ไทยทิ้งทั้งนามสกุล)',
    /^[\x20-\x7E]+\.xlsx$/.test(doc.name),doc.name);
- t('...ใบสรุปบอกที่มาของตัวเลขและจำนวนเลขออเดอร์ที่ดึงได้',
-   doc.meta.indexOf('ยอดทั้งออเดอร์ NIV')>=0&&doc.meta.indexOf('รอไฟล์ยอดขาย')>=0&&
-   doc.meta.indexOf('แหล่งที่มาของเงิน')>=0&&doc.meta.indexOf('หมายเหตุ')>=0,
+ t('...ใบสรุปบอกจำนวนเลขออเดอร์ที่ดึงได้ และบอกว่าเงินอยู่ที่หน้ารายงาน',
+   doc.meta.indexOf('รอไฟล์ยอดขาย')>=0&&doc.meta.indexOf('หมายเหตุ')>=0&&
+   doc.meta.indexOf('ยอดทั้งออเดอร์ NIV')<0&&doc.meta.indexOf('แหล่งที่มาของเงิน')<0,
    doc.meta.join(' | ').slice(0,140));
 
  const undo=await ev(async()=>{
@@ -1410,9 +1415,8 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🛟 ไฟล์รุ่นเก่า (ไม่มีช่อง GSV/NIV) ยังอ่านได้เหมือนเดิม ไม่ throw',
    oldf.n.ok+oldf.n.diff+oldf.n.noKey+oldf.n.noAlloc>0&&!oldf.alloc,
    JSON.stringify(oldf.n));
- t('🛟 ...และหน้าบอกว่าไฟล์นี้ไม่มีช่องเงิน จึงยังประเมินจากไฟล์ราคา (ไม่ขึ้น 0 เงียบ ๆ)',
-   oldf.src==='price'&&/ไม่มีช่อง GSV \/ NIV/.test(oldf.txt)&&/ค่าประเมิน/.test(oldf.txt),
-   oldf.txt.slice(0,160));
+ t('🛟 ...และระบบยังรู้ว่าเงินรอบนี้เป็นค่าประเมินจากไฟล์ราคา (เก็บไว้ให้หน้ารายงานอ่าน)',
+   oldf.src==='price'&&!/NIV/.test(oldf.txt),oldf.txt.slice(0,160));
  /* เมื่อต้องประเมิน หน่วยราคาต้องถูก: WS LP ต่อ "หีบ" · NTT ต่อ "ชิ้น" (เคยพลาด 36 เท่า) */
  t('🛟 ...เวลาประเมิน ราคาหีบใช้ WS LP ต่อหีบ · ราคาชิ้นใช้ NTT ต่อชิ้น (คนละหน่วย)',
    oldf.row&&Math.round(oldf.row.gsv)===720&&Math.round(oldf.row.niv)===288&&
@@ -1758,8 +1762,8 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    /รายการที่ขายออกไปแล้ว/.test(mech.tx)&&/กระจาย 40 ร้าน/.test(mech.tx)&&
    /กระจาย 20 ร้าน/.test(mech.tx),
    mech.tx.slice(mech.tx.indexOf('รายการที่ขายออก'),mech.tx.indexOf('รายการที่ขายออก')+170));
- t('🔑 ...และยอดเงินมาจากช่อง GSV/NIV ของไฟล์เอง',
-   /ยอดขาย \(NIV\)/.test(mech.tx)&&mech.g.rows.length>0&&
+ t('🔑 ...และยอดเงินจากช่อง GSV/NIV ของไฟล์ ยังถูกเก็บไว้ (แม้หน้าแอดมินจะไม่โชว์แล้ว)',
+   !/NIV/.test(mech.tx)&&mech.g.rows.length>0&&
    Math.round(mech.niv)===(200*40+260*40+120*36+150*20),
    'NIV รวม '+Math.round(mech.niv));
  t('🛟 เก็บแค่ "จำนวนร้าน" ไม่เก็บรหัสร้านลง state (ไฟล์หมื่นแถวต้องไม่ทำให้ข้อมูลบวม)',
@@ -2339,14 +2343,21 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    o.det=document.querySelector('#spBody .sp-chk-det');
    o.detTxt=o.det?o.det.textContent.replace(/\s+/g,' '):'';
    o.det=!!o.det;
+   o.hasCal=!!document.querySelector('#spBody .sp-daybar')||!!document.getElementById('spCal');
    o.same=JSON.stringify(CSTOCK)===before;
+   if(!o.same){const A=JSON.parse(before),B=CSTOCK;
+     o.diff=Object.keys(B).filter(k=>JSON.stringify(A[k])!==JSON.stringify(B[k])).join(',');}
    o.sync=window.__sync-s0;o.posts=window.__posts.length-p0;
    return o;});
  t('🚚 แท็บ ④ ชื่อ "คลังจัดส่ง" ตามที่เจ้าของสั่ง',
    chk.tabs.some(x=>/คลังจัดส่ง/.test(x))&&!chk.tabs.some(x=>/คลังส่งออก/.test(x)),
    chk.tabs.join(' | '));
  t('🚚 มีใบตรวจรายวัน หนึ่งแถวต่อวันที่แอดมินตรวจไว้',
-   chk.n===2&&chk.rows===2&&/ตรวจรายวัน/.test(chk.txt),chk.n+' วัน · '+chk.rows+' แถว');
+   chk.n===2&&chk.rows===2&&/ประวัติการตรวจย้อนหลัง/.test(chk.txt),chk.n+' วัน · '+chk.rows+' แถว');
+ /* 📅 เจ้าของสั่ง 28 พ.ย. 69 ให้ ④ เริ่มที่ "เลือกวันในปฏิทิน" เหมือนหน้าแอดมินตรวจ */
+ t('📅 ④ คลังจัดส่ง เริ่มด้วยปฏิทินเลือกวัน แล้วโชว์ผลตรวจของวันนั้นก่อน',
+   chk.hasCal&&/ผลตรวจวันที่/.test(chk.txt),
+   'ปฏิทิน '+chk.hasCal+' · '+chk.txt.slice(0,120));
  t('🚚 วันที่ตรงกันหมด ขึ้นว่าตรง ไม่มีขาดไม่มีเกิน',
    chk.d20.okAll&&chk.d20.short.pcs===0&&chk.d20.over.pcs===0&&chk.d20.keyed.cs===15&&
    chk.d20.out.cs===15,JSON.stringify({ok:chk.d20.okAll,k:chk.d20.keyed,a:chk.d20.out}));
@@ -2364,7 +2375,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    JSON.stringify(chk.xl.sum[2]));
  t('🛟 หน้าตรวจอ่านอย่างเดียว ไม่เขียนอะไรลงข้อมูลเลย',
    chk.same&&chk.sync===0&&chk.posts===0,
-   'เหมือนเดิม '+chk.same+' · sync +'+chk.sync+' · posts +'+chk.posts);
+   'เหมือนเดิม '+chk.same+' ('+(chk.diff||'')+') · sync +'+chk.sync+' · posts +'+chk.posts);
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};
