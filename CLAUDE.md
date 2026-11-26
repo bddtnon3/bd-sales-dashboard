@@ -1284,6 +1284,17 @@ code, never printed.
   `n` takes the **max**, and `h` is unioned by timestamp — newest-wins on the whole record would let
   a stale tab reset the edit quota and drop a history entry. A rep's page shows **only their own
   line**; the 12-line target table is the supervisor's.
+  **🗑 The supervisor (and the manager) can edit or cancel a line's target**
+  (`spKeyLineCancel`, owner 27 Nov 26: *"ส่วนของที่ซุปคีย์ให้กระจาย ฝากปรับแก้ ให้เข้าแก้จำนวนหรือ
+  กดยกเลิกการสั่งได้ ทำได้ทั้งซุปและ Manager"*). The quantities were always editable — what was
+  missing is cancelling a line outright, so a 🗑 ยกเลิกสายนี้ button sits beside 💾 บันทึกสายนี้ on
+  every line that **already has** a target. It writes **`it:{}` over the record, never a key
+  delete** — a tab left open since morning would union a deleted key straight back, the same rule
+  as `ok:0` on a sub-order and `del:1` on an admin check — so `spKeyByLine` now filters through
+  `spDayHas`, or a cancelled line would keep reading as "target set, 0 cases". The permission is
+  unchanged and still lives in `api/spord.js` (`act:"key"` = `sup` or `manager`); the button only
+  opens the door. **What the rep already keyed is a different record with a different owner**
+  (`CSTOCK.rep`) and is never touched: cancelling a target does not erase work already done.
   **📅 The rep's day list spans every slip, not just the one they opened**
   (`spRepJobsAll`/`spGoJob`, owner 27 Nov 26: *"ช่วยปรับให้เซลล์เห็นทุกวันหน่อย ตอนนี้มันเห็นแค่
   วันนั้นวันเดียว เพราะซุปจะสั่งล่วงหน้าหลายวัน เซลล์มากดสั่งวันข้างหน้าได้"*). `spRepJobs` reads
@@ -1308,14 +1319,16 @@ code, never printed.
   จะต้องกรอกคำสั่งซื้อทั้งหมดในออเดอร์นั้น ๆ เข้าไปในช่องล่างสุด เพื่อให้แอดมินตรวจสอบจากระบบเองได้เลย …
   เซลล์จะมากรอกเลขใบสั่งซื้อ แอดมินมากรอกเลข GIN ระบบตรวจสอบจำนวนว่าตรงกันทั้งหมดไหม"*). One box takes
   any number of numbers — pasted, space/comma/newline separated — and accepts the full `BDD01…`,
-  the whole app number (`1034715426`) or, since 27 Nov 26, **just its last 5 digits** (`15426`),
-  which is what the owner asked reps to type. That shortcut was measured first, across the real
-  daily-sales and Transaction files (**2,096 distinct reference numbers over 12 days**): **5-digit
-  tails collide in 10 groups / 20 numbers (~1%)** while **6-digit tails collide in none** — so five
-  digits is nearly, but not quite, unique, and the margin shrinks as more months accumulate.
+  the whole app number (`1034715426`) or, since 27 Nov 26, **just its last `SP_TAIL` digits**
+  (`715426`). The owner first asked for five and then, the same day, *"Ok ปรับให้เป็นหกหลัก"* —
+  which is exactly what the measurement supports. Measured across the real daily-sales and
+  Transaction files (**2,096 distinct reference numbers over 12 days**): **5-digit tails collide in
+  10 groups / 20 numbers (~1%)** while **6-digit tails collide in none**. Six is the value; the
+  collision handling stays anyway, because the margin shrinks as more months accumulate.
   `spOrdFind` therefore tries the tail **last**, after the full reference and the order number, and
   when a tail matches **more than one distinct reference** it returns `{amb:[…]}` and the page says
-  *"ตรงกับหลายใบ ใส่เพิ่มอีกสัก 1-2 หลัก"* — it never picks one. A sale and its return note quoting
+  *"ตรงกับหลายใบ ใส่เลขเต็มให้ไม่ซ้ำ"* — it never picks one. A tail SHORTER than `SP_TAIL` is
+  refused outright, or the shortcut would get less unique the more someone shortens it. A sale and its return note quoting
   the same reference are not a collision (BDD01 still wins), and when the caller knows the typing
   rep's line (`spLineCode`) the candidates are filtered to it first, which settles most of them. It is **a field on the record that already
   exists** (`CSTOCK.rep[...].no`), never a new section, so `mergeRepOne` carries it and a tab from
@@ -1440,7 +1453,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (239 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (247 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1453,7 +1466,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (239 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (247 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

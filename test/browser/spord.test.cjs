@@ -998,30 +998,39 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
    lnSum.back+' / '+lnSum.rowsAll+' · cmpLn="'+lnSum.off+'"');
  t('🛟 สรุปรายสายคิดสดตอนวาดหน้า ไม่เขียนอะไรลงข้อมูลเลย',lnSum.same);
 
- /* 🔢 เลขออเดอร์ 5 หลักสุดท้าย (เจ้าของสั่ง 27 พ.ย. 69)
+ /* 🔢 เลขออเดอร์หลักท้าย (เจ้าของสั่ง 27 พ.ย. 69: 5 หลัก แล้วเปลี่ยนเป็น "หกหลัก" วันเดียวกัน)
     วัดก่อนทำจากไฟล์จริง 2,096 เลข 12 วัน: 5 หลักท้ายชนกัน 10 กลุ่ม (~1%) · 6 หลักท้ายชน 0
-    ⇒ รับ 5 หลักได้ แต่เมื่อชนกันต้อง "บอก" ห้ามเดาเอาใบใดใบหนึ่ง */
+    เทสต์อ่าน SP_TAIL เอง ปรับจำนวนหลักแล้วเทสต์ตามทันที · และยังต้องมีเคส "ชนกันแล้วบอก" */
  const tail=await ev(()=>{
-   STOREDAILY.ord['BDD0100007001']={s:'4862383',l:'209611',d:'2026-11-20',v:3500,c:3,cs:12,pc:0,rf:'1034715426'};
-   STOREDAILY.ord['BDD0400007001']={s:'4862383',l:'209611',d:'2026-11-20',v:-100,c:1,cs:1,pc:0,rf:'1034715426'};
-   STOREDAILY.ord['BDD0100007002']={s:'4862365',l:'209611',d:'2026-11-20',v:900,c:1,cs:4,pc:0,rf:'1034715428'};
-   STOREDAILY.ord['BDD0100007003']={s:'4862366',l:'209612',d:'2026-11-20',v:800,c:1,cs:3,pc:0,rf:'1034915428'};
+   const T=SP_TAIL;
+   const mk=(pre,tl)=>pre+tl;                 /* เลขอ้างอิง = หน้า + หลักท้ายที่เซลล์พิมพ์ */
+   const A='7'+'15426'.slice(-(T-1));          /* ท้าย T หลักของใบ A */
+   const B='7'+'15428'.slice(-(T-1));          /* ท้าย T หลักของใบ B (จะทำให้ชนกัน) */
+   const refA='1034'+A, refB='1034'+B, refB2='1039'+B;   /* refB กับ refB2 ท้ายเหมือนกันเป๊ะ */
+   STOREDAILY.ord['BDD0100007001']={s:'4862383',l:'209611',d:'2026-11-20',v:3500,c:3,cs:12,pc:0,rf:refA};
+   STOREDAILY.ord['BDD0400007001']={s:'4862383',l:'209611',d:'2026-11-20',v:-100,c:1,cs:1,pc:0,rf:refA};
+   STOREDAILY.ord['BDD0100007002']={s:'4862365',l:'209611',d:'2026-11-20',v:900,c:1,cs:4,pc:0,rf:refB};
+   STOREDAILY.ord['BDD0100007003']={s:'4862366',l:'209612',d:'2026-11-20',v:800,c:1,cs:3,pc:0,rf:refB2};
    spRfBust();
    const f=(t,h)=>{const r=spOrdFind(t,h);return r?(r.amb?('AMB:'+r.amb.join('/')):(r.no+'|'+r.via)):null;};
-   const o=spNoSum(['15426','15428'],{l:'209611'});
-   return {full:f('1034715426'),tail:f('15426'),hash:f('#15426'),none:f('00000'),
+   const o=spNoSum([A,B],{l:'209611'});
+   return {T:T,A:A,B:B,refA:refA,
+     full:f(refA),tail:f(A),hash:f('#'+A),none:f('0'.repeat(T)),
+     short:f(A.slice(1)),                      /* สั้นกว่าที่กำหนด = ไม่เอา */
      bdd:f('BDD0100007002'),
-     hint:f('15428',{l:'209611'}),noHint:f('15428'),
+     hint:f(B,{l:'209611'}),noHint:f(B),
      sum:{found:o.found,cs:o.cs,amb:o.amb.length},
-     info:spNoInfoHtml(['15428'],'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ')};
+     info:spNoInfoHtml([B],'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ')};
  });
- t('🔑 เซลล์กรอกแค่ 5 หลักสุดท้ายก็หาเจอ',tail.tail==='BDD0100007001|tail'&&tail.hash===tail.tail,
-   tail.tail+' · '+tail.hash);
+ t('🔑 เซลล์กรอกแค่หลักท้ายก็หาเจอ (ตอนนี้ตั้งไว้ 6 หลัก)',
+   tail.T===6&&tail.tail==='BDD0100007001|tail'&&tail.hash===tail.tail,
+   tail.T+' หลัก · '+tail.A+' → '+tail.tail);
+ t('🛟 สั้นกว่าที่กำหนดไม่รับ — ไม่งั้นยิ่งสั้นยิ่งชนกันง่าย',tail.short===null,String(tail.short));
  t('...และเลขเต็ม 10 หลัก กับเลข BDD ก็ยังใช้ได้เหมือนเดิม',
    tail.full==='BDD0100007001|rf'&&tail.bdd==='BDD0100007002|no',tail.full+' · '+tail.bdd);
  t('🛟 ใบคืนของที่อ้างเลขเดียวกัน ไม่นับว่าชน และใบขายชนะเสมอ',
    tail.tail.indexOf('BDD01')===0,tail.tail);
- t('🔑 5 หลักชนกันคนละสาย — ใช้สายของคนกรอกตัดสินให้',tail.hint==='BDD0100007002|tail',tail.hint);
+ t('🔑 หลักท้ายชนกันคนละสาย — ใช้สายของคนกรอกตัดสินให้',tail.hint==='BDD0100007002|tail',tail.hint);
  t('🛟 ชนกันแล้วไม่รู้สาย ต้องบอกว่าตรงกับหลายใบ ห้ามเดา',
    /^AMB:/.test(tail.noHint)&&/ตรงกับหลายใบ/.test(tail.info),tail.noHint+' · '+tail.info.slice(0,90));
  t('   …และยอดรวมไม่นับเลขที่กำกวมเข้าไปด้วย',
@@ -1071,6 +1080,50 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
  t('🔑 กดวันของใบอื่น ระบบเปิดใบนั้นแล้วไปวันนั้นให้เลย',
    days.sid==='B20261128-02'&&(days.day==='2026-11-28'||days.day==='2026-12-02'),
    days.sid+' / '+days.day);
+
+ /* 🗑 ซุป/ผู้จัดการ แก้จำนวนหรือยกเลิกเป้าของสายหนึ่งได้ (เจ้าของสั่ง 27 พ.ย. 69) */
+ const cxl=await ev(async()=>{
+   const D='2026-12-05';
+   CSTOCK.key['B20261118-01|'+D+'|CT11']={it:{'64849613':{sc:7,sp:0}},by:'sup',byName:'หัวหน้าเซลล์',at:20};
+   CSTOCK.key['B20261118-01|'+D+'|CT12']={it:{'64849613':{sc:3,sp:0}},by:'sup',byName:'หัวหน้าเซลล์',at:20};
+   CSTOCK.rep['B20261118-01|'+D+'|CT11']={it:{},no:['BDD0100007001'],by:'209611',at:21,n:1,h:[]};
+   __as('sup',null,'หัวหน้าเซลล์');
+   SP.sid='B20261118-01';SP.view='slip';CSTOCK.slips['B20261118-01'].g='D';
+   SP.sec='key';SP.day=D;renderSpord();
+   const btn=[...document.querySelectorAll('.sp-cancel')].length;
+   const dbg={sec:SP.sec,day:SP.day,view:SP.view,sid:SP.sid,sup:spSupOk(),
+     txt:(document.getElementById('spBody')||{textContent:''}).textContent.replace(/\s+/g,' ').slice(0,160)};
+   const before=Object.keys(spKeyByLine('B20261118-01',D)).sort().join(',');
+   window.confirm=()=>true;
+   const b0=window.__posts.length;
+   await spKeyLineCancel('B20261118-01',D,'CT11');
+   const post=window.__posts[window.__posts.length-1];
+   const after=Object.keys(spKeyByLine('B20261118-01',D)).sort().join(',');
+   const raw=CSTOCK.key['B20261118-01|'+D+'|CT11'];
+   const repKept=!!CSTOCK.rep['B20261118-01|'+D+'|CT11'];
+   /* เซลล์กดไม่ได้ */
+   __as('sales','209611','CT11 · เซลล์');
+   const b1=window.__posts.length;
+   await spKeyLineCancel('B20261118-01',D,'CT12');
+   const salesBlocked=window.__posts.length===b1;
+   /* ผู้จัดการกดได้ */
+   __as('manager',null,'แอดมิน 1');
+   await spKeyLineCancel('B20261118-01',D,'CT12');
+   const mgrOk=Object.keys(spKeyByLine('B20261118-01',D)).length===0;
+   return {btn:btn,dbg:dbg,before:before,after:after,raw:raw,repKept:repKept,
+     posts:window.__posts.length-b0,post:post,salesBlocked:salesBlocked,mgrOk:mgrOk};
+ });
+ t('🔑 หน้าซุปจดมีปุ่มยกเลิกของแต่ละสายที่ตั้งเป้าไว้แล้ว',cxl.btn>=2,cxl.btn+' ปุ่ม · '+JSON.stringify(cxl.dbg));
+ t('🔑 กดยกเลิกแล้วสายนั้นหายจากรายการที่ตั้งเป้าไว้',
+   cxl.before==='CT11,CT12'&&cxl.after==='CT12',cxl.before+' → '+cxl.after);
+ t('🛟 ยกเลิก = เขียนเรคอร์ดเปล่าทับ ไม่ใช่ลบคีย์ (แท็บเก่าจะ union กลับมา)',
+   !!cxl.raw&&!!cxl.raw.it&&Object.keys(cxl.raw.it).length===0,JSON.stringify(cxl.raw));
+ t('...และส่งขึ้นเซิร์ฟเวอร์ด้วย act:"key" เหมือนการบันทึกปกติ',
+   cxl.post&&cxl.post.u==='/api/spord'&&cxl.post.b.act==='key'&&
+   Object.keys(cxl.post.b.it||{}).length===0,JSON.stringify(cxl.post&&cxl.post.b.act));
+ t('🛟 จำนวนที่เซลล์คีย์ไปแล้วไม่ถูกลบไปด้วย (คนละเรคอร์ด คนละเจ้าของ)',cxl.repKept);
+ t('🔒 เซลล์กดยกเลิกไม่ได้ ไม่มีอะไรถูกส่งขึ้นเซิร์ฟเวอร์',cxl.salesBlocked);
+ t('🔑 ผู้จัดการก็ยกเลิกได้ ไม่ใช่แค่หัวหน้าเซลล์',cxl.mgrOk);
  /* ⚠️ ของเดิมเคยตรวจว่า "หน้าเขียนบอก" — เลิกเขียนบอกแล้ว (ข้อมูลภายใน) จึงตรวจของจริงแทน:
     ไฟล์ทั้งก้อนต้องไม่ถูกส่งขึ้นเซิร์ฟเวอร์ ส่งขึ้นเฉพาะผลสรุปของรหัสที่อยู่ในใบนั้น */
  t('🛟 ไฟล์ allocation ไม่ถูกส่งขึ้นเซิร์ฟเวอร์ — ส่งแค่ผลตรวจของรหัสในใบนี้',

@@ -136,6 +136,10 @@ tbody tr:hover{background:var(--bg)}
 .modal-actions .btn-ghost{background:var(--bg);color:var(--muted);border:1.5px solid var(--line)}
 .modal-actions .btn-ghost:hover{background:#ECEFF4;color:var(--ink)}
 /* ปุ่มเล็กในหัวข้อ (เช่น 🔒 ล็อก) — เล็กลงได้ แต่ยังต้องอ่านออกและกดถูก */
+/* ปุ่มยกเลิกต้องอ่านออกว่าเป็นการลบ ไม่ใช่ปุ่มบันทึกอีกใบ — แดงอ่อนตั้งแต่ยังไม่กด */
+.btn-mini.sp-cancel{color:var(--bad);border-color:#F3C9C4}
+.btn-mini.sp-cancel:hover{background:#FDECEA;border-color:var(--bad)}
+.btn-mini.sp-cancel:active{background:var(--bad);border-color:var(--bad);color:#fff}
 .btn-mini{background:#fff;color:var(--blue);border:1.5px solid var(--line);border-radius:9px;
   padding:5px 11px;font-size:12.5px;font-weight:700;line-height:1.2;min-height:32px;cursor:pointer;
   display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
@@ -14125,10 +14129,14 @@ function spKeySum(sid,ymd){
   return out;
 }
 /* ยอดที่คีย์ แยกรายสาย ของวันนั้น */
+/* ⚠️ ยกเลิกการสั่งของสายหนึ่ง = เขียนเรคอร์ดเปล่าทับ (ไม่ใช่ลบคีย์ — แท็บเก่าจะ union กลับมา
+   ตามกฎ ok:0 / v:0 ของหน้านี้) ฉะนั้นต้องกรองด้วย spDayHas ไม่งั้นสายที่ยกเลิกแล้ว
+   ยังขึ้นว่า "ตั้งเป้าแล้ว เป้า 0 ลัง" ทั้งที่ซุปยกเลิกไปแล้ว */
 function spKeyByLine(sid,ymd){
   const C=spKeyOk(),out={};
   Object.keys(C.key||{}).forEach(k=>{
     const p=k.split("|");if(p[0]!==sid||p[1]!==ymd)return;
+    if(!spDayHas(C.key[k]))return;
     out[p[2]]=C.key[k];
   });
   return out;
@@ -14251,7 +14259,7 @@ function spNoInfoHtml(list,ln){
   /* 5 หลักตรงกับหลายใบ — ห้ามเดา ให้คนกรอกเติมอีกสักหลัก */
   if(o.amb.length)h+=`<div class="psub down" style="margin-top:4px">⚠️ <b>${o.amb.length}</b> เลขตรงกับหลายใบ ${
     o.amb.slice(0,3).map(x=>"<b>"+anaEsc(x.t)+"</b> → "+x.list.slice(0,3).map(anaEsc).join(" / ")).join(" · ")
-    }${o.amb.length>3?" …":""} — ใส่เพิ่มอีกสัก 1-2 หลักให้ไม่ซ้ำ</div>`;
+    }${o.amb.length>3?" …":""} — ใส่เลขเต็มให้ไม่ซ้ำ</div>`;
   return h;
 }
 /* เป้า vs ที่คีย์จริง รายสาย — ตัวเลขที่ซุปใช้ตาม */
@@ -15977,7 +15985,10 @@ function spKeyHtml(sid){
       rec?` <span class="psub">· กรอกโดย ${anaEsc(rec.byName||rec.by||"")} ${
         rec.at?fmtDateTime(rec.at):""}</span>`:""}</span>${
       can?`<button type="button" class="btn-mini"
-        onclick="spKeyLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกสายนี้</button>`:""}</div></td></tr>`
+        onclick="spKeyLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกสายนี้</button>`+
+        (rec?`<button type="button" class="btn-mini sp-cancel"
+          onclick="spKeyLineCancel('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')"
+          title="ลบเป้าของสายนี้ในวันนี้">🗑 ยกเลิกสายนี้</button>`:""):""}</div></td></tr>`
       +rows
       +`<tr class="sub"><td class="c1">รวมสาย ${anaEsc(ln)}</td><td class="c2"></td>
         <td>${(sub.sc+sub.fc)||"-"}</td><td>${(sub.sp+sub.fp)||"-"}</td></tr>`;
@@ -16120,7 +16131,7 @@ function spRepMineHtml(sid,ymd){
     <h3>🧾 กรอกเลขออเดอร์ · ${fmtDate(ymd)}${
       ymd>todayISO()?' <span class="pill">ล่วงหน้า</span>':(ymd===todayISO()?"":' <span class="pill">ย้อนหลัง</span>')}</h3>
     <div class="psub">${can
-      ? "คีย์ของในแอพตามรายการข้างล่างให้ครบ แล้ว<b>เอาเลขออเดอร์ 5 หลักสุดท้ายมาใส่ในช่องสีน้ำเงิน</b> ·"+
+      ? "คีย์ของในแอพตามรายการข้างล่างให้ครบ แล้ว<b>เอาเลขออเดอร์ 6 หลักสุดท้ายมาใส่ในช่องสีน้ำเงิน</b> ·"+
         " ไม่ต้องกรอกจำนวนแล้ว ระบบดึงจำนวนจากเลขออเดอร์ให้เอง · "+
         "เพิ่มเลขระหว่างวันแล้วกดบันทึกซ้ำได้ "+(left<=3?"<b>(วันนี้เหลืออีก "+left+" ครั้ง)</b>"
                                                       :"(วันนี้เหลืออีก "+left+" ครั้ง)")
@@ -16142,10 +16153,11 @@ function spRepNoHtml(ln,rec,can){
   const no=(rec&&Array.isArray(rec.no))?rec.no:[];
   return `<div class="sp-rno">
     <div class="sp-rn">🧾 เลขคำสั่งซื้อของวันนี้</div>
-    <div class="psub">ใส่ <b>5 หลักสุดท้าย</b> ของเลขในแอพก็พอ — เลข <b>10347<u>15426</u></b> ใส่แค่ <b>15426</b>\n      · หลายเลขได้ คั่นด้วยเว้นวรรคหรือขึ้นบรรทัดใหม่ · เลขเต็ม 10 หลัก หรือ <b>BDD01…</b> ก็ยังใช้ได้</div>
+    <div class="psub">ใส่ <b>6 หลักสุดท้าย</b> ของเลขในแอพก็พอ — เลข <b>1034<u>715426</u></b> ใส่แค่ <b>715426</b>
+      · หลายเลขได้ คั่นด้วยเว้นวรรคหรือขึ้นบรรทัดใหม่ · เลขเต็ม 10 หลัก หรือ <b>BDD01…</b> ก็ยังใช้ได้</div>
     ${can?`<textarea id="spRNo_${anaEsc(ln)}" rows="3" inputmode="numeric" autocomplete="off"
       oninput="spNoLive('${anaEsc(ln)}')"
-      placeholder="15426 15427 15428 …"
+      placeholder="715426 715427 715428 …"
       style="width:100%;margin-top:8px;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:16px;font-family:inherit">${
       anaEsc(no.join(" "))}</textarea>`
       :`<div style="margin-top:8px;font-size:15px;word-break:break-all">${no.length?anaEsc(no.join(" · ")):'<span class="psub">ยังไม่ได้ใส่เลข</span>'}</div>`}
@@ -16181,7 +16193,7 @@ function spRfIdx(){
   Object.keys(ix).forEach(k=>{
     const r=ix[k];if(!r)return;
     if(r.rf){const t=String(r.rf).trim();if(t){(rf[t]=rf[t]||[]).push(k);
-      /* ดัชนี "ท้าย 5 หลัก" — เจ้าของสั่ง 27 พ.ย. 69 ให้เซลล์กรอกแค่ 5 หลักสุดท้ายพอ */
+      /* ดัชนี "ท้าย SP_TAIL หลัก" — เจ้าของสั่ง 27 พ.ย. 69 ให้เซลล์กรอกแค่หลักท้ายพอ */
       const d=t.replace(/\D/g,"");
       if(d.length>=SP_TAIL){const tl=d.slice(-SP_TAIL);(tail[tl]=tail[tl]||[]).push(k);}}}
     if(r.inv){const t=String(r.inv).trim();if(t)(inv[t]=inv[t]||[]).push(k);}
@@ -16200,14 +16212,16 @@ function spNoSplit(txt){
 }
 const SP_NOMAX=80;
 /* ============================================================================
- * 🔢 เลขที่เซลล์กรอก — 5 หลักสุดท้ายก็พอ (เจ้าของสั่ง 27 พ.ย. 69)
- *   *"ขอปรับรหัสเลขออเดอร์จาก 10 หลัก ให้เซลล์กรอก 5 หลักสุดท้ายเท่านั้นพอ"*
+ * 🔢 เลขที่เซลล์กรอก — 6 หลักสุดท้ายก็พอ (เจ้าของสั่ง 27 พ.ย. 69)
+ *   *"ขอปรับรหัสเลขออเดอร์จาก 10 หลัก ให้เซลล์กรอก 5 หลักสุดท้ายเท่านั้นพอ"* แล้ววันเดียวกัน
+ *   *"Ok ปรับให้เป็นหกหลัก"*
  *
  * 📏 วัดก่อนทำ จากไฟล์จริงสองไฟล์ (ยอดขาย 15-23 พ.ย. + รายการสั่งซื้อถึง 26 พ.ย.
  *    รวมเลขอ้างอิงที่ไม่ซ้ำกัน 2,096 เลข ครอบ 12 วัน):
  *      5 หลักสุดท้าย ชนกัน **10 กลุ่ม / 20 เลข (~1%)**
  *      6 หลักสุดท้าย ชนกัน **0**
- *    ⇒ 5 หลัก "เกือบ" ไม่ซ้ำ แต่ไม่ใช่ไม่ซ้ำ และยิ่งเก็บหลายเดือนยิ่งมีโอกาสชนมากขึ้น
+ *    เริ่มที่ 5 หลักตามที่เจ้าของสั่ง แล้ววันเดียวกันเขาสั่งเปลี่ยนเป็น **6 หลัก** ซึ่งตรงกับผลวัดพอดี
+ *    — กฎที่เหลือไม่เปลี่ยน: ชนเมื่อไหร่ต้องบอก ห้ามเดา เพราะเก็บหลายเดือนเข้าก็มีโอกาสชนอยู่ดี
  *
  * ⚠️ ฉะนั้นเมื่อ 5 หลักตรงกับ **เลขอ้างอิงที่ต่างกันมากกว่าหนึ่งเลข** ห้ามเดาเอาใบใดใบหนึ่ง
  *    ต้องคืน {amb:[...]} ให้หน้าเว็บบอกว่า "ตรงกับหลายใบ ใส่เพิ่มอีกสักหลัก"
@@ -16215,7 +16229,7 @@ const SP_NOMAX=80;
  * ⚠️ ถ้ารู้ "สายของคนกรอก" ให้ใช้กรองก่อน แล้วค่อยตัดสิน — เซลล์กรอกของสายตัวเอง
  *    โอกาสที่สองใบในสายเดียวกันจะลงท้ายเหมือนกันต่ำกว่ามาก
  * ==========================================================================*/
-const SP_TAIL=5;
+const SP_TAIL=6;
 /* CT11 → 209611 · ใช้กรองตอน 5 หลักท้ายชนกัน (FOCUS_MAP เก็บไว้กลับทาง) */
 let _spLnCode=null;
 function spLineCode(ln){
@@ -16390,6 +16404,28 @@ function spTgtPrint(sid,ymd){
       <tbody>${R.body.map(r=>`<tr>${r.map(td).join("")}</tr>`).join("")}</tbody></table>
     <div style="margin-top:8px;font-size:10px;color:#555">พิมพ์เมื่อ ${fmtDateTime(Date.now())}</div></div>`;
   try{window.print();}catch(e){}
+}
+/* ============================================================================
+ * 🗑 ยกเลิกเป้าของสายหนึ่งในวันหนึ่ง — เจ้าของสั่ง 27 พ.ย. 69
+ *   *"ส่วนของที่ซุปคีย์ให้กระจาย ฝากปรับแก้ ให้เข้าแก้จำนวนหรือกดยกเลิกการสั่งได้
+ *     ทำได้ทั้งซุปและ Manager"*
+ *
+ * ⚠️ เขียน `it:{}` ทับ **ห้ามลบคีย์ทิ้ง** — แท็บที่ค้างไว้จะ union มันกลับมาทันที
+ *    (กฎเดียวกับ `ok:0` ของขั้นตอนย่อย และ `del:1` ของผลตรวจแอดมิน)
+ * ⚠️ ฝั่งเซิร์ฟเวอร์รับ `it` ว่างอยู่แล้ว และสิทธิ์ยังตรวจที่ `api/spord.js` เหมือนเดิม
+ *    (`act:"key"` = sup หรือ manager) — ปุ่มนี้ไม่ได้ให้สิทธิ์ใคร แค่เปิดทางให้กด
+ * ⚠️ จำนวนที่ **เซลล์คีย์ไปแล้ว** (CSTOCK.rep) ไม่ถูกแตะ — เป็นคนละเรคอร์ด คนละเจ้าของ
+ *    ยกเลิกเป้าไม่ได้แปลว่าลบงานที่เซลล์ทำไปแล้ว หน้าจึงยังโชว์ของเซลล์ต่อ
+ * ==========================================================================*/
+async function spKeyLineCancel(sid,ymd,ln){
+  if(!spSupOk()){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return;}
+  const rec=spKeyByLine(sid,ymd)[ln];
+  if(!rec){alert("สายนี้ยังไม่ได้ตั้งเป้าในวันนี้");return;}
+  const n=Object.keys(rec.it||{}).length;
+  if(!confirm("ยกเลิกเป้าของสาย "+ln+" วันที่ "+fmtDate(ymd)+" ?\n\n"+
+    "จะลบรายการที่ตั้งไว้ "+n+" รายการของสายนี้ออก\n"+
+    "จำนวนที่เซลล์คีย์ไปแล้วไม่ถูกลบ"))return;
+  await spKeySave(sid,ymd,ln,{});
 }
 function spKeyLineSave(sid,ymd,ln){
   const codes=spSlipCodes(sid),it={};
