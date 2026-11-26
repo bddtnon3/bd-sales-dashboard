@@ -14197,7 +14197,7 @@ async function spRepSave(sid,ymd,ln,it,no){
   C.rep[k]={it:it,no:nos,by:ent.by,byName:ent.byName,at:ent.at,
     n:(+(rec&&rec.n)||0)+(mine?1:0),
     h:(((rec&&rec.h)||[]).concat([ent])).slice(-20)};
-  renderSpord();
+  spRenderKeep();
   try{
     const r=await bdPost("/api/spord",{act:"rep",sid:sid,d:ymd,ln:ln,it:it,no:nos});
     if(!r||!r.ok)throw new Error((r&&r.error)||"บันทึกไม่สำเร็จ");
@@ -14206,7 +14206,7 @@ async function spRepSave(sid,ymd,ln,it,no){
     return true;
   }catch(e){
     if(old)C.rep[k]=old;else delete C.rep[k];
-    renderSpord();
+    spRenderKeep();
     alert("บันทึกไม่สำเร็จ: "+e.message+"\nตัวเลขเดิมยังอยู่ครบ ลองใหม่อีกครั้ง");
     return false;
   }
@@ -14230,11 +14230,11 @@ function spRepLineSave(sid,ymd,ln){
 function spNoLive(ln){
   const el=document.getElementById("spRNo_"+ln),box=document.getElementById("spRNoInfo_"+ln);
   if(!el||!box)return;
-  box.innerHTML=spNoInfoHtml(spNoSplit(el.value));
+  box.innerHTML=spNoInfoHtml(spNoSplit(el.value),ln);
 }
-function spNoInfoHtml(list){
+function spNoInfoHtml(list,ln){
   if(!list.length)return `<span class="psub">ยังไม่ได้ใส่เลข</span>`;
-  const o=spNoSum(list);
+  const o=spNoSum(list,ln?{l:spLineCode(ln)}:null);
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
   const chip=(t,c)=>`<span class="pm-item${c?" "+c:""}">${t}</span>`;
   let h=`<div class="pm-chips" style="margin:6px 0 0">`+
@@ -14248,6 +14248,10 @@ function spNoInfoHtml(list){
   if(o.wait)h+=`<div class="psub" style="margin-top:4px">⏳ <b>${o.wait}</b> ใบยังไม่รู้จำนวนลัง — รอไฟล์ยอดขายของวันนั้น</div>`;
   if(o.miss.length)h+=`<div class="psub down" style="margin-top:4px">❓ ยังหาไม่เจอ <b>${o.miss.length}</b> เลข (${
     o.miss.slice(0,6).map(anaEsc).join(" · ")}${o.miss.length>6?" …":""}) — ถ้าเพิ่งคีย์วันนี้ ให้รอไฟล์ของวันนั้นก่อน</div>`;
+  /* 5 หลักตรงกับหลายใบ — ห้ามเดา ให้คนกรอกเติมอีกสักหลัก */
+  if(o.amb.length)h+=`<div class="psub down" style="margin-top:4px">⚠️ <b>${o.amb.length}</b> เลขตรงกับหลายใบ ${
+    o.amb.slice(0,3).map(x=>"<b>"+anaEsc(x.t)+"</b> → "+x.list.slice(0,3).map(anaEsc).join(" / ")).join(" · ")
+    }${o.amb.length>3?" …":""} — ใส่เพิ่มอีกสัก 1-2 หลักให้ไม่ซ้ำ</div>`;
   return h;
 }
 /* เป้า vs ที่คีย์จริง รายสาย — ตัวเลขที่ซุปใช้ตาม */
@@ -14262,7 +14266,7 @@ function spTrack(sid,ymd){
     /* 🧾 ตัวเลขที่ "ระบบ" หาได้เองจากเลขคำสั่งซื้อที่เซลล์กรอก — ไม่ได้มาจากการพิมพ์จำนวน
        เป็นตัวที่แอดมินใช้ตรวจว่าที่เซลล์คีย์มาตรงกับของจริงไหม */
     const nos=(rp[ln]&&Array.isArray(rp[ln].no))?rp[ln].no:[];
-    const O=nos.length?spNoSum(nos):null;
+    const O=nos.length?spNoSum(nos,{l:spLineCode(ln)}):null;
     /* เซลล์ไม่พิมพ์จำนวนแล้ว — ถ้าไม่มีตัวเลขที่พิมพ์ไว้ ให้ใช้ยอดที่ระบบหาจากเลขออเดอร์
        (ของเก่าที่เคยพิมพ์ไว้ ยังใช้ตัวที่พิมพ์เหมือนเดิม) */
     if(O&&!R.cs&&!R.pc){R={cs:O.cs,pc:0};rSrc="order";}
@@ -14301,6 +14305,36 @@ function spHistOpen(sid,ymd,ln){
 function spHistClose(){const el=document.getElementById("spHistBox");if(el)el.classList.add("hidden");}
 
 /* ---------- บันทึก (ผ่าน api/spord.js — sup ส่ง state ทั้งก้อนไม่ได้) ---------- */
+/* ============================================================================
+ * 💾 วาดหน้าใหม่โดย "คงตำแหน่งที่เลื่อนไว้" — เจ้าของแจ้ง 27 พ.ย. 69
+ *   *"หน้านี้เวลากดบันทึก มันเด้งขึ้นไปสายบนสุด"*
+ *
+ * สาเหตุ: renderSpord เขียน innerHTML ทั้งก้อน หน้าจึงหดเหลือศูนย์ชั่วขณะ เบราว์เซอร์
+ * บีบ scrollY เป็น 0 แล้วพอเนื้อหากลับมาก็ค้างอยู่บนสุด ซุปที่กรอกสายที่ 8 แล้วกดบันทึก
+ * จึงถูกดีดกลับไปสายแรกทุกครั้ง
+ *
+ * ⚠️ ต้องคืนตำแหน่งสองรอบ — ครั้งแรกทันที และอีกครั้งใน requestAnimationFrame
+ *    เพราะเบราว์เซอร์คำนวณความสูงจริงเสร็จหลังจากนั้น ถ้าคืนรอบเดียวยังเด้งอยู่
+ * ⚠️ คืน "ช่องที่กำลังพิมพ์" ด้วย ไม่งั้นโฟกัสหลุดทุกครั้งที่บันทึก
+ * ⚠️ ใช้เฉพาะตอน "บันทึกแล้ววาดใหม่" เท่านั้น — การเปิดใบ/เปลี่ยนแท็บต้องเด้งขึ้นบนตามปกติ
+ * ==========================================================================*/
+function spRenderKeep(){
+  const y=window.scrollY||window.pageYOffset||0;
+  const a=document.activeElement;
+  const id=(a&&a.id)||"";
+  const ss=(a&&typeof a.selectionStart==="number")?a.selectionStart:null;
+  renderSpord();
+  const back=()=>{
+    try{window.scrollTo(0,y);}catch(e){}
+    if(!id)return;
+    const el=document.getElementById(id);
+    if(!el||typeof el.focus!=="function")return;
+    try{el.focus({preventScroll:true});
+      if(ss!=null&&typeof el.setSelectionRange==="function")el.setSelectionRange(ss,ss);}catch(e){}
+  };
+  back();
+  if(typeof requestAnimationFrame==="function")requestAnimationFrame(back);
+}
 async function spKeySave(sid,ymd,ln,it){
   if(!spSupOk()){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return false;}
   const k=spKk(sid,ymd,ln);
@@ -14308,7 +14342,7 @@ async function spKeySave(sid,ymd,ln,it){
   const old=C.key[k]?JSON.parse(JSON.stringify(C.key[k])):null;
   C.key[k]=Object.assign({},C.key[k]||{},{it:it,by:(S.user&&S.user.id)||"",
     byName:(S.user&&S.user.name)||"",at:Date.now()});
-  renderSpord();
+  spRenderKeep();
   try{
     const r=await bdPost("/api/spord",{act:"key",sid:sid,d:ymd,ln:ln,it:it});
     if(!r||!r.ok)throw new Error((r&&r.error)||"บันทึกไม่สำเร็จ");
@@ -14316,7 +14350,7 @@ async function spKeySave(sid,ymd,ln,it){
     return true;
   }catch(e){
     if(old)C.key[k]=old;else delete C.key[k];
-    renderSpord();
+    spRenderKeep();
     alert("บันทึกไม่สำเร็จ: "+e.message+"\nตัวเลขเดิมยังอยู่ครบ ลองใหม่อีกครั้ง");
     return false;
   }
@@ -14562,13 +14596,37 @@ function spRepJobs(sid,ln){
     /* 🧾 ตั้งแต่ 27 พ.ย. 69 เซลล์ใส่ "เลขออเดอร์" แทนการพิมพ์จำนวน
        จำนวนของวันนั้นจึงมาจากเลขที่ใส่ ไม่ใช่จากช่องที่พิมพ์ (ของเก่ายังอ่านได้เหมือนเดิม) */
     if(!isT&&!e.rc&&Array.isArray(r.no)&&r.no.length){
-      const o=spNoSum(r.no);e.rc=o.cs;e.nNo=r.no.length;e.fromNo=1;
+      const o=spNoSum(r.no,{l:spLineCode(ln)});e.rc=o.cs;e.nNo=r.no.length;e.fromNo=1;
     }
     if(isT)e.has=1;else{e.done=1;e.at=r.at||0;e.n=+r.n||0;}
   });
   scan(spKeyOk().key,1);scan(spRepOk().rep,0);
   return Object.keys(got).map(d=>got[d])
     .sort((a,b)=>String(b.d).localeCompare(String(a.d)));
+}
+/* ============================================================================
+ * 📅 งานของสายฉัน "ทุกวัน ทุกใบ" — เจ้าของสั่ง 27 พ.ย. 69
+ *   *"ช่วยปรับให้เซลล์เห็นทุกวันหน่อย ตอนนี้มันเห็นแค่วันนั้นวันเดียว เพราะซุปจะสั่งล่วงหน้า
+ *     หลายวัน เซลล์มากดสั่งวันข้างหน้าได้"*
+ *
+ * ⚠️ `spRepJobs` เดิมอ่านเฉพาะ "ใบที่เปิดอยู่" — ซุปเปิดใบใหม่ต่อหนึ่งออเดอร์ เซลล์จึงเห็นแค่
+ *    วันของใบนั้น แล้วต้องถอยกลับไปหน้ารายการใบเองถึงจะเจอวันอื่น · ตัวนี้กวาดทุกใบที่ยังไม่ถูกลบ
+ * ⚠️ เรียง "วันใหม่ก่อน" เหมือนเดิม ⇒ วันล่วงหน้าอยู่บนสุด ซึ่งคือสิ่งที่เซลล์ต้องกดต่อ
+ * ⚠️ อ่านอย่างเดียว · ไม่ได้ตัดสิทธิ์อะไร แค่จัดหน้าจอ (สิทธิ์เขียนยังตรวจที่เซิร์ฟเวอร์)
+ * ==========================================================================*/
+function spRepJobsAll(ln){
+  if(!ln)return [];
+  const slips=spSlips(),out=[];
+  slips.forEach(sp=>{
+    spRepJobs(sp.id,ln).forEach(j=>out.push(Object.assign({sid:sp.id,slip:sp},j)));
+  });
+  return out.sort((a,b)=>String(b.d).localeCompare(String(a.d))||
+    String(b.sid).localeCompare(String(a.sid)));
+}
+/* เปิดใบอื่นแล้วกระโดดไปวันนั้นเลย — ใช้จากรายการ "ทุกวัน" ของเซลล์ */
+function spGoJob(sid,ymd){
+  if(sid&&sid!==SP.sid)spOpenSlip(sid);
+  spSetDay(ymd);
 }
 /* ใบออเดอร์ใหญ่ที่ยังไม่ถูกลบ เรียงใหม่สุดก่อน */
 function spSlips(){
@@ -15997,28 +16055,33 @@ function spHasTgt(sid){return spGrpOf(spSlip(sid))==="D";}
 /* 📋 งานของสายฉันในใบนี้ — ทุกวันที่ซุปตั้งเป้าไว้ ทั้งย้อนหลังและล่วงหน้า */
 function spRepHomeHtml(sid){
   const ln=spMyLine();if(!ln)return "";
-  const jobs=spRepJobs(sid,ln),cur=spDay(sid),today=todayISO();
+  const all=spRepJobsAll(ln),cur=spDay(sid),today=todayISO();
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
-  if(!jobs.length)return `<div class="panel"><h3>📋 งานของสาย ${anaEsc(ln)}</h3>
-    <div class="insight" style="margin-top:8px">ใบนี้ยังไม่มีวันที่ต้องคีย์ของสายคุณ —
+  if(!all.length)return `<div class="panel"><h3>📋 งานของสาย ${anaEsc(ln)}</h3>
+    <div class="insight" style="margin-top:8px">ยังไม่มีวันที่ต้องคีย์ของสายคุณ —
     รอหัวหน้าเซลล์ตั้งจำนวนให้ก่อน</div></div>`;
-  const wait=jobs.filter(x=>!x.done).length;
-  return `<div class="panel"><h3>📋 งานของสาย ${anaEsc(ln)}</h3>
-    <div class="psub">${wait?("ยังไม่ได้คีย์ <b>"+wait+"</b> วัน"):"คีย์ครบทุกวันแล้ว"}
-      · กดที่วันเพื่อกรอก</div>
-    <div class="sp-jobs">${jobs.map(x=>{
-      const ahead=x.d>today;
+  const wait=all.filter(x=>!x.done).length;
+  const ahead=all.filter(x=>x.d>today&&!x.done).length;
+  const nSlip=Object.keys(all.reduce((m,x)=>{m[x.sid]=1;return m;},{})).length;
+  return `<div class="panel"><h3>📋 งานของสาย ${anaEsc(ln)} · ทุกวัน</h3>
+    <div class="psub">${wait?("ยังไม่ได้คีย์ <b>"+wait+"</b> วัน"):"คีย์ครบทุกวันแล้ว"}${
+      ahead?' · ล่วงหน้า <b>'+ahead+'</b> วัน คีย์ไว้ก่อนได้เลย':""}
+      · กดที่วันเพื่อกรอก${nSlip>1?" · รวมทุกใบออเดอร์แล้ว ("+nSlip+" ใบ)":""}</div>
+    <div class="sp-jobs">${all.map(x=>{
+      const fut=x.d>today;
+      const other=x.sid!==sid;
       const st=x.done
         ? (x.has&&x.rc>=x.tc?'<span class="sp-ok">✓ คีย์ครบตามเป้า</span>'
             :(x.has?'<span class="sp-bad">คีย์แล้ว ยังไม่ถึงเป้า</span>':'<span class="sp-ok">✓ คีย์แล้ว</span>'))
         : '<span class="sp-warn">ยังไม่ได้คีย์</span>';
-      return `<button type="button" class="sp-job${x.d===cur?" on":""}${x.done?" done":""}"
-          onclick="spSetDay('${x.d}')">
-        <span class="sp-jd">${fmtDate(x.d)}${ahead?' <span class="pill">ล่วงหน้า</span>':""}</span>
+      return `<button type="button" class="sp-job${(x.d===cur&&!other)?" on":""}${x.done?" done":""}"
+          onclick="spGoJob('${anaEsc(x.sid)}','${x.d}')">
+        <span class="sp-jd">${fmtDate(x.d)}${fut?' <span class="pill">ล่วงหน้า</span>':""}</span>
         <span class="sp-js">${st}${x.has?'<span class="psub" style="display:block">เป้า '+
           N(x.tc)+" ลัง"+(x.tp?" + "+N(x.tp)+" ชิ้น":"")+
           (x.done?" · คีย์ "+N(x.rc)+" ลัง":"")+"</span>":
-          (x.done?'<span class="psub" style="display:block">คีย์ '+N(x.rc)+" ลัง</span>":"")}</span>
+          (x.done?'<span class="psub" style="display:block">คีย์ '+N(x.rc)+" ลัง</span>":"")}${
+          other?'<span class="psub" style="display:block">ใบ '+anaEsc(spSlipTitle(x.sid)||x.sid)+"</span>":""}</span>
         <span class="cst-ar">▶</span></button>`;}).join("")}</div></div>`;
 }
 /* ---------- ตารางของ "สายฉัน" — เซลล์กรอกจำนวนที่คีย์จริง ----------
@@ -16054,9 +16117,10 @@ function spRepMineHtml(sid,ymd){
     :`<div class="insight" style="margin-top:10px">${tg
         ?"วันนี้หัวหน้าเซลล์ยังไม่ได้ตั้งจำนวนให้สายคุณ":"ใบนี้ยังไม่มีสินค้า"}</div>`;
   return `<div class="panel" style="margin-top:12px;border-top:3px solid var(--blue)">
-    <h3>🧾 กรอกเลขออเดอร์ของวันนี้ · ${fmtDate(ymd)}</h3>
+    <h3>🧾 กรอกเลขออเดอร์ · ${fmtDate(ymd)}${
+      ymd>todayISO()?' <span class="pill">ล่วงหน้า</span>':(ymd===todayISO()?"":' <span class="pill">ย้อนหลัง</span>')}</h3>
     <div class="psub">${can
-      ? "คีย์ของในแอพตามรายการข้างล่างให้ครบ แล้ว<b>เอาเลขออเดอร์ 10 หลักมาใส่ในช่องสีน้ำเงิน</b> ·"+
+      ? "คีย์ของในแอพตามรายการข้างล่างให้ครบ แล้ว<b>เอาเลขออเดอร์ 5 หลักสุดท้ายมาใส่ในช่องสีน้ำเงิน</b> ·"+
         " ไม่ต้องกรอกจำนวนแล้ว ระบบดึงจำนวนจากเลขออเดอร์ให้เอง · "+
         "เพิ่มเลขระหว่างวันแล้วกดบันทึกซ้ำได้ "+(left<=3?"<b>(วันนี้เหลืออีก "+left+" ครั้ง)</b>"
                                                       :"(วันนี้เหลืออีก "+left+" ครั้ง)")
@@ -16068,7 +16132,7 @@ function spRepMineHtml(sid,ymd){
     ${spRepNoHtml(ln,rec,can)}
     ${can?`<div class="sp-save"><button class="upload-btn"
       onclick="spRepLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกเลขออเดอร์</button></div>`:""}
-    <h4 style="margin:18px 0 0">🎯 รายการที่ต้องคีย์วันนี้</h4>
+    <h4 style="margin:18px 0 0">🎯 รายการที่ต้องคีย์ · ${fmtDayMon(ymd)}</h4>
     ${tgtBox}
   </div>`;
 }
@@ -16078,15 +16142,14 @@ function spRepNoHtml(ln,rec,can){
   const no=(rec&&Array.isArray(rec.no))?rec.no:[];
   return `<div class="sp-rno">
     <div class="sp-rn">🧾 เลขคำสั่งซื้อของวันนี้</div>
-    <div class="psub">ใส่ได้หลายเลข คั่นด้วยเว้นวรรค คอมมา หรือขึ้นบรรทัดใหม่ ·
-      ใส่เลขที่เห็นในแอพได้เลย เช่น <b>1034715426</b> หรือเลขออเดอร์ <b>BDD0100001234</b></div>
+    <div class="psub">ใส่ <b>5 หลักสุดท้าย</b> ของเลขในแอพก็พอ — เลข <b>10347<u>15426</u></b> ใส่แค่ <b>15426</b>\n      · หลายเลขได้ คั่นด้วยเว้นวรรคหรือขึ้นบรรทัดใหม่ · เลขเต็ม 10 หลัก หรือ <b>BDD01…</b> ก็ยังใช้ได้</div>
     ${can?`<textarea id="spRNo_${anaEsc(ln)}" rows="3" inputmode="numeric" autocomplete="off"
       oninput="spNoLive('${anaEsc(ln)}')"
-      placeholder="1034715426 1034715427 …"
+      placeholder="15426 15427 15428 …"
       style="width:100%;margin-top:8px;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:16px;font-family:inherit">${
       anaEsc(no.join(" "))}</textarea>`
       :`<div style="margin-top:8px;font-size:15px;word-break:break-all">${no.length?anaEsc(no.join(" · ")):'<span class="psub">ยังไม่ได้ใส่เลข</span>'}</div>`}
-    <div id="spRNoInfo_${anaEsc(ln)}">${spNoInfoHtml(no)}</div>
+    <div id="spRNoInfo_${anaEsc(ln)}">${spNoInfoHtml(no,ln)}</div>
   </div>`;
 }
 /* ============================================================================
@@ -16114,13 +16177,16 @@ function spRfIdx(){
   /* นับคีย์ไว้ด้วย — โหลดข้อมูลใหม่จากเซิร์ฟเวอร์แล้วดัชนีจะสร้างใหม่เอง ไม่ค้างของเก่า */
   const sz=Object.keys(ix).length;
   if(_spRfIdx&&_spRfIdx.n===sz)return _spRfIdx;
-  const rf={},inv={};
+  const rf={},inv={},tail={};
   Object.keys(ix).forEach(k=>{
     const r=ix[k];if(!r)return;
-    if(r.rf){const t=String(r.rf).trim();if(t)(rf[t]=rf[t]||[]).push(k);}
+    if(r.rf){const t=String(r.rf).trim();if(t){(rf[t]=rf[t]||[]).push(k);
+      /* ดัชนี "ท้าย 5 หลัก" — เจ้าของสั่ง 27 พ.ย. 69 ให้เซลล์กรอกแค่ 5 หลักสุดท้ายพอ */
+      const d=t.replace(/\D/g,"");
+      if(d.length>=SP_TAIL){const tl=d.slice(-SP_TAIL);(tail[tl]=tail[tl]||[]).push(k);}}}
     if(r.inv){const t=String(r.inv).trim();if(t)(inv[t]=inv[t]||[]).push(k);}
   });
-  _spRfIdx={rf:rf,inv:inv,n:sz};return _spRfIdx;
+  _spRfIdx={rf:rf,inv:inv,tail:tail,n:sz};return _spRfIdx;
 }
 /* ข้อความหนึ่งก้อน → เลขทีละตัว (รับทั้งเว้นวรรค คอมมา ขึ้นบรรทัดใหม่ และ # นำหน้า) */
 function spNoSplit(txt){
@@ -16133,8 +16199,32 @@ function spNoSplit(txt){
   return out.slice(0,SP_NOMAX);
 }
 const SP_NOMAX=80;
-/* หาออเดอร์จากเลขที่พิมพ์มา — คืน {no,r} หรือ null ถ้ายังหาไม่เจอ (ห้ามคืน 0) */
-function spOrdFind(txt){
+/* ============================================================================
+ * 🔢 เลขที่เซลล์กรอก — 5 หลักสุดท้ายก็พอ (เจ้าของสั่ง 27 พ.ย. 69)
+ *   *"ขอปรับรหัสเลขออเดอร์จาก 10 หลัก ให้เซลล์กรอก 5 หลักสุดท้ายเท่านั้นพอ"*
+ *
+ * 📏 วัดก่อนทำ จากไฟล์จริงสองไฟล์ (ยอดขาย 15-23 พ.ย. + รายการสั่งซื้อถึง 26 พ.ย.
+ *    รวมเลขอ้างอิงที่ไม่ซ้ำกัน 2,096 เลข ครอบ 12 วัน):
+ *      5 หลักสุดท้าย ชนกัน **10 กลุ่ม / 20 เลข (~1%)**
+ *      6 หลักสุดท้าย ชนกัน **0**
+ *    ⇒ 5 หลัก "เกือบ" ไม่ซ้ำ แต่ไม่ใช่ไม่ซ้ำ และยิ่งเก็บหลายเดือนยิ่งมีโอกาสชนมากขึ้น
+ *
+ * ⚠️ ฉะนั้นเมื่อ 5 หลักตรงกับ **เลขอ้างอิงที่ต่างกันมากกว่าหนึ่งเลข** ห้ามเดาเอาใบใดใบหนึ่ง
+ *    ต้องคืน {amb:[...]} ให้หน้าเว็บบอกว่า "ตรงกับหลายใบ ใส่เพิ่มอีกสักหลัก"
+ *    (ใบขาย/ใบคืนที่อ้างเลขเดียวกัน ไม่นับว่าชน — กฎเดิม ใบขาย BDD01 ชนะเสมอ)
+ * ⚠️ ถ้ารู้ "สายของคนกรอก" ให้ใช้กรองก่อน แล้วค่อยตัดสิน — เซลล์กรอกของสายตัวเอง
+ *    โอกาสที่สองใบในสายเดียวกันจะลงท้ายเหมือนกันต่ำกว่ามาก
+ * ==========================================================================*/
+const SP_TAIL=5;
+/* CT11 → 209611 · ใช้กรองตอน 5 หลักท้ายชนกัน (FOCUS_MAP เก็บไว้กลับทาง) */
+let _spLnCode=null;
+function spLineCode(ln){
+  const t=String(ln||"").trim().toUpperCase();if(!t)return "";
+  if(!_spLnCode){_spLnCode={};Object.keys(FOCUS_MAP||{}).forEach(c=>{
+    _spLnCode[String(FOCUS_MAP[c]).toUpperCase()]=c;});}
+  return _spLnCode[t]||"";
+}
+function spOrdFind(txt,hint){
   const raw=String(txt==null?"":txt).trim().toUpperCase().replace(/[^0-9A-Z]/g,"");
   if(!raw)return null;
   const ix=((typeof STOREDAILY!=="undefined"&&STOREDAILY&&STOREDAILY.ord)||{});
@@ -16153,16 +16243,33 @@ function spOrdFind(txt){
     if(n&&n.k){const full=otFullNo(n.k);if(ix[full])return {no:full,r:ix[full],via:"no",more:null};}
     if(n&&n.inv){const byInv=pick(I.inv[n.inv]);if(byInv)return Object.assign(byInv,{via:"inv"});}
   }
+  /* ท้าย 5 หลัก — ลองเป็นทางสุดท้าย หลังจากเลขเต็มหาไม่เจอแล้ว */
+  const dg=raw.replace(/\D/g,"");
+  if(dg.length>=SP_TAIL&&dg.length<10){
+    let ks=(I.tail[dg.slice(-SP_TAIL)]||[]).slice();
+    const line=hint&&hint.l?String(hint.l):"";
+    if(line&&ks.length>1){
+      const same=ks.filter(k=>{const r=ix[k];return r&&String(r.l)===line;});
+      if(same.length)ks=same;
+    }
+    /* นับว่า "ชน" เฉพาะตอนเป็นเลขอ้างอิงคนละเลขกันจริง ๆ */
+    const refs={};ks.forEach(k=>{const r=ix[k];if(r&&r.rf)refs[String(r.rf)]=1;});
+    const nRef=Object.keys(refs).length;
+    if(nRef>1)return {amb:Object.keys(refs).sort()};
+    const got=pick(ks);
+    if(got)return Object.assign(got,{via:"tail"});
+  }
   return null;
 }
 /* รวมยอดของเลขที่เซลล์กรอกมา — ลัง/ชิ้น/มูลค่า/ร้าน และเลขที่ยังหาไม่เจอ
    ⚠️ เรคอร์ดที่มาจากไฟล์รายการสั่งซื้อ (tx:1) ยังไม่รู้จำนวนลัง ต้องแยกนับเป็น "รอไฟล์ยอดขาย"
       ไม่ใช่บวกเป็น 0 (กฎเดียวกับ spRow/spCases) */
-function spNoSum(list){
-  const o={n:0,cs:0,v:0,shops:{},found:0,wait:0,miss:[],rows:[],cx:0,dup:0};
+function spNoSum(list,hint){
+  const o={n:0,cs:0,v:0,shops:{},found:0,wait:0,miss:[],rows:[],cx:0,dup:0,amb:[]};
   (list||[]).forEach(t=>{
     o.n++;
-    const f=spOrdFind(t);
+    const f=spOrdFind(t,hint);
+    if(f&&f.amb){o.amb.push({t:t,list:f.amb});return;}
     if(!f||!f.r){o.miss.push(t);return;}
     o.found++;
     if(f.more&&f.more.length)o.dup++;

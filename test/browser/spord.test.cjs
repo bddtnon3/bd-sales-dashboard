@@ -154,7 +154,7 @@ const ORIGIN='https://bd-spord.test/';
    o.hasMine=!!document.getElementById('spRNo_CT11');
    o.notOther=!document.getElementById('spRNo_CT12');
    o.noQty=!document.getElementById('spR_CT11_64849613_sc');   /* ไม่มีช่องกรอกจำนวนแล้ว */
-   o.seesTgt=/รายการที่ต้องคีย์วันนี้/.test(tx())&&/64849613/.test(tx());
+   o.seesTgt=/รายการที่ต้องคีย์ · 20 พ\.ย\./.test(tx())&&/64849613/.test(tx());
    await spRepSave('B20261118-01','2026-11-20','CT11',{},['1034800001']);
    o.post1=window.__posts[window.__posts.length-1];
    let r=CSTOCK.rep['B20261118-01|2026-11-20|CT11'];
@@ -997,6 +997,80 @@ t('...แต่จดแค่ชื่อไฟล์กับช่วงว�
  t('กดชื่อสายซ้ำ = กลับไปดูทุกสาย',lnSum.back===lnSum.rowsAll&&lnSum.off==='',
    lnSum.back+' / '+lnSum.rowsAll+' · cmpLn="'+lnSum.off+'"');
  t('🛟 สรุปรายสายคิดสดตอนวาดหน้า ไม่เขียนอะไรลงข้อมูลเลย',lnSum.same);
+
+ /* 🔢 เลขออเดอร์ 5 หลักสุดท้าย (เจ้าของสั่ง 27 พ.ย. 69)
+    วัดก่อนทำจากไฟล์จริง 2,096 เลข 12 วัน: 5 หลักท้ายชนกัน 10 กลุ่ม (~1%) · 6 หลักท้ายชน 0
+    ⇒ รับ 5 หลักได้ แต่เมื่อชนกันต้อง "บอก" ห้ามเดาเอาใบใดใบหนึ่ง */
+ const tail=await ev(()=>{
+   STOREDAILY.ord['BDD0100007001']={s:'4862383',l:'209611',d:'2026-11-20',v:3500,c:3,cs:12,pc:0,rf:'1034715426'};
+   STOREDAILY.ord['BDD0400007001']={s:'4862383',l:'209611',d:'2026-11-20',v:-100,c:1,cs:1,pc:0,rf:'1034715426'};
+   STOREDAILY.ord['BDD0100007002']={s:'4862365',l:'209611',d:'2026-11-20',v:900,c:1,cs:4,pc:0,rf:'1034715428'};
+   STOREDAILY.ord['BDD0100007003']={s:'4862366',l:'209612',d:'2026-11-20',v:800,c:1,cs:3,pc:0,rf:'1034915428'};
+   spRfBust();
+   const f=(t,h)=>{const r=spOrdFind(t,h);return r?(r.amb?('AMB:'+r.amb.join('/')):(r.no+'|'+r.via)):null;};
+   const o=spNoSum(['15426','15428'],{l:'209611'});
+   return {full:f('1034715426'),tail:f('15426'),hash:f('#15426'),none:f('00000'),
+     bdd:f('BDD0100007002'),
+     hint:f('15428',{l:'209611'}),noHint:f('15428'),
+     sum:{found:o.found,cs:o.cs,amb:o.amb.length},
+     info:spNoInfoHtml(['15428'],'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ')};
+ });
+ t('🔑 เซลล์กรอกแค่ 5 หลักสุดท้ายก็หาเจอ',tail.tail==='BDD0100007001|tail'&&tail.hash===tail.tail,
+   tail.tail+' · '+tail.hash);
+ t('...และเลขเต็ม 10 หลัก กับเลข BDD ก็ยังใช้ได้เหมือนเดิม',
+   tail.full==='BDD0100007001|rf'&&tail.bdd==='BDD0100007002|no',tail.full+' · '+tail.bdd);
+ t('🛟 ใบคืนของที่อ้างเลขเดียวกัน ไม่นับว่าชน และใบขายชนะเสมอ',
+   tail.tail.indexOf('BDD01')===0,tail.tail);
+ t('🔑 5 หลักชนกันคนละสาย — ใช้สายของคนกรอกตัดสินให้',tail.hint==='BDD0100007002|tail',tail.hint);
+ t('🛟 ชนกันแล้วไม่รู้สาย ต้องบอกว่าตรงกับหลายใบ ห้ามเดา',
+   /^AMB:/.test(tail.noHint)&&/ตรงกับหลายใบ/.test(tail.info),tail.noHint+' · '+tail.info.slice(0,90));
+ t('   …และยอดรวมไม่นับเลขที่กำกวมเข้าไปด้วย',
+   tail.sum.found===2&&tail.sum.cs===16&&tail.sum.amb===0,JSON.stringify(tail.sum));
+ t('🛟 เลขที่ไม่มีในระบบยังตอบว่าไม่เจอ ไม่ใช่จับมั่ว',tail.none===null,String(tail.none));
+
+ /* 💾 กดบันทึกแล้วหน้าต้องไม่เด้งขึ้นบนสุด (เจ้าของแจ้ง 27 พ.ย. 69) */
+ const keep=await ev(async()=>{
+   __as('sup',null,'หัวหน้าเซลล์');SP.sec='key';SP.day='2026-11-20';renderSpord();
+   document.body.style.minHeight='4000px';
+   window.scrollTo(0,900);
+   const before=window.scrollY;
+   await spKeySave('B20261118-01','2026-11-20','CT11',{'64849613':{sc:2,sp:0,fc:0,fp:0}});
+   const after=window.scrollY;
+   document.body.style.minHeight='';
+   return {before:before,after:after,has:typeof spRenderKeep==='function'};
+ });
+ t('🔑 กดบันทึกแล้วหน้าค้างอยู่ตำแหน่งเดิม ไม่เด้งขึ้นสายบนสุด',
+   keep.has&&keep.before>0&&Math.abs(keep.after-keep.before)<40,
+   'ก่อน '+keep.before+' → หลัง '+keep.after);
+
+ /* 📅 เซลล์ต้องเห็น "ทุกวัน ทุกใบ" (เจ้าของสั่ง 27 พ.ย. 69)
+    ซุปเปิดใบใหม่ต่อหนึ่งออเดอร์ ถ้าอ่านเฉพาะใบที่เปิดอยู่ เซลล์จะเห็นวันเดียว */
+ const days=await ev(()=>{
+   CSTOCK.slips['B20261128-02']={d:'2026-11-28',by:'admin1',byName:'แอดมิน 1',at:9,up:9,g:'D'};
+   CSTOCK.lots['L-28-1']={id:'L-28-1',sl:'B20261128-02',d:'2026-11-28',code:'64849613',
+     nm:'โอโมลิควิด ซากุระ 6x1000มล',cs:9,pc:0,sq:0,ln:'CT11',clr:[],up:9};
+   CSTOCK.key['B20261128-02|2026-11-28|CT11']={it:{'64849613':{sc:5,sp:0}},by:'sup',at:9};
+   CSTOCK.key['B20261128-02|2026-12-02|CT11']={it:{'64849613':{sc:7,sp:0}},by:'sup',at:9};
+   __as('sales','209611','CT11 · เซลล์');
+   SP.sid='B20261118-01';SP.view='slip';SP.sec='rep';renderSpord();
+   const all=spRepJobsAll('CT11').map(j=>j.sid+'/'+j.d);
+   const one=spRepJobs('B20261118-01','CT11').map(j=>j.d);
+   const btns=[...document.querySelectorAll('.sp-job')].length;
+   const txt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   /* กดวันของใบอื่น ต้องเปิดใบนั้นให้เลย */
+   const other=[...document.querySelectorAll('.sp-job')]
+     .find(b=>/2 ธ\.ค\.|28 พ\.ย\./.test(b.textContent));
+   if(other)other.click();
+   return {all:all,one:one,btns:btns,txt:txt,sid:SP.sid,day:SP.day};
+ });
+ t('🔑 เซลล์เห็นวันของทุกใบ ไม่ใช่แค่ใบที่เปิดอยู่',
+   days.all.length>days.one.length&&days.all.some(x=>x.indexOf('B20261128-02/')===0),
+   days.all.join(' , ')+' | ใบเดียว: '+days.one.join(' , '));
+ t('...และบอกว่ารวมมาจากกี่ใบ พร้อมนับวันล่วงหน้าให้',
+   /รวมทุกใบออเดอร์แล้ว/.test(days.txt)&&/ล่วงหน้า/.test(days.txt),days.txt.slice(0,140));
+ t('🔑 กดวันของใบอื่น ระบบเปิดใบนั้นแล้วไปวันนั้นให้เลย',
+   days.sid==='B20261128-02'&&(days.day==='2026-11-28'||days.day==='2026-12-02'),
+   days.sid+' / '+days.day);
  /* ⚠️ ของเดิมเคยตรวจว่า "หน้าเขียนบอก" — เลิกเขียนบอกแล้ว (ข้อมูลภายใน) จึงตรวจของจริงแทน:
     ไฟล์ทั้งก้อนต้องไม่ถูกส่งขึ้นเซิร์ฟเวอร์ ส่งขึ้นเฉพาะผลสรุปของรหัสที่อยู่ในใบนั้น */
  t('🛟 ไฟล์ allocation ไม่ถูกส่งขึ้นเซิร์ฟเวอร์ — ส่งแค่ผลตรวจของรหัสในใบนี้',

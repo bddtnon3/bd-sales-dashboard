@@ -1284,12 +1284,40 @@ code, never printed.
   `n` takes the **max**, and `h` is unioned by timestamp — newest-wins on the whole record would let
   a stale tab reset the edit quota and drop a history entry. A rep's page shows **only their own
   line**; the 12-line target table is the supervisor's.
+  **📅 The rep's day list spans every slip, not just the one they opened**
+  (`spRepJobsAll`/`spGoJob`, owner 27 Nov 26: *"ช่วยปรับให้เซลล์เห็นทุกวันหน่อย ตอนนี้มันเห็นแค่
+  วันนั้นวันเดียว เพราะซุปจะสั่งล่วงหน้าหลายวัน เซลล์มากดสั่งวันข้างหน้าได้"*). `spRepJobs` reads
+  one slip, and the supervisor opens a new slip per order, so a rep saw only that slip's days and
+  had to walk back out to the month list to find the rest. The list now sweeps every slip that is
+  not deleted, newest day first — so the days set ahead sit at the top, badged **ล่วงหน้า** — names
+  the slip on rows from another slip, and tapping one **opens that slip and lands on that day**.
+  It is screen tidying only: `spSlips()` is unfiltered and every write is still checked in
+  `api/spord.js`. The entry card's headings carry the day they are for, never "วันนี้", or a rep
+  keying Friday's work on Wednesday reads the wrong date.
+  **💾 Saving must not scroll the page back to the top** (`spRenderKeep`, the owner on the same day:
+  *"หน้านี้เวลากดบันทึก มันเด้งขึ้นไปสายบนสุด"*). `renderSpord` rewrites the whole view's
+  `innerHTML`, so the document height drops to zero for an instant, the browser clamps `scrollY`
+  to 0, and the supervisor who just filled line 8 is thrown back to line 1. Every save path
+  (`spKeySave`, `spRepSave`, and both of their rollback branches) goes through `spRenderKeep`,
+  which restores the scroll position **twice** — once immediately and once in
+  `requestAnimationFrame`, because the browser finishes laying out after the first — and restores
+  the focused field and caret with it. Use it only for "saved, now redraw": opening a slip or
+  switching tabs still belongs at the top.
   **🧾 The rep types the day's order numbers at the bottom of their entry card**
   (`spRepNoHtml`/`spNoSplit`/`spNoSum`/`spOrdFind`, the owner on 27 Nov 26: *"เซลล์ตอนที่คีย์รายวันแล้ว
   จะต้องกรอกคำสั่งซื้อทั้งหมดในออเดอร์นั้น ๆ เข้าไปในช่องล่างสุด เพื่อให้แอดมินตรวจสอบจากระบบเองได้เลย …
   เซลล์จะมากรอกเลขใบสั่งซื้อ แอดมินมากรอกเลข GIN ระบบตรวจสอบจำนวนว่าตรงกันทั้งหมดไหม"*). One box takes
-  any number of numbers — pasted, space/comma/newline separated — and accepts the **app number**
-  (`1034715426`), the full `BDD01…` or a bare tail alike. It is **a field on the record that already
+  any number of numbers — pasted, space/comma/newline separated — and accepts the full `BDD01…`,
+  the whole app number (`1034715426`) or, since 27 Nov 26, **just its last 5 digits** (`15426`),
+  which is what the owner asked reps to type. That shortcut was measured first, across the real
+  daily-sales and Transaction files (**2,096 distinct reference numbers over 12 days**): **5-digit
+  tails collide in 10 groups / 20 numbers (~1%)** while **6-digit tails collide in none** — so five
+  digits is nearly, but not quite, unique, and the margin shrinks as more months accumulate.
+  `spOrdFind` therefore tries the tail **last**, after the full reference and the order number, and
+  when a tail matches **more than one distinct reference** it returns `{amb:[…]}` and the page says
+  *"ตรงกับหลายใบ ใส่เพิ่มอีกสัก 1-2 หลัก"* — it never picks one. A sale and its return note quoting
+  the same reference are not a collision (BDD01 still wins), and when the caller knows the typing
+  rep's line (`spLineCode`) the candidates are filtered to it first, which settles most of them. It is **a field on the record that already
   exists** (`CSTOCK.rep[...].no`), never a new section, so `mergeRepOne` carries it and a tab from
   before the field existed cannot blank it. Typing never re-renders the page (`spNoLive` writes into
   its own `<div>`, so the caret stays), and the summary distinguishes all four states the project's
@@ -1412,7 +1440,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (228 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (239 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -1425,7 +1453,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (228 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (239 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
