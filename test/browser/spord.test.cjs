@@ -4485,6 +4485,85 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    dayo.calAlways===true&&dayo.msg===true&&dayo.legend===true,
    'ปฏิทิน='+dayo.calAlways+' ข้อความ='+dayo.msg);
 
+ /* ==========================================================================
+  * 23) 🎯 ขั้นเซลล์คีย์เทียบกับ "เป้าของซุป" เท่านั้น — คลังจัดและ % อยู่ขั้นแอดมินตรวจ
+  *   เจ้าของ 29 พ.ย. 69: *"ปรับในส่วนเซลล์คีย์ ให้ระบบไม่ต้องเอาข้อมูลว่าคลังจัดได้เท่าไหร่มารวม
+  *     และมาคำนวณ% ให้เอาไปไว้เฉพาะขั้นตอนแอดมินตรวจได้เลย เพราะขั้นนี้จะแค่ให้ทุกคนได้เห็นยอด
+  *     ที่เซลล์คีย์เทียบจำนวนคีย์กับเป้าที่ซุปตั้งไว้ เท่านั้นพอ … ส่วนนั้นคือแอดมินต้องรวม และ
+  *     เมเนเจอร์เห็นได้ เท่านั้นพอ"*
+  *   ⚠️ เป็นการแยกหน้าจอ ไม่ใช่เปลี่ยนตัวเลข — `spBal` ต้องคืนค่าเท่าเดิมทั้งสองโหมด
+  * ========================================================================== */
+ const TGT = `
+   __as('manager','','ผู้จัดการ');
+   window.__d0=spBackStep(todayISO(),-1);
+   CSTOCK.slips[B1].d=window.__d0;CSTOCK.slips[B1].g='D';CSTOCK.slips[B1].at=1;
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};CSTOCK.lots={};
+   MASTER={items:{FO01:{nm:'คนอร์ FO'}},det:{FO01:{ps:12}}};
+   CSTOCK.lots['L1']={id:'L1',sl:B1,d:window.__d0,code:'FO01',nm:'คนอร์ FO',
+     cs:10,pc:0,ln:'CT11',clr:[]};
+   CSTOCK.key[B1+'|'+window.__d0+'|CT11']={it:{FO01:{sc:10,sp:0}},by:'sup',at:10};
+   STOREDAILY={data:{},ord:{}};
+   const OTO={},OTD={};const nos=[];let tt=91000000;
+   for(let i=0;i<6;i++){tt++;const t=String(tt);
+     /* 6 ใบที่เซลล์คีย์ · 4 ใบคลังออก GIN แล้ว ⇒ คีย์ 6 ลัง · คลังจัด 4 ลัง · เป้า 10 ลัง */
+     OTO[t]={l:'209611',d:+window.__d0.slice(8,10),s:'SH'+i,w:1,p:0,c:1,n:1,g:i<4?'300':''};
+     OTD[t]={FO01:[1,0,12]};
+     STOREDAILY.ord['BDD01'+t]={s:'SH'+i,l:'209611',d:window.__d0,k:window.__d0,
+       v:10,c:1,cs:1,pc:0};
+     nos.push('BDD01'+t);}
+   for(let k=-3;k<=0;k++){const m=spBackStep(todayISO(),k).slice(0,7);
+     OT.cache[m]={ord:OTO,det:OTD,meta:null,none:0};}
+   OT.months=Object.keys(OT.cache);spRfBust();
+   CSTOCK.rep[B1+'|'+window.__d0+'|CT11']={it:{},no:nos,by:'209611',byName:'CT11',at:2,n:1};
+   SP.sid=B1;SP.view='slip';SP.day=window.__d0;SP.ym=window.__d0.slice(0,7);
+   SP.cm=window.__d0.slice(0,7);
+   SP.back={on:0,sid:'',busy:0,i:0,n:0,open:{}};SP.zone=undefined;
+   try{localStorage.removeItem('bdspzone');}catch(e){}
+   _switchTab('spord');renderSpord();`;
+ const tg=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const before=JSON.stringify(CSTOCK),p0=window.__posts.length;
+   const grab=sec=>{
+     SP.sec=sec;renderSpord();
+     const V=document.getElementById('spordView'),bal=V.querySelector('.sp-bal');
+     const tx=bal?bal.textContent.replace(/\s+/g,' '):'';
+     return {has:!!bal,tx:tx,
+       cards:bal?[...bal.querySelectorAll('.sp-balkt')].map(x=>x.textContent.trim()):[],
+       head:bal?[...bal.querySelectorAll('.sp-balt thead th')].map(x=>x.textContent.trim()):[],
+       pill:bal?((bal.querySelector('.sp-balh .sp-stpill')||{}).textContent||'').trim():'',
+       chip:bal?((bal.querySelector('.sp-balln')||{}).textContent||'').replace(/\s+/g,' ').trim():''};
+   };
+   const key=grab('rep'),adm=grab('adm');
+   /* ตัวเลขต้องเท่ากันทั้งสองโหมด — แยกแค่หน้าจอ */
+   const B=spBal(B1);
+   return {key:key,adm:adm,
+     tgt:B.tgt,keyed:B.keyed,gin:B.gin,toKey:B.toKey,pct:B.pct,
+     same:JSON.stringify(CSTOCK)===before,posts:window.__posts.length-p0};
+ },{setup:PRE,pre:TGT});
+ t('🎯 ② เซลล์คีย์ ไม่มีช่องคลังจัดและไม่มี % ตรงกับคลังจัด',
+   tg.key.has&&tg.key.cards.length===3&&
+   !tg.key.cards.some(c=>/คลังจัด/.test(c))&&
+   !/ตรงกับคลังจัด|ขาดตกหล่น/.test(tg.key.tx)&&
+   !/\d+\.\d%|\d+\.\d+%/.test(tg.key.tx),
+   'การ์ด: '+tg.key.cards.join(' | '));
+ t('🎯 ...แต่เทียบ "ที่คีย์ กับ เป้าที่ซุปตั้งไว้" ครบ ทั้งการ์ด ป้าย และตาราง',
+   /ยังต้องคีย์อีก/.test(tg.key.cards.join(' '))&&
+   /ยังคีย์ไม่ครบเป้า/.test(tg.key.pill)&&
+   tg.key.head.join('|')==='สินค้า|ตั้งต้นในใบ|เซลล์คีย์|เทียบกับเป้า',
+   'ป้าย "'+tg.key.pill+'" · หัว '+tg.key.head.join('|'));
+ t('🎯 ...ชิปรายสายบอกแค่ยอดที่คีย์ ไม่มีคลังจัด',
+   !/คลังจัด/.test(tg.key.chip)&&/CT11/.test(tg.key.chip),"'"+tg.key.chip+"'");
+ t('🔎 ③ แอดมินตรวจ ยังมีครบทั้งคลังจัด ผลต่าง และ % เหมือนเดิม',
+   tg.adm.has&&tg.adm.cards.length===5&&
+   tg.adm.cards.some(c=>/คลังจัด/.test(c))&&/ตรงกับคลังจัด/.test(tg.adm.tx)&&
+   tg.adm.head.join('|')==='สินค้า|ตั้งต้นในใบ|เซลล์คีย์|คลังจัด|ผลต่าง|ตรง',
+   'การ์ด '+tg.adm.cards.length+' · หัว '+tg.adm.head.join('|'));
+ t('🛟 แยกแค่หน้าจอ — ตัวเลขของ spBal เท่าเดิม ไม่แตะข้อมูล ไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
+   tg.tgt===120&&tg.keyed===72&&tg.gin===48&&tg.toKey===48&&
+   tg.same===true&&tg.posts===0,
+   'เป้า '+tg.tgt+' คีย์ '+tg.keyed+' คลังจัด '+tg.gin+' ต้องคีย์อีก '+tg.toKey+
+   ' · same='+tg.same);
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}

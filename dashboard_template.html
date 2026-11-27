@@ -18549,8 +18549,9 @@ function spRepTabHtml(sid,ymd){
     ใบนี้ยังไม่มีรายการสินค้า — ให้แอดมินแก้ใบออเดอร์ใส่สินค้าก่อน</div></div>`;
   const isSales=spRole()==="sales", myLn=spMyLine();
   const tr=spTrack(sid,ymd);
-  /* 🎯 ตั้งต้นจากใบ → หักที่เซลล์คีย์ → เทียบกับที่คลังจัด · อ่านอย่างเดียว ทุกคนเห็น */
-  const bal=spBalHtml(sid);
+  /* 🎯 ขั้นนี้เทียบ **ที่เซลล์คีย์ กับ เป้าที่ซุปตั้งไว้** เท่านั้น — ยอดคลังจัดและ % ย้ายไปอยู่
+     ③ แอดมินตรวจ ตามที่เจ้าของสั่ง 29 พ.ย. 69 (ดูบันทึกเหนือ spBalHtml) · อ่านอย่างเดียว */
+  const bal=spBalHtml(sid,"key");
   /* เซลล์: รายการงานของตัวเอง → การ์ดกรอก → ประวัติ · ไม่ต้องมีตารางติดตาม 12 สายให้งง */
   return bal+(isSales?spRepHomeHtml(sid)+spRepMineHtml(sid,ymd)
                  :spTrackHtml(sid,ymd,tr))+
@@ -20328,9 +20329,27 @@ function spStPill(st,extra){
   return `<span class="sp-stpill" style="border-color:${S.c};color:${S.c}">${S.i} ${S.t}${
     extra?(" "+anaEsc(extra)):""}</span>`;
 }
-function spBalHtml(sid){
+/* ============================================================================
+ * 🎯 แถบ "ใบนี้ไปถึงไหนแล้ว" มีสองโหมด — เจ้าของสั่ง 29 พ.ย. 69
+ *   *"ปรับในส่วนเซลล์คีย์ ให้ระบบไม่ต้องเอาข้อมูลว่าคลังจัดได้เท่าไหร่มารวม และมาคำนวณ% ให้เอาไป
+ *     ไว้เฉพาะขั้นตอนแอดมินตรวจได้เลย เพราะขั้นนี้จะแค่ให้ทุกคนได้เห็นยอดที่เซลล์คีย์เทียบจำนวนคีย์
+ *     กับเป้าที่ซุปตั้งไว้ เท่านั้นพอ ไม่จำเป็นต้องวัดผลว่าคลังจัดเท่าไหร่ ส่วนนั้นคือแอดมินต้องรวม
+ *     และเมเนเจอร์เห็นได้ เท่านั้นพอ"*
+ *
+ *   mode "key" (② เซลล์คีย์) = **เป้าของซุป เทียบกับ ที่เซลล์คีย์** เท่านั้น
+ *     ไม่มีช่องคลังจัด ไม่มี % ตรงกับคลังจัด ไม่มีขาด/เกินที่วัดจากคลังจัด
+ *   mode เต็ม (③ แอดมินตรวจ · 📊 รายงาน) = ของเดิมครบทุกช่อง
+ *
+ * ⚠️ เป็นการ **แยกหน้าจอ ไม่ใช่เปลี่ยนตัวเลข** — `spBal` คำนวณเหมือนเดิมทุกตัว และเกณฑ์สีของ
+ *    ปฏิทิน/การ์ดใบ (`spDayStat`/`spSlipStat`) ยังเป็น เซลล์คีย์ vs คลังจัด ตามกฎเดิมที่เจ้าของ
+ *    วางไว้ 27 พ.ย. 69 ห้ามย้ายเกณฑ์นั้นตามมาด้วย
+ * ⚠️ ขั้นเซลล์คีย์วัดกับ **ตั้งต้นในใบ** ซึ่งเป็น "ข้อมูลประกอบ" ของอีกหน้า — ที่นี่มันคือคำถามหลัก
+ *    จึงใช้ `toKey`/`overT` (เทียบเป้า) ไม่ใช่ `short`/`overG` (เทียบคลังจัด) เด็ดขาด
+ * ==========================================================================*/
+function spBalHtml(sid,mode){
   const codes=spSlipCodes(sid);
   if(!codes.length)return "";
+  const keyOnly=(mode==="key");
   const B=spBal(sid);
   spMissWant(B.months);
   const pc=v=>(v===null||v===undefined)?'<span class="psub">—</span>':(v.toFixed(1)+"%");
@@ -20338,15 +20357,35 @@ function spBalHtml(sid){
   const T=(v,ps)=>spBalOne(v,ps);
   /* ยอดรวมข้ามสินค้า — ลังเต็ม + "+เศษ" ห้ามบวกเศษชิ้นข้ามรหัส (ดูบันทึกที่ spSumTxt) */
   const mapT=f=>spSumTxt(B.rows.reduce((m,r)=>{const v=f(r);if(v)m[r.code]=v;return m;},{}),B.ym);
+  /* สถานะของขั้นเซลล์คีย์ = เทียบกับเป้าของซุป ไม่ใช่เทียบคลังจัด */
+  const kSt=B.toKey?"short":(B.overT?"over":(B.keyed?"ok":"wait"));
+  /* ⚠️ ใช้คลาส `.sp-stpill` ตัวเดียวกับ spStPill — คลาสอื่นไม่มี CSS แล้วป้ายจะกลายเป็น
+     ข้อความเปล่า ๆ (กฎเดิมของไฟล์นี้: ปุ่ม/ป้ายต้องหน้าตาเหมือนกันทั้งเว็บ) */
+  const kC=kSt==="short"?"var(--bad)":(kSt==="over"?"var(--warn)"
+    :(kSt==="ok"?"var(--good)":"var(--muted)"));
+  const kPill=keyOnly
+    ?`<span class="sp-stpill" style="border-color:${kC};color:${kC}">${
+        kSt==="short"?"🔴 ยังคีย์ไม่ครบเป้า":(kSt==="over"?"🟠 คีย์เกินเป้า"
+        :(kSt==="ok"?"🟢 ครบตามเป้า":"⏳ ยังไม่ได้คีย์"))}</span>`
+    :spStPill(B.st);
   const h=[`<div class="panel sp-bal"><div class="sp-balh">🎯 ใบนี้ไปถึงไหนแล้ว
     <span class="psub"> · ${fmtDate(B.d0)} → ${fmtDate(B.d1)} · ${B.nOrd} ใบออเดอร์</span>
-    ${spStPill(B.st)}</div>`];
+    ${kPill}</div>`];
   h.push(`<div class="sp-balc">
     <div class="sp-balk"><div class="sp-balkt">📦 ตั้งต้นในใบ</div>
-      <div class="sp-balkv">${mapT(r=>r.tgt)||"0"}</div></div>
+      <div class="sp-balkv">${mapT(r=>r.tgt)||"0"}</div>
+      ${keyOnly?'<div class="psub">เป้าที่ซุปตั้งไว้</div>':""}</div>
     <div class="sp-balk"><div class="sp-balkt">📲 เซลล์คีย์ไปแล้ว</div>
       <div class="sp-balkv">${mapT(r=>r.k)||"0"}</div>
       <div class="psub">${B.nOrd} ใบ</div></div>
+    ${keyOnly?`
+    <div class="sp-balk" style="border-color:${
+        B.toKey?"var(--bad)":(B.overT?"var(--warn)":"var(--good)")}">
+      <div class="sp-balkt">${B.toKey?"🔴 ยังต้องคีย์อีก":(B.overT?"🟠 คีย์เกินตั้งต้น":"🟢 เทียบกับเป้า")}</div>
+      <div class="sp-balkv" style="color:${
+        B.toKey?"var(--bad)":(B.overT?"var(--warn)":"var(--good)")}">${
+        B.toKey?spSumTxt(B.tk,B.ym):(B.overT?spSumTxt(B.ot,B.ym):(B.keyed?"ครบ":"ยังไม่ได้คีย์"))}</div></div>`
+    :`
     <div class="sp-balk"><div class="sp-balkt">🚚 คลังจัดแล้ว (มีเลข GIN)</div>
       <div class="sp-balkv">${mapT(r=>r.g)||"0"}</div>
       <div class="psub">${B.nGin} จาก ${B.nOrd} ใบ</div></div>
@@ -20356,12 +20395,13 @@ function spBalHtml(sid){
         B.short?spSumTxt(B.sh,B.ym):(B.overG?spSumTxt(B.ov,B.ym):"ครบ")}</div></div>
     <div class="sp-balk" style="border-color:${col(B.pct)}"><div class="sp-balkt">✅ ตรงกับคลังจัด</div>
       <div class="sp-balkv" style="color:${col(B.pct)}">${pc(B.pct)}</div>
-      <div class="psub">${B.pct===null?"รอไฟล์":(B.pct>=99.95?"ครบ 100%":("ขาดตกหล่น "+(100-B.pct).toFixed(1)+"%"))}</div></div>
+      <div class="psub">${B.pct===null?"รอไฟล์":(B.pct>=99.95?"ครบ 100%":("ขาดตกหล่น "+(100-B.pct).toFixed(1)+"%"))}</div></div>`}
   </div>`);
   /* 📋 หน้าสรุปให้ผู้จัดการ: ต้องคีย์รายการไหนเพิ่ม / ขาดกี่ลัง */
   const todoK=B.rows.filter(r=>r.toKey>0).sort((a,b)=>b.toKey-a.toKey);
-  const todoS=B.rows.filter(r=>r.d<0).sort((a,b)=>a.d-b.d);
-  const todoO=B.rows.filter(r=>r.d>0).sort((a,b)=>b.d-a.d);
+  /* ขาด/เกิน วัดจาก "คลังจัด" ⇒ เป็นงานของขั้นแอดมินตรวจ ไม่ใช่ของขั้นเซลล์คีย์ */
+  const todoS=keyOnly?[]:B.rows.filter(r=>r.d<0).sort((a,b)=>a.d-b.d);
+  const todoO=keyOnly?[]:B.rows.filter(r=>r.d>0).sort((a,b)=>b.d-a.d);
   if(todoK.length||todoS.length||todoO.length){
     h.push(`<div class="sp-baltd"><div class="sp-baltdh">📋 ต้องทำอะไรต่อ</div>`);
     /* ⚠️ หัวข้อนับเป็น "รายการ" ไม่ใช่ยอดรวมลัง/ชิ้น — ยอดที่หยิบของได้จริงอยู่บรรทัดสินค้า
@@ -20382,8 +20422,9 @@ function spBalHtml(sid){
         <b>อีก ${T(r.toKey,r.ps)}</b></div>`).join("")}</div>`);
     h.push(`</div>`);
   }else if(B.keyed){
-    h.push(`<div class="sp-baltd"><div class="sp-baltdg ok"><b>🟢 ครบทุกรายการ —
-      เซลล์คีย์ตรงกับคลังจัดถึงหน่วยชิ้น และคีย์ครบตั้งต้นในใบแล้ว</b></div></div>`);
+    h.push(`<div class="sp-baltd"><div class="sp-baltdg ok"><b>🟢 ครบทุกรายการ — ${keyOnly
+      ?"คีย์ครบตั้งต้นในใบแล้ว"
+      :"เซลล์คีย์ตรงกับคลังจัดถึงหน่วยชิ้น และคีย์ครบตั้งต้นในใบแล้ว"}</b></div></div>`);
   }
   const w=[];
   /* ⏰ ตัดด้วยเวลาที่สร้างใบ — ต้องบอกจำนวนและเหตุผล ห้ามหายเงียบ (ดูบันทึกเหนือ spSlipMade) */
@@ -20395,32 +20436,41 @@ function spBalHtml(sid){
   if(B.nofile)w.push("ยังไม่มีไฟล์ของ "+B.nofile+" วัน — วันพวกนั้นยังตอบไม่ได้ ไม่ใช่ว่าไม่มีงาน");
   if(B.noDet)w.push("ยังไม่ได้อ่านรายการสินค้าของ "+B.noDet+" วัน (ระบบกำลังดึงให้)");
   if(B.overT)w.push("คีย์เกินตั้งต้นในใบ "+spSumTxt(B.ot,B.ym)+" — ตั้งต้นเป็นข้อมูลประกอบ ไม่ได้ใช้ตัดสินว่าครบ");
-  if(B.srcChk&&B.srcGin)w.push("คลังจัด: "+B.srcChk+" วันอ่านจากผลตรวจของแอดมิน (จำนวนที่คลังจัดจริง) · "+
+  if(!keyOnly&&B.srcChk&&B.srcGin)w.push("คลังจัด: "+B.srcChk+" วันอ่านจากผลตรวจของแอดมิน (จำนวนที่คลังจัดจริง) · "+
     B.srcGin+" วันยังไม่ตรวจ จึงนับจากใบที่ออกเลข GIN แล้ว");
   if(B.unk.length||B.noPs.length)w.push("ไม่รู้ขนาดลัง "+
     [].concat(B.unk,B.noPs).filter((x,i,a)=>a.indexOf(x)===i).length+" รหัส — นับเป็นชิ้นไว้ ไม่เดาขนาด");
   if(w.length)h.push(`<div class="warnbox sp-balw">${w.map(x=>"• "+x).join("<br>")}</div>`);
   h.push(`<div class="tblwrap"><table class="sp-balt"><thead><tr>
-    <th>สินค้า</th><th>ตั้งต้นในใบ</th><th>เซลล์คีย์</th><th>คลังจัด</th><th>ผลต่าง</th><th>ตรง</th>
+    <th>สินค้า</th><th>ตั้งต้นในใบ</th><th>เซลล์คีย์</th>${keyOnly
+      ?"<th>เทียบกับเป้า</th>"
+      :"<th>คลังจัด</th><th>ผลต่าง</th><th>ตรง</th>"}
     </tr></thead><tbody>`);
+  /* ⚖️ ขั้นเซลล์คีย์: ช่องผลต่าง = คีย์ เทียบกับ เป้า · ไม่ใช่ เทียบกับ คลังจัด */
+  const kDiff=r=>(r.tgt===null)?'<span class="psub">—</span>'
+    :(r.toKey?`<b style="color:var(--bad)">🔴 ยังขาด ${T(r.toKey,r.ps)}</b>`
+    :(r.overT?`<b style="color:var(--warn)">🟠 เกิน ${T(r.overT,r.ps)}</b>`
+    :(r.k?`<span class="sp-ok">🟢 ครบ</span>`:'<span class="psub">ยังไม่ได้คีย์</span>')));
   B.rows.forEach(r=>{
     const S=SP_BST[r.st]||SP_BST.wait;
+    const rCls=keyOnly?(r.tgt===null?"wait":(r.toKey?"short":(r.overT?"over":(r.k?"ok":"wait")))):r.st;
     const diff=(r.st==="ok")?`<span class="sp-ok">🟢 ครบ</span>`
       :(r.st==="wait")?'<span class="psub">—</span>'
       :`<b style="color:${S.c}">${S.i} ${S.t} ${T(Math.abs(r.d),r.ps)}${
          r.st==="over"?" (หักออก)":""}</b>`;
     /* 📦 บอกขนาดลังที่ใช้คิดไว้บนแถวเลย (มาจาก Product Master) — เจ้าของจะได้ตรวจหน่วยเองได้
        ว่า "44 ชิ้น" เป็นเศษของลัง 72 จริง ไม่ใช่ตัวเลขที่ระบบแตกไม่ลง (29 พ.ย. 69) */
-    h.push(`<tr class="sp-balr ${anaEsc(r.st)}"><td data-l="สินค้า"><b>${anaEsc(r.nm||r.code)}</b>
+    h.push(`<tr class="sp-balr ${anaEsc(rCls)}"><td data-l="สินค้า"><b>${anaEsc(r.nm||r.code)}</b>
         <span class="psub">${anaEsc(r.code)}${
           r.ps?" · ลังละ "+r.ps+" ชิ้น":' · <span class="down">ไม่รู้ขนาดลัง</span>'}</span></td>
       <td data-l="ตั้งต้นในใบ">${r.tgt===null?'<span class="psub">?</span>':T(r.tgt,r.ps)}${
         r.toKey?`<span class="psub">ต้องคีย์อีก ${T(r.toKey,r.ps)}</span>`
         :(r.overT?`<span class="psub">คีย์เกิน ${T(r.overT,r.ps)}</span>`:"")}</td>
       <td data-l="เซลล์คีย์">${T(r.k,r.ps)}</td>
-      <td data-l="คลังจัด">${T(r.g,r.ps)}</td>
+      ${keyOnly?`<td data-l="เทียบกับเป้า">${kDiff(r)}</td>`
+      :`<td data-l="คลังจัด">${T(r.g,r.ps)}</td>
       <td data-l="ผลต่าง">${diff}</td>
-      <td data-l="ตรง" style="color:${col(r.pct)};font-weight:800">${pc(r.pct)}</td></tr>`);
+      <td data-l="ตรง" style="color:${col(r.pct)};font-weight:800">${pc(r.pct)}</td>`}</tr>`);
   });
   h.push(`</tbody></table></div>`);
   const me=spMineOnly()?spMyLine():"";
@@ -20430,17 +20480,20 @@ function spBalHtml(sid){
       <div class="sp-ballns">`);
     lns.forEach(x=>{
       const S=SP_BST[x.st]||SP_BST.wait;
-      /* ชิปรายสายก็เป็นยอดข้ามสินค้า — ผ่าน spSumTxt เหมือนกัน ห้ามบวกเศษชิ้นคนละขนาดลัง */
-      h.push(`<div class="sp-balln" style="border-color:${S.c}"><b>${anaEsc(x.ln)}</b>
+      /* ชิปรายสายก็เป็นยอดข้ามสินค้า — ผ่าน spSumTxt เหมือนกัน ห้ามบวกเศษชิ้นคนละขนาดลัง
+         ⚠️ ขั้นเซลล์คีย์: ชิปบอกแค่ "สายนี้คีย์ไปเท่าไหร่ กี่ใบ" ไม่มีคลังจัดและไม่มีสถานะ
+            ที่วัดจากคลังจัด (เจ้าของสั่ง 29 พ.ย. 69) */
+      h.push(`<div class="sp-balln" style="border-color:${keyOnly?"var(--blue)":S.c}"><b>${anaEsc(x.ln)}</b>
         <span>${spSumTxt(x.pcs,B.ym)}</span>
-        <span class="psub">${x.n} ใบ · คลังจัด ${x.nGin}</span>
-        <span style="color:${S.c};font-weight:800">${S.i} ${S.t}${
-          x.st==="short"?(" "+spSumTxt(x.sh,B.ym)):(x.st==="over"?(" "+spSumTxt(x.ov,B.ym)):"")}</span></div>`);
+        <span class="psub">${x.n} ใบ${keyOnly?"":(" · คลังจัด "+x.nGin)}</span>
+        ${keyOnly?"":`<span style="color:${S.c};font-weight:800">${S.i} ${S.t}${
+          x.st==="short"?(" "+spSumTxt(x.sh,B.ym)):(x.st==="over"?(" "+spSumTxt(x.ov,B.ym)):"")}</span>`}</div>`);
     });
     h.push(`</div>`);
   }
-  h.push(`<div class="psub sp-balft">สีของแถวตัดสินจาก <b>เซลล์คีย์ เทียบกับ คลังจัด ถึงหน่วยชิ้น</b> ·
-    <b>คลังจัด</b> นับใบที่คลังออกเลข GIN ให้แล้ว · <b>ตั้งต้นในใบ</b> เป็นข้อมูลประกอบ</div></div>`);
+  h.push(`<div class="psub sp-balft">${keyOnly
+    ?"หน้านี้เทียบ <b>ที่เซลล์คีย์ กับ เป้าที่ซุปตั้งไว้</b> ถึงหน่วยชิ้นเท่านั้น · ยอดที่คลังจัดออกจริงอยู่ในขั้น <b>🔎 แอดมินตรวจ</b>"
+    :"สีของแถวตัดสินจาก <b>เซลล์คีย์ เทียบกับ คลังจัด ถึงหน่วยชิ้น</b> · <b>คลังจัด</b> นับใบที่คลังออกเลข GIN ให้แล้ว · <b>ตั้งต้นในใบ</b> เป็นข้อมูลประกอบ"}</div></div>`);
   return h.join("");
 }
 /* ----- ① ใต้ช่องกรอกของเซลล์: ไฟล์มีเลขอะไรของสายนี้วันนี้ ----- */
@@ -20920,7 +20973,9 @@ function spAdmHtml(sid){
     alFetch(ym).then(ok=>{if(ok&&CURTAB==="spord")renderSpord();});
   }
   const haveFile=!!ALLOC;
-  let h=`<div class="panel"><h3>🔎 ฝั่งแอดมิน — ตรวจของที่คลังจัดออก วันที่ ${fmtDate(ymd)}</h3>
+  /* 🎯 แถบรวมทั้งใบ (ตั้งต้น → เซลล์คีย์ → คลังจัด → ผลต่าง → % ตรง) อยู่ตรงนี้ **ขั้นเดียว**
+     เจ้าของสั่ง 29 พ.ย. 69 ให้ย้ายส่วนคลังจัดและ % ออกจากขั้นเซลล์คีย์มาไว้ที่แอดมินตรวจ */
+  let h=spBalHtml(sid)+`<div class="panel"><h3>🔎 ฝั่งแอดมิน — ตรวจของที่คลังจัดออก วันที่ ${fmtDate(ymd)}</h3>
     <div class="psub">ใส่ <b>เลข GIN</b> ของวันนั้น แล้วกดตรวจ · ไฟล์ใบจัดของอัพที่ปุ่ม
       <b>📥 ไฟล์ใบจัดของ</b> ด้านบนของหน้า ทีเดียวใช้ได้ทุกใบทุกวัน</div>`;
   if(!can)h+=`<div class="insight" style="margin-top:10px">ดูอย่างเดียว</div>`;
