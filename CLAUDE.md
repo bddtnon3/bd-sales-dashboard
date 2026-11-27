@@ -2011,6 +2011,33 @@ code, never printed.
   survives a failed save, is keyed per slip+day+line, takes typed numbers too, and that a browser
   with `localStorage` blocked still works — six checks fail without the draft layer, including
   *"reopen the page and the 20 numbers come back"*, which is the whole point.
+  **🔁 And what was already lost is recovered by asking the FILES, not the memory**
+  (`spMissFind`/`spMissPool`/`spMissScan`/`spMissAdd`, owner 28 Nov 26: *"ทำให้ระบบอ่านย้อนหลัง
+  ที่เค้าอัพมาได้ไหม … ลองย้อนไปดูได้ไหมว่าเราตกอะไร แล้วเอามันกลับมาได้เลย"*). The numbers the
+  draft would now hold were never stored, so nothing in `bd-data-*` can give them back — **but the
+  orders themselves never left**: the rep keyed them into dcode, so they sit in the files with
+  their **line and their keying date** attached. The question is therefore asked from the other
+  end — *"what did this line key that day?"* — and the difference against the box is what fell out.
+  Sources, in order of completeness: **`api/ordtrk`** (`l` = PJP code, `d` = day of month), which
+  is fed by the allocation file *and* the Transaction Inquiry file (measured the most complete of
+  the three) and which **every role may read**, unlike `api/alloc.js`; then **`STOREDAILY.ord`**,
+  whose `k` is the keying day. Four rules, all of them this file's own: **it never fills in a
+  guess** — an order is only *แน่ใจ* when `det` from `api/ordtrk?full=1` shows it carries one of
+  the slip's product codes, and everything else goes in a separate *ไม่แน่ใจ* pile the user must
+  choose; **a cancelled order (`cx`) is listed and never added**; **no file for that day is
+  `noFile`, never an empty "nothing missing"**, or an un-uploaded day reads as a clean bill; and a
+  number already in the box in any of its three spellings (full `BDD01…`, the app's `1034…`, the
+  6-digit tail) is matched and not re-offered. Filling back **appends through the ordinary
+  `spRepSave` → `api/spord.js`** — no new endpoint, no new permission, and the rep's own record is
+  never overwritten. The panel sits at the foot of ② เซลล์คีย์ with scopes วันที่เลือก / ทั้งใบ; a
+  rep sees only their own line (`spMineOnly`), a manager every line. Prove it with §13 of
+  **`node test/browser/spord.test.cjs`** (381 checks), which rebuilds the owner's CT17 case — 20
+  orders in the files, 13 in the box — and asserts the 7 are found, split 4 sure / 3 unsure, that
+  another line's and another day's orders never appear, that scanning mutates nothing, and that
+  filling back gives 13 → 17 with the first 13 untouched. ⚠️ That suite shares one browser page
+  across blocks, so a block that stubs `bdPost` to fail must have it restored in `__reset` — §13
+  silently failed to save until it was (a stale stub from §12, the same class of bug as the stale
+  debounce above).
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
   `renderSpord` returns the PIN screen and **draws nothing of the page** until `spPinOk()`. Two
   rules. **The repo is public, so the digits are never written into any file** — only the SHA-256

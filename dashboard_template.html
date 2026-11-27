@@ -469,6 +469,21 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 /* 🛟 มีเลขค้างอยู่ในเครื่องที่ยังไม่ได้บันทึก — ต้องเด่นพอให้เซลล์เห็นว่าไม่ต้องอัพรูปซ้ำ */
 .sp-nodr{margin:8px 0 0;font-size:13.5px;line-height:1.6;background:#FFF6E5;color:#8A5300;
   border:1px solid #F0CE8E;border-radius:9px;padding:9px 11px}
+/* 🔁 ย้อนหาเลขออเดอร์ที่ตกหล่น */
+.sp-missbar>.psub{margin:7px 0 0}
+.sp-missp{margin-top:12px}
+.sp-misssum{font-size:14px;font-weight:700;background:#FFF6E5;color:#8A5300;
+  border:1px solid #F0CE8E;border-radius:9px;padding:9px 11px;line-height:1.6}
+.sp-missall{margin:9px 0 2px}
+.sp-missg{margin-top:14px;border:1px solid var(--line);border-radius:11px;padding:11px}
+.sp-missh{font-size:14.5px;font-weight:800;margin-bottom:6px}
+.sp-missh .psub{display:inline;margin-left:8px;font-weight:600}
+.sp-misslb{font-size:12.5px;font-weight:700;color:var(--muted);margin:10px 0 5px}
+.sp-misst{width:100%;border-collapse:collapse;font-size:13px}
+.sp-misst th,.sp-misst td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;
+  white-space:nowrap}
+.sp-misst th{background:var(--bg);font-size:12px;color:var(--muted)}
+.sp-misst .psub{white-space:normal}
 /* sales request modal */
 #reqModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px}
 /* กล่อง "บันทึกว่าขายออกไปแล้ว" ของสต็อคกลาง — ต้องมีกฎของตัวเอง ไม่งั้นมันจะไหลไปท้ายหน้า
@@ -15054,9 +15069,10 @@ function alPick(gins,codes){
    📲 เซลล์คีย์ — เจ้าของทัก 27 พ.ย. 69: *"ให้ในส่วนออร์เดอร์พิเศษเปิดเข้ามาแล้วเจอหมวด
    เซลล์คีย์เลย ไม่ต้องพาไปหน้าซุปจดก่อนให้งง"* · ว่างไว้แล้วให้ spSec() เลือกตามบทบาทเอง */
 let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:"",sec:"",day:"",gin:"",cm:"",cmpLn:"",me:0,chkD:"",
-        trk:{},ocr:0,nodt:0};
+        trk:{},ocr:0,nodt:0,miss:{on:0,sid:"",day:undefined}};
         /* trk = สายที่กางเลขออเดอร์ไว้ในตารางติดตาม · ocr = ชุดรูปที่กำลังอ่าน
-           nodt = ตัวหน่วงเขียนร่างเลขออเดอร์ — ไม่มีอะไรในนี้ sync */
+           nodt = ตัวหน่วงเขียนร่างเลขออเดอร์ · miss = กล่องย้อนหาเลขที่ตกหล่น
+           ไม่มีอะไรในนี้ sync */
 function spOk(){const C=cstOk();if(!C.sub)C.sub={};if(!C.subdel)C.subdel={};return C;}
 /* ---------- สองฝั่งของงาน: ฝั่งเซลล์ (sup) กับ ฝั่งแอดมิน ----------
    เจ้าของย่อจาก 6 ขั้นตอนเหลือ 2 เมื่อ 25 พ.ย. 69 — *"เริ่มจากง่าย ๆ ก่อน เป็นแค่ฝั่งเซลล์และ
@@ -17995,6 +18011,9 @@ function spRepTabHtml(sid,ymd){
   /* เซลล์: รายการงานของตัวเอง → การ์ดกรอก → ประวัติ · ไม่ต้องมีตารางติดตาม 12 สายให้งง */
   return (isSales?spRepHomeHtml(sid)+spRepMineHtml(sid,ymd)
                  :spTrackHtml(sid,ymd,tr))+
+    /* 🔁 ย้อนหาเลขที่ตกหล่น — อยู่ท้ายหน้าเพราะเป็นเครื่องมือตรวจ ไม่ใช่ขั้นตอนประจำวัน
+       เซลล์ก็กดได้ แต่เห็นเฉพาะสายตัวเอง (กรองใน spMissScan) */
+    `<div class="panel" style="margin-top:12px">${spMissBtnHtml(sid)}</div>`+
     `<div id="spHistBox" class="hidden"><div class="panel" style="margin-top:12px">
       <div class="cst-fb"><h3 id="spHistTitle" style="margin:0"></h3>
         <span style="flex:1"></span>
@@ -18688,6 +18707,267 @@ function spNoSum(list,hint){
   o.cs=Math.round(o.cs*100)/100;o.pc=Math.round(o.pc*100)/100;o.v=Math.round(o.v*100)/100;
   o.nShop=Object.keys(o.shops).length;
   return o;
+}
+/* ============================================================================
+ * 🔁 ย้อนหาเลขออเดอร์ที่ตกหล่น — ถามจากไฟล์ ไม่ใช่จากความจำ
+ *
+ * เจ้าของสั่ง 28 พ.ย. 69 หลังเลขของสาย 17 หายไป 7 เลข:
+ *   *"ทำให้ระบบอ่านย้อนหลังที่เค้าอัพมาได้ไหม ตอนนี้เซลล์กลับกันแล้ว … ลองย้อนไปดูได้ไหมว่า
+ *     เราตกอะไร แล้วเอามันกลับมาได้เลย"*
+ *
+ * 🔑 กุญแจคือ **เลขที่หายไม่ได้หายไปจากโลก** — หายจากช่องกรอกของเราเท่านั้น
+ *    ตัวออเดอร์จริงที่เซลล์คีย์เข้าระบบ dcode ยังอยู่ครบในไฟล์ และไฟล์บอก **สาย** กับ
+ *    **วันที่คีย์** มาด้วย จึงถามกลับทางได้ว่า "สายนี้วันนั้นคีย์ออเดอร์อะไรไว้บ้าง"
+ *    แล้วเทียบกับเลขที่อยู่ในช่อง — ส่วนต่างคือของที่ตกหล่น
+ *
+ * แหล่งที่ใช้ เรียงตามความครบ:
+ *   ① `api/ordtrk` (OT.cache[ym].ord) — มี `l` (รหัสสาย) + `d` (วันที่คีย์) ติดมาในเรคอร์ด
+ *      และกินข้อมูลจาก **สองไฟล์**: ใบจัดของ กับ ไฟล์รายการสั่งซื้อ (Transaction Inquiry)
+ *      ซึ่งเป็นรายการที่ครบที่สุดในสามไฟล์ (วัดแล้ว: ครอบทุกใบของอีกสองไฟล์ 100%)
+ *      **ทุกบทบาทอ่านได้** ต่างจาก api/alloc.js ที่ผู้จัดการเท่านั้น
+ *   ② `STOREDAILY.ord` — ไฟล์ยอดขายรายวัน มี `k` (วันที่คีย์) และ `l` เหมือนกัน
+ *      ใช้เสริม เพราะบางวันมีแต่ไฟล์ยอดขาย ยังไม่ได้อัพอีกสองไฟล์
+ *
+ * ⚠️ สามกฎ ซึ่งเป็นกฎเดิมของโปรเจกต์ทั้งหมด:
+ *   • **ห้ามเดาแล้วเติมเอง** — ใบที่เจอเป็น "ผู้ต้องสงสัย" ไม่ใช่คำตอบ · ใบที่
+ *     **มีสินค้าของใบนี้อยู่จริง** (ดูจาก det ของ api/ordtrk) ถึงจะนับว่าแน่ใจ
+ *     ที่เหลือแยกกองไว้ให้คนกดเอง ไม่เติมให้อัตโนมัติ
+ *   • **ใบที่ยกเลิกแล้ว (cx) ไม่เติมเด็ดขาด** — นับแล้วบอก ไม่ใช่เงียบ
+ *   • **ไม่รู้ ≠ ไม่มี** — เดือนที่ยังไม่ได้โหลด/ยังไม่มีไฟล์ ต้องบอกว่ารอไฟล์ ห้ามขึ้น 0
+ *     แล้วปล่อยให้อ่านว่า "ไม่ตกอะไรเลย"
+ * ⚠️ อ่านอย่างเดียวทั้งหมด การเติมกลับไปทาง spRepSave → api/spord.js ตามสิทธิ์เดิม
+ * ==========================================================================*/
+const MISS_MAX=300;
+/* เลขที่อยู่ในช่องแล้ว → แผนที่ของเลขใบเต็ม (BDD01…) ที่ resolve ได้ */
+function spMissHave(rec,ln,ym){
+  const have={},raw=[];
+  ((rec&&Array.isArray(rec.no))?rec.no:[]).forEach(t=>{
+    raw.push(t);
+    const f=spOrdFind(t,{l:spLineCode(ln),ym:ym});
+    if(f&&f.no)have[String(f.no).toUpperCase()]=1;
+    have[String(t).toUpperCase()]=1;
+  });
+  return {have:have,raw:raw};
+}
+/* ใบทั้งหมดที่ "สายนี้ วันนี้" คีย์ไว้ ตามไฟล์ — คืน map ของเลขใบเต็ม → เรคอร์ดย่อ */
+function spMissPool(lc,ymd){
+  const out={},ym=ymd.slice(0,7),dd=+ymd.slice(8,10);
+  /* ① ใบจัดของ + ไฟล์รายการสั่งซื้อ (ผ่าน api/ordtrk) */
+  const O=spOtOrd(ym);
+  if(O)Object.keys(O).forEach(k=>{
+    const r=O[k];if(!r)return;
+    if(String(r.l||"")!==String(lc))return;
+    if((+r.d||0)!==dd)return;
+    const full=otFull(k,"BDD01");
+    out[full]={full:full,rf:r.rf||"",s:r.s||"",cx:!!r.cx,ot:r,src:"gin"};
+  });
+  /* ② ไฟล์ยอดขายรายวัน — `k` คือวันที่เซลล์คีย์ ส่วน `d` คือวันออกบิล คนละคำถาม */
+  const SD=((typeof STOREDAILY!=="undefined"&&STOREDAILY&&STOREDAILY.ord)||{});
+  Object.keys(SD).forEach(k=>{
+    const r=SD[k];if(!r)return;
+    if(String(k).toUpperCase().indexOf("BDD01")!==0)return;
+    if(String(r.l||"")!==String(lc))return;
+    if(String(r.k||r.d||"").slice(0,10)!==ymd)return;
+    const full=String(k).toUpperCase();
+    const e=out[full]||(out[full]={full:full,rf:"",s:"",cx:false,src:"sale"});
+    if(!e.rf&&r.rf)e.rf=String(r.rf);
+    if(!e.s&&r.s)e.s=r.s;
+    e.sd=r;
+  });
+  return out;
+}
+/* ใบนี้มีสินค้าของสลิปอยู่ไหม — จาก det ของ api/ordtrk · คืน null เมื่อ "ยังไม่รู้" */
+function spMissInSlip(full,ym,codes){
+  const C=(typeof OT!=="undefined"&&OT&&OT.cache)?OT.cache[ym]:null;
+  if(!C||!C.det)return null;
+  const d=C.det[otTail(full,"BDD01")];
+  if(!d)return null;
+  const ks=Object.keys(d);
+  if(!ks.length)return null;
+  for(let i=0;i<ks.length;i++)if(codes[ks[i]])return true;
+  return false;
+}
+/* หนึ่งสาย หนึ่งวัน */
+function spMissFind(sid,ymd,ln,codes){
+  const o={sid:sid,d:ymd,ln:ln,sure:[],maybe:[],cancel:[],nHave:0,noLine:0,noFile:0};
+  const lc=spLineCode(ln);
+  if(!lc){o.noLine=1;return o;}
+  const ym=String(ymd||"").slice(0,7);
+  const H=spMissHave(spRepRec(sid,ymd,ln),ln,ym);
+  o.nHave=H.raw.length;
+  const pool=spMissPool(lc,ymd);
+  const keys=Object.keys(pool);
+  /* ไม่มีใบของสายนี้ในไฟล์เลย = ยังไม่มีไฟล์ของวันนั้น ไม่ใช่ "ไม่ตกอะไร" */
+  if(!keys.length){o.noFile=1;return o;}
+  const cs=codes||{};
+  keys.slice(0,MISS_MAX).forEach(full=>{
+    if(H.have[full])return;
+    const e=pool[full];
+    const tail=otTail(full,"BDD01");
+    if(e.rf&&(H.have[String(e.rf).toUpperCase()]||H.have[String(e.rf).slice(-SP_TAIL)]))return;
+    if(H.have[tail])return;
+    const q=spOrdQty(full,e.sd||null,ym);
+    const row={full:full,rf:e.rf,shop:e.s,q:q,
+      ask:e.rf||full,   /* เลขที่เซลล์ควรจะได้พิมพ์ */
+      in:spMissInSlip(full,ym,cs)};
+    if(e.cx){o.cancel.push(row);return;}
+    if(row.in===true)o.sure.push(row);else o.maybe.push(row);
+  });
+  o.n=o.sure.length+o.maybe.length;
+  return o;
+}
+/* กวาดทั้งใบ: ทุกวันที่มีงาน × ทุกสายที่เกี่ยวข้อง — เซลล์เห็นเฉพาะสายตัวเอง */
+function spMissScan(sid){
+  const codes={};spSlipCodes(sid).forEach(c=>{codes[c.code]=1;});
+  const mine=spMineOnly()?spMyLine():"";
+  const lines=mine?[mine]:spSlipLines(sid);
+  const days=(SP.miss&&SP.miss.day)?[SP.miss.day]:spDays(sid);
+  const out=[],months={};
+  let sure=0,maybe=0,cancel=0,nofile=0;
+  days.forEach(d=>{
+    months[d.slice(0,7)]=1;
+    lines.forEach(ln=>{
+      const r=spMissFind(sid,d,ln,codes);
+      if(r.noLine)return;
+      if(r.noFile){nofile++;return;}
+      if(!r.n&&!r.cancel.length)return;
+      sure+=r.sure.length;maybe+=r.maybe.length;cancel+=r.cancel.length;
+      out.push(r);
+    });
+  });
+  return {rows:out,sure:sure,maybe:maybe,cancel:cancel,nofile:nofile,
+    days:days.length,lines:lines.length,months:Object.keys(months)};
+}
+/* ⚠️ ต้องมี det (รายการสินค้าในใบ) ถึงจะแยก "แน่ใจ" ออกจาก "ไม่แน่ใจ" ได้
+   โหลดเดือนละครั้งต่อแท็บ แล้ววาดใหม่รอบเดียว — แพทเทิร์นเดียวกับ spOtWant */
+let _spMissAsk={};
+function spMissWant(ms){
+  if(typeof otApi!=="function"||!otApi()||typeof otLoad!=="function")return;
+  (ms||[]).forEach(m=>{
+    if(!/^\d{4}-\d{2}$/.test(m))return;
+    const C=(typeof OT!=="undefined"&&OT&&OT.cache)?OT.cache[m]:null;
+    if((C&&C.det)||_spMissAsk[m])return;
+    _spMissAsk[m]=1;
+    otLoad(m,1).then(()=>{
+      if(typeof CURTAB!=="undefined"&&CURTAB==="spord"&&SP.miss&&SP.miss.on)spMissPaint();
+    }).catch(()=>{});
+  });
+}
+function spMissOpen(sid){
+  SP.miss=SP.miss||{};
+  SP.miss.on=!SP.miss.on;
+  SP.miss.sid=sid;
+  if(SP.miss.on&&SP.miss.day===undefined)SP.miss.day=spDay(sid);
+  spMissPaint();
+}
+function spMissScope(v){SP.miss=SP.miss||{};SP.miss.day=v?spDay(SP.miss.sid):"";spMissPaint();}
+function spMissPaint(){
+  const b=document.getElementById("spMissBox");
+  if(b)b.innerHTML=spMissHtml(SP.miss&&SP.miss.sid);
+}
+function spMissBtnHtml(sid){
+  return `<div class="sp-missbar">
+    <button type="button" class="btn-go" onclick="spMissOpen('${anaEsc(sid)}')">
+      🔁 ย้อนหาเลขออเดอร์ที่ตกหล่น</button>
+    <div class="psub">เทียบเลขในช่องกับออเดอร์ที่สายนั้นคีย์ไว้จริงในไฟล์ —
+      ถ้ามีเลขตกหล่น กดเติมกลับได้เลย ไม่ต้องอัพรูปใหม่</div>
+    <div id="spMissBox">${(SP.miss&&SP.miss.on&&SP.miss.sid===sid)?spMissHtml(sid):""}</div>
+  </div>`;
+}
+function spMissRowHtml(r,kind){
+  const q=r.q;
+  const qt=q?spCsTxt(q.cs,q.pc):'<span class="psub">ยังไม่รู้จำนวน</span>';
+  return `<tr><td data-l="เลข"><b>${anaEsc(r.ask)}</b>${
+      r.rf&&r.rf!==r.full?`<span class="psub" style="display:block">${anaEsc(r.full)}</span>`:""}</td>
+    <td data-l="ร้าน">${anaEsc(spShop(r.shop)||r.shop||"—")}</td>
+    <td data-l="จำนวน">${qt}</td>
+    <td data-l="สินค้าในใบนี้">${r.in===true?'<span class="sp-ok">✔ มี</span>'
+      :(r.in===false?'<span class="psub">ไม่มี</span>':'<span class="psub">ยังไม่รู้</span>')}</td></tr>`;
+}
+function spMissHtml(sid){
+  if(!sid||!(SP.miss&&SP.miss.on))return "";
+  const one=!!(SP.miss&&SP.miss.day);
+  const S=spMissScan(sid);
+  spMissWant(S.months);
+  const waitDet=S.months.some(m=>{
+    const C=(typeof OT!=="undefined"&&OT&&OT.cache)?OT.cache[m]:null;return !(C&&C.det);});
+  let h=`<div class="sp-missp">
+    <div class="seg" style="margin-bottom:10px">
+      <button type="button" class="${one?"on":""}" onclick="spMissScope(1)">วันที่เลือก</button>
+      <button type="button" class="${one?"":"on"}" onclick="spMissScope(0)">ทั้งใบ (${S.days} วัน)</button>
+    </div>`;
+  if(waitDet)h+=`<div class="psub">⏳ กำลังอ่านรายการสินค้าของแต่ละใบ … รายการอาจขยับอีกครู่</div>`;
+  if(!S.rows.length){
+    h+=`<div class="insight">${S.nofile
+      ? "ยังไม่มีไฟล์ของวันที่เลือก จึงยังตอบไม่ได้ว่าตกเลขไหน — อัพไฟล์ยอดขายหรือไฟล์ใบจัดของของวันนั้นก่อน"
+      : "ไม่พบเลขที่ตกหล่น — เลขในช่องตรงกับออเดอร์ที่คีย์ไว้ในไฟล์ครบแล้ว"}</div></div>`;
+    return h;
+  }
+  h+=`<div class="sp-misssum">พบเลขที่ยังไม่ได้ใส่ <b>${S.sure+S.maybe}</b> เลข —
+    <b class="down">แน่ใจ ${S.sure}</b> · ไม่แน่ใจ ${S.maybe}${
+    S.cancel?` · ใบที่ยกเลิกแล้ว ${S.cancel} (ไม่เติมให้)`:""}</div>`;
+  if(S.sure)h+=`<div class="sp-missall"><button type="button" class="btn-go"
+    onclick="spMissAddAll('${anaEsc(sid)}')">➕ เติมเลขที่แน่ใจทั้งหมด (${S.sure} เลข)</button></div>`;
+  S.rows.forEach(r=>{
+    const can=spRepCan(r.ln,spRepRec(sid,r.d,r.ln));
+    h+=`<div class="sp-missg">
+      <div class="sp-missh"><b>${anaEsc(r.ln)}</b> · ${fmtDate(r.d)}
+        <span class="psub">ในช่องมีอยู่ ${r.nHave} เลข</span></div>`;
+    [["sure","✅ แน่ใจ — ใบนี้มีสินค้าของใบออเดอร์นี้อยู่จริง"],
+     ["maybe","❓ ไม่แน่ใจ — ยังไม่รู้ว่าใบนี้มีสินค้าของใบออเดอร์นี้ไหม"],
+     ["cancel","🚫 ใบที่ยกเลิกแล้ว — ไม่เติมให้"]].forEach(([k,lbl])=>{
+      const rows=r[k]||[];if(!rows.length)return;
+      h+=`<div class="sp-misslb">${lbl} (${rows.length})</div>
+        <div class="tblwrap"><table class="sp-misst sp-fold"><thead><tr>
+          <th>เลข</th><th>ร้าน</th><th>จำนวน</th><th>สินค้าในใบนี้</th></tr></thead><tbody>${
+          rows.map(x=>spMissRowHtml(x,k)).join("")}</tbody></table></div>`;
+      if(k!=="cancel"&&can)h+=`<div class="sp-missall"><button type="button" class="btn-mini"
+        onclick="spMissAdd('${anaEsc(sid)}','${r.d}','${anaEsc(r.ln)}','${k}')">
+        ➕ เติม ${rows.length} เลขนี้เข้าสาย ${anaEsc(r.ln)}</button></div>`;
+    });
+    if(!can)h+=`<div class="psub">บัญชีนี้แก้สายนี้ไม่ได้</div>`;
+    h+=`</div>`;
+  });
+  return h+`</div>`;
+}
+/* เติมกลับ — ต่อท้ายของเดิมเสมอ ไม่เคยเขียนทับ และผ่าน spRepSave ตามสิทธิ์เดิม */
+async function spMissAdd(sid,ymd,ln,kind,quiet){
+  const codes={};spSlipCodes(sid).forEach(c=>{codes[c.code]=1;});
+  const r=spMissFind(sid,ymd,ln,codes);
+  const rows=(kind==="maybe")?r.maybe:r.sure;
+  if(!rows.length){if(!quiet)alert("ไม่มีเลขที่ต้องเติมแล้ว");return false;}
+  const rec=spRepRec(sid,ymd,ln);
+  if(!spRepCan(ln,rec)){if(!quiet)alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return false;}
+  const no=((rec&&Array.isArray(rec.no))?rec.no.slice():[]);
+  const seen={};no.forEach(x=>{seen[String(x).toUpperCase()]=1;});
+  let add=0;
+  rows.forEach(x=>{
+    const v=String(x.ask||x.full).toUpperCase();
+    if(seen[v])return;seen[v]=1;no.push(v);add++;
+  });
+  if(!add){if(!quiet)alert("เลขพวกนี้อยู่ในช่องอยู่แล้ว");return false;}
+  if(!quiet&&!confirm("เติมเลขที่ตกหล่น "+add+" เลข เข้าสาย "+ln+" วันที่ "+fmtDate(ymd)+" ?\n\n"+
+    "ของเดิมในช่องยังอยู่ครบ ระบบต่อท้ายให้เท่านั้น"))return false;
+  const it=(rec&&rec.it&&typeof rec.it==="object")?rec.it:{};
+  const ok=await spRepSave(sid,ymd,ln,it,no);
+  if(ok&&!quiet)spMissPaint();
+  return ok;
+}
+async function spMissAddAll(sid){
+  const S=spMissScan(sid);
+  const todo=S.rows.filter(r=>r.sure.length&&spRepCan(r.ln,spRepRec(sid,r.d,r.ln)));
+  if(!todo.length){alert("ไม่มีเลขที่แน่ใจให้เติม");return;}
+  const n=todo.reduce((a,r)=>a+r.sure.length,0);
+  if(!confirm("เติมเลขที่ตกหล่นทั้งหมด "+n+" เลข ใน "+todo.length+" สาย/วัน ?\n\n"+
+    "เติมเฉพาะใบที่มีสินค้าของใบออเดอร์นี้อยู่จริง · ของเดิมในช่องยังอยู่ครบ"))return;
+  let done=0,fail=0;
+  for(let i=0;i<todo.length;i++){
+    const r=todo[i];
+    const ok=await spMissAdd(sid,r.d,r.ln,"sure",1);
+    if(ok)done++;else fail++;
+  }
+  spMissPaint();
+  alert("เติมให้แล้ว "+done+" สาย/วัน"+(fail?(" · ไม่สำเร็จ "+fail+" สาย/วัน ลองกดใหม่อีกครั้ง"):""));
 }
 /* ---------- ตารางติดตาม: สายไหนคีย์ครบเป้าแล้วบ้าง ---------- */
 const SP_TRK={ok:['<span class="sp-ok">✓ ครบเป้า</span>',"var(--good)"],

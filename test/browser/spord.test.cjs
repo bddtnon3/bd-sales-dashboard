@@ -50,6 +50,10 @@ const ORIGIN='https://bd-spord.test/';
     return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true})});};
   window.__reset=()=>{
     window.__posts=[];window.__sync=0;window.__alert='';window.__prompt=undefined;
+    /* ⚠️ หน้าเว็บใช้ร่วมกันทุกบล็อก — บล็อกที่จำลอง "เน็ตหลุด" ต้องไม่ติดไปบล็อกถัดไป
+       (เจอจริง: §13 เซฟไม่ผ่านเพราะ bdPost ของ §12 ยังค้างอยู่) */
+    window.bdPost=(u,b)=>{window.__posts.push({u:u,b:b});
+      return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true})});};
     DATA.lines={};DATA.focus_order=[];
     Object.keys(FOCUS_MAP).forEach(c=>{DATA.lines[c]={display:FOCUS_MAP[c],
       type:FOCUS_MAP[c].indexOf('KA')===0?'KA':'CT',focus:true,name:'',emp:''};});
@@ -2906,6 +2910,142 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🛟 พิมพ์เลขเองก็เก็บลงร่างให้เหมือนกัน',ocrDr.typed===2,'ร่าง '+ocrDr.typed+' เลข');
  t('🛟 เบราว์เซอร์ที่ห้าม localStorage (โหมดส่วนตัว) ยังใช้งานได้ ไม่พัง',
    !ocrDr.boom&&ocrDr.stillBox===true,ocrDr.boom||'ok');
+
+
+ /* ============================================================================
+  * 13) 🔁 ย้อนหาเลขออเดอร์ที่ตกหล่น — เจ้าของสั่ง 28 พ.ย. 69
+  *   *"ทำให้ระบบอ่านย้อนหลังที่เค้าอัพมาได้ไหม … ลองย้อนไปดูได้ไหมว่าเราตกอะไร
+  *     แล้วเอามันกลับมาได้เลย"*
+  *   เลขที่หายไม่ได้หายไปจากโลก — ตัวออเดอร์ยังอยู่ในไฟล์ พร้อม "สาย" และ "วันที่คีย์"
+  *   จึงถามกลับทางได้ว่าสายนี้วันนั้นคีย์ใบอะไรไว้บ้าง แล้วเทียบกับเลขในช่อง
+  * ========================================================================== */
+ const MISSPRE = `
+   __as('manager','','ผู้จัดการ');
+   SP.sid=B1;SP.view='slip';SP.ym='2026-11';SP.day=WORK_;SP.sec='rep';SP.miss={on:0,sid:'',day:undefined};
+   CSTOCK.rep={};CSTOCK.key={};
+   CSTOCK.key[B1+'|'+WORK_+'|CT11']={it:{AAA1:{sc:5,sp:0,fc:0,fp:0}},at:1,by:'sup'};
+   MASTER={items:{AAA1:{nm:'โอโมน้ำ'},ZZZ9:{nm:'สินค้าอื่น'}},det:{AAA1:{ps:12}}};
+   CSTOCK.lots={L1:{id:'L1',sl:B1,d:WORK_,code:'AAA1',nm:'โอโมน้ำ',cs:20,pc:0,ln:'CT11',clr:[]}};
+   window.__ym=WORK_.slice(0,7);window.__dd=+WORK_.slice(8,10);
+   window.__oth=(()=>{const d=new Date(WORK_+'T00:00:00');d.setDate(d.getDate()-1);return ymdOf(d);})();
+   /* 20 ใบของ CT11 วันนี้ — แบบเดียวกับที่สาย 17 คีย์จริง */
+   STOREDAILY={data:{},ord:{}};
+   const OTO={},OTD={};
+   for(let i=1;i<=20;i++){
+     const tail='000070'+String(i).padStart(2,'0');
+     const full='BDD01'+tail, rf='10347700'+String(i).padStart(2,'0');
+     STOREDAILY.ord[full]={s:'900000'+(i%3),l:'209611',k:WORK_,d:WORK_,cs:8,pc:5,c:2,v:900,rf:rf};
+     OTO[tail]={l:'209611',d:window.__dd,s:'900000'+(i%3),rf:rf,w:8,p:5,c:8.4,n:2};
+     /* ใบที่ 18-20 ไม่มีสินค้าของใบนี้ → ต้องไปกอง "ไม่แน่ใจ" */
+     OTD[tail]=(i<=17)?{AAA1:[8,0,12]}:{ZZZ9:[3,0,6]};
+   }
+   /* ใบของสายอื่น และใบของสายเดียวกันแต่คนละวัน — ห้ามโผล่ */
+   STOREDAILY.ord['BDD0100008001']={s:'9000009',l:'209612',k:WORK_,d:WORK_,cs:4,pc:0,c:1,rf:'1034780001'};
+   OTO['00008001']={l:'209612',d:window.__dd,s:'9000009',rf:'1034780001',w:4,p:0,c:4,n:1};
+   STOREDAILY.ord['BDD0100009001']={s:'9000001',l:'209611',k:window.__oth,d:window.__oth,cs:9,pc:0,c:1,rf:'1034790001'};
+   OTO['00009001']={l:'209611',d:+window.__oth.slice(8,10),s:'9000001',rf:'1034790001',w:9,p:0,c:9,n:1};
+   /* ใบที่ยกเลิกแล้ว — ห้ามเติมให้ */
+   STOREDAILY.ord['BDD0100007099']={s:'9000002',l:'209611',k:WORK_,d:WORK_,cs:3,pc:0,c:1,rf:'1034770099'};
+   OTO['00007099']={l:'209611',d:window.__dd,s:'9000002',rf:'1034770099',w:3,p:0,c:3,n:1,cx:1};
+   OTD['00007099']={AAA1:[3,0,12]};
+   OT.cache[window.__ym]={ord:OTO,det:OTD,meta:null,none:0};
+   OT.months=[window.__ym];
+   spRfBust();
+   /* เซลล์เก็บไว้ได้แค่ 13 เลขแรก — เคสจริงของสาย 17 */
+   window.__first13=[];for(let i=1;i<=13;i++)window.__first13.push('10347700'+String(i).padStart(2,'0'));
+   CSTOCK.rep[B1+'|'+WORK_+'|CT11']={it:{},no:window.__first13.slice(),n:1,h:[{at:1}],
+     by:'209611',byName:'CT11',at:2};
+   renderSpord();`;
+
+ /* ---- ① หาเจอว่าตกอะไร และไม่เหมาเอาใบของสายอื่น/วันอื่น ---- */
+ const miss1=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const codes={};spSlipCodes(B1).forEach(c=>{codes[c.code]=1;});
+   const r=spMissFind(B1,WORK_,'CT11',codes);
+   return {nHave:r.nHave,sure:r.sure.map(x=>x.ask),maybe:r.maybe.map(x=>x.ask),
+     cancel:r.cancel.map(x=>x.ask),noFile:r.noFile,
+     shop:(r.sure[0]||{}).shop,qty:(r.sure[0]||{}).q};
+ },{setup:PRE,pre:MISSPRE});
+ t('🔁 อ่านย้อนจากไฟล์แล้วบอกได้ว่าตกไปกี่เลข (13 ใส่ไว้ · ตกไป 7)',
+   miss1.nHave===13&&(miss1.sure.length+miss1.maybe.length)===7,
+   'ในช่อง '+miss1.nHave+' · แน่ใจ '+miss1.sure.length+' · ไม่แน่ใจ '+miss1.maybe.length);
+ t('🔁 ...แยก "แน่ใจ" (ใบมีสินค้าของใบออเดอร์นี้) ออกจาก "ไม่แน่ใจ" ไม่เหมารวม',
+   miss1.sure.length===4&&miss1.maybe.length===3
+   &&miss1.sure.join()==='1034770014,1034770015,1034770016,1034770017',
+   'แน่ใจ '+miss1.sure.join(' ')+' · ไม่แน่ใจ '+miss1.maybe.join(' '));
+ t('🔁 ...ใบที่ยกเลิกแล้วแยกกองไว้ ไม่ปนกับที่จะเติม',
+   miss1.cancel.length===1&&miss1.cancel[0]==='1034770099'
+   &&miss1.sure.indexOf('1034770099')<0&&miss1.maybe.indexOf('1034770099')<0,
+   'ยกเลิก '+miss1.cancel.join(' '));
+ t('🔁 ...ใบของสายอื่นและใบของวันอื่นต้องไม่โผล่มาเลย',
+   miss1.sure.concat(miss1.maybe,miss1.cancel).every(x=>/^10347700/.test(x)),
+   miss1.sure.concat(miss1.maybe,miss1.cancel).join(' '));
+ t('🔁 ...บอกร้านและจำนวนของใบที่ตกมาด้วย (ไม่ใช่เลขเปล่า ๆ)',
+   !!miss1.shop&&!!miss1.qty&&miss1.qty.cs===8&&miss1.qty.pc===5,
+   'ร้าน '+miss1.shop+' · '+JSON.stringify(miss1.qty));
+
+ /* ---- ② เลขเดียวกันเขียนคนละแบบ ต้องไม่ถูกนับว่าตก ---- */
+ const miss2=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const codes={};spSlipCodes(B1).forEach(c=>{codes[c.code]=1;});
+   const o={};
+   /* เขียนด้วยหางหกหลัก และด้วยเลขใบเต็ม BDD01 */
+   CSTOCK.rep[B1+'|'+WORK_+'|CT11'].no=window.__first13.concat(['770014','BDD0100007015']);
+   const r=spMissFind(B1,WORK_,'CT11',codes);
+   o.left=r.sure.map(x=>x.ask).concat(r.maybe.map(x=>x.ask));
+   /* ไม่มีไฟล์ของวันนั้นเลย = ยังตอบไม่ได้ ห้ามอ่านว่า "ไม่ตกอะไร" */
+   const r2=spMissFind(B1,window.__oth,'CT13',codes);
+   o.noFile=r2.noFile;o.n2=r2.n;
+   return o;
+ },{setup:PRE,pre:MISSPRE});
+ t('🔁 เลขเดิมที่เขียนเป็นหางหกหลัก หรือเลข BDD01 ต้องไม่ถูกนับว่าตกหล่น',
+   miss2.left.length===5&&miss2.left.indexOf('1034770014')<0&&miss2.left.indexOf('1034770015')<0,
+   'เหลือ '+miss2.left.join(' '));
+ t('🔁 วันที่ยังไม่มีไฟล์ = ตอบไม่ได้ ไม่ใช่ "ไม่ตกอะไร"',
+   miss2.noFile===1&&!miss2.n2,'noFile='+miss2.noFile);
+
+ /* ---- ③ เติมกลับ: ต่อท้ายของเดิมเสมอ และส่งขึ้นเซิร์ฟเวอร์ตามเดิม ---- */
+ const miss3=await ev(async a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const o={};
+   const blob=JSON.stringify(CSTOCK);
+   SP.miss={on:1,sid:B1,day:WORK_};
+   const h=spMissHtml(B1);
+   o.scanSafe=(JSON.stringify(CSTOCK)===blob);     /* แค่สแกนต้องไม่แตะข้อมูล */
+   o.saysSure=/แน่ใจ 4/.test(h)&&/ไม่เติมให้/.test(h);
+   window.__posts=[];
+   await spMissAdd(B1,WORK_,'CT11','sure',1);
+   await new Promise(r=>setTimeout(r,80));
+   const rec=CSTOCK.rep[B1+'|'+WORK_+'|CT11']||{};
+   o.after=(rec.no||[]).length;
+   o.keptFirst=(rec.no||[])[0];
+   o.posts=window.__posts.length;
+   o.sent=(((window.__posts[0]||{}).b||{}).no||[]).length;
+   const codes={};spSlipCodes(B1).forEach(c=>{codes[c.code]=1;});
+   o.leftSure=spMissFind(B1,WORK_,'CT11',codes).sure.length;
+   return o;
+ },{setup:PRE,pre:MISSPRE});
+ t('🔁 แค่กดดูต้องไม่แตะข้อมูลเลย (อ่านอย่างเดียว)',miss3.scanSafe===true,
+   'เปลี่ยน='+(!miss3.scanSafe));
+ t('🔁 ...หน้าจอบอกจำนวนที่แน่ใจ และบอกว่าใบยกเลิกไม่เติมให้',miss3.saysSure===true,'');
+ t('🔁 เติมกลับแล้วต่อท้ายของเดิม ไม่เขียนทับ (13 → 17)',
+   miss3.after===17&&miss3.keptFirst==='1034770001',
+   'เหลือ '+miss3.after+' เลข · ตัวแรก '+miss3.keptFirst);
+ t('🔁 ...ส่งขึ้นเซิร์ฟเวอร์ครบ 17 เลข ทาง api/spord เหมือนการบันทึกปกติ',
+   miss3.posts===1&&miss3.sent===17,'โพสต์ '+miss3.posts+' · ส่ง '+miss3.sent);
+ t('🔁 ...เติมแล้วไม่เหลือค้างอีก',miss3.leftSure===0,'เหลือ '+miss3.leftSure);
+
+ /* ---- ④ เซลล์เห็นเฉพาะสายตัวเอง ---- */
+ const miss4=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   __as('sales','209611','CT11');
+   SP.miss={on:1,sid:B1,day:WORK_};
+   const S=spMissScan(B1);
+   return {lines:S.lines,lns:S.rows.map(r=>r.ln)};
+ },{setup:PRE,pre:MISSPRE});
+ t('🔁 เซลล์กดดูได้ แต่เห็นเฉพาะสายตัวเอง',
+   miss4.lines===1&&miss4.lns.every(x=>x==='CT11'),
+   'สาย '+miss4.lines+' · '+miss4.lns.join(' '));
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
