@@ -248,13 +248,20 @@ function mkOldMaster(rows){
    const hasBox=!!document.getElementById('psiQ');
    const dataRows=()=>[...document.querySelectorAll('#psiBody table.psi-tbl tbody tr')]
      .filter(r=>!r.classList.contains('grp-row')).length;
+   /* 🔎 ค้นแล้วตอบ "ข้ามรอบทั้งเดือน" — เจ้าของขอให้ทุกคนเช็คได้ว่าสินค้าตัวนี้เข้ายัง
+      แต่ยังแยกบรรทัดตามรอบ ห้ามบวกรวมข้ามรอบ */
    psiSetQ('90000001');const n1=dataRows();
+   const qTx=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
+   const rnd=/รอบที่สั่ง/.test(document.getElementById('psiBody').innerHTML);
    psiSetQ('ไม่มีสินค้านี้แน่นอน');const n0=dataRows();
+   const miss=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
+   /* ค้นด้วย "ชื่อสินค้า" ไม่ใช่รหัส ก็ต้องเจอ */
+   psiSetQ('ทดสอบ');const nName=dataRows();
    psiSetQ('');PSIV.sec='in';renderPsi();
    delete ORDERS.data['2026-11-28'];
    ORDERS.dates=ORDERS.dates.filter(x=>x!=='2026-11-28');
    return {r:by['90000001'],over:R.overDrop,extra:(R.extra||[]).slice(),tx:tx,
-     hasBox:hasBox,n1:n1,n0:n0};
+     hasBox:hasBox,n1:n1,n0:n0,nName:nName,rnd:rnd,qTx:qTx,miss:miss};
  });
  t('🔑 ใบ Drop ลงมากกว่าที่เราสั่ง — หักได้ไม่เกินที่สั่ง "ต้องได้" จึงเป็น 0 ไม่ใช่ติดลบ',
    r5c.r.ord===150&&r5c.r.raw===300&&r5c.r.drop===150&&r5c.r.due===0&&r5c.r.st==='dropall',
@@ -266,8 +273,14 @@ function mkOldMaster(rows){
    r5c.extra.join(',')==='90000009'&&/ไม่ได้อยู่ในใบสั่งของวันนี้/.test(r5c.tx),
    r5c.extra.join(','));
  t('🔑 มีช่องค้นหาสินค้า/รหัส และกรองตารางได้จริง',
-   r5c.hasBox&&r5c.n1===1&&r5c.n0===0,
+   r5c.hasBox&&r5c.n1>=1&&r5c.n0===0,
    JSON.stringify({box:r5c.hasBox,hit:r5c.n1,miss:r5c.n0}));
+ t('🔑 ค้นด้วยชื่อสินค้า (ไม่ใช่รหัส) ก็เจอ — "จับถึงตัวอักษร" เหมือนช่องค้นหาอื่นทั้งเว็บ',
+   r5c.nName>=1,r5c.nName);
+ t('🔑 ค้นแล้วตอบข้ามทุกรอบของเดือน แต่ยังแยกบรรทัดตามรอบ (มีช่อง "รอบที่สั่ง")',
+   r5c.rnd&&r5c.n1>=2,JSON.stringify({col:r5c.rnd,rows:r5c.n1}));
+ t('🛟 ค้นไม่เจอต้องบอกให้ลองเปลี่ยนเดือน ไม่ใช่เงียบ',
+   /ลองเปลี่ยนเดือน/.test(r5c.miss),r5c.miss.slice(0,160));
 
  /* 🔑 ของที่เข้าคลัง ต้องเป็น "ของรอบที่สั่ง" ไม่ใช่เหมารวมทุกรอบตั้งแต่วันสั่ง
     เจ้าของแจ้ง 27 พ.ย. 69: *"เหมือนมันขึ้นโชว์จำนวนของที่สั่งเป็นวันเดียวกันที่ของเข้า …
@@ -330,13 +343,15 @@ function mkOldMaster(rows){
    psiOnly('all');psiSetOrd('2026-11-16');psiSetSec('in');
    psiSetDay('2026-11-19');const d19=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
    psiSetDay('2026-11-17');
-   return {tabs:tabs,inTxt:inTxt,chk:chk,wait:w,d19:d19,same:snap()===before,
+   return {tabs:tabs,inTxt:inTxt,chk:chk,wait:w,d19:d19,same:snap()===before,nsec:PSI_SECS.length,
      /* ⚠️ อ่านจาก tabVisible() — แถว #tabTop โชว์เฉพาะหมวดของปุ่มใหญ่ที่เปิดอยู่ (28 พ.ย. 69) */
      grp:tabVisible().map(x=>x.g.nm).join('|'),
      supBuy:TAB_SUPERS.filter(x=>x.k==='buy')[0].g.join(',')};
  });
- t('หน้ามีสองแท็บย่อย: ของเข้าคลัง และ สั่งไป → ได้ของหรือยัง',
-   /ของเข้าคลัง/.test(r7.tabs)&&/ได้ของหรือยัง/.test(r7.tabs),r7.tabs);
+ /* ✂️ 29 พ.ย. 69 เจ้าของสั่งรวมสองหมวดย่อยเป็นหมวดเดียว — เหลือ ตารางรับเข้า + เช็คของเข้า
+    "📥 ของเข้าคลัง" ไม่ได้ถูกลบ แค่ย้ายไปอยู่ใต้รอบที่เลือก (psiInHtml ยังเรียกได้) */
+ t('หน้ามีสองแท็บย่อย: ตารางรับเข้า และ เช็คของเข้า',
+   /ตารางรับเข้า/.test(r7.tabs)&&/เช็คของเข้า/.test(r7.tabs)&&r7.nsec===2,r7.tabs);
  t('หน้าของเข้าคลังโชว์รายการ ลัง และเลขใบกำกับของวันนั้น',
    /90000001/.test(r7.inTxt)&&/3100000001/.test(r7.inTxt),r7.inTxt.slice(0,120));
  t('เปลี่ยนวันแล้วตารางเปลี่ยนตาม',/90000004/.test(r7.d19)&&!/3100000001/.test(r7.d19),r7.d19.slice(0,120));
@@ -771,14 +786,17 @@ function mkOldMaster(rows){
    PSIV.sec='cal';renderPsi();
    const buy=document.getElementById('psiBody').textContent.replace(/\s+/g,' ');
    return {buy:buy,sell:saleScopeHtml('sell').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ')};});
- t('🔑 หน้าฝั่งซื้อบอกว่าเป็น "ยอดซื้อ · 1st Sale" และวางลูกโซ่ให้ครบ',
-   /ยอดซื้อ · 1st Sale/.test(r16.buy)&&/ศูนย์สั่ง/.test(r16.buy)&&
-   /− ดรอป/.test(r16.buy)&&/ต้องได้/.test(r16.buy)&&/วันที่คลังรับเข้า/.test(r16.buy),
+ t('🔑 หน้าฝั่งซื้อบอกว่าเป็น "ยอดซื้อ · 1st Sale"',
+   /ยอดซื้อ · 1st Sale/.test(r16.buy)&&/ศูนย์เราสั่งซื้อจากยูนิลีเวอร์/.test(r16.buy),
    r16.buy.slice(0,320));
- t('🔑 …และบอกว่าไฟล์ PSI คือ "คลังกดรับของเข้า" เท่านั้น',
-   /คลังกดรับของเข้าไปแล้วเท่าไหร่/.test(r16.buy),r16.buy.slice(0,420));
- t('🔑 หน้าฝั่งขายบอกว่าเป็น "ยอดขาย · 2nd Sale" และไฟล์ใบจัดของอยู่ฝั่งนี้',
-   /ยอดขาย · 2nd Sale/.test(r16.sell)&&/ใบจัดของ \(allocation\)/.test(r16.sell),
+ /* ✂️ เจ้าของสั่ง 29 พ.ย. 69 ให้แถบนี้เหลือสั้น ๆ และ "เรื่องไฟล์ PSI ไม่ต้องพูดถึงเลย" —
+    แถบนี้ให้พนักงานอ่าน ไม่ใช่ให้คนอัพไฟล์ จึงห้ามมีชื่อไฟล์สักไฟล์ */
+ const r16s=await ev(()=>saleScopeHtml('buy').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim());
+ t('✂️ แถบนี้สั้น ไม่เอ่ยชื่อไฟล์สักไฟล์ (PSI / ใบ Drop / allocation)',
+   !/PSI|Drop|allocation|ใบสั่งซื้อ|มูลค่าสต็อค/i.test(r16s),r16s.slice(0,300));
+ t('✂️ …และสั้นจริง ไม่เกิน 200 ตัวอักษร',r16s.length<=200,r16s.length+' ตัวอักษร');
+ t('🔑 หน้าฝั่งขายบอกว่าเป็น "ยอดขาย · 2nd Sale"',
+   /ยอดขาย · 2nd Sale/.test(r16.sell)&&/ขายออกให้ร้านค้า/.test(r16.sell),
    r16.sell.slice(0,320));
  t('🔑 สองหน้าชี้ไปหากันเอง จะได้ไม่สับสนว่าอยู่ฝั่งไหน',
    /สถานะออเดอร์ \(ขาย\)/.test(r16.buy)&&/สถานะออเดอร์ \(ซื้อ\)/.test(r16.sell),'');

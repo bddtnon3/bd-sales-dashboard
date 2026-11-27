@@ -882,7 +882,9 @@ code, never printed.
   📥 ของเข้าคลัง (NIV) on ประวัติการสั่งของ; **the receiving date keys `PSI.rows` and tab ①**.
   `psiCrIdx` now also carries `by[receivingDay]`, so the split is available wherever it is wanted.
   The page is **strictly read-only** over PSI/ORDERS/POSTATUS with its state on the non-synced
-  `PSIV`, and has three sub-tabs. The first, **📅 ตารางรับเข้า** (`psiRounds`/`psiCalHtml`), is the
+  `PSIV`, and has **two sub-tabs since 29 Nov 26** (the owner: *"หมวดย่อย ของเข้าคลัง และสั่งไป
+  ของเข้าหรือยัง รวมเป็นอันเดียวกันเลยก็ได้ … และปรับให้เลือกดูเป็นเดือนก่อนได้เลย ข้อมูลที่แสดง
+  จะได้ไม่เยอะจนเกินไป"*). The first, **📅 ตารางรับเข้า** (`psiRounds`/`psiCalHtml`), is the
   company status board the owner asked for — *"ปรับปฏิทินให้เป็นแบบตาราง แล้ววันไหนมีของเข้าให้มี
   ยอดสีเขียว คือของครบ สีแดงคือของยังไม่ครบ ทำขึ้นเป็นตาราง % การส่งของเข้าคลัง ให้ทุกคนในบริษัท
   รับรู้"*: one row per order round — ศูนย์ออกบิล · ของเข้าคลัง (every receiving day with its own
@@ -890,12 +892,28 @@ code, never printed.
   bar, green at 100% and red below** (`psiPct`/`psiPctCol`). The % is **received ÷ due (ordered −
   Drop)**, not ÷ invoiced, because his question is "did what I ordered arrive"; a round no PSI file
   covers is a **dash, never 0%**; tapping a row opens ② for that round; every role can open it.
-  Then **📥 ของเข้าคลัง** (per receiving day — products, cases, value,
-  invoice numbers, banded by the order form's own categories) and **🔎 สั่งไป → ได้ของหรือยัง**,
-  which is the reconciliation the owner asked for: per code, ศูนย์สั่ง → หัก Drop → **ควรได้** →
-  เข้าคลังแล้ว → **ขาดอีก** → วันที่เข้า. `ควรได้` is the quantity the Drop file says was actually
-  shipped (`dropD`, falling back to ordered − dropped), never a guess, and `ขาดอีก` is
-  `ควรได้ − เข้าคลังแล้ว` — the one number the owner wants from the page.
+  Then **🔎 เช็คของเข้า** (`psiChkHtml`), the reconciliation — per code, ศูนย์สั่ง → หัก Drop →
+  **ควรได้** → เข้าคลังแล้ว → **ขาดอีก** → วันที่เข้า, where `ขาดอีก` is `ควรได้ − เข้าคลังแล้ว`,
+  the one number the owner wants from the page.
+  **📥 ของเข้าคลัง is no longer a sub-tab of its own — it was folded in, not deleted.** Each
+  receiving day of the selected round hangs under the table in a `<details>` expander built by the
+  **same `psiDayOf`/`psiDayTbl` pair** the old page uses, so the two can never disagree; `psiInHtml`
+  and `psiSetSec("in")` still work (the retired-tab rule — only the `PSI_SECS` entry went). The
+  expander is native `<details>`, not page state, so opening one does not redraw the page. Its
+  table is **that whole receiving day**, which can hold goods from another round, and the page
+  says so.
+  **🔎 The search is the way in** (`psiHit`/`psiChkRow`/`psiChkCols`, the owner: *"ให้มีปุ่มเสิจ
+  ที่จับทั้งรหัสสินค้า ชื่อสินค้า เหมือนปุ่มเสิจในเวป ที่จับถึงตัวอักษร ให้ทุกคนเข้ามาเช็คได้ ว่า
+  ออเดอร์ที่เราสั่งไป ของเข้ามาหรือยัง"*): substring on code **and** name, and when it has text the
+  answer is **cross-round over the whole selected month**, because the question is "has this
+  product arrived", not "did this round arrive". Three rules: rows stay **split per round and are
+  never summed across rounds** (an arrival belongs to one round — `psiGotFor`), so the search table
+  gains a **รอบที่สั่ง** column; the search is scoped to the chosen month and a miss must say
+  **"ลองเปลี่ยนเดือน"** rather than render empty; and the result is capped at `PSI_QMAX` (300)
+  rows with the count stated, since a one-character query matches everything.
+  **📅 Month first** — `psiYm()` is shared by both sub-tabs (so switching tabs does not move the
+  month), `psiMonths()` lists months from the dates alone without touching `psiCheck`, and
+  `psiGoRound` carries the month across when a row is tapped.
   **⚠️ An arrival belongs to ONE order round** (`psiGotFor`/`psiOrdByCode`, owner 27 Nov 26:
   *"เหมือนมันขึ้นโชว์จำนวนของที่สั่งเป็นวันเดียวกันที่ของเข้า … ผมต้องการให้ระบบ track ได้ว่าการ
   สั่งของหักดรอปรอบวันนั้น ๆ … ครบตามออเดอร์นั้น ๆ หรือไม่ และขาดอีกกี่ลัง"*). `psiGot` sums **every**
@@ -968,8 +986,24 @@ code, never printed.
   request table, the rep's own request page, ขอแล้วสั่งไม่ได้ — gains it at once. It is a **separate
   pill, never merged into the Drop badge**: the Drop file is the centre's answer, PSI is our
   warehouse's, and they are different steps. With no PSI file covering that round the pill is
-  **silent**, never "ยังไม่เข้า". Prove it with
-  **`node test/browser/psi.test.cjs`** (112 checks, self-contained with made-up codes; 115 with the
+  **silent**, never "ยังไม่เข้า".
+  **⚡ The page was pathologically slow and the cause was one line** (the owner, 29 Nov 26:
+  *"มันช้ามากเวลาผมคลิ๊กเข้าไปหน้านี้"*). `psiOrdByCode()` called `psiOrdDates()` **just to test
+  whether its cache was still valid**, and `psiOrdDates()` runs `orderedMerged` over every order
+  day (~900 codes × ~36 rounds ≈ 32,000 writes per call) — while `psiWin()` called
+  `psiOrdByCode()` **once per product code**. That is ~10⁹ operations to draw one table. Four
+  fixes: `psiOrdDates()` memoises on a signature that **does not merge** (it counts rounds per day,
+  so an `(add1)` round still busts it); `psiCheck` resolves `psiOrdByCode()` **once per round** and
+  passes it down as `od` to `psiWin`/`psiGotFor`/`psiFrFor`/`psiRetFor`; `psiCheckC` memoises a
+  round's whole answer against `psiIdx()` identity + `psiOrdByCode()` identity + a per-day digest
+  (codes, ordered total, drop codes, `dropVal`, `hasResult`, `noDrop`); and `psiRounds(ym)` computes
+  only the chosen month, with `psiCalHtml` passing that one array on to `psiDriftHtml` instead of
+  letting it sweep again. **Measured in a real browser** on made-up data smaller than the depot's
+  (2 months · 12 rounds · 600 codes): the receiving table went from **103,196 ms to 8 ms** (3 ms
+  on a repaint), the check page is 54 ms and a search keystroke 12 ms. ⚠️ A cached `psiCheck`
+  result is read-only — every caller filters or reduces, none mutates `rows`.
+  Prove it with
+  **`node test/browser/psi.test.cjs`** (117 checks, self-contained with made-up codes; 120 with the
   real file via `PSI_FILE=/path/PSI_Detail_Report_3.xlsx` — either format — which never enters the
   repo) plus the `PSI` cases in `merge-safety`.
   **📦 A unit toggle on the two product reports** (`UQ`/`uqTogHtml`/`uqTxt`, owner 28 Nov 26:
@@ -995,12 +1029,20 @@ code, never printed.
   exhaustively — *"1st sale มีแค่ ใบสั่งซื้อ ใบ drop PSI มูลค่าสต็อค ไฟล์สต็อค เท่านั้นเลย"*;
   **📋 (ขาย) = ยอดขาย · 2nd Sale**, the depot → shops, and he listed those too — the allocation
   file, the daily sales file, **the Transaction Inquiry, PJP / Outlet Master, โปรโมชั่น & เงินรางวัล
-  and the ตัวกระจาย special orders**. Each band states the chain, names the files, and **points
-  at the other group** so nobody lands on the wrong side again. It is written **once** and called
+  and the ตัวกระจาย special orders**. Each band names which side the page is and **points at the
+  other group** so nobody lands on the wrong side again. It is written **once** and called
   from both pages — split in two and they drift apart. ⚠️ This is "what this number counts", which
   the user needs in order to work, not a narration of how the system is built; it does not loosen
   the house rule against explaining the internals on screen. ประวัติการสั่งของ already labelled its
   columns 1st / 2nd, so the three pages now use one vocabulary.
+  **✂️ But on screen it is TWO LINES, and that is an instruction** (owner, 29 Nov 26, after the
+  band filled half his screen: *"เนี้ยมันขึ้นรายละเอียดเกินความจำเป็นอีกละนะ เอากระชับ ๆ ก็พอถ้าจะ
+  ให้พนักงานดู เรื่องไฟล์ PSI อะไรไม่ต้องพูดถึงเลย"*). The chain (ศูนย์สั่ง → − ดรอป → ต้องได้ →
+  คลังรับเข้า) and the file lists came out: **the band must not name a single file** — not PSI, not
+  the Drop file, not the allocation file. The person reading it is not the person uploading, so the
+  files are the uploader's information, not the reader's. The knowledge stays in the comment above
+  `saleScopeHtml`, which `build.cjs` strips anyway; `psi.test.cjs` asserts the rendered band is
+  under 200 characters and names no file.
   The **📋 สถานะออเดอร์ (ขาย)** tab group (`renderOtrk`) answers *"where is this order?"* for the whole
   team. The owner's words, 26 Nov 26, after the analysis below: *"เราเจอหัวใจสำคัญละ เชื่อมด้วย
   เลขออเดอร์เดียวทั้งระบบฝั่งการขาย"*. It is **two steps, by his instruction** — *"ตอนนี้เรามีแค่
@@ -1985,6 +2027,30 @@ code, never printed.
   now carries a **category chip bar** (`#upCats`, `UP_CATS`/`upSetCat`/`upPaint`) with a
   **📂 ทุกหมวด** chip; the chips are built from the `data-group` values actually present in the
   modal, so a new slot with a new group appears by itself once its name is in `UP_CATS`.
+  **📦 And since 29 Nov 26 the modal opens on ONE button that takes every file at once**
+  (`#fileAll`/`upAllGo`/`upAllRun`/`upSniff`, owner: *"ช่วงนี้เอกสาร excel ผมต้องอัพเยอะมาก ช่วยทำ
+  ปุ่ม master upload ให้ผมอัพทุกไฟล์เข้าไปทีเดียว แล้วระบบไปจับอ่านแยกให้อัตโนมัติ ไฟล์ไหนอ่านไม่
+  สำเร็จให้แจ้งเตือนผลลัพธ์ด้วยเหมือนเดิม"*). **The one rule that matters: it never guesses.** A file
+  it cannot place is **named in the log with the reason** and the owner is told to use that file's
+  own slot — routing to the nearest-looking parser could overwrite good data, which is the project's
+  largest rule. Detection reads the **file's own headers first** and reuses each parser's own
+  identification test (`psiIsDetail`/`psiIsFile`, `txIsTxn`, `dsIsDcode`, `pjIsDcode`,
+  `AL_H`, `PM_DCODE`, the `BM1` cell, the `Cust Finance` sheet …), so there is no second
+  rulebook to drift; the filename (`UP_FN`) only breaks a tie or answers for a file too big to
+  re-read. **ใบสั่งของ and ใบเปล่า are the same Unilever form**, so only the filename separates them
+  — `BD_ddmmyy` = order, `Confirm` = blank, **neither = reported, not guessed**, because guessing
+  "order → blank" would swallow the quantities the centre ordered. Measured against the owner's
+  20 real files before shipping: **17 of 17 real upload formats identified, 16 of them from the
+  headers alone** (BUM at 28 MB uses its name, being over `UP_BIG`); the other 3 files are
+  hand-kept spreadsheets that were never an upload format and are correctly reported as unknown.
+  Four more rules: sniffing reads only `UP_SNIFF_ROWS` (40) rows per sheet via SheetJS `sheetRows`,
+  never the whole file; files are read and parsed **one at a time with the buffer released between
+  them** (the analytics file alone is ~60 MB); they are **reordered by `UP_KIND[].o`** so reference
+  data lands first (price → master → outlets → order form → Drop → PSI → the rest), which is also
+  why `parseMasterDcode` finds its price file; and `handleTyped` and `upAllRun` dispatch through
+  the **same `UP_KIND` table**, so a per-category slot and the master button can never read one
+  file differently. Retired kinds carry `off:1` and the master button never routes to them.
+  Prove it with **`node test/browser/upall.test.cjs`** (51 checks, self-contained).
   **A retired slot is hidden, never deleted** (`data-off="1"` + `hidden`, skipped by `upRows`):
   ยอดรายร้าน, แข่งขันเปิด eB2B and the สต็อคกลาง Excel form went on 25 Nov 26, and PJP collapsed to
   one slot because dcode merged Master Outlet and the plan into one file — *"ช่วยปรับเอาปุ่มที่ไม่

@@ -385,7 +385,10 @@ function seed(a){
     เปิดแทบนั้นๆ โดยปรับให้มันกดเลือกแต่ละหมวดได้เลย"* → ค่าเริ่มต้นยังเป็นหมวดของแท็บที่เปิดอยู่
     (ของเดิมไม่ช้าลง) แต่สลับไปหมวดไหนก็ได้ในกล่องเลย */
  const up=await ev(()=>{_switchTab('cstock');openUpload();
-   const V=()=>[...document.querySelectorAll('#modal .up-row')].filter(r=>r.style.display!=='none');
+   /* ⚠️ แถว "📦 อัพรวมทีเดียว" (.up-all) โชว์ทุกหมวดโดยตั้งใจ ไม่นับในชุดนี้ —
+      ชุดนี้ถามว่า "ช่องอัพรายหมวด" กรองถูกไหม */
+   const V=()=>[...document.querySelectorAll('#modal .up-row')]
+     .filter(r=>r.style.display!=='none'&&!r.classList.contains('up-all'));
    const o={title:document.getElementById('upTitle').textContent,
      sub:document.getElementById('upSub').textContent,
      vis:V().map(r=>r.dataset.group),
@@ -440,12 +443,13 @@ function seed(a){
    up.allVis.length>=11&&/อัพโหลดไฟล์/.test(up.allTitle),up.allVis.join(','));
  /* กันพลาดแบบเดิมอีก: ทุกแท็บที่แมปหมวดไว้ ต้องเปิดมาตรงหมวดของตัวเอง ไม่ใช่หมวดมั่ว */
  const cover=await ev(()=>{
-   const groups=[...new Set([...document.querySelectorAll('#modal .up-row')].map(r=>r.dataset.group))];
+   const groups=[...new Set([...document.querySelectorAll('#modal .up-row:not(.up-all)')].map(r=>r.dataset.group))];
    const bad=[],wrong=[];
    TAB_GROUPS.forEach(G=>G.tabs.forEach(tb=>{
      _switchTab(tb.t);
      openUpload();
-     const vis=[...document.querySelectorAll('#modal .up-row')].filter(r=>r.style.display!=='none');
+     const vis=[...document.querySelectorAll('#modal .up-row:not(.up-all)')]
+       .filter(r=>r.style.display!=='none');
      const gs=[...new Set(vis.map(r=>r.dataset.group))];
      closeUpload();
      if(!vis.length){bad.push(tb.t+':ไม่เห็นช่องอะไรเลย');return;}

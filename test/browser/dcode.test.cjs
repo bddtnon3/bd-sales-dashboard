@@ -577,8 +577,11 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  /* ==========================================================================
   * 9) ปุ่มอัพโหลดในแท็บ DCODE → ช่อง Master Outlet + Master Data (ช่องเดิม input เดิม)
   * ======================================================================== */
+ /* ⚠️ แถว "📦 อัพรวมทีเดียว" (.up-all) โชว์ทุกหมวดโดยตั้งใจ จึงไม่นับในชุดนี้ —
+    ชุดนี้ถามว่า "ช่องอัพรายหมวด" กรองถูกไหม */
  const up=await ev(()=>{_switchTab('dcode');openUpload();
-   const vis=[...document.querySelectorAll('#modal .up-row')].filter(r=>r.style.display!=='none');
+   const vis=[...document.querySelectorAll('#modal .up-row')]
+     .filter(r=>r.style.display!=='none'&&!r.classList.contains('up-all'));
    const o={title:document.getElementById('upTitle').textContent,groups:[...new Set(vis.map(r=>r.dataset.group))],
      fors:[].concat(...vis.map(r=>[...r.querySelectorAll('label')].map(l=>l.getAttribute('for'))))};
    closeUpload();return o;});
