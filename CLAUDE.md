@@ -245,7 +245,7 @@ out of it. Opening hours are 08.00–17.00, Mon–Sat, closed Sunday.
   (`.cst-bulk.stick`; a bulk button with nothing ticked warns; copying ticked rows moves the ticks to the
   copies). `dcCheck` blocks the file on a missing PO/outlet/line/SKU/quantity and asks first on
   inactive outlets, a line that differs from the outlet's, unknown codes and duplicates.
-- Prove it with **`node test/browser/dcode.test.cjs`** (103 checks; 104 with the real outlet file via
+- Prove it with **`node test/browser/dcode.test.cjs`** (110 checks; 111 with the real outlet file via
   `DCODE_OUTLET=/path/Master_Outlet_Data.xlsx` — that file holds customer data and never enters the
   repo). Rules and the analysis of the real files: `HANDOFF.md` §5.
 
@@ -782,13 +782,19 @@ code, never printed.
   pattern. `layout.test.cjs` now asserts, for the owner, an admin and a rep at 1280 / 1100 / 390px,
   that every tab button is inside its row, that `overflow-x` is not `auto`, and that
   `elementFromPoint` on the last button hits that button.
-  **⏳ It does not reach the SALES SIDE until 1 Dec 26** (`TAB_SUP_FROM`/`tabSupOn`, owner
+  **✅ Every account has the buckets — the date gate is retired** (`tabSupOn()` returns true).
+  It was phased: built 28 Nov 26 for the owner, opened to admin1–4 on 29 Nov (below), and opened to
+  **everyone** later the same day when he asked for it ahead of schedule — *"ปรับหัวหมวดหมู่ฝั่งเซลล์
+  และของทุกแอคเค้าให้เป็นหมวดหมู่ใหม่ได้เลย 1st sale 2nd sale"*. `TAB_SUP_FROM` is kept only as the
+  record of where the date came from; **nothing reads it**. To phase a rollout again, put the date
+  line back in `tabSupOn` — never edit `TAB_SUPERS`.
+  The history below is why the gate existed and why it moved, and the lessons still hold.
+  **⏳ It originally waited for the SALES SIDE until 1 Dec 26** (`TAB_SUP_FROM`, owner
   27 Nov 26: *"เพื่อไม่ให้คนใช้งานจริงงง ช่วยปรับของฝั่งเซลล์ ซุป แอดมิน ให้กลายเป็นหมวดย่อยตามเดิม
   ไปก่อน เดี๋ยวค่อยปรับใหม่เป็นแบบที่เราทำกัน (1st 2nd หน้างาน อื่นๆ) วันที่ 1 ธค.2026 แทน"*). Until
-  that date a rep, the supervisor and the team roles get the **old flat row of all 12 groups** —
-  which now wraps, so nothing is out of reach either way. On 1 Dec it switches on for them with no
-  code change.
-  **⚠️ The admins were moved off that gate on 29 Nov 26 — every `role:"manager"` account now gets
+  then a rep, the supervisor and the team roles got the **old flat row of all 12 groups** — which
+  wraps, so nothing was out of reach either way.
+  **⚠️ The admins were moved off that gate on 29 Nov 26 — every `role:"manager"` account got
   the buckets at once**, not just `bdOwner()`. The owner opened the main site on an admin's Windows
   machine and found the old row still there: *"ทำไมในเวปแอดมิน หัวข้อมันยังเป็นแบบเดิม ผมเปิดจาก
   เครื่องผมมันเปลี่ยนแล้ว แต่ไปเปิดเครื่องแอดมิน Refresh หลายรอบ ก็ยังไม่เปลี่ยน … แก้ส่วนนี้ด่วนเลย
@@ -802,16 +808,13 @@ code, never printed.
   แอดมิน แบ่งแยกหมวดแบบ manager ได้เลย"*. Measured at 390px: `/admin` has **8 groups in one row,
   964px wide inside a 362px frame**, so 📦 ออเดอร์พิเศษ sat **271px past the right edge** and
   `elementFromPoint` on it returned `MAIN` — genuinely invisible and un-tappable, not just awkward.
-  With the buckets the admin site is 3 buttons of 2–3 groups each and everything fits. So
-  `tabSupOn()` returns true for `BD_SITE==="admin"` as well; the sales side still waits for 1 Dec,
-  because that is where the whole team works every day. Three rules: this **hides the row only** — the
-  whole `TAB_SUPERS` table, `tabSupOf` and `switchSuper` are untouched, the same way retiring a
-  feature only removes its line from a table; the date is read through **`ymdOf`, never
-  `toISOString()`** (the depot is on UTC+7, so a UTC read would still say 30 Nov at 06:30 on the
-  1st); and any test that asserts the bucket layout must force the gate (`tabSupOn`) rather than
-  depend on today's date, while a test that reads the calendar's red badge must accept
-  **either** `#planBadge` (the bucket) or `#planBadge2` (the group), since before 1 Dec only the
-  second one exists.
+  With the buckets the admin site is 3 buttons of 2–3 groups each and everything fits.
+  Three rules survive the retirement: gating this **hides the row only** — the whole `TAB_SUPERS`
+  table, `tabSupOf` and `switchSuper` stay untouched, the same way retiring a feature only removes
+  its line from a table; any date compared here is read through **`ymdOf`, never `toISOString()`**
+  (the depot is on UTC+7, so a UTC read would still say 30 Nov at 06:30 on the 1st); and a test
+  that reads the calendar's red badge must accept **either** `#planBadge` (the bucket) or
+  `#planBadge2` (the group), since which one exists depends on whether the row is shown.
   **Every date / round / month picker carries ◀ ▶ step buttons** (`.dstep`, `selStep`/`dateStep`/
   `keyStep`/`ordStep`/`pjStep`) — the owner asked for the PJP one everywhere. ◀ always means
   *older* and ▶ *newer*, so a `<select>` whose options are filled newest-first (most of them, they
@@ -874,7 +877,7 @@ code, never printed.
   with the *master's* — identical today, but a drift would have made every figure on the row wrong,
   so all four now call `spPsOf` first and fall back to the file. Each product row also **prints the
   case size it used** (`ลังละ 72 ชิ้น`), so a wrong one is visible rather than inferred. Prove it
-  with §18 of **`node test/browser/spord.test.cjs`** (482 checks), whose fixture reproduces
+  with §18 of **`node test/browser/spord.test.cjs`** (489 checks), whose fixture reproduces
   *1 ลัง 46 ชิ้น* exactly and whose picking file deliberately states a **wrong** pack size (24 for a
   72-piece code) to prove the master wins in both directions.
   **📅 Never build a calendar date with `toISOString()`** (`ymdOf`/`ymOf`, owner 27 Nov 26:
@@ -1642,7 +1645,7 @@ code, never printed.
   one — otherwise the button asked for the file while the answer was already on its way. Reading is
   manager-only, like the check itself. Prove it with the `api/alloc.js` cases in
   **`node test/merge-safety.test.mjs`** (330 checks) and the round-trip cases in
-  **`node test/browser/spord.test.cjs`** (482 checks).
+  **`node test/browser/spord.test.cjs`** (489 checks).
   **④ คลังจัดส่ง is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
@@ -1671,7 +1674,7 @@ code, never printed.
   **รอไฟล์ยอดขาย**, never 0 (the `spRow`/`spCases`/`spNoSum` rule). `cstOk()` builds `whq` with the
   rest of CSTOCK's permanent shape, and `mergeState` merges it `newestByAt` per key with a deleted
   slip dropping its keys. Prove it with the §10 cases in **`node test/browser/spord.test.cjs`**
-  (482 checks — §11 covers the per-line expand, the picking-file quantity source, the per-order
+  (489 checks — §11 covers the per-line expand, the picking-file quantity source, the per-order
   date and the per-role landing) and the `CSTOCK.whq` cases in `merge-safety` (337).
   **📊 รายงาน answers "what is this slip worth, and what is it net of the reps' sales?"** — cases cut
   / keyed / sent / outstanding from the lots and `CSTOCK.rep`, money from the **admin's stored check**
@@ -1997,7 +2000,7 @@ code, never printed.
   number entered, because "how many did I type" and "how many orders is that" are different
   questions. The OCR side also treats a 10-digit number whose tail is already in the box as a
   duplicate. Prove it with the self-contained cases in
-  **`node test/browser/spord.test.cjs`** (482 checks) and, against the owner's real screenshots,
+  **`node test/browser/spord.test.cjs`** (489 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).
   **🧯 Numbers read from images were being LOST, and OCR was not the cause** (owner, 27 Nov 26, with
@@ -2073,7 +2076,7 @@ code, never printed.
   `spRepSave` → `api/spord.js`** — no new endpoint, no new permission, and the rep's own record is
   never overwritten. The panel sits at the foot of ② เซลล์คีย์ with scopes วันที่เลือก / ทั้งใบ; a
   rep sees only their own line (`spMineOnly`), a manager every line. Prove it with §13 of
-  **`node test/browser/spord.test.cjs`** (482 checks), which rebuilds the owner's CT17 case — 20
+  **`node test/browser/spord.test.cjs`** (489 checks), which rebuilds the owner's CT17 case — 20
   orders in the files, 13 in the box — and asserts the 7 are found, split 4 sure / 3 unsure, that
   another line's and another day's orders never appear, that scanning mutates nothing, and that
   filling back gives 13 → 17 with the first 13 untouched. ⚠️ That suite shares one browser page
@@ -2103,7 +2106,7 @@ code, never printed.
   รายการสินค้า"**, and a line where *every* order is like that reads **ยังเทียบไม่ได้ · รอไฟล์
   ใบจัดของ** (`blind`, status `unk`) rather than "ขาดทั้งหมด" — not-known is not zero; and the
   footnote states what each column counts, because two of them look alike and are not. Prove it
-  with §14 of **`node test/browser/spord.test.cjs`** (482 checks), which rebuilds his exact row and
+  with §14 of **`node test/browser/spord.test.cjs`** (489 checks), which rebuilds his exact row and
   asserts 7 ลัง vs 84 ชิ้น reads **ครบเป้า**, that a product outside the slip is excluded, that
   short and over each split back per code, and that no `\d+\.\d+ ลัง` or `−N ลัง +M ชิ้น` survives
   anywhere in the table. ⚠️ Verified by removing the cases→pieces multiply and watching four checks
@@ -2147,7 +2150,7 @@ code, never printed.
   latter via the admin's own `spGinSave`→`alPick` path so the two can never produce a different
   check) — **no new endpoint and no new permission**; the GIN half is manager-only because
   `api/alloc.js` already is. Scanning is **strictly read-only**. Prove it with §15 of
-  **`node test/browser/spord.test.cjs`** (482 checks), whose fixture reproduces the measured
+  **`node test/browser/spord.test.cjs`** (489 checks), whose fixture reproduces the measured
   19 Nov shape and whose dates are all built from `todayISO()` — never a fixed day, the §8 lesson.
   ⚠️ Verified by reverting each guard: overwriting instead of appending fails 4 checks, not
   skipping the admin's day fails 3, counting an unknown-product order fails 3.
@@ -2180,7 +2183,7 @@ code, never printed.
   still owes 12 (screen tidying must never change a total), while the per-line chips still narrow
   to their own line; and **no file = "รอไฟล์", and a % that cannot be computed is a dash, never
   0%**. Everything on all three is **read-only** — drawing the page writes nothing. Prove it with
-  §16 of **`node test/browser/spord.test.cjs`** (482 checks), whose fixture gives ตั้งต้น 15 ลัง ·
+  §16 of **`node test/browser/spord.test.cjs`** (489 checks), whose fixture gives ตั้งต้น 15 ลัง ·
   เซลล์คีย์ 11 ลัง · คลังจัด 9 ลัง · เหลือ 4 ลัง · **81.8% ตรง / ขาดตกหล่น 18.2%**, and which
   asserts the panel is gone while its functions remain, that the fill buttons post nothing and
   leave `CSTOCK` byte-identical, that the slip total stays 180 pieces when opened as a rep, and
@@ -2300,7 +2303,7 @@ code, never printed.
   per product with its quantity, and a green "ครบทุกรายการ" line when there is nothing to do.
   ⚠️ ขาด and เกิน stay **separate buckets, never netted off across codes**, so a slip with one code
   short and another over reads **ขาด**, not "ตรง". Prove it with §16 of
-  **`node test/browser/spord.test.cjs`** (482 checks), which builds all three states in one slip —
+  **`node test/browser/spord.test.cjs`** (489 checks), which builds all three states in one slip —
   FO01 keyed 8 ลัง / picked 9 ⇒ เกิน 1 ลัง, FO02 keyed 3 / picked 1 ⇒ ขาด 2 ลัง — and asserts the
   slip reads ขาด, that the calendar day and the slip card carry the same status, that the manager
   list names both products, and that no `\d+\.\d+ ลัง` survives.
@@ -2319,10 +2322,42 @@ code, never printed.
   uses. ② **ส่งออกแล้ว 558 ลัง over ตัดบิลไว้ 390 ลัง printed "100% ของที่ตัดบิล"**; it now says
   **เกินที่ตัดบิลไว้ N ลัง** — clamping a figure to 100% reads as "exactly right". ③ Its totals
   summed the per-day splits, so the leftovers piled across days (see the 🔢 rule above).
+  **🧮 …and on a 🎯 ตัวกระจาย slip, ตัดบิลไว้ must never be a denominator** (`spRptHtml`'s `isD`
+  branch, owner 29 Nov 26 off his own screen: **ตัดบิลไว้ 14 ลัง · เซลล์คีย์แล้ว 120 ลัง = 836%
+  ของที่ตัดบิล · ส่งออกแล้ว 113 ลัง = เกินที่ตัดบิลไว้ 99 ลัง · ยังค้างรอส่ง 0 ลัง**, with
+  *"ทำไมระบบคำนวณให้คีย์เกินไปเยอะขนาดนั้น น่าจะมีการจับระบบผิดพลาดนะ"*). A slip of the same shape
+  was built and measured before anything was changed — bill-cut 14 cases on one day, 9 lines keying
+  the same products over 3 days — and it reproduced his screen exactly: **เซลล์คีย์ 324 ลัง =
+  2314% ของที่ตัดบิล**, while the real criterion (เซลล์คีย์ vs คลังจัด) read **100% · ครบ** on the
+  very same slip. **No figure was wrong; the denominator was.** ตัดบิลไว้ is a single starting
+  quantity while the work spans days and lines, so dividing one by the other means nothing — which
+  is this file's own rule at `spBalSt`: **ตั้งต้นในใบ must never decide ครบ**. For a D slip the
+  cards now read ตัดบิลไว้ (ยอดตั้งต้น, no %) · เซลล์คีย์แล้ว (no %) · **🚚 คลังจัดแล้ว with
+  "N% ของที่เซลล์คีย์"** · **ขาด / เกิน / ตรงกัน**. Three rules: a 🧾/🚚 **A/B slip keeps the
+  cut-based %**, because there the lots are the whole truth and "เกินที่ตัดบิลไว้" is still the
+  right warning; **the figure and its % must come from one source** — card 3 reads `spBal`, the
+  same function that colours every screen, because `spAllOut` counts only days the admin has
+  checked and the pair rendered as a self-contradicting **"0 ลัง · 100%"**; and nothing keyed or
+  nothing checked is **⏳ ยังไม่รู้**, never 🟢 ครบ (the "ไม่รู้ ≠ ศูนย์" rule — `spBal` already
+  reports it as `st:"wait"`).
+  **📋 สรุปรายสาย — one row per line, tap to open its products** (`spAdmTog`, `.sp-lnt`/`.sp-lng`,
+  owner 29 Nov 26: *"ช่วยปรับตารางรีพอตรายสายตรงนี้ ให้มันขึ้นเป็นสรุปยอด แล้วกดแยกตามรายสินค้าของ
+  รายสายได้อีกที ตอนนี้มันรกตามากๆ … ขมวดให้มันลดลงมาหน่อย จับหมวดหมู่มันให้ได้"*). The detail table
+  on 🔎 แอดมินตรวจ was flat (line × product) — 25 rows on his screen — so it is now one row per
+  สาย with that line's totals and a count of what disagrees, and the products open underneath.
+  Four rules: quantities per line are summed **in pieces per code and split back once**
+  (`spMapSplit`, the rule everywhere); **opening must not redraw the page** — `spAdmTog` only flips
+  a class, because `renderSpord` would send the frozen table box back to the top (the
+  `spRenderKeep` lesson), and the open set lives on the non-synced `SP.adm`; **nothing was removed**
+  — all four bands (ไม่ตรง / เซลล์ไม่ได้คีย์ / คลังไม่ได้จัด / ตรง) survive as counted pills on the
+  line row and as dividers inside; and at ≤720px **both levels fold to cards** — measured at 390px
+  the 5-column table pushed ผล off the right edge, so คลังจัด·ขาย and คลังจัด·แถม became one
+  column with free goods as a sub-line, and `.sp-lnd` needs its own `display:block` override in the
+  media query or an opened line is as wide as the old table again.
   **🛟 And a line with no target must never read "เกิน"** (`spTrkGap`): `spPcsDiff` against an
   empty target makes every code "over", so his screen showed เป้า **–** and ผล *ยังไม่ได้ตั้งเป้า*
   beside a green **เกิน 4 ลัง**. With no target the cell is a dash. Prove all of it with §17 of
-  **`node test/browser/spord.test.cjs`** (482 checks), which also measures the new table at
+  **`node test/browser/spord.test.cjs`** (489 checks), which also measures the new table at
   **390px and 1280px**. ⚠️ Verified by reverting each of the seven guards and watching the suite
   fail — a test that passes on the broken code proves nothing here.
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
@@ -2464,7 +2499,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (482 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (489 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -2477,7 +2512,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (482 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (489 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

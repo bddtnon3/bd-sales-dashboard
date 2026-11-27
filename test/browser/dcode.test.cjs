@@ -233,9 +233,12 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
    S.user={id:'ct11',role:'sales',code:'209611',name:'CT11'};out.afterSales=look();
    window.ymdOf=R;S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};renderTabs();
    out.from=TAB_SUP_FROM;return out;});
- t('⏳ วันเริ่มใช้ปุ่มใหญ่กับทุกคนคือ 1 ธ.ค. 2026',gateD.from==='2026-12-01',gateD.from);
- t('⏳ ก่อนวันนั้น เซลล์ · ซุป ยังเห็นแถวหมวดแบนราบครบทุกหมวดแบบเดิม (ไม่มีแถวปุ่มใหญ่)',
-   gateD.beforeSales.sup===''&&gateD.beforeSup.sup===''&&gateD.beforeSales.row===12,
+ /* ✅ 29 พ.ย. 69 — เจ้าของสั่งเปิดปุ่มใหญ่ให้ "ทุกแอคเค้า" ก่อนกำหนด ประตูวันที่จึงเลิกใช้
+    *"ปรับหัวหมวดหมู่ฝั่งเซลล์ และของทุกแอคเค้าให้เป็นหมวดหมู่ใหม่ได้เลย 1st sale 2nd sale"*
+    ⚠️ เช็กนี้ต้องไม่ขึ้นกับวันจริงของเครื่องเทส จึงตั้ง ymdOf เป็นวันก่อนกำหนดไว้ด้วย */
+ t('🗂 เซลล์ · ซุป ได้ปุ่มใหญ่แล้วเหมือนกัน ไม่ขึ้นกับวันที่อีกต่อไป',
+   gateD.beforeSales.sup==='buy,sell,field,etc'&&gateD.beforeSup.sup!==''&&
+   gateD.beforeSales.row<12,
    JSON.stringify([gateD.beforeSales,gateD.beforeSup]));
  /* 🖱 29 พ.ย. 69 — แอดมิน 1-4 ย้ายมาอยู่ฝั่งเดียวกับเจ้าของ (ทุกบัญชี role manager)
     เจ้าของแจ้งว่าแอดมินเปิดเว็บหลักในคอมวินโดวส์แล้วยังเป็นแถวเดิม และกดหมวดขวา ๆ ไม่ได้เลย

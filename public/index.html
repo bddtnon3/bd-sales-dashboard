@@ -798,6 +798,21 @@ tr.sp-backl>td{background:#fff;font-size:13px}
 .sp-rt tr.r-diff>td:first-child{box-shadow:inset 3px 0 0 var(--bad)}
 .sp-rt tr.r-nokey>td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 .sp-rt tr.r-noalloc>td:first-child{box-shadow:inset 3px 0 0 var(--blue)}
+ 
+.sp-lnt .sp-lnh{cursor:pointer}
+.sp-lnt .sp-lnh>td{font-size:14px;padding:10px}
+.sp-lnt .sp-car{display:inline-block;width:14px;color:var(--muted);font-size:11px}
+.sp-lng .sp-lnd{display:none}
+.sp-lng.on .sp-lnd{display:table-row}
+.sp-lng.on .sp-lnh>td{border-bottom:0}
+.sp-lnd>td{padding:0 0 10px;background:#fff}
+.sp-lndw{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:0 0 2px}
+.sp-lndw table{margin:0}
+.sp-lp{display:inline-block;margin:1px 3px 1px 0;padding:1px 7px;border-radius:999px;
+  font-size:11.5px;font-weight:800;white-space:nowrap}
+.sp-lp.p-diff{background:#FDE7E4;color:var(--bad)}
+.sp-lp.p-nokey{background:#FDF2D8;color:#8a6500}
+.sp-lp.p-noalloc{background:#E7EFFC;color:var(--blue)}
 .sp-rt tr.sp-band>td{background:#F4F6FA;font-size:12.5px;padding:6px 10px;
   border-top:2px solid var(--line);white-space:normal}
 .sp-lnrow{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
@@ -829,6 +844,24 @@ tr.sp-backl>td{background:#fff;font-size:13px}
   .sp-rt .sp-pfold tr.r-diff{border-left:4px solid var(--bad)}
   .sp-rt .sp-pfold tr.r-nokey{border-left:4px solid var(--warn)}
   .sp-rt .sp-pfold tr.r-noalloc{border-left:4px solid var(--blue)}
+   
+  .sp-lnt,.sp-lnt tbody.sp-lng{display:block}
+  .sp-lnt thead{display:none}
+  .sp-lnt tr.sp-lnh{display:block;border:1px solid var(--line);border-radius:12px;
+    padding:10px 12px;margin-bottom:10px}
+  .sp-lnt tr.sp-lnh>td{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    border:0;padding:3px 0;text-align:left;background:transparent!important;box-shadow:none!important}
+  .sp-lnt tr.sp-lnh>td::before{content:attr(data-l);color:var(--muted);font-size:12px;flex:0 0 auto}
+  .sp-lnt tr.sp-lnh>td:first-child{display:block;border-bottom:1px solid var(--line);
+    padding-bottom:8px;margin-bottom:6px}
+  .sp-lnt tr.sp-lnh>td:first-child::before{content:none}
+  .sp-lnt tr.sp-lnh.r-ok{border-left:4px solid var(--good)}
+  .sp-lnt tr.sp-lnh.r-diff{border-left:4px solid var(--bad)}
+  .sp-lng.on .sp-lnd{display:block}
+  .sp-lnt tr.sp-lnd>td{display:block;padding:0;border:0}
+  .sp-lnt .sp-lndw{border:0;border-radius:0;margin:-6px 0 12px}
+  .sp-lnt .sp-lndw table{display:block}
+  .sp-lnt .sp-lndw thead{display:none}
    
   .sp-fold thead{display:none}
   .sp-fold,.sp-fold tbody{display:block}
@@ -3701,11 +3734,7 @@ function tabSupOf(gk){
  
 const TAB_SUP_FROM="2026-12-01";
  
-function tabSupOn(){
-  if(typeof BD_SITE!=="undefined"&&BD_SITE==="admin")return true;
-  if(((S&&S.user)||{}).role==="manager")return true;       
-  try{return ymdOf(new Date())>=TAB_SUP_FROM;}catch(e){return false;}
-}
+function tabSupOn(){return true;}
 function renderTabs(){
   const sup=document.getElementById("tabSup");
   const top=document.getElementById("tabTop"),sub=document.getElementById("tabSub");
@@ -14768,6 +14797,12 @@ function spRptHtml(sid){
   const Tt=m=>spSumTxt(m,ym);
   const bar=(p,col)=>`<div style="height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px">
     <div style="height:100%;width:${Math.max(0,Math.min(100,p))}%;background:${col}"></div></div>`;
+   
+  const isD=spGrpOf(spSlip(sid))==="D";
+  const bpct=(BL&&BL.pct!=null)?BL.pct:null;
+   
+  const Tg={};
+  if(isD)(BL?BL.rows:[]).forEach(r=>{if(r.g)Tg[r.code]=r.g;});
   const body=rows.map(r=>`<tr>
     <td class="l"><b>${fmtDate(r.d)}</b></td>
     <td>${(r.cutQ.cs||r.cutQ.pc)?(Object.keys(r.cutPcs).length?Tt(r.cutPcs):spCsTxt(r.cutQ.cs,r.cutQ.pc)):"-"}</td>
@@ -14782,16 +14817,33 @@ function spRptHtml(sid){
     <div class="cards" style="margin-top:10px">
       <div class="card"><div class="k">ตัดบิลไว้</div>
         <div class="v" style="font-size:20px">${Object.keys(T.cut).length?Tt(T.cut):spCsTxt(cut,0)}</div>
-        <div class="s">ตามใบตัดบิล</div></div>
+        <div class="s">${isD?"ยอดตั้งต้นในใบ":"ตามใบตัดบิล"}</div></div>
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k">เซลล์คีย์แล้ว</div>
         <div class="v" style="font-size:20px">${Tt(T.key)}</div>
-        <div class="s">${kpct}% ของที่ตัดบิล</div>${bar(kpct,"var(--blue)")}</div>
-      <div class="card" style="border-top:3px solid ${outOver>0?"var(--warn)":cstPctCol(pct)}"><div class="k">ส่งออกแล้ว</div>
-        <div class="v" style="font-size:20px">${Object.keys(T.out).length?Tt(T.out):spCsTxt(sn.out||0,0)}</div>
-        <div class="s">${outOver>0?("เกินที่ตัดบิลไว้ "+R(outOver)+" ลัง"):(pct+"% ของที่ตัดบิล")}</div>${
-        bar(pct,outOver>0?"var(--warn)":cstPctCol(pct))}</div>
-      <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">ยังค้างรอส่ง</div>
-        <div class="v" style="font-size:20px">${spCsTxt(left,0)}</div><div class="s">ลัง</div></div>
+        <div class="s">${isD?"ทุกวันในใบนี้ · เฉพาะสินค้าในใบ":(kpct+"% ของที่ตัดบิล")}</div>${
+        isD?"":bar(kpct,"var(--blue)")}</div>
+      <div class="card" style="border-top:3px solid ${
+        isD?(bpct==null?"var(--line)":cstPctCol(bpct)):(outOver>0?"var(--warn)":cstPctCol(pct))}"><div class="k">${
+        isD?"🚚 คลังจัดแล้ว":"ส่งออกแล้ว"}</div>
+        <div class="v" style="font-size:20px">${isD?Tt(Tg)
+          :(Object.keys(T.out).length?Tt(T.out):spCsTxt(sn.out||0,0))}</div>
+        <div class="s">${isD
+          ?(bpct==null?"ยังไม่มีผลตรวจใบจัดของ":(bpct+"% ของที่เซลล์คีย์"))
+          :(outOver>0?("เกินที่ตัดบิลไว้ "+R(outOver)+" ลัง"):(pct+"% ของที่ตัดบิล"))}</div>${
+        isD?(bpct==null?"":bar(bpct,cstPctCol(bpct))):bar(pct,outOver>0?"var(--warn)":cstPctCol(pct))}</div>
+      ${isD?(()=>{
+         
+        const st=(BL&&BL.st)||"wait";
+        const C={short:["var(--bad)","🔴 ขาด",BL?Tt(BL.sh):"-","เทียบ เซลล์คีย์ กับ คลังจัด"],
+                 over:["var(--warn)","🟠 เกิน",BL?Tt(BL.ov):"-","เทียบ เซลล์คีย์ กับ คลังจัด"],
+                 ok:["var(--good)","🟢 ตรงกัน","ครบ","เทียบ เซลล์คีย์ กับ คลังจัด"]
+                }[st]||["var(--line)","⏳ ยังไม่รู้","–","รอเซลล์คีย์ หรือรอผลตรวจใบจัดของ"];
+        return `<div class="card" style="border-top:3px solid ${C[0]}">
+        <div class="k">${C[1]}</div>
+        <div class="v" style="font-size:20px">${C[2]}</div>
+        <div class="s">${C[3]}</div></div>`;})()
+      :`<div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">ยังค้างรอส่ง</div>
+        <div class="v" style="font-size:20px">${spCsTxt(left,0)}</div><div class="s">ลัง</div></div>`}
     </div>
     ${BL?spRptProdHtml(BL):""}
     <div class="cards" style="margin-top:10px">
@@ -17730,6 +17782,14 @@ function spOrdCell(x){
     (bits.length?'<span class="psub" style="display:block">'+bits.join(" · ")+'</span>':"");
 }
  
+ 
+function spAdmTog(ln){
+  if(!SP.adm)SP.adm={};
+  SP.adm[ln]=!SP.adm[ln];
+  const b=document.getElementById("spadm-"+ln),c=document.getElementById("spadmc-"+ln);
+  if(b)b.classList.toggle("on",!!SP.adm[ln]);
+  if(c)c.textContent=SP.adm[ln]?"▾":"▸";
+}
 function spTrkTog(ln){
   if(!SP.trk)SP.trk={};
   SP.trk[ln]=!SP.trk[ln];
@@ -18030,21 +18090,68 @@ function spAdmHtml(sid){
     ok:["✅ ตรงกัน","var(--good)"]};
   shown.sort((a,b)=>(SRANK[a.st]-SRANK[b.st])||String(a.ln).localeCompare(String(b.ln))
     ||String(a.code).localeCompare(String(b.code)));
-  let band="";
-  const rows=shown.map(r=>{
-    let head="";
-    if(r.st!==band){band=r.st;const bd=SBAND[r.st]||SBAND.ok;
-      const cnt=shown.filter(x=>x.st===r.st).length;
-      head=`<tr class="sp-band"><td colspan="6" class="l" style="color:${bd[1]}">
-        <b>${bd[0]}</b> · ${cnt} รายการ</td></tr>`;}
-    return head+`<tr class="${SCLS[r.st]||""}">
-    <td class="l"><b>${anaEsc(r.ln)}</b></td>
-    <td class="l">${anaEsc(r.nm||oname(r.code)||"")}<span class="psub" style="display:block">รหัส ${anaEsc(r.code)}${
-      r.pk?" · ลังละ "+B(r.pk)+" ชิ้น":""}${r.shr?" · แพ็คละ "+B(r.shr):""}</span></td>
-    <td class="l">${r.k?qcell(r.qK):"-"}</td>
-    <td class="l">${qcell(r.qS)}</td>
-    <td class="l">${qcell(r.qF)}</td>
-    <td>${ST[r.st]}${r.allocDiff&&r.qT?'<br><span class="psub down">คลังจัดจริงไม่เท่าที่สั่ง</span>':""}</td></tr>`;}).join("");
+   
+  const lnMap={},lnOrd=[];
+  shown.forEach(r=>{
+    let L=lnMap[r.ln];
+    if(!L){L=lnMap[r.ln]={ln:r.ln,rows:[],n:{diff:0,noKey:0,noAlloc:0,ok:0},
+      kPcs:{},sPcs:{},fPcs:{},pk:{},noShr:0};lnOrd.push(r.ln);}
+    L.rows.push(r);
+    if(L.n[r.st]!=null)L.n[r.st]++;
+    if(r.pk)L.pk[r.code]=r.pk;
+    const add=(m,q)=>{if(!q)return;
+      if(q.pcs==null){L.noShr++;return;}
+      m[r.code]=(m[r.code]||0)+(+q.pcs||0);};
+    if(r.k)add(L.kPcs,r.qK);
+    add(L.sPcs,r.qS);add(L.fPcs,r.qF);
+  });
+   
+  lnOrd.sort((a,b)=>{
+    const A=lnMap[a],Bb=lnMap[b];
+    const bad=x=>x.n.diff+x.n.noKey+x.n.noAlloc;
+    return (bad(Bb)-bad(A))||String(a).localeCompare(String(b));
+  });
+  const qSum=m=>Object.keys(m||{}).reduce((a,c)=>a+(+m[c]||0),0);
+  const qTot=(m,pk)=>{const s=spMapSplit(m,pk);
+    return (s.cs||s.pc)?spCsTxt(s.cs,s.pc):"-";};
+  const pill=(n,cls,txt)=>n?`<span class="sp-lp ${cls}">${txt} ${n}</span>`:"";
+  const rows=lnOrd.map(ln=>{
+    const L=lnMap[ln],open=!!(SP.adm&&SP.adm[ln]);
+    const allOk=!(L.n.diff||L.n.noKey||L.n.noAlloc);
+    let band="";
+     
+    const gcell=(qs,qf)=>`${qcell(qs)}${(qf&&qf.txt&&qf.txt!=="0")
+      ?'<span class="psub" style="display:block">แถม '+anaEsc(qf.txt)+"</span>":""}`;
+    const inner=L.rows.map(r=>{
+      let head="";
+      if(r.st!==band){band=r.st;const bd=SBAND[r.st]||SBAND.ok;
+        const cnt=L.rows.filter(x=>x.st===r.st).length;
+        head=`<tr class="sp-band"><td colspan="4" class="l" style="color:${bd[1]}">
+          <b>${bd[0]}</b> · ${cnt} รายการ</td></tr>`;}
+      return head+`<tr class="${SCLS[r.st]||""}">
+      <td class="l">${anaEsc(r.nm||oname(r.code)||"")}<span class="psub" style="display:block">รหัส ${anaEsc(r.code)}${
+        r.pk?" · ลังละ "+B(r.pk)+" ชิ้น":""}${r.shr?" · แพ็คละ "+B(r.shr):""}</span></td>
+      <td class="l" data-l="📲 เซลล์คีย์"><span>${r.k?qcell(r.qK):"-"}</span></td>
+      <td class="l" data-l="🚚 คลังจัด"><span>${gcell(r.qS,r.qF)}</span></td>
+      <td data-l="ผล"><span>${ST[r.st]}${r.allocDiff&&r.qT
+        ?'<span class="psub down" style="display:block">คลังจัดจริงไม่เท่าที่สั่ง</span>':""}</span></td></tr>`;
+    }).join("");
+    return `<tbody class="sp-lng${open?" on":""}" id="spadm-${anaEsc(ln)}">
+      <tr class="sp-lnh${allOk?" r-ok":" r-diff"}" onclick="spAdmTog('${anaEsc(ln)}')">
+        <td class="l"><span class="sp-car" id="spadmc-${anaEsc(ln)}">${open?"▾":"▸"}</span>
+          <b>${anaEsc(ln)}</b><span class="psub"> · ${L.rows.length} รายการ</span></td>
+        <td class="l" data-l="📲 เซลล์คีย์"><span>${qTot(L.kPcs,L.pk)}</span></td>
+        <td class="l" data-l="🚚 คลังจัด"><span>${qTot(L.sPcs,L.pk)}${
+          qSum(L.fPcs)>0?'<span class="psub" style="display:block">แถม '+
+            qTot(L.fPcs,L.pk)+"</span>":""}</span></td>
+        <td data-l="ผล"><span>${allOk?'<span class="sp-ok">✓ ตรงทุกรายการ</span>'
+          :(pill(L.n.diff,"p-diff","✗ ไม่ตรง")+pill(L.n.noKey,"p-nokey","ไม่ได้คีย์")+
+            pill(L.n.noAlloc,"p-noalloc","ไม่ได้จัด"))}</span></td></tr>
+      <tr class="sp-lnd"><td colspan="4" class="l"><div class="sp-lndw"><table class="sp-kt sp-rt">
+        <thead><tr><th class="l">สินค้า</th><th class="l">📲 เซลล์คีย์</th>
+          <th class="l">🚚 คลังจัด</th><th>ผล</th></tr></thead>
+        <tbody class="sp-pfold">${inner}</tbody></table></div></td></tr></tbody>`;
+  }).join("");
    
   const S=cmp.sum||{};
   h+=`<div class="cards" style="margin-top:12px">
@@ -18063,12 +18170,12 @@ function spAdmHtml(sid){
     ${spProdSumHtml(cmp)}
     ${only?`<div class="rq-note" style="margin-top:10px">🔎 <b>กำลังดูเฉพาะสาย ${anaEsc(only)}</b>
       (${shown.length} รายการ จากทั้งหมด ${cmp.rows.length}) · กดชิปสายซ้ำอีกครั้งเพื่อดูทุกสาย</div>`:""}
-    <h3 style="margin:16px 0 0">📋 รายละเอียดรายสาย · รายสินค้า</h3>
-    <div class="tblwrap" style="margin-top:8px"><table class="sp-kt sp-rt">
-    <thead><tr><th class="l">สาย</th><th class="l">สินค้า</th><th class="l">เซลล์คีย์</th>
-      <th class="l">คลังจัด · ขาย</th><th class="l">คลังจัด · แถม</th>
-      <th>ผล</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="6" class="l">ไม่มีรายการ</td></tr>'}</tbody></table></div>
+    <h3 style="margin:16px 0 0">📋 สรุปรายสาย</h3>
+    <div class="psub" style="margin-top:4px">กดที่สายเพื่อดูรายสินค้าของสายนั้น</div>
+    <div class="tblwrap" style="margin-top:8px"><table class="sp-kt sp-rt sp-lnt">
+    <thead><tr><th class="l">สาย</th><th class="l">📲 เซลล์คีย์</th>
+      <th class="l">🚚 คลังจัด</th><th>ผล</th></tr></thead>
+    ${rows||'<tbody><tr><td colspan="4" class="l">ไม่มีรายการ</td></tr></tbody>'}</table></div>
     <div class="psub" style="margin-top:8px">อ่านช่อง <b>Sale Order</b> กับ <b>Free Order</b> ของไฟล์
       · จำนวนแปลงเป็น <b>ลัง + ชิ้น</b> จาก Pack Size ของไฟล์ (ช่อง Q) และขนาดแพ็คที่แกะจากชื่อสินค้า</div></div>`;
   return h;

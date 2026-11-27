@@ -219,9 +219,11 @@ const B1='B20261118-01';
    t(pre+'🗂 แอดมิน 1 เห็นปุ่มใหญ่ 4 ปุ่มเหมือนเจ้าของ (ไม่ติดประตูวันที่)',
      got.admin.rows.sup.n>=2&&got.admin.rows.sup.n===got.owner.rows.sup.n,
      'แอดมิน '+got.admin.rows.sup.n+' · เจ้าของ '+got.owner.rows.sup.n);
-   /* ฝั่งเซลล์ยังเป็นแถวแบนราบถึง 1 ธ.ค. ตามที่เจ้าของสั่งเอง — แต่ต้องตกบรรทัด ไม่ใช่ถูกตัด */
-   t(pre+'⏳ เซลล์ยังเห็นแถวหมวดแบบเดิม (รอ 1 ธ.ค.) แต่ขึ้นครบทุกหมวด',
-     !got.sales.rows.sup.n&&got.sales.rows.top.n>=8&&got.sales.rows.top.over===0,
+   /* 29 พ.ย. 69: เจ้าของสั่งเปิดปุ่มใหญ่ให้ "ทุกแอคเค้า" ก่อนกำหนด ⇒ เซลล์ต้องได้ด้วย
+      และหมวดที่เหลือต้องยังอยู่ครบ ไม่ใช่หายไปหนึ่งระดับ */
+   t(pre+'🗂 เซลล์ก็ได้ปุ่มใหญ่แล้ว (เจ้าของสั่งเปิดให้ทุกแอคเค้า) และหมวดยังอยู่ครบ',
+     got.sales.rows.sup.n>=2&&got.sales.rows.top.n>=1&&got.sales.rows.top.over===0&&
+     got.sales.rows.sup.over===0,
      'ปุ่มใหญ่ '+got.sales.rows.sup.n+' · หมวด '+got.sales.rows.top.n+
      ' ปุ่ม '+got.sales.rows.top.lines+' บรรทัด · เลยขอบ '+got.sales.rows.top.over);
    t(pre+'ไม่มี error ตอนวาดแถบแท็บ',errs.length===0,errs.join(' | '));

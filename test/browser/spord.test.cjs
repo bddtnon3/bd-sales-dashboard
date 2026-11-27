@@ -1067,13 +1067,29 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    const prodRows=prodTbl?prodTbl.querySelectorAll('tbody tr').length:0;
    const chips=[...document.querySelectorAll('.sp-lnchip')].map(b=>b.textContent.replace(/\s+/g,' ').trim());
    /* ตารางรายละเอียดคือตัวที่สอง — นับเฉพาะแถวข้อมูล ไม่เอาแถบหัวกอง */
-   const detRows=()=>[...document.querySelectorAll('#spBody table.sp-rt')].slice(1)
-     .flatMap(t=>[...t.querySelectorAll('tbody tr')]).filter(r=>!r.classList.contains('sp-band')).length;
-   const bands=[...document.querySelectorAll('#spBody table.sp-rt tr.sp-band')]
+   /* ตารางล่างยุบเป็นสายละแถวแล้ว รายสินค้าอยู่ในตารางซ้อนข้างใน (.sp-lndw table) */
+   const inner=()=>[...document.querySelectorAll('#spBody table.sp-lnt .sp-lndw table')];
+   const prodTr=()=>inner().flatMap(t=>[...t.querySelectorAll('tr')])
+     .filter(r=>!r.classList.contains('sp-band')&&!r.querySelector('th'));
+   const detRows=()=>prodTr().length;
+   const bands=inner().flatMap(t=>[...t.querySelectorAll('tr.sp-band')])
      .map(r=>r.textContent.replace(/\s+/g,' ').trim());
-   const cls=[...document.querySelectorAll('#spBody table.sp-rt')].slice(1)
-     .flatMap(t=>[...t.querySelectorAll('tbody tr')]).filter(r=>!r.classList.contains('sp-band'))
-     .map(r=>r.className);
+   const cls=prodTr().map(r=>r.className);
+   /* สายละแถว + กางได้ */
+   const lnRows=[...document.querySelectorAll('#spBody table.sp-lnt tr.sp-lnh')];
+   /* ⚠️ วัดด้วย computed display ไม่ใช่ขนาดกล่อง — ตอนรันเทส view อาจยังซ่อนอยู่
+      ขนาดกล่องจึงเป็น 0 ทั้งก่อนและหลังกด ซึ่งไม่ได้พิสูจน์อะไรเลย */
+   const lnVis=()=>[...document.querySelectorAll('#spBody table.sp-lnt tbody.sp-lng')]
+     .map(b=>{const d=b.querySelector('.sp-lnd');
+       return (d&&getComputedStyle(d).display!=='none')?1:0;});
+   const lnBefore=lnVis();
+   const firstLn=(lnRows[0]||{}).id||'';
+   const lnName=lnRows.length?lnRows[0].querySelector('b').textContent.trim():'';
+   const snapTog=snap();
+   if(lnName)spAdmTog(lnName);
+   const lnAfter=lnVis();
+   const postTog=snap();
+   if(lnName)spAdmTog(lnName);
    const rowsAll=detRows();
    /* กดชิปสายในแถวสินค้า = กรองตารางล่างให้เหลือสายนั้น (ความสามารถเดิมยังอยู่) */
    const ln=P.prod[0].lnOrd[0].ln;
@@ -1085,7 +1101,13 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    /* 🖨 ไฟล์ PDF ต้องขึ้นสรุปรายสินค้าด้วย ไม่ใช่มีแต่ตารางยาว ๆ */
    spRepPrint('B20261118-01','2026-11-20');
    const pr=document.getElementById('prArea').textContent.replace(/\s+/g,' ');
-   return {codes:P.prod.map(x=>x.code),n:P.n,tot:P.tot,head:head,prodRows:prodRows,
+   const pageTx=(document.getElementById('spBody')||{textContent:''})
+     .textContent.replace(/\s+/g,' ');
+   return {pageTx:pageTx,
+     lnRows:lnRows.length,lnNames:lnRows.map(r=>r.querySelector('b').textContent.trim()),
+     lnBefore:lnBefore,lnAfter:lnAfter,lnName:lnName,
+     togSafe:(snapTog===postTog),
+     codes:P.prod.map(x=>x.code),n:P.n,tot:P.tot,head:head,prodRows:prodRows,
      chips:chips,bands:bands,cls:cls,rowsAll:rowsAll,rowsOne:rowsOne,back:back,note:note,
      ln:ln,off:SP.cmpLn,pr:pr,same:snap()===before,
      lnStillWorks:spCmpLines(cmp).length};
@@ -1104,6 +1126,16 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
     /จำนวนไม่ตรงกัน/.test(pdSum.head)),pdSum.head.slice(0,200));
  t('🔑 แต่ละรหัสบอกด้วยว่าเป็นของสายไหนกี่ลัง (ชิปสาย)',
    pdSum.chips.length>0&&/^[A-Z]{2}\d{2} /.test(pdSum.chips[0]),pdSum.chips.join(' | '));
+ /* 📋 ยุบเป็นสายละแถว แล้วกดกางดูรายสินค้า (เจ้าของ 29 พ.ย. 69: *"ตอนนี้มันรกตามากๆ
+    … ให้มันขึ้นเป็นสรุปยอด แล้วกดแยกตามรายสินค้าของรายสายได้อีกที"*) */
+ t('📋 ตารางล่างยุบเป็น "สรุปรายสาย" สายละหนึ่งแถว ไม่ใช่ตารางแบนสาย×สินค้า',
+   pdSum.lnRows>0&&pdSum.lnRows<pdSum.rowsAll&&/สรุปรายสาย/.test(pdSum.pageTx)&&
+   /กดที่สายเพื่อดูรายสินค้า/.test(pdSum.pageTx),
+   pdSum.lnRows+' สาย ('+pdSum.lnNames.join(',')+') · รายสินค้า '+pdSum.rowsAll+' แถว');
+ t('📋 ...รายสินค้าซ่อนอยู่จนกว่าจะกด แล้วกดแล้วกางจริง',
+   pdSum.lnBefore.every(x=>!x)&&pdSum.lnAfter.some(x=>x),
+   'ก่อนกด '+JSON.stringify(pdSum.lnBefore)+' · หลังกด '+JSON.stringify(pdSum.lnAfter));
+ t('🛟 ...การกางเป็นการจัดหน้าจอ ไม่แตะข้อมูลเลย',pdSum.togSafe===true,'');
  t('🎨 ตารางรายละเอียดแยกสีตามประเภท และจัดกองให้อยู่ติดกัน',
    pdSum.bands.length>=2&&pdSum.cls.length>0&&
    new Set(pdSum.cls).size>=2&&pdSum.cls.every(c=>/^r-(ok|diff|nokey|noalloc)$/.test(c)),
@@ -3723,25 +3755,58 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    fd4.frac===false&&fd4.big===false,'ลังทศนิยม='+fd4.frac+' · เศษ 3 หลัก='+fd4.big);
  t('🛟 ...และวาดหน้ารายงานไม่แตะข้อมูลเลย (อ่านอย่างเดียว)',fd4.safe===true,'');
 
- /* ---- ⑤ ส่งออกเกินที่ตัดบิลไว้ ต้องบอกว่าเกิน ห้ามตัดเป็น 100% ---- */
+ /* ---- ⑤ ใบ 🧾/🚚 (A/B): ส่งออกเกินที่ตัดบิลไว้ ต้องบอกว่าเกิน ห้ามตัดเป็น 100% ----
+    ⚠️ กติกานี้ใช้กับใบที่ lot คือความจริงทั้งหมดเท่านั้น · ใบ 🎯 ตัวกระจายไม่เอาที่ตัดบิล
+       มาเป็นตัวหารอีกแล้ว (ดู ⑤ข ถัดลงไป) */
  const fd5=await ev(a=>{
    eval(a.setup);setup();eval(a.pre);
-   /* ตัดบิลไว้ 25 ลัง แต่คลังจัดออก 40 ลัง */
-   CSTOCK.gin[B1+'|'+window.__d0]={g:['70'],at:3,by:'admin1',byName:'แอดมิน 1',
-     rows:{'CT11|FO01':{sc:40,ss:0,sp:0,fc:0,fs:0,fp:0,xc:40,xs:0,xp:0,yc:0,ys:0,yp:0,
-       pk:12,nm:'ซิตร้า เพิร์ล FO',g:0,v:0}},money:0};
+   CSTOCK.slips[B1].g='B';                      /* ใบตัดบิลรอส่ง — เคลียร์จาก lot */
+   const L=CSTOCK.lots[Object.keys(CSTOCK.lots)[0]];
+   L.clr=[{d:window.__d0,cs:40,pc:0,at:3,by:'admin1'}];
    const sn=spSent(B1);
    const d=document.createElement('div');d.innerHTML=spRptHtml(B1);
    const tx=d.textContent.replace(/\s+/g,' ');
-   return {cut:sn.cut,out:sn.out,over:/เกินที่ตัดบิลไว้ 15 ลัง/.test(tx),
+   return {cut:sn.cut,out:sn.out,over:/เกินที่ตัดบิลไว้/.test(tx),
      pct100:/100% ของที่ตัดบิล/.test(tx),frac:/\d+\.\d+ ลัง/.test(tx),
      big:/\d{3} ชิ้น/.test(tx)};
  },{setup:PRE,pre:FOLD});
- t('🛟 ส่งออกมากกว่าที่ตัดบิลไว้ ต้องบอกว่า "เกิน" ไม่ใช่ตัดเป็น 100% แล้วอ่านว่าพอดี',
-   fd5.cut===25&&fd5.out===40&&fd5.over===true&&fd5.pct100===false,
+ t('🛟 ใบ A/B: ส่งออกมากกว่าที่ตัดบิลไว้ ต้องบอกว่า "เกิน" ไม่ใช่ตัดเป็น 100% แล้วอ่านว่าพอดี',
+   fd5.cut===25&&fd5.out>fd5.cut&&fd5.over===true&&fd5.pct100===false,
    'ตัดบิล '+fd5.cut+' · ส่งออก '+fd5.out+' · บอกเกิน='+fd5.over+' · ขึ้น 100%='+fd5.pct100);
  t('📦 ...และยอดรวมของทุกวันไม่พูนเศษชิ้นข้ามวัน',
    fd5.frac===false&&fd5.big===false,'ลังทศนิยม='+fd5.frac+' · เศษ 3 หลัก='+fd5.big);
+
+ /* ---- ⑤ข ใบ 🎯 ตัวกระจาย: "ตัดบิลไว้" ห้ามเป็นตัวหาร ----
+    เจ้าของเห็น ตัดบิลไว้ 14 ลัง · เซลล์คีย์แล้ว 120 ลัง = **836% ของที่ตัดบิล** (29 พ.ย. 69)
+    *"ทำไมระบบคำนวณให้คีย์เกินไปเยอะขนาดนั้น น่าจะมีการจับระบบผิดพลาดนะ"*
+    วัดแล้ว: ไม่มีตัวเลขไหนผิด ตัวหารต่างหาก — ตัดบิลคือยอดตั้งต้นครั้งเดียว
+    ส่วนงานจริงกินหลายวันหลายสาย ⇒ เกณฑ์คือ เซลล์คีย์ เทียบ คลังจัด (กฎที่ spBalSt) */
+ const fdD=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const d=document.createElement('div');d.innerHTML=spRptHtml(B1);
+   const tx=d.textContent.replace(/\s+/g,' ');
+   const cards=[...d.querySelectorAll('.cards .card')].slice(0,4).map(c=>({
+     k:((c.querySelector('.k')||{}).textContent||'').trim(),
+     v:((c.querySelector('.v')||{}).textContent||'').trim(),
+     s:((c.querySelector('.s')||{}).textContent||'').trim()}));
+   const BL=spBal(B1);
+   return {cards:cards,tx:tx,
+     ofCut:/% ของที่ตัดบิล/.test(tx),over:/เกินที่ตัดบิลไว้/.test(tx),
+     keyed:BL.keyed,gin:BL.gin,pct:BL.pct};
+ },{setup:PRE,pre:FOLD});
+ t('🧮 ใบตัวกระจาย: การ์ดต้องไม่เอา "ที่ตัดบิล" มาหารอีกแล้ว (เจ้าของเห็น 836%)',
+   fdD.ofCut===false&&fdD.over===false,
+   JSON.stringify(fdD.cards.map(c=>c.k+'='+c.v+' ['+c.s+']')));
+ t('🎯 ...การ์ดที่ 3 เป็น "คลังจัดแล้ว" และคิด % จากที่เซลล์คีย์ ซึ่งคือเกณฑ์เดียวของทั้งเว็บ',
+   /คลังจัดแล้ว/.test(fdD.cards[2].k)&&/% ของที่เซลล์คีย์/.test(fdD.cards[2].s),
+   JSON.stringify(fdD.cards[2]));
+ t('🛟 ...ตัวเลขกับ % ต้องมาจากแหล่งเดียวกัน ห้ามได้ "0 ลัง · 100%" บนการ์ดเดียวกัน',
+   (function(){const v=fdD.cards[2].v,p=parseFloat(fdD.cards[2].s);
+     const zero=/^0\s*ลัง/.test(v);return !(zero&&p>0);})(),
+   JSON.stringify(fdD.cards[2]));
+ t('📋 ...การ์ดที่ 4 บอกผลของเกณฑ์จริง (ขาด / เกิน / ตรงกัน) แทน "ยังค้างรอส่ง"',
+   /ขาด|เกิน|ตรงกัน/.test(fdD.cards[3].k)&&/เซลล์คีย์/.test(fdD.cards[3].s)&&
+   !/ยังค้างรอส่ง/.test(fdD.tx),JSON.stringify(fdD.cards[3]));
 
  /* ---- ⑥ ผลตรวจของแอดมิน: รหัสเดียวกันอยู่หลายสาย หลายวัน → ต้องรวมเป็นชิ้นก่อน ----
     นี่คือต้นเหตุของ "558 ลัง 998 ชิ้น" บนหน้ารายงาน: วันหนึ่งมี 40 กว่าแถว (สาย×รหัส)
@@ -3751,7 +3816,9 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
         ทีละรหัส → วันละ 2 ลัง 9 ชิ้น  · รวมสองวัน 5 ลัง 6 ชิ้น  */
  const fd6=await ev(a=>{
    eval(a.setup);setup();eval(a.pre);
-   const d1=window.__d0,d2=spBackStep(window.__d0,1);
+   /* ⚠️ วันที่สองต้องเป็นวันก่อนหน้า ไม่ใช่วันถัดไป — แอดมินตรวจย้อนหลัง ไม่ตรวจล่วงหน้า
+      และ `spBal` กวาดถึง "วันนี้" เท่านั้น ผลตรวจของวันพรุ่งนี้จึงไม่เข้าการนับ */
+   const d1=window.__d0,d2=spBackStep(window.__d0,-1);
    const mk=()=>{const r={};['CT11','CT15','CT17'].forEach(ln=>{
      r[ln+'|FO01']={sc:0,ss:0,sp:11,fc:0,fs:0,fp:0,xc:0,xs:0,xp:11,yc:0,ys:0,yp:0,
        pk:12,nm:'ซิตร้า เพิร์ล FO',g:0,v:0};});return r;};
@@ -3765,6 +3832,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    return {dayW:day&&day.w,dayP:day&&day.p,
      outW:o.outQ.w,outP:o.outQ.p,snOut:sn.out,snP:sn.outP,
      lnP:(o.lines[0]||{}).p,
+     balGin:spBal(B1).gin,
      tot:/5 ลัง 6 ชิ้น/.test(tx),dayTxt:/2 ลัง 9 ชิ้น/.test(tx),
      bad33:/0 ลัง 33 ชิ้น|33 ชิ้น/.test(tx),bad66:/66 ชิ้น/.test(tx),
      frac:/\d+\.\d+ ลัง/.test(tx)};

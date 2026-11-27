@@ -889,6 +889,21 @@ tr.sp-backl>td{background:#fff;font-size:13px}
 .sp-rt tr.r-diff>td:first-child{box-shadow:inset 3px 0 0 var(--bad)}
 .sp-rt tr.r-nokey>td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 .sp-rt tr.r-noalloc>td:first-child{box-shadow:inset 3px 0 0 var(--blue)}
+/* 📋 ตารางสรุปรายสาย — แถวสายกดได้ รายสินค้าซ่อนอยู่จนกว่าจะกาง (เจ้าของ "ขมวดให้ลดลงมาหน่อย") */
+.sp-lnt .sp-lnh{cursor:pointer}
+.sp-lnt .sp-lnh>td{font-size:14px;padding:10px}
+.sp-lnt .sp-car{display:inline-block;width:14px;color:var(--muted);font-size:11px}
+.sp-lng .sp-lnd{display:none}
+.sp-lng.on .sp-lnd{display:table-row}
+.sp-lng.on .sp-lnh>td{border-bottom:0}
+.sp-lnd>td{padding:0 0 10px;background:#fff}
+.sp-lndw{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:0 0 2px}
+.sp-lndw table{margin:0}
+.sp-lp{display:inline-block;margin:1px 3px 1px 0;padding:1px 7px;border-radius:999px;
+  font-size:11.5px;font-weight:800;white-space:nowrap}
+.sp-lp.p-diff{background:#FDE7E4;color:var(--bad)}
+.sp-lp.p-nokey{background:#FDF2D8;color:#8a6500}
+.sp-lp.p-noalloc{background:#E7EFFC;color:var(--blue)}
 .sp-rt tr.sp-band>td{background:#F4F6FA;font-size:12.5px;padding:6px 10px;
   border-top:2px solid var(--line);white-space:normal}
 .sp-lnrow{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
@@ -921,6 +936,26 @@ tr.sp-backl>td{background:#fff;font-size:13px}
   .sp-rt .sp-pfold tr.r-diff{border-left:4px solid var(--bad)}
   .sp-rt .sp-pfold tr.r-nokey{border-left:4px solid var(--warn)}
   .sp-rt .sp-pfold tr.r-noalloc{border-left:4px solid var(--blue)}
+  /* 📱 ตารางสรุปรายสาย: พับเป็นการ์ดต่อหนึ่งสาย · แถวรายสินค้าที่กางออกมาพับเป็นการ์ดเหมือนกัน
+     ⚠️ ต้อง override `display:table-row` ของ .sp-lnd ด้วย ไม่งั้นแถวที่กางแล้วกว้างตามตาราง
+        เดิมซึ่งกว้างเกินจอ และช่อง "ผล" จะหลุดออกไปทางขวา (วัดที่ 390px ก่อนแก้) */
+  .sp-lnt,.sp-lnt tbody.sp-lng{display:block}
+  .sp-lnt thead{display:none}
+  .sp-lnt tr.sp-lnh{display:block;border:1px solid var(--line);border-radius:12px;
+    padding:10px 12px;margin-bottom:10px}
+  .sp-lnt tr.sp-lnh>td{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    border:0;padding:3px 0;text-align:left;background:transparent!important;box-shadow:none!important}
+  .sp-lnt tr.sp-lnh>td::before{content:attr(data-l);color:var(--muted);font-size:12px;flex:0 0 auto}
+  .sp-lnt tr.sp-lnh>td:first-child{display:block;border-bottom:1px solid var(--line);
+    padding-bottom:8px;margin-bottom:6px}
+  .sp-lnt tr.sp-lnh>td:first-child::before{content:none}
+  .sp-lnt tr.sp-lnh.r-ok{border-left:4px solid var(--good)}
+  .sp-lnt tr.sp-lnh.r-diff{border-left:4px solid var(--bad)}
+  .sp-lng.on .sp-lnd{display:block}
+  .sp-lnt tr.sp-lnd>td{display:block;padding:0;border:0}
+  .sp-lnt .sp-lndw{border:0;border-radius:0;margin:-6px 0 12px}
+  .sp-lnt .sp-lndw table{display:block}
+  .sp-lnt .sp-lndw thead{display:none}
   /* 📱 ตารางติดตามการคีย์ และตารางเลขออเดอร์ที่กางออกมา — พับเป็นการ์ดเหมือนกัน
      ⚠️ **ตารางติดตามต้องพับด้วย** ไม่ใช่พับแค่ตารางข้างใน: ตารางนอกมี 7 คอลัมน์ กว้างเกินจอ
         แถวที่กางออกมาเป็น <td colspan> ของตารางนั้น จึงกว้างตามไปด้วย แล้วช่อง "จำนวน"
@@ -4152,14 +4187,13 @@ const TAB_SUP_FROM="2026-12-01";
  * 🔍 **ไม่ใช่ปัญหา cache** — ของเดิม `bdOwner()` ผ่านเฉพาะ id `manager` (เครื่องเจ้าของ)
  *    แอดมิน 1-4 เป็น role manager แต่ id คนละตัว จึงตกไปที่ประตูวันที่ `TAB_SUP_FROM`
  *    รีเฟรชกี่รอบก็เหมือนเดิม เพราะไม่ได้ขึ้นกับไฟล์ที่โหลดมา (กฎเดียวกับที่เจอตอน /admin 28 พ.ย.)
- * ⚠️ ฝั่งเซลล์ / ซุป / ทีมคลัง-สายส่ง **ยังเป็นแถวเดิมถึง 1 ธ.ค.** ตามที่เจ้าของสั่งไว้เอง 27 พ.ย.
- *    (*"เพื่อไม่ให้คนใช้งานจริงงง"*) — แต่แถวนั้น **ขึ้นบรรทัดใหม่แทนการเลื่อน** แล้ว (ดู .tabs ใน CSS)
- *    จึงไม่มีหมวดไหนเข้าไม่ถึงอีก ไม่ว่าจะใช้เมาส์ แทร็กแพด หรือนิ้ว */
-function tabSupOn(){
-  if(typeof BD_SITE!=="undefined"&&BD_SITE==="admin")return true;
-  if(((S&&S.user)||{}).role==="manager")return true;      /* เจ้าของ + แอดมิน 1-4 */
-  try{return ymdOf(new Date())>=TAB_SUP_FROM;}catch(e){return false;}
-}
+ * ✅ 29 พ.ย. 69 รอบสาม — **เปิดให้ทุกบัญชีแล้ว ประตูวันที่เลิกใช้**
+ *   เจ้าของ: *"ปรับหัวหมวดหมู่ฝั่งเซลล์ และของทุกแอคเค้าให้เป็นหมวดหมู่ใหม่ได้เลย 1st sale 2nd sale"*
+ *   เดิมฝั่งเซลล์/ซุป/ทีมคลัง-สายส่ง รอถึง 1 ธ.ค. ตามที่เขาสั่งไว้เอง 27 พ.ย. (*"เพื่อไม่ให้คนใช้งาน
+ *   จริงงง"*) — เขามาสั่งเปิดก่อนกำหนดเอง จึงเปิดทั้งหมด
+ * ⚠️ `TAB_SUP_FROM` ยังอยู่เพื่อให้รู้ที่มา แต่ไม่มีใครอ่านมันแล้ว — ถ้าจะกลับไปทยอยเปิดอีกครั้ง
+ *    ให้เอาบรรทัดวันที่กลับมา ไม่ใช่ไปแก้ TAB_SUPERS */
+function tabSupOn(){return true;}
 function renderTabs(){
   const sup=document.getElementById("tabSup");
   const top=document.getElementById("tabTop"),sub=document.getElementById("tabSub");
@@ -16813,6 +16847,28 @@ function spRptHtml(sid){
   const Tt=m=>spSumTxt(m,ym);
   const bar=(p,col)=>`<div style="height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px">
     <div style="height:100%;width:${Math.max(0,Math.min(100,p))}%;background:${col}"></div></div>`;
+  /* ==========================================================================
+   * 🧮 ใบ 🎯 ตัวกระจาย: "ตัดบิลไว้" ห้ามเป็นตัวหาร
+   *   เจ้าของ 29 พ.ย. 69 เห็นการ์ด **ตัดบิลไว้ 14 ลัง · เซลล์คีย์แล้ว 120 ลัง = 836%
+   *   ของที่ตัดบิล · ส่งออกแล้ว 113 ลัง = เกินที่ตัดบิลไว้ 99 ลัง · ยังค้างรอส่ง 0 ลัง**
+   *   แล้วถามว่า *"ทำไมระบบคำนวณให้คีย์เกินไปเยอะขนาดนั้น น่าจะมีการจับระบบผิดพลาดนะ"*
+   *
+   * 🔍 สร้างใบรูปเดียวกันขึ้นมาวัด (ตัดบิล 14 ลัง วันเดียว · 9 สาย × 3 วัน คีย์สินค้าชุดเดียวกัน):
+   *   ได้ **เซลล์คีย์ 324 ลัง = 2314% ของที่ตัดบิล** — รูปเดียวกับที่เขาเห็นเป๊ะ
+   *   แต่เกณฑ์จริง (เซลล์คีย์ เทียบ คลังจัด) อ่านได้ **100% ครบ** ในใบเดียวกัน
+   * ⇒ **ไม่มีตัวเลขไหนผิด ตัวหารต่างหากที่ผิด**: "ตัดบิลไว้" คือยอดตั้งต้นครั้งเดียว
+   *   ส่วนงานจริงกินหลายวันหลายสาย เอามาหารกันแล้วไม่มีความหมาย
+   * 🔑 กฎของโปรเจกต์นี้เขียนไว้แล้วที่ `spBalSt`: **ตั้งต้นในใบ ห้ามตัดสินว่า "ครบ"**
+   *   เกณฑ์เดียวคือ **เซลล์คีย์ ต้องเท่ากับ คลังจัด ทีละรหัส** ⇒ การ์ดชุดนี้ต้องพูดแบบนั้น
+   * ⚠️ ใบ 🧾/🚚 (A/B) ไม่เข้าข่าย — lot ของใบคือความจริงทั้งหมด การเทียบกับที่ตัดบิลถูกอยู่แล้ว
+   * ========================================================================== */
+  const isD=spGrpOf(spSlip(sid))==="D";
+  const bpct=(BL&&BL.pct!=null)?BL.pct:null;
+  /* ⚠️ ตัวเลขกับ % ต้องมาจากแหล่งเดียวกัน ไม่งั้นได้ "0 ลัง · 100%" บนการ์ดเดียวกัน
+     ใบตัวกระจายจึงอ่าน "คลังจัดแล้ว" จาก `spBal` ตัวเดียวกับที่ระบายสีทุกจอ
+     (`spAllOut` นับเฉพาะวันที่แอดมินตรวจแล้ว · `spBal` เติมวันที่ยังไม่ตรวจด้วยใบที่มีเลข GIN) */
+  const Tg={};
+  if(isD)(BL?BL.rows:[]).forEach(r=>{if(r.g)Tg[r.code]=r.g;});
   const body=rows.map(r=>`<tr>
     <td class="l"><b>${fmtDate(r.d)}</b></td>
     <td>${(r.cutQ.cs||r.cutQ.pc)?(Object.keys(r.cutPcs).length?Tt(r.cutPcs):spCsTxt(r.cutQ.cs,r.cutQ.pc)):"-"}</td>
@@ -16827,16 +16883,34 @@ function spRptHtml(sid){
     <div class="cards" style="margin-top:10px">
       <div class="card"><div class="k">ตัดบิลไว้</div>
         <div class="v" style="font-size:20px">${Object.keys(T.cut).length?Tt(T.cut):spCsTxt(cut,0)}</div>
-        <div class="s">ตามใบตัดบิล</div></div>
+        <div class="s">${isD?"ยอดตั้งต้นในใบ":"ตามใบตัดบิล"}</div></div>
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k">เซลล์คีย์แล้ว</div>
         <div class="v" style="font-size:20px">${Tt(T.key)}</div>
-        <div class="s">${kpct}% ของที่ตัดบิล</div>${bar(kpct,"var(--blue)")}</div>
-      <div class="card" style="border-top:3px solid ${outOver>0?"var(--warn)":cstPctCol(pct)}"><div class="k">ส่งออกแล้ว</div>
-        <div class="v" style="font-size:20px">${Object.keys(T.out).length?Tt(T.out):spCsTxt(sn.out||0,0)}</div>
-        <div class="s">${outOver>0?("เกินที่ตัดบิลไว้ "+R(outOver)+" ลัง"):(pct+"% ของที่ตัดบิล")}</div>${
-        bar(pct,outOver>0?"var(--warn)":cstPctCol(pct))}</div>
-      <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">ยังค้างรอส่ง</div>
-        <div class="v" style="font-size:20px">${spCsTxt(left,0)}</div><div class="s">ลัง</div></div>
+        <div class="s">${isD?"ทุกวันในใบนี้ · เฉพาะสินค้าในใบ":(kpct+"% ของที่ตัดบิล")}</div>${
+        isD?"":bar(kpct,"var(--blue)")}</div>
+      <div class="card" style="border-top:3px solid ${
+        isD?(bpct==null?"var(--line)":cstPctCol(bpct)):(outOver>0?"var(--warn)":cstPctCol(pct))}"><div class="k">${
+        isD?"🚚 คลังจัดแล้ว":"ส่งออกแล้ว"}</div>
+        <div class="v" style="font-size:20px">${isD?Tt(Tg)
+          :(Object.keys(T.out).length?Tt(T.out):spCsTxt(sn.out||0,0))}</div>
+        <div class="s">${isD
+          ?(bpct==null?"ยังไม่มีผลตรวจใบจัดของ":(bpct+"% ของที่เซลล์คีย์"))
+          :(outOver>0?("เกินที่ตัดบิลไว้ "+R(outOver)+" ลัง"):(pct+"% ของที่ตัดบิล"))}</div>${
+        isD?(bpct==null?"":bar(bpct,cstPctCol(bpct))):bar(pct,outOver>0?"var(--warn)":cstPctCol(pct))}</div>
+      ${isD?(()=>{
+        /* ⚠️ ยังไม่มีใครคีย์ / ยังไม่มีผลตรวจ = **ยังไม่รู้** ห้ามอ่านว่า "ครบ"
+           (กฎ "ไม่รู้ ≠ ศูนย์" ทั้งเว็บ) — `spBal` บอกสถานะนี้มาเป็น st:"wait" อยู่แล้ว */
+        const st=(BL&&BL.st)||"wait";
+        const C={short:["var(--bad)","🔴 ขาด",BL?Tt(BL.sh):"-","เทียบ เซลล์คีย์ กับ คลังจัด"],
+                 over:["var(--warn)","🟠 เกิน",BL?Tt(BL.ov):"-","เทียบ เซลล์คีย์ กับ คลังจัด"],
+                 ok:["var(--good)","🟢 ตรงกัน","ครบ","เทียบ เซลล์คีย์ กับ คลังจัด"]
+                }[st]||["var(--line)","⏳ ยังไม่รู้","–","รอเซลล์คีย์ หรือรอผลตรวจใบจัดของ"];
+        return `<div class="card" style="border-top:3px solid ${C[0]}">
+        <div class="k">${C[1]}</div>
+        <div class="v" style="font-size:20px">${C[2]}</div>
+        <div class="s">${C[3]}</div></div>`;})()
+      :`<div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">ยังค้างรอส่ง</div>
+        <div class="v" style="font-size:20px">${spCsTxt(left,0)}</div><div class="s">ลัง</div></div>`}
     </div>
     ${BL?spRptProdHtml(BL):""}
     <div class="cards" style="margin-top:10px">
@@ -20412,6 +20486,16 @@ function spOrdCell(x){
  * ⚠️ จำนวนของแต่ละใบอ่านผ่าน `spOrdQty` — ใบที่ยังไม่มีไฟล์ไหนบอกจำนวน ต้องขึ้นว่า
  *    "ยังไม่รู้จำนวน" ห้ามขึ้น 0 (ดูบันทึกยาวที่ `spOrdQty`)
  * ==========================================================================*/
+/* 📋 กาง/พับ รายสินค้าของสายหนึ่งบนหน้าแอดมินตรวจ — สลับคลาสอย่างเดียว ห้ามวาดหน้าใหม่
+   (กล่องตารางที่ freeze หัวไว้จะเด้งกลับบนสุด — บทเรียนเดียวกับ spRenderKeep)
+   สถานะอยู่บน `SP` ซึ่งไม่ sync จึงไม่แตะข้อมูลและไม่ไปโผล่บนเครื่องคนอื่น */
+function spAdmTog(ln){
+  if(!SP.adm)SP.adm={};
+  SP.adm[ln]=!SP.adm[ln];
+  const b=document.getElementById("spadm-"+ln),c=document.getElementById("spadmc-"+ln);
+  if(b)b.classList.toggle("on",!!SP.adm[ln]);
+  if(c)c.textContent=SP.adm[ln]?"▾":"▸";
+}
 function spTrkTog(ln){
   if(!SP.trk)SP.trk={};
   SP.trk[ln]=!SP.trk[ln];
@@ -20740,21 +20824,81 @@ function spAdmHtml(sid){
     ok:["✅ ตรงกัน","var(--good)"]};
   shown.sort((a,b)=>(SRANK[a.st]-SRANK[b.st])||String(a.ln).localeCompare(String(b.ln))
     ||String(a.code).localeCompare(String(b.code)));
-  let band="";
-  const rows=shown.map(r=>{
-    let head="";
-    if(r.st!==band){band=r.st;const bd=SBAND[r.st]||SBAND.ok;
-      const cnt=shown.filter(x=>x.st===r.st).length;
-      head=`<tr class="sp-band"><td colspan="6" class="l" style="color:${bd[1]}">
-        <b>${bd[0]}</b> · ${cnt} รายการ</td></tr>`;}
-    return head+`<tr class="${SCLS[r.st]||""}">
-    <td class="l"><b>${anaEsc(r.ln)}</b></td>
-    <td class="l">${anaEsc(r.nm||oname(r.code)||"")}<span class="psub" style="display:block">รหัส ${anaEsc(r.code)}${
-      r.pk?" · ลังละ "+B(r.pk)+" ชิ้น":""}${r.shr?" · แพ็คละ "+B(r.shr):""}</span></td>
-    <td class="l">${r.k?qcell(r.qK):"-"}</td>
-    <td class="l">${qcell(r.qS)}</td>
-    <td class="l">${qcell(r.qF)}</td>
-    <td>${ST[r.st]}${r.allocDiff&&r.qT?'<br><span class="psub down">คลังจัดจริงไม่เท่าที่สั่ง</span>':""}</td></tr>`;}).join("");
+  /* ==========================================================================
+   * 📋 สรุปรายสาย แล้วค่อยกดดูรายสินค้า (เจ้าของสั่ง 29 พ.ย. 69)
+   *   *"ช่วยปรับตารางรีพอตรายสายตรงนี้ ให้มันขึ้นเป็นสรุปยอด แล้วกดแยกตามรายสินค้าของ
+   *     รายสายได้อีกที ตอนนี้มันรกตามากๆ … ขมวดให้มันลดลงมาหน่อย จับหมวดหมู่มันให้ได้"*
+   *   ของเดิมเป็นตารางแบน (สาย × สินค้า) เรียงตามกอง — หน้าจอเดียวของเขามี 25 แถว
+   *   อ่านบนมือถือไม่ไหว ⇒ ยุบเป็น **สายละหนึ่งแถว** กดแล้วค่อยกางรายสินค้าของสายนั้น
+   * 🔑 ตัวเลขของสาย = รวมเป็น **ชิ้นต่อรหัส** ก่อน แล้วค่อยแตกเป็นลัง (กฎ spMapSplit ทั้งเว็บ)
+   *    ห้ามบวกลังกับเศษชิ้นข้ามรหัส
+   * ⚠️ กางแล้ว **ห้ามวาดหน้าใหม่** (`spAdmTog` สลับคลาสอย่างเดียว) ไม่งั้นกล่องตารางที่
+   *    freeze หัวไว้จะเด้งกลับขึ้นบนสุด — บทเรียนเดียวกับ spRenderKeep
+   * ⚠️ กองทั้งสี่ (ไม่ตรง / เซลล์ไม่ได้คีย์ / คลังไม่ได้จัด / ตรง) ยังอยู่ครบ แค่ย้ายไปเป็น
+   *    ป้ายนับในแถวสาย และเป็นแถบคั่นข้างในตอนกาง — ไม่มีข้อมูลไหนหายไป
+   * ========================================================================== */
+  const lnMap={},lnOrd=[];
+  shown.forEach(r=>{
+    let L=lnMap[r.ln];
+    if(!L){L=lnMap[r.ln]={ln:r.ln,rows:[],n:{diff:0,noKey:0,noAlloc:0,ok:0},
+      kPcs:{},sPcs:{},fPcs:{},pk:{},noShr:0};lnOrd.push(r.ln);}
+    L.rows.push(r);
+    if(L.n[r.st]!=null)L.n[r.st]++;
+    if(r.pk)L.pk[r.code]=r.pk;
+    const add=(m,q)=>{if(!q)return;
+      if(q.pcs==null){L.noShr++;return;}
+      m[r.code]=(m[r.code]||0)+(+q.pcs||0);};
+    if(r.k)add(L.kPcs,r.qK);
+    add(L.sPcs,r.qS);add(L.fPcs,r.qF);
+  });
+  /* สายที่มีของไม่ตรงขึ้นก่อน แล้วค่อยเรียงชื่อสาย — สิ่งที่ต้องตามคืออันที่ไม่ตรง */
+  lnOrd.sort((a,b)=>{
+    const A=lnMap[a],Bb=lnMap[b];
+    const bad=x=>x.n.diff+x.n.noKey+x.n.noAlloc;
+    return (bad(Bb)-bad(A))||String(a).localeCompare(String(b));
+  });
+  const qSum=m=>Object.keys(m||{}).reduce((a,c)=>a+(+m[c]||0),0);
+  const qTot=(m,pk)=>{const s=spMapSplit(m,pk);
+    return (s.cs||s.pc)?spCsTxt(s.cs,s.pc):"-";};
+  const pill=(n,cls,txt)=>n?`<span class="sp-lp ${cls}">${txt} ${n}</span>`:"";
+  const rows=lnOrd.map(ln=>{
+    const L=lnMap[ln],open=!!(SP.adm&&SP.adm[ln]);
+    const allOk=!(L.n.diff||L.n.noKey||L.n.noAlloc);
+    let band="";
+    /* 📦 "คลังจัด" รวมเป็นช่องเดียว ของแถมเป็นบรรทัดเล็กใต้ตัวเลข — 5 คอลัมน์กว้างเกินจอมือถือ
+       และช่อง "ผล" โดนตัดหายไปทางขวา (วัดที่ 390px) */
+    const gcell=(qs,qf)=>`${qcell(qs)}${(qf&&qf.txt&&qf.txt!=="0")
+      ?'<span class="psub" style="display:block">แถม '+anaEsc(qf.txt)+"</span>":""}`;
+    const inner=L.rows.map(r=>{
+      let head="";
+      if(r.st!==band){band=r.st;const bd=SBAND[r.st]||SBAND.ok;
+        const cnt=L.rows.filter(x=>x.st===r.st).length;
+        head=`<tr class="sp-band"><td colspan="4" class="l" style="color:${bd[1]}">
+          <b>${bd[0]}</b> · ${cnt} รายการ</td></tr>`;}
+      return head+`<tr class="${SCLS[r.st]||""}">
+      <td class="l">${anaEsc(r.nm||oname(r.code)||"")}<span class="psub" style="display:block">รหัส ${anaEsc(r.code)}${
+        r.pk?" · ลังละ "+B(r.pk)+" ชิ้น":""}${r.shr?" · แพ็คละ "+B(r.shr):""}</span></td>
+      <td class="l" data-l="📲 เซลล์คีย์"><span>${r.k?qcell(r.qK):"-"}</span></td>
+      <td class="l" data-l="🚚 คลังจัด"><span>${gcell(r.qS,r.qF)}</span></td>
+      <td data-l="ผล"><span>${ST[r.st]}${r.allocDiff&&r.qT
+        ?'<span class="psub down" style="display:block">คลังจัดจริงไม่เท่าที่สั่ง</span>':""}</span></td></tr>`;
+    }).join("");
+    return `<tbody class="sp-lng${open?" on":""}" id="spadm-${anaEsc(ln)}">
+      <tr class="sp-lnh${allOk?" r-ok":" r-diff"}" onclick="spAdmTog('${anaEsc(ln)}')">
+        <td class="l"><span class="sp-car" id="spadmc-${anaEsc(ln)}">${open?"▾":"▸"}</span>
+          <b>${anaEsc(ln)}</b><span class="psub"> · ${L.rows.length} รายการ</span></td>
+        <td class="l" data-l="📲 เซลล์คีย์"><span>${qTot(L.kPcs,L.pk)}</span></td>
+        <td class="l" data-l="🚚 คลังจัด"><span>${qTot(L.sPcs,L.pk)}${
+          qSum(L.fPcs)>0?'<span class="psub" style="display:block">แถม '+
+            qTot(L.fPcs,L.pk)+"</span>":""}</span></td>
+        <td data-l="ผล"><span>${allOk?'<span class="sp-ok">✓ ตรงทุกรายการ</span>'
+          :(pill(L.n.diff,"p-diff","✗ ไม่ตรง")+pill(L.n.noKey,"p-nokey","ไม่ได้คีย์")+
+            pill(L.n.noAlloc,"p-noalloc","ไม่ได้จัด"))}</span></td></tr>
+      <tr class="sp-lnd"><td colspan="4" class="l"><div class="sp-lndw"><table class="sp-kt sp-rt">
+        <thead><tr><th class="l">สินค้า</th><th class="l">📲 เซลล์คีย์</th>
+          <th class="l">🚚 คลังจัด</th><th>ผล</th></tr></thead>
+        <tbody class="sp-pfold">${inner}</tbody></table></div></td></tr></tbody>`;
+  }).join("");
   /* 💰 เงินไม่ขึ้นบนหน้าแอดมิน — เจ้าของสั่ง 28 พ.ย. 69: *"ส่วนของคลังจัด และแอดมินตรวจ
      เอาพวก NIV ออกไปละกัน เอาไปขึ้นโชว์ในรายงานของ manager อย่างเดียว แอดมินจะได้ไม่งง
      แล้วเน้นตรวจจำนวน ชิ้น และลัง แทน"*
@@ -20777,12 +20921,12 @@ function spAdmHtml(sid){
     ${spProdSumHtml(cmp)}
     ${only?`<div class="rq-note" style="margin-top:10px">🔎 <b>กำลังดูเฉพาะสาย ${anaEsc(only)}</b>
       (${shown.length} รายการ จากทั้งหมด ${cmp.rows.length}) · กดชิปสายซ้ำอีกครั้งเพื่อดูทุกสาย</div>`:""}
-    <h3 style="margin:16px 0 0">📋 รายละเอียดรายสาย · รายสินค้า</h3>
-    <div class="tblwrap" style="margin-top:8px"><table class="sp-kt sp-rt">
-    <thead><tr><th class="l">สาย</th><th class="l">สินค้า</th><th class="l">เซลล์คีย์</th>
-      <th class="l">คลังจัด · ขาย</th><th class="l">คลังจัด · แถม</th>
-      <th>ผล</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="6" class="l">ไม่มีรายการ</td></tr>'}</tbody></table></div>
+    <h3 style="margin:16px 0 0">📋 สรุปรายสาย</h3>
+    <div class="psub" style="margin-top:4px">กดที่สายเพื่อดูรายสินค้าของสายนั้น</div>
+    <div class="tblwrap" style="margin-top:8px"><table class="sp-kt sp-rt sp-lnt">
+    <thead><tr><th class="l">สาย</th><th class="l">📲 เซลล์คีย์</th>
+      <th class="l">🚚 คลังจัด</th><th>ผล</th></tr></thead>
+    ${rows||'<tbody><tr><td colspan="4" class="l">ไม่มีรายการ</td></tr></tbody>'}</table></div>
     <div class="psub" style="margin-top:8px">อ่านช่อง <b>Sale Order</b> กับ <b>Free Order</b> ของไฟล์
       · จำนวนแปลงเป็น <b>ลัง + ชิ้น</b> จาก Pack Size ของไฟล์ (ช่อง Q) และขนาดแพ็คที่แกะจากชื่อสินค้า</div></div>`;
   return h;
