@@ -16606,7 +16606,8 @@ function spSlipCard(x){
         <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>
         ${bst==="wait"?"":spStPill(bst)}
         <span class="psub">${anaEsc(x.id)}${x.d?" · สร้าง "+anaEsc(fmtDate(x.d)):""}${
-          x.own?" · 👤 "+anaEsc(x.own):""}</span></div>
+          x.byName?" โดย "+anaEsc(x.byName):""}${
+          x.own?" · รับผิดชอบ "+anaEsc(x.own):""}</span></div>
       <div class="cst-n">${cstPctPill(pct,left,cs)}
         <span class="psub">📝 บันทึกงานแล้ว ${days.length} วัน · 🔎 ตรวจแล้ว ${gn} วัน</span></div>
       <span class="cst-ar">▶</span></div>
@@ -18349,7 +18350,8 @@ function spDayBandHtml(sid,ymd,ro){
       <div class="sp-2d-l">📦 ใบออเดอร์</div>
       <div class="sp-2d-v">${anaEsc(spSlipTitle(sid,26)||sid)}</div>
       ${sum?`<div class="sp-2d-p">${sum}</div>`:""}
-      <div class="sp-2d-x">${anaEsc(sid)}${made?(" · สร้างเมื่อ <b>"+anaEsc(fmtDate(made))+"</b>"):" · ไม่ระบุวันที่สร้าง"}</div>
+      <div class="sp-2d-x">${anaEsc(sid)}${made?(" · สร้างเมื่อ <b>"+anaEsc(fmtDate(made))+"</b>"):" · ไม่ระบุวันที่สร้าง"}${
+        sl.byName?(" · โดย <b>"+anaEsc(sl.byName)+"</b>"):""}</div>
     </div>`;
   if(!ymd)return `<div class="sp-2d">${L}<div class="sp-2d-a">▶</div>
     <div class="sp-2d-i sp-2d-w"><div class="sp-2d-l">📊 ดูทั้งใบ</div>
