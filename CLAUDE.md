@@ -874,7 +874,7 @@ code, never printed.
   with the *master's* — identical today, but a drift would have made every figure on the row wrong,
   so all four now call `spPsOf` first and fall back to the file. Each product row also **prints the
   case size it used** (`ลังละ 72 ชิ้น`), so a wrong one is visible rather than inferred. Prove it
-  with §18 of **`node test/browser/spord.test.cjs`** (465 checks), whose fixture reproduces
+  with §18 of **`node test/browser/spord.test.cjs`** (477 checks), whose fixture reproduces
   *1 ลัง 46 ชิ้น* exactly and whose picking file deliberately states a **wrong** pack size (24 for a
   72-piece code) to prove the master wins in both directions.
   **📅 Never build a calendar date with `toISOString()`** (`ymdOf`/`ymOf`, owner 27 Nov 26:
@@ -1642,7 +1642,7 @@ code, never printed.
   one — otherwise the button asked for the file while the answer was already on its way. Reading is
   manager-only, like the check itself. Prove it with the `api/alloc.js` cases in
   **`node test/merge-safety.test.mjs`** (330 checks) and the round-trip cases in
-  **`node test/browser/spord.test.cjs`** (465 checks).
+  **`node test/browser/spord.test.cjs`** (477 checks).
   **④ คลังจัดส่ง is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
@@ -1671,7 +1671,7 @@ code, never printed.
   **รอไฟล์ยอดขาย**, never 0 (the `spRow`/`spCases`/`spNoSum` rule). `cstOk()` builds `whq` with the
   rest of CSTOCK's permanent shape, and `mergeState` merges it `newestByAt` per key with a deleted
   slip dropping its keys. Prove it with the §10 cases in **`node test/browser/spord.test.cjs`**
-  (465 checks — §11 covers the per-line expand, the picking-file quantity source, the per-order
+  (477 checks — §11 covers the per-line expand, the picking-file quantity source, the per-order
   date and the per-role landing) and the `CSTOCK.whq` cases in `merge-safety` (337).
   **📊 รายงาน answers "what is this slip worth, and what is it net of the reps' sales?"** — cases cut
   / keyed / sent / outstanding from the lots and `CSTOCK.rep`, money from the **admin's stored check**
@@ -1997,7 +1997,7 @@ code, never printed.
   number entered, because "how many did I type" and "how many orders is that" are different
   questions. The OCR side also treats a 10-digit number whose tail is already in the box as a
   duplicate. Prove it with the self-contained cases in
-  **`node test/browser/spord.test.cjs`** (465 checks) and, against the owner's real screenshots,
+  **`node test/browser/spord.test.cjs`** (477 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).
   **🧯 Numbers read from images were being LOST, and OCR was not the cause** (owner, 27 Nov 26, with
@@ -2073,7 +2073,7 @@ code, never printed.
   `spRepSave` → `api/spord.js`** — no new endpoint, no new permission, and the rep's own record is
   never overwritten. The panel sits at the foot of ② เซลล์คีย์ with scopes วันที่เลือก / ทั้งใบ; a
   rep sees only their own line (`spMineOnly`), a manager every line. Prove it with §13 of
-  **`node test/browser/spord.test.cjs`** (465 checks), which rebuilds the owner's CT17 case — 20
+  **`node test/browser/spord.test.cjs`** (477 checks), which rebuilds the owner's CT17 case — 20
   orders in the files, 13 in the box — and asserts the 7 are found, split 4 sure / 3 unsure, that
   another line's and another day's orders never appear, that scanning mutates nothing, and that
   filling back gives 13 → 17 with the first 13 untouched. ⚠️ That suite shares one browser page
@@ -2103,7 +2103,7 @@ code, never printed.
   รายการสินค้า"**, and a line where *every* order is like that reads **ยังเทียบไม่ได้ · รอไฟล์
   ใบจัดของ** (`blind`, status `unk`) rather than "ขาดทั้งหมด" — not-known is not zero; and the
   footnote states what each column counts, because two of them look alike and are not. Prove it
-  with §14 of **`node test/browser/spord.test.cjs`** (465 checks), which rebuilds his exact row and
+  with §14 of **`node test/browser/spord.test.cjs`** (477 checks), which rebuilds his exact row and
   asserts 7 ลัง vs 84 ชิ้น reads **ครบเป้า**, that a product outside the slip is excluded, that
   short and over each split back per code, and that no `\d+\.\d+ ลัง` or `−N ลัง +M ชิ้น` survives
   anywhere in the table. ⚠️ Verified by removing the cases→pieces multiply and watching four checks
@@ -2147,7 +2147,7 @@ code, never printed.
   latter via the admin's own `spGinSave`→`alPick` path so the two can never produce a different
   check) — **no new endpoint and no new permission**; the GIN half is manager-only because
   `api/alloc.js` already is. Scanning is **strictly read-only**. Prove it with §15 of
-  **`node test/browser/spord.test.cjs`** (465 checks), whose fixture reproduces the measured
+  **`node test/browser/spord.test.cjs`** (477 checks), whose fixture reproduces the measured
   19 Nov shape and whose dates are all built from `todayISO()` — never a fixed day, the §8 lesson.
   ⚠️ Verified by reverting each guard: overwriting instead of appending fails 4 checks, not
   skipping the admin's day fails 3, counting an unknown-product order fails 3.
@@ -2180,11 +2180,56 @@ code, never printed.
   still owes 12 (screen tidying must never change a total), while the per-line chips still narrow
   to their own line; and **no file = "รอไฟล์", and a % that cannot be computed is a dash, never
   0%**. Everything on all three is **read-only** — drawing the page writes nothing. Prove it with
-  §16 of **`node test/browser/spord.test.cjs`** (465 checks), whose fixture gives ตั้งต้น 15 ลัง ·
+  §16 of **`node test/browser/spord.test.cjs`** (477 checks), whose fixture gives ตั้งต้น 15 ลัง ·
   เซลล์คีย์ 11 ลัง · คลังจัด 9 ลัง · เหลือ 4 ลัง · **81.8% ตรง / ขาดตกหล่น 18.2%**, and which
   asserts the panel is gone while its functions remain, that the fill buttons post nothing and
   leave `CSTOCK` byte-identical, that the slip total stays 180 pieces when opened as a rep, and
   that the GINs come out as one run of six (68–73) — his own "วันละ 4-6 ใบต่อวัน".
+  **🧾 A GIN can never predate the slip it belongs to** (`spGinFirst`/`spGinDay`, the `ginOld` map
+  on `spBackDay`, owner 29 Nov 26 off his own screen: *"ทำไมระบบอ่านไฟล์จาก gin 196 มาให้ มันย้อน
+  หลังไป 3 วันเลย ตรรกะผิดแล้ว GIN ต้องเกิดหลังจากวันที่สร้างออเดอร์สิ ปรับส่วนนี้ทั้งระบบเลยนะ"*).
+  The auto-read panel offered 196 for the 27th because the sweep collected **every GIN on any order
+  carrying the slip's codes**, and the warehouse re-uses a GIN for days. Two candidate rules were
+  measured on the real picking file (144 GINs) and **both fail**: "the GIN's day = the day being
+  recorded" loses the 27 GINs that genuinely span days (a GIN is re-used up to **+5 days** after
+  its first use), and "a higher number is a later day" is simply false — the numbers invert against
+  the dates **25 times out of 144**, so number order can never stand in for date order. What does
+  work is the GIN's **first use day**: a number first seen before the slip existed belongs to
+  another round. So `spGinFirst(ym)` memoises code→first day over the month's orders and
+  `spBackDay` routes anything older into **`ginOld` instead of `gin`**. Three rules: it is decided
+  **per GIN, on its first day, never on the number**; an excluded GIN is **named on screen with the
+  reason** (*ข้ามเลขที่เริ่มใช้ก่อนวันที่สร้างใบ*), never dropped silently — the project's own
+  "report it, don't guess" rule; and ▸ ใส่ลงในช่องให้เลย fills **only** what passed, because that
+  button feeds the admin's save. A slip with no creation date filters nothing, rather than
+  excluding everything. §19 of the suite proves it, and reverting the guard fails 4 checks.
+  **🔀 Two views on one page: 🤖 ระบบอ่านเอง vs ✍️ กรอกเอง** (`SP_ZONES`/`spZone`/`spZoneCls`/
+  `spSetZone`/`spZoneChips`, same message: *"ช่วยปรับแยกโซน ที่ระบบอ่านเอง และโซนที่เราให้เซลล์
+  กรอกเอง แอดมินใส่ GIN เอง ช่วยแยกกันออกมาเป็นสองรูปแบบให้กดเลือกดูหน่อย ตอนนี้มันเหมือนข้อมูล
+  ทับซ้อนกันในหน้าเวปมากไป"*). Three chips above the step's working content; `🤖` hides `.sp-man`
+  and `.sp-save`, `✍️` hides `.sp-auto` and `.sp-bal`. Four rules: it is **presentation only** —
+  no figure, permission or write path changes, `CSTOCK` is byte-identical across every switch and
+  nothing is posted (the suite asserts both); the choice is a **device preference**
+  (`localStorage bdspzone`, try/catch, never synced — the `bdspno:`/`bdcst:` pattern), so one
+  person's view can never move another's; a hidden block is **one tap away and the chip row is
+  always rendered**, and 🤖 mode says in words that saving means going back, because hiding the
+  save button without saying so reads as a broken page; and **a block that can be hidden must
+  never carry `display` in its own tag** — the GIN row was `style="display:flex"`, which beats the
+  class, so it would not hide (the test caught it); it is `.sp-ginrow` now.
+  **📦 Three units in the dcode file, and the maths was already right** (`alQtyTxt`, same message:
+  *"จริง ๆ มันมีสามหน่วยในไฟล์ dcode นะ คือ ลัง แพ็ค ชิ้น ลองตรวจเงื่อนไขจาก master file แล้วทำความ
+  เข้าใจมันดู … ให้ขึ้นแบบไม่งง โดยแสดงแค่ ลัง ชิ้น เหมือนเดิม"*). Measured against his
+  `Product_Master_26112026.xlsx` and the real 10,428-row picking file before anything was touched:
+  **5,369 rows use แพ็ค and `alShrink` resolves the pack factor on all 5,369 (100%)**; the file's
+  Pack Size agrees with the master on **all 526 codes**; and **25 rows carry a ชิ้น figure at or
+  above one case** (PC 24 on a 12-pack ⇒ 2 whole cases), which is exactly the *"2 ลัง / 24 ชิ้น"*
+  he read as one quantity. **No figure was wrong — the cell printed two units stacked**: the
+  converted ลัง/ชิ้น on top and the file's raw `2 ลัง + 24 ชิ้น` (แพ็ค included) in grey beneath.
+  So `alQtyTxt` keeps `raw` for the callers that genuinely want it (Excel/PDF) but no longer puts
+  it in `sub`, and the quantity cell prints **ลัง/ชิ้น only**. Two things stay: the
+  **ไม่รู้ขนาดแพ็ค** warning, because a row that cannot be converted is not known and must never be
+  guessed at 1; and the **ลังละ N ชิ้น · แพ็คละ M** note on the product cell, which is how a reader
+  checks the conversion themselves. ⚠️ `sub` is plain text — a `<span>` in it is printed literally
+  by `anaEsc`.
   **🎨 …and ONE criterion colours everything: เซลล์คีย์ must equal คลังจัด, per product code,
   down to the piece** (`SP_BST`/`spBalSt`/`spDayStat`/`spSlipStat`/`spStPill`, owner 27 Nov 26 off
   the live screen: *"ถ้าจำนวนมันเกิน ให้แจ้งว่าเกิน ต้องหักลบออก แต่ถ้ามันขาดให้ขึ้นสีแดงว่าขาด
@@ -2214,7 +2259,7 @@ code, never printed.
   per product with its quantity, and a green "ครบทุกรายการ" line when there is nothing to do.
   ⚠️ ขาด and เกิน stay **separate buckets, never netted off across codes**, so a slip with one code
   short and another over reads **ขาด**, not "ตรง". Prove it with §16 of
-  **`node test/browser/spord.test.cjs`** (465 checks), which builds all three states in one slip —
+  **`node test/browser/spord.test.cjs`** (477 checks), which builds all three states in one slip —
   FO01 keyed 8 ลัง / picked 9 ⇒ เกิน 1 ลัง, FO02 keyed 3 / picked 1 ⇒ ขาด 2 ลัง — and asserts the
   slip reads ขาด, that the calendar day and the slip card carry the same status, that the manager
   list names both products, and that no `\d+\.\d+ ลัง` survives.
@@ -2236,7 +2281,7 @@ code, never printed.
   **🛟 And a line with no target must never read "เกิน"** (`spTrkGap`): `spPcsDiff` against an
   empty target makes every code "over", so his screen showed เป้า **–** and ผล *ยังไม่ได้ตั้งเป้า*
   beside a green **เกิน 4 ลัง**. With no target the cell is a dash. Prove all of it with §17 of
-  **`node test/browser/spord.test.cjs`** (465 checks), which also measures the new table at
+  **`node test/browser/spord.test.cjs`** (477 checks), which also measures the new table at
   **390px and 1280px**. ⚠️ Verified by reverting each of the seven guards and watching the suite
   fail — a test that passes on the broken code proves nothing here.
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
@@ -2378,7 +2423,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (465 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (477 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -2391,7 +2436,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (465 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (477 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on

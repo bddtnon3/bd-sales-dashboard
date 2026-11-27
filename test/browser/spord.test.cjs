@@ -3919,6 +3919,130 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    'การ์ด '+JSON.stringify(mx2.cards)+' · รายวัน '+JSON.stringify(mx2.days.slice(0,6)));
  t('🛟 ...และยังอ่านอย่างเดียว ไม่แตะข้อมูล',mx2.safe===true,'');
 
+ /* ============================================================================
+  * 19) 🧾 GIN เกิดหลังใบออเดอร์เสมอ · 🔀 แยกมุมมอง · 📦 ช่องจำนวนเหลือแค่ ลัง/ชิ้น
+  *   เจ้าของ 29 พ.ย. 69 (สามเรื่องในข้อความเดียว):
+  *     *"ทำไมระบบอ่านไฟล์จาก gin 196 มาให้ มันย้อนหลังไป 3 วันเลย ตรรกะผิดแล้ว
+  *       GIN ต้องเกิดหลังจากวันที่สร้างออเดอร์สิ ปรับส่วนนี้ทั้งระบบเลยนะ"*
+  *     *"ช่วยปรับแยกโซน ที่ระบบอ่านเอง และโซนที่เราให้เซลล์กรอกเอง … ให้กดเลือกดูหน่อย"*
+  *     *"มันมีสามหน่วยในไฟล์ dcode นะ คือ ลัง แพ็ค ไซส์ … ให้ขึ้นแบบไม่งง โดยแสดงแค่ ลัง ชิ้น"*
+  *
+  *   วัดจากไฟล์ใบจัดของจริงก่อนแก้: GIN ถูกใช้ซ้ำข้ามวันได้ถึง +5 วัน (จึงกรองตาม
+  *   "วันของ GIN = วันนี้" ไม่ได้) และเลข GIN ไม่เรียงตามวัน (ถอยหลัง 25 ครั้งจาก 144)
+  *   ⇒ เกณฑ์เดียวที่ใช้ได้คือ **วันแรกที่เลขนั้นถูกใช้ ต้องไม่ก่อนวันที่สร้างใบ**
+  * ========================================================================== */
+ const GZ = `
+   __as('manager','','ผู้จัดการ');
+   window.__dmk=spBackStep(todayISO(),-4);     /* วันที่สร้างใบ */
+   window.__dold=spBackStep(todayISO(),-6);    /* ก่อนสร้างใบ 2 วัน */
+   window.__d0=spBackStep(todayISO(),-2);      /* วันที่กำลังบันทึกงาน */
+   CSTOCK.slips[B1].d=window.__dmk;CSTOCK.slips[B1].g='D';
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};
+   MASTER={items:{FO01:{nm:'คนอร์โจ๊กซอง รสไก่ FO P18X4X45ก'}},det:{FO01:{ps:72}}};
+   CSTOCK.lots={L1:{id:'L1',sl:B1,d:window.__dmk,code:'FO01',
+                    nm:'คนอร์โจ๊กซอง รสไก่ FO P18X4X45ก',cs:10,pc:0,ln:'CT11',clr:[]}};
+   STOREDAILY={data:{},ord:{}};
+   const OTO={},OTD={};window.__nos=[];
+   /* ใบของวันที่บันทึก — ถือ GIN 203,204 (ใหม่) กับ 196 (เคยใช้ตั้งแต่ก่อนสร้างใบ) */
+   [['7000001','203'],['7000002','204'],['7000003','196']].forEach(function(p){
+     OTO[p[0]]={l:'209611',d:+window.__d0.slice(8,10),s:'SH'+p[0],w:1,p:0,c:1,n:1,g:p[1]};
+     OTD[p[0]]={FO01:[1,0,72]};
+     STOREDAILY.ord['BDD01'+p[0]]={s:'SH'+p[0],l:'209611',d:window.__d0,k:window.__d0,
+       v:10,c:1,cs:1,pc:0};
+     window.__nos.push('BDD01'+p[0]);
+   });
+   /* ใบเก่าก่อนวันสร้างใบ ที่ทำให้ GIN 196 เกิดขึ้นครั้งแรก */
+   OTO['6000001']={l:'209611',d:+window.__dold.slice(8,10),s:'SHOLD',w:1,p:0,c:1,n:1,g:'196'};
+   OTD['6000001']={FO01:[1,0,72]};
+   for(var k=-7;k<=0;k++){
+     var m=spBackStep(todayISO(),k).slice(0,7);
+     OT.cache[m]={ord:OTO,det:OTD,meta:null,none:0};
+   }
+   OT.months=Object.keys(OT.cache);
+   spRfBust();
+   CSTOCK.rep[B1+'|'+window.__d0+'|CT11']={it:{},no:window.__nos.slice(),
+     by:'209611',byName:'CT11',at:2,n:1};
+   SP.sid=B1;SP.view='slip';SP.sec='adm';SP.day=window.__d0;SP.ym=window.__d0.slice(0,7);
+   SP.back={on:0,sid:'',busy:0,i:0,n:0,open:{}};SP.zone='';
+   _switchTab('spord');renderSpord();`;
+
+ const gz=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const codes={FO01:1};
+   const r=spBackDay(B1,window.__d0,codes,spSlipLines(B1));
+   const d=document.createElement('div');d.innerHTML=spAutoGinHtml(B1,window.__d0);
+   const tx=d.textContent.replace(/\s+/g,' ');
+   /* ปุ่ม "ใส่ให้เลย" ต้องใส่เฉพาะเลขที่ผ่านเกณฑ์ (ช่องจริงบนหน้า) */
+   const box=document.getElementById('spGinIn');box.value='';
+   spAutoGinFill(B1,window.__d0);
+   const filled=box.value;
+   return {gin:Object.keys(r.gin).sort(),old:Object.keys(r.ginOld||{}),
+     first196:spGinDay('196',window.__d0.slice(0,7)),
+     firstNew:spGinDay('203',window.__d0.slice(0,7)),
+     slDay:r.slDay,tx:tx,said:/196/.test(tx),filled:filled};
+ },{setup:PRE,pre:GZ});
+ t('🧾 GIN ที่ถูกใช้ครั้งแรกก่อนวันที่สร้างใบ ต้องไม่ถูกเสนอ — เหลือแค่ 203, 204',
+   gz.gin.join(',')==='203,204'&&gz.old.join(',')==='196',
+   'เสนอ ['+gz.gin.join(',')+'] · ตัดออก ['+gz.old.join(',')+']');
+ t('📏 ...ตัดสินจาก "วันแรกที่เลขนั้นถูกใช้" ไม่ใช่จากตัวเลข GIN',
+   gz.first196>0&&gz.firstNew>0&&gz.first196<gz.slDay&&gz.firstNew>=gz.slDay,
+   'วันแรกของ 196='+gz.first196+' · 203='+gz.firstNew+' · วันสร้างใบ='+gz.slDay);
+ t('🛟 ...และบอกบนจอว่าตัดอะไรออกเพราะอะไร ไม่ใช่หายเงียบ',
+   gz.said===true&&/ก่อนวันที่สร้างใบ/.test(gz.tx),gz.tx.slice(0,170));
+ t('▸ ...ปุ่มใส่ให้เลย ก็ใส่เฉพาะเลขที่ผ่านเกณฑ์',
+   gz.filled==='203, 204',"ใส่ '"+gz.filled+"'");
+
+ /* ---- 🔀 สองมุมมอง ---- */
+ const gz2=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const blob=JSON.stringify(CSTOCK);
+   const V=()=>{const z=document.querySelector('#spordView .sp-zone');
+     const vis=s=>{const e=document.querySelector(s);
+       if(!e)return false;const r=e.getBoundingClientRect();
+       return !!(r.width||r.height);};
+     return {cls:z?z.className:'',auto:vis('#spordView .sp-auto'),
+       man:vis('#spordView .sp-man')};};
+   const all=V();
+   spSetZone('auto');const au=V();
+   spSetZone('man');const mn=V();
+   spSetZone('');const back=V();
+   const chips=document.querySelectorAll('#spordView .sp-zchip button').length;
+   return {all:all,au:au,mn:mn,back:back,chips:chips,
+     posts:(window.__posts||[]).length,safe:(JSON.stringify(CSTOCK)===blob)};
+ },{setup:PRE,pre:GZ});
+ t('🔀 มีชิปให้เลือก 3 แบบ และค่าเริ่มต้นเห็นทั้งสองส่วน',
+   gz2.chips===3&&gz2.all.auto===true&&gz2.all.man===true,
+   JSON.stringify(gz2.all));
+ t('🤖 เลือก "ระบบอ่านเอง" → ซ่อนช่องกรอก เหลือส่วนที่ระบบอ่านให้',
+   gz2.au.auto===true&&gz2.au.man===false,JSON.stringify(gz2.au));
+ t('✍️ เลือก "กรอกเอง" → ซ่อนส่วนที่ระบบอ่าน เหลือช่องกรอก',
+   gz2.mn.man===true&&gz2.mn.auto===false,JSON.stringify(gz2.mn));
+ t('🛟 ...กดกลับ "ทั้งหมด" เห็นครบเหมือนเดิม และไม่แตะข้อมูลเลย',
+   gz2.back.auto===true&&gz2.back.man===true&&gz2.posts===0&&gz2.safe===true,
+   JSON.stringify(gz2.back)+' · โพสต์ '+gz2.posts);
+
+ /* ---- 📦 ช่องจำนวน: ลัง/ชิ้น เท่านั้น ---- */
+ const gz3=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   /* ของจริงที่เจ้าของเห็น: ไฟล์บอก 18 แพ็ค (แพ็คละ 4) และอีกแถวบอก 24 ชิ้น ของลัง 12 */
+   const a1=alQtyTxt({cs:0,sh:18,pc:0},72,alShrink('คนอร์โจ๊กซอง รสไก่ FO P18X4X45ก',72));
+   const a2=alQtyTxt({cs:0,sh:0,pc:24},12,0);
+   const a3=alQtyTxt({cs:2,sh:0,pc:9},12,0);
+   const a4=alQtyTxt({cs:0,sh:3,pc:0},0,0);        /* ไม่รู้ขนาดลัง/แพ็ค */
+   const cell=q=>q?(q.txt+(q.sub?(' · '+q.sub):'')):'-';
+   return {shr:alShrink('คนอร์โจ๊กซอง รสไก่ FO P18X4X45ก',72),
+     a1:cell(a1),a2:cell(a2),a3:cell(a3),a4:cell(a4),
+     raw1:a1.raw,noPack:a4.sub,tagless:!/</.test(String(a4.sub||''))};
+ },{setup:PRE,pre:GZ});
+ t('📦 แพ็คถูกแปลงเป็นลัง — 18 แพ็ค (แพ็คละ 4) ของลัง 72 = 1 ลัง ไม่มีคำว่า "แพ็ค" บนช่อง',
+   gz3.shr===4&&gz3.a1==='1 ลัง',"แพ็คละ "+gz3.shr+" · ช่อง '"+gz3.a1+"'");
+ t('📦 ชิ้นที่เกินหนึ่งลังถูกแปลง — 24 ชิ้น ของลัง 12 = 2 ลัง · 2 ลัง 9 ชิ้น ยังเป็น 2 ลัง 9 ชิ้น',
+   gz3.a2==='2 ลัง'&&gz3.a3==='2 ลัง 9 ชิ้น',"'"+gz3.a2+"' · '"+gz3.a3+"'");
+ t('🛟 ...หน่วยดิบของไฟล์ยังเก็บไว้ให้ผู้เรียกที่ต้องใช้ แค่ไม่ขึ้นบนช่องจำนวน',
+   gz3.raw1==='18 แพ็ค',"raw '"+gz3.raw1+"'");
+ t('🛟 ...แปลงไม่ได้ต้องบอกว่าไม่รู้ และเป็นข้อความล้วน ไม่ใช่แท็ก HTML',
+   gz3.noPack==='ไม่รู้ขนาดแพ็ค'&&gz3.tagless===true,"'"+gz3.noPack+"'");
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}

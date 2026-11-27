@@ -720,6 +720,15 @@ tr.sp-backl>td{background:#fff;font-size:13px}
 .sp-save button:hover{background:var(--blue-dark)}
 .sp-save button:active{transform:translateY(1px)}
  
+ 
+.sp-zchip{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 0}
+.sp-zchip button{padding:7px 13px;border:1.5px solid var(--line);background:#fff;border-radius:999px;
+  font-size:13.5px;font-weight:700;color:var(--mid);cursor:pointer}
+.sp-zchip button.on{background:var(--z,var(--blue));border-color:var(--z,var(--blue));color:#fff}
+ 
+.sp-ginrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.sp-only-man .sp-auto,.sp-only-man .sp-bal{display:none}
+.sp-only-auto .sp-man,.sp-only-auto .sp-save{display:none}
 .sp-zone .sp-save{background:linear-gradient(to top,#fff 68%,rgba(255,255,255,0))}
 .sp-zone .sp-save button{background:var(--z);box-shadow:0 3px 10px var(--zg)}
 .sp-zone .sp-save button:hover{filter:brightness(.92)}
@@ -13347,15 +13356,17 @@ function alSplit(pcs,pk){
   if(pcs==null||q<=0)return null;
   return {cs:Math.floor(pcs/q),pc:Math.round((pcs%q)*100)/100,pcs:pcs};
 }
+ 
 function alQtyTxt(o,pk,shr){
   const pcs=alPcs(o,pk,shr),sp=alSplit(pcs,pk);
   const raw=[o&&o.cs?o.cs+" ลัง":"",o&&o.sh?o.sh+" แพ็ค":"",o&&o.pc?o.pc+" ชิ้น":""]
     .filter(Boolean).join(" + ");
-  if(!sp)return {txt:raw||"0",sub:(o&&o.sh)?'<span class="down">ไม่รู้ขนาดแพ็ค</span>':"",
-    pcs:null,cs:null,pc:null};
+   
+  if(!sp)return {txt:raw||"0",sub:(o&&o.sh)?"ไม่รู้ขนาดแพ็ค":"",
+    raw:raw,pcs:null,cs:null,pc:null};
   const main=[sp.cs?sp.cs+" ลัง":"",sp.pc?sp.pc+" ชิ้น":""].filter(Boolean).join(" ")||"0";
    
-  return {txt:main,sub:raw&&raw!==main?raw:"",pcs:pcs,cs:sp.cs,pc:sp.pc};
+  return {txt:main,sub:"",raw:raw&&raw!==main?raw:"",pcs:pcs,cs:sp.cs,pc:sp.pc};
 }
  
 function alRoundAt(ymd){
@@ -15854,7 +15865,9 @@ function renderSpord(){
           <span class="psub">${SP.ym&&SP.ym!=="ไม่ระบุ"?fmtMonth(SP.ym):""}</span></div>
         ${band}${flow}${withDay?`<div class="controls sp-daybar" style="margin:10px 0 0">${spDayPick(SP.sid)}</div>`:""}</div>`;
        
-      const Z=h=>`<div class="sp-zone spz-${sec}">${H}${h}</div>`;
+       
+      H+=spZoneChips();
+      const Z=h=>`<div class="sp-zone spz-${sec}${spZoneCls()}">${H}${h}</div>`;
       if(sec==="key"){body.innerHTML=Z(spKeyHtml(SP.sid));return;}
       if(sec==="rep"){body.innerHTML=Z(spRepTabHtml(SP.sid));return;}
       if(sec==="adm"){body.innerHTML=Z(spAdmHtml(SP.sid));return;}
@@ -16532,9 +16545,9 @@ function spRepNoHtml(ln,rec,can,sid,ymd){
         <b>ให้ตรวจก่อนแล้วค่อยกดบันทึก</b></div>
       <div id="spOcrBox_${anaEsc(ln)}">${spOcrHtml(ln)}</div>
       <div class="sp-ocror">— หรือพิมพ์เลขเอง —</div></div>`:""}
-    <div class="psub">ใส่ <b>6 หลักสุดท้าย</b> ของเลขในแอพก็พอ — เลข <b>1034<u>715426</u></b> ใส่แค่ <b>715426</b>
+    <div class="sp-man psub">ใส่ <b>6 หลักสุดท้าย</b> ของเลขในแอพก็พอ — เลข <b>1034<u>715426</u></b> ใส่แค่ <b>715426</b>
       · หลายเลขได้ คั่นด้วยเว้นวรรคหรือขึ้นบรรทัดใหม่ · เลขเต็ม 10 หลัก หรือ <b>BDD01…</b> ก็ยังใช้ได้</div>
-    ${can?`<textarea id="spRNo_${anaEsc(ln)}" rows="3" inputmode="numeric" autocomplete="off"
+    ${can?`<textarea class="sp-man" id="spRNo_${anaEsc(ln)}" rows="3" inputmode="numeric" autocomplete="off"
       oninput="spNoLive('${anaEsc(ln)}','${anaEsc(sid||"")}','${anaEsc(ymd||"")}')"
       placeholder="715426 715427 715428 …"
       style="width:100%;margin-top:8px;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:16px;font-family:inherit">${
@@ -17044,10 +17057,30 @@ function spBackChkPcs(sid,ymd,codes,ym){
   return any?{all:all,byLn:byLn}:null;
 }
  
+ 
+let _spGF={};
+function spGinFirst(ym){
+  const O=spOtOrd(ym);
+  if(!O)return null;
+  if(_spGF.ym===ym&&_spGF.o===O)return _spGF.m;
+  const m={};
+  Object.keys(O).forEach(k=>{
+    const r=O[k];if(!r||!r.g)return;
+    const g=String(r.g),d=+r.d||0;if(!d)return;
+    if(!m[g]||d<m[g])m[g]=d;
+  });
+  _spGF={ym:ym,o:O,m:m};
+  return m;
+}
+ 
+function spGinDay(g,ym){const m=spGinFirst(ym);return (m&&+m[String(g)])||0;}
 function spBackDay(sid,ymd,codes,lines){
   const ym=String(ymd||"").slice(0,7);
-  const o={d:ymd,rows:[],gin:{},nOrd:0,nNew:0,cx:0,unsure:0,pool:0,shops:0,
-    pcs:{},gpcs:{},unkPs:[],nGin:0,
+   
+  const sl=spSlip(sid),slD=String((sl&&sl.d)||"");
+  const slDay=(slD.slice(0,7)===ym)?(+slD.slice(8,10)||0):0;
+  const o={d:ymd,rows:[],gin:{},ginOld:{},nOrd:0,nNew:0,cx:0,unsure:0,pool:0,shops:0,
+    pcs:{},gpcs:{},unkPs:[],nGin:0,slDay:slDay,
     chk:spDayHas(spGinRec(sid,ymd)),noDet:!spBackHasDet(ym),noFile:false};
   (lines||[]).forEach(ln=>{
     const lc=spLineCode(ln);if(!lc)return;
@@ -17070,7 +17103,10 @@ function spBackDay(sid,ymd,codes,lines){
       const ot=e.ot,hasG=!!(ot&&ot.g);
       if(ot){
         if(ot.s)L.sh[ot.s]=1;
-        if(ot.g){L.gin[String(ot.g)]=1;o.gin[String(ot.g)]=1;}
+         
+        if(ot.g){const gs=String(ot.g),gd=o.slDay?spGinDay(gs,ym):0;
+          if(o.slDay&&gd&&gd<o.slDay)o.ginOld[gs]=gd;
+          else{L.gin[gs]=1;o.gin[gs]=1;}}
         const tm=String(ot.tm||"");
         if(tm){if(!L.t0||tm<L.t0)L.t0=tm;if(!L.t1||tm>L.t1)L.t1=tm;}
       }
@@ -17576,20 +17612,46 @@ function spAutoNoFill(sid,ymd,ln){
   toast("ใส่ให้ "+add+" เลข · ตรวจแล้วกดบันทึก");
 }
  
+ 
+const SP_ZONES=[["","ทั้งหมด"],["auto","🤖 ระบบอ่านเอง"],["man","✍️ กรอกเอง"]];
+function spZone(){
+  if(SP.zone===undefined){let v="";try{v=localStorage.getItem("bdspzone")||"";}catch(e){}
+    SP.zone=(v==="auto"||v==="man")?v:"";}
+  return SP.zone;
+}
+function spZoneCls(){const z=spZone();return z?(" sp-only-"+z):"";}
+function spSetZone(z){
+  SP.zone=(z==="auto"||z==="man")?z:"";
+  try{if(SP.zone)localStorage.setItem("bdspzone",SP.zone);else localStorage.removeItem("bdspzone");}catch(e){}
+  renderSpord();
+}
+function spZoneChips(){
+  const z=spZone();
+  return `<div class="sp-zchip">${SP_ZONES.map(x=>
+    `<button type="button" class="${x[0]===z?"on":""}"
+      onclick="spSetZone('${x[0]}')">${x[1]}</button>`).join("")}</div>
+    <div class="psub">${z==="auto"?"เห็นเฉพาะส่วนที่ระบบอ่านจากไฟล์ให้ — จะกรอกหรือบันทึก กดกลับไป <b>ทั้งหมด</b> หรือ <b>✍️ กรอกเอง</b>"
+      :(z==="man"?"เห็นเฉพาะช่องที่ต้องกรอกเอง":"เห็นทั้งสองส่วน")}</div>`;
+}
 function spAutoGinHtml(sid,ymd){
   if(!sid||!ymd)return "";
   const codes={};spSlipCodes(sid).forEach(c=>{codes[c.code]=1;});
   spOtWant(String(ymd||"").slice(0,7),1);
   let r;try{r=spBackDay(sid,ymd,codes,spSlipLines(sid));}catch(e){return "";}
   const g=Object.keys(r.gin).filter(Boolean);
+  const old=Object.keys(r.ginOld||{});
+   
+  const oldTxt=old.length?`<div class="psub" style="margin-top:4px">🚫 ไม่เอา <b>${
+    old.map(anaEsc).join(" · ")}</b> — เลขนี้ถูกใช้ครั้งแรกก่อนวันที่สร้างใบออเดอร์นี้
+    (${fmtDate(ymd.slice(0,8)+("0"+r.slDay).slice(-2))}) จึงเป็นงานของใบอื่น · ถ้าต้องการจริง พิมพ์เองได้</div>`:"";
   if(r.noDet)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบกำลังอ่านไฟล์ของเดือนนี้ …</div></div>`;
   if(!g.length)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์แล้ว</div>
     <div class="psub">${r.noFile?"ยังไม่มีไฟล์ของวันนี้":"ยังไม่มีใบไหนของวันนี้ที่คลังออกเลข GIN ให้"} ·
-    กรอกเองได้เลย</div></div>`;
+    กรอกเองได้เลย</div>${oldTxt}</div>`;
   return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์ให้แล้ว —
       เลข GIN ของวันที่ ${fmtDate(ymd)}</div>
     <div class="sp-autol">${g.map(x=>`<code>${anaEsc(x)}</code>`).join(" ")}</div>
-    <div class="psub">เรียงติดกัน: ${anaEsc(spBackRunTxt(r.run))} · จาก ${r.nGin} ใบใน ${r.nOrd} ใบที่เซลล์คีย์</div>
+    <div class="psub">เรียงติดกัน: ${anaEsc(spBackRunTxt(r.run))} · จาก ${r.nGin} ใบใน ${r.nOrd} ใบที่เซลล์คีย์</div>${oldTxt}
     <button type="button" class="btn-go btn-mini"
       onclick="spAutoGinFill('${anaEsc(sid)}','${anaEsc(ymd)}')">▸ ใส่ลงในช่องให้เลย</button>
     <span class="psub"> (ใส่ให้ในช่องเท่านั้น กด 🔎 ตรวจและบันทึก เองเหมือนเดิม)</span></div>`;
@@ -17883,7 +17945,7 @@ function spAdmHtml(sid){
           :(spAlcTxt()
             ?`<span class="psub">📋 ${spAlcTxt()}<br>ผลตรวจที่บันทึกไว้แล้วยังอยู่ครบ — เดือนนี้ยังไม่มีไฟล์ในระบบ กด <b>📥 ไฟล์ใบจัดของ</b> ด้านบนเพื่ออ่านไฟล์เข้าไปหนึ่งครั้ง</span>`
             :`<span class="psub">ยังไม่ได้อัพไฟล์ — กด <b>📥 ไฟล์ใบจัดของ</b> ด้านบน</span>`))}</div>
-      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+      <div class="sp-man sp-ginrow">
         <label class="psub" style="min-width:120px">เลข GIN ของวันนี้</label>
         <input id="spGinIn" class="sp-fin" value="${anaEsc(((g&&g.g)||[]).join(", "))}"
           placeholder="เช่น 141, 142 (คั่นด้วยจุลภาคได้)" style="min-width:240px">
@@ -17924,7 +17986,8 @@ function spAdmHtml(sid){
   const B=n=>(Math.round((+n||0)*100)/100).toLocaleString();
   const M=n=>n==null?'<span style="color:var(--muted)">-</span>'
     :(Math.round((+n||0)*100)/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-  const qcell=q=>q?`${anaEsc(q.txt)}${q.sub?'<span class="psub" style="display:block">'+anaEsc(q.sub)+'</span>':""}`:"-";
+   
+  const qcell=q=>q?`${anaEsc(q.txt)}${q.sub?'<span class="psub down" style="display:block">'+anaEsc(q.sub)+'</span>':""}`:"-";
   const ST={ok:'<span class="sp-ok">✓ ตรง</span>',diff:'<span class="sp-bad">✗ ไม่ตรง</span>',
     noKey:'<span class="sp-warn">เซลล์ไม่ได้คีย์</span>',noAlloc:'<span class="sp-warn">คลังไม่ได้จัด</span>'};
    
