@@ -13701,26 +13701,115 @@ function spNoInfoHtml(list,ln){
   return h;
 }
  
+ 
+let _spPsIdx={k:null,map:null};
+function spPsMap(ym){
+  const C=(typeof OT!=="undefined"&&OT&&OT.cache)?OT.cache[ym]:null;
+  const D=(C&&C.det)||null;
+  if(_spPsIdx.k===D&&_spPsIdx.map)return _spPsIdx.map;
+  const map={};
+  if(D)Object.keys(D).forEach(k=>{const d=D[k]||{};
+    Object.keys(d).forEach(c=>{const a=d[c];if(!map[c]&&a&&+a[2]>0)map[c]=+a[2];});});
+  _spPsIdx={k:D,map:map};
+  return map;
+}
+function spPsOf(code,ym){
+  const c=String(code||"").trim();if(!c)return 0;
+  const m=((typeof MASTER!=="undefined"&&MASTER&&MASTER.det)||{})[c];
+  const p=+((m&&m.ps)||0);if(p>0)return p;
+  return +(spPsMap(ym)[c]||0);
+}
+ 
+function spItPcs(it,ym){
+  const o={pcs:{},unk:[],cs:0,pc:0};
+  Object.keys((it&&typeof it==="object")?it:{}).forEach(c=>{
+    const v=it[c]||{};
+    const cs=(+v.sc||0)+(+v.fc||0),pc=(+v.sp||0)+(+v.fp||0);
+    if(!cs&&!pc)return;
+    o.cs+=cs;o.pc+=pc;
+    const ps=spPsOf(c,ym);
+    if(cs&&!ps){if(o.unk.indexOf(c)<0)o.unk.push(c);return;}
+    o.pcs[c]=(o.pcs[c]||0)+cs*ps+pc;
+  });
+  return o;
+}
+ 
+function spOrdPcs(nos,codes,ym,line){
+  const o={pcs:{},n:0,nodet:0,unk:[]};
+  const C=(typeof OT!=="undefined"&&OT&&OT.cache)?OT.cache[ym]:null;
+  const D=(C&&C.det)||null;
+  const seen={};
+  (nos||[]).forEach(t=>{
+    const f=spOrdFind(t,{l:line,ym:ym});
+    if(!f||f.amb||!f.no)return;
+    const key=String(f.no).toUpperCase();
+    if(seen[key])return;seen[key]=1;
+    o.n++;
+    const d=D?D[otTail(key,"BDD01")]:null;
+    if(!d){o.nodet++;return;}
+    Object.keys(d).forEach(c=>{
+      if(codes&&!codes[c])return;
+      const a=d[c]||[];
+      const q=(+a[0]||0)+(+a[1]||0);
+      if(!q)return;
+      const ps=(+a[2]>0)?+a[2]:spPsOf(c,ym);
+      if(!ps){if(o.unk.indexOf(c)<0)o.unk.push(c);return;}
+      o.pcs[c]=(o.pcs[c]||0)+q*ps;
+    });
+  });
+  return o;
+}
+ 
+function spPcsSplit(pcs,ym){
+  const o={cs:0,pc:0};
+  Object.keys(pcs||{}).forEach(c=>{
+    const v=Math.round(+pcs[c]||0),ps=spPsOf(c,ym);
+    if(!v)return;
+    if(!ps){o.pc+=v;return;}
+    o.cs+=Math.floor(v/ps);o.pc+=v%ps;
+  });
+  return o;
+}
+ 
+function spPcsDiff(tgt,rep,ym){
+  const sh={},ov={},seen={};
+  Object.keys(tgt||{}).forEach(c=>{seen[c]=1;});
+  Object.keys(rep||{}).forEach(c=>{seen[c]=1;});
+  Object.keys(seen).forEach(c=>{
+    const d=Math.round((+(tgt||{})[c]||0)-(+(rep||{})[c]||0));
+    if(d>0)sh[c]=d;else if(d<0)ov[c]=-d;
+  });
+  return {short:spPcsSplit(sh,ym),over:spPcsSplit(ov,ym),shPcs:sh,ovPcs:ov};
+}
+ 
 function spTrack(sid,ymd){
   const tg=spKeyByLine(sid,ymd),rp=spRepByLine(sid,ymd);
+  const ym=String(ymd||"").slice(0,7);
+  const codes={};spSlipCodes(sid).forEach(c=>{codes[c.code]=1;});
   return spSlipLines(sid).map(ln=>{
-    const sum=o=>{const t={cs:0,pc:0};Object.keys((o&&o.it)||{}).forEach(c=>{
-      const v=o.it[c]||{};t.cs+=(+v.sc||0)+(+v.fc||0);t.pc+=(+v.sp||0)+(+v.fp||0);});return t;};
-    const T=sum(tg[ln]);
-    let R=sum(rp[ln]),rSrc="typed";
+    const T=spItPcs((tg[ln]||{}).it,ym);
      
     const has=!!tg[ln],done=spRepHas(rp[ln]);
      
     const nos=(rp[ln]&&Array.isArray(rp[ln].no))?rp[ln].no:[];
     const O=nos.length?spNoSum(nos,{l:spLineCode(ln),ym:ymd}):null;
      
-    if(O&&!R.cs&&!R.pc){R={cs:O.cs,pc:O.pc};rSrc="order";}
+    const typed=spItPcs((rp[ln]||{}).it,ym);
+    let R=typed,rSrc="typed",od=null;
+    if(!Object.keys(typed.pcs).length&&!typed.unk.length&&nos.length){
+      od=spOrdPcs(nos,codes,ym,spLineCode(ln));
+      R={pcs:od.pcs,unk:od.unk,cs:0,pc:0};rSrc="order";
+    }
+    const rSplit=spPcsSplit(R.pcs,ym);
+    const d=spPcsDiff(T.pcs,R.pcs,ym);
+    const shPc=Object.keys(d.shPcs).reduce((a,c)=>a+d.shPcs[c],0);
+    const ovPc=Object.keys(d.ovPcs).reduce((a,c)=>a+d.ovPcs[c],0);
      
-    const left=Math.round((T.cs-R.cs)*100)/100;
-    const leftP=Math.round((T.pc-R.pc)*100)/100;
-    return {ln:ln,tgt:T,rep:R,rSrc:rSrc,has:has,done:done,left:left,leftP:leftP,ord:O,
+    const blind=done&&rSrc==="order"&&od&&od.nodet>0&&!Object.keys(od.pcs).length;
+    return {ln:ln,tgt:T,tgtCs:{cs:T.cs,pc:T.pc},rep:R,repCs:rSplit,rSrc:rSrc,od:od,
+      has:has,done:done,blind:blind,short:d.short,over:d.over,shPc:shPc,ovPc:ovPc,ord:O,
       rec:rp[ln]||null,n:(rp[ln]&&rp[ln].n)||0,
-      st:!has?"noTgt":(!done?"wait":(left>0?"short":(left<0?"over":"ok")))};
+      st:!has?"noTgt":(!done?"wait":(blind?"unk":(shPc>0?"short":(ovPc>0?"over":"ok"))))};
   });
 }
  
@@ -16325,13 +16414,14 @@ function spOrdFind(txt,hint){
  
  
 let _spOtAsk={};
-function spOtWant(ym){
+function spOtWant(ym,full){
   if(!ym||!/^\d{4}-\d{2}$/.test(ym))return;
   if(typeof OT==="undefined"||!OT||!OT.cache)return;
-  if(OT.cache[ym]||_spOtAsk[ym])return;
+  const C=OT.cache[ym],k=ym+(full?"|f":"");
+  if((full?(C&&C.det):C)||_spOtAsk[k])return;
   if(typeof otApi!=="function"||!otApi()||typeof otLoad!=="function")return;
-  _spOtAsk[ym]=1;
-  otLoad(ym).then(()=>{
+  _spOtAsk[k]=1;
+  otLoad(ym,full?1:0).then(()=>{
     if(typeof CURTAB!=="undefined"&&CURTAB==="spord"&&typeof renderSpord==="function")renderSpord();
   }).catch(()=>{});
 }
@@ -16627,7 +16717,10 @@ const SP_TRK={ok:['<span class="sp-ok">✓ ครบเป้า</span>',"var(--
   short:['<span class="sp-bad">ยังขาด</span>',"var(--bad)"],
   over:['<span class="sp-warn">เกินเป้า</span>',"var(--warn)"],
   wait:['<span class="sp-warn">รอเซลล์คีย์</span>',"var(--warn)"],
+   
+  unk:['<span class="sp-warn">รอไฟล์ใบจัดของ</span>',"var(--warn)"],
   noTgt:['<span class="psub">ยังไม่ได้ตั้งเป้า</span>',"var(--line)"]};
+ 
  
 function spOrdCell(x){
   const o=x.ord;
@@ -16637,14 +16730,14 @@ function spOrdCell(x){
   if(o.wait)bits.push('<span class="psub">ยังไม่รู้จำนวน '+o.wait+'</span>');
   const know=o.found-o.wait;
   if(!know)return '<span class="psub">'+(bits.join(" · ")||"—")+'</span>';
-   
-  const dcs=Math.round((o.cs-(x.rep&&x.rep.cs||0))*100)/100;
-  const dpc=Math.round((o.pc-(x.rep&&x.rep.pc||0))*100)/100;
+  const R=(x.rSrc==="typed")?x.repCs:null;
+  const dcs=R?Math.round((o.cs-(R.cs||0))*100)/100:0;
+  const dpc=R?Math.round((o.pc-(R.pc||0))*100)/100:0;
   const diff=Math.abs(dcs)+Math.abs(dpc);
-  const cls=(!o.miss.length&&!o.wait&&diff<0.01)?"up":(diff>=0.01?"down":"");
+  const cls=R?((!o.miss.length&&!o.wait&&diff<0.01)?"up":(diff>=0.01?"down":"")):"";
   const sgn=(dcs||dpc)>=0?"+":"-";
   return '<b class="'+cls+'">'+spCsTxt(o.cs,o.pc)+'</b>'+
-    (diff>=0.01?'<span class="psub" style="display:block">ต่าง '+sgn+" "+
+    ((R&&diff>=0.01)?'<span class="psub" style="display:block">ต่าง '+sgn+" "+
       spCsTxt(Math.abs(dcs),Math.abs(dpc))+'</span>':"")+
     (bits.length?'<span class="psub" style="display:block">'+bits.join(" · ")+'</span>':"");
 }
@@ -16718,9 +16811,26 @@ function spMyOrdHtml(ln,rec,ymd){
   return `<details class="sp-trkdet"><summary>📋 ดูเลขออเดอร์ที่ใส่ไว้ (${x.ord.n} เลข)</summary>
     ${spTrkOrdHtml(x,ymd)}</details>`;
 }
+ 
+function spTrkNote(x){
+  if(x.rSrc!=="order"||!x.od)return "";
+  const b=[];
+  if(x.od.nodet)b.push("อีก "+x.od.nodet+" ใบยังไม่รู้รายการสินค้า");
+  if(x.rep.unk&&x.rep.unk.length)b.push("ไม่รู้ขนาดลัง "+x.rep.unk.length+" รหัส");
+  return b.length?'<span class="psub down" style="display:block">'+b.join(" · ")+"</span>":"";
+}
+ 
+function spTrkGap(x){
+  if(x.st==="unk")return '<span class="psub">ยังเทียบไม่ได้</span>';
+  const b=[];
+  if(x.shPc>0)b.push('<b class="down">ขาด '+spCsTxt(x.short.cs,x.short.pc)+"</b>");
+  if(x.ovPc>0)b.push('<b class="up">เกิน '+spCsTxt(x.over.cs,x.over.pc)+"</b>");
+  return b.length?b.join('<span style="display:block"></span>'):"-";
+}
 function spTrackHtml(sid,ymd,tr){
   tr=tr||spTrack(sid,ymd);
-  spOtWant(String(ymd||"").slice(0,7));    
+   
+  spOtWant(String(ymd||"").slice(0,7),1);
   const one=spRole()==="sales";           
   const tg=spHasTgt(sid);
   const show=tr.filter(x=>x.has||x.done);
@@ -16728,14 +16838,15 @@ function spTrackHtml(sid,ymd,tr){
     <h3>📋 ${tg?"ติดตามการคีย์รายสาย":"จำนวนที่เซลล์คีย์"}</h3>
     <div class="insight" style="margin-top:8px">${tg?"ยังไม่ได้ตั้งเป้าของวันนี้"
       :"ยังไม่มีสายไหนคีย์จำนวนของวันนี้"}</div></div>`;
-  const n={ok:0,short:0,over:0,wait:0};show.forEach(x=>{if(n[x.st]!=null)n[x.st]++;});
+  const n={ok:0,short:0,over:0,wait:0,unk:0};show.forEach(x=>{if(n[x.st]!=null)n[x.st]++;});
   const cards=(one||!tg)?"":`<div class="cards" style="margin-top:10px">
       <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">ครบเป้า</div>
         <div class="v up">${n.ok}</div><div class="s">สาย</div></div>
       <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">ยังขาด</div>
         <div class="v down">${n.short}</div><div class="s">สาย</div></div>
       <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">รอเซลล์คีย์</div>
-        <div class="v">${n.wait}</div><div class="s">สาย</div></div>
+        <div class="v">${n.wait}</div><div class="s">สาย${
+          n.unk?" · อีก "+n.unk+" สายรอไฟล์ใบจัดของ":""}</div></div>
       <div class="card"><div class="k">เกินเป้า</div><div class="v">${n.over}</div><div class="s">สาย</div></div>
     </div>`;
   const ncol=tg?7:4;
@@ -16748,13 +16859,14 @@ function spTrackHtml(sid,ymd,tr){
         onclick="spTrkTog('${anaEsc(x.ln)}')" title="ดูเลขออเดอร์ของสายนี้"><span
         id="sptrkc-${anaEsc(x.ln)}">${open?"▾":"▸"}</span> <b>${anaEsc(x.ln)}</b>
         <span class="psub">${nOrd} เลข</span></button>`:`<b>${anaEsc(x.ln)}</b>`}</td>
-    ${tg?`<td data-l="เป้า">${(x.tgt.cs||x.tgt.pc)?spCsTxt(x.tgt.cs,x.tgt.pc):"-"}</td>`:""}
+    ${tg?`<td data-l="เป้า">${(x.tgtCs.cs||x.tgtCs.pc)?spCsTxt(x.tgtCs.cs,x.tgtCs.pc):"-"}${
+      x.tgt.unk.length?'<span class="psub down" style="display:block">ไม่รู้ขนาดลัง '+x.tgt.unk.length+' รหัส</span>':""}</td>`:""}
     <td data-l="คีย์จริง">${x.done?`<button class="btn-ghost btn-mini" style="font-weight:700"
-        onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(x.ln)}')">${spCsTxt(x.rep.cs,x.rep.pc)}</button>${
-        spRepDelBtn(sid,ymd,x.ln)}`:"-"}</td>
+        onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(x.ln)}')">${
+        x.blind?"ยังไม่รู้":spCsTxt(x.repCs.cs,x.repCs.pc)}</button>${
+        spRepDelBtn(sid,ymd,x.ln)}${spTrkNote(x)}`:"-"}</td>
     <td data-l="🧾 จากเลขออเดอร์">${spOrdCell(x)}</td>
-    ${tg?`<td data-l="ยังขาด">${(x.st==="short"||x.st==="over")
-      ?`<b class="${x.st==="short"?"down":"up"}">${spDiffTxt(-x.left,-x.leftP)}</b>`:"-"}</td>
+    ${tg?`<td data-l="ยังขาด">${spTrkGap(x)}</td>
     <td data-l="ผล">${SP_TRK[x.st][0]}</td>`:""}
     <td class="l" data-l="กรอกเมื่อ">${x.rec?`<span class="psub">${anaEsc(x.rec.byName||x.rec.by||"")} · ${fmtDateTime(x.rec.at)}${
       x.n?" · แก้ไป "+(x.n-1)+" ครั้ง":""}</span>`:'<span class="psub">—</span>'}</td></tr>`+
@@ -16769,9 +16881,12 @@ function spTrackHtml(sid,ymd,tr){
         tg?"<th>ยังขาด</th><th>ผล</th>":""}<th class="l">กรอกเมื่อ</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div class="psub" style="margin-top:8px">กดที่ <b>ชื่อสาย</b> เพื่อดูว่าสายนั้นส่งเลขออเดอร์ไหนมาบ้าง
-      ใบละกี่ลัง · กดที่ตัวเลข <b>คีย์จริง</b> เพื่อดูประวัติการกรอก ·
-      <b>🧾 จากเลขออเดอร์</b> คือยอดที่ระบบหาเองจากเลขคำสั่งซื้อที่เซลล์กรอกไว้
-      (ไม่ได้มาจากการพิมพ์จำนวน) — ถ้าสองช่องไม่ตรงกันจะขึ้นสีแดงไว้ให้</div>
+      ใบละกี่ลัง · กดที่ตัวเลข <b>คีย์จริง</b> เพื่อดูประวัติการกรอก<br>
+      <b>คีย์จริง</b> นับเฉพาะ <b>สินค้าที่อยู่ในใบออเดอร์นี้</b> จึงเอาไปเทียบกับเป้าได้ตรง ๆ ·
+      <b>🧾 จากเลขออเดอร์</b> คือยอด <b>ทั้งออเดอร์</b> ซึ่งมีสินค้าตัวอื่นรวมอยู่ด้วย
+      — สองช่องนี้ไม่เท่ากันเป็นเรื่องปกติ<br>
+      <b>ยังขาด</b> คิดเป็นชิ้นทีละรหัสสินค้าแล้วแตกกลับเป็นลัง+ชิ้น ·
+      ขาดกับเกินแยกกัน ไม่หักลบข้ามสินค้า</div>
   </div>`;
 }
  

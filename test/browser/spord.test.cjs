@@ -156,6 +156,10 @@ const ORIGIN='https://bd-spord.test/';
       ตั้งดัชนีไว้ให้สองเลขนี้มีจริง ระบบจะได้หายอดเองได้ */
    STOREDAILY.ord['BDD0100008801']={s:'4862383',l:'209611',d:'2026-11-20',v:1000,c:2,cs:8,pc:0,rf:'1034800001'};
    STOREDAILY.ord['BDD0100008802']={s:'4862365',l:'209611',d:'2026-11-20',v:900,c:2,cs:4,pc:0,rf:'1034800002'};
+   /* 🧮 รายการสินค้าในแต่ละใบ — ต้องมีถึงจะเทียบ "เป้า" กับ "คีย์จริง" ทีละรหัสได้
+      (ลังละ 12 ชิ้น · เป้า 11 ลัง = 132 ชิ้น · คีย์มา 8+4 = 12 ลัง = 144 ชิ้น) */
+   OT.cache['2026-11']={ord:{},det:{'00008801':{'64849613':[8,0,12]},
+                                    '00008802':{'64849613':[4,0,12]}},meta:null,none:0};
    spRfBust();
    __as('sales','209611','CT11 · เซลล์');_switchTab('spord');
    SP.sid='B20261118-01';SP.view='slip';SP.sec='rep';SP.day='2026-11-20';renderSpord();
@@ -211,10 +215,10 @@ const ORIGIN='https://bd-spord.test/';
    JSON.stringify({h1:rep.h1,h2:rep.h2}));
  t('🔒 หัวหน้าเซลล์แก้จำนวนของเซลล์ไม่ได้เลย ดูได้อย่างเดียว',
    rep.supNoInput&&rep.supBlocked===false&&rep.supNoPost);
- t('🔑 ซุปเห็นตารางติดตาม และยอด "คีย์จริง" มาจากเลขออเดอร์ที่เซลล์ใส่ (8+4=12)',
-   rep.supSeesTrack&&rep.trk&&rep.trk.tgt.cs===11&&rep.trk.rep.cs===12&&
-   rep.trk.rSrc==='order'&&rep.trk.st==='over',
-   JSON.stringify(rep.trk&&{tgt:rep.trk.tgt.cs,rep:rep.trk.rep.cs,src:rep.trk.rSrc,st:rep.trk.st}));
+ t('🔑 ซุปเห็นตารางติดตาม และ "คีย์จริง" นับเฉพาะสินค้าในใบนี้ ทีละรหัส (8+4=12 ลัง)',
+   rep.supSeesTrack&&rep.trk&&rep.trk.tgtCs.cs===11&&rep.trk.repCs.cs===12&&rep.trk.repCs.pc===0&&
+   rep.trk.rSrc==='order'&&rep.trk.st==='over'&&rep.trk.over.cs===1&&rep.trk.over.pc===0,
+   JSON.stringify(rep.trk&&{tgt:rep.trk.tgtCs,rep:rep.trk.repCs,over:rep.trk.over,st:rep.trk.st}));
  t('🔑 ซุปดึงเป้าออกเป็นไฟล์ส่งให้เซลล์ได้',rep.supExport);
 
  /* ---- 🗑 ผู้จัดการลบของที่เซลล์คีย์ไว้ (เจ้าของสั่ง 28 พ.ย. 69 ช่วงทดลองใช้) ----
@@ -2074,6 +2078,9 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    __as('sales','209611','CT11 · เซลล์');
    CSTOCK.key['B20261118-01|'+D+'|CT11']={it:{'AAA1':{sc:20,sp:0,fc:0,fp:0}},by:'sup',at:1000};
    delete CSTOCK.rep['B20261118-01|'+D+'|CT11'];
+   /* รายการสินค้าในสองใบนี้ (ลังละ 10 ชิ้น) — 12 + 5 = 17 ลัง */
+   OT.cache[D.slice(0,7)]={ord:{},det:{'00009001':{'AAA1':[10,0,10]},
+                                       '00009002':{'AAA1':[7,0,10]}},meta:null,none:0};
    spOpenSlip('B20261118-01');SP.sec='rep';SP.day=D;renderSpord();
    o.box=!!document.getElementById('spRNo_CT11');
    const el=document.getElementById('spRNo_CT11');
@@ -2095,7 +2102,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    o.diff=/ต่าง/.test(tx);
    const tr=spTrack('B20261118-01',D).filter(x=>x.ln==='CT11')[0];
    o.ord=tr&&tr.ord?{cs:tr.ord.cs,found:tr.ord.found,miss:tr.ord.miss.length}:null;
-   o.rep=tr&&tr.rep.cs;
+   o.rep=tr&&tr.repCs.cs;
    return o;});
  t('🔑 หน้ากรอกของเซลล์มีช่องเลขคำสั่งซื้ออยู่ล่างสุด',refSave.box);
  t('🔑 พิมพ์แล้วสรุปให้เห็นทันที ว่าเจอกี่ใบ กี่ลัง',
@@ -3046,6 +3053,80 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🔁 เซลล์กดดูได้ แต่เห็นเฉพาะสายตัวเอง',
    miss4.lines===1&&miss4.lns.every(x=>x==='CT11'),
    'สาย '+miss4.lines+' · '+miss4.lns.join(' '));
+
+
+ /* ============================================================================
+  * 14) 🧮 เป้า vs คีย์จริง ต้องแปลงเป็น "ชิ้น ทีละรหัสสินค้า" ก่อนเทียบ
+  *   เจ้าของทักจากหน้าจอจริง 28 พ.ย. 69: *"ทำไมผลต่างเป้า กับจำนวนคีย์มันแปลก ๆ
+  *   อย่าลืมจับรหัสของสินค้า และแปลงหน่อย จากลังเป็นชิ้น ให้มัน match เข้าด้วยกันได้หน่อยนะ"*
+  *   จอเขาอ่านว่า เป้า 7 ลัง · คีย์จริง 1 ลัง 72 ชิ้น · ยังขาด −6 ลัง +72 ชิ้น
+  *   ซึ่งเกิดจากเอาลังลบลัง ชิ้นลบชิ้น แยกกัน · ถ้าลังละ 12 ชิ้น มันคือ 84 ชิ้น = 7 ลัง = ครบพอดี
+  * ========================================================================== */
+ const CONV = `
+   __as('sup',null,'หัวหน้าเซลล์');
+   SP.sid=B1;SP.view='slip';SP.ym='2026-11';SP.day=WORK_;SP.sec='rep';SP.trk={};
+   CSTOCK.rep={};CSTOCK.key={};
+   MASTER={items:{P12:{nm:'โอโมน้ำ'},P24:{nm:'บรีส'},PX:{nm:'ของไม่รู้ขนาด'}},
+           det:{P12:{ps:12},P24:{ps:24}}};
+   CSTOCK.lots={L1:{id:'L1',sl:B1,d:WORK_,code:'P12',nm:'โอโมน้ำ',cs:7,pc:0,ln:'CT11',clr:[]},
+                L2:{id:'L2',sl:B1,d:WORK_,code:'P24',nm:'บรีส',cs:2,pc:0,ln:'CT11',clr:[]}};
+   window.__ym=WORK_.slice(0,7);
+   STOREDAILY={data:{},ord:{
+     'BDD0100000101':{s:'900001',l:'209611',k:WORK_,d:WORK_,cs:1,pc:72,c:2,rf:'1034000101'},
+     'BDD0100000102':{s:'900002',l:'209612',k:WORK_,d:WORK_,cs:3,pc:0,c:1,rf:'1034000102'},
+     'BDD0100000103':{s:'900003',l:'209613',k:WORK_,d:WORK_,cs:5,pc:0,c:1,rf:'1034000103'}}};
+   OT.cache[window.__ym]={ord:{},meta:null,none:0,det:{
+     /* CT11: โอโม 7 ลัง (84 ชิ้น) — ตรงเป๊ะกับเป้า · บวกสินค้านอกใบอีกตัวที่ต้องถูกกรองทิ้ง */
+     '00000101':{P12:[7,0,12],ZZZ:[9,0,6]},
+     /* CT12: โอโม 3 ลัง = 36 ชิ้น จากเป้า 7 ลัง = 84 ชิ้น → ขาด 48 ชิ้น = 4 ลัง */
+     '00000102':{P12:[3,0,12]},
+     /* CT13: บรีส 2 ลัง 12 ชิ้น (60 ชิ้น) จากเป้า 2 ลัง (48) → เกิน 12 ชิ้น */
+     '00000103':{P24:[2.5,0,24]}}};
+   spRfBust();
+   const put=(ln,it,no)=>{CSTOCK.key[B1+'|'+WORK_+'|'+ln]={it:it,by:'sup',at:1};
+     CSTOCK.rep[B1+'|'+WORK_+'|'+ln]={it:{},no:no,n:1,h:[{at:2}],by:'x',byName:'x',at:2};};
+   put('CT11',{P12:{sc:7,sp:0,fc:0,fp:0}},['1034000101']);
+   put('CT12',{P12:{sc:7,sp:0,fc:0,fp:0}},['1034000102']);
+   put('CT13',{P24:{sc:2,sp:0,fc:0,fp:0}},['1034000103']);
+   /* CT14: เป้ามีรหัสที่ไม่รู้ขนาดลัง · CT15: คีย์แล้วแต่ยังไม่มีไฟล์ใบจัดของของใบนั้น */
+   put('CT14',{PX:{sc:3,sp:0,fc:0,fp:0}},[]);
+   CSTOCK.rep[B1+'|'+WORK_+'|CT14']={it:{},no:[],n:1,h:[{at:2}],by:'x',byName:'x',at:2};
+   put('CT15',{P12:{sc:4,sp:0,fc:0,fp:0}},['1034000199']);
+   STOREDAILY.ord['BDD0100000199']={s:'900004',l:'209615',k:WORK_,d:WORK_,cs:2,pc:0,c:1,rf:'1034000199'};
+   spRfBust();
+   renderSpord();
+   window.__tr=ln=>spTrack(B1,WORK_).filter(x=>x.ln===ln)[0];`;
+
+ const conv=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const g=ln=>{const x=window.__tr(ln);return x?{tgt:x.tgtCs,rep:x.repCs,st:x.st,
+     short:x.short,over:x.over,src:x.rSrc,blind:!!x.blind,
+     tunk:x.tgt.unk.length,nodet:x.od?x.od.nodet:0}:null;};
+   const o={a:g('CT11'),b:g('CT12'),c:g('CT13'),d:g('CT14'),e:g('CT15')};
+   o.txt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   o.frac=/\d+\.\d+ ลัง/.test(o.txt);
+   o.mixed=/−\d+ ลัง \+\d+ ชิ้น|-\d+ ลัง \+\d+ ชิ้น/.test(o.txt);
+   return o;
+ },{setup:PRE,pre:CONV});
+ t('🧮 เป้า 7 ลัง กับที่คีย์ 84 ชิ้น (ลังละ 12) = ครบพอดี ไม่ใช่ "ขาด 6 ลัง เกิน 72 ชิ้น"',
+   conv.a&&conv.a.tgt.cs===7&&conv.a.rep.cs===7&&conv.a.rep.pc===0&&conv.a.st==='ok',
+   JSON.stringify(conv.a));
+ t('🧮 ...และสินค้าที่ไม่ได้อยู่ในใบออเดอร์นี้ ต้องไม่ถูกนับเข้ามาด้วย',
+   conv.a&&conv.a.rep.cs===7,'คีย์จริง '+(conv.a&&conv.a.rep.cs)+' ลัง (ถ้านับ ZZZ ด้วยจะเกิน)');
+ t('🧮 ขาดจริงคิดเป็นชิ้นแล้วแตกกลับ — เป้า 84 ชิ้น คีย์ 36 ชิ้น = ขาด 4 ลัง',
+   conv.b&&conv.b.st==='short'&&conv.b.short.cs===4&&conv.b.short.pc===0&&conv.b.rep.cs===3,
+   JSON.stringify(conv.b));
+ t('🧮 เกินก็แตกกลับเหมือนกัน — เป้า 2 ลัง (48) คีย์ 60 ชิ้น = เกิน 12 ชิ้น',
+   conv.c&&conv.c.st==='over'&&conv.c.over.cs===0&&conv.c.over.pc===12&&conv.c.rep.cs===2&&conv.c.rep.pc===12,
+   JSON.stringify(conv.c));
+ t('🧮 รหัสที่ไม่รู้ขนาดลัง ต้องนับแล้วบอก ไม่ใช่เดาเป็นลังละเท่าไหร่ก็ได้',
+   conv.d&&conv.d.tunk===1&&/ไม่รู้ขนาดลัง/.test(conv.txt),'tunk='+(conv.d&&conv.d.tunk));
+ t('🧮 คีย์แล้วแต่ยังไม่มีรายการสินค้าในใบ = ยังเทียบไม่ได้ ไม่ใช่ "ขาดทั้งหมด"',
+   conv.e&&conv.e.blind===true&&conv.e.st==='unk'&&/ยังเทียบไม่ได้/.test(conv.txt)
+   &&/รอไฟล์ใบจัดของ/.test(conv.txt),JSON.stringify(conv.e));
+ t('📦 ...และทั้งตารางต้องไม่มีลังทศนิยม หรือผลต่างแบบ "−6 ลัง +72 ชิ้น" หลงเหลือ',
+   conv.frac===false&&conv.mixed===false,
+   'ทศนิยม='+conv.frac+' · ลบลังบวกชิ้น='+conv.mixed);
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));

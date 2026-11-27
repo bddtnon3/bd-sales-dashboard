@@ -2038,6 +2038,34 @@ code, never printed.
   across blocks, so a block that stubs `bdPost` to fail must have it restored in `__reset` — §13
   silently failed to save until it was (a stale stub from §12, the same class of bug as the stale
   debounce above).
+  **🧮 เป้า vs คีย์จริง is compared in PIECES, per product code — never ลัง−ลัง and ชิ้น−ชิ้น**
+  (`spPsOf`/`spItPcs`/`spOrdPcs`/`spPcsSplit`/`spPcsDiff`, owner 28 Nov 26 off his own screen:
+  *"ทำไมผลต่างเป้า กับจำนวนคีย์มันแปลก ๆ อย่าลืมจับรหัสของสินค้า และแปลงหน่อย จากลังเป็นชิ้น
+  ให้มัน match เข้าด้วยกันได้หน่อยนะ"*). The row read `เป้า 7 ลัง · คีย์จริง 1 ลัง 72 ชิ้น ·
+  ยังขาด −6 ลัง +72 ชิ้น` — **two faults stacked**: the subtraction was done on each unit
+  separately (7−1 cases and 0−72 pieces, printed as one "quantity" that no file ever stated), and
+  the two sides answered **different questions** — เป้า counts only the slip's products while the
+  figure derived from the order numbers is the **whole order**, other products included (this
+  file's own *ยอดสินค้าในใบนี้ ≠ ยอดทั้งออเดอร์* rule). At 12 pieces a case, 1 ลัง 72 ชิ้น is
+  84 pieces = **exactly the 7-case target**: the line was on target and the screen called it short.
+  The rule is the project's own, the one `spCmp` already follows: **work in pieces per product
+  code with that code's own case size, then split back at the very end.** เป้า converts exactly
+  (the codes are known); คีย์จริง now reads the **per-order product breakdown** (`det` from
+  `api/ordtrk?full=1`, fetched by `spOtWant(ym,1)`) and is **filtered to the slip's own codes**, so
+  the two columns finally measure the same thing; 🧾 จากเลขออเดอร์ keeps the whole-order total as a
+  separate, labelled column and **no longer prints a red "ต่าง" against it** (differing is normal —
+  that red was the bug telling the user the system disagreed with itself). Four rules: **ขาด and
+  เกิน are separate buckets, never netted off across codes** (short 5 of one and over 5 of another
+  is not "ตรง"); a code whose **case size is unknown is counted and named**, never converted at a
+  guessed size; an order the picking file has no breakdown for is counted as **"อีก N ใบยังไม่รู้
+  รายการสินค้า"**, and a line where *every* order is like that reads **ยังเทียบไม่ได้ · รอไฟล์
+  ใบจัดของ** (`blind`, status `unk`) rather than "ขาดทั้งหมด" — not-known is not zero; and the
+  footnote states what each column counts, because two of them look alike and are not. Prove it
+  with §14 of **`node test/browser/spord.test.cjs`** (388 checks), which rebuilds his exact row and
+  asserts 7 ลัง vs 84 ชิ้น reads **ครบเป้า**, that a product outside the slip is excluded, that
+  short and over each split back per code, and that no `\d+\.\d+ ลัง` or `−N ลัง +M ชิ้น` survives
+  anywhere in the table. ⚠️ Verified by removing the cases→pieces multiply and watching four checks
+  fail.
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
   `renderSpord` returns the PIN screen and **draws nothing of the page** until `spPinOk()`. Two
   rules. **The repo is public, so the digits are never written into any file** — only the SHA-256
