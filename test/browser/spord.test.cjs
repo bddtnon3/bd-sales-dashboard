@@ -1143,6 +1143,34 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    /^AMB:/.test(tail.noHint)&&/ตรงกับหลายใบ/.test(tail.info),tail.noHint+' · '+tail.info.slice(0,90));
  t('   …และยอดรวมไม่นับเลขที่กำกวมเข้าไปด้วย',
    tail.sum.found===2&&tail.sum.cs===16&&tail.sum.amb===0,JSON.stringify(tail.sum));
+
+ /* 🔁 ใบเดียวกันเขียนได้หลายแบบ — เลขเต็ม 10 หลัก กับ 6 หลักท้าย คือใบเดียวกัน
+    เจ้าของสั่ง 27 พ.ย. 69 ให้ "คัดเลขซ้ำออก" เพราะเซลล์แคปหน้าจอใบเดิมได้สองรอบ
+    (หน้ายืนยันพื้นฟ้าตอนกดคีย์เสร็จ + หน้าประวัติพื้นขาว)
+    ⚠️ ถ้าตัดซ้ำที่ "ข้อความที่พิมพ์" จะจับคู่เลขเต็มกับหางเลขไม่ได้ แล้ว ลัง/เงิน ของใบนั้น
+       จะถูกบวกสองรอบ — ซึ่งเป็นยอดที่ซุปกับแอดมินใช้ตรวจกันพอดี */
+ const dedup=await ev(()=>{
+   const A='715426'.slice(-SP_TAIL);
+   const refA='1034'+A;
+   const one=spNoSum([refA],{l:'209611'});
+   const two=spNoSum([refA,A],{l:'209611'});            /* เลขเต็ม + หางเลข = ใบเดียวกัน */
+   const thrice=spNoSum([refA,A,'BDD0100007001'],{l:'209611'});  /* +เลข BDD ของใบเดิมอีก */
+   const txt=spNoInfoHtml([refA,A],'209611').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ');
+   return {one:{f:one.found,cs:one.cs,v:one.v,same:one.same},
+           two:{n:two.n,f:two.found,cs:two.cs,v:two.v,same:two.same,list:two.sameList},
+           thr:{n:thrice.n,f:thrice.found,cs:thrice.cs,same:thrice.same},
+           shops:two.nShop,txt:txt};
+ });
+ t('🔁 เลขเต็ม + 6 หลักท้ายของใบเดียวกัน → นับใบเดียว ลังไม่บวกซ้ำ',
+   dedup.two.cs===dedup.one.cs&&dedup.two.f===1&&dedup.two.same===1,
+   JSON.stringify(dedup.two)+' เทียบใบเดียว '+JSON.stringify(dedup.one));
+ t('   …เงินก็ไม่บวกซ้ำเหมือนกัน',dedup.two.v===dedup.one.v,dedup.two.v+' / '+dedup.one.v);
+ t('   …และร้านไม่ถูกนับซ้ำ',dedup.shops===1,dedup.shops);
+ t('🔁 เขียนครบสามแบบ (เลขเต็ม · หางเลข · เลข BDD) ก็ยังนับใบเดียว',
+   dedup.thr.f===1&&dedup.thr.same===2&&dedup.thr.cs===dedup.one.cs,JSON.stringify(dedup.thr));
+ t('🛟 "เลขที่ใส่" ยังนับตามจริง ไม่ใช่ซ่อนว่าหายไป',dedup.two.n===2,dedup.two.n);
+ t('🛟 ตัดซ้ำแล้วต้องบอก ไม่งั้นคนกรอกนึกว่าใบหาย',
+   /ตัดเลขซ้ำออก/.test(dedup.txt)&&/นับครั้งเดียว/.test(dedup.txt),dedup.txt.slice(0,120));
  t('🛟 เลขที่ไม่มีในระบบยังตอบว่าไม่เจอ ไม่ใช่จับมั่ว',tail.none===null,String(tail.none));
 
  /* 💾 กดบันทึก/กดยกเลิกแล้วหน้าต้องไม่เด้งขึ้นสายบนสุด (เจ้าของแจ้งสองรอบ 27 พ.ย. 69)

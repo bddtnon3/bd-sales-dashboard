@@ -6821,8 +6821,11 @@ async function ocrWorker(){
   return OCR.worker;
 }
 /* tw = ความกว้างเป้าหมาย · ไม่ส่งมา = OCR_W (2800) ซึ่งเป็นค่าของตารางรีพอร์ท
-   ตัวอ่านเลขออเดอร์จากสกรีนช็อตส่งมา 1600 เพราะวัดแล้วอ่านได้ครบเท่ากันแต่เร็วกว่า 2.5 เท่า */
-function ocrPrep(img,crop,tw){
+   ตัวอ่านเลขออเดอร์จากสกรีนช็อตส่งมา 1600 เพราะวัดแล้วอ่านได้ครบเท่ากันแต่เร็วกว่า 2.5 เท่า
+   inv = กลับขาวดำ สำหรับรูปที่เป็น "ตัวหนังสือขาวบนพื้นเข้ม" เช่นหน้ายืนยันสีฟ้าของแอพเซลล์
+   ⚠️ กลับขั้วเท่านั้น ห้ามทำเป็นขาว-ดำล้วน (threshold) — กฎที่วัดไว้ตอนทำตัวอ่านรีพอร์ท
+   ⚠️ ไม่ส่ง inv มา = เหมือนเดิมทุกประการ ของที่อ่านได้อยู่แล้วจึงไม่มีทางเปลี่ยนผล */
+function ocrPrep(img,crop,tw,inv){
   const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;
   const cr=crop||{x:0,y:0,w:iw,h:ih};
   const sc=Math.max(1,Math.min(4,(tw||OCR_W)/Math.max(1,cr.w),OCR_MAXW/Math.max(1,cr.h)));
@@ -6834,7 +6837,9 @@ function ocrPrep(img,crop,tw){
   x.drawImage(img,cr.x,cr.y,cr.w,cr.h,0,0,c.width,c.height);
   try{
     const d=x.getImageData(0,0,c.width,c.height),p=d.data;
-    for(let i=0;i<p.length;i+=4){const g=0.299*p[i]+0.587*p[i+1]+0.114*p[i+2];p[i]=p[i+1]=p[i+2]=g;}
+    for(let i=0;i<p.length;i+=4){let g=0.299*p[i]+0.587*p[i+1]+0.114*p[i+2];
+      if(inv)g=255-g;
+      p[i]=p[i+1]=p[i+2]=g;}
     x.putImageData(d,0,0);
   }catch(e){}
   return c;
@@ -6907,9 +6912,9 @@ function ocrTrim(grid){
 /* อ่านรูปหนึ่งใบ → {words,text} · words มีพิกัดและความมั่นใจของทุกคำ
    แยกออกมาจาก ocrRead เพื่อให้ตัวอ่าน "เลขออเดอร์จากสกรีนช็อต" ใช้ร่วมกันได้
    โดยไม่ต้องผ่านขั้นประกอบตาราง (ซึ่งเป็นเรื่องของรีพอร์ทโดยเฉพาะ) */
-async function ocrWords(src,crop,tw){
+async function ocrWords(src,crop,tw,inv){
   const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("เปิดไฟล์รูปไม่ได้"));i.src=src;});
-  const cv=ocrPrep(img,crop,tw);
+  const cv=ocrPrep(img,crop,tw,inv);
   const w=await ocrWorker();
   const r=await w.recognize(cv,{},{text:true,blocks:true});
   const words=[];
@@ -15263,6 +15268,9 @@ function spNoInfoHtml(list,ln){
     (o.v?chip(`<b>${THB(o.v)}</b>`):"")+
     (o.nShop?chip(`<b>${o.nShop}</b> <span>ร้าน</span>`):"")+
     (o.cx?chip(`<b>${o.cx}</b> <span>ใบที่ยกเลิก</span>`,"down"):"")+`</div>`;
+  /* 🔁 ซ้ำแล้วตัดออกให้ ต้องบอกด้วย ไม่งั้นคนกรอกเห็น "ใส่ 8 เลข เจอ 6" แล้วนึกว่าหาย 2 ใบ */
+  if(o.same)h+=`<div class="psub" style="margin-top:4px">🔁 ตัดเลขซ้ำออก <b>${o.same}</b> เลข (${
+    o.sameList.slice(0,6).map(anaEsc).join(" · ")}${o.sameList.length>6?" …":""}) — เป็นใบเดียวกัน นับครั้งเดียว</div>`;
   /* สิ่งที่ยัง "ไม่รู้" ต้องบอก ห้ามปล่อยให้ยอดดูเหมือนครบ */
   if(o.wait)h+=`<div class="psub" style="margin-top:4px">⏳ <b>${o.wait}</b> ใบยังไม่รู้จำนวนลัง — รอไฟล์ยอดขายของวันนั้น</div>`;
   if(o.miss.length)h+=`<div class="psub down" style="margin-top:4px">❓ ยังหาไม่เจอ <b>${o.miss.length}</b> เลข (${
@@ -17805,7 +17813,10 @@ async function spOcrGo(ln,files){
   SP.ocr={ln:ln,busy:1,n:use.length,i:0,rows:[],add:0,dup:0,
     err:list.length>SP_OCR_MAX?("เลือกมา "+list.length+" รูป อ่านให้ "+SP_OCR_MAX+" รูปแรกก่อน ที่เหลือเลือกเพิ่มได้อีกรอบ"):""};
   spOcrPaint(ln);
-  const have={};spNoSplit(ta.value).forEach(x=>{have[x]=1;});
+  const have={},tail={};
+  spNoSplit(ta.value).forEach(x=>{have[x]=1;
+    if(/^\d{10}$/.test(x))tail[x.slice(-SP_TAIL)]=1;
+    else if(new RegExp("^\\d{"+SP_TAIL+"}$").test(x))tail[x]=1;});
   for(let i=0;i<use.length;i++){
     SP.ocr.i=i+1;spOcrPaint(ln);
     const f=use[i];let got=[],bad="";
@@ -17813,9 +17824,21 @@ async function spOcrGo(ln,files){
       const url=await new Promise((res,rej)=>{const r=new FileReader();
         r.onload=()=>res(r.result);r.onerror=()=>rej(new Error("อ่านไฟล์รูปไม่ได้"));r.readAsDataURL(f);});
       got=spOcrNos(await ocrWords(url,null,SP_OCR_W));
+      /* 🔵 เซลล์แคปได้สองแบบ (เจ้าของสั่ง 27 พ.ย. 69): หน้ายืนยัน **พื้นฟ้าตัวหนังสือขาว**
+         ตอนกดคีย์เสร็จ กับหน้า **คำสั่งซื้อของฉัน พื้นขาว** ที่เข้าไปดูย้อนหลัง
+         วัดจากรูปจริงของเจ้าของสองใบ: รอบปกติอ่านได้ทั้งคู่อยู่แล้ว (ฟ้า 1034715246 มั่นใจ 85 ·
+         ขาว 1034715426 มั่นใจ 91 · ความสว่างเฉลี่ย 126 กับ 214) จึง **ไม่แตะรอบแรก**
+         แต่ถ้ารอบแรกไม่เจอเลขเลย ค่อยลองใหม่แบบกลับขั้วสีให้อีกหนึ่งรอบ — เผื่อเครื่องอื่น
+         แคปมาเข้มกว่านี้ · เสียเวลาเพิ่มเฉพาะรูปที่อ่านไม่ออก ซึ่งเป็นรูปที่คุ้มจะลองอยู่แล้ว */
+      if(!got.length)got=spOcrNos(await ocrWords(url,null,SP_OCR_W,1));
     }catch(e){bad=(e&&e.message)?e.message:"อ่านรูปนี้ไม่ได้";}
+    /* 🔁 ตัดเลขซ้ำ — ซ้ำได้สองแบบ: เลขเต็มเดิมซ้ำ (แคปใบเดียวสองรอบ) และเลขเต็มที่ตรงกับ
+       6 หลักท้ายที่พิมพ์ไว้แล้ว ซึ่งคือ "ใบเดียวกัน" เหมือนกัน แค่เขียนคนละแบบ
+       (วัดแล้ว 6 หลักท้ายไม่ชนกันเลยใน 2,096 เลข — ดูกฎ SP_TAIL) */
     const fresh=[];
-    got.forEach(g=>{if(have[g.no]){SP.ocr.dup++;g.dup=1;return;}have[g.no]=1;fresh.push(g.no);});
+    got.forEach(g=>{const t6=g.no.slice(-SP_TAIL);
+      if(have[g.no]||tail[t6]){SP.ocr.dup++;g.dup=1;return;}
+      have[g.no]=1;tail[t6]=1;fresh.push(g.no);});
     if(fresh.length){
       ta.value=(String(ta.value||"").trim()?String(ta.value).trim()+" ":"")+fresh.join(" ");
       SP.ocr.add+=fresh.length;
@@ -17969,12 +17992,22 @@ function spOrdFind(txt,hint){
 function spNoSum(list,hint){
   /* 📦 ลัง กับ ชิ้น เป็นคนละช่องในไฟล์ยอดขาย (Aggr(CS) / Aggr(Pcs)) — บวกแยกกันแล้วแสดง
      เป็น "N ลัง M ชิ้น" ห้ามยุบเป็นลังทศนิยม (เจ้าของสั่งซ้ำ 28 พ.ย. 69) */
-  const o={n:0,cs:0,pc:0,v:0,shops:{},found:0,wait:0,miss:[],rows:[],cx:0,dup:0,amb:[]};
+  /* 🔁 เลขเดียวกันเขียนได้หลายแบบ — เลขเต็ม `1034715426` กับ 6 หลักท้าย `715426` คือใบเดียวกัน
+     และเซลล์แคปหน้าจอใบเดิมสองรอบก็เกิดขึ้นเป็นปกติ (เจ้าของสั่งให้คัดซ้ำออก 27 พ.ย. 69)
+     ⚠️ ต้องตัดซ้ำที่ "ใบที่ resolve ได้" ไม่ใช่ที่ข้อความที่พิมพ์ — ตัดที่ข้อความจะไม่จับคู่
+        เลขเต็มกับหางเลข แล้วลัง/เงินของใบนั้นจะถูกบวกสองรอบ ซึ่งเป็นยอดที่ซุปกับแอดมินใช้ตรวจ
+     ⚠️ `n` ยังนับทุกเลขที่ใส่มาตามจริง ส่วนที่ซ้ำรายงานแยกเป็น `same` — คนละคำถามกัน */
+  const o={n:0,cs:0,pc:0,v:0,shops:{},found:0,wait:0,miss:[],rows:[],cx:0,dup:0,amb:[],
+           same:0,sameList:[]};
+  const hit={};
   (list||[]).forEach(t=>{
     o.n++;
     const f=spOrdFind(t,hint);
     if(f&&f.amb){o.amb.push({t:t,list:f.amb});return;}
     if(!f||!f.r){o.miss.push(t);return;}
+    const key=String(f.no||t).toUpperCase();
+    if(hit[key]){o.same++;o.sameList.push(t);return;}
+    hit[key]=1;
     o.found++;
     if(f.more&&f.more.length)o.dup++;
     const r=f.r;

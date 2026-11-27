@@ -1770,7 +1770,29 @@ code, never printed.
   across two words is recovered by a second pass **per line** — never across lines, or two numbers
   on consecutive lines would join into a 20-digit run and both vanish. Typing is still there,
   unchanged, under *— หรือพิมพ์เลขเอง —*. The picker is not a data upload, so the one-upload-button
-  rule does not apply. Prove it with the self-contained cases in
+  rule does not apply.
+  **🔵 A rep can screenshot the same order twice, in two different screens** (owner, 27 Nov 26:
+  *"ให้ระบบอ่านได้สองแบบ เพราะเซลล์แคปได้สองรอบ คือสีฟ้าหลังจากกดคีย์เสร็จ และสีขาวแบบ historical
+  เข้าไปดูย้อนหลัง แล้วถ้ามีอ่านเลขซ้ำกัน ช่วยคัดออกให้ด้วยนะ"*) — the blue confirmation screen
+  (white text on a saturated blue field, `ออเดอร์ #…`) and the white history screen
+  (`คำสั่ง #…`). **Measured on his two real screenshots before changing anything: both already
+  read correctly** — blue `1034715246` at confidence 85, white `1034715426` at 91, mean luminance
+  126 and 214 — so the first pass is **untouched** and nothing that works today can regress. What
+  was added is a **second pass with the polarity inverted (`ocrPrep(…,inv)`), run only when the
+  first pass found no number at all**: a net for a phone that caps the blue screen darker. Only
+  images that read nothing pay for it. ⚠️ Invert only — **never threshold to black and white**,
+  the measured rule from the report reader.
+  **🔁 Duplicates are cut on the ORDER, not on the typed text.** The same order can be written
+  three ways — the full `1034715426`, its 6-digit tail `715426`, and the `BDD01…` number — and
+  `spNoSum` used to total cases, money and shops **once per entry**, so one order written two ways
+  was counted twice on the very figure the supervisor and the admin check against. It now keys on
+  the resolved order (`spOrdFind`'s `no`), counts it once, and reports `same`/`sameList` so the
+  page can say **"ตัดเลขซ้ำออก N เลข — เป็นใบเดียวกัน นับครั้งเดียว"**; `n` still counts every
+  number entered, because "how many did I type" and "how many orders is that" are different
+  questions. The OCR side also treats a 10-digit number whose tail is already in the box as a
+  duplicate. Prove it with the self-contained cases in **`node test/browser/spord.test.cjs`**
+  (314 checks) and, against the real screenshots, **`node test/browser/ocr-promo.test.cjs`**
+  (43 with them). Prove it with the self-contained cases in
   **`node test/browser/spord.test.cjs`** (308 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).

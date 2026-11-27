@@ -250,6 +250,31 @@ const srv=http.createServer((rq,rs)=>{
        got.nos.join(',')+' · ความมั่นใจ '+got.conf.join(',')+' · '+got.ms+' ms');
      t('   …และไม่มีเลขอื่นบนจอหลุดมาปน (เลขใบแจ้งหนี้ / วันที่ / เงิน / เวอร์ชันแอพ)',
        got.nos.every(n=>/^\d{10}$/.test(n)),got.nos.join(','));
+     /* 🔵/⬜ เซลล์แคปได้สองแบบ — หน้ายืนยันพื้นฟ้าตัวหนังสือขาว กับหน้าประวัติพื้นขาว
+        ทั้งคู่ต้องอ่านได้ "ทั้งแบบปกติและแบบกลับขั้วสี" เพราะรอบสองคือตาข่ายกันพลาด
+        ของเครื่องที่แคปมาเข้ม/สว่างกว่านี้ ถ้ากลับขั้วแล้วอ่านไม่ได้ ตาข่ายนั้นก็ไม่มีประโยชน์ */
+     const inv=await ev(async(src)=>{
+       const o=await ocrWords(src,null,SP_OCR_W,1);
+       return spOcrNos(o).map(x=>x.no);
+     },b64);
+     t('   …อ่านแบบกลับขั้วสีก็ได้เลขเดียวกัน (ตาข่ายรองสำหรับรูปพื้นเข้ม)',
+       inv.join(',')===got.nos.join(','),'ปกติ '+got.nos.join(',')+' · กลับสี '+inv.join(','));
+   }
+   /* 🔁 แคปใบเดียวกันสองรอบ (ฟ้าตอนคีย์เสร็จ + ขาวตอนดูย้อนหลัง) เป็นเรื่องปกติ
+      ระบบต้องใส่เลขให้ครั้งเดียว แล้วบอกว่าตัดซ้ำไปกี่เลข */
+   if(SHOTS.length){
+     const p=SHOTS[0];
+     const b64='data:image/'+(/\.png$/i.test(p)?'png':'jpeg')+';base64,'+fs.readFileSync(p).toString('base64');
+     const twice=await ev(async(src)=>{
+       const a=spOcrNos(await ocrWords(src,null,SP_OCR_W)).map(x=>x.no);
+       const have={},tail={},fresh=[];let dup=0;
+       [].concat(a,a).forEach(n=>{const t6=n.slice(-SP_TAIL);
+         if(have[n]||tail[t6]){dup++;return;}have[n]=1;tail[t6]=1;fresh.push(n);});
+       return {fresh:fresh,dup:dup};
+     },b64);
+     t('🔁 แคปใบเดิมสองรอบ → ใส่เลขครั้งเดียว และรายงานว่าตัดซ้ำกี่เลข',
+       twice.fresh.length>0&&twice.dup===twice.fresh.length,
+       'ใส่ '+twice.fresh.join(',')+' · ตัดซ้ำ '+twice.dup);
    }
  }else console.log('  (ข้าม 📷 สกรีนช็อตเลขออเดอร์ — ไม่ได้ตั้ง SP_OCRSHOT)');
 

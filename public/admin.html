@@ -6140,7 +6140,7 @@ async function ocrWorker(){
   return OCR.worker;
 }
  
-function ocrPrep(img,crop,tw){
+function ocrPrep(img,crop,tw,inv){
   const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;
   const cr=crop||{x:0,y:0,w:iw,h:ih};
   const sc=Math.max(1,Math.min(4,(tw||OCR_W)/Math.max(1,cr.w),OCR_MAXW/Math.max(1,cr.h)));
@@ -6152,7 +6152,9 @@ function ocrPrep(img,crop,tw){
   x.drawImage(img,cr.x,cr.y,cr.w,cr.h,0,0,c.width,c.height);
   try{
     const d=x.getImageData(0,0,c.width,c.height),p=d.data;
-    for(let i=0;i<p.length;i+=4){const g=0.299*p[i]+0.587*p[i+1]+0.114*p[i+2];p[i]=p[i+1]=p[i+2]=g;}
+    for(let i=0;i<p.length;i+=4){let g=0.299*p[i]+0.587*p[i+1]+0.114*p[i+2];
+      if(inv)g=255-g;
+      p[i]=p[i+1]=p[i+2]=g;}
     x.putImageData(d,0,0);
   }catch(e){}
   return c;
@@ -6215,9 +6217,9 @@ function ocrTrim(grid){
   return keep.length>=2?grid.map(r=>keep.map(i=>r[i]||{t:"",c:100})):grid;
 }
  
-async function ocrWords(src,crop,tw){
+async function ocrWords(src,crop,tw,inv){
   const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("เปิดไฟล์รูปไม่ได้"));i.src=src;});
-  const cv=ocrPrep(img,crop,tw);
+  const cv=ocrPrep(img,crop,tw,inv);
   const w=await ocrWorker();
   const r=await w.recognize(cv,{},{text:true,blocks:true});
   const words=[];
@@ -13534,6 +13536,9 @@ function spNoInfoHtml(list,ln){
     (o.nShop?chip(`<b>${o.nShop}</b> <span>ร้าน</span>`):"")+
     (o.cx?chip(`<b>${o.cx}</b> <span>ใบที่ยกเลิก</span>`,"down"):"")+`</div>`;
    
+  if(o.same)h+=`<div class="psub" style="margin-top:4px">🔁 ตัดเลขซ้ำออก <b>${o.same}</b> เลข (${
+    o.sameList.slice(0,6).map(anaEsc).join(" · ")}${o.sameList.length>6?" …":""}) — เป็นใบเดียวกัน นับครั้งเดียว</div>`;
+   
   if(o.wait)h+=`<div class="psub" style="margin-top:4px">⏳ <b>${o.wait}</b> ใบยังไม่รู้จำนวนลัง — รอไฟล์ยอดขายของวันนั้น</div>`;
   if(o.miss.length)h+=`<div class="psub down" style="margin-top:4px">❓ ยังหาไม่เจอ <b>${o.miss.length}</b> เลข (${
     o.miss.slice(0,6).map(anaEsc).join(" · ")}${o.miss.length>6?" …":""}) — ถ้าเพิ่งคีย์วันนี้ ให้รอไฟล์ของวันนั้นก่อน</div>`;
@@ -15736,7 +15741,10 @@ async function spOcrGo(ln,files){
   SP.ocr={ln:ln,busy:1,n:use.length,i:0,rows:[],add:0,dup:0,
     err:list.length>SP_OCR_MAX?("เลือกมา "+list.length+" รูป อ่านให้ "+SP_OCR_MAX+" รูปแรกก่อน ที่เหลือเลือกเพิ่มได้อีกรอบ"):""};
   spOcrPaint(ln);
-  const have={};spNoSplit(ta.value).forEach(x=>{have[x]=1;});
+  const have={},tail={};
+  spNoSplit(ta.value).forEach(x=>{have[x]=1;
+    if(/^\d{10}$/.test(x))tail[x.slice(-SP_TAIL)]=1;
+    else if(new RegExp("^\\d{"+SP_TAIL+"}$").test(x))tail[x]=1;});
   for(let i=0;i<use.length;i++){
     SP.ocr.i=i+1;spOcrPaint(ln);
     const f=use[i];let got=[],bad="";
@@ -15744,9 +15752,14 @@ async function spOcrGo(ln,files){
       const url=await new Promise((res,rej)=>{const r=new FileReader();
         r.onload=()=>res(r.result);r.onerror=()=>rej(new Error("อ่านไฟล์รูปไม่ได้"));r.readAsDataURL(f);});
       got=spOcrNos(await ocrWords(url,null,SP_OCR_W));
+       
+      if(!got.length)got=spOcrNos(await ocrWords(url,null,SP_OCR_W,1));
     }catch(e){bad=(e&&e.message)?e.message:"อ่านรูปนี้ไม่ได้";}
+     
     const fresh=[];
-    got.forEach(g=>{if(have[g.no]){SP.ocr.dup++;g.dup=1;return;}have[g.no]=1;fresh.push(g.no);});
+    got.forEach(g=>{const t6=g.no.slice(-SP_TAIL);
+      if(have[g.no]||tail[t6]){SP.ocr.dup++;g.dup=1;return;}
+      have[g.no]=1;tail[t6]=1;fresh.push(g.no);});
     if(fresh.length){
       ta.value=(String(ta.value||"").trim()?String(ta.value).trim()+" ":"")+fresh.join(" ");
       SP.ocr.add+=fresh.length;
@@ -15862,12 +15875,18 @@ function spOrdFind(txt,hint){
  
 function spNoSum(list,hint){
    
-  const o={n:0,cs:0,pc:0,v:0,shops:{},found:0,wait:0,miss:[],rows:[],cx:0,dup:0,amb:[]};
+   
+  const o={n:0,cs:0,pc:0,v:0,shops:{},found:0,wait:0,miss:[],rows:[],cx:0,dup:0,amb:[],
+           same:0,sameList:[]};
+  const hit={};
   (list||[]).forEach(t=>{
     o.n++;
     const f=spOrdFind(t,hint);
     if(f&&f.amb){o.amb.push({t:t,list:f.amb});return;}
     if(!f||!f.r){o.miss.push(t);return;}
+    const key=String(f.no||t).toUpperCase();
+    if(hit[key]){o.same++;o.sameList.push(t);return;}
+    hit[key]=1;
     o.found++;
     if(f.more&&f.more.length)o.dup++;
     const r=f.r;
