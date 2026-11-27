@@ -1954,12 +1954,35 @@ code, never printed.
   page can say **"ตัดเลขซ้ำออก N เลข — เป็นใบเดียวกัน นับครั้งเดียว"**; `n` still counts every
   number entered, because "how many did I type" and "how many orders is that" are different
   questions. The OCR side also treats a 10-digit number whose tail is already in the box as a
-  duplicate. Prove it with the self-contained cases in **`node test/browser/spord.test.cjs`**
-  (314 checks) and, against the real screenshots, **`node test/browser/ocr-promo.test.cjs`**
-  (43 with them). Prove it with the self-contained cases in
-  **`node test/browser/spord.test.cjs`** (308 checks) and, against the owner's real screenshots,
+  duplicate. Prove it with the self-contained cases in
+  **`node test/browser/spord.test.cjs`** (356 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).
+  **🧯 Numbers read from images were being LOST, and OCR was not the cause** (owner, 27 Nov 26, with
+  one screenshot of CT17's row reading 13 เลข beside the rep's own phone showing 20 numbers read:
+  *"ตรวจสอบแต่ละสายหน่อย ไม่แน่ใจว่าทำไมที่เค้าอัพมาจำนวนไม่ตรงกัน เช่นสาย 17 เค้าแคปมาว่าส่งมา 20-21
+  รูป ที่มันในระบบข้นแค่ 13 รูป"*). The record held **exactly the first 13 in the rep's own order**
+  (11 resolved + 2 reported ยังหาไม่เจอ), which is the signature of a cut, not of a misread — OCR
+  read all 20 at confidence 90–92, and neither `SP_NOMAX` (80) nor the server's own cap was near.
+  **The cause is one cached DOM node**: `spOcrGo` captured the textarea **once** before the loop,
+  while pressing 💾 mid-batch runs `spRepSave` → `spRenderKeep`, which rewrites
+  `#spordView.innerHTML` — so the node the loop still writes into is **detached**, images 14–20 land
+  in nothing, and the rebuilt box shows the just-saved 13. `spNoLive` re-fetches by id, which is
+  exactly why the summary said 13 while the OCR list said 20. Four layers, and the order matters:
+  **`spOcrTa` re-fetches the element on every image** (never cache a node across an await in this
+  page); **`spOcrGot`/`spOcrSync` write the UNION** of what is in the live box plus everything the
+  batch has read, so a re-render from any cause self-heals on the next image instead of truncating;
+  **a box that has genuinely vanished aborts the batch with the count read so far**, because
+  silently dropping numbers is the one outcome that must not happen; and **`spRepLineSave` refuses
+  to save while `SP.ocr.busy`** and names the progress (*"อ่านไปแล้ว 13 จาก 20 รูป"*) — a refusal in
+  words, **never a disabled button** (the `spGinGo` lesson: a dead button that says nothing is worse
+  than the bug). `spRepNoHtml` additionally seeds the pending numbers into a rebuilt box while the
+  batch runs, so a re-render triggered by anything else does not read as "they are gone". Prove it
+  with §12 of **`node test/browser/spord.test.cjs`**, which reproduces the owner's exact sequence —
+  13 images read, 💾 pressed mid-batch, page re-rendered, 7 more images read — and asserts the save
+  is refused with the progress named, the 13 survive the re-render, and the final total is 20 both
+  in the record and in what is posted. ⚠️ Verified by reverting each guard and watching the suite
+  fail: a test that passes on the broken code proves nothing here.
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
   `renderSpord` returns the PIN screen and **draws nothing of the page** until `spPinOk()`. Two
   rules. **The repo is public, so the digits are never written into any file** — only the SHA-256

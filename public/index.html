@@ -13588,6 +13588,12 @@ function spRepLineSave(sid,ymd,ln){
    
   const prev=spRepRec(sid,ymd,ln);
   const it=(prev&&prev.it&&typeof prev.it==="object")?prev.it:{};
+   
+  if(SP.ocr&&SP.ocr.busy&&SP.ocr.ln===ln){
+    alert("⏳ ยังอ่านรูปไม่เสร็จ — อ่านไปแล้ว "+SP.ocr.i+" จาก "+SP.ocr.n+" รูป\n\n"+
+          "รอให้ขึ้นว่า ✅ อ่านครบ ก่อนแล้วค่อยกดบันทึก ไม่งั้นเลขของรูปที่เหลือจะไม่ถูกบันทึก");
+    return;
+  }
   const el=document.getElementById("spRNo_"+ln);
   const no=el?spNoSplit(el.value):((spRepRec(sid,ymd,ln)||{}).no||[]);
   const rec=spRepRec(sid,ymd,ln);
@@ -16053,7 +16059,7 @@ function spOcrHtml(ln){
   const S=(SP.ocr&&SP.ocr.ln===ln)?SP.ocr:null;
   if(!S)return "";
   let h=S.busy
-    ? `<div class="sp-ocrst">⏳ กำลังอ่านรูปที่ <b>${S.i}</b> จาก <b>${S.n}</b> … <span class="psub">รออีกสักครู่ อย่าเพิ่งปิดหน้านี้</span></div>`
+    ? `<div class="sp-ocrst">⏳ กำลังอ่านรูปที่ <b>${S.i}</b> จาก <b>${S.n}</b> … <span class="psub">รออีกสักครู่ อย่าเพิ่งปิดหน้านี้ และ<b> อย่าเพิ่งกดบันทึก</b></span></div>`
     : `<div class="sp-ocrst ok">✅ อ่านครบ <b>${S.n}</b> รูป · ใส่เลขให้ <b>${S.add}</b> เลข${
         S.dup?` · ซ้ำกับที่มีอยู่แล้ว ${S.dup} เลข (ไม่ใส่ซ้ำ)`:""}</div>`;
   if(S.err)h+=`<div class="psub down">${anaEsc(S.err)}</div>`;
@@ -16070,10 +16076,29 @@ function spOcrHtml(ln){
     แคปให้เห็นบรรทัด <b>คำสั่ง #…</b> ชัด ๆ แล้วลองใหม่ หรือพิมพ์เลขเองในช่องด้านล่าง</div>`;
   return h;
 }
+ 
+function spOcrTa(ln){return document.getElementById("spRNo_"+ln);}
+ 
+function spOcrGot(ln){
+  const S=(SP.ocr&&SP.ocr.ln===ln)?SP.ocr:null;
+  if(!S)return [];
+  const seen={},out=[];
+  (S.rows||[]).forEach(r=>(r.got||[]).forEach(g=>{
+    if(g&&g.no&&!g.dup&&!seen[g.no]){seen[g.no]=1;out.push(g.no);}}));
+  return out;
+}
+ 
+function spOcrSync(ln){
+  const ta=spOcrTa(ln);if(!ta)return false;
+  const seen={},out=[];
+  spNoSplit(ta.value).concat(spOcrGot(ln)).forEach(x=>{if(!seen[x]){seen[x]=1;out.push(x);}});
+  ta.value=out.join(" ");
+  return true;
+}
 async function spOcrGo(ln,files){
   const list=Array.prototype.slice.call(files||[]);
   if(!list.length)return;
-  const ta=document.getElementById("spRNo_"+ln);
+  const ta=spOcrTa(ln);
   if(!ta){alert("ช่องกรอกเลขหายไป ลองเปิดหน้านี้ใหม่อีกครั้ง");return;}
   if(SP.ocr&&SP.ocr.busy){alert("กำลังอ่านรูปชุดก่อนอยู่ รอให้เสร็จก่อนนะ");return;}
   const use=list.slice(0,SP_OCR_MAX);
@@ -16099,18 +16124,27 @@ async function spOcrGo(ln,files){
     got.forEach(g=>{const t6=g.no.slice(-SP_TAIL);
       if(have[g.no]||tail[t6]){SP.ocr.dup++;g.dup=1;return;}
       have[g.no]=1;tail[t6]=1;fresh.push(g.no);});
-    if(fresh.length){
-      ta.value=(String(ta.value||"").trim()?String(ta.value).trim()+" ":"")+fresh.join(" ");
-      SP.ocr.add+=fresh.length;
-    }
+    if(fresh.length)SP.ocr.add+=fresh.length;
     SP.ocr.rows.push({n:(f&&f.name)||("รูปที่ "+(i+1)),got:got,err:bad});
+     
+    if(!spOcrSync(ln)){
+      SP.ocr.busy=0;SP.ocr.lost=1;spOcrPaint(ln);
+      alert("ช่องกรอกเลขหายไประหว่างอ่านรูป (อ่านไปแล้ว "+(i+1)+" จาก "+use.length+" รูป)\n"+
+            "เปิดหน้าของสายนี้อีกครั้งแล้วอัพรูปใหม่ ระบบยังไม่ได้บันทึกอะไรทั้งนั้น");
+      return;
+    }
     spNoLive(ln);spOcrPaint(ln);
   }
-  SP.ocr.busy=0;spOcrPaint(ln);spNoLive(ln);
+  SP.ocr.busy=0;spOcrSync(ln);spOcrPaint(ln);spNoLive(ln);
 }
  
 function spRepNoHtml(ln,rec,can){
-  const no=(rec&&Array.isArray(rec.no))?rec.no:[];
+   
+  let no=(rec&&Array.isArray(rec.no))?rec.no.slice():[];
+  if(SP.ocr&&SP.ocr.busy&&SP.ocr.ln===ln){
+    const seen={};no.forEach(x=>{seen[x]=1;});
+    spOcrGot(ln).forEach(x=>{if(!seen[x]){seen[x]=1;no.push(x);}});
+  }
   return `<div class="sp-rno">
     <div class="sp-rn">🧾 เลขคำสั่งซื้อของวันนี้</div>
     ${can?`<div class="sp-ocr">

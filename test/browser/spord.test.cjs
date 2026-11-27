@@ -2759,6 +2759,61 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    home.tabs.sup.split(',').length===4,JSON.stringify(home.tabs));
 
 
+
+ /* ============================================================================
+  * 12) 🧯 เลขที่อ่านจากรูปหายกลางทาง — เจ้าของเจอ 29 พ.ย. 69
+  *   *"ทำไมที่เค้าอัพมาจำนวนไม่ตรงกัน เช่นสาย 17 เค้าแคปมาว่าส่งมา 20-21 รูป
+  *     ที่มันในระบบขึ้นแค่ 13 รูป"*
+  *   OCR อ่านได้ครบ 20 แต่เก็บแค่ 13 เลขแรก เพราะเซลล์กดบันทึกกลางคัน → หน้าถูกวาดใหม่
+  *   → ช่องกรอกเดิมหลุดออกจากหน้า → รูปที่ 14-20 เขียนลงช่องที่ไม่มีอยู่แล้ว
+  * ========================================================================== */
+ const ocrKeep=await ev(a=>{
+   eval(a.setup);setup();
+   __as('sales','209611','CT11');
+   SP.sid=B1;SP.view='slip';SP.ym='2026-11';SP.day=WORK_;SP.sec='rep';SP.ocr=null;
+   CSTOCK.rep[B1+'|'+WORK_+'|CT11']={it:{},no:[],n:0,h:[],by:'209611',byName:'CT11',at:1};
+   renderSpord();
+   const ta=()=>document.getElementById('spRNo_CT11');
+   const o={box:!!ta()};
+   const mk=i=>({n:'img'+i+'.jpg',got:[{no:'10347'+String(70000+i),cf:90}],err:''});
+   /* อ่านไปแล้ว 13 จาก 20 รูป */
+   SP.ocr={ln:'CT11',busy:1,n:20,i:13,rows:[],add:0,dup:0,err:''};
+   for(let i=1;i<=13;i++)SP.ocr.rows.push(mk(i));
+   spOcrSync('CT11');
+   o.a13=spNoSplit(ta().value).length;
+   /* เซลล์กดบันทึกกลางคัน — ต้องไม่บันทึก และต้องบอกว่าอ่านไปกี่รูปแล้ว */
+   window.__alert='';window.__posts=[];
+   spRepLineSave(B1,WORK_,'CT11');
+   o.alert=window.__alert;o.posts=window.__posts.length;
+   /* จำลองการ "วาดหน้าใหม่" ที่เคยทำให้เลขหาย */
+   renderSpord();
+   o.afterRender=spNoSplit(ta().value).length;
+   /* อ่านต่อจนครบ 20 แล้วเขียนกลับ — ต้องได้ 20 ไม่ใช่ 7 */
+   for(let i=14;i<=20;i++)SP.ocr.rows.push(mk(i));
+   SP.ocr.i=20;
+   spOcrSync('CT11');
+   o.a20=spNoSplit(ta().value).length;
+   /* อ่านจบแล้วค่อยบันทึก */
+   SP.ocr.busy=0;window.__alert='';window.__posts=[];
+   spRepLineSave(B1,WORK_,'CT11');
+   return new Promise(r=>setTimeout(()=>{
+     o.saved=((CSTOCK.rep[B1+'|'+WORK_+'|CT11']||{}).no||[]).length;
+     o.sent=(((window.__posts[0]||{}).b||{}).no||[]).length;
+     o.alert2=window.__alert;
+     r(o);},80));
+ },{setup:PRE});
+ t('🧯 กดบันทึกระหว่างยังอ่านรูปไม่เสร็จ ต้องไม่บันทึก และบอกว่าอ่านไปกี่รูปแล้ว',
+   ocrKeep.posts===0&&/ยังอ่านรูปไม่เสร็จ/.test(ocrKeep.alert)&&/13 จาก 20/.test(ocrKeep.alert),
+   'โพสต์ '+ocrKeep.posts+' · '+String(ocrKeep.alert).slice(0,80));
+ t('🧯 หน้าถูกวาดใหม่กลางคัน เลขที่อ่านไปแล้วต้องยังอยู่ครบ ไม่ใช่เริ่มนับใหม่',
+   ocrKeep.box&&ocrKeep.a13===13&&ocrKeep.afterRender===13,
+   'ก่อนวาด '+ocrKeep.a13+' · หลังวาด '+ocrKeep.afterRender);
+ t('🧯 อ่านรูปที่เหลือต่อ ต้องได้ครบ 20 เลข (ของเดิมไม่หาย)',ocrKeep.a20===20,
+   'ได้ '+ocrKeep.a20+' เลข');
+ t('🧯 พออ่านครบแล้วกดบันทึก เก็บครบ 20 เลขทั้งในเครื่องและที่ส่งขึ้นเซิร์ฟเวอร์',
+   ocrKeep.saved===20&&ocrKeep.sent===20&&!/ยังอ่านรูป/.test(ocrKeep.alert2||''),
+   'เก็บ '+ocrKeep.saved+' · ส่ง '+ocrKeep.sent);
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}
