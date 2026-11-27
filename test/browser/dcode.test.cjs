@@ -132,11 +132,14 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  t('...หน้าล็อกอินมีลิงก์กลับเว็บทีมขาย (แทนลิงก์สมัครร้าน)',ad.join==='/',ad.join);
  await ev(seed,{LINES,ORDER});
  /* 28 พ.ย. 69: แถวบนเป็น "ปุ่มใหญ่" 4 ปุ่มแล้ว แถว #tabTop จึงโชว์เฉพาะหมวดของปุ่มที่เปิดอยู่
-    — รายชื่อหมวดทั้งหมดของเว็บนั้นต้องอ่านจาก tabVisible() ไม่ใช่จาก DOM */
- const tabsA=await ev(()=>{renderTabs();
+    — รายชื่อหมวดทั้งหมดของเว็บนั้นต้องอ่านจาก tabVisible() ไม่ใช่จาก DOM
+    ⏳ 27 พ.ย. 69 เจ้าของสั่งเลื่อนวันเริ่มใช้จริงไปเป็น 1 ธ.ค. 69 (ดูบล็อกท้ายไฟล์)
+    เช็กต่อไปนี้ดู "ปุ่มใหญ่มีกี่ปุ่ม อะไรบ้าง" จึงบังคับเปิดไว้ ส่วนตัวประตูวันมีเช็กของมันเอง */
+ const tabsA=await ev(()=>{const R=window.tabSupOn;window.tabSupOn=()=>true;renderTabs();
    const top=tabVisible().map(x=>x.g.k);
    const subs={};top.forEach(k=>{const g=TAB_GROUPS.filter(x=>x.k===k)[0];subs[k]=g.tabs.filter(tabOk).map(x=>x.t);});
    const sup=[...document.querySelectorAll('#tabSup .tab')].map(b=>b.dataset.sup);
+   window.tabSupOn=R;renderTabs();
    return {top:top,subs:subs,sup:sup};});
  /* 18 พ.ย. 69: ออเดอร์พิเศษแยกออกมาเป็นหมวดใหญ่ของตัวเอง และอยู่บนเว็บแอดมินด้วย */
  /* 28 พ.ย. 69: ราคา & ทุน ขึ้นเว็บแอดมินด้วย เพราะ 📉 ต้นทุน (ไฟล์ BUM) ย้ายมาอยู่ที่นี่ที่เดียว
@@ -167,7 +170,8 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  await ev(seed,{LINES,ORDER});
  /* ⚠️ รายชื่อหมวด "ทั้งเว็บ" ต้องอ่านจาก tabVisible() — แถว #tabTop โชว์เฉพาะหมวดของปุ่มใหญ่
     ที่เปิดอยู่ ตั้งแต่ 28 พ.ย. 69 */
- const tabsM=await ev(()=>{renderTabs();const m=tabVisible().map(x=>x.g.k);
+ const tabsM=await ev(()=>{const R=window.tabSupOn;window.tabSupOn=()=>true;   /* ดูด้านบน */
+   renderTabs();const m=tabVisible().map(x=>x.g.k);
    const supM=[...document.querySelectorAll('#tabSup .tab')].map(b=>b.dataset.sup);
    S.user={id:'ct11',role:'sales',code:'209611',name:'CT11'};renderTabs();
    const s=tabVisible().map(x=>x.g.k);
@@ -181,6 +185,7 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
    switchTab('plan');
    const planSup=[...document.querySelectorAll('#tabSup .tab.on')].map(b=>b.dataset.sup).join('');
    switchGroup('dcode');
+   window.tabSupOn=R;renderTabs();
    return {m:m,s:s,supM:supM,supS:supS,site:BD_SITE,title:document.title,cur:CURTAB,
      fieldTab:fieldTab,fieldRow:fieldRow,buyTab:buyTab,buyRow:buyRow,planSup:planSup,
      gate:siteRoleOk('sales','ct11'),
@@ -207,6 +212,40 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
  t('🔑 เซลล์เห็นปุ่มใหญ่เฉพาะที่มีหมวดเหลืออยู่จริง',
    tabsM.supS.length>0&&tabsM.supS.every(k=>['buy','sell','field','etc'].indexOf(k)>=0),
    tabsM.supS.join(','));
+ /* ⏳ 27 พ.ย. 69 เจ้าของสั่งเลื่อนวันเริ่มใช้ปุ่มใหญ่กับคนทำงานจริงไปเป็น 1 ธ.ค. 69
+    *"เพื่อไม่ให้คนใช้งานจริงงง ช่วยปรับของฝั่งเซลล์ ซุป แอดมิน ให้กลายเป็นหมวดย่อยตามเดิมไปก่อน
+      เดี๋ยวค่อยปรับใหม่เป็นแบบที่เราทำกัน (1st 2nd หน้างาน อื่นๆ) วันที่ 1 ธค.2026 แทน"*
+    ก่อนวันนั้น: เซลล์/ซุป/แอดมิน เห็นแถวหมวดแบนราบครบ 12 หมวดเหมือนเดิม — เจ้าของเห็นแบบใหม่ได้เลย
+    ⚠️ ปลอม `ymdOf` ชั่วคราวแทนการปลอมนาฬิกาเครื่อง เพราะ `tabSupOn` อ่านวันผ่านฟังก์ชันนี้
+       (ห้ามใช้ toISOString — ทั้งศูนย์อยู่ UTC+7 ดูกฎในหัวข้อ 📅 ของ CLAUDE.md) */
+ const gateD=await ev(()=>{
+   const R=window.ymdOf,out={};
+   const look=()=>{renderTabs();return {
+     sup:[...document.querySelectorAll('#tabSup .tab')].map(b=>b.dataset.sup).join(','),
+     row:[...document.querySelectorAll('#tabTop .tab')].map(b=>b.dataset.grp).length};};
+   window.ymdOf=()=>'2026-11-30';
+   S.user={id:'admin1',role:'manager',name:'แอดมิน 1'};out.beforeAdmin=look();
+   S.user={id:'ct11',role:'sales',code:'209611',name:'CT11'};out.beforeSales=look();
+   S.user={id:'sup',role:'sup',name:'ซุป'};out.beforeSup=look();
+   S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};out.beforeOwner=look();
+   window.ymdOf=()=>'2026-12-01';
+   S.user={id:'admin1',role:'manager',name:'แอดมิน 1'};out.afterAdmin=look();
+   S.user={id:'ct11',role:'sales',code:'209611',name:'CT11'};out.afterSales=look();
+   window.ymdOf=R;S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};renderTabs();
+   out.from=TAB_SUP_FROM;return out;});
+ t('⏳ วันเริ่มใช้ปุ่มใหญ่กับทุกคนคือ 1 ธ.ค. 2026',gateD.from==='2026-12-01',gateD.from);
+ t('⏳ ก่อนวันนั้น เซลล์ · ซุป · แอดมิน ยังเห็นแถวหมวดแบนราบแบบเดิม (ไม่มีแถวปุ่มใหญ่)',
+   gateD.beforeAdmin.sup===''&&gateD.beforeSales.sup===''&&gateD.beforeSup.sup===''
+   &&gateD.beforeAdmin.row===12,
+   JSON.stringify([gateD.beforeAdmin,gateD.beforeSales,gateD.beforeSup]));
+ t('⏳ ...แต่เจ้าของเห็นแบบใหม่ได้เลย (เป็นคนตรวจงานเอง)',
+   gateD.beforeOwner.sup==='buy,sell,field,etc',gateD.beforeOwner.sup);
+ /* เช็กนี้อยู่บนเว็บเดิม (index.html) แอดมิน 1 เป็น role manager จึงเห็นครบทั้ง 4 ปุ่ม
+    และแถวถัดมาเหลือเฉพาะหมวดของปุ่มที่เปิดอยู่ (น้อยกว่า 12 แน่นอน) */
+ t('⏳ พอถึง 1 ธ.ค. ทุกคนได้ปุ่มใหญ่เอง ไม่ต้องแก้โค้ดอีก',
+   gateD.afterAdmin.sup==='buy,sell,field,etc'&&gateD.afterSales.sup.length>0
+   &&gateD.afterAdmin.row<12,
+   JSON.stringify([gateD.afterAdmin,gateD.afterSales]));
  t('เว็บเดิม: กดไปกลุ่ม DCODE ไม่ได้ (อยู่บนเว็บแอดมินเท่านั้น)',tabsM.cur!=='dcode',tabsM.cur);
  t('เว็บเดิม: ธงยังเป็น "main" และชื่อเว็บเดิม',tabsM.site==='main'&&tabsM.title==='BD Sales Dashboard',tabsM.site+' | '+tabsM.title);
  t('เว็บเดิม: ผู้จัดการมีลิงก์ไปเว็บแอดมิน',tabsM.link==='/admin',tabsM.link);

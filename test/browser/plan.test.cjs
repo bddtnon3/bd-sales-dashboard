@@ -42,6 +42,12 @@ const seed=`
   },done:{},del:{}};
   PL={ym:'2026-10',view:'mon',scope:'all',day:null,edit:null,cat:'task',lines:[],showDone:false};
 `;
+/* 🔴 เลขแดงงานค้างขึ้นสองจุด: `#planBadge` บนปุ่มหมวดใหญ่ และ `#planBadge2` บนปุ่มหมวดปฏิทิน
+   ปุ่มหมวดใหญ่ยังไม่เปิดให้คนทำงานจริงจนถึง 1 ธ.ค. 69 (ดู TAB_SUP_FROM) บางบัญชีจึงมีแค่จุดเดียว
+   เทสต์ต้องอ่าน "จุดไหนก็ได้ที่มีอยู่" ไม่ใช่ผูกกับจุดเดียว ไม่งั้นพังตามวันที่เปิดใช้ */
+const bdg=`window.bdgTxt=()=>{const a=document.getElementById('planBadge'),
+    b=document.getElementById('planBadge2');
+  return ((a&&a.innerText)||'')||((b&&b.innerText)||'');};`;
 const mgr=`S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};
   document.querySelectorAll('.admin-upload').forEach(e=>e.style.display='');`;
 const ct11=`S.user={id:'ct11',role:'sales',code:'209611',name:'CT11 · ก'};
@@ -53,7 +59,7 @@ const ct11=`S.user={id:'ct11',role:'sales',code:'209611',name:'CT11 · ก'};
  const pg=await (await b.newContext({viewport:{width:W,height:1000}})).newPage();
  const errs=[];pg.on('pageerror',e=>errs.push(String(e)));
  await pg.setContent(fs.readFileSync(PAGE,'utf8'),{waitUntil:'domcontentloaded'});
- await pg.evaluate(boot+seed+mgr+`_switchTab('plan');renderPlan();`);
+ await pg.evaluate(boot+bdg+seed+mgr+`_switchTab('plan');renderPlan();`);
 
  const A=[];const t=(n,c,x)=>A.push([!!c,n,x===undefined?'':String(x)]);
  const ev=f=>pg.evaluate(f);
@@ -117,7 +123,7 @@ const ct11=`S.user={id:'ct11',role:'sales',code:'209611',name:'CT11 · ก'};
 
  /* ---------- 3) การ์ดสรุป + badge บนแท็บ ---------- */
  const c = await ev(()=>({cards:[...document.querySelectorAll('#plCards .card')].map(x=>x.innerText.replace(/\n/g,'|')),
-                          badge:document.getElementById('planBadge').innerText,
+                          badge:bdgTxt(),
                           bar:document.getElementById('plBar').innerText}));
  t('การ์ด "เลยกำหนดแล้ว" นับงาน 30 ก.ย. ได้ 1',/เลยกำหนดแล้ว\|1\|/.test(c.cards[0]),c.cards[0]);
  t('...ไม่นับงานประจำที่ตกรอบไปแล้ว (ไม่งั้นจะขึ้นเป็นสิบรายการ)',!/เลยกำหนดแล้ว\|[2-9]/.test(c.cards[0]),c.cards[0]);
@@ -290,7 +296,7 @@ const ct11=`S.user={id:'ct11',role:'sales',code:'209611',name:'CT11 · ก'};
    PL.view='mon';renderPlan();
    return {list:l,mon:document.querySelectorAll('#plMain .pl-cell').length,
            cards:document.querySelectorAll('#plCards .card').length,
-           badge:document.getElementById('planBadge').innerText};});
+           badge:bdgTxt()};});
  t('ไม่มีงานเลย → บอกให้กดเพิ่มงาน',/กด.*เพิ่มงาน/.test(empty.list),empty.list.slice(0,110));
  t('...ปฏิทินยังวาดได้ปกติ',empty.mon%7===0&&empty.mon>=35,empty.mon);
  t('...การ์ดสรุปยังอยู่ 4 ใบ',empty.cards===4,empty.cards);
@@ -328,7 +334,7 @@ const ct11=`S.user={id:'ct11',role:'sales',code:'209611',name:'CT11 · ก'};
    const mon=document.getElementById('plMain').innerText.replace(/\s+/g,' ');
    PL.view='list';renderPlan();
    return {cards,main,lateNames,mon,
-     badge:(document.getElementById('planBadge')||{}).innerText||'',
+     badge:bdgTxt(),
      holiHasTick:holiRow?!!holiRow.querySelector('.pl-tick'):null,
      holiHasIcon:holiRow?!!holiRow.querySelector('.pl-holi-ic'):null,
      workHasTick:workRow?!!workRow.querySelector('.pl-tick'):null};
@@ -380,7 +386,7 @@ const ct11=`S.user={id:'ct11',role:'sales',code:'209611',name:'CT11 · ก'};
      viewBtns:[...document.querySelectorAll('#plViewSeg button')].map(x=>x.innerText.replace(/\s+/g,' ').trim()),
      scopeBtns:[...document.querySelectorAll('#plScopeSeg button')].map(x=>x.innerText.trim()),
      notiN:(document.getElementById('plNotiN')||{}).innerText||'',
-     badge:(document.getElementById('planBadge')||{}).innerText||'',
+     badge:bdgTxt(),
      shops:document.querySelectorAll('#plMain .pl-shop').length};
    /* กรอง 3 แบบ */
    plSetScope('shop');a.shopOnly=main();a.shopN=document.querySelectorAll('#plMain .pl-shop').length;

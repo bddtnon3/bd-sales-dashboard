@@ -79,18 +79,27 @@ main{max-width:1180px;margin:0 auto;padding:22px}
 .upload-btn{background:var(--blue-soft);color:var(--blue);border:1px dashed var(--blue);border-radius:9px;
   padding:9px 14px;font-size:13px;font-weight:700}
 
-.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}
 .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
 .card .k{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
 .card .v{font-size:26px;font-weight:800;margin-top:6px}
 .card .s{font-size:12px;margin-top:4px;font-weight:600}
 .up{color:var(--good)}.down{color:var(--bad)}.mid{color:var(--warn)}
 
-.grid2{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;margin-bottom:20px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;margin-bottom:20px}
 .panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
 .panel h3{font-size:15px;margin-bottom:4px}
 .panel .psub{font-size:12px;color:var(--muted);margin-bottom:14px}
-.chart-wrap{position:relative;height:340px}
+/* 📱 หมุนจอแล้วหน้าเว็บค้างเป็นแนวนอน — เจ้าของเจอเอง 27 พ.ย. 69 (ภาพ: การ์ดแคบ ๆ อยู่ซ้าย
+   ส่วนกล่องกราฟยื่นออกไปกว้างกว่าทุกอย่าง) ต้นเหตุไม่ใช่ Chart.js แต่เป็น CSS Grid:
+   ช่องที่เขียนว่า `1fr` มีความกว้างต่ำสุดเป็น min-content โดยอัตโนมัติ และ Chart.js เขียน
+   `style.width` เป็น **พิกเซล** ลงบน canvas — พอหมุนกลับมาแนวตั้ง ค่าพิกเซลของจอแนวนอนยังอยู่
+   ช่องกริดจึงหดต่ำกว่านั้นไม่ได้ หน้าเว็บกว้างเกินจอ และ Chart.js ก็ไม่ย่อ เพราะกล่องแม่ไม่เคยแคบลง
+   (วัดจริงบนจอ 390px: กริดคำนวณออกมาเป็น 800px, document 814px — ล็อกกันเองเป็นวงกลม)
+   แก้สามชั้น: ช่องกริดเป็น `minmax(0,1fr)` ให้หดได้จริง · กล่องกราฟ `min-width:0` ·
+   และกันไว้อีกชั้นที่ canvas ทุกตัว (บางกล่องเขียน grid เป็น inline style จึงไม่โดนกฎข้างบน) */
+.chart-wrap{position:relative;height:340px;min-width:0;overflow:hidden}
+#app canvas{max-width:100%}
 .insight{background:var(--blue-soft);border-left:4px solid var(--blue);border-radius:8px;padding:14px 16px;
   font-size:13.5px;line-height:1.65;color:var(--ink)}
 .insight b{color:var(--blue-dark)}
@@ -295,18 +304,61 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cal-dot.jx{background:var(--bad);border-color:var(--bad)}
 .cal-dot.jk{background:#EAF7F0;border-color:#0F7A52}
 .cal-dot.jg{background:var(--good);border-color:var(--good)}
+/* ============================================================================
+ * 🎨 สีประจำขั้นงานของหน้าออเดอร์พิเศษ — เจ้าของสั่ง 27 พ.ย. 69
+ * *"ขอปรับหน้าออเดอร์พิเศษ ให้มันมีแบ่งโซนแบ่งสีช่องหน้าจอการทำงานนิดนึง สำหรับทุกฝ่าย
+ *   ให้มันดูง่าย เห็นช่องกรอกง่าย ๆ … ตอนนี้มันดูขาวโล่ง แซมน้ำเงิน มันทำงานได้แหละ
+ *   แต่ผมว่ามันไม่สบายตา … ให้มีdynamic ของสีและฟ้อนมากกว่านี้หน่อย"*
+ *
+ * งานนี้เป็น "รีเลย์" ของสามทีมในวันเดียวกัน แต่ละขั้นจึงมีสีของตัวเอง และใช้สีเดียวกัน
+ * ทั้งปุ่มในแถบจังหวะงานและทั้งหน้าจอของขั้นนั้น คนทำงานจะได้รู้ทันทีว่า "ตอนนี้อยู่หน้าของใคร"
+ *   ✍️ ซุปจด = ส้ม (ตั้งเป้า) · 📲 เซลล์คีย์ = น้ำเงิน (ทีมใหญ่สุด ใช้สีหลักของเว็บ)
+ *   🔎 แอดมินตรวจ = ม่วง (ตรวจทาน) · 🚚 คลังจัดส่ง = เขียว (ของออกจากคลัง) · 📊 รายงาน = เทา
+ *
+ * ⚠️ ทุกอย่างในบล็อกนี้เป็นเรื่อง "หน้าตา" เท่านั้น — ไม่มีตัวเลข ไม่มีสิทธิ์ ไม่มีตรรกะใด
+ *    ผูกกับสี  ใครแก้อะไรได้ยังตรวจที่ `api/spord.js` เหมือนเดิมทุกประการ
+ * ⚠️ สีบอก "ขั้นไหน" ไม่ได้บอก "ผ่าน/ไม่ผ่าน" — เขียว/แดงที่แปลว่าสำเร็จหรือพลาดยังเป็น
+ *    `.sp-ok`/`.sp-bad`/`.cal-dot` ชุดเดิม ห้ามเอาสีประจำขั้นไปใช้แทน ไม่งั้นอ่านกันคนละเรื่อง
+ * ⚠️ ค่าทั้งสี่ต้องตั้งครบทุกขั้น (`--z` เส้น/ตัวอักษร · `--zs` พื้นอ่อน · `--zb` เส้นขอบอ่อน ·
+ *    `--zg` เงาตอนโฟกัส) เพราะกฎข้างล่างอ้างทั้งสี่ตัว
+ * ==========================================================================*/
+/* โซน = ทั้งหน้าจอของขั้นนั้น · ค่า fallback เผื่อมีขั้นใหม่ที่ยังไม่ได้ให้สี
+   ⚠️ บรรทัดนี้ต้องอยู่ "ก่อน" `.spz-*` เสมอ — ทั้งคู่เป็นคลาสเดี่ยวเหมือนกัน ตัวที่เขียนทีหลังชนะ
+      เคยสลับที่กันแล้วทุกขั้นกลายเป็นน้ำเงินหมด ทั้งที่คลาสติดถูกแล้ว */
+.sp-zone{--z:var(--blue);--zs:var(--blue-soft);--zb:#C6D9F7;--zg:rgba(22,82,184,.16)}
+.spz-key{--z:#A35A06;--zs:#FFF6EA;--zb:#F0D4A8;--zg:rgba(163,90,6,.16)}
+.spz-rep{--z:#1652B8;--zs:#EFF5FF;--zb:#C6D9F7;--zg:rgba(22,82,184,.16)}
+.spz-adm{--z:#6A3EA1;--zs:#F6F1FD;--zb:#DCC9F2;--zg:rgba(106,62,161,.16)}
+.spz-out{--z:#0F7A52;--zs:#EDF8F2;--zb:#BCE3D0;--zg:rgba(15,122,82,.16)}
+.spz-rpt,.spz-old{--z:#3F4A5A;--zs:#F2F5F9;--zb:#D2DAE5;--zg:rgba(63,74,90,.16)}
+/* ชั้นแรกที่ตาเห็น: แถบสีบนหัวการ์ด + หัวข้อเป็นสีของขั้น */
+.sp-zone>.panel,.sp-zone>.cst-lot,.sp-zone>.sp-sec{border-top:3px solid var(--z)}
+.sp-zone .panel>h3{color:var(--z);font-size:16.5px;letter-spacing:-.1px}
+.sp-zone .panel>h3+.psub{font-size:12.5px}
+/* การ์ดตัวเลขบนสุดของแต่ละขั้น ให้เป็นสีของขั้น ไม่ใช่น้ำเงินหมดทุกหน้า */
+.sp-zone .cards>.card{border-top:3px solid var(--zb)}
+.sp-zone .cards>.card .v{color:var(--z);font-variant-numeric:tabular-nums}
+.sp-zone .cards>.card:first-child{border-top-color:var(--z);background:var(--zs)}
+/* กล่องนำทางด้านบน (ปุ่มกลับ + จังหวะงาน + ปฏิทิน) เบากว่าเนื้องาน จะได้ไม่แย่งสายตา */
+.sp-zone>.panel.sp-nav{border-top-color:var(--zb);background:linear-gradient(#fff,var(--zs))}
+.sp-zone .sp-daybar{background:#fff;border-color:var(--zb)}
 /* 🕘 แถบจังหวะงาน เช้า → บ่าย → เย็น (spFlowHtml) */
-.sp-flow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fbfdff;margin-top:10px}
-.sp-flow-d{font-size:13px;color:var(--ink);margin-bottom:8px}
+.sp-flow{border:1.5px solid var(--zb,var(--line));border-radius:12px;padding:10px 12px;
+  background:#fff;margin-top:10px}
+.sp-flow-d{font-size:13.5px;color:var(--ink);margin-bottom:9px;font-weight:600}
 .sp-flow-d .psub{display:inline;margin:0}
 .sp-flow-r{display:flex;align-items:stretch;gap:6px;flex-wrap:nowrap}
 .sp-flow-a{align-self:center;color:var(--muted);font-size:12px;flex:0 0 auto}
-.sp-flow-s{flex:1 1 0;min-width:0;text-align:left;background:#fff;border:1.5px solid var(--line);
+/* ปุ่มขั้นงานใช้สีประจำขั้นของตัวเอง (`.spz-*` ติดมากับปุ่ม) ไม่ใช่สีของหน้าที่เปิดอยู่
+   — ทั้งสามปุ่มจึงเป็นคนละสีเสมอ ทำให้จำได้ว่าสีไหนคือขั้นไหน */
+.sp-flow-s{flex:1 1 0;min-width:0;text-align:left;background:#fff;border:1.5px solid var(--zb);
+  border-left:4px solid var(--z);
   border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
-.sp-flow-s.ok{background:#F4FBF6;border-color:#BFE6D2}
-.sp-flow-s.on{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
-.sp-flow-t{font-size:11px;color:var(--muted);font-weight:700}
-.sp-flow-n{font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap}
+.sp-flow-s.ok{background:var(--zs)}
+.sp-flow-s.on{box-shadow:0 0 0 2.5px var(--zg);border-color:var(--z)}
+.sp-flow-t{font-size:11px;color:var(--z);font-weight:800;opacity:.75}
+.sp-flow-n{font-size:13.5px;font-weight:800;color:var(--ink);white-space:nowrap}
+.sp-flow-s.on .sp-flow-n{color:var(--z)}
 .sp-flow-v{font-size:12px;font-weight:700;color:var(--muted)}
 .sp-flow-s.ok .sp-flow-v{color:var(--good)}
 /* 📱 บนมือถือเรียงลงเป็นสามแถว ไม่ใช่เลื่อนซ้ายขวา — ขั้นที่สามต้องไม่โดนตัดหายไปนอกจอ
@@ -471,6 +523,28 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 }
 .sp-kt input:focus{border-color:var(--blue);outline:none}
 .sp-kt tr.lnh>td{background:#eef3fb;font-weight:800;text-align:left}
+/* 🎨 ตารางกรอกในโซนสี — หัวตาราง แถบสาย และแถวรวม ใช้สีของขั้นนั้น
+   และ "ช่องที่ยังว่าง" กับ "ช่องที่กรอกแล้ว" ต้องแยกออกด้วยตาเปล่า (เจ้าของขอ *"เห็นช่องกรอกง่าย ๆ"*)
+   ⚠️ `:placeholder-shown` = ช่องยังว่าง — ทุกช่องตั้ง placeholder="0" ไว้แล้ว จึงใช้ได้จริง
+      ถ้าวันหลังเอา placeholder ออก กฎนี้จะเงียบไปเฉย ๆ (ไม่พัง แค่ไม่ไฮไลต์) */
+.sp-zone .sp-kt th{background:var(--zs);color:var(--z);border-bottom:2px solid var(--zb)}
+.sp-zone .sp-kt.sp-k4 th.c1{background:var(--zs)}
+.sp-zone .sp-kt tr.lnh>td{background:var(--zs);color:var(--z);
+  border-top:2px solid var(--zb);border-bottom:1px solid var(--zb)}
+.sp-zone .sp-kt.sp-k4 tr.lnh>td.c1{background:var(--zs)}
+.sp-zone .sp-kt tr.sub>td,.sp-zone .sp-kt.sp-k4 tr.sub>td.c1{background:#fff;color:var(--z)}
+.sp-zone .sp-kt tr.sub>td{border-bottom:2px solid var(--zb)}
+.sp-zone .sp-kt td{font-variant-numeric:tabular-nums}
+.sp-zone .sp-kt input{background:var(--zs);border-color:var(--zb);font-weight:700;color:var(--z)}
+.sp-zone .sp-kt input:not(:placeholder-shown){background:#fff;border-color:var(--z);
+  color:var(--ink);font-weight:800}
+.sp-zone .sp-kt input:focus{border-color:var(--z);background:#fff;
+  box-shadow:0 0 0 3px var(--zg);outline:none}
+.sp-zone .btn-mini{color:var(--z);border-color:var(--zb)}
+.sp-zone .btn-mini:hover{background:var(--zs);border-color:var(--z)}
+/* ปุ่มยกเลิก/ลบ ยังต้องเป็นสีแดงเสมอ ไม่ว่าจะอยู่โซนไหน — สีแดงแปลว่า "ลบ" ไม่ใช่ชื่อขั้น */
+.sp-zone .btn-mini.sp-cancel{color:var(--bad);border-color:#F3C9C4}
+.sp-zone .btn-mini.sp-cancel:hover{background:#FDECEA;border-color:var(--bad)}
 /* 📱 หน้ากรอกของเซลล์ — ทีมขายกรอกจากมือถือ (Android/Chrome เป็นหลัก)
    ตารางกว้าง ๆ กรอกบนมือถือไม่ไหว จึงทำเป็นการ์ดต่อสินค้า ช่องใหญ่ กดง่าย
    ⚠️ ช่องกรอกต้อง >= 16px ไม่งั้นเบราว์เซอร์มือถือซูมเข้าเองตอนโฟกัส แล้วหน้าเลื่อนหนี */
@@ -486,6 +560,18 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   font-size:17px;font-weight:700;text-align:right;-webkit-appearance:none;appearance:none;background:#fff}
 .sp-rf input:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 3px rgba(33,106,212,.12)}
 .sp-rsum{margin-top:9px;font-size:13.5px;font-weight:800;color:var(--blue)}
+/* 🎨 การ์ดกรอกของเซลล์และกล่องเลขออเดอร์ในโซนสี */
+.sp-zone .sp-rc{border-color:var(--zb);border-left:4px solid var(--zb)}
+.sp-zone .sp-rc.on{border-left-color:var(--z);border-color:var(--z);box-shadow:0 2px 10px var(--zg)}
+.sp-zone .sp-rno{border-color:var(--z);border-left:4px solid var(--z);background:linear-gradient(#fff,var(--zs))}
+.sp-zone .sp-rf input{background:var(--zs);border-color:var(--zb);color:var(--z);
+  font-variant-numeric:tabular-nums}
+.sp-zone .sp-rf input:not(:placeholder-shown){background:#fff;border-color:var(--z);color:var(--ink)}
+.sp-zone .sp-rf input:focus{border-color:var(--z);background:#fff;box-shadow:0 0 0 3px var(--zg)}
+.sp-zone .sp-rf label{color:var(--z);opacity:.85}
+.sp-zone .sp-rsum{color:var(--z)}
+.sp-zone .sp-job.on{border-color:var(--z);border-left-color:var(--z)}
+.sp-zone .insight{border-left-color:var(--z);background:var(--zs)}
 .sp-jobs{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .sp-job{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1.5px solid var(--line);
   border-radius:12px;background:#fff;cursor:pointer;text-align:left}
@@ -500,6 +586,26 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   background:var(--blue);color:#fff;border:none;font-weight:800;box-shadow:0 2px 8px rgba(27,78,163,.25)}
 .sp-save button:hover{background:var(--blue-dark)}
 .sp-save button:active{transform:translateY(1px)}
+/* ปุ่มบันทึกเป็นสีของขั้นที่กำลังทำอยู่ — ปุ่มใหญ่สุดในหน้าจึงบอกเองว่านี่หน้าของใคร */
+.sp-zone .sp-save{background:linear-gradient(to top,#fff 68%,rgba(255,255,255,0))}
+.sp-zone .sp-save button{background:var(--z);box-shadow:0 3px 10px var(--zg)}
+.sp-zone .sp-save button:hover{filter:brightness(.92)}
+/* ช่องกรอกเดี่ยว ๆ ที่ไม่ได้อยู่ในตาราง (เช่นช่องเลข GIN) — เดิมเขียนสไตล์ไว้ในแท็กเลย
+   ย้ายมาเป็นคลาสเพื่อให้รับสีของโซนได้ หน้าตาและขนาดเท่าเดิมทุกค่า */
+.sp-fin{padding:10px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:16px;
+  font-family:ui-monospace,monospace;flex:1;background:#fff}
+.sp-zone .sp-fin{background:var(--zs);border-color:var(--zb);color:var(--z);font-weight:700}
+.sp-zone .sp-fin:not(:placeholder-shown){background:#fff;border-color:var(--z);color:var(--ink)}
+.sp-zone .sp-fin:focus{border-color:var(--z);background:#fff;box-shadow:0 0 0 3px var(--zg);outline:none}
+/* ปุ่มลงมือทำในโซน (ตรวจและบันทึก / บันทึก) ใช้สีของขั้น เช่นเดียวกับปุ่มบันทึกใหญ่ */
+.sp-zone .btn-go{background:var(--z);box-shadow:0 2px 7px var(--zg)}
+.sp-zone .btn-go:hover{background:var(--z);filter:brightness(.92)}
+.sp-zone .upload-btn{color:var(--z);border-color:var(--z);background:var(--zs)}
+/* วันที่เลือกอยู่ในปฏิทินเป็นสีของขั้น — เป็นการนำทาง ไม่ใช่สถานะงาน
+   ⚠️ จุดสีบอกสถานะ (.has/.chk/.jr/.jg …) ห้ามแตะ มันบอกคนละเรื่องกัน */
+.sp-zone .sp-cal .cal-day.sel{outline-color:var(--z)}
+.sp-zone .sp-cal .cal-head button:hover{background:var(--zs);border-color:var(--z)}
+.sp-zone .sp-cal .cal-head button:active{background:var(--z);color:#fff}
 @media(max-width:640px){.sp-kt input{font-size:16px;width:66px;padding:7px 6px}}
 .sp-ok{color:var(--good);font-weight:700}
 .sp-bad{color:var(--bad);font-weight:700}
@@ -962,6 +1068,11 @@ main.wide{max-width:1560px}
   color:var(--muted);white-space:nowrap;flex:0 0 auto}
 .tab2:hover{color:var(--blue)}
 .tab2.on{background:#fff;color:var(--blue);box-shadow:0 1px 3px rgba(16,42,93,.12)}
+/* ชิปขั้นงานของหน้าออเดอร์พิเศษ — สีเดียวกับโซนของขั้นนั้น (ดูบล็อก 🎨 ด้านล่าง)
+   ชิปที่เปิดอยู่เป็นปุ่มทึบสีขั้น ส่วนที่เหลือเป็นตัวอักษรสีขั้นแบบจาง ๆ ให้จำสีได้ตั้งแต่แถวบน */
+.tab2[class*="spz-"]{color:var(--z)}
+.tab2[class*="spz-"]:hover{color:var(--z);background:var(--zs)}
+.tab2[class*="spz-"].on{background:var(--z);color:#fff;box-shadow:0 2px 6px var(--zg)}
 .seg.multi button.on{background:var(--blue);color:#fff}
 
 /* KPI */
@@ -1482,8 +1593,9 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
   #ldTable input,#ldTable select{max-width:100%}
 }
 
-@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
-@media(max-width:560px){.cards{grid-template-columns:1fr}main{padding:14px}}
+/* ทุกช่องต้องเป็น minmax(0,…) — ดูเหตุผลที่ `.chart-wrap` ด้านบน (จอหมุนแล้วค้าง) */
+@media(max-width:900px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:560px){.cards{grid-template-columns:minmax(0,1fr)}main{padding:14px}}
 .ana-crumb{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px;font-size:14px}
 .ana-crumb a{color:var(--blue);cursor:pointer;font-weight:600;text-decoration:none}
 .ana-crumb a:hover{text-decoration:underline}
@@ -2927,6 +3039,25 @@ function bdKeepAlive(){
   setInterval(()=>bdRenew(),1000*60*60*6);
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)bdRenew();});
 }
+/* 📱 หมุนจอแล้วสั่งให้กราฟวัดกล่องใหม่ — กันเหนียวของการแก้ CSS ที่ `.chart-wrap`
+   พอช่องกริดหดได้แล้ว ResizeObserver ของ Chart.js ก็ทำงานเองอยู่แล้ว แต่บน iOS Safari
+   ขนาดจอหลังหมุนนิ่งช้ากว่า event จึงเรียกซ้ำอีกสองจังหวะ ให้ผลแน่นอนไม่ขึ้นกับจังหวะเครื่อง
+   ⚠️ อ่านอย่างเดียว ไม่แตะข้อมูลและไม่ re-render หน้าไหน — แค่บอกกราฟให้วัดกล่องใหม่ */
+function bdReflow(){
+  if(typeof Chart!=="function"||typeof Chart.getChart!=="function")return;
+  document.querySelectorAll("canvas").forEach(cv=>{
+    let c=null;try{c=Chart.getChart(cv);}catch(e){}
+    if(c&&c.resize)try{c.resize();}catch(e){}
+  });
+}
+let _bdRot=0;
+function bdRotWatch(){
+  if(_bdRot)return;_bdRot=1;
+  const go=()=>{bdReflow();setTimeout(bdReflow,250);setTimeout(bdReflow,700);};
+  addEventListener("orientationchange",go);
+  let t=0;addEventListener("resize",()=>{clearTimeout(t);t=setTimeout(bdReflow,200);});
+}
+bdRotWatch();
 let chartObj=null;
 const THB=n=>"฿"+Math.round(n).toLocaleString("en-US");
 const THBk=n=>{if(Math.abs(n)>=1e6)return "฿"+(n/1e6).toFixed(2)+"M";if(Math.abs(n)>=1e3)return "฿"+(n/1e3).toFixed(0)+"K";return "฿"+Math.round(n);};
@@ -3704,14 +3835,30 @@ function tabSupOf(gk){
   for(const s of TAB_SUPERS)if(s.g.indexOf(gk)>=0)return s.k;
   return "etc";      /* หมวดใหม่ที่ยังไม่ได้จัดเข้าปุ่มไหน ไปอยู่ "อื่น ๆ" ไม่ใช่หายไป */
 }
+/* ⏳ เริ่มใช้จริงกับทุกคน 1 ธ.ค. 69 — เจ้าของสั่งเลื่อน 27 พ.ย. 69:
+ * *"เพื่อไม่ให้คนใช้งานจริงงง ช่วยปรับของฝั่งเซลล์ ซุป แอดมิน ให้กลายเป็นหมวดย่อยตามเดิมไปก่อน
+ *   เดี๋ยวค่อยปรับใหม่เป็นแบบที่เราทำกัน (1st 2nd หน้างาน อื่นๆ) วันที่ 1 ธค.2026 แทน"*
+ * เซลล์ ซุป แอดมิน ทีมคลัง ทีมสายส่ง จึงเห็นแถวหมวดแบนราบแบบเดิมไปจนถึงวันนั้น
+ * ส่วน **เจ้าของ** (`bdOwner`) เห็นแบบใหม่ได้เลย เพราะเป็นคนตรวจงานเอง
+ * ⚠️ นี่คือการ "ซ่อนแถวปุ่มใหญ่" อย่างเดียว — `TAB_SUPERS` ทั้งตารางยังอยู่ครบ ไม่มีหมวดไหนหาย
+ *    และ `switchSuper` ยังทำงานได้ตามเดิม เหมือนกฎเลิกใช้ฟีเจอร์ที่ลบแค่บรรทัดในตาราง
+ * ⚠️ วันต้องอ่านผ่าน `ymdOf` ไม่ใช่ `toISOString()` — ทั้งศูนย์อยู่ UTC+7 ถ้าใช้ UTC
+ *    เช้าวันที่ 1 ธ.ค. ก่อนเจ็ดโมงจะยังอ่านว่าเป็นวันที่ 30 พ.ย. */
+const TAB_SUP_FROM="2026-12-01";
+function tabSupOn(){
+  if(typeof bdOwner==="function"&&bdOwner())return true;
+  try{return ymdOf(new Date())>=TAB_SUP_FROM;}catch(e){return false;}
+}
 function renderTabs(){
   const sup=document.getElementById("tabSup");
   const top=document.getElementById("tabTop"),sub=document.getElementById("tabSub");
   if(!top||!sub)return;
   const cur=tabGroupOf(CURTAB),vis=tabVisible();
   const curSup=tabSupOf(cur.k);
-  /* ปุ่มใหญ่ที่มีหมวดเหลืออยู่จริงเท่านั้น และเรียงตามตารางข้างบน */
-  const sups=TAB_SUPERS.map(s=>({s:s,list:vis.filter(x=>tabSupOf(x.g.k)===s.k)}))
+  /* ปุ่มใหญ่ที่มีหมวดเหลืออยู่จริงเท่านั้น และเรียงตามตารางข้างบน
+     ก่อนวันเริ่มใช้ (`tabSupOn`) ไม่ต้องขึ้นแถวนี้ และแถวถัดมาโชว์ทุกหมวดแบบเดิม */
+  const supOn=tabSupOn();
+  const sups=!supOn?[]:TAB_SUPERS.map(s=>({s:s,list:vis.filter(x=>tabSupOf(x.g.k)===s.k)}))
     .filter(x=>x.list.length);
   if(sup){
     sup.innerHTML=(sups.length<2)?"":sups.map(x=>{
@@ -16683,10 +16830,8 @@ function spGinNoteHtml(sid){
     <div class="controls sp-daybar" style="margin:10px 0 0">${spDayPick(sid)}</div>
     ${can?`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
       <label class="psub" style="min-width:110px">เลข GIN ${fmtDate(ymd)}</label>
-      <input id="spGinNo" value="${anaEsc(((cur&&cur.g)||[]).join(", "))}"
-        placeholder="เช่น 141, 142 (คั่นด้วยจุลภาคได้)"
-        style="padding:10px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:16px;
-          font-family:ui-monospace,monospace;min-width:220px;flex:1">
+      <input id="spGinNo" class="sp-fin" value="${anaEsc(((cur&&cur.g)||[]).join(", "))}"
+        placeholder="เช่น 141, 142 (คั่นด้วยจุลภาคได้)" style="min-width:220px">
       <button class="btn-go" onclick="spGinNote('${anaEsc(sid)}','${ymd}')">💾 บันทึก</button></div>`
       :`<div class="insight" style="margin-top:10px">ดูอย่างเดียว</div>`}
     ${all.length?`<div class="tblwrap" style="margin-top:12px"><table class="cst-rt"><thead><tr>
@@ -16996,7 +17141,8 @@ function renderSpord(){
       /* แถวแท็บแบบเดียวกับแท็บย่อยของหมวดอื่น (.tabs2) — แถวเดียว เลื่อนซ้ายขวาได้
          และวาดลงกล่อง #spTabs ที่อยู่ "บนสุดของหน้า" ใต้แถบหมวดใหญ่ ไม่ใช่ในเนื้อหน้า
          เจ้าของสั่ง 26 พ.ย. 69: *"เอากรอบในนั้นขยับขึ้นมาอยู่ด้านบนให้เห็นชัดชัด"* */
-      const chip=(k,t)=>`<button type="button" class="tab2${sec===k?" on":""}" onclick="spSetSec('${k}')">${t}</button>`;
+      /* ชิปขั้นงานใช้สีประจำขั้นเหมือนกัน — ชิป · ปุ่มในแถบจังหวะงาน · ทั้งหน้าจอ จะได้เป็นสีเดียวกัน */
+      const chip=(k,t)=>`<button type="button" class="tab2 spz-${k}${sec===k?" on":""}" onclick="spSetSec('${k}')">${t}</button>`;
       {const tb=document.getElementById("spTabs");
        if(tb){tb.innerHTML=spTabsOn(slNow).map(x=>chip(x.k,x.lb)).join("");tb.style.display="";}}
       /* สามหน้าแรกทำงานเป็นรายวัน อีกสองหน้าดูทั้งใบ
@@ -17005,16 +17151,23 @@ function renderSpord(){
       /* 🕘 แถบจังหวะงาน เช้า → บ่าย → เย็น ของ "วันเดียวกัน" — โชว์ทุกขั้นที่ทำงานเป็นรายวัน
          รวมหน้าเซลล์คีย์ของเซลล์ด้วย (ไม่มีตัวเลือกวันซ้ำ แต่ต้องรู้ว่าวันนั้นถึงขั้นไหนแล้ว) */
       const flow=SP_DAYTABS.indexOf(sec)>=0?spFlowHtml(SP.sid,spDay(SP.sid)):"";
-      let H=`<div class="panel"><div class="cst-fb">
+      let H=`<div class="panel sp-nav"><div class="cst-fb">
           <button type="button" class="btn-ghost" onclick="spBack()">← กลับไปรายการใบ</button>
           <span class="psub">${SP.ym&&SP.ym!=="ไม่ระบุ"?fmtMonth(SP.ym):""}</span></div>
         ${flow}${withDay?`<div class="controls sp-daybar" style="margin:10px 0 0">${spDayPick(SP.sid)}</div>`:""}</div>`;
-      if(sec==="key"){body.innerHTML=H+spKeyHtml(SP.sid);return;}
-      if(sec==="rep"){body.innerHTML=H+spRepTabHtml(SP.sid);return;}
-      if(sec==="adm"){body.innerHTML=H+spAdmHtml(SP.sid);return;}
-      if(sec==="out"){body.innerHTML=H+spOutHtml(SP.sid);return;}
-      if(sec==="rpt"){body.innerHTML=H+spRptHtml(SP.sid);return;}
-      body.innerHTML=H+spOldHtml();return;
+      /* 🎨 ครอบทั้งหน้าด้วย "โซนสีของขั้นนั้น" (เจ้าของสั่ง 27 พ.ย. 69: *"ให้มันมีแบ่งโซน
+         แบ่งสีช่องหน้าจอการทำงานนิดนึง สำหรับทุกฝ่าย ให้มันดูง่าย เห็นช่องกรอกง่าย ๆ …
+         ตอนนี้มันดูขาวโล่ง แซมน้ำเงิน"*) — ซุปจด=ส้ม · เซลล์คีย์=น้ำเงิน · แอดมินตรวจ=ม่วง ·
+         คลังจัดส่ง=เขียว · รายงาน=เทา  สีเดียวกับปุ่มขั้นในแถบจังหวะงาน คนจะได้จำสีได้
+         ⚠️ เป็นเรื่องหน้าตาล้วน ๆ — ไม่มีฟังก์ชันไหนเปลี่ยนตรรกะ ไม่แตะข้อมูล และ div นี้ครอบ
+            ของเดิมทั้งก้อน ของข้างในยังเป็น .panel ชุดเดิมทุกตัว */
+      const Z=h=>`<div class="sp-zone spz-${sec}">${H}${h}</div>`;
+      if(sec==="key"){body.innerHTML=Z(spKeyHtml(SP.sid));return;}
+      if(sec==="rep"){body.innerHTML=Z(spRepTabHtml(SP.sid));return;}
+      if(sec==="adm"){body.innerHTML=Z(spAdmHtml(SP.sid));return;}
+      if(sec==="out"){body.innerHTML=Z(spOutHtml(SP.sid));return;}
+      if(sec==="rpt"){body.innerHTML=Z(spRptHtml(SP.sid));return;}
+      body.innerHTML=Z(spOldHtml());return;
     }
   }
   const q=spNo(SP.q);
@@ -17167,8 +17320,8 @@ function spFlowHtml(sid,ymd){
     <div class="sp-flow-d">🗓 <b>${fmtDate(ymd)}</b> — ทั้งสามขั้นเป็นของวันเดียวกัน</div>
     <div class="sp-flow-r">${steps.map((s,i)=>
       `${i?'<span class="sp-flow-a">▶</span>':""}<button type="button"
-        class="sp-flow-s${s.ok?" ok":""}${s.k===cur?" on":""}" onclick="spSetSec('${s.k}')">
-        <span class="sp-flow-t">${s.tm}</span>
+        class="sp-flow-s spz-${s.k}${s.ok?" ok":""}${s.k===cur?" on":""}" onclick="spSetSec('${s.k}')">
+        <span class="sp-flow-t">${i+1}. ${s.tm}</span>
         <span class="sp-flow-n">${s.ic} ${anaEsc(s.nm)}</span>
         <span class="sp-flow-v">${s.ok?"✓ ":""}${anaEsc(s.txt)}</span></button>`).join("")}</div></div>`;
 }
@@ -17958,10 +18111,8 @@ function spAdmHtml(sid){
             :`<span class="psub">ยังไม่ได้อัพไฟล์ — กด <b>📥 ไฟล์ใบจัดของ</b> ด้านบน</span>`))}</div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
         <label class="psub" style="min-width:120px">เลข GIN ของวันนี้</label>
-        <input id="spGinIn" value="${anaEsc(((g&&g.g)||[]).join(", "))}"
-          placeholder="เช่น 141, 142 (คั่นด้วยจุลภาคได้)"
-          style="padding:10px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:16px;
-            font-family:ui-monospace,monospace;min-width:240px;flex:1">
+        <input id="spGinIn" class="sp-fin" value="${anaEsc(((g&&g.g)||[]).join(", "))}"
+          placeholder="เช่น 141, 142 (คั่นด้วยจุลภาคได้)" style="min-width:240px">
         <button class="btn-go"
           onclick="spGinGo('${anaEsc(sid)}','${ymd}')">🔎 ตรวจและบันทึก</button></div>
       ${haveFile?`<div class="psub" style="margin-top:6px">เลข GIN ที่มีในไฟล์: ${

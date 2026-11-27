@@ -744,6 +744,19 @@ code, never printed.
   `#planBadge2` (the group), or outstanding work would be hidden one level down.
   📱 On a phone the row is a **2×2 grid, not a scrolling strip** — measured at 390px, the fourth
   button sat half off the right edge, and this is the top level of the whole site's navigation.
+  **⏳ It does not reach the team until 1 Dec 26** (`TAB_SUP_FROM`/`tabSupOn`, owner 27 Nov 26:
+  *"เพื่อไม่ให้คนใช้งานจริงงง ช่วยปรับของฝั่งเซลล์ ซุป แอดมิน ให้กลายเป็นหมวดย่อยตามเดิมไปก่อน
+  เดี๋ยวค่อยปรับใหม่เป็นแบบที่เราทำกัน (1st 2nd หน้างาน อื่นๆ) วันที่ 1 ธค.2026 แทน"*). Until that
+  date a rep, the supervisor, the admins and the team roles get the **old flat row of all 12
+  groups**; only **`bdOwner()`** sees the buckets, because he is the one reviewing them. On 1 Dec
+  it switches on for everyone with no code change. Three rules: this **hides the row only** — the
+  whole `TAB_SUPERS` table, `tabSupOf` and `switchSuper` are untouched, the same way retiring a
+  feature only removes its line from a table; the date is read through **`ymdOf`, never
+  `toISOString()`** (the depot is on UTC+7, so a UTC read would still say 30 Nov at 06:30 on the
+  1st); and any test that asserts the bucket layout must force the gate (`tabSupOn`) rather than
+  depend on today's date, while a test that reads the calendar's red badge must accept
+  **either** `#planBadge` (the bucket) or `#planBadge2` (the group), since before 1 Dec only the
+  second one exists.
   **Every date / round / month picker carries ◀ ▶ step buttons** (`.dstep`, `selStep`/`dateStep`/
   `keyStep`/`ordStep`/`pjStep`) — the owner asked for the PJP one everywhere. ◀ always means
   *older* and ▶ *newer*, so a `<select>` whose options are filled newest-first (most of them, they
@@ -1945,6 +1958,37 @@ code, never printed.
   pushed the 54px header to 110px, which is what shoved the avatar and ออก out of line; and
   **a save button is never a dashed outline** (`.sp-save button` is solid blue now) — a dashed border
   is what `.upload-btn` uses to say *drop a file here*, a different thing entirely.
+  **📱 Rotating the phone must not leave the page wider than the screen** (owner 27 Nov 26:
+  *"ในมือถือพอพลิกเป็นแนวนอน แล้วกลับมาเป็นแนวตั้ง มันกลายเป็นแบบนี้"* — narrow cards on the left,
+  the chart panel jutting out far wider, the header clipped). **The cause was CSS Grid, not
+  Chart.js**: a track written `1fr` has an automatic minimum of **min-content**, and Chart.js
+  writes `style.width` on the canvas **in pixels** — so after rotating back the landscape pixel
+  width was still on the canvas, the track could not shrink below it, the document went wider than
+  the viewport, and Chart.js never shrank the canvas because its container never got narrower.
+  A deadlock. Measured at 390px before the fix: the grid computed to **800px** and the document to
+  **814px**. Fixed in three layers — every chart-bearing track is **`minmax(0,1fr)`**,
+  `.chart-wrap` carries `min-width:0;overflow:hidden`, and `#app canvas{max-width:100%}` backstops
+  the containers whose grid is written as an inline style (`#anaPieGrid`). **`bdReflow`** on
+  `orientationchange`/`resize` then tells every live chart to re-measure (iOS settles the new size
+  after the event), which is insurance, not the fix. Prove it with
+  **`node test/browser/layout.test.cjs`** (18 checks, self-contained).
+  **🎨 The ออเดอร์พิเศษ pages are colour-zoned per step** (`TAB_SUPERS`'s sibling idea; `.sp-zone`
+  + `.spz-key|rep|adm|out|rpt`, owner 27 Nov 26: *"ขอปรับหน้าออเดอร์พิเศษ ให้มันมีแบ่งโซนแบ่งสีช่อง
+  หน้าจอการทำงานนิดนึง สำหรับทุกฝ่าย ให้มันดูง่าย เห็นช่องกรอกง่าย ๆ … ตอนนี้มันดูขาวโล่ง แซมน้ำเงิน
+  … ให้มีdynamic ของสีและฟ้อนมากกว่านี้หน่อย"*). The work is a relay of three teams in one day, so
+  each step owns a colour and **the step chip, the flow-strip button and the whole screen share
+  it**: ✍️ ซุปจด amber · 📲 เซลล์คีย์ blue · 🔎 แอดมินตรวจ violet · 🚚 คลังจัดส่ง green ·
+  📊 รายงาน slate. `renderSpord` wraps each section in one `<div class="sp-zone spz-…">` and every
+  rule reads four custom properties (`--z` `--zs` `--zb` `--zg`) off it — so a new step needs one
+  line, not a new stylesheet. Four rules: it is **presentation only**, no function, figure or
+  permission is keyed on a colour (`api/spord.js` is untouched); **colour means "which step", never
+  "passed/failed"** — success and failure stay `.sp-ok`/`.sp-bad` and the calendar's status dots
+  keep their own meanings, so never reuse a step colour for an outcome; **an empty entry field is
+  tinted and a filled one turns white with a dark border** (`:placeholder-shown`), which is what
+  "เห็นช่องกรอกง่าย ๆ" asked for, so every such input must keep a `placeholder`; and **`.sp-zone`
+  must be declared BEFORE the `.spz-*` lines** — both are single-class selectors, so the later one
+  wins and putting the fallback last turned every step blue. Prove it with
+  **`node test/browser/layout.test.cjs`** at 1280 and 390.
 - `test/browser/_chrome.cjs` — finds the installed Chromium at run time. Never hard-code a
   `/opt/pw-browsers/chromium-NNNN/...` path in a test again: the image moved once and took all 15
   browser tests down with it.
