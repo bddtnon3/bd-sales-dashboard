@@ -15667,7 +15667,7 @@ function spOrdPcs(nos,codes,ym,line){
       const a=d[c]||[];
       const q=(+a[0]||0)+(+a[1]||0);
       if(!q)return;
-      const ps=(+a[2]>0)?+a[2]:spPsOf(c,ym);
+      const ps=spPsOf(c,ym)||(+a[2]||0);
       if(!ps){if(o.unk.indexOf(c)<0)o.unk.push(c);return;}
       o.pcs[c]=(o.pcs[c]||0)+q*ps;
     });
@@ -16629,15 +16629,24 @@ function spRptRows(sid){
   const R=x=>Math.round(x*100)/100;
   /* ใบตัวกระจายไม่ได้เคลียร์ทีละรายการ — "ออกไปกี่ลัง" ของวันนั้นมาจากผลตรวจใบจัดของของวันนั้น */
   const alloc=spGrpOf(spSlip(sid))==="D"?(()=>{const m={};
-    spAllOut(sid).days.forEach(x=>{const e=m[x.d]||(m[x.d]={cs:0,w:0,p:0});
-      e.cs+=x.cs;e.w+=x.w;e.p+=x.p;});return m;})():null;
+    spAllOut(sid).days.forEach(x=>{const e=m[x.d]||(m[x.d]={cs:0,w:0,p:0,pcs:{}});
+      e.cs+=x.cs;e.w+=x.w;e.p+=x.p;
+      Object.keys(x.pcs||{}).forEach(c=>{e.pcs[c]=(e.pcs[c]||0)+(+x.pcs[c]||0);});
+      return;});return m;})():null;
   return spRptDays(sid).map(d=>{
+    const my=String(d).slice(0,7);
     const cut=lots.filter(l=>l.d===d).reduce((a,l)=>a+(+l.cs||0),0);
     const cutP=lots.filter(l=>l.d===d).reduce((a,l)=>a+(+l.pc||0),0);
-    let out=0,outW=0,outP=0;
-    if(alloc){const a=alloc[d]||{cs:0,w:0,p:0};out=a.cs;outW=a.w;outP=a.p;}
+    /* ชิ้นต่อรหัสของวันนั้น — ใช้พิมพ์ยอดข้ามสินค้าแบบไม่บวกเศษ (spSumTxt) */
+    const cutPcs={};
+    lots.filter(l=>l.d===d).forEach(l=>{const ps=spPsOf(l.code,my);
+      if(!ps)return;cutPcs[l.code]=(cutPcs[l.code]||0)+(+l.cs||0)*ps+(+l.pc||0);});
+    let out=0,outW=0,outP=0,outPcs={};
+    if(alloc){const a=alloc[d]||{cs:0,w:0,p:0,pcs:{}};out=a.cs;outW=a.w;outP=a.p;outPcs=a.pcs||{};}
     else lots.forEach(l=>((l.clr)||[]).forEach(c=>{if(c&&c.d===d){out+=(+c.cs||0);outW+=(+c.cs||0);
-      outP+=(+c.pc||0);}}));
+      outP+=(+c.pc||0);
+      const ps=spPsOf(l.code,my);
+      if(ps)outPcs[l.code]=(outPcs[l.code]||0)+(+c.cs||0)*ps+(+c.pc||0);}}));
     /* 📲 "เซลล์คีย์" ของวันนั้น — อ่านผ่าน `spTrack` ตัวเดียวกับหน้าติดตามการคีย์รายสาย
        ⚠️ เคยอ่านแต่ `it` ที่ "พิมพ์จำนวนไว้" ซึ่งตั้งแต่ 27 พ.ย. 69 เซลล์ไม่พิมพ์แล้ว
           (ใส่แต่เลขออเดอร์) ⇒ การ์ดขึ้น **เซลล์คีย์แล้ว 0 ลัง · 0%** ทั้งที่เซลล์คีย์มาครบ
@@ -16652,7 +16661,7 @@ function spRptRows(sid){
     const mn=spRptMoney(sid,d);
     const sale=(typeof ohSale==="function")?ohSale(d):null;
     const niv=mn?mn.niv:null;
-    return {d:d,cut:R(cut),out:R(out),keyed:R(keyed),kPcs:kPcs,
+    return {d:d,cut:R(cut),out:R(out),keyed:R(keyed),kPcs:kPcs,cutPcs:cutPcs,outPcs:outPcs,
       cutQ:{cs:cut,pc:R(cutP)},outQ:{cs:outW,pc:R(outP)},keyQ:{cs:keyed,pc:R(keyP)},
       gsv:mn?R(mn.gsv):null,niv:niv==null?null:R(niv),
       sale:sale==null?null:R(sale),
@@ -16707,11 +16716,11 @@ function spRptProdHtml(B){
       <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">🔴 ขาด</div>
         <div class="v down">${n.short}</div>
         <div class="s">${n.short?("ขาดรวม "+(B.keyed?((Math.round(B.short/B.keyed*1000)/10).toFixed(1)+"%"):"–")
-          +" · "+spBalPcs(B.sh,B.ym)):"ไม่มี"}</div></div>
+          +" · "+spSumTxt(B.sh,B.ym)):"ไม่มี"}</div></div>
       <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">🟠 เกิน</div>
         <div class="v">${n.over}</div>
         <div class="s">${n.over?("เกินรวม "+(B.keyed?((Math.round(B.overG/B.keyed*1000)/10).toFixed(1)+"%"):"–")
-          +" · "+spBalPcs(B.ov,B.ym)):"ไม่มี"}</div></div>
+          +" · "+spSumTxt(B.ov,B.ym)):"ไม่มี"}</div></div>
       <div class="card"><div class="k">⏳ ยังไม่คีย์</div><div class="v">${n.wait}</div>
         <div class="s">รายการ</div></div>
       <div class="card" style="border-top:3px solid ${(B.pct!=null&&B.pct>=99.95)?"var(--good)":"var(--bad)"}">
@@ -16724,7 +16733,8 @@ function spRptProdHtml(B){
         <th>🚚 คลังจัด</th><th>ขาดไป %</th><th>เกินมา %</th><th class="l">ผล</th></tr></thead>
       <tbody class="sp-pfold">${rows}</tbody></table></div>
     <div class="psub" style="margin-top:8px">% คิดจาก <b>เซลล์คีย์</b> เป็นฐาน ·
-      ขาดกับเกินแยกกัน ไม่หักลบข้ามสินค้า${
+      ขาดกับเกินแยกกัน ไม่หักลบข้ามสินค้า<br><b>+เศษ</b> = ยอดรวมหลายสินค้านับเฉพาะลังเต็ม
+      เพราะขนาดลังแต่ละสินค้าไม่เท่ากัน เศษชิ้นดูที่แถวสินค้า${
       B.noPs.length?'<br><b class="down">⚠️ '+B.noPs.length+' รหัสไม่รู้ขนาดลัง</b> นับเป็นชิ้น ไม่ได้เดาให้':""}${
       B.nofile?'<br>อีก '+B.nofile+' วันยังไม่มีไฟล์ครอบ — ยังไม่ได้นับรวม':""}</div>
   </div>`;
@@ -16750,22 +16760,26 @@ function spRptHtml(sid){
   const kpct=cut>0?Math.round(keyed/cut*100):0;
   /* รวมของทั้งใบเป็นลัง+ชิ้น — แตกทีละรหัสแล้วค่อยบวก ไม่ใช่บวกเศษชิ้นของแต่ละวันดิบ ๆ
      ⚠️ เคยบวก `pc` ข้ามวัน จึงขึ้น "558 ลัง 998 ชิ้น" บนการ์ด (เจ้าของทักเอง 29 พ.ย. 69) */
-  const T={cut:{cs:0,pc:0},key:{cs:0,pc:0},out:{cs:0,pc:0}};
-  rows.forEach(r=>{T.cut.cs+=r.cutQ.cs;T.cut.pc+=r.cutQ.pc;});
-  T.cut.pc=Math.round(T.cut.pc*100)/100;
-  {const kp={};rows.forEach(r=>Object.keys(r.kPcs||{}).forEach(c=>{
-     kp[c]=(kp[c]||0)+(+r.kPcs[c]||0);}));
-   T.key=spPcsSplit(kp,BL?BL.ym:"");}
-  if(sn.src==="alloc")T.out={cs:sn.out,pc:+sn.outP||0};
-  else rows.forEach(r=>{T.out.cs+=r.outQ.cs;T.out.pc+=r.outQ.pc;});
-  T.out.pc=Math.round(T.out.pc*100)/100;
+  const ym=BL?BL.ym:String((spSlip(sid)||{}).d||todayISO()).slice(0,7);
+  /* 🧮 ยอดรวมของทั้งใบคือยอด "ข้ามสินค้า" ⇒ พิมพ์ผ่าน spSumTxt (ลังเต็ม + "+เศษ")
+     ห้ามบวกเศษชิ้นของลัง 72 กับลัง 12 เข้าด้วยกัน (เจ้าของทัก 29 พ.ย. 69 รอบที่สี่) */
+  const T={cut:{},key:{},out:{}};
+  (BL?BL.rows:[]).forEach(r=>{if(r.tgt)T.cut[r.code]=r.tgt;});
+  rows.forEach(r=>Object.keys(r.kPcs||{}).forEach(c=>{
+    T.key[c]=(T.key[c]||0)+(+r.kPcs[c]||0);}));
+  if(sn.src==="alloc"){
+    let AO=null;try{AO=spAllOut(sid);}catch(e){AO=null;}
+    ((AO&&AO.prod)||[]).forEach(t=>{const v=Math.round((+t.sP||0)+(+t.fP||0));
+      if(v)T.out[t.code]=v;});
+  }
+  const Tt=m=>spSumTxt(m,ym);
   const bar=(p,col)=>`<div style="height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px">
     <div style="height:100%;width:${Math.max(0,Math.min(100,p))}%;background:${col}"></div></div>`;
   const body=rows.map(r=>`<tr>
     <td class="l"><b>${fmtDate(r.d)}</b></td>
-    <td>${(r.cutQ.cs||r.cutQ.pc)?spCsTxt(r.cutQ.cs,r.cutQ.pc):"-"}</td>
-    <td>${(r.keyQ.cs||r.keyQ.pc)?spCsTxt(r.keyQ.cs,r.keyQ.pc):"-"}</td>
-    <td>${(r.outQ.cs||r.outQ.pc)?spCsTxt(r.outQ.cs,r.outQ.pc):"-"}</td>
+    <td>${(r.cutQ.cs||r.cutQ.pc)?(Object.keys(r.cutPcs).length?Tt(r.cutPcs):spCsTxt(r.cutQ.cs,r.cutQ.pc)):"-"}</td>
+    <td>${(r.keyQ.cs||r.keyQ.pc)?Tt(r.kPcs):"-"}</td>
+    <td>${(r.outQ.cs||r.outQ.pc)?(Object.keys(r.outPcs).length?Tt(r.outPcs):spCsTxt(r.outQ.cs,r.outQ.pc)):"-"}</td>
     <td>${r.niv==null?'<span style="color:var(--muted)">รอแอดมินตรวจ</span>':THB(r.niv)}</td>
     <td>${r.sale==null?'<span style="color:var(--muted)">รอไฟล์ยอดขาย</span>':THB(r.sale)}</td>
     <td>${r.net==null?'<span style="color:var(--muted)">—</span>':"<b>"+THB(r.net)+"</b>"}</td>
@@ -16774,12 +16788,13 @@ function spRptHtml(sid){
     <h3>📊 รายงานใบนี้</h3>
     <div class="cards" style="margin-top:10px">
       <div class="card"><div class="k">ตัดบิลไว้</div>
-        <div class="v" style="font-size:20px">${spCsTxt(T.cut.cs,T.cut.pc)}</div><div class="s">ตามใบตัดบิล</div></div>
+        <div class="v" style="font-size:20px">${Object.keys(T.cut).length?Tt(T.cut):spCsTxt(cut,0)}</div>
+        <div class="s">ตามใบตัดบิล</div></div>
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k">เซลล์คีย์แล้ว</div>
-        <div class="v" style="font-size:20px">${spCsTxt(T.key.cs,T.key.pc)}</div>
+        <div class="v" style="font-size:20px">${Tt(T.key)}</div>
         <div class="s">${kpct}% ของที่ตัดบิล</div>${bar(kpct,"var(--blue)")}</div>
       <div class="card" style="border-top:3px solid ${outOver>0?"var(--warn)":cstPctCol(pct)}"><div class="k">ส่งออกแล้ว</div>
-        <div class="v" style="font-size:20px">${spCsTxt(T.out.cs,T.out.pc)}</div>
+        <div class="v" style="font-size:20px">${Object.keys(T.out).length?Tt(T.out):spCsTxt(sn.out||0,0)}</div>
         <div class="s">${outOver>0?("เกินที่ตัดบิลไว้ "+R(outOver)+" ลัง"):(pct+"% ของที่ตัดบิล")}</div>${
         bar(pct,outOver>0?"var(--warn)":cstPctCol(pct))}</div>
       <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">ยังค้างรอส่ง</div>
@@ -16833,6 +16848,10 @@ function spRptHtml(sid){
  * ==========================================================================*/
 function spAllOut(sid){
   const C=spKeyOk(),codes=spSlipCodes(sid);
+  /* 📦 ขนาดลังอ่านจาก Product Master ก่อนเสมอ แล้วค่อยถอยไปใช้ Pack Size ของไฟล์ใบจัดของ
+     (วัดแล้วตรงกัน 526/526 รหัส) — ต้องเป็นค่าเดียวกันทั้งตอนแปลงเป็นชิ้นและตอนแตกกลับเป็นลัง
+     ไม่งั้นเศษที่ได้ไม่ใช่เศษของลังที่หน้าจอบอก (กฎที่เจ้าของสั่งย้ำ 29 พ.ย. 69) */
+  const sym=String((spSlip(sid)||{}).d||todayISO()).slice(0,7);
   const nmOf={},cutOf={},cutPOf={},order={};
   codes.forEach((c,i)=>{nmOf[c.code]=c.nm||"";cutOf[c.code]=+c.cs||0;cutPOf[c.code]=+c.pc||0;
     order[c.code]=i;});
@@ -16855,7 +16874,7 @@ function spAllOut(sid){
     gs.forEach(x=>{gset[x]=1;});
     ks.forEach(kk=>{
       const a=rows[kk]||{},pp=kk.split("|"),ln=pp[0],code=pp[1];
-      const pk=+a.pk||0,nm=nmOf[code]||a.nm||"";
+      const pk=spPsOf(code,sym)||(+a.pk||0),nm=nmOf[code]||a.nm||"";
       const shr=alShrink(nm,pk);
       const sale={cs:+a.sc||0,sh:+a.ss||0,pc:+a.sp||0};
       const free={cs:+a.fc||0,sh:+a.fs||0,pc:+a.fp||0};
@@ -19053,7 +19072,7 @@ function spNoDetPcs(no,ms){
     Object.keys(d).forEach(c=>{
       const a=d[c]||[],n=(+a[0]||0)+(+a[1]||0);
       if(!n)return;
-      const ps=(+a[2]>0)?+a[2]:spPsOf(c,ym);
+      const ps=spPsOf(c,ym)||(+a[2]||0);
       if(!ps){bad=1;return;}
       m[c]=(m[c]||0)+n*ps;
     });
@@ -19501,7 +19520,7 @@ function spBackChkPcs(sid,ymd,codes,ym){
   Object.keys(g.rows).forEach(k=>{
     const r=g.rows[k]||{},p=String(k).split("|"),ln=p[0]||"",code=p[1]||"";
     if(!code||!codes[code])return;
-    const pk=+r.pk||spPsOf(code,ym);
+    const pk=spPsOf(code,ym)||(+r.pk||0);
     if(!pk)return;
     const shr=(typeof alShrink==="function")?(alShrink(r.nm||"",pk)||0):0;
     const sv=spPcs(r.xc,r.xs,r.xp,pk,shr),fv=spPcs(r.yc,r.ys,r.yp,pk,shr);
@@ -19556,7 +19575,7 @@ function spBackDay(sid,ymd,codes,lines){
         if(!codes[c])return;
         const a=dd[c]||[],q=(+a[0]||0)+(+a[1]||0);
         if(!q)return;
-        const ps=(+a[2]>0)?+a[2]:spPsOf(c,ym);
+        const ps=spPsOf(c,ym)||(+a[2]||0);
         if(!ps){if(o.unkPs.indexOf(c)<0)o.unkPs.push(c);return;}
         const v=q*ps;
         o.pcs[c]=(o.pcs[c]||0)+v;L.pcs[c]=(L.pcs[c]||0)+v;
@@ -19902,6 +19921,42 @@ function spBal(sid){
   return o;
 }
 function spBalPcs(pcs,ym){const x=spPcsSplit(pcs||{},ym);return spCsTxt(x.cs,x.pc);}
+/* ============================================================================
+ * 📦 ยอดรวมของ "หลายสินค้า" — ห้ามบวกเศษชิ้นข้ามรหัส
+ *
+ * เจ้าของ 29 พ.ย. 69 รอบที่สี่ พร้อมภาพหน้าจอ: *"ยังคงมีแบบ 44 ชิ้นอยู่ดี ปรับให้มัน
+ *   จริงจังขึ้นหน่อย เป็นหลายรอบแล้ว ครั้งหน้าผมต้องไม่เห็นหน่วยมั่ว ๆ แบบนี้อีกแล้วนะ
+ *   คุณเทียบสินค้าและหน่วยจาก product master file ที่ผมเคยส่งให้คุณได้ มันมีแพ็คไซส์อยู่"*
+ *
+ * 🔍 วัดก่อนแก้ — เทียบ Product_Master_26112026.xlsx กับไฟล์ใบจัดของจริงของเขา:
+ *    **แพ็คไซส์ตรงกันทั้ง 526 รหัส (526/526)** · 65786539 และ 65786541 = **72 ชิ้น/ลัง**
+ *    (ชื่อสินค้าเขียน 12X6X10ML) · 65724220 = 8 · 65691963 = 12
+ *    ⇒ แถวรายสินค้าถูกแล้ว: "ขาด 44 ชิ้น" ของลัง 72 คือ 44 ชิ้นจริง ๆ
+ *
+ * ❌ ที่มั่วคือ **บรรทัด "รวม"**: มันบวก `ลัง` กับ `ชิ้น` ของสินค้าคนละขนาดลังเข้าด้วยกัน
+ *    ขาด 44 ชิ้น (ลัง 72) + 1 ลัง 2 ชิ้น (ลัง 12) → พิมพ์ว่า **"รวม 1 ลัง 46 ชิ้น"**
+ *    เกิน 10+8+19+4+4 ชิ้น จากลัง 72/12/8 → **"7 ลัง 45 ชิ้น"** · และ **"228 ลัง 83 ชิ้น"**
+ *    83 ชิ้นมากกว่าลังที่ใหญ่ที่สุดในใบเสียอีก — ไม่มีใครหยิบของตามเลขนี้ได้
+ *
+ * 🔑 กฎ: **เศษชิ้นของคนละรหัสบวกกันไม่ได้ และหารต่อก็ไม่ได้** (9 ชิ้นของลัง 12 กับ 3 ชิ้น
+ *    ของลัง 6 ไม่ใช่หนึ่งลังของอะไรเลย) ⇒ ยอดรวมข้ามสินค้า **นับเฉพาะลังเต็มของแต่ละรหัส**
+ *    แล้วติด **"+เศษ"** ไว้เมื่อยังมีรหัสที่เหลือเศษ · เศษตัวจริงอยู่ในตารางรายสินค้า
+ * ⚠️ รหัสเดียวยังพิมพ์ ลัง+ชิ้น เต็มเหมือนเดิม เพราะเป็นตัวเลขที่หยิบของได้จริง
+ * ==========================================================================*/
+function spSumTxt(pcs,ym){
+  const m=pcs||{},ks=Object.keys(m).filter(c=>Math.round(+m[c]||0)>0);
+  if(!ks.length)return "0 <small>ลัง</small>";
+  if(ks.length===1)return spBalOne(m[ks[0]],spPsOf(ks[0],ym));   /* รหัสเดียว = ตอบเต็มได้ */
+  let cs=0,rest=0;
+  ks.forEach(c=>{
+    const v=Math.round(+m[c]||0),ps=spPsOf(c,ym);
+    if(!ps){rest++;return;}                 /* ไม่รู้ขนาดลัง = แตกไม่ได้ ห้ามเดา */
+    cs+=Math.floor(v/ps);
+    if(v%ps)rest++;
+  });
+  return cs.toLocaleString()+" <small>ลัง</small>"+
+    (rest?'<span class="psub"> +เศษ</span>':"");
+}
 /* ชิ้น → "N ลัง M ชิ้น" ด้วยขนาดลังของรหัสเดียว */
 function spBalOne(v,ps){
   const n=Math.round(+v||0);
@@ -19945,7 +20000,8 @@ function spBalHtml(sid){
   const pc=v=>(v===null||v===undefined)?'<span class="psub">—</span>':(v.toFixed(1)+"%");
   const col=v=>(v===null||v===undefined)?"var(--line)":(v>=99.95?"var(--good)":"var(--bad)");
   const T=(v,ps)=>spBalOne(v,ps);
-  const mapT=f=>spBalPcs(B.rows.reduce((m,r)=>{const v=f(r);if(v)m[r.code]=v;return m;},{}),B.ym);
+  /* ยอดรวมข้ามสินค้า — ลังเต็ม + "+เศษ" ห้ามบวกเศษชิ้นข้ามรหัส (ดูบันทึกที่ spSumTxt) */
+  const mapT=f=>spSumTxt(B.rows.reduce((m,r)=>{const v=f(r);if(v)m[r.code]=v;return m;},{}),B.ym);
   const h=[`<div class="panel sp-bal"><div class="sp-balh">🎯 ใบนี้ไปถึงไหนแล้ว
     <span class="psub"> · ${fmtDate(B.d0)} → ${fmtDate(B.d1)} · ${B.nOrd} ใบออเดอร์</span>
     ${spStPill(B.st)}</div>`];
@@ -19961,7 +20017,7 @@ function spBalHtml(sid){
     <div class="sp-balk" style="border-color:${B.short?"var(--bad)":(B.overG?"var(--warn)":"var(--good)")}">
       <div class="sp-balkt">${B.short?"🔴 ขาด (คลังยังจัดไม่ครบ)":(B.overG?"🟠 เกิน (ต้องหักออก)":"🟢 ผลต่าง")}</div>
       <div class="sp-balkv" style="color:${B.short?"var(--bad)":(B.overG?"var(--warn)":"var(--good)")}">${
-        B.short?spBalPcs(B.sh,B.ym):(B.overG?spBalPcs(B.ov,B.ym):"ครบ")}</div></div>
+        B.short?spSumTxt(B.sh,B.ym):(B.overG?spSumTxt(B.ov,B.ym):"ครบ")}</div></div>
     <div class="sp-balk" style="border-color:${col(B.pct)}"><div class="sp-balkt">✅ ตรงกับคลังจัด</div>
       <div class="sp-balkv" style="color:${col(B.pct)}">${pc(B.pct)}</div>
       <div class="psub">${B.pct===null?"รอไฟล์":(B.pct>=99.95?"ครบ 100%":("ขาดตกหล่น "+(100-B.pct).toFixed(1)+"%"))}</div></div>
@@ -19972,16 +20028,20 @@ function spBalHtml(sid){
   const todoO=B.rows.filter(r=>r.d>0).sort((a,b)=>b.d-a.d);
   if(todoK.length||todoS.length||todoO.length){
     h.push(`<div class="sp-baltd"><div class="sp-baltdh">📋 ต้องทำอะไรต่อ</div>`);
-    if(todoS.length)h.push(`<div class="sp-baltdg bad"><b>🔴 ขาด — คลังยังจัดไม่ครบตามที่เซลล์คีย์
-      รวม ${spBalPcs(B.sh,B.ym)}</b>${todoS.map(r=>
+    /* ⚠️ หัวข้อนับเป็น "รายการ" ไม่ใช่ยอดรวมลัง/ชิ้น — ยอดที่หยิบของได้จริงอยู่บรรทัดสินค้า
+       ข้างล่าง ส่วนยอดรวมข้ามสินค้าเคยพิมพ์ "รวม 1 ลัง 46 ชิ้น" ซึ่งเอาเศษของลัง 72 กับลัง 12
+       มาบวกกัน (เจ้าของทัก 29 พ.ย. 69) */
+    const nTxt=n=>`<span class="psub"> · ${n} รายการ</span>`;
+    if(todoS.length)h.push(`<div class="sp-baltdg bad"><b>🔴 ขาด — คลังยังจัดไม่ครบตามที่เซลล์คีย์</b>${
+      nTxt(todoS.length)}${todoS.map(r=>
       `<div class="sp-baltdr"><span>${anaEsc(r.nm||r.code)}</span>
         <b>ขาด ${T(-r.d,r.ps)}</b></div>`).join("")}</div>`);
-    if(todoO.length)h.push(`<div class="sp-baltdg warn"><b>🟠 เกิน — ต้องหักลบออก
-      รวม ${spBalPcs(B.ov,B.ym)}</b>${todoO.map(r=>
+    if(todoO.length)h.push(`<div class="sp-baltdg warn"><b>🟠 เกิน — ต้องหักลบออก</b>${
+      nTxt(todoO.length)}${todoO.map(r=>
       `<div class="sp-baltdr"><span>${anaEsc(r.nm||r.code)}</span>
         <b>เกิน ${T(r.d,r.ps)}</b></div>`).join("")}</div>`);
-    if(todoK.length)h.push(`<div class="sp-baltdg"><b>📲 ต้องคีย์เพิ่มให้ครบตั้งต้นในใบ
-      รวม ${spBalPcs(B.tk,B.ym)}</b>${todoK.map(r=>
+    if(todoK.length)h.push(`<div class="sp-baltdg"><b>📲 ต้องคีย์เพิ่มให้ครบตั้งต้นในใบ</b>${
+      nTxt(todoK.length)}${todoK.map(r=>
       `<div class="sp-baltdr"><span>${anaEsc(r.nm||r.code)}</span>
         <b>อีก ${T(r.toKey,r.ps)}</b></div>`).join("")}</div>`);
     h.push(`</div>`);
@@ -19992,7 +20052,7 @@ function spBalHtml(sid){
   const w=[];
   if(B.nofile)w.push("ยังไม่มีไฟล์ของ "+B.nofile+" วัน — วันพวกนั้นยังตอบไม่ได้ ไม่ใช่ว่าไม่มีงาน");
   if(B.noDet)w.push("ยังไม่ได้อ่านรายการสินค้าของ "+B.noDet+" วัน (ระบบกำลังดึงให้)");
-  if(B.overT)w.push("คีย์เกินตั้งต้นในใบ "+spBalPcs(B.ot,B.ym)+" — ตั้งต้นเป็นข้อมูลประกอบ ไม่ได้ใช้ตัดสินว่าครบ");
+  if(B.overT)w.push("คีย์เกินตั้งต้นในใบ "+spSumTxt(B.ot,B.ym)+" — ตั้งต้นเป็นข้อมูลประกอบ ไม่ได้ใช้ตัดสินว่าครบ");
   if(B.srcChk&&B.srcGin)w.push("คลังจัด: "+B.srcChk+" วันอ่านจากผลตรวจของแอดมิน (จำนวนที่คลังจัดจริง) · "+
     B.srcGin+" วันยังไม่ตรวจ จึงนับจากใบที่ออกเลข GIN แล้ว");
   if(B.unk.length||B.noPs.length)w.push("ไม่รู้ขนาดลัง "+
@@ -20007,8 +20067,11 @@ function spBalHtml(sid){
       :(r.st==="wait")?'<span class="psub">—</span>'
       :`<b style="color:${S.c}">${S.i} ${S.t} ${T(Math.abs(r.d),r.ps)}${
          r.st==="over"?" (หักออก)":""}</b>`;
+    /* 📦 บอกขนาดลังที่ใช้คิดไว้บนแถวเลย (มาจาก Product Master) — เจ้าของจะได้ตรวจหน่วยเองได้
+       ว่า "44 ชิ้น" เป็นเศษของลัง 72 จริง ไม่ใช่ตัวเลขที่ระบบแตกไม่ลง (29 พ.ย. 69) */
     h.push(`<tr class="sp-balr ${anaEsc(r.st)}"><td data-l="สินค้า"><b>${anaEsc(r.nm||r.code)}</b>
-        <span class="psub">${anaEsc(r.code)}</span></td>
+        <span class="psub">${anaEsc(r.code)}${
+          r.ps?" · ลังละ "+r.ps+" ชิ้น":' · <span class="down">ไม่รู้ขนาดลัง</span>'}</span></td>
       <td data-l="ตั้งต้นในใบ">${r.tgt===null?'<span class="psub">?</span>':T(r.tgt,r.ps)}${
         r.toKey?`<span class="psub">ต้องคีย์อีก ${T(r.toKey,r.ps)}</span>`
         :(r.overT?`<span class="psub">คีย์เกิน ${T(r.overT,r.ps)}</span>`:"")}</td>
@@ -20025,11 +20088,12 @@ function spBalHtml(sid){
       <div class="sp-ballns">`);
     lns.forEach(x=>{
       const S=SP_BST[x.st]||SP_BST.wait;
+      /* ชิปรายสายก็เป็นยอดข้ามสินค้า — ผ่าน spSumTxt เหมือนกัน ห้ามบวกเศษชิ้นคนละขนาดลัง */
       h.push(`<div class="sp-balln" style="border-color:${S.c}"><b>${anaEsc(x.ln)}</b>
-        <span>${spBalPcs(x.pcs,B.ym)}</span>
+        <span>${spSumTxt(x.pcs,B.ym)}</span>
         <span class="psub">${x.n} ใบ · คลังจัด ${x.nGin}</span>
         <span style="color:${S.c};font-weight:800">${S.i} ${S.t}${
-          x.st==="short"?(" "+spBalPcs(x.sh,B.ym)):(x.st==="over"?(" "+spBalPcs(x.ov,B.ym)):"")}</span></div>`);
+          x.st==="short"?(" "+spSumTxt(x.sh,B.ym)):(x.st==="over"?(" "+spSumTxt(x.ov,B.ym)):"")}</span></div>`);
     });
     h.push(`</div>`);
   }

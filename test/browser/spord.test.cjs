@@ -3804,6 +3804,121 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('📱 ...และหัวตารางยังอ่านได้ทั้งสองความกว้าง',
    w390.head===true&&w1280.head===true,'390='+w390.head+' · 1280='+w1280.head);
 
+ /* ============================================================================
+  * 18) 🔢 ยอดรวม "ข้ามสินค้า" ห้ามบวกเศษชิ้น + Product Master เป็นเจ้าของขนาดลัง
+  *   เจ้าของ 29 พ.ย. 69 รอบที่สี่: *"ยังคงมีแบบ 44 ชิ้นอยู่ดี ปรับให้มันจริงจังขึ้นหน่อย
+  *     เป็นหลายรอบแล้ว ครั้งหน้าผมต้องไม่เห็นหน่วยมั่ว ๆ แบบนี้อีกแล้วนะ คุณเทียบสินค้าและ
+  *     หน่วยจาก product master file ที่ผมเคยส่งให้คุณได้ มันมีแพ็คไซส์อยู่"*
+  *
+  *   วัดแล้ว: Product_Master_26112026.xlsx กับไฟล์ใบจัดของตรงกัน **526/526 รหัส**
+  *     65786539 / 65786541 = 72 ชิ้น/ลัง · 65724220 = 8 · 65691963 = 12
+  *   ⇒ แถวรายสินค้าถูกอยู่แล้ว ("ขาด 44 ชิ้น" คือเศษของลัง 72 จริง ๆ)
+  *     ที่มั่วคือบรรทัด **"รวม"** ซึ่งบวกเศษของลัง 72 กับลัง 12 → **"รวม 1 ลัง 46 ชิ้น"**
+  *
+  *   ฟิกซ์เจอร์จำลองเป๊ะ: ขาด FO72 44 ชิ้น (ลัง 72) + FO12 1 ลัง 2 ชิ้น (ลัง 12)
+  *     ของเดิม → "1 ลัง 46 ชิ้น"   ของใหม่ → "1 ลัง +เศษ" และหัวข้อบอก "2 รายการ"
+  *   และไฟล์ใบจัดของแกล้งบอกขนาดลัง FO72 ผิดเป็น 24 — master ต้องชนะทั้งขาไปและขากลับ
+  * ========================================================================== */
+ const MIX = `
+   __as('manager','','ผู้จัดการ');
+   window.__d0=spBackStep(todayISO(),-2);
+   CSTOCK.slips[B1].d=window.__d0;CSTOCK.slips[B1].g='D';
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};
+   /* Product Master: FO72 ลังละ 72 · FO12 ลังละ 12 */
+   MASTER={items:{FO72:{nm:'ซิตร้าวอเตอร์เมลอนโทนอัพ'},FO12:{nm:'ซิตร้า ซากุระ AHA FO'}},
+           det:{FO72:{ps:72},FO12:{ps:12}}};
+   CSTOCK.lots={L1:{id:'L1',sl:B1,d:window.__d0,code:'FO72',nm:'ซิตร้าวอเตอร์เมลอนโทนอัพ',
+                    cs:2,pc:0,ln:'CT11',clr:[]},
+                L2:{id:'L2',sl:B1,d:window.__d0,code:'FO12',nm:'ซิตร้า ซากุระ AHA FO',
+                    cs:4,pc:0,ln:'CT11',clr:[]}};
+   STOREDAILY={data:{},ord:{}};
+   const OTO={},OTD={};window.__nos=[];
+   for(var i=1;i<=2;i++){
+     var t='6'+'000000'+i,full='BDD01'+t;
+     OTO[t]={l:'209611',d:+window.__d0.slice(8,10),s:'SH'+i,w:3,p:0,c:3,n:2};
+     /* ⚠️ ช่องที่สามคือขนาดลังที่ "ไฟล์" บอก — จงใจให้ผิดเป็น 24 สำหรับ FO72 */
+     OTD[t]={FO72:[1,0,24],FO12:[2,0,12]};
+     STOREDAILY.ord[full]={s:'SH'+i,l:'209611',d:window.__d0,k:window.__d0,v:10,c:2,cs:3,pc:0};
+     window.__nos.push(full);
+   }
+   for(var k=-1;k<=2;k++){
+     var m=spBackStep(todayISO(),-2+k).slice(0,7);
+     OT.cache[m]={ord:OTO,det:OTD,meta:null,none:0};
+   }
+   OT.months=Object.keys(OT.cache);
+   spRfBust();
+   CSTOCK.rep[B1+'|'+window.__d0+'|CT11']={it:{},no:window.__nos.slice(),
+     by:'209611',byName:'CT11',at:2,n:1};
+   /* แอดมินตรวจแล้ว: FO72 เข้า 1 ลัง 28 ชิ้น = 100 ชิ้น (คีย์ 144 ⇒ ขาด 44 ชิ้น)
+                      FO12 เข้า 2 ลัง 10 ชิ้น = 34 ชิ้น (คีย์ 48 ⇒ ขาด 1 ลัง 2 ชิ้น) */
+   CSTOCK.gin[B1+'|'+window.__d0]={g:['70'],at:3,by:'admin1',byName:'แอดมิน 1',
+     rows:{'CT11|FO72':{sc:1,ss:0,sp:28,fc:0,fs:0,fp:0,xc:1,xs:0,xp:28,yc:0,ys:0,yp:0,
+             pk:24,nm:'ซิตร้าวอเตอร์เมลอนโทนอัพ',g:0,v:0},
+           'CT11|FO12':{sc:2,ss:0,sp:10,fc:0,fs:0,fp:0,xc:2,xs:0,xp:10,yc:0,ys:0,yp:0,
+             pk:12,nm:'ซิตร้า ซากุระ AHA FO',g:0,v:0}},money:0};
+   SP.sid=B1;SP.view='slip';SP.sec='rep';SP.day=window.__d0;SP.ym=window.__d0.slice(0,7);
+   SP.back={on:0,sid:'',busy:0,i:0,n:0,open:{}};
+   renderSpord();`;
+
+ const mx=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const ym=window.__d0.slice(0,7);
+   const B=spBal(B1);
+   const row=c=>B.rows.filter(r=>r.code===c)[0]||null;
+   const d=document.createElement('div');d.innerHTML=spBalHtml(B1);
+   const tx=d.textContent.replace(/\s+/g,' ');
+   return {f72:row('FO72'),f12:row('FO12'),short:B.short,
+     sum:spSumTxt(B.sh,ym).replace(/<[^>]*>/g,''),
+     one:spSumTxt({FO72:44},ym).replace(/<[^>]*>/g,''),
+     old:spBalPcs(B.sh,ym).replace(/<[^>]*>/g,''),
+     tx:tx,
+     n2:/2 รายการ/.test(tx),
+     bad46:/46 ชิ้น/.test(tx),
+     row44:/ขาด 44 ชิ้น/.test(tx),
+     row12:/ขาด 1 ลัง 2 ชิ้น/.test(tx),
+     ps72:/ลังละ 72 ชิ้น/.test(tx),
+     sumTxt:/รวม \d+ ลัง \d+ ชิ้น/.test(tx)};
+ },{setup:PRE,pre:MIX});
+ t('📏 ขนาดลังมาจาก Product Master ไม่ใช่ไฟล์ใบจัดของ — FO72 คิดที่ลัง 72 แม้ไฟล์บอก 24',
+   mx.f72&&mx.f72.ps===72&&mx.f72.k===144&&mx.f72.g===100&&mx.f72.d===-44,
+   'FO72 '+JSON.stringify(mx.f72));
+ t('🔢 ...ขาดของ FO72 = 44 ชิ้น และ FO12 = 1 ลัง 2 ชิ้น (แต่ละรหัสแตกด้วยลังของตัวเอง)',
+   mx.f12&&mx.f12.d===-14&&mx.row44===true&&mx.row12===true,
+   'FO12 '+JSON.stringify(mx.f12));
+ t('🚫 ยอดรวมข้ามสินค้าห้ามบวกเศษ — ของเดิมได้ "1 ลัง 46 ชิ้น" ของใหม่ต้องเป็นลังเต็ม +เศษ',
+   mx.old==='1 ลัง 46 ชิ้น'&&/1 ลัง/.test(mx.sum)&&/\+เศษ/.test(mx.sum)&&!/46/.test(mx.sum),
+   'เดิม "'+mx.old+'" · ใหม่ "'+mx.sum+'"');
+ t('📦 ...แต่รหัสเดียวยังตอบเต็มเหมือนเดิม (44 ชิ้น)',
+   mx.one==='44 ชิ้น',mx.one);
+ t('🧾 หัวข้อ "ต้องทำอะไรต่อ" นับเป็นรายการ และทั้งหน้าไม่มี 46 ชิ้น หรือ "รวม N ลัง M ชิ้น"',
+   mx.n2===true&&mx.bad46===false&&mx.sumTxt===false,
+   'นับรายการ='+mx.n2+' · มี 46 ชิ้น='+mx.bad46+' · มี "รวม N ลัง M ชิ้น"='+mx.sumTxt);
+ t('📏 ...และทุกแถวบอกขนาดลังที่ใช้คิด เพื่อให้ตรวจหน่วยเองได้',mx.ps72===true,'');
+
+ /* หน้ารายงานต้องไม่มียอดรวมที่บวกเศษข้ามสินค้าเหลืออยู่ */
+ const mx2=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const blob=JSON.stringify(CSTOCK);
+   const d=document.createElement('div');d.innerHTML=spRptHtml(B1);
+   document.getElementById('spBody').appendChild(d);
+   const tx=d.textContent.replace(/\s+/g,' ');
+   /* ⚠️ แถวรายสินค้าพิมพ์ "N ลัง M ชิ้น" ได้ถูกต้อง — ที่ห้ามคือ "การ์ดยอดรวม" ข้ามสินค้า */
+   const cards=[].slice.call(d.querySelectorAll('.cards .card .v'))
+     .map(e=>e.textContent.replace(/\s+/g,' ').trim());
+   const days=[].slice.call(d.querySelectorAll('.sp-freeze tbody td'))
+     .map(e=>e.textContent.replace(/\s+/g,' ').trim());
+   d.parentNode.removeChild(d);
+   return {tx:tx,cards:cards,days:days,
+     bad:cards.concat(days).some(v=>/\d+ ลัง \d+ ชิ้น/.test(v)),
+     esc:/\+เศษ/.test(tx),frac:/\d+\.\d+ ลัง/.test(tx),
+     prod:/ครบไหม ทีละสินค้า/.test(tx),
+     safe:(JSON.stringify(CSTOCK)===blob)};
+ },{setup:PRE,pre:MIX});
+ t('📊 หน้ารายงานก็ไม่มียอดรวมแบบ "N ลัง M ชิ้น" ข้ามสินค้าเหลืออยู่',
+   mx2.bad===false&&mx2.prod===true&&mx2.frac===false,
+   'การ์ด '+JSON.stringify(mx2.cards)+' · รายวัน '+JSON.stringify(mx2.days.slice(0,6)));
+ t('🛟 ...และยังอ่านอย่างเดียว ไม่แตะข้อมูล',mx2.safe===true,'');
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}
