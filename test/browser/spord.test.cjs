@@ -3347,6 +3347,173 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    bk4.btnGin===false&&bk4.posts===0&&bk4.gin===1,
    'ปุ่ม='+bk4.btnGin+' · โพสต์ '+bk4.posts+' · gin '+bk4.gin+' คีย์');
 
+ /* ============================================================================
+  * 16) 🔎 ระบบอ่านจากไฟล์ให้เอง แล้วขึ้นโชว์ในที่ที่แต่ละคนทำงานอยู่ (เจ้าของสั่ง 27 พ.ย. 69)
+  *   *"ผมเข้าไปใช้แล้วงงมาก ทำให้มันกลับไปหน้าตาแบบเดิม แต่คุณช่วยปรับให้ระบบมันอ่านเองเลย …
+  *     ให้มันอ่านและขึ้นโชว์ในแต่ละส่วนที่เซลล์ต้องอัพ แอดมินต้องอัพเลย แบบเซลล์มีเลขออเดอร์
+  *     อะไรบ้างในวันนั้น ๆ แอดมินส่งไป GIN ไหนได้บ้างในวันนั้น ๆ … ลองเอาจำนวนนั้นตั้ง แล้วตัด
+  *     ออกจากที่เซลล์ไล่คีย์วันต่อมา … และตรงกับที่ใบคลังจัด allocation ไหม … หรือ match ได้ครบ
+  *     100% หรือขาดตกหล่นกี่ %"*
+  *
+  *   ตัวเลขในฟิกซ์เจอร์ (ลังละ 12 ชิ้นทั้งสองรหัส):
+  *     ตั้งต้นในใบ  FO01 10 ลัง + FO02 5 ลัง            = 180 ชิ้น = 15 ลัง
+  *     เซลล์คีย์    FO01 8 ใบ × 1 ลัง + FO02 3 ใบ × 1 ลัง = 132 ชิ้น = 11 ลัง
+  *     คลังจัด      FO01 6 ใบมี GIN + FO02 3 ใบมี GIN     = 108 ชิ้น = 9 ลัง
+  *     เหลือ 180−132 = 48 ชิ้น = 4 ลัง  ·  ตรง 108/132 = 81.8%
+  * ========================================================================== */
+ const AUTOPRE = `
+   __as('manager','','ผู้จัดการ');
+   window.__d0=spBackStep(todayISO(),-3);
+   window.__dnf=spBackStep(todayISO(),-1);      /* วันที่ไม่มีไฟล์เลย */
+   CSTOCK.slips[B1].d=window.__d0;CSTOCK.slips[B1].g='D';
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};
+   MASTER={items:{FO01:{nm:'ซิตร้า เพิร์ล FO'},FO02:{nm:'ลักส์ โรส FO'}},
+           det:{FO01:{ps:12},FO02:{ps:12}}};
+   CSTOCK.lots={L1:{id:'L1',sl:B1,d:window.__d0,code:'FO01',nm:'ซิตร้า เพิร์ล FO',
+                    cs:10,pc:0,ln:'CT11',clr:[]},
+                L2:{id:'L2',sl:B1,d:window.__d0,code:'FO02',nm:'ลักส์ โรส FO',
+                    cs:5,pc:0,ln:'CT11',clr:[]}};
+   STOREDAILY={data:{},ord:{}};
+   const OTO={},OTD={};
+   window.__want={};
+   /* FO01 — CT11 5 ใบ (4 มี GIN) · CT17 3 ใบ (2 มี GIN) */
+   [['209611','CT11',5,4,'70'],['209617','CT17',3,2,'71']].forEach(function(p,pi){
+     for(var i=1;i<=p[2];i++){
+       var t='1'+(pi+1)+'00000'+i,full='BDD01'+t;
+       OTO[t]={l:p[0],d:+window.__d0.slice(8,10),s:'SH'+p[1]+i,tm:'1'+pi+':3'+i,w:1,p:0,c:1,n:1};
+       if(i<=p[3])OTO[t].g=String(+p[4]+i-1);
+       OTD[t]={FO01:[1,0,12]};
+       (window.__want[p[1]]=window.__want[p[1]]||[]).push(full);
+     }
+   });
+   /* FO02 — CT15 3 ใบ มี GIN ทั้งหมด (68,69,70 → ติดกัน) */
+   for(var i=1;i<=3;i++){
+     var t2='3000000'+i;
+     OTO[t2]={l:'209615',d:+window.__d0.slice(8,10),s:'SHCT15'+i,g:String(67+i),
+              tm:'09:0'+i,w:1,p:0,c:1,n:1};
+     OTD[t2]={FO02:[1,0,12]};
+     (window.__want.CT15=window.__want.CT15||[]).push('BDD01'+t2);
+   }
+   for(var k=0;k<=3;k++){
+     var m=spBackStep(todayISO(),-3+k).slice(0,7);
+     OT.cache[m]={ord:OTO,det:OTD,meta:null,none:0};
+   }
+   OT.months=Object.keys(OT.cache);
+   spRfBust();
+   SP.sid=B1;SP.view='slip';SP.sec='rep';SP.day=window.__d0;SP.ym=window.__d0.slice(0,7);
+   SP.back={on:0,sid:'',busy:0,i:0,n:0,open:{}};
+   renderSpord();`;
+
+ /* ---- ① แผงที่ต้องกดเองหายไปจากหน้าจอ ---- */
+ const au0=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   return {panel:/เติมย้อนหลังทั้งใบ/.test(tx),
+     fnStill:typeof spBackBtnHtml==='function'&&typeof spBackRun==='function',
+     bal:/ใบนี้ไปถึงไหนแล้ว/.test(tx)};
+ },{setup:PRE,pre:AUTOPRE});
+ t('🔎 แผงที่ต้องกดเองถูกเอาออกจากหน้าจอแล้ว (แต่ฟังก์ชันยังอยู่ เอากลับมาได้)',
+   au0.panel===false&&au0.fnStill===true,'บนจอ='+au0.panel+' · ฟังก์ชัน='+au0.fnStill);
+ t('🎯 แทนที่ด้วย "ใบนี้ไปถึงไหนแล้ว" ที่ระบบคิดให้เอง',au0.bal===true,'');
+
+ /* ---- ② ตั้งต้น → เซลล์คีย์ → คลังจัด → เหลือ → ตรงกี่ % ---- */
+ const au1=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const blob=JSON.stringify(CSTOCK);
+   const B=spBal(B1);
+   const d=document.createElement('div');d.innerHTML=spBalHtml(B1);
+   const tx=d.textContent.replace(/\s+/g,' ');
+   const row=c=>B.rows.filter(r=>r.code===c)[0]||null;
+   return {tgt:B.tgt,keyed:B.keyed,gin:B.gin,left:B.left,pct:B.pct,dist:B.dist,
+     f1:row('FO01'),f2:row('FO02'),
+     lns:B.byLn.map(x=>x.ln+':'+x.k+':'+x.g),
+     tx:tx,frac:/\d+\.\d+ ลัง/.test(tx),
+     safe:(JSON.stringify(CSTOCK)===blob)};
+ },{setup:PRE,pre:AUTOPRE});
+ t('🎯 ตั้งต้นในใบ 15 ลัง · เซลล์คีย์ 11 ลัง · คลังจัด 9 ลัง · เหลือ 4 ลัง (คิดเป็นชิ้นทีละรหัส)',
+   au1.tgt===180&&au1.keyed===132&&au1.gin===108&&au1.left===48,
+   JSON.stringify({tgt:au1.tgt,k:au1.keyed,g:au1.gin,left:au1.left}));
+ t('🎯 ...และบอก % ที่ตรงกับคลังจัด = 108/132 = 81.8% (ขาดตกหล่น 18.2%)',
+   Math.abs(au1.pct-81.8)<0.05&&/81\.8%/.test(au1.tx)&&/ขาดตกหล่น 18\.2%/.test(au1.tx),
+   'pct='+au1.pct);
+ t('🎯 ...บอกด้วยว่ากระจายไปแล้วกี่ % ของใบ (132/180 = 73.3%)',
+   Math.abs(au1.dist-73.3)<0.05,'dist='+au1.dist);
+ t('🎯 ...แยกรายสินค้า — FO01 ตั้งต้น 10 ลัง คีย์ 8 คลังจัด 6 เหลือ 2',
+   au1.f1&&au1.f1.tgt===120&&au1.f1.k===96&&au1.f1.g===72&&au1.f1.left===24&&
+   au1.f2&&au1.f2.tgt===60&&au1.f2.k===36&&au1.f2.g===36&&au1.f2.left===24,
+   JSON.stringify([au1.f1,au1.f2]));
+ t('🎯 ...และแยกรายสายว่าคีย์ไปสายละเท่าไหร่',
+   au1.lns.length===3&&au1.lns.indexOf('CT11:60:48')>=0&&au1.lns.indexOf('CT15:36:36')>=0,
+   au1.lns.join(' '));
+ t('📦 ...ไม่มีลังทศนิยมบนแถบนี้',au1.frac===false,'');
+ t('🛟 ...และวาดแถบนี้ไม่แตะข้อมูลเลย (อ่านอย่างเดียว)',au1.safe===true,'');
+
+ /* ---- ③ ใต้ช่องกรอกของเซลล์: ไฟล์มีเลขอะไรของสายนี้วันนี้ ---- */
+ const au2=await ev(async a=>{
+   eval(a.setup);setup();eval(a.pre);
+   __as('sales','209611','CT11');
+   SP.sec='rep';renderSpord();
+   const tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   window.__posts=[];
+   const before=JSON.stringify(CSTOCK);
+   spAutoNoFill(B1,window.__d0,'CT11');
+   await new Promise(r=>setTimeout(r,60));
+   const ta=document.getElementById('spRNo_CT11');
+   const got=ta?spNoSplit(ta.value):[];
+   /* เซลล์เห็นชิปของสายตัวเองเท่านั้น แต่ยอดรวมของใบต้องยังเป็นยอดรวมจริง */
+   const B=spBal(B1);
+   const d=document.createElement('div');d.innerHTML=spBalHtml(B1);
+   const btx=d.textContent.replace(/\s+/g,' ');
+   return {says:/ระบบอ่านจากไฟล์ให้แล้ว/.test(tx),five:/มี 5 ใบ/.test(tx),
+     btn:/ใส่เลขที่ยังไม่มี/.test(tx),
+     got:got.length,first:got[0],
+     posts:window.__posts.length,same:JSON.stringify(CSTOCK)===before,
+     rec:((CSTOCK.rep[B1+'|'+window.__d0+'|CT11']||{}).no||[]).length,
+     tgt:B.tgt,keyed:B.keyed,
+     onlyMine:/สาย CT11/.test(btx)&&!/CT17/.test(btx)};
+ },{setup:PRE,pre:AUTOPRE});
+ t('🔎 ใต้ช่องกรอกของเซลล์ บอกเองว่าไฟล์มีเลขของสายนี้วันนี้กี่ใบ',
+   au2.says&&au2.five&&au2.btn,'says='+au2.says+' · 5ใบ='+au2.five+' · ปุ่ม='+au2.btn);
+ t('🔎 ...กด "ใส่ให้เลย" แล้วเลขลงไปในช่อง 5 เลข',
+   au2.got===5&&/^BDD01/.test(String(au2.first||'')),au2.got+' เลข · '+au2.first);
+ t('🔒 ...แต่ยังไม่บันทึก — ไม่ยิงเซิร์ฟเวอร์ ไม่แตะข้อมูล คนกดบันทึกเองเหมือนเดิม',
+   au2.posts===0&&au2.same===true&&au2.rec===0,
+   'posts '+au2.posts+' · เหมือนเดิม '+au2.same+' · ในเรคอร์ด '+au2.rec);
+ t('🎯 ...ยอดรวมของใบยังเป็นยอดรวมจริงแม้เปิดด้วยบัญชีเซลล์ (ไม่ใช่แค่สายตัวเอง)',
+   au2.tgt===180&&au2.keyed===132,'ตั้งต้น '+au2.tgt+' · คีย์ '+au2.keyed);
+ t('👤 ...และชิปรายสายเห็นแค่สายตัวเอง',au2.onlyMine===true,'');
+
+ /* ---- ④ ข้างช่องเลข GIN ของแอดมิน ---- */
+ const au3=await ev(async a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const d=document.createElement('div');d.innerHTML=spAutoGinHtml(B1,window.__d0);
+   const tx=d.textContent.replace(/\s+/g,' ');
+   /* ใส่ช่องจริงบนหน้า แล้วกดใส่ให้ */
+   document.getElementById('spBody').insertAdjacentHTML('afterbegin',
+     '<input id="spGinIn" value="">');
+   window.__posts=[];
+   const before=JSON.stringify(CSTOCK);
+   spAutoGinFill(B1,window.__d0);
+   const el=document.getElementById('spGinIn');
+   const nf=spAutoGinHtml(B1,window.__dnf);
+   const nfd=document.createElement('div');nfd.innerHTML=nf;
+   return {tx:tx,val:String((el&&el.value)||''),
+     posts:window.__posts.length,same:JSON.stringify(CSTOCK)===before,
+     gin:Object.keys(CSTOCK.gin).length,
+     nf:nfd.textContent.replace(/\s+/g,' ')};
+ },{setup:PRE,pre:AUTOPRE});
+ t('🚚 ข้างช่องเลข GIN บอกเองว่าวันนี้มีเลข GIN อะไร และติดกันเป็นชุด 68–73 (6 ใบ)',
+   /ระบบอ่านจากไฟล์ให้แล้ว/.test(au3.tx)&&/68–73 \(6 ใบ\)/.test(au3.tx)&&
+   /จาก 9 ใบใน 11 ใบ/.test(au3.tx),au3.tx.slice(0,190));
+ t('🚚 ...กดแล้วใส่เลขลงในช่องให้ครบ',
+   au3.val.split(/[,\s]+/).filter(Boolean).length===6,'ช่อง = '+au3.val);
+ t('🔒 ...แต่ยังไม่บันทึกผลตรวจ — แอดมินกด 🔎 ตรวจและบันทึก เองเหมือนเดิม',
+   au3.posts===0&&au3.same===true&&au3.gin===0,
+   'posts '+au3.posts+' · gin '+au3.gin+' คีย์');
+ t('⏳ วันที่ยังไม่มีไฟล์ ต้องบอกว่ารอไฟล์ ไม่ใช่ขึ้น 0%',
+   /ยังไม่มีไฟล์ของวันนี้|ยังไม่มีใบไหนของวันนี้/.test(au3.nf)&&!/0%/.test(au3.nf),
+   au3.nf.slice(0,140));
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}

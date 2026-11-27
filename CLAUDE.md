@@ -1600,7 +1600,7 @@ code, never printed.
   one — otherwise the button asked for the file while the answer was already on its way. Reading is
   manager-only, like the check itself. Prove it with the `api/alloc.js` cases in
   **`node test/merge-safety.test.mjs`** (330 checks) and the round-trip cases in
-  **`node test/browser/spord.test.cjs`** (410 checks).
+  **`node test/browser/spord.test.cjs`** (428 checks).
   **④ คลังจัดส่ง is the สต็อคกลาง flow, not a copy of it.** Nothing was migrated and nothing needs
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
@@ -1629,7 +1629,7 @@ code, never printed.
   **รอไฟล์ยอดขาย**, never 0 (the `spRow`/`spCases`/`spNoSum` rule). `cstOk()` builds `whq` with the
   rest of CSTOCK's permanent shape, and `mergeState` merges it `newestByAt` per key with a deleted
   slip dropping its keys. Prove it with the §10 cases in **`node test/browser/spord.test.cjs`**
-  (410 checks — §11 covers the per-line expand, the picking-file quantity source, the per-order
+  (428 checks — §11 covers the per-line expand, the picking-file quantity source, the per-order
   date and the per-role landing) and the `CSTOCK.whq` cases in `merge-safety` (337).
   **📊 รายงาน answers "what is this slip worth, and what is it net of the reps' sales?"** — cases cut
   / keyed / sent / outstanding from the lots and `CSTOCK.rep`, money from the **admin's stored check**
@@ -1955,7 +1955,7 @@ code, never printed.
   number entered, because "how many did I type" and "how many orders is that" are different
   questions. The OCR side also treats a 10-digit number whose tail is already in the box as a
   duplicate. Prove it with the self-contained cases in
-  **`node test/browser/spord.test.cjs`** (410 checks) and, against the owner's real screenshots,
+  **`node test/browser/spord.test.cjs`** (428 checks) and, against the owner's real screenshots,
   **`SP_OCRSHOT=/path/a.jpg,/path/b.jpg SP_OCRSHOT_NO='1033993299,…' node test/browser/ocr-promo.test.cjs`**
   (36 checks, 40 with the images — which never enter the repo).
   **🧯 Numbers read from images were being LOST, and OCR was not the cause** (owner, 27 Nov 26, with
@@ -2031,7 +2031,7 @@ code, never printed.
   `spRepSave` → `api/spord.js`** — no new endpoint, no new permission, and the rep's own record is
   never overwritten. The panel sits at the foot of ② เซลล์คีย์ with scopes วันที่เลือก / ทั้งใบ; a
   rep sees only their own line (`spMineOnly`), a manager every line. Prove it with §13 of
-  **`node test/browser/spord.test.cjs`** (410 checks), which rebuilds the owner's CT17 case — 20
+  **`node test/browser/spord.test.cjs`** (428 checks), which rebuilds the owner's CT17 case — 20
   orders in the files, 13 in the box — and asserts the 7 are found, split 4 sure / 3 unsure, that
   another line's and another day's orders never appear, that scanning mutates nothing, and that
   filling back gives 13 → 17 with the first 13 untouched. ⚠️ That suite shares one browser page
@@ -2061,7 +2061,7 @@ code, never printed.
   รายการสินค้า"**, and a line where *every* order is like that reads **ยังเทียบไม่ได้ · รอไฟล์
   ใบจัดของ** (`blind`, status `unk`) rather than "ขาดทั้งหมด" — not-known is not zero; and the
   footnote states what each column counts, because two of them look alike and are not. Prove it
-  with §14 of **`node test/browser/spord.test.cjs`** (410 checks), which rebuilds his exact row and
+  with §14 of **`node test/browser/spord.test.cjs`** (428 checks), which rebuilds his exact row and
   asserts 7 ลัง vs 84 ชิ้น reads **ครบเป้า**, that a product outside the slip is excluded, that
   short and over each split back per code, and that no `\d+\.\d+ ลัง` or `−N ลัง +M ชิ้น` survives
   anywhere in the table. ⚠️ Verified by removing the cases→pieces multiply and watching four checks
@@ -2105,10 +2105,44 @@ code, never printed.
   latter via the admin's own `spGinSave`→`alPick` path so the two can never produce a different
   check) — **no new endpoint and no new permission**; the GIN half is manager-only because
   `api/alloc.js` already is. Scanning is **strictly read-only**. Prove it with §15 of
-  **`node test/browser/spord.test.cjs`** (410 checks), whose fixture reproduces the measured
+  **`node test/browser/spord.test.cjs`** (428 checks), whose fixture reproduces the measured
   19 Nov shape and whose dates are all built from `todayISO()` — never a fixed day, the §8 lesson.
   ⚠️ Verified by reverting each guard: overwriting instead of appending fails 4 checks, not
   skipping the admin's day fails 3, counting an unknown-product order fails 3.
+  **🔎 …but a panel the user has to find and press was the wrong shape, and he said so the same
+  day** (*"ผมเข้าไปใช้แล้วงงมาก ทำให้มันกลับไปหน้าตาแบบเดิม แต่คุณช่วยปรับให้ระบบมันอ่านเองเลย โดย
+  ทำให้เวลาอัพไฟล์ transaction / allocation เข้าไปแล้ว ให้มันอ่านและขึ้นโชว์ในแต่ละส่วนที่เซลล์ต้องอัพ
+  แอดมินต้องอัพเลย แบบเซลล์มีเลขออเดอร์อะไรบ้างในวันนั้น ๆ แอดมินส่งไป GIN ไหนได้บ้างในวันนั้น ๆ …
+  ลองเอาจำนวนนั้นตั้ง แล้วตัดออกจากที่เซลล์ไล่คีย์วันต่อมา ว่าคีย์ขายไปสายละจำนวนเท่าไหร่ และตรงกับ
+  ที่ใบคลังจัด allocation ไหม … หรือ match ได้ครบ 100% หรือขาดตกหล่นกี่ %"*). **What changed is
+  where it lives and how it is reached — not the logic**: the engine is still `spBackDay`/
+  `spBackScan`, with the 19 Nov pattern it was measured against. The 🔁 panel is **unhooked from
+  the screen, not deleted** (one call site removed; `spBackBtnHtml`/`spBackRun` and the whole write
+  path still work and come back by putting the line back — the retired-tab rule). In its place the
+  answers appear by themselves in the three places people already work:
+  **① under the rep's entry box** (`spAutoNoHtml`/`spAutoNoFill`, inside `spRepNoHtml`) — how many
+  orders the files hold for *that line on that day*, the numbers themselves, and how many are not
+  in the box yet; **② beside the admin's เลข GIN field** (`spAutoGinHtml`/`spAutoGinFill`) — the
+  day's GIN numbers with the consecutive run named; **③ at the head of ② เซลล์คีย์**
+  (`spBal`/`spBalHtml`) — **ตั้งต้นในใบ → เซลล์คีย์ไปแล้ว → คลังจัดแล้ว → เหลือ → ตรงกี่ %**, per
+  product code and per line.
+  Five rules: the ▸ fill buttons **write into the input and nothing else — they never save**, so a
+  person still presses บันทึก / 🔎 ตรวจและบันทึก exactly as before (the OCR rule: the system reads,
+  the human confirms); **"คลังจัด" means the orders the warehouse has already issued a GIN for**,
+  read from `g` on `api/ordtrk` (which every role may read, unlike `api/alloc.js`), so the gap
+  between เซลล์คีย์ and คลังจัด **is** the "ขาดตกหล่นกี่ %" he asked for — orders keyed but not yet
+  picked; `det` on that blob is the file's own **Sale/Free Order** columns, i.e. what the rep
+  keyed, never the Allocated columns, which is why it can stand for เซลล์คีย์ directly;
+  **a total must be a total** — `spBal` calls `spBackScan(sid,1)` to sweep every line even for a
+  `sales` account, because a rep reading "ตั้งต้น 15 ลัง · คีย์ไปแล้ว 3 ลัง" would conclude the slip
+  still owes 12 (screen tidying must never change a total), while the per-line chips still narrow
+  to their own line; and **no file = "รอไฟล์", and a % that cannot be computed is a dash, never
+  0%**. Everything on all three is **read-only** — drawing the page writes nothing. Prove it with
+  §16 of **`node test/browser/spord.test.cjs`** (428 checks), whose fixture gives ตั้งต้น 15 ลัง ·
+  เซลล์คีย์ 11 ลัง · คลังจัด 9 ลัง · เหลือ 4 ลัง · **81.8% ตรง / ขาดตกหล่น 18.2%**, and which
+  asserts the panel is gone while its functions remain, that the fill buttons post nothing and
+  leave `CSTOCK` byte-identical, that the slip total stays 180 pieces when opened as a rep, and
+  that the GINs come out as one run of six (68–73) — his own "วันละ 4-6 ใบต่อวัน".
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
   `renderSpord` returns the PIN screen and **draws nothing of the page** until `spPinOk()`. Two
   rules. **The repo is public, so the digits are never written into any file** — only the SHA-256
@@ -2248,7 +2282,7 @@ code, never printed.
   later and 0.9% beyond — mean 0.65 days, median 1**. Saturday is the exception: Sunday has no
   invoicing, so 111 of 229 Saturday orders land +2 days. So a check run the morning after the
   picking day already covers ~90% of it, and the remaining tail needs the day after that.
-  Prove it with **`node test/browser/spord.test.cjs`** (410 checks) plus the `key`/`gin` cases in
+  Prove it with **`node test/browser/spord.test.cjs`** (428 checks) plus the `key`/`gin` cases in
   `merge-safety`.
   **One sub-order record is written by four teams at four different times**, so
   `mergeState` merges it **step by step** (`mergeSubOne`) — newest-wins on the whole record would
@@ -2261,7 +2295,7 @@ code, never printed.
   line = 1 day for all 89 orders, ~80 KB a month) — and that index must stay in `mergeState`'s
   explicit `STOREDAILY` field list or it vanishes wholesale. A code typed before that day's sales
   file is uploaded shows **"รอไฟล์ยอดขาย"** and fills itself in later, never "wrong code". Prove it
-  with **`node test/browser/spord.test.cjs`** (410 checks) plus the special-order cases in
+  with **`node test/browser/spord.test.cjs`** (428 checks) plus the special-order cases in
   `merge-safety`. The page opens on a **month picker** (`SP.view` `"mon"` → `"slip"` → `"new"`,
   `SP.ym`, `SP.yr`), then that month's orders, then one order's 6 steps — the owner asked for it so
   the landing screen is not a long list; each month and slip card carries the count still waiting on
