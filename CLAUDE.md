@@ -1629,7 +1629,8 @@ code, never printed.
   **รอไฟล์ยอดขาย**, never 0 (the `spRow`/`spCases`/`spNoSum` rule). `cstOk()` builds `whq` with the
   rest of CSTOCK's permanent shape, and `mergeState` merges it `newestByAt` per key with a deleted
   slip dropping its keys. Prove it with the §10 cases in **`node test/browser/spord.test.cjs`**
-  (336 checks) and the `CSTOCK.whq` cases in `merge-safety` (337).
+  (348 checks — §11 covers the per-line expand, the picking-file quantity source and the
+  per-role landing) and the `CSTOCK.whq` cases in `merge-safety` (337).
   **📊 รายงาน answers "what is this slip worth, and what is it net of the reps' sales?"** — cases cut
   / keyed / sent / outstanding from the lots and `CSTOCK.rep`, money from the **admin's stored check**
   (`CSTOCK.gin[].rows[].g`/`.v`, the allocation file's own GSV/NIV), and the day's total from
@@ -1852,6 +1853,44 @@ code, never printed.
   from those numbers rather than what anyone typed — it turns red with the difference when it
   disagrees with the rep's keyed quantity, which is exactly the check the owner asked for. It works
   the same on all three slip types, because every type that has a เซลล์คีย์ step renders this card.
+  **🔎 Tapping a line's name in the tracking table opens that line's orders** (`spTrkTog`/
+  `spTrkOrdHtml`, owner 29 Nov 26: *"ให้ทุกคนกดเข้าไปดูได้ ว่าแต่ละสายกดออเดอร์เลขไหนมาบ้าง และใน
+  ออเดอร์นั้น ๆ มีสินค้าจำนวนกี่ลังรวมเท่าไหร่ โดยจะแสดงผลเมื่อกดที่เลขสายเท่านั้น และเป็นสายที่มีการ
+  ส่งออเดอร์เข้ามาแล้ว"*): one row per order — number · shop · items · cases · **which file the
+  figure came from**. The button appears only on a line that has actually sent numbers, it is
+  read-only, and **opening it must not redraw the page** (it flips the row's class, the `<details>`
+  rule) or the frozen table box jumps back to the top. The rep gets the same list for **their own
+  line** inside their entry card (`spMyOrdHtml`, a native `<details>`), because he said *everyone*;
+  the 12-line table itself still does not reach a `sales` account, which is his own earlier rule.
+  **📦 "How many cases is this order?" has exactly TWO possible sources, and the Transaction
+  Inquiry file is NOT one of them** (`spOrdQty`/`spOtWant`). The owner believed it was —
+  *"จริง ๆ มันต้องผูกกับไฟล์ transaction inquiry นะ … และมีระบุรายการจำนวนสินค้าด้วย"* — so his real
+  file was measured before anything was written: `Transaction_Inquiry_26112026.xlsx`, one sheet
+  `DataExtract`, **32 columns, no product code and no quantity column at all** (เลขที่เอกสาร · ร้าน ·
+  PJP · เวลาสั่งซื้อ · วันที่เอกสาร/จัดส่ง/จัดส่งจริง · GSV · ส่วนลด · NIV · ภาษี · สถานะ · ช่องทาง ·
+  เลขอ้างอิง DDT · เลขใบจัดสินค้า · เลขใบแจ้งหนี้). It is **header-level, not line-item**, which is
+  why `parseTxn` deliberately writes no `cs`/`pc`. Tell him that plainly rather than inventing a
+  figure. What does answer it: ① the **daily sales file**, the billed truth, which arrives after
+  invoicing (measured: same day 46.7% · +1 day 43.3% · +2 days 9.2%, so today's orders are simply
+  not in it yet — that is exactly what he was looking at); and ② the **allocation / picking file**,
+  which has per-order per-product quantities and arrives first, because the admin uploads it on
+  this very page every day. It is read through **`api/ordtrk`, which every role may read** (unlike
+  `api/alloc.js`, manager-only) — the table is for everyone, so the source must be too. One fetch
+  per month per tab (`spOtWant`, the `otEnsure`/`AL_WAIT` pattern), then one redraw. Rules: the
+  sales file **always wins** over the picking file; a figure that cannot be split into ลัง/ชิ้น
+  prints whole cases with a `*` through the same `otQty` the สถานะออเดอร์ (ขาย) page uses, so the
+  two pages can never state different quantities; and **neither file = `null`, never 0** — the
+  screen says *ยังไม่รู้จำนวน … รอไฟล์ใบจัดของ หรือไฟล์ยอดขาย*, naming both files so the user knows
+  what to upload.
+  **🧭 Opening a slip lands every role on its own step** (`SP_HOME`/`spHomeSec`, owner 29 Nov 26:
+  *"ถ้าแอคเค้าซุป ให้ขึ้นหน้าซุปจด แอคเค้าเซลล์ให้เด้งไปหน้าเซลล์คีย์ แอดมินก็เด้งไปแอดมิน … ให้เวป
+  พาไปในส่วนที่เค้าต้องทำเองอย่างอัตโนมัติไปเลย"*): `sup`→✍️ ซุปจด · `sales`→📲 เซลล์คีย์ ·
+  `manager` (owner + admin1–4)→🔎 แอดมินตรวจ · `wh`/`ds`→🚚 คลังจัดส่ง. A 🧾/🚚 slip has neither
+  ซุปจด nor แอดมินตรวจ, so there is a **second choice** (`SP_HOME2`): ซุป falls back to เซลล์คีย์ and
+  the admin to คลังจัดส่ง, which is where they key that slip's GIN anyway — never just "the first
+  tab". Both `spSec()` (no tab chosen yet) and `spFirstSec()` (opening a slip from the list) go
+  through the one function. ⚠️ **It is a landing page, not a permission**: every role still opens
+  every tab, and who may write is still decided inside each function and in `api/spord.js`.
   **📷 …and the rep can get those numbers in by SCREENSHOT instead of typing** (`spOcrNos`/
   `spOcrGo`/`ocrWords`, owner 27 Nov 26: *"ปรับให้เป็นการใส่หน้าแคปหน้าจอ จากเลขออเดอร์ได้ไหม
   ให้เซลล์แคปหน้าจอหลังกดคีย์ออเดอร์ … อัพได้ 10-20 รูป แล้วให้ระบบอ่านเลขออเดอร์อัตโนมัติ …
@@ -2155,9 +2194,9 @@ code, never printed.
   the containers whose grid is written as an inline style (`#anaPieGrid`). **`bdReflow`** on
   `orientationchange`/`resize` then tells every live chart to re-measure (iOS settles the new size
   after the event), which is insurance, not the fix. Prove it with
-  **`node test/browser/layout.test.cjs`** (63 checks, self-contained — it also measures every tab
+  **`node test/browser/layout.test.cjs`** (65 checks, self-contained — it also measures every tab
   row for the owner, an admin and a rep at 1280 / 1100 / 390px; see the 🖱 rule in the tab-bar
-  section above).
+  section above, and the expanded tracking row at both widths).
   **🎨 The ออเดอร์พิเศษ pages are colour-zoned per step** (`TAB_SUPERS`'s sibling idea; `.sp-zone`
   + `.spz-key|rep|adm|out|rpt`, owner 27 Nov 26: *"ขอปรับหน้าออเดอร์พิเศษ ให้มันมีแบ่งโซนแบ่งสีช่อง
   หน้าจอการทำงานนิดนึง สำหรับทุกฝ่าย ให้มันดูง่าย เห็นช่องกรอกง่าย ๆ … ตอนนี้มันดูขาวโล่ง แซมน้ำเงิน

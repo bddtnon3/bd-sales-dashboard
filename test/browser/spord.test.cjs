@@ -302,6 +302,9 @@ const ORIGIN='https://bd-spord.test/';
    spSetGrp('A');
    /* ปุ่มย้อนกลับต้องถอยในหมวดนี้ ไม่ใช่กระโดดออกไปแท็บอื่น */
    o.backShown=document.getElementById('backBtn').style.display!=='none';
+   /* ⚠️ ผู้จัดการลงจอดที่ ④ คลังจัดส่ง อยู่แล้ว (กฎ spHomeSec) — ตั้งเป็น rep ก่อนแบบไม่ผ่าน
+      spSetSec เพื่อให้ประวัติยังมีสามขั้นเหมือนเดิม แล้วการถอยถึงจะวัดอะไรได้จริง */
+   SP.sec='rep';renderSpord();
    spSetSec('out');o.outTxt=tx();
    navBack();o.afterBack1={tab:CURTAB,view:SP.view,sec:SP.sec};
    navBack();o.afterBack2={tab:CURTAB,view:SP.view};
@@ -322,7 +325,10 @@ const ORIGIN='https://bd-spord.test/';
    tabs.chipsMgr.length===3&&/เซลล์คีย์/.test(tabs.chipsMgr[0])&&
    /คลังจัดส่ง/.test(tabs.chipsMgr[1])&&/รายงาน/.test(tabs.chipsMgr[2])&&
    !tabs.chipsMgr.some(c=>/ซุปจด/.test(c))&&!tabs.chipsMgr.some(c=>/แอดมินตรวจ/.test(c))&&
-   tabs.secA==='rep',tabs.chipsMgr.join(' | ')+' · เปิดมาที่ '+tabs.secA);
+   tabs.secA==='out',tabs.chipsMgr.join(' | ')+' · เปิดมาที่ '+tabs.secA);
+ /* 🧭 29 พ.ย. 69 — เจ้าของสั่งให้ "เวปพาไปในส่วนที่เค้าต้องทำเองอย่างอัตโนมัติ":
+    ซุป→ซุปจด · เซลล์→เซลล์คีย์ · แอดมิน→แอดมินตรวจ · คลัง/สายส่ง→คลังจัดส่ง
+    ใบ A/B ไม่มีขั้นแอดมินตรวจ แอดมินจึงถอยไป ④ คลังจัดส่ง ซึ่งเป็นที่กรอกเลข GIN ของใบแบบนี้ */
  t('🔑 ใบ 🎯 ตัวกระจาย มี 4 ขั้น เริ่มที่ ① ซุปจด',
    tabs.gD==='D'&&tabs.chipsD.length===5&&/① ✍️ ซุปจด/.test(tabs.chipsD[0])&&
    /② 📲 เซลล์คีย์/.test(tabs.chipsD[1])&&/③ 🔎 แอดมินตรวจ/.test(tabs.chipsD[2])&&
@@ -2052,7 +2058,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    ref.sum.n===4&&ref.sum.found===3&&ref.sum.cs===17&&ref.sum.v===3500&&ref.sum.shops===3,
    JSON.stringify(ref.sum));
  t('🛟 ใบที่รู้จักจากไฟล์รายการสั่งซื้ออย่างเดียว ยังไม่รู้จำนวนลัง ต้องแยกบอก ไม่ใช่บวกเป็น 0',
-   ref.sum.wait===1&&/รอไฟล์ยอดขาย/.test(ref.info),ref.sum.wait);
+   ref.sum.wait===1&&/ยังไม่รู้จำนวนลัง/.test(ref.info)&&/ใบจัดของ/.test(ref.info),ref.sum.wait);
  t('🛟 เลขที่ยังหาไม่เจอ ต้องบอกเป็นรายตัว',
    ref.sum.miss.join(',')==='5555555555'&&/ยังหาไม่เจอ/.test(ref.info),ref.sum.miss.join(','));
 
@@ -2629,6 +2635,99 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    return document.getElementById('spBody').textContent.replace(/\s+/g,' ');});
  t('ยังไม่มีใบออเดอร์ใหญ่ → บอกให้รอแอดมิน ไม่ใช่หน้าว่าง',
    /รอแอดมินเปิดใบออเดอร์ใหญ่/.test(none),none.slice(0,80));
+
+
+ /* ============================================================================
+  * 11) 🔎 กดชื่อสายดูเลขออเดอร์ · หาจำนวนจาก "ใบจัดของ" · พาแต่ละบทบาทไปขั้นของตัวเอง
+  *   เจ้าของสั่ง 29 พ.ย. 69 สามเรื่องในข้อความเดียว:
+  *   *"ให้ทุกคนกดเข้าไปดูได้ ว่าแต่ละสายกดออเดอร์เลขไหนมาบ้าง และในออเดอร์นั้น ๆ มีสินค้า
+  *     จำนวนกี่ลังรวมเท่าไหร่ โดยจะแสดงผลเมื่อกดที่เลขสายเท่านั้น"*
+  *   *"และมันขึ้นว่ารอไฟล์ยอดขาย ช่วยตรวจสอบหน่อย"*
+  *   *"ถ้าแอคเค้าซุป ให้ขึ้นหน้าซุปจด แอคเค้าเซลล์ให้เด้งไปหน้าเซลล์คีย์ แอดมินก็เด้งไปแอดมิน"*
+  *
+  * ⚠️ ไฟล์ Transaction Inquiry ของจริง (วัดแล้ว 32 คอลัมน์) **ไม่มีรหัสสินค้าและไม่มีช่อง
+  *    จำนวน** จึงบอกจำนวนลังไม่ได้ — ตัวที่บอกได้คือไฟล์ยอดขายรายวัน กับ "ใบจัดของ"
+  *    (อ่านผ่าน api/ordtrk ซึ่งทุกบทบาทอ่านได้) · ไม่มีทั้งคู่ = ยังไม่รู้ ห้ามขึ้น 0
+  * ========================================================================== */
+ const trk=await ev(a=>{
+   eval(a.setup);setup();
+   const o={};
+   SP.sec='rep';SP.trk={};renderSpord();          /* ตารางติดตามอยู่ในหน้า ② เซลล์คีย์ */
+   const btn=ln=>document.querySelector('.sp-trkb[onclick*="\''+ln+'\'"]');
+   o.btn11=!!btn('CT11');o.btn12=!!btn('CT12');o.btn13=!!btn('CT13');   /* CT13 ยังไม่ได้ส่งเลข */
+   /* กางแล้วต้อง "ไม่วาดหน้าใหม่" — ฝังหมุดไว้ในหน้า ถ้าหมุดหายแปลว่าวาดใหม่ */
+   const pin=document.createElement('i');pin.id='__pin';document.getElementById('spBody').appendChild(pin);
+   const row=()=>document.getElementById('sptrk-CT11');
+   o.before=row().classList.contains('hidden');
+   spTrkTog('CT11');
+   o.after=row().classList.contains('hidden');
+   o.pinAlive=!!document.getElementById('__pin');
+   o.state=!!SP.trk.CT11;
+   o.txt=row().textContent.replace(/\s+/g,' ');
+   /* ใบของ CT12 ยังไม่มีไฟล์ไหนบอกจำนวน */
+   spTrkTog('CT12');
+   o.txt12=document.getElementById('sptrk-CT12').textContent.replace(/\s+/g,' ');
+   /* ---- ใส่ "ใบจัดของ" ของเดือนนั้นเข้าไป แล้วจำนวนต้องขึ้นเอง ---- */
+   OT.cache['2026-11']={ord:{'00000013':{d:27,w:4,p:6,n:3,s:'4862365'}},det:null};
+   renderSpord();SP.trk.CT12=true;
+   o.q=spOrdQty('BDD0100000013',STOREDAILY.ord['BDD0100000013'],'2026-11');
+   o.txt12b=spTrkOrdHtml(spTrack(B1,WORK_).filter(x=>x.ln==='CT12')[0])
+     .replace(/<[^>]*>/g,' ').replace(/\s+/g,' ');
+   /* ไฟล์ยอดขายต้องชนะใบจัดของ (ตัวเลขออกบิลคือตัวจริง) */
+   OT.cache['2026-11'].ord['00000011']={d:27,w:99,p:0,n:9};
+   o.qSale=spOrdQty('BDD0100000011',STOREDAILY.ord['BDD0100000011'],'2026-11');
+   /* ไม่มีไฟล์ไหนรู้เลย = null ห้ามเป็น 0 */
+   o.qNone=spOrdQty('BDD0100009999',{s:'x',l:'209611'},'2026-11');
+   return o;
+ },{setup:PRE});
+ t('🔎 สายที่ส่งเลขออเดอร์มาแล้ว มีปุ่มให้กดดู · สายที่ยังไม่ส่ง ไม่มีปุ่ม',
+   trk.btn11&&trk.btn12&&!trk.btn13,
+   'CT11='+trk.btn11+' CT12='+trk.btn12+' CT13='+trk.btn13);
+ t('🔎 กดแล้วกางออกมา และ "ไม่วาดหน้าใหม่" (กล่องตารางจะได้ไม่เด้งกลับบนสุด)',
+   trk.before===true&&trk.after===false&&trk.pinAlive&&trk.state,
+   'ก่อนกดซ่อน='+trk.before+' หลังกดซ่อน='+trk.after+' หมุดยังอยู่='+trk.pinAlive);
+ t('🔎 ในนั้นมีเลขออเดอร์ · ชื่อร้าน · จำนวนลัง-ชิ้น ของแต่ละใบ',
+   /BDD0100000011/.test(trk.txt)&&/BDD0100000012/.test(trk.txt)&&
+   /5 ลัง/.test(trk.txt)&&/3 ลัง 2 ชิ้น/.test(trk.txt)&&/ไฟล์ยอดขาย/.test(trk.txt),
+   trk.txt.slice(0,190));
+ t('🛟 ใบที่ยังไม่มีไฟล์ไหนบอกจำนวน ต้องขึ้นว่า "ยังไม่รู้จำนวน" ไม่ใช่ 0',
+   /ยังไม่รู้จำนวน/.test(trk.txt12)&&!/\b0 ลัง\b/.test(trk.txt12),trk.txt12.slice(0,170));
+ t('🚚 พอมีไฟล์ใบจัดของของเดือนนั้น จำนวนขึ้นเองโดยไม่ต้องรอไฟล์ยอดขาย',
+   trk.q&&trk.q.cs===4&&trk.q.pc===6&&trk.q.src==='gin'&&trk.q.n===3,JSON.stringify(trk.q));
+ t('🚚 ...และบอกที่มาว่ามาจากใบจัดของ',
+   /4 ลัง 6 ชิ้น/.test(trk.txt12b)&&/ใบจัดของ/.test(trk.txt12b),trk.txt12b.slice(0,170));
+ t('🔑 ไฟล์ยอดขายชนะใบจัดของเสมอ (ตัวเลขที่ออกบิลแล้วคือตัวจริง)',
+   trk.qSale&&trk.qSale.cs===5&&trk.qSale.src==='sale',JSON.stringify(trk.qSale));
+ t('🛟 ไม่มีไฟล์ไหนรู้จำนวนเลย ต้องตอบ "ไม่รู้" (null) ไม่ใช่ 0',trk.qNone===null,
+   JSON.stringify(trk.qNone));
+ /* ---- พาแต่ละบทบาทไปขั้นของตัวเอง ---- */
+ const home=await ev(a=>{
+   eval(a.setup);setup();
+   const o={D:{},A:{},tabs:{}};
+   const land=()=>{SP.sec='';return spSec();};
+   CSTOCK.slips[B1].g='D';
+   ['sup','sales','manager','wh','ds'].forEach(r=>{
+     __as(r,r==='sales'?'209611':null,r);o.D[r]=land();
+     o.tabs[r]=spTabsOn(spSlip(B1)).map(x=>x.k).join(',');
+   });
+   CSTOCK.slips[B1].g='A';                       /* ใบ A ไม่มีขั้นซุปจด/แอดมินตรวจ */
+   ['sup','sales','manager','wh'].forEach(r=>{
+     __as(r,r==='sales'?'209611':null,r);o.A[r]=land();});
+   __as('manager',null,'ผู้จัดการ');CSTOCK.slips[B1].g='D';
+   o.open=(()=>{SP.sec='';spOpenSlip(B1);return SP.sec;})();
+   return o;
+ },{setup:PRE});
+ t('🧭 ใบ 🎯 ตัวกระจาย: ซุป→ซุปจด · เซลล์→เซลล์คีย์ · แอดมิน→แอดมินตรวจ · คลัง/สายส่ง→คลังจัดส่ง',
+   home.D.sup==='key'&&home.D.sales==='rep'&&home.D.manager==='adm'&&
+   home.D.wh==='out'&&home.D.ds==='out',JSON.stringify(home.D));
+ t('🧭 ใบที่ไม่มีขั้นนั้น ถอยไปขั้นที่ใบนั้นมีจริง (ซุป→เซลล์คีย์ · แอดมิน→คลังจัดส่ง)',
+   home.A.sup==='rep'&&home.A.sales==='rep'&&home.A.manager==='out'&&home.A.wh==='out',
+   JSON.stringify(home.A));
+ t('🧭 เปิดใบจากรายการ ก็ลงที่ขั้นของตัวเองเหมือนกัน',home.open==='adm',home.open);
+ t('🔒 เป็นแค่หน้าที่ลงจอด ไม่ใช่สิทธิ์ — ทุกบทบาทยังเห็นแท็บครบเหมือนเดิม',
+   home.tabs.sup===home.tabs.wh&&home.tabs.sup===home.tabs.sales&&
+   home.tabs.sup.split(',').length===4,JSON.stringify(home.tabs));
+
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));

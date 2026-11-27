@@ -567,6 +567,21 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .sp-kt td.l,.sp-kt th.l{text-align:left}
 .sp-kt input{width:62px;padding:5px 6px;border:1.5px solid var(--line);border-radius:7px;
   font-size:13px;text-align:right}
+/* 🔎 กดชื่อสายในตารางติดตาม แล้วกางเลขออเดอร์ของสายนั้นออกมา (เจ้าของสั่ง 29 พ.ย. 69)
+   เป็นแถวที่สองของสายนั้นเอง จะได้ไม่ต้องวาดหน้าใหม่ — แค่สลับ .hidden */
+/* ⚠️ `.panel .psub` มี margin-bottom 14px — ในปุ่ม/ตารางที่จัดกลางแนวตั้ง มันจะดันตัวหนังสือ
+   ลอยขึ้นไปจากแถว ต้องล้างเป็น 0 ทุกที่ที่ psub ไปอยู่ในกล่อง flex หรือในช่องตาราง */
+.sp-trkb{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.sp-trkb .psub,.sp-trkbox .psub{margin:0}
+.sp-trkd>td{background:var(--bg);padding:10px 8px}
+.sp-trkbox{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}
+.sp-trkbox .sp-kt{font-size:12.5px}
+.sp-trkdet{margin-top:10px}
+.sp-trkdet>summary{cursor:pointer;font-weight:700;font-size:13.5px;padding:9px 12px;
+  background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:40px;
+  display:flex;align-items:center}
+.sp-trkdet[open]>summary{border-bottom-left-radius:0;border-bottom-right-radius:0}
+.sp-trkdet>.sp-trkbox{border-top-left-radius:0;border-top-right-radius:0;border-top:0}
 /* 📌 ตารางเป้ารายสาย — 4 คอลัมน์ตามที่เจ้าของสั่ง (27 พ.ย. 69):
    *"ให้ freeze pane ชื่อสินค้า รหัส จำนวนลัง จำนวนชิ้น … ปรับให้เหลือแค่ 4 column แนวตั้ง"*
    ชื่อสินค้ากับรหัสค้างไว้ซ้ายมือตอนเลื่อนแนวนอน ส่วนหัวตารางค้างไว้ด้านบน (.sp-freeze)
@@ -790,6 +805,29 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   .sp-rt .sp-pfold tr.r-diff{border-left:4px solid var(--bad)}
   .sp-rt .sp-pfold tr.r-nokey{border-left:4px solid var(--warn)}
   .sp-rt .sp-pfold tr.r-noalloc{border-left:4px solid var(--blue)}
+  /* 📱 ตารางติดตามการคีย์ และตารางเลขออเดอร์ที่กางออกมา — พับเป็นการ์ดเหมือนกัน
+     ⚠️ **ตารางติดตามต้องพับด้วย** ไม่ใช่พับแค่ตารางข้างใน: ตารางนอกมี 7 คอลัมน์ กว้างเกินจอ
+        แถวที่กางออกมาเป็น <td colspan> ของตารางนั้น จึงกว้างตามไปด้วย แล้วช่อง "จำนวน"
+        ของแต่ละใบไปอยู่นอกจอ (วัดที่ 390px: ข้อความอยู่ใน DOM ครบ แต่มองไม่เห็น)
+        พอพับตารางนอกด้วย ทุกอย่างอยู่ในความกว้างการ์ดเดียวกัน ไม่มีการเลื่อนแนวนอนเลย */
+  .sp-fold thead{display:none}
+  .sp-fold,.sp-fold tbody{display:block}
+  .sp-fold tr{display:block;border:1px solid var(--line);border-radius:12px;
+    padding:9px 11px;margin-bottom:9px}
+  /* ⚠️ ป้ายกำกับใช้ `float:left` ไม่ใช่ flex — ช่องพวกนี้มีหลาย element ปนกัน
+     (เช่น "7 ลัง" ที่ `spCsTxt` คืนมาเป็นข้อความ + <span>) ถ้าทำ td เป็น flex
+     แต่ละชิ้นจะกลายเป็น flex item แล้ว space-between จะดึง "7" กับ "ลัง" ไปคนละฝั่ง
+     — เป็นกับดักเดียวกับที่บันทึกไว้ที่ตารางออเดอร์ของหน้า สถานะออเดอร์ (ขาย) */
+  .sp-fold td{display:block;border:0;padding:3px 0;text-align:right;overflow:hidden}
+  .sp-fold td::before{content:attr(data-l);float:left;color:var(--muted);font-size:12px;
+    font-weight:600;text-align:left;padding-right:10px}
+  .sp-fold td:first-child{border-bottom:1px solid var(--line);
+    padding-bottom:7px;margin-bottom:5px;text-align:left}
+  .sp-fold td:first-child::before{content:none}
+  /* แถวที่กางออกมาไม่ใช่ "ช่องข้อมูล" — เป็นกล่องเต็มความกว้าง ไม่ต้องมีป้ายกำกับ */
+  .sp-fold tr.sp-trkd{padding:0;border:0;margin:0 0 9px}
+  .sp-fold tr.sp-trkd>td{display:block;padding:0;background:transparent}
+  .sp-fold tr.sp-trkd>td::before{content:none}
 }
 .oh-tbl th.oh-g3{background:#F3EEFB;color:#5B3FA8}
 .oh-tbl td.oh-g3{background:#FBF9FE}
@@ -15012,7 +15050,8 @@ function alPick(gins,codes){
    "key" ทำให้เซลล์ที่เพิ่งเปิดหน้ามาไปโผล่ที่ ✍️ ซุปจด (ซึ่งใบตัวกระจายมีแท็บนี้จริง) แทน
    📲 เซลล์คีย์ — เจ้าของทัก 27 พ.ย. 69: *"ให้ในส่วนออร์เดอร์พิเศษเปิดเข้ามาแล้วเจอหมวด
    เซลล์คีย์เลย ไม่ต้องพาไปหน้าซุปจดก่อนให้งง"* · ว่างไว้แล้วให้ spSec() เลือกตามบทบาทเอง */
-let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:"",sec:"",day:"",gin:"",cm:"",cmpLn:"",me:0,chkD:""};
+let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:"",sec:"",day:"",gin:"",cm:"",cmpLn:"",me:0,chkD:"",
+        trk:{}};   /* trk = สายที่กางเลขออเดอร์ไว้ในตารางติดตาม (ไม่ sync) */
 function spOk(){const C=cstOk();if(!C.sub)C.sub={};if(!C.subdel)C.subdel={};return C;}
 /* ---------- สองฝั่งของงาน: ฝั่งเซลล์ (sup) กับ ฝั่งแอดมิน ----------
    เจ้าของย่อจาก 6 ขั้นตอนเหลือ 2 เมื่อ 25 พ.ย. 69 — *"เริ่มจากง่าย ๆ ก่อน เป็นแค่ฝั่งเซลล์และ
@@ -15186,12 +15225,35 @@ function spTabsOn(sl){
 }
 /* แท็บที่เลือกค้างไว้อาจไม่มีในใบประเภทนี้ (เช่น ซุปจด ของใบ A) → ถอยไปแท็บแรกที่มีจริง
    ⚠️ หมวดที่ "พักไว้" (off:1) ไม่มีปุ่มบนแถบ แต่ยังเปิดดูได้ถ้าจงใจเรียก — หน้าและข้อมูลยังอยู่ครบ */
+/* ============================================================================
+ * 🧭 เปิดใบมาแล้ว "พาไปขั้นของตัวเอง" เลย — เจ้าของสั่ง 29 พ.ย. 69:
+ *   *"เมื่อทุกคนกดเลือกออเดอร์พิเศษที่จะเข้าไปบันทึก ถ้าแอคเค้าซุป ให้ขึ้นหน้าซุปจด
+ *     แอคเค้าเซลล์ให้เด้งไปหน้าเซลล์คีย์ แอดมินก็เด้งไปแอดมิน จะได้ไม่ต้องกดเข้ามาแล้วงง
+ *     ต้องไปเลือกจุดไหน ให้เวปพาไปในส่วนที่เค้าต้องทำเองอย่างอัตโนมัติไปเลย"*
+ *
+ * ⚠️ เป็นแค่ "หน้าแรกที่ลงจอด" ไม่ใช่สิทธิ์ — ทุกคนยังกดดูได้ทุกแท็บเหมือนเดิม
+ *    ใครเขียนอะไรได้ยังตรวจในฟังก์ชันและที่ `api/spord.js` ตามเดิม ไม่ได้ซ่อนแท็บ
+ * ⚠️ ใบ 🧾/🚚 (A/B) ไม่มีขั้น ✍️ ซุปจด และไม่มี 🔎 แอดมินตรวจ — ต้องถอยไปขั้นที่ใบนั้น
+ *    "มีจริง" ไม่ใช่โยนไปแท็บแรกเฉย ๆ: ซุปถอยไป 📲 เซลล์คีย์ · แอดมินถอยไป 🚚 คลังจัดส่ง
+ *    ซึ่งเป็นที่ที่เขากรอกเลข GIN ของใบแบบนั้นอยู่แล้ว
+ * ⚠️ ทีมคลัง/สายส่งลงที่ 🚚 คลังจัดส่ง — หน้าเดียวที่เกี่ยวกับงานเขา
+ * ⚠️ เจ้าของเป็น role manager เหมือนแอดมิน 1-4 จึงลงที่ 🔎 แอดมินตรวจ เหมือนกัน (เขาสั่งเอง)
+ * ==========================================================================*/
+const SP_HOME={sup:"key",sales:"rep",manager:"adm",wh:"out",ds:"out"};
+const SP_HOME2={key:"rep",adm:"out"};    /* ขั้นสำรอง เมื่อใบประเภทนั้นไม่มีขั้นแรกของเขา */
+function spHomeSec(tabs){
+  const ks=(tabs||[]).map(x=>x.k);
+  const w=SP_HOME[spRole()]||"";
+  if(w&&ks.indexOf(w)>=0)return w;
+  const w2=SP_HOME2[w]||"";
+  if(w2&&ks.indexOf(w2)>=0)return w2;
+  return ks[0]||"rep";
+}
 function spSec(){
-  const ks=spTabsOn().map(x=>x.k);
+  const tabs=spTabsOn(),ks=tabs.map(x=>x.k);
   if(SP.sec&&ks.indexOf(SP.sec)>=0)return SP.sec;
   if(SP.sec&&SP_TABS.some(x=>x.off&&x.k===SP.sec))return SP.sec;  /* หมวดที่พักไว้ ยังเปิดตรงได้ */
-  if(spRole()==="sales"&&ks.indexOf("rep")>=0)return "rep";
-  return ks[0]||"rep";
+  return spHomeSec(tabs);
 }
 function spSetSec(v){spNavPush();SP.sec=v;renderSpord();}
 /* ยอดรวมที่เซลล์คีย์ของทั้งวัน (ทุกสาย) ต่อรหัส — ขาย+แถม รวมกันตามที่เจ้าของสั่ง
@@ -15375,7 +15437,7 @@ function spNoInfoHtml(list,ln){
   if(o.same)h+=`<div class="psub" style="margin-top:4px">🔁 ตัดเลขซ้ำออก <b>${o.same}</b> เลข (${
     o.sameList.slice(0,6).map(anaEsc).join(" · ")}${o.sameList.length>6?" …":""}) — เป็นใบเดียวกัน นับครั้งเดียว</div>`;
   /* สิ่งที่ยัง "ไม่รู้" ต้องบอก ห้ามปล่อยให้ยอดดูเหมือนครบ */
-  if(o.wait)h+=`<div class="psub" style="margin-top:4px">⏳ <b>${o.wait}</b> ใบยังไม่รู้จำนวนลัง — รอไฟล์ยอดขายของวันนั้น</div>`;
+  if(o.wait)h+=`<div class="psub" style="margin-top:4px">⏳ <b>${o.wait}</b> ใบยังไม่รู้จำนวนลัง — รอไฟล์ใบจัดของ หรือไฟล์ยอดขายของวันนั้น</div>`;
   if(o.miss.length)h+=`<div class="psub down" style="margin-top:4px">❓ ยังหาไม่เจอ <b>${o.miss.length}</b> เลข (${
     o.miss.slice(0,6).map(anaEsc).join(" · ")}${o.miss.length>6?" …":""}) — ถ้าเพิ่งคีย์วันนี้ ให้รอไฟล์ของวันนั้นก่อน</div>`;
   /* 5 หลักตรงกับหลายใบ — ห้ามเดา ให้คนกรอกเติมอีกสักหลัก */
@@ -15398,7 +15460,7 @@ function spTrack(sid,ymd){
     /* 🧾 ตัวเลขที่ "ระบบ" หาได้เองจากเลขคำสั่งซื้อที่เซลล์กรอก — ไม่ได้มาจากการพิมพ์จำนวน
        เป็นตัวที่แอดมินใช้ตรวจว่าที่เซลล์คีย์มาตรงกับของจริงไหม */
     const nos=(rp[ln]&&Array.isArray(rp[ln].no))?rp[ln].no:[];
-    const O=nos.length?spNoSum(nos,{l:spLineCode(ln)}):null;
+    const O=nos.length?spNoSum(nos,{l:spLineCode(ln),ym:ymd}):null;
     /* เซลล์ไม่พิมพ์จำนวนแล้ว — ถ้าไม่มีตัวเลขที่พิมพ์ไว้ ให้ใช้ยอดที่ระบบหาจากเลขออเดอร์
        (ของเก่าที่เคยพิมพ์ไว้ ยังใช้ตัวที่พิมพ์เหมือนเดิม) */
     if(O&&!R.cs&&!R.pc){R={cs:O.cs,pc:O.pc};rSrc="order";}
@@ -15833,7 +15895,7 @@ function spRepJobs(sid,ln){
     /* 🧾 ตั้งแต่ 27 พ.ย. 69 เซลล์ใส่ "เลขออเดอร์" แทนการพิมพ์จำนวน
        จำนวนของวันนั้นจึงมาจากเลขที่ใส่ ไม่ใช่จากช่องที่พิมพ์ (ของเก่ายังอ่านได้เหมือนเดิม) */
     if(!isT&&!e.rc&&Array.isArray(r.no)&&r.no.length){
-      const o=spNoSum(r.no,{l:spLineCode(ln)});e.rc=o.cs;e.nNo=r.no.length;e.fromNo=1;
+      const o=spNoSum(r.no,{l:spLineCode(ln),ym:p[1]});e.rc=o.cs;e.nNo=r.no.length;e.fromNo=1;
     }
     if(isT)e.has=1;else{e.done=1;e.at=r.at||0;e.n=+r.n||0;}
   });
@@ -16071,13 +16133,9 @@ function spNavBack(){
 function spOpenMon(ym){spNavPush();SP.ym=ym;SP.view="mon";renderSpord();}
 /* ⚠️ เปิดใบแล้วต้องลงที่ "แท็บแรกที่ใบประเภทนั้นมีจริง" — เขียน "key" ตายไว้ทำให้ใบ A/B
    (ที่ไม่มีขั้นซุปจด) เปิดมาแล้ว SP.sec ชี้ไปแท็บที่ไม่มีอยู่ ปุ่มย้อนกลับจะพากลับไปหน้าที่หายไป */
-/* ⚠️ เซลล์ลงที่ ② เซลล์คีย์ เสมอ — เจ้าของสั่งให้ flow ของเซลล์ "มุ่งตรงไปที่หมวดเซลล์คีย์
-   เท่านั้นพอ หมวดอื่นดูได้ แต่แก้ไขไม่ได้" (สิทธิ์เขียนตรวจในฟังก์ชันอยู่แล้ว ไม่ได้ซ่อนแท็บ) */
-function spFirstSec(sid){
-  const v=spTabsOn(spSlip(sid));
-  if(spRole()==="sales"&&v.some(x=>x.k==="rep"))return "rep";
-  return (v[0]||{}).k||"rep";
-}
+/* ⚠️ ทุกบทบาทลงที่ "ขั้นของตัวเอง" — ซุป→ซุปจด · เซลล์→เซลล์คีย์ · แอดมิน→แอดมินตรวจ ·
+   คลัง/สายส่ง→คลังจัดส่ง (ดูบันทึกที่ `spHomeSec`) เป็นหน้าแรกที่ลงจอดเท่านั้น ไม่ใช่สิทธิ์ */
+function spFirstSec(sid){return spHomeSec(spTabsOn(spSlip(sid)));}
 function spOpenSlip(sid){spNavPush();SP.sid=sid;SP.view="slip";SP.day="";SP.sec=spFirstSec(sid);renderSpord();}
 /* เดือนของใบ (ใช้วันที่ตัดบิล ถ้าไม่มีใช้วันที่สร้าง) */
 function spYm(sl){
@@ -17629,7 +17687,7 @@ function spOldHtml(){
      <div class="cards" style="margin-top:8px">
        <div class="card"><div class="k">ตัดบิลไว้</div><div class="v">${c.cut.toLocaleString()}</div><div class="s">ลัง</div></div>
        <div class="card"><div class="k">เซลล์คีย์ออเดอร์แล้ว</div><div class="v">${c.keyed.toLocaleString()}</div>
-         <div class="s">ลัง${c.wait?" · อีก "+c.wait+" เลขรอไฟล์ยอดขาย":""}</div></div>
+         <div class="s">ลัง${c.wait?" · อีก "+c.wait+" เลขยังไม่รู้จำนวน":""}</div></div>
        <div class="card" style="border-top:3px solid var(--good)"><div class="k">สายส่งส่งเสร็จแล้ว</div>
          <div class="v up">${c.sent.toLocaleString()}</div><div class="s">ลัง · ครบ loop ${pct}%</div></div>
        <div class="card" style="border-top:3px solid ${c.left>0?"var(--warn)":"var(--good)"}">
@@ -17931,7 +17989,7 @@ function spMeChk(sid,ymd,ln){
   const rec=spRepRec(sid,ymd,ln);
   const nos=(rec&&Array.isArray(rec.no))?rec.no.slice():[];
   o.has=!!tgt;o.nNo=nos.length;
-  const sum=nos.length?spNoSum(nos,{l:spLineCode(ln)}):null;
+  const sum=nos.length?spNoSum(nos,{l:spLineCode(ln),ym:ymd}):null;
   if(sum){o.cs=sum.cs;o.wait=sum.wait;o.miss=sum.miss.length;o.amb=sum.amb.length;}
   if(!nos.length&&!(rec&&spDayHas(rec))){o.st=tgt?"todo":"none";return o;}
   const g=spGinRec(sid,ymd);
@@ -18043,7 +18101,7 @@ function spRepHomeHtml(sid){
           ${c.nNo?" · ใส่เลขไว้ <b>"+c.nNo+"</b> เลข":""}${c.cs?" · ระบบหาได้ <b>"+N(c.cs)+"</b> ลัง":""}</div>`;
       /* สิ่งที่ "ยังไม่รู้" ต้องบอก ห้ามปล่อยให้ดูเหมือนครบ */
       if(c.wait||c.miss||c.amb)b+=`<div class="psub" style="margin-top:4px">${
-        c.wait?"⏳ <b>"+c.wait+"</b> เลขยังไม่รู้จำนวนลัง — รอไฟล์ยอดขายของวันนั้น ":""}${
+        c.wait?"⏳ <b>"+c.wait+"</b> เลขยังไม่รู้จำนวนลัง — รอไฟล์ใบจัดของ หรือไฟล์ยอดขาย ":""}${
         c.miss?'<span class="down">❓ ยังหาไม่เจอ <b>'+c.miss+"</b> เลข</span> ":""}${
         c.amb?'<span class="down">⚠️ <b>'+c.amb+"</b> เลขตรงกับหลายใบ ใส่เลขเต็มให้ไม่ซ้ำ</span>":""}</div>`;
       if(c.bad.length)b+=`<div class="sp-mebad">⚠️ <b>${c.bad.length}</b> เลขที่คุณคีย์ไว้
@@ -18117,6 +18175,7 @@ function spRepMineHtml(sid,ymd){
     ${rec?`<div class="cst-fb" style="margin-top:10px">
       <button type="button" class="btn-ghost" onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">🕘 ดูประวัติการกรอก</button></div>`:""}
     ${spRepNoHtml(ln,rec,can)}
+    ${spMyOrdHtml(ln,rec,ymd)}
     ${can?`<div class="sp-save"><button class="upload-btn"
       onclick="spRepLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกเลขออเดอร์</button></div>`:""}
     <h4 style="margin:18px 0 0">🎯 รายการที่ต้องคีย์ · ${fmtDayMon(ymd)}</h4>
@@ -18371,9 +18430,73 @@ function spOrdFind(txt,hint){
   }
   return null;
 }
+/* ============================================================================
+ * 📦 "ออเดอร์ใบนี้กี่ลัง" — มีแค่ **สองไฟล์** ที่ตอบได้ และต้องรู้ว่าไฟล์ไหนตอบอะไร
+ *
+ * เจ้าของถาม 29 พ.ย. 69 ว่าทำไมขึ้น "รอไฟล์ยอดขาย" และบอกว่า
+ *   *"จริง ๆ มันต้องผูกกับไฟล์ transaction inquiry นะ เป็นส่วนของ[ข้อ]มูลเลขออเดอร์ที่เซลล์คีย์
+ *     เข้ามา และมีระบุรายการจำนวนสินค้าด้วย"*
+ *
+ * 🔍 วัดจากไฟล์จริงของเขาเอง (`Transaction_Inquiry_26112026.xlsx` — ชีท DataExtract ชีทเดียว
+ *    2,107 ใบ) ก่อนเขียนอะไร: ไฟล์นี้มี **32 คอลัมน์ และไม่มีรหัสสินค้า ไม่มีช่องจำนวนเลย**
+ *    — เลขที่เอกสาร · ร้าน · PJP · เวลาสั่งซื้อ · วันที่เอกสาร/จัดส่ง/จัดส่งจริง · GSV ·
+ *      ส่วนลด · NIV · ภาษี · สถานะ · ช่องทาง · เลขอ้างอิง DDT · เลขใบจัดสินค้า · เลขใบแจ้งหนี้
+ *    **เป็นไฟล์ระดับ "ใบ" ไม่ใช่ระดับ "รายการสินค้า"** จึงบอกจำนวนลังไม่ได้ไม่ว่าจะอ่านยังไง
+ *    (`parseTxn` ถึงจงใจไม่เขียน cs/pc — ใส่ 0 ลงไปคือโกหก) · ต้องบอกเจ้าของตรง ๆ แบบนี้
+ *    ไม่ใช่เดาตัวเลขออกมาให้
+ *
+ * ✅ ไฟล์ที่ตอบได้จริงมีสองใบ และระบบมีทั้งคู่อยู่แล้ว:
+ *    ① **ไฟล์ยอดขายรายวัน** (`STOREDAILY.ord[...].cs/pc`) — แม่นที่สุด แต่มาหลังออกบิล
+ *       วัดไว้แล้ว: ออกบิลวันเดียวกัน 46.7% · +1 วัน 43.3% · +2 วัน 9.2% ⇒ ของ "วันนี้"
+ *       ยังไม่มีในไฟล์นี้เป็นเรื่องปกติ ซึ่งคือสิ่งที่เจ้าของเห็นบนจอ
+ *    ② **ไฟล์ใบจัดของ (allocation)** — มีรายสินค้าและจำนวนต่อใบ และ **มาก่อนไฟล์ยอดขาย**
+ *       เพราะแอดมินอัพเองในหน้านี้ทุกวันเพื่อตรวจเลข GIN
+ *       อ่านผ่าน `api/ordtrk` ซึ่ง **ทุกบทบาทอ่านได้** (ต่างจาก `api/alloc.js` ที่ผู้จัดการ
+ *       เท่านั้น) — เจ้าของสั่งว่าตารางนี้ "ให้ทุกคนกดเข้าไปดูได้" จึงต้องใช้ตัวที่ทุกคนอ่านได้
+ *
+ * ⚠️ ไม่มีทั้งสองไฟล์ = **"ยังไม่รู้จำนวน" ไม่ใช่ 0** (กฎเดิมของ spRow/spCases/spShops)
+ * ⚠️ ใบที่เก็บไว้ก่อนระบบแยกลัง/ชิ้น อ่านได้แต่ลังเต็ม → ขึ้น `*` ตามกฎเดียวกับหน้า
+ *    สถานะออเดอร์ (ขาย) · ใช้ `otQty` ตัวเดียวกัน สองหน้าจะได้ไม่พูดคนละเลข
+ * ==========================================================================*/
+/* ดึงข้อมูลเดือนนั้นจากที่เก็บของ `api/ordtrk` — ขอครั้งเดียวต่อเดือนต่อแท็บ แล้ววาดใหม่รอบเดียว
+   (รูปแบบเดียวกับ `otEnsure` / `AL_WAIT` — ห้ามยิงซ้ำระหว่างที่คำขอเดิมยังค้างอยู่) */
+let _spOtAsk={};
+function spOtWant(ym){
+  if(!ym||!/^\d{4}-\d{2}$/.test(ym))return;
+  if(typeof OT==="undefined"||!OT||!OT.cache)return;
+  if(OT.cache[ym]||_spOtAsk[ym])return;
+  if(typeof otApi!=="function"||!otApi()||typeof otLoad!=="function")return;
+  _spOtAsk[ym]=1;
+  otLoad(ym).then(()=>{
+    if(typeof CURTAB!=="undefined"&&CURTAB==="spord"&&typeof renderSpord==="function")renderSpord();
+  }).catch(()=>{});
+}
+function spOtOrd(ym){
+  const C=(typeof OT!=="undefined"&&OT&&OT.cache)?OT.cache[ym]:null;
+  return (C&&C.ord)||null;
+}
+/* จำนวนของใบเดียว — คืน null เมื่อ "ยังไม่รู้" ห้ามคืน 0
+   r = เรคอร์ดใน STOREDAILY.ord · ym = เดือนของวันที่กำลังบันทึกงาน (ใช้เป็นตัวสำรอง) */
+function spOrdQty(no,r,ym){
+  if(r&&r.cs!==undefined)
+    return {cs:+r.cs||0,pc:+r.pc||0,n:+r.c||0,ok:1,src:"sale"};
+  const k=(typeof otTail==="function")?otTail(String(no||""),"BDD01"):"";
+  if(!k)return null;
+  const ms=[];
+  const add=m=>{m=String(m||"").slice(0,7);if(/^\d{4}-\d{2}$/.test(m)&&ms.indexOf(m)<0)ms.push(m);};
+  add(r&&r.k);add(ym);add(r&&r.d);
+  for(let i=0;i<ms.length;i++){
+    const o=spOtOrd(ms[i]);if(!o)continue;
+    const x=o[k];if(!x)continue;
+    if(x.w===undefined&&x.p===undefined&&!x.c)continue;   /* ใบที่มาจากไฟล์รายการสั่งซื้อ ไม่มีจำนวน */
+    const q=(typeof otQty==="function")?otQty(x)
+      :{cs:Math.round(+x.c||0),pc:0,ok:(Math.abs((+x.c||0)%1)>1e-9)?0:1};
+    return {cs:q.cs,pc:q.pc,n:+x.n||0,ok:q.ok,src:"gin"};
+  }
+  return null;
+}
 /* รวมยอดของเลขที่เซลล์กรอกมา — ลัง/ชิ้น/มูลค่า/ร้าน และเลขที่ยังหาไม่เจอ
-   ⚠️ เรคอร์ดที่มาจากไฟล์รายการสั่งซื้อ (tx:1) ยังไม่รู้จำนวนลัง ต้องแยกนับเป็น "รอไฟล์ยอดขาย"
-      ไม่ใช่บวกเป็น 0 (กฎเดียวกับ spRow/spCases) */
+   ⚠️ ใบที่ยังไม่มีไฟล์ไหนบอกจำนวน ต้องแยกนับเป็น "ยังไม่รู้จำนวน" ไม่ใช่บวกเป็น 0 */
 function spNoSum(list,hint){
   /* 📦 ลัง กับ ชิ้น เป็นคนละช่องในไฟล์ยอดขาย (Aggr(CS) / Aggr(Pcs)) — บวกแยกกันแล้วแสดง
      เป็น "N ลัง M ชิ้น" ห้ามยุบเป็นลังทศนิยม (เจ้าของสั่งซ้ำ 28 พ.ย. 69) */
@@ -18383,7 +18506,10 @@ function spNoSum(list,hint){
         เลขเต็มกับหางเลข แล้วลัง/เงินของใบนั้นจะถูกบวกสองรอบ ซึ่งเป็นยอดที่ซุปกับแอดมินใช้ตรวจ
      ⚠️ `n` ยังนับทุกเลขที่ใส่มาตามจริง ส่วนที่ซ้ำรายงานแยกเป็น `same` — คนละคำถามกัน */
   const o={n:0,cs:0,pc:0,v:0,shops:{},found:0,wait:0,miss:[],rows:[],cx:0,dup:0,amb:[],
-           same:0,sameList:[]};
+           same:0,sameList:[],src:{sale:0,gin:0},star:0};
+  /* เดือนของวันที่กำลังบันทึกงาน — ที่เก็บ `api/ordtrk` แบ่งเป็นรายเดือนตามวันที่เซลล์คีย์
+     ผู้เรียกที่รู้วันอยู่แล้วส่ง ym มาเอง ที่เหลือใช้วันของหน้าที่เปิดอยู่ */
+  const ym=String((hint&&hint.ym)||(typeof SP!=="undefined"&&SP&&SP.day)||"").slice(0,7);
   const hit={};
   (list||[]).forEach(t=>{
     o.n++;
@@ -18398,9 +18524,11 @@ function spNoSum(list,hint){
     const r=f.r;
     if(r.cx)o.cx++;
     if(r.s)o.shops[r.s]=1;
-    if(r.cs===undefined)o.wait++;else{o.cs+=+r.cs||0;o.pc+=+r.pc||0;}
+    const q=spOrdQty(f.no,r,ym);
+    if(!q)o.wait++;
+    else{o.cs+=q.cs;o.pc+=q.pc;o.src[q.src]=(o.src[q.src]||0)+1;if(!q.ok)o.star++;}
     o.v+=+r.v||0;
-    o.rows.push({ask:t,no:f.no,r:r,via:f.via});
+    o.rows.push({ask:t,no:f.no,r:r,via:f.via,q:q});
   });
   o.cs=Math.round(o.cs*100)/100;o.pc=Math.round(o.pc*100)/100;o.v=Math.round(o.v*100)/100;
   o.nShop=Object.keys(o.shops).length;
@@ -18420,7 +18548,7 @@ function spOrdCell(x){
   if(!o||!o.n)return '<span class="psub">—</span>';
   const bits=[];
   if(o.miss.length)bits.push('<span class="psub down">หาไม่เจอ '+o.miss.length+'</span>');
-  if(o.wait)bits.push('<span class="psub">รอไฟล์ยอดขาย '+o.wait+'</span>');
+  if(o.wait)bits.push('<span class="psub">ยังไม่รู้จำนวน '+o.wait+'</span>');
   const know=o.found-o.wait;
   if(!know)return '<span class="psub">'+(bits.join(" · ")||"—")+'</span>';
   /* ส่วนต่าง: ลังกับชิ้นเทียบคนละช่องกัน ห้ามยุบเป็นเลขเดียว ขนาดลังแต่ละรหัสไม่เท่ากัน */
@@ -18434,8 +18562,83 @@ function spOrdCell(x){
       spCsTxt(Math.abs(dcs),Math.abs(dpc))+'</span>':"")+
     (bits.length?'<span class="psub" style="display:block">'+bits.join(" · ")+'</span>':"");
 }
+/* ============================================================================
+ * 🔎 กดที่ "ชื่อสาย" แล้วเห็นว่าสายนั้นส่งเลขออเดอร์ไหนมาบ้าง ใบละกี่ลัง
+ *
+ * เจ้าของสั่ง 29 พ.ย. 69: *"ส่วนของติดตามการคีย์ของเมเนเจอร์ ให้ปรับให้ทุกคนกดเข้าไปดูได้
+ *   ว่าแต่ละสายกดออเดอร์เลขไหนมาบ้าง และในออเดอร์นั้น ๆ มีสินค้าจำนวนกี่ลังรวมเท่าไหร่
+ *   โดยจะแสดงผลเมื่อกดที่เลขสายเท่านั้น และเป็นสายที่มีการส่งออเดอร์เข้ามาแล้ว
+ *   เพื่อให้ตรวจสอบเบื้องต้นก่อนได้เลย"*
+ *
+ * ⚠️ **ทุกบทบาทเปิดดูได้** — เป็นการอ่านล้วน ๆ ไม่มีปุ่มแก้อะไรในนี้ สิทธิ์เขียนยังอยู่ที่เดิม
+ * ⚠️ ขึ้นปุ่มเฉพาะสายที่ "ส่งเลขมาแล้วจริง" (`x.ord && x.ord.n`) ตามที่เขาสั่ง —
+ *    สายที่ยังไม่คีย์ไม่ต้องมีปุ่มให้กดแล้วเจอกล่องว่าง
+ * ⚠️ กางแล้ว **ห้ามวาดหน้าใหม่** — สลับ class ของแถวตรง ๆ เหมือนตัวกางของหน้า PSI
+ *    (วาดใหม่ = กล่องตารางที่ freeze หัวไว้จะเด้งกลับบนสุด ตามบันทึกที่ `spRenderKeep`)
+ *    สถานะที่กางไว้เก็บบน `SP.trk` ซึ่งไม่ sync ขึ้นเซิร์ฟเวอร์
+ * ⚠️ จำนวนของแต่ละใบอ่านผ่าน `spOrdQty` — ใบที่ยังไม่มีไฟล์ไหนบอกจำนวน ต้องขึ้นว่า
+ *    "ยังไม่รู้จำนวน" ห้ามขึ้น 0 (ดูบันทึกยาวที่ `spOrdQty`)
+ * ==========================================================================*/
+function spTrkTog(ln){
+  if(!SP.trk)SP.trk={};
+  SP.trk[ln]=!SP.trk[ln];
+  const row=document.getElementById("sptrk-"+ln),car=document.getElementById("sptrkc-"+ln);
+  if(row)row.classList.toggle("hidden",!SP.trk[ln]);
+  if(car)car.textContent=SP.trk[ln]?"▾":"▸";
+}
+/* ที่มาของจำนวน — ผู้ใช้ต้องรู้ว่าตัวเลขนี้มาจากไฟล์ไหน จะได้รู้ว่าต้องอัพอะไรถ้ายังไม่ขึ้น */
+const SP_QSRC={sale:["🧾","ไฟล์ยอดขาย"],gin:["🚚","ใบจัดของ"]};
+function spTrkOrdHtml(x){
+  const o=x.ord;
+  if(!o||!o.n)return "";
+  const rows=(o.rows||[]).map(r=>{
+    const rec=r.r||{},q=r.q;
+    const nm=spShop(rec.s)||"";
+    const src=SP_QSRC[(q&&q.src)||""]||null;
+    return `<tr>
+      <td class="l" style="font-family:ui-monospace,monospace"><b>${anaEsc(r.no||r.ask)}</b>${
+        (String(r.ask).toUpperCase()!==String(r.no).toUpperCase())
+          ?'<span class="psub" style="display:block">พิมพ์มาว่า '+anaEsc(r.ask)+"</span>":""}${
+        rec.cx?' <span class="pill w">ยกเลิก</span>':""}</td>
+      <td class="l" data-l="ร้าน"><div>${
+        nm?("<b>"+anaEsc(nm)+"</b>"):'<span class="psub">ยังไม่รู้ชื่อร้าน</span>'}${
+        rec.s?'<span class="psub" style="display:block">รหัส '+anaEsc(rec.s)+"</span>":""}</div></td>
+      <td data-l="รายการ">${(q&&q.n)?q.n:'<span class="psub">-</span>'}</td>
+      <td data-l="จำนวน">${q?("<b>"+spCsTxt(q.cs,q.pc)+"</b>"+(q.ok?"":' <b class="down">*</b>'))
+            :'<span class="psub">ยังไม่รู้จำนวน</span>'}</td>
+      <td data-l="ที่มา">${src?('<span class="psub">'+src[0]+" "+src[1]+"</span>")
+            :'<span class="psub" style="color:var(--mid)">รอไฟล์</span>'}</td></tr>`;
+  }).join("");
+  const note=[];
+  if(o.miss.length)note.push('<b class="down">❓ ยังหาไม่เจอ '+o.miss.length+" เลข</b> — "+
+    anaEsc(o.miss.slice(0,8).join(" · "))+(o.miss.length>8?" …":""));
+  if(o.amb.length)note.push('<b class="down">⚠️ '+o.amb.length+" เลขตรงกับหลายใบ</b> ใส่เลขเต็มให้ไม่ซ้ำ");
+  if(o.same)note.push("ตัดเลขซ้ำออก "+o.same+" เลข — เป็นใบเดียวกัน นับครั้งเดียว");
+  if(o.wait)note.push("⏳ <b>"+o.wait+"</b> ใบยังไม่รู้จำนวน — รอไฟล์ใบจัดของ หรือไฟล์ยอดขายของวันนั้น");
+  if(o.star)note.push("* "+o.star+" ใบมาจากไฟล์ที่อัพไว้ก่อนระบบแยกลัง/ชิ้น จึงขึ้นเฉพาะลังเต็ม");
+  return `<div class="sp-trkbox">
+    <div class="psub" style="margin-bottom:6px">สาย <b>${anaEsc(x.ln)}</b> ส่งมา
+      <b>${o.n}</b> เลข · เจอในระบบ <b>${o.found}</b> · รวม <b>${spCsTxt(o.cs,o.pc)}</b></div>
+    ${rows?`<div class="tblwrap"><table class="sp-kt sp-fold"><thead><tr>
+      <th class="l">เลขออเดอร์</th><th class="l">ร้าน</th><th>รายการ</th><th>จำนวน</th><th>ที่มา</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>`:""}
+    ${note.length?'<div class="psub" style="margin-top:6px">'+note.join("<br>")+"</div>":""}
+  </div>`;
+}
+/* 📋 ของ "สายตัวเอง" — เซลล์เห็นตารางเดียวกันนี้ในการ์ดของตัวเอง เพราะเจ้าของสั่งว่า
+   *"ให้ทุกคนกดเข้าไปดูได้"* · เซลล์ยังไม่เห็นตารางติดตาม 12 สาย ตามที่เขาสั่งไว้ก่อนหน้า
+   ใช้ <details> ของเบราว์เซอร์ เปิด-ปิดแล้วไม่ต้องวาดหน้าใหม่ (กฎเดียวกับตัวกางของหน้า PSI) */
+function spMyOrdHtml(ln,rec,ymd){
+  const nos=(rec&&Array.isArray(rec.no))?rec.no:[];
+  if(!nos.length)return "";
+  spOtWant(String(ymd||"").slice(0,7));
+  const x={ln:ln,ord:spNoSum(nos,{l:spLineCode(ln),ym:ymd})};
+  return `<details class="sp-trkdet"><summary>📋 ดูเลขออเดอร์ที่ใส่ไว้ (${x.ord.n} เลข)</summary>
+    ${spTrkOrdHtml(x)}</details>`;
+}
 function spTrackHtml(sid,ymd,tr){
   tr=tr||spTrack(sid,ymd);
+  spOtWant(String(ymd||"").slice(0,7));   /* ขอไฟล์ใบจัดของของเดือนนี้ไว้ตอบ "กี่ลัง" */
   const one=spRole()==="sales";          /* เซลล์เห็นแถวเดียวคือสายตัวเอง */
   const tg=spHasTgt(sid);
   const show=tr.filter(x=>x.has||x.done);
@@ -18453,27 +18656,38 @@ function spTrackHtml(sid,ymd,tr){
         <div class="v">${n.wait}</div><div class="s">สาย</div></div>
       <div class="card"><div class="k">เกินเป้า</div><div class="v">${n.over}</div><div class="s">สาย</div></div>
     </div>`;
-  const rows=show.map(x=>`<tr>
-    <td class="l"><b>${anaEsc(x.ln)}</b></td>
-    ${tg?`<td>${(x.tgt.cs||x.tgt.pc)?spCsTxt(x.tgt.cs,x.tgt.pc):"-"}</td>`:""}
-    <td>${x.done?`<button class="btn-ghost btn-mini" style="font-weight:700"
+  const ncol=tg?7:4;
+  if(!SP.trk)SP.trk={};
+  const rows=show.map(x=>{
+   const nOrd=(x.ord&&x.ord.n)||0;
+   const open=!!SP.trk[x.ln];
+   return `<tr>
+    <td class="l">${nOrd?`<button type="button" class="btn-ghost btn-mini sp-trkb"
+        onclick="spTrkTog('${anaEsc(x.ln)}')" title="ดูเลขออเดอร์ของสายนี้"><span
+        id="sptrkc-${anaEsc(x.ln)}">${open?"▾":"▸"}</span> <b>${anaEsc(x.ln)}</b>
+        <span class="psub">${nOrd} เลข</span></button>`:`<b>${anaEsc(x.ln)}</b>`}</td>
+    ${tg?`<td data-l="เป้า">${(x.tgt.cs||x.tgt.pc)?spCsTxt(x.tgt.cs,x.tgt.pc):"-"}</td>`:""}
+    <td data-l="คีย์จริง">${x.done?`<button class="btn-ghost btn-mini" style="font-weight:700"
         onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(x.ln)}')">${spCsTxt(x.rep.cs,x.rep.pc)}</button>${
         spRepDelBtn(sid,ymd,x.ln)}`:"-"}</td>
-    <td>${spOrdCell(x)}</td>
-    ${tg?`<td>${(x.st==="short"||x.st==="over")
+    <td data-l="🧾 จากเลขออเดอร์">${spOrdCell(x)}</td>
+    ${tg?`<td data-l="ยังขาด">${(x.st==="short"||x.st==="over")
       ?`<b class="${x.st==="short"?"down":"up"}">${spDiffTxt(-x.left,-x.leftP)}</b>`:"-"}</td>
-    <td>${SP_TRK[x.st][0]}</td>`:""}
-    <td class="l">${x.rec?`<span class="psub">${anaEsc(x.rec.byName||x.rec.by||"")} · ${fmtDateTime(x.rec.at)}${
-      x.n?" · แก้ไป "+(x.n-1)+" ครั้ง":""}</span>`:'<span class="psub">—</span>'}</td></tr>`).join("");
+    <td data-l="ผล">${SP_TRK[x.st][0]}</td>`:""}
+    <td class="l" data-l="กรอกเมื่อ">${x.rec?`<span class="psub">${anaEsc(x.rec.byName||x.rec.by||"")} · ${fmtDateTime(x.rec.at)}${
+      x.n?" · แก้ไป "+(x.n-1)+" ครั้ง":""}</span>`:'<span class="psub">—</span>'}</td></tr>`+
+    (nOrd?`<tr id="sptrk-${anaEsc(x.ln)}" class="sp-trkd${open?"":" hidden"}"><td colspan="${ncol}"
+      class="l">${spTrkOrdHtml(x)}</td></tr>`:"");}).join("");
   return `<div class="panel" style="margin-top:12px">
     <h3>📋 ${one?"สรุปของสายฉัน":(tg?"ติดตามการคีย์รายสาย":"จำนวนที่เซลล์คีย์")} · ${fmtDate(ymd)}</h3>
     ${cards}
-    <div class="tblwrap" style="margin-top:10px"><table class="sp-kt">
+    <div class="tblwrap" style="margin-top:10px"><table class="sp-kt sp-fold">
       <thead><tr><th class="l">สาย</th>${tg?"<th>เป้า</th>":""}<th>คีย์จริง</th>
         <th>🧾 จากเลขออเดอร์</th>${
         tg?"<th>ยังขาด</th><th>ผล</th>":""}<th class="l">กรอกเมื่อ</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
-    <div class="psub" style="margin-top:8px">กดที่ตัวเลข <b>คีย์จริง</b> เพื่อดูประวัติการกรอก ·
+    <div class="psub" style="margin-top:8px">กดที่ <b>ชื่อสาย</b> เพื่อดูว่าสายนั้นส่งเลขออเดอร์ไหนมาบ้าง
+      ใบละกี่ลัง · กดที่ตัวเลข <b>คีย์จริง</b> เพื่อดูประวัติการกรอก ·
       <b>🧾 จากเลขออเดอร์</b> คือยอดที่ระบบหาเองจากเลขคำสั่งซื้อที่เซลล์กรอกไว้
       (ไม่ได้มาจากการพิมพ์จำนวน) — ถ้าสองช่องไม่ตรงกันจะขึ้นสีแดงไว้ให้</div>
   </div>`;

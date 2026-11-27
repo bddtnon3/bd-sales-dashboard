@@ -125,6 +125,13 @@ const B1='B20261118-01';
     const chips=[...document.querySelectorAll('#spTabs .tab2')].map(x=>
       (String(x.className).match(/spz-\w+/)||[''])[0]);
     o.chips=chips.join(',');
+    /* 🔎 กางเลขออเดอร์ของสายหนึ่งในตารางติดตาม (เจ้าของสั่ง 29 พ.ย. 69) — ตารางซ้อนในตาราง
+       ต้องไม่ดันหน้าเว็บให้กว้างเกินจอ โดยเฉพาะบนมือถือ */
+    SP.sec='rep';SP.trk={CT11:true};renderSpord();
+    const row=document.getElementById('sptrk-CT11');
+    o.trk={has:!!row,open:!!(row&&!row.classList.contains('hidden')),
+      doc:document.documentElement.scrollWidth,win:innerWidth,
+      btn:!!document.querySelector('.sp-trkb')};
     return o;});
   const pre=dev+': ';
   t(pre+'🎨 ทุกขั้นงานถูกครอบด้วยโซนสีของตัวเอง',
@@ -138,6 +145,9 @@ const B1='B20261118-01';
   t(pre+'📱 ไม่มีหน้าไหนของออเดอร์พิเศษทำให้จอล้นแนวนอน',
     ['key','rep','adm','out','rpt'].every(s=>got[s].doc<=got[s].win),
     ['key','rep','adm','out','rpt'].map(s=>s+':'+got[s].doc+'/'+got[s].win).join(' '));
+  t(pre+'🔎 กางเลขออเดอร์ของสายในตารางติดตามแล้ว หน้าเว็บยังไม่กว้างเกินจอ',
+    got.trk.has&&got.trk.open&&got.trk.btn&&got.trk.doc<=got.trk.win,
+    JSON.stringify(got.trk));
   t(pre+'ไม่มี error ในหน้าเว็บ',errs.length===0,errs.join(' | '));
   await ctx.close();
  }
