@@ -429,8 +429,14 @@ function mergeState(server, c) {
   //    แท็บเก่าที่ถือ n=1 ทับของใหม่ที่ n=2 = เซลล์กลับมาแก้ได้อีก และประวัติหาย
   //    จึงรวมทีละช่อง: it เอาอันใหม่ · n เอาค่ามากกว่า · h รวมกันแล้วไล่ตามเวลา (หลักเดียวกับ mergeSubOne)
   const csRep = mergeRep(sCs.rep, cCs.rep);
+  //   whq["sid|วันที่|เลขออเดอร์"] = แอดมินยืนยัน "คลังจัดออกไปจริง" ตรงกับที่ระบบแสดงไหม
+  // ไม่มีไฟล์ไหนบอกเรื่องนี้ แอดมินกรอกเอง (เจ้าของสั่ง 29 พ.ย. 69) · หนึ่งคีย์ = หนึ่งใบ
+  // แอดมินสองคนติ๊กคนละใบพร้อมกันจึงทับกันไม่ได้ · ยกเลิกยืนยันเขียน ok:0 ไม่ใช่ลบคีย์
+  // ⚠️ ถ้าเก็บเป็น field บน gin แบบ newest-wins ทั้งเรคอร์ด แท็บที่เปิดค้างจะลบการติ๊กของอีกคนทิ้ง
+  //    (บทเรียนเดียวกับ mergeExOne / mergeSubOne)
+  const csWhq = newestByAt(sCs.whq, cCs.whq);
   for (const k of Object.keys(csSdel)) {                            // ใบถูกลบ = ทิ้งงานทุกฝั่งของใบนั้น
-    for (const m of [csKey, csGin, csRep]) {
+    for (const m of [csKey, csGin, csRep, csWhq]) {
       for (const kk of Object.keys(m)) if (kk.slice(0, k.length + 1) === k + "|") delete m[kk];
     }
   }
@@ -442,7 +448,7 @@ function mergeState(server, c) {
   const csAlc = pickNewerAlc(sCs.alc, cCs.alc);
   const CSTOCK = { lots: csLots, del: csDel, slips: csSlips, sdel: csSdel, ex: csEx,
                    sub: csSub, subdel: csSubDel, key: csKey, gin: csGin, rep: csRep,
-                   alc: csAlc,
+                   whq: csWhq, alc: csAlc,
                    up: Math.max(sCs.up || 0, cCs.up || 0) };
 
   // PSI — คลังรับของเข้าจากศูนย์ (ไฟล์ PSI ชีต Export) เจ้าของสั่ง 27 พ.ย. 69

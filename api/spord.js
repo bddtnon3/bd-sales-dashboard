@@ -14,6 +14,15 @@ import { newestReal, looksEmpty } from "../lib/snapshot.js";
  *   act:"key"  -> CSTOCK.key["sid|YYYY-MM-DD|CT11"]  หัวหน้าเซลล์กรอกจำนวนที่เซลล์คีย์รายวัน
  *   act:"gin"  -> CSTOCK.gin["sid|YYYY-MM-DD"]       แอดมินบันทึกผลตรวจจากไฟล์ allocation
  * สิทธิ์: key = sup/manager · gin = manager — *"แก้ไขได้เฉพาะในส่วนของตัวเอง … เมเนเจอร์ดูและแก้ได้ทั้งหมด"*
+ *
+ * 🚚 29 พ.ย. 69 — ขั้นที่ทำ "หลังตรวจเลข GIN" (เจ้าของสั่ง: *"ส่วนนี้ไว้ให้แอดมินทำงานต่อหลังจาก
+ *    ตรวจเลข GIN … ว่าจำนวน match กันกับของที่คลังส่งออกจริงถูกต้องไหม ซึ่งข้อมูลส่วนนี้ไม่มีไฟล์
+ *    ให้แอดมินกรอกเองได้เลย"*):
+ *   act:"whq" -> CSTOCK.whq["sid|YYYY-MM-DD|เลขออเดอร์"]  แอดมินยืนยัน/กรอกจำนวนที่คลังจัดออกจริง
+ * สิทธิ์: manager เท่านั้น (เหมือน gin) · หนึ่งคีย์ = หนึ่งใบ สองคนติ๊กคนละใบจึงทับกันไม่ได้
+ * ⚠️ รับมาเป็นก้อน (items) เพราะเจ้าของขอ "เลือกครอบทุกออเดอร์แล้วกดทีเดียว" — แต่ **คีย์สร้าง
+ *    ที่เซิร์ฟเวอร์** จาก sid+วันที่+เลขออเดอร์ ไคลเอนต์ยัดคีย์อื่นเข้ามาไม่ได้ และจำกัด WHQ_MAX ใบ
+ * ⚠️ ยกเลิกยืนยันส่ง ok:0 มา ไม่ใช่ให้ลบคีย์ (กฎเดิมของทั้งไฟล์นี้)
  * ⚠️ สองฝั่งเขียนคนละคีย์ จึงทับกันไม่ได้แม้เปิดค้างคนละแท็บ (หลักเดียวกับ mergeExOne)
  * ⚠️ rows ของ act:"gin" คือยอดที่สรุปจากไฟล์ allocation **เฉพาะรหัสในใบนั้น** — เซิร์ฟเวอร์
  *    จำกัดจำนวนแถวไว้ ไม่งั้นไฟล์ 10,428 แถวจะถูกยัดเข้า snapshot ทั้งก้อน
@@ -43,6 +52,8 @@ const LN = (v) => { const t = S(v, 20).toUpperCase(); return /^[A-Z0-9_]{2,20}$/
 const CODE = (v) => { const t = S(v, 20).toUpperCase(); return /^[A-Z0-9][A-Z0-9._-]{0,19}$/.test(t) ? t : ""; };
 const Q = (v) => { const n = Number(v); return isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0; };
 const MAX_ROWS = 4000;
+// 🚚 ยืนยัน "คลังจัดส่งจริง" ได้กี่ใบต่อการกดหนึ่งครั้ง — ต้องตรงกับ WHQ_MAX ฝั่งหน้าเว็บ
+const WHQ_MAX = 300;
 // เซลล์บันทึกได้กี่ครั้งต่อวันต่อสาย · เดิม 2 ตอนที่กรอก "จำนวน" (กรอกทีเดียวจบ)
 // 26 พ.ย. 69 เปลี่ยนเป็นกรอก "เลขออเดอร์" ซึ่งทยอยเกิดทั้งวัน จึงต้องเซฟเพิ่มได้หลายรอบ
 // ประวัติทุกครั้งยังเก็บใน h เหมือนเดิม (เพดาน MAX_HIST)
@@ -67,17 +78,18 @@ export default async function handler(req, res) {
   if (!body) return res.status(400).json({ error: "ไม่มีข้อมูลที่จะบันทึก" });
 
   const act = String(body.act || "");
-  if (["add", "del", "step", "key", "gin", "rep"].indexOf(act) < 0) return res.status(400).json({ error: "คำสั่งไม่ถูกต้อง" });
+  if (["add", "del", "step", "key", "gin", "rep", "whq"].indexOf(act) < 0) return res.status(400).json({ error: "คำสั่งไม่ถูกต้อง" });
 
   const sid = SID(body.sid);
   if (!sid) return res.status(400).json({ error: "ไม่ได้ระบุใบออเดอร์ใหญ่" });
-  const twoStep = act === "key" || act === "gin" || act === "rep";
+  const twoStep = act === "key" || act === "gin" || act === "rep" || act === "whq";
   const no = twoStep ? "" : NO(body.no);
   if (!twoStep && !no) return res.status(400).json({ error: "เลขออเดอร์ไม่ถูกต้อง (ใส่เลขออเดอร์จากแอพ เช่น BDD0100000123)" });
   const ymd = twoStep ? YMD(body.d) : "";
   if (twoStep && !ymd) return res.status(400).json({ error: "ไม่ได้ระบุวันที่" });
   const key = twoStep ? ((act === "key" || act === "rep") ? sid + "|" + ymd + "|" + LN(body.ln) : sid + "|" + ymd)
                       : sid + "|" + no;
+  // act:"whq" เขียนหลายคีย์ในครั้งเดียว (ใบละคีย์) — key ด้านบนใช้เป็นแค่ค่าที่ตอบกลับ
 
   const role = claims.role || "";
   const isMgr = role === "manager";
@@ -103,11 +115,37 @@ export default async function handler(req, res) {
     if (!C.key) C.key = {};
     if (!C.gin) C.gin = {};
     if (!C.rep) C.rep = {};
+    if (!C.whq) C.whq = {};
 
     const existing = C.sub[key] || null;
     const now = Date.now();
 
-    if (act === "key" || act === "gin" || act === "rep") {
+    if (act === "whq") {
+      // 🚚 "คลังจัดออกไปจริง ตรงกับที่ระบบแสดงไหม" — ไม่มีไฟล์ไหนตอบได้ แอดมินกรอกเอง
+      // สิทธิ์เท่ากับ act:"gin" (แอดมิน 1-4 เป็น role manager) และตรวจที่นี่ ไม่ใช่ที่การซ่อนปุ่ม
+      if (!isMgr) return res.status(403).json({ error: "ฝั่งแอดมิน แก้ได้เฉพาะแอดมิน/ผู้จัดการ" });
+      const src = body.items && typeof body.items === "object" ? body.items : {};
+      const names = Object.keys(src);
+      if (!names.length) return res.status(400).json({ error: "ไม่มีใบที่จะบันทึก" });
+      if (names.length > WHQ_MAX) return res.status(400).json({ error: "บันทึกได้สูงสุด " + WHQ_MAX + " ใบต่อครั้ง" });
+      let wrote = 0;
+      for (const raw of names) {
+        const ono = NO(raw);
+        if (!ono) continue;                       // เลขที่อ่านไม่ออก ข้ามไป ไม่เขียนคีย์มั่ว
+        const v = src[raw] || {};
+        // ยกเลิกยืนยัน = ok:0 re:0 เขียนทับ ไม่ใช่ลบคีย์ (แท็บเก่าจะ union กลับมา)
+        C.whq[sid + "|" + ymd + "|" + ono] = {
+          ok: v.ok ? 1 : 0,
+          re: v.re ? 1 : 0,
+          cs: Q(v.cs), pc: Q(v.pc),
+          sys: Q(v.sys),                          // ที่ระบบแสดงตอนบันทึก — ไว้ดูย้อนหลังว่าเทียบกับอะไร
+          nt: S(v.nt, 200),
+          by: uid || role, byName: who, at: now,
+        };
+        wrote++;
+      }
+      if (!wrote) return res.status(400).json({ error: "เลขออเดอร์ไม่ถูกต้องทั้งหมด" });
+    } else if (act === "key" || act === "gin" || act === "rep") {
       // ฝั่งเซลล์ = หัวหน้าเซลล์ (sup) หรือผู้จัดการ · ฝั่งแอดมิน = ผู้จัดการ (แอดมิน 1-4 เป็น role manager)
       if (act === "key" && !(role === "sup" || isMgr))
         return res.status(403).json({ error: "ฝั่งเซลล์ แก้ได้เฉพาะหัวหน้าเซลล์ (sup) กับผู้จัดการ" });

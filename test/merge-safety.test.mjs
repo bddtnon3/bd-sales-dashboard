@@ -1339,6 +1339,45 @@ console.log("TEST 19 — monthly promotions and the prize money typed in against
         gm2.CSTOCK.gin[GK].money === 0 && gm2.CSTOCK.gin[GK].g[0] === "143");
   check("🛟 ...แต่จำนวนที่ฝั่งเซลล์กรอกไว้ยังอยู่ครบ",
         gm2.CSTOCK.key[KK].it["90000001"].sc === 7);
+  /* 🚚 คลังจัดส่งจริง (CSTOCK.whq) — แอดมินกรอกเอง ไม่มีไฟล์ (เจ้าของสั่ง 29 พ.ย. 69)
+       whq["sid|วันที่|เลขออเดอร์"] = {ok, re, cs, pc, sys, nt}
+     ⚠️ หนึ่งคีย์ = หนึ่งใบ แอดมินสองคนติ๊กคนละใบพร้อมกันต้องไม่ทับกัน
+     ⚠️ แท็บรุ่นก่อนที่ไม่รู้จักช่องนี้เลย บันทึกทับแล้วผลตรวจต้องไม่หายทั้งก้อน */
+  const WA = B1 + "|2026-11-20|1034715426";
+  const WB = B1 + "|2026-11-20|1034715427";
+  const whSrv = JSON.parse(JSON.stringify(gm2));
+  whSrv.CSTOCK.whq = { [WA]: { ok: 1, re: 0, cs: 0, pc: 0, sys: 5, nt: "", by: "admin1", at: 60000 } };
+  /* แอดมินอีกคนติ๊กอีกใบจากอีกเครื่อง — ส่งมาแค่ใบของตัวเอง */
+  const whB = JSON.parse(JSON.stringify(base));
+  whB.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {},
+    whq: { [WB]: { ok: 0, re: 1, cs: 3, pc: 0, sys: 5, nt: "คลังจัดขาด 2 ลัง", by: "admin2", at: 61000 } },
+    up: 61000 };
+  const wh1 = mergeState(whSrv, whB);
+  check("🚚 แอดมินสองคนตรวจคนละใบพร้อมกัน — อยู่ครบทั้งสองใบ",
+        !!(wh1.CSTOCK.whq || {})[WA] && wh1.CSTOCK.whq[WA].ok === 1 &&
+        !!wh1.CSTOCK.whq[WB] && wh1.CSTOCK.whq[WB].re === 1 && wh1.CSTOCK.whq[WB].cs === 3,
+        JSON.stringify(wh1.CSTOCK.whq));
+  /* แท็บเก่าที่ไม่เคยรู้จักช่องนี้ บันทึกอะไรก็ตามทับ — ผลตรวจทั้งหมดต้องไม่หาย */
+  const whOld = JSON.parse(JSON.stringify(base));
+  whOld.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {}, up: 62000 };
+  const wh2 = mergeState(wh1, whOld);
+  check("🛟 แท็บรุ่นก่อนบันทึกทับ ผลตรวจคลังจัดส่งจริงยังอยู่ครบทั้งสองใบ",
+        Object.keys(wh2.CSTOCK.whq || {}).length === 2 && wh2.CSTOCK.whq[WA].ok === 1,
+        JSON.stringify(wh2.CSTOCK.whq));
+  /* ยกเลิกยืนยัน = เขียน ok:0 ทับ ไม่ใช่ลบคีย์ — แท็บเก่าที่ถือ ok:1 ต้องเอากลับมาไม่ได้ */
+  const whUndo = JSON.parse(JSON.stringify(base));
+  whUndo.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {},
+    whq: { [WA]: { ok: 0, re: 0, cs: 0, pc: 0, sys: 5, nt: "", by: "admin1", at: 63000 } }, up: 63000 };
+  const wh3 = mergeState(wh2, whUndo);
+  check("🚚 ยกเลิกยืนยันเขียน ok:0 ทับ (ไม่ใช่ลบคีย์) — คีย์ยังอยู่และเป็น 0",
+        !!wh3.CSTOCK.whq[WA] && wh3.CSTOCK.whq[WA].ok === 0);
+  const whStale = JSON.parse(JSON.stringify(base));
+  whStale.CSTOCK = { lots: {}, del: {}, slips: {}, sdel: {}, ex: {}, sub: {}, subdel: {},
+    whq: { [WA]: { ok: 1, re: 0, cs: 0, pc: 0, sys: 5, nt: "", by: "admin1", at: 59000 } }, up: 64000 };
+  const wh4 = mergeState(wh3, whStale);
+  check("🛟 แท็บเก่าที่ยังถือ ok:1 ย้อนการยกเลิกกลับไม่ได้", wh4.CSTOCK.whq[WA].ok === 0);
+  check("🛟 ...และงานฝั่งอื่นของวันเดียวกันไม่ได้ถูกแตะเลย",
+        wh4.CSTOCK.key[KK].it["90000001"].sc === 7 && !!wh4.CSTOCK.gin[GK]);
   /* 👤 จำนวนที่เซลล์คีย์จริง (CSTOCK.rep) — เซลล์แก้ได้ครั้งเดียว โควต้าอยู่ใน n ประวัติอยู่ใน h
      ⚠️ ถ้า merge แบบ newest-wins ทั้งเรคอร์ด แท็บเก่าที่ถือ n=1 จะทับของใหม่ที่ n=2
         = เซลล์กลับมาแก้ได้อีก และประวัติหายไปหนึ่งครั้ง */

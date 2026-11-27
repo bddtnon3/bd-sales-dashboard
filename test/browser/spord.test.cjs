@@ -2198,7 +2198,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    tflow.day===tflow.T0,tflow.day+' (วันนี้ '+tflow.T0+' · ล่วงหน้า '+tflow.T1+')');
  t('🕘 มีแถบจังหวะงาน เช้า → บ่าย → เย็น ของวันเดียวกัน',
    tflow.flow===3&&/เช้า/.test(tflow.flowTx)&&/บ่าย/.test(tflow.flowTx)&&/เย็น/.test(tflow.flowTx)&&
-   /ทั้งสามขั้นเป็นของวันเดียวกัน/.test(tflow.flowTx),tflow.flowTx.slice(0,120));
+   /ทั้ง 3 ขั้นนี้เป็นงานของ วันที่ .* วันเดียวกัน/.test(tflow.flowTx),tflow.flowTx.slice(0,120));
  t('🔑 เซลล์เปิดหมวดออเดอร์พิเศษมา ลงที่ "เซลล์คีย์" ทันที ไม่ผ่านหน้าซุปจด',
    tflow.repSec==='rep'&&tflow.repView==='slip'&&tflow.repDay===tflow.T0,
    tflow.repView+'/'+tflow.repSec+'/'+tflow.repDay);
@@ -2460,6 +2460,168 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🛟 หน้าตรวจอ่านอย่างเดียว ไม่เขียนอะไรลงข้อมูลเลย',
    chk.same&&chk.sync===0&&chk.posts===0,
    'เหมือนเดิม '+chk.same+' ('+(chk.diff||'')+') · sync +'+chk.sync+' · posts +'+chk.posts);
+
+ /* ============================================================================
+  * 10) 📅 สองวันที่แยกให้ชัด + 🚚 คลังจัดส่งจริง (เจ้าของสั่ง 29 พ.ย. 69)
+  *   *"คนใช้งานอ่านวันที่จะงงกับวันที่สร้างออเดอร์ 26 พย และวันปัจจุบันที่ต้องคีย์ 27 พย."*
+  *   *"ส่วนของคลังจัดส่ง … ไม่มีไฟล์ ให้แอดมินกรอกเองได้เลย โดยสามารถเลือกครอบทุกออเดอร์
+  *     เพื่อกดตรวจสอบว่าถูกต้องได้ และเลือกกดบางออเดอร์เพื่อใส่ว่าคลังจัดจริง มากกว่าหรือ
+  *     น้อยกว่าในระบบแสดงได้"*
+  * ========================================================================== */
+ const WORK='2026-11-27';
+ const setup=function(){
+   __reset();__as('manager',null,'ผู้จัดการ');
+   cstOk();                                            /* ให้ CSTOCK มีรูปร่างครบ (rep/whq) */
+   CSTOCK.slips[B1].d='2026-11-26';                    /* ใบสร้างวันที่ 26 */
+   CSTOCK.slips[B1].g='D';                             /* 🎯 ตัวกระจาย — มีครบทั้ง 4 ขั้น */
+   CSTOCK.lots['L1']={id:'L1',sl:B1,code:'90000001',nm:'สินค้าทดสอบ A',cs:5,pc:0,ln:'CT11',
+     d:'2026-11-26',clr:[],up:1};
+   /* เซลล์คีย์เลขออเดอร์ของ "วันที่ 27" — คนละวันกับวันที่สร้างใบ */
+   STOREDAILY.ord['BDD0100000011']={s:'4862383',l:'209611',d:WORK_,cs:5,pc:0,v:900,c:2,rf:'0000000011'};
+   STOREDAILY.ord['BDD0100000012']={s:'4862365',l:'209611',d:WORK_,cs:3,pc:2,v:700,c:1,rf:'0000000012'};
+   STOREDAILY.ord['BDD0100000013']={s:'4862365',l:'209612',d:WORK_,v:500,c:1,rf:'0000000013'};  /* ยังไม่รู้ลัง */
+   CSTOCK.rep[B1+'|'+WORK_+'|CT11']={it:{},no:['BDD0100000011','BDD0100000012','0000000011'],
+     n:1,h:[],by:'ct11',at:2000};
+   CSTOCK.rep[B1+'|'+WORK_+'|CT12']={it:{},no:['BDD0100000013'],n:1,h:[],by:'ct12',at:2000};
+   SP.view='slip';SP.sid=B1;SP.day=WORK_;SP.sec='out';SP.ym='2026-11';
+   renderSpord();
+ };
+ /* ⚠️ ค่าคงที่ฝั่ง node ไม่มีในหน้าเว็บ — ส่งเข้าไปเป็น global ก่อนเรียก setup() */
+ const PRE='window.B1="'+B1+'";window.WORK_="'+WORK+'";window.setup='+setup.toString()+';';
+ const band=await ev(a=>{
+   eval(a.setup);setup();
+   const el=document.querySelector('.sp-2d');
+   const tx=el?el.textContent.replace(/\s+/g,' '):'';
+   const n=el?el.querySelectorAll('.sp-2d-i').length:0;
+   /* วันเดียวกัน = ต้องไม่ฟ้องว่าคนละวัน */
+   SP.day='2026-11-26';renderSpord();
+   const same=document.querySelector('.sp-2d').textContent.replace(/\s+/g,' ');
+   SP.day=WORK_;renderSpord();
+   return {tx:tx,n:n,same:same,
+     /* หน้าที่ไม่ได้ดูรายวัน (รายงาน) ต้องไม่โชว์วันทำงานปลอม ๆ */
+     noDay:spDayBandHtml(B1,'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ')};
+ },{setup:PRE});
+ t('📅 มีแถบสองวันที่ แยก "ใบออเดอร์" กับ "วันที่กำลังบันทึกงาน" ออกจากกัน',
+   band.n===2&&/ใบออเดอร์/.test(band.tx)&&/กำลังบันทึกงานของวันที่/.test(band.tx),
+   band.tx.slice(0,170));
+ t('📅 บอกวันที่สร้างใบ (26) กับวันที่กำลังบันทึก (27) ครบทั้งสองตัว',
+   /สร้างเมื่อ 26 พ\.ย\. 2569/.test(band.tx)&&/27 พ\.ย\. 2569/.test(band.tx),band.tx.slice(0,200));
+ t('🔑 ต่างกันต้องพูดออกมาว่า "คนละวันกับวันที่สร้างใบ" ไม่ใช่วางเลขไว้เฉย ๆ',
+   /คนละวันกับวันที่สร้างใบ/.test(band.tx)&&/หลังสร้างใบ 1 วัน/.test(band.tx),band.tx.slice(0,220));
+ t('...วันเดียวกันก็ต้องบอกว่าวันเดียวกัน ไม่ใช่เงียบ',
+   /วันเดียวกับวันที่สร้างใบ/.test(band.same)&&!/คนละวัน/.test(band.same),band.same.slice(0,160));
+ t('📅 หน้าที่ไม่ได้ดูรายวัน บอกว่า "ดูทั้งใบ" ไม่ใช่โชว์วันทำงานปลอม ๆ',
+   /ดูทั้งใบ/.test(band.noDay)&&!/กำลังบันทึกงาน/.test(band.noDay),band.noDay.slice(0,140));
+ const sep=await ev(()=>{
+   const tabs=spTabsOn(spSlip(B1));
+   const out=tabs.filter(x=>x.k==='out')[0]||{};
+   const html=document.getElementById('spTabs').innerHTML;
+   SP.sec='key';renderSpord();
+   const flow=document.querySelector('.sp-flow').textContent.replace(/\s+/g,' ');
+   SP.sec='out';renderSpord();
+   return {sep:!!out.sep,line:(html.match(/tab2-sep/g)||[]).length,flow:flow};
+ });
+ t('⏭ ④ คลังจัดส่ง มีเส้นคั่นข้างหน้าในแถบแท็บ — ไม่ขึ้นปนกับสามขั้นแรก',
+   sep.sep&&sep.line===1,JSON.stringify({sep:sep.sep,line:sep.line}));
+ t('⏭ แถบจังหวะงานบอกว่า ④ เป็นขั้น "ต่อจากนี้" ทำหลังตรวจเลข GIN',
+   /ต่อจากนี้/.test(sep.flow)&&/หลังตรวจเลข GIN/.test(sep.flow),sep.flow.slice(-150));
+ /* ---- ตารางคลังจัดส่งจริง ---- */
+ const wh=await ev(a=>{
+   eval(a.setup);setup();
+   const G=spWhqOrders(B1,WORK_);
+   const tx=document.querySelector('.sp-wh').textContent.replace(/\s+/g,' ');
+   return {n:G.rows.length,nos:G.rows.map(r=>r.no).join(','),wait:G.wait,
+     cs:G.rows.map(r=>r.cs===null?'?':r.cs).join(','),tx:tx};
+ },{setup:PRE});
+ t('🚚 รวมเลขออเดอร์ของวันนั้นจากที่เซลล์ทุกสายคีย์ไว้',
+   wh.n===3&&wh.nos==='BDD0100000011,BDD0100000012,BDD0100000013',wh.nos);
+ t('🔁 เลขเดียวกันเขียนสองแบบ (เลขเต็ม + หางเลข) นับเป็นใบเดียว',wh.n===3,wh.nos);
+ t('⏳ ใบที่ยังไม่รู้จำนวนในระบบ ต้องขึ้น "รอไฟล์ยอดขาย" ไม่ใช่ 0',
+   wh.wait===1&&wh.cs==='5,3,?'&&/รอไฟล์ยอดขาย/.test(wh.tx),wh.cs+' · wait='+wh.wait);
+ /* ---- ยืนยันทีเดียวหลายใบ ---- */
+ const bulk=await ev(async a=>{
+   eval(a.setup);setup();
+   window.__posts=[];
+   spWhqAll(true);                                  /* เลือกครอบทุกใบ */
+   const nSel=Object.keys(SP.whSel).length;
+   await spWhqOkSel(B1);await W();
+   const W2=cstOk().whq;
+   const post=window.__posts[window.__posts.length-1]||{};
+   const st=spWhqSt(spWhqRec(B1,WORK_,'BDD0100000011'),
+     spWhqOrders(B1,WORK_).rows.filter(r=>r.no==='BDD0100000011')[0]);
+   return {nSel:nSel,keys:Object.keys(W2).length,ok:W2[B1+'|'+WORK_+'|BDD0100000011'].ok,
+     act:post.b&&post.b.act,items:post.b&&Object.keys(post.b.items||{}).length,
+     d:post.b&&post.b.d,st:st.k,max:WHQ_MAX};
+ },{setup:PRE});
+ t('✅ เลือกครอบทุกออเดอร์แล้วกดยืนยันว่าตรง — ได้ครบทุกใบในครั้งเดียว',
+   bulk.nSel===3&&bulk.keys===3&&bulk.ok===1&&bulk.st==='ok',JSON.stringify(bulk));
+ t('🛟 เขียนผ่าน api/spord.js (act:"whq") พร้อมวันที่ ไม่ใช่เซฟ state ทั้งก้อน',
+   bulk.act==='whq'&&bulk.items===3&&bulk.d===WORK,JSON.stringify({act:bulk.act,n:bulk.items,d:bulk.d}));
+ /* ---- ใส่จำนวนจริง มาก/น้อยกว่าระบบ ---- */
+ const whOne=await ev(async a=>{
+   eval(a.setup);setup();
+   spWhqEdit('BDD0100000012');
+   document.getElementById('whC_BDD0100000012').value='2';
+   document.getElementById('whP_BDD0100000012').value='5';
+   document.getElementById('whN_BDD0100000012').value='คลังแจ้งว่าของไม่พอ';
+   await spWhqSaveOne(B1,'BDD0100000012');await W();
+   const row=spWhqOrders(B1,WORK_).rows.filter(r=>r.no==='BDD0100000012')[0];
+   const rec=spWhqRec(B1,WORK_,'BDD0100000012');
+   const st=spWhqSt(rec,row);
+   /* มากกว่าระบบก็ต้องได้ */
+   spWhqEdit('BDD0100000011');
+   document.getElementById('whC_BDD0100000011').value='8';
+   document.getElementById('whP_BDD0100000011').value='0';
+   await spWhqSaveOne(B1,'BDD0100000011');await W();
+   const st2=spWhqSt(spWhqRec(B1,WORK_,'BDD0100000011'),
+     spWhqOrders(B1,WORK_).rows.filter(r=>r.no==='BDD0100000011')[0]);
+   const tx=document.querySelector('.sp-wh').textContent.replace(/\s+/g,' ');
+   return {k:st.k,dC:st.dC,dP:st.dP,nt:rec.nt,re:rec.re,sys:rec.sys,
+     k2:st2.k,dC2:st2.dC,tx:tx};
+ },{setup:PRE});
+ t('📝 ใส่จำนวนจริงน้อยกว่าระบบ (ระบบ 3 ลัง 2 ชิ้น → จริง 2 ลัง 5 ชิ้น) คิดผลต่างให้',
+   whOne.k==='diff'&&whOne.dC===-1&&whOne.dP===3,JSON.stringify({k:whOne.k,dC:whOne.dC,dP:whOne.dP}));
+ t('🔑 ลัง กับ ชิ้น เทียบคนละช่อง ไม่ยุบเป็นเลขเดียว',whOne.dC===-1&&whOne.dP===3,
+   whOne.dC+' ลัง / '+whOne.dP+' ชิ้น');
+ t('📝 ใส่มากกว่าระบบก็ได้ (ระบบ 5 → จริง 8)',whOne.k2==='diff'&&whOne.dC2===3,whOne.dC2);
+ t('📝 เก็บหมายเหตุ และเก็บ "ที่ระบบแสดงตอนบันทึก" ไว้ด้วย',
+   whOne.nt==='คลังแจ้งว่าของไม่พอ'&&whOne.re===1&&whOne.sys===3,JSON.stringify({nt:whOne.nt,sys:whOne.sys}));
+ t('🔑 หน้าจอบอกสามสถานะแยกกัน: ตรง / ไม่ตรง / ยังไม่ตรวจ',
+   /ตรวจแล้วตรง/.test(whOne.tx)&&/ไม่ตรง/.test(whOne.tx)&&/ยังไม่ตรวจ/.test(whOne.tx),whOne.tx.slice(0,160));
+ /* ---- ยกเลิกผลตรวจ: ต้องเขียน ok:0 ไม่ใช่ลบคีย์ ---- */
+ const whUndo=await ev(async a=>{
+   eval(a.setup);setup();
+   spWhqAll(true);await spWhqOkSel(B1);await W();
+   spWhqAll(true);await spWhqOkSel(B1,1);await W();
+   const W2=cstOk().whq,k=B1+'|'+WORK_+'|BDD0100000011';
+   const post=window.__posts[window.__posts.length-1]||{};
+   return {has:Object.prototype.hasOwnProperty.call(W2,k),ok:W2[k]&&W2[k].ok,
+     sent:post.b&&post.b.items&&post.b.items['BDD0100000011'].ok,
+     st:spWhqSt(W2[k],{cs:5,pc:0}).k};
+ },{setup:PRE});
+ t('🛟 ยกเลิกผลตรวจเขียน ok:0 ทับ ไม่ใช่ลบคีย์ (แท็บเก่าจะ union กลับมา)',
+   whUndo.has&&whUndo.ok===0&&whUndo.sent===0&&whUndo.st==='todo',JSON.stringify(whUndo));
+ /* ---- สิทธิ์: บัญชีที่ไม่ใช่แอดมิน ดูได้ แก้ไม่ได้ ---- */
+ const ro=await ev(async a=>{
+   eval(a.setup);setup();
+   __as('sales','209611','CT11');SP.sid=B1;SP.view='slip';SP.sec='out';SP.day=WORK_;renderSpord();
+   const tx=document.body.textContent;
+   const el=document.querySelector('.sp-wh');
+   const boxes=el?el.querySelectorAll('input[type=checkbox]').length:0;
+   window.__posts=[];window.__alert='';
+   await spWhqPost(B1,WORK_,{'BDD0100000011':{ok:1}},'x');await W();
+   return {boxes:boxes,posts:window.__posts.length,alert:window.__alert,seen:/คลังจัดส่งจริง/.test(tx)};
+ },{setup:PRE});
+ t('🔒 บัญชีที่ไม่ใช่แอดมิน เปิดดูได้ แต่ไม่มีช่องติ๊กและเขียนไม่ได้',
+   ro.seen&&ro.boxes===0&&ro.posts===0&&/แก้ส่วนนี้ไม่ได้/.test(ro.alert),JSON.stringify(ro));
+ /* ---- เพดานต้องตรงกับฝั่งเซิร์ฟเวอร์ ---- */
+ const srv=fs.readFileSync(path.join(ROOT,'api','spord.js'),'utf8');
+ t('🛟 WHQ_MAX ของหน้าเว็บตรงกับของเซิร์ฟเวอร์',
+   new RegExp('WHQ_MAX = '+bulk.max+'\\b').test(srv),'หน้าเว็บ '+bulk.max);
+ t('🔒 เซิร์ฟเวอร์สร้างคีย์เอง (sid|วันที่|เลขออเดอร์) ไคลเอนต์ยัดคีย์อื่นไม่ได้',
+   /C\.whq\[sid \+ "\|" \+ ymd \+ "\|" \+ ono\]/.test(srv),'');
+ t('🔒 act:"whq" เป็นสิทธิ์ของแอดมิน/ผู้จัดการเท่านั้น (ตรวจที่เซิร์ฟเวอร์)',
+   /act === "whq"[\s\S]{0,400}if \(!isMgr\) return res\.status\(403\)/.test(srv),'');
 
  /* ---------- 9) ไม่มีใบใหญ่ ---------- */
  const none=await ev(()=>{__reset();CSTOCK.slips={};

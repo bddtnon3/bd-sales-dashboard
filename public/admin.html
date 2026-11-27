@@ -313,6 +313,48 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .sp-zone>.panel.sp-nav{border-top-color:var(--zb);background:var(--gr)}
 .sp-zone .sp-daybar{background:#fff;border-color:var(--zb)}
  
+.sp-2d{display:flex;align-items:stretch;gap:8px;margin-top:10px}
+.sp-2d-i{flex:1 1 0;min-width:0;border:1.5px solid var(--line);border-radius:11px;padding:9px 12px;
+  background:#fff;display:flex;flex-direction:column;gap:2px}
+.sp-2d-s{border-left:4px solid var(--muted);background:var(--gr,#eff2f6)}
+.sp-2d-w{border-left:4px solid var(--z,var(--blue))}
+.sp-2d-l{font-size:11px;font-weight:800;letter-spacing:.2px;color:var(--muted);text-transform:none}
+.sp-2d-w .sp-2d-l{color:var(--z,var(--blue))}
+.sp-2d-v{font-size:15px;font-weight:800;color:var(--ink);line-height:1.35;
+  overflow-wrap:anywhere}
+.sp-2d-x{font-size:11.5px;color:var(--muted);line-height:1.45}
+.sp-2d-d{color:var(--bad)}
+.sp-2d-a{align-self:center;color:var(--muted);font-size:12px;flex:0 0 auto}
+@media(max-width:620px){
+  .sp-2d{flex-direction:column;gap:6px}
+  .sp-2d-a{display:none}
+  .sp-2d-v{font-size:14.5px}
+}
+ 
+.sp-flow-n4{margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);
+  font-size:12.5px;color:var(--muted);line-height:1.6;display:flex;gap:8px;
+  align-items:center;flex-wrap:wrap}
+.sp-flow-n4 b{color:var(--ink)}
+ 
+.tab2-sep{flex:0 0 auto;align-self:stretch;width:0;border-left:2px dashed var(--mid,#8a93a5);
+  margin:5px 9px;opacity:.5}
+ 
+.sp-wh-c{width:34px;text-align:center}
+.sp-wh-t input[type=checkbox]{width:19px;height:19px;accent-color:var(--blue)}
+.sp-wh-all{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;cursor:pointer}
+.sp-wh-all input{width:19px;height:19px;accent-color:var(--blue)}
+.sp-wh-f{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0}
+.sp-wh-f .sp-fin{flex:0 0 110px;min-width:90px}
+.sp-wh-t tr.sp-wh-e>td{background:var(--zt,#f6f9ff);border-top:0}
+.sp-wh-t tr.r-ok>td{background:#F4FBF6}
+.sp-wh-t tr.r-diff>td{background:#FFF8EC}
+@media(max-width:760px){
+  .sp-wh-t tr.sp-wh-e>td{display:block;padding:8px 0}
+  .sp-wh-t tr.sp-wh-e>td::before{content:""}
+  .sp-wh-f .sp-fin{flex:1 1 100px}
+  .sp-wh-c{width:auto}
+}
+ 
 .sp-flow{border:1.5px solid var(--zb,var(--line));border-radius:12px;padding:10px 12px;
   background:#fff;margin-top:10px}
 .sp-flow-d{font-size:13.5px;color:var(--ink);margin-bottom:9px;font-weight:600}
@@ -10720,6 +10762,8 @@ function cstOk(){
   if(!CSTOCK.slips)CSTOCK.slips={};if(!CSTOCK.sdel)CSTOCK.sdel={};if(!CSTOCK.ex)CSTOCK.ex={};
    
   if(!CSTOCK.key)CSTOCK.key={};if(!CSTOCK.gin)CSTOCK.gin={};if(!CSTOCK.rep)CSTOCK.rep={};
+   
+  if(!CSTOCK.whq)CSTOCK.whq={};
   return CSTOCK;
 }
  
@@ -13396,7 +13440,8 @@ const SP_TABS=[
   {k:"key",ic:"✍️",nm:"ซุปจด",grp:"D"},
   {k:"rep",ic:"📲",nm:"เซลล์คีย์"},
   {k:"adm",ic:"🔎",nm:"แอดมินตรวจ",grp:"D"},
-  {k:"out",ic:"🚚",nm:"คลังจัดส่ง"},
+   
+  {k:"out",ic:"🚚",nm:"คลังจัดส่ง",sep:1},
   {k:"rpt",ic:"📊",nm:"รายงาน",mgr:1,nonum:1},
   {k:"old",ic:"🧾",nm:"เลขออเดอร์",off:1,nonum:1},
 ];
@@ -14235,9 +14280,10 @@ function spSlipCard(x){
     <div class="cst-gh">
       <div class="cst-t"><b>${anaEsc(spSlipTitle(x.id)||x.id)}</b>
         <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>
-        <span class="psub">${anaEsc(x.id)}${x.own?" · 👤 "+anaEsc(x.own):""}</span></div>
+        <span class="psub">${anaEsc(x.id)}${x.d?" · สร้าง "+anaEsc(fmtDate(x.d)):""}${
+          x.own?" · 👤 "+anaEsc(x.own):""}</span></div>
       <div class="cst-n">${cstPctPill(pct,left,cs)}
-        <span class="psub">✍️ คีย์แล้ว ${days.length} วัน · 🔎 ตรวจแล้ว ${gn} วัน</span></div>
+        <span class="psub">📝 บันทึกงานแล้ว ${days.length} วัน · 🔎 ตรวจแล้ว ${gn} วัน</span></div>
       <span class="cst-ar">▶</span></div>
     ${cstPctBar(pct)}
     ${items}</div>`;
@@ -14838,6 +14884,192 @@ function spChkPrint(sid){
   if(!el){alert("พิมพ์ไม่ได้ ลองใหม่อีกครั้ง");return;}
   el.innerHTML=h;window.print();
 }
+ 
+const WHQ_MAX=300;       
+function spWhqOk(){const C=cstOk();if(!C.whq)C.whq={};return C.whq;}
+function spWhqRec(sid,ymd,no){return spWhqOk()[sid+"|"+ymd+"|"+no]||null;}
+function spWhqOrders(sid,ymd){
+  const rp=spRepByLine(sid,ymd),rows=[],seen={};
+  let miss=0,wait=0;
+  Object.keys(rp).sort().forEach(ln=>{
+    const r=rp[ln],list=Array.isArray(r&&r.no)?r.no:[];
+    list.forEach(t=>{
+      const f=spOrdFind(t,{l:(typeof spLineCode==="function")?spLineCode(ln):""});
+      if(!f||f.amb||!f.r){miss++;return;}
+      const no=String(f.no||t).toUpperCase();
+      if(seen[no])return;seen[no]=1;
+      const o=f.r,know=(o.cs!==undefined);
+      if(!know)wait++;
+      rows.push({no:no,ln:ln,sh:o.s||"",
+        shn:((typeof spShop==="function")?spShop(o.s):"")||"",
+        cs:know?(Math.round((+o.cs||0)*100)/100):null,
+        pc:know?(Math.round((+o.pc||0)*100)/100):0,
+        v:+o.v||0,cx:!!o.cx});
+    });
+  });
+  return {rows:rows,miss:miss,wait:wait};
+}
+function spWhqSt(rec,row){
+  if(!rec||(!rec.ok&&!rec.re))return {k:"todo",t:"ยังไม่ตรวจ",p:"",dC:0,dP:0};
+  if(rec.ok)return {k:"ok",t:"✅ ตรง",p:"g",dC:0,dP:0};
+  const dC=Math.round(((+rec.cs||0)-((row&&row.cs!=null)?row.cs:0))*100)/100;
+  const dP=Math.round(((+rec.pc||0)-((row&&row.pc)||0))*100)/100;
+  if(Math.abs(dC)<0.001&&Math.abs(dP)<0.001)return {k:"ok",t:"✅ ตรง",p:"g",dC:0,dP:0};
+  return {k:"diff",t:(dC<0||(!dC&&dP<0))?"🔻 คลังจัดน้อยกว่า":"🔺 คลังจัดมากกว่า",p:"w",dC:dC,dP:dP};
+}
+ 
+function spWhqSel(sid,ymd){
+  const k=sid+"|"+ymd;
+  if(SP.whK!==k){SP.whK=k;SP.whSel={};SP.whE="";}
+  if(!SP.whSel)SP.whSel={};
+  return SP.whSel;
+}
+function spWhqTog(no){const s=SP.whSel||(SP.whSel={});if(s[no])delete s[no];else s[no]=1;renderSpord();}
+function spWhqAll(on){
+  const sid=SP.sid,ymd=spDay(sid),G=spWhqOrders(sid,ymd);
+  const s=spWhqSel(sid,ymd);
+  G.rows.forEach(r=>{if(on)s[r.no]=1;else delete s[r.no];});
+  renderSpord();
+}
+function spWhqEdit(no){SP.whE=(SP.whE===no)?"":no;renderSpord();}
+async function spWhqPost(sid,ymd,items,msg){
+  if(!spAdmOk()){alert("บัญชีนี้แก้ส่วนนี้ไม่ได้");return false;}
+  const nos=Object.keys(items);
+  if(!nos.length)return false;
+  const W=spWhqOk(),old={},now=Date.now();
+  const me=(S.user&&S.user.id)||"",nm=(S.user&&S.user.name)||"";
+  nos.forEach(no=>{const k=sid+"|"+ymd+"|"+no;
+    old[k]=W[k]?JSON.parse(JSON.stringify(W[k])):null;
+    W[k]=Object.assign({},items[no],{by:me,byName:nm,at:now});});
+  renderSpord();
+  try{
+    const r=await bdPost("/api/spord",{act:"whq",sid:sid,d:ymd,items:items});
+    if(!r||!r.ok)throw new Error((r&&r.error)||"บันทึกไม่สำเร็จ");
+    toast(msg||("บันทึกแล้ว "+nos.length+" ใบ"));
+    return true;
+  }catch(e){
+    nos.forEach(no=>{const k=sid+"|"+ymd+"|"+no;if(old[k])W[k]=old[k];else delete W[k];});
+    renderSpord();alert("บันทึกไม่สำเร็จ: "+e.message);return false;
+  }
+}
+ 
+async function spWhqOkSel(sid,undo){
+  const ymd=spDay(sid),G=spWhqOrders(sid,ymd),sel=spWhqSel(sid,ymd);
+  const use=G.rows.filter(r=>sel[r.no]);
+  if(!use.length){alert("ยังไม่ได้เลือกใบไหนเลย — ติ๊กใบที่ตรวจแล้ว หรือกด ☑ เลือกทั้งหมด");return;}
+  if(use.length>WHQ_MAX){alert("เลือกได้สูงสุด "+WHQ_MAX+" ใบต่อครั้ง");return;}
+  if(!confirm(undo?("ยกเลิกผลตรวจของ "+use.length+" ใบ?")
+    :("ยืนยันว่าคลังจัดส่งออกไปตรงกับที่ระบบแสดง "+use.length+" ใบ?")))return;
+  const items={};
+   
+  use.forEach(r=>{items[r.no]={ok:undo?0:1,re:0,cs:0,pc:0,nt:"",sys:(r.cs==null?0:r.cs)};});
+  if(await spWhqPost(sid,ymd,items,undo?("ยกเลิกแล้ว "+use.length+" ใบ"):("ยืนยันแล้ว "+use.length+" ใบ")))
+    SP.whSel={};
+  renderSpord();
+}
+async function spWhqSaveOne(sid,no){
+  const ymd=spDay(sid);
+  const gv=id=>{const e=document.getElementById(id);return e?e.value:"";};
+  const cs=Math.max(0,parseFloat(gv("whC_"+no))||0);
+  const pc=Math.max(0,parseFloat(gv("whP_"+no))||0);
+  const nt=String(gv("whN_"+no)||"").slice(0,200);
+  const row=spWhqOrders(sid,ymd).rows.filter(r=>r.no===no)[0]||null;
+  const items={};
+  items[no]={ok:0,re:1,cs:cs,pc:pc,nt:nt,sys:(row&&row.cs!=null)?row.cs:0};
+  if(await spWhqPost(sid,ymd,items,"บันทึกจำนวนที่คลังจัดจริงแล้ว"))SP.whE="";
+  renderSpord();
+}
+function spWhqHtml(sid){
+  const ymd=spDay(sid),can=spAdmOk();
+  const G=spWhqOrders(sid,ymd);
+  const sel=spWhqSel(sid,ymd);
+  const St={};let nOk=0,nDiff=0,nTodo=0;
+  G.rows.forEach(r=>{const s=spWhqSt(spWhqRec(sid,ymd,r.no),r);St[r.no]=s;
+    if(s.k==="ok")nOk++;else if(s.k==="diff")nDiff++;else nTodo++;});
+  const nSel=G.rows.filter(r=>sel[r.no]).length;
+  const head=`<div class="panel sp-wh"><h3>🚚 คลังจัดส่งจริง — แอดมินตรวจเอง</h3>
+    <div class="psub">ขั้นนี้ทำ<b>หลังตรวจเลข GIN แล้ว</b> · <b>ไม่มีไฟล์ไหนบอกว่าของออกจากคลัง
+      ไปจริงเท่าไหร่</b> แอดมินต้องเช็คกับคลังแล้วกรอกเอง ·
+      <b>ระบบแสดง</b> คือจำนวนของใบนั้นจากไฟล์ยอดขาย ซึ่งเป็นตัวเดียวกับที่หน้าเซลล์คีย์ใช้</div>`;
+  if(!G.rows.length)return head+`<div class="insight" style="margin-top:10px">
+    วันที่ <b>${anaEsc(fmtDate(ymd))}</b> ยังไม่มีเลขออเดอร์ให้ตรวจ —
+    ${G.miss?("มีเลขที่ระบบยังหาไม่เจอ "+G.miss+" เลข · "):""}ให้เซลล์กรอกเลขออเดอร์ที่แท็บ
+    <b>📲 เซลล์คีย์</b> ของวันนี้ก่อน</div></div>`;
+  const bulk=can?`<div class="cst-bulk stick">
+      <label class="sp-wh-all"><input type="checkbox" ${nSel&&nSel===G.rows.length?"checked":""}
+        onchange="spWhqAll(this.checked)"> เลือกทั้งหมด (${G.rows.length} ใบ)</label>
+      <span class="psub">เลือกไว้ <b>${nSel}</b> ใบ</span>
+      <span style="flex:1"></span>
+      <button class="btn-go" onclick="spWhqOkSel('${anaEsc(sid)}')">✅ ยืนยันว่าตรง</button>
+      <button class="btn-ghost btn-mini" onclick="spWhqOkSel('${anaEsc(sid)}',1)">↩️ ยกเลิกผลตรวจ</button>
+    </div>`:"";
+  const rows=G.rows.map(r=>{
+    const rec=spWhqRec(sid,ymd,r.no),s=St[r.no];
+    const sys=(r.cs==null)?'<span class="psub">รอไฟล์ยอดขาย</span>':spCsTxt(r.cs,r.pc);
+    const real=(s.k==="todo")?'<span class="psub">—</span>'
+      :(rec&&rec.re?spCsTxt(+rec.cs||0,+rec.pc||0):'<span class="up">ตรงกับระบบ</span>');
+    const diff=(s.k==="diff")?`<b class="${s.dC<0||s.dP<0?"down":"mid"}">${spDiffTxt(s.dC,s.dP)}</b>`
+      :'<span class="psub">—</span>';
+    const edit=(SP.whE===r.no);
+    const main=`<tr class="${s.k==="ok"?"r-ok":(s.k==="diff"?"r-diff":"")}">
+      <td data-l="เลือก" class="sp-wh-c">${can?`<input type="checkbox" ${sel[r.no]?"checked":""}
+        onchange="spWhqTog('${anaEsc(r.no)}')">`:""}</td>
+      <td data-l="เลขออเดอร์" class="psi-nm"><b style="font-family:ui-monospace,monospace">${anaEsc(r.no)}</b>
+        <div class="psub">${anaEsc(r.shn||("ร้าน "+r.sh))} · ${anaEsc(
+          ((DATA.lines||{})[spLineCode?spLineCode(r.ln):""]||{}).display||r.ln)}${
+          r.cx?' · <b class="down">ใบยกเลิก</b>':""}</div></td>
+      <td data-l="ระบบแสดง">${sys}</td>
+      <td data-l="คลังจัดจริง">${real}</td>
+      <td data-l="ผลต่าง">${diff}</td>
+      <td data-l="สถานะ" style="text-align:left"><span class="pill ${s.p}">${anaEsc(s.t)}</span>${
+        rec&&rec.nt?`<div class="psub">${anaEsc(rec.nt)}</div>`:""}${
+        rec&&(rec.ok||rec.re)&&rec.byName?`<div class="psub">${anaEsc(rec.byName)}</div>`:""}</td>
+      <td data-l="" style="text-align:left">${can?`<button class="btn-ghost btn-mini"
+        onclick="spWhqEdit('${anaEsc(r.no)}')">${edit?"✕ ปิด":"📝 ใส่จำนวนจริง"}</button>`:""}</td>
+    </tr>`;
+    if(!edit||!can)return main;
+    return main+`<tr class="sp-wh-e"><td colspan="7">
+      <div class="sp-wh-f">
+        <span class="psub">คลังจัดออกไปจริง</span>
+        <input id="whC_${anaEsc(r.no)}" class="sp-fin" type="number" min="0" step="0.01"
+          placeholder="ลัง" value="${rec&&rec.re?anaEsc(String(+rec.cs||0)):(r.cs==null?"":anaEsc(String(r.cs)))}">
+        <span class="psub">ลัง</span>
+        <input id="whP_${anaEsc(r.no)}" class="sp-fin" type="number" min="0" step="1"
+          placeholder="ชิ้น" value="${rec&&rec.re?anaEsc(String(+rec.pc||0)):(r.cs==null?"":anaEsc(String(r.pc||0)))}">
+        <span class="psub">ชิ้น</span>
+        <input id="whN_${anaEsc(r.no)}" class="sp-fin" placeholder="หมายเหตุ (ถ้ามี)"
+          value="${anaEsc((rec&&rec.nt)||"")}" style="flex:1 1 180px">
+        <button class="btn-go" onclick="spWhqSaveOne('${anaEsc(sid)}','${anaEsc(r.no)}')">💾 บันทึก</button>
+      </div>
+      <div class="psub" style="margin-top:4px">ระบบแสดง ${r.cs==null?"ยังไม่รู้ (รอไฟล์ยอดขาย)"
+        :spCsTxt(r.cs,r.pc).replace(/<[^>]*>/g,"")} — ใส่จำนวนที่คลังจัดออกไปจริง
+        มากกว่าหรือน้อยกว่าก็ได้ ระบบคิดผลต่างให้เอง</div></td></tr>`;
+  }).join("");
+  return head+`<div class="cards" style="margin-top:10px">
+      <div class="card"><div class="k">🧾 ออเดอร์ของวันนี้</div>
+        <div class="v">${G.rows.length}</div><div class="s">ใบ</div></div>
+      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">✅ ตรวจแล้วตรง</div>
+        <div class="v up">${nOk}</div><div class="s">ใบ</div></div>
+      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">⚠️ ไม่ตรง</div>
+        <div class="v ${nDiff?"down":""}">${nDiff}</div><div class="s">ใบ · คลังจัดมาก/น้อยกว่าระบบ</div></div>
+      <div class="card"><div class="k">🕓 ยังไม่ตรวจ</div>
+        <div class="v">${nTodo}</div><div class="s">ใบ</div></div>
+    </div>
+    ${G.wait?`<div class="note" style="margin-top:8px;color:var(--mid)">⏳ มี <b>${G.wait}</b> ใบที่ยัง
+      <b>ไม่รู้จำนวนในระบบ</b> เพราะยังไม่ได้อัพไฟล์ยอดขายของวันนี้ — ยืนยันว่า "ตรง" ไปก่อนได้
+      แต่จะยังไม่มีตัวเลขมาเทียบ</div>`:""}
+    ${G.miss?`<div class="note" style="margin-top:8px;color:var(--mid)">🔎 มี <b>${G.miss}</b> เลขที่
+      ระบบยังหาไม่เจอ จึงไม่ได้อยู่ในตารางนี้ — ดูรายละเอียดที่แท็บ <b>📲 เซลล์คีย์</b></div>`:""}
+    ${bulk}
+    <div class="tblwrap" style="margin-top:10px"><table class="psi-tbl sp-wh-t"><thead><tr>
+      <th class="sp-wh-c">${can?'<input type="checkbox" title="เลือกทั้งหมด" '+
+        (nSel&&nSel===G.rows.length?"checked":"")+' onchange="spWhqAll(this.checked)">':""}</th>
+      <th style="text-align:left">เลขออเดอร์ / ร้าน</th><th>ระบบแสดง</th><th>คลังจัดจริง</th>
+      <th>ผลต่าง</th><th style="text-align:left">สถานะ</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    ${can?"":'<div class="insight" style="margin-top:10px">ดูอย่างเดียว</div>'}
+  </div>`;
+}
 function spOutAllocHtml(sid){
   const o=spAllOut(sid);
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
@@ -14847,7 +15079,7 @@ function spOutAllocHtml(sid){
     <h3>📦 ยอดรวมที่คลังจัดออกไป — รายสินค้า (ทั้งใบ)</h3>
     <div class="psub">นับจากไฟล์ใบจัดของตามเลข GIN ที่แอดมินตรวจไว้ · ใบแบบ
       <b>${SP_GRP.D.ic} ${SP_GRP.D.n}</b> ดูที่ของคลังตรงกับที่เซลล์คีย์หรือไม่เป็นหลัก</div>`;
-  if(!o.days.length)return day+`<div class="panel" style="margin-top:12px"><h3>🚚 คลังจัดส่ง — ตรวจรายวัน</h3>
+  if(!o.days.length)return spWhqHtml(sid)+day+`<div class="panel" style="margin-top:12px"><h3>🚚 คลังจัดส่ง — ตรวจรายวัน</h3>
     <div class="insight" style="margin-top:10px">
     ยังไม่มีผลตรวจของใบนี้ — ให้แอดมินไปที่แท็บ <b>🔎 แอดมินตรวจ</b> ใส่เลข GIN ของแต่ละวันก่อน
     แล้วตัวเลขตรงนี้จะขึ้นเองทั้งหมด</div></div>`;
@@ -14855,7 +15087,7 @@ function spOutAllocHtml(sid){
   const bar=Math.max(0,Math.min(100,pct));
   const diff=o.out-o.cut;
    
-  let h=day+spOutChkHtml(sid)+head+`<div class="cards" style="margin-top:10px">
+  let h=spWhqHtml(sid)+day+spOutChkHtml(sid)+head+`<div class="cards" style="margin-top:10px">
     <div class="card"><div class="k">ตัดบิลไว้ในใบนี้</div>
       <div class="v" style="font-size:20px">${spCsTxt(o.cutQ.w,o.cutQ.p)}</div><div class="s">ตามใบตัดบิล</div></div>
     <div class="card" style="border-top:3px solid ${cstPctCol(bar)}"><div class="k">คลังจัดออกแล้ว</div>
@@ -14968,9 +15200,11 @@ function spOutHtml(sid){
    
   if(spGrpOf(spSlip(sid))==="D")return spOutAllocHtml(sid);
   const mgr=(typeof cstMgr==="function")?cstMgr():spMgr();
+   
+  const wh=spWhqHtml(sid);
   const gin=spGinNoteHtml(sid);
   const rows=(typeof cstSlipRows==="function")?cstSlipRows(sid):[];
-  if(!rows.length)return gin+`<div class="panel" style="margin-top:12px"><div class="insight">
+  if(!rows.length)return wh+gin+`<div class="panel" style="margin-top:12px"><div class="insight">
     ใบนี้ยังไม่มีรายการสินค้า — ให้แอดมินแก้ใบออเดอร์ใส่สินค้าก่อน</div></div>`;
   CST.open=CST.open||{};CST.open[sid]=true;         
   const g=cstListHtml(rows,mgr);
@@ -14978,7 +15212,7 @@ function spOutHtml(sid){
   const left=rows.reduce((a,l)=>a+cstLeft(l),0);
   const pct=cut>0?Math.max(0,Math.min(100,Math.round((cut-left)/cut*100))):0;
   const R=x=>(Math.round(x*100)/100).toLocaleString();
-  return gin+`<div class="panel" style="margin-top:12px">
+  return wh+gin+`<div class="panel" style="margin-top:12px">
     <h3>🚚 คลังจัดส่ง — ของในใบนี้ส่งออกไปไหนแล้วบ้าง</h3>
     <div class="psub">${mgr?"ติ๊กเลือกรายการ แล้วกด <b>✅ บันทึกว่าส่งออกไปแล้ว</b> · กด 📝 เพื่อลงบางส่วน"
       :"ดูอย่างเดียว"}</div>
@@ -15230,21 +15464,28 @@ function renderSpord(){
       const cs=rows.reduce((a,r)=>a+(+r.cs||0),0);
       bar.innerHTML=`📦 <b>${anaEsc(spSlipTitle(SP.sid,30)||SP.sid)}</b>`+
         ` <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>`+
-        `<span class="dci-src">${anaEsc(SP.sid)}${slNow.d?" · "+fmtDate(slNow.d):""}</span>`+spLockBtn()+spGrpBar(slNow);
+         
+        `<span class="dci-src">${anaEsc(SP.sid)}${slNow.d?" · สร้าง "+fmtDate(slNow.d):""}</span>`+spLockBtn()+spGrpBar(slNow);
       const sec=spSec();
        
        
       const chip=(k,t)=>`<button type="button" class="tab2 spz-${k}${sec===k?" on":""}" onclick="spSetSec('${k}')">${t}</button>`;
+       
       {const tb=document.getElementById("spTabs");
-       if(tb){tb.innerHTML=spTabsOn(slNow).map(x=>chip(x.k,x.lb)).join("");tb.style.display="";}}
+       if(tb){tb.innerHTML=spTabsOn(slNow).map((x,i)=>
+         ((x.sep&&i)?'<span class="tab2-sep" aria-hidden="true"></span>':"")+chip(x.k,x.lb)).join("");
+        tb.style.display="";}}
        
       const withDay=SP_DAYTABS.indexOf(sec)>=0&&!(sec==="rep"&&spRole()==="sales");
        
       const flow=SP_DAYTABS.indexOf(sec)>=0?spFlowHtml(SP.sid,spDay(SP.sid)):"";
+       
+      const isDay=SP_DAYTABS.indexOf(sec)>=0;
+      const band=spDayBandHtml(SP.sid,isDay?spDay(SP.sid):"");
       let H=`<div class="panel sp-nav"><div class="cst-fb">
           <button type="button" class="btn-ghost" onclick="spBack()">← กลับไปรายการใบ</button>
           <span class="psub">${SP.ym&&SP.ym!=="ไม่ระบุ"?fmtMonth(SP.ym):""}</span></div>
-        ${flow}${withDay?`<div class="controls sp-daybar" style="margin:10px 0 0">${spDayPick(SP.sid)}</div>`:""}</div>`;
+        ${band}${flow}${withDay?`<div class="controls sp-daybar" style="margin:10px 0 0">${spDayPick(SP.sid)}</div>`:""}</div>`;
        
       const Z=h=>`<div class="sp-zone spz-${sec}">${H}${h}</div>`;
       if(sec==="key"){body.innerHTML=Z(spKeyHtml(SP.sid));return;}
@@ -15372,6 +15613,38 @@ function spCalHtml(sid){
       <span class="cal-dot chk" style="margin-left:10px"></span> แอดมินตรวจแล้ว ${nChk} วัน</div></div>`;
 }
  
+ 
+function spDayGap(a,b){
+  if(!a||!b)return null;
+  const g=Math.round((Date.parse(b+"T00:00:00")-Date.parse(a+"T00:00:00"))/86400000);
+  return isFinite(g)?g:null;
+}
+function spDayBandHtml(sid,ymd,ro){
+  const sl=spSlip(sid)||{};
+  const made=sl.d||"",t=todayISO();
+  const L=`<div class="sp-2d-i sp-2d-s">
+      <div class="sp-2d-l">📦 ใบออเดอร์</div>
+      <div class="sp-2d-v">${anaEsc(spSlipTitle(sid,26)||sid)}</div>
+      <div class="sp-2d-x">${anaEsc(sid)}${made?(" · สร้างเมื่อ <b>"+anaEsc(fmtDate(made))+"</b>"):" · ไม่ระบุวันที่สร้าง"}</div>
+    </div>`;
+  if(!ymd)return `<div class="sp-2d">${L}<div class="sp-2d-a">▶</div>
+    <div class="sp-2d-i sp-2d-w"><div class="sp-2d-l">📊 ดูทั้งใบ</div>
+      <div class="sp-2d-v">ทุกวันรวมกัน</div>
+      <div class="sp-2d-x">หน้านี้ไม่ได้ดูเป็นรายวัน</div></div></div>`;
+  const gap=spDayGap(made,ymd),gt=spDayGap(t,ymd);
+  const tag=(ymd===t)?'<span class="pill g">วันนี้</span>'
+    :(gt>0?('<span class="pill w">ล่วงหน้า '+gt+' วัน</span>')
+          :('<span class="pill">ย้อนหลัง '+Math.abs(gt||0)+' วัน</span>'));
+  const same=made&&made===ymd;
+  return `<div class="sp-2d">${L}<div class="sp-2d-a">▶</div>
+    <div class="sp-2d-i sp-2d-w">
+      <div class="sp-2d-l">${ro?"📅 วันที่ดูอยู่":"📝 กำลังบันทึกงานของวันที่"}</div>
+      <div class="sp-2d-v">${anaEsc(fmtDate(ymd))} ${tag}</div>
+      <div class="sp-2d-x">${!made?"&nbsp;":(same?"วันเดียวกับวันที่สร้างใบ"
+        :("<b class=\"sp-2d-d\">คนละวันกับวันที่สร้างใบ</b>"+
+          (gap>0?(" — หลังสร้างใบ "+gap+" วัน"):(gap<0?(" — ก่อนสร้างใบ "+Math.abs(gap)+" วัน"):""))))}</div>
+    </div></div>`;
+}
 function spFlowHtml(sid,ymd){
   const on=spTabsOn(spSlip(sid)).map(x=>x.k),cur=spSec();
   const nTg=Object.keys(spKeyByLine(sid,ymd)).length;
@@ -15387,25 +15660,31 @@ function spFlowHtml(sid,ymd){
   if(on.indexOf("adm")>=0)steps.push({k:"adm",ic:"🔎",nm:"แอดมินตรวจ",tm:"เย็น",
     ok:spDayHas(g),txt:spDayHas(g)?"ตรวจแล้ว":"ยังไม่ตรวจ"});
   if(steps.length<2)return "";
+   
+  const hasOut=on.indexOf("out")>=0;
   return `<div class="sp-flow">
-    <div class="sp-flow-d">🗓 <b>${fmtDate(ymd)}</b> — ทั้งสามขั้นเป็นของวันเดียวกัน</div>
+    <div class="sp-flow-d">🗓 ทั้ง ${steps.length} ขั้นนี้เป็นงานของ <b>วันที่ ${fmtDate(ymd)}</b> วันเดียวกัน</div>
     <div class="sp-flow-r">${steps.map((s,i)=>
       `${i?'<span class="sp-flow-a">▶</span>':""}<button type="button"
         class="sp-flow-s spz-${s.k}${s.ok?" ok":""}${s.k===cur?" on":""}" onclick="spSetSec('${s.k}')">
         <span class="sp-flow-t">${i+1}. ${s.tm}</span>
         <span class="sp-flow-n">${s.ic} ${anaEsc(s.nm)}</span>
-        <span class="sp-flow-v">${s.ok?"✓ ":""}${anaEsc(s.txt)}</span></button>`).join("")}</div></div>`;
+        <span class="sp-flow-v">${s.ok?"✓ ":""}${anaEsc(s.txt)}</span></button>`).join("")}</div>
+    ${hasOut?`<div class="sp-flow-n4">⏭ <b>${SP_NUM[steps.length]} 🚚 คลังจัดส่ง</b> เป็นขั้น<b>ต่อจากนี้</b> —
+      แอดมินทำหลังตรวจเลข GIN เสร็จแล้ว ไม่ได้อยู่ในสามขั้นของวันนี้
+      <button type="button" class="btn-ghost btn-mini spz-out" onclick="spSetSec('out')">ไปที่คลังจัดส่ง →</button></div>`:""}</div>`;
 }
+ 
 function spDayPick(sid){
   const cur=spDay(sid);
-  return `<div class="ctl"><label>วันที่</label>
+  return `<div class="ctl"><label>📝 วันที่กำลังบันทึกงาน</label>
     <div class="dstep">
       <button type="button" class="dstep-b" title="วันก่อนหน้า" onclick="spStepDay(-1)">◀</button>
       <input type="date" value="${anaEsc(cur)}" onchange="spSetDay(this.value)"
         style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px">
       <button type="button" class="dstep-b" title="วันถัดไป" onclick="spStepDay(1)">▶</button>
     </div></div>
-    <div class="ctl sp-calc"><label>ปฏิทิน — กดเลือกวัน</label>${spCalHtml(sid)}</div>`;
+    <div class="ctl sp-calc"><label>ปฏิทิน — กดเลือกวันที่จะบันทึกงาน</label>${spCalHtml(sid)}</div>`;
 }
 function spStepDay(n){
   const d=spDay(SP.sid),t=new Date(d+"T00:00:00");

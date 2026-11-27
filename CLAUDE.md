@@ -1577,6 +1577,31 @@ code, never printed.
   to be: the lots already live in `CSTOCK.lots` keyed to the slip by `sl`, so `spOutHtml` just calls
   the same `cstListHtml`/`cstSelBarHtml` filtered to this slip and force-opens the block. 🧊 สต็อคกลาง
   is untouched and the two pages can never disagree. Never fork the clearing code.
+  **🚚 ④ opens with the one thing no file can answer: what the warehouse actually shipped**
+  (`spWhqHtml`/`spWhqOrders`/`spWhqSt`/`spWhqOkSel`/`spWhqSaveOne`, owner 29 Nov 26: *"ส่วนนี้ไว้ให้
+  แอดมินทำงานต่อหลังจากตรวจเลข GIN ให้ไปกระทบกับจำนวนที่คลังจัดจริงอีกทีนึง ว่าจำนวน match กันกับ
+  ของที่คลังส่งออกจริงถูกต้องไหม ซึ่งข้อมูลส่วนนี้ไม่มีไฟล์ ให้แอดมินกรอกเองได้เลย โดยสามารถเลือก
+  ครอบทุกออเดอร์เพื่อกดตรวจสอบว่าถูกต้องได้ และเลือกกดบางออเดอร์เพื่อใส่ว่าคลังจัดจริง มากกว่าหรือ
+  น้อยกว่าในระบบแสดงได้"*). The allocation file says what the warehouse **picked**; nothing says what
+  left the building, so the admin checks with the warehouse and types it. The unit is the **order
+  number** the reps keyed that day, and "ระบบแสดง" is read through the very `spOrdFind` the rep's
+  page uses, so the two pages cannot state different quantities. It is on **every slip type**,
+  because every type has a เซลล์คีย์ step. Tick all (or some) → ✅ ยืนยันว่าตรง in one call;
+  📝 on one row opens ลัง / ชิ้น / หมายเหตุ and the difference is computed.
+  Storage is its own keyed map **`CSTOCK.whq["sid|YYYY-MM-DD|ORDERNO"]`**, never a field on the
+  gin record: the admin ticks one order at a time, and newest-wins on a shared record would let two
+  admins clobber each other (the `mergeExOne`/`mergeSubOne` lesson). Writes go through
+  **`api/spord.js` `act:"whq"`** — manager only, checked on the server, and **the server builds the
+  key** from sid + date + order number, so a client cannot smuggle one in; a bulk tick sends at most
+  `WHQ_MAX` (300) items in one call and the template's constant must stay in step with the server's.
+  Four rules: **un-confirming writes `ok:0`, never a key delete** (a stale tab would union it back —
+  the `del:1` / `it:{}` rule); **three states never collapse** — ยังไม่ตรวจ / ตรวจแล้วตรง /
+  ตรวจแล้วไม่ตรง; **ลัง and ชิ้น are compared in separate columns** and printed with `spDiffTxt`,
+  because case sizes differ per code; and an order whose quantity the system does not know yet is
+  **รอไฟล์ยอดขาย**, never 0 (the `spRow`/`spCases`/`spNoSum` rule). `cstOk()` builds `whq` with the
+  rest of CSTOCK's permanent shape, and `mergeState` merges it `newestByAt` per key with a deleted
+  slip dropping its keys. Prove it with the §10 cases in **`node test/browser/spord.test.cjs`**
+  (336 checks) and the `CSTOCK.whq` cases in `merge-safety` (337).
   **📊 รายงาน answers "what is this slip worth, and what is it net of the reps' sales?"** — cases cut
   / keyed / sent / outstanding from the lots and `CSTOCK.rep`, money from the **admin's stored check**
   (`CSTOCK.gin[].rows[].g`/`.v`, the allocation file's own GSV/NIV), and the day's total from
@@ -1747,6 +1772,22 @@ code, never printed.
   ✍️ ซุปตั้งเป้า → บ่าย 📲 เซลล์คีย์ → เย็น 🔎 แอดมินตรวจ — stating the day once and how far that day
   has got, so anyone can see who it is waiting on and tap straight there. It stacks vertically under
   620px: a horizontally scrolling strip hid the third step, which is usually the one that matters.
+  **📅 …but the slip's own date is a DIFFERENT date, and the screen must say which is which**
+  (`spDayBandHtml`, owner 29 Nov 26: *"คนใช้งานอ่านวันที่จะงงกับวันที่สร้างออเดอร์ 26 พย และวัน
+  ปัจจุบันที่ต้องคีย์ 27 พย. อันนี้ปรับทุกหน้าเลยทุก flow จนถึงคลังเลย … แยกให้เห็นได้ชัด ๆ จะได้
+  ไม่สับสน ทั้งในคอมและมือถือเลยนะ"*). On his screen the header read `26 พ.ย. · 6 รายการ · 14 ลัง`
+  and `B20261126-01 · 26 พ.ย. 2569` while the flow strip read `27 พ.ย. 2569` — two dates, two
+  meanings, no labels. Every slip page now opens with a **two-box band**: 📦 ใบออเดอร์ (number +
+  **สร้างเมื่อ**) and 📝 **กำลังบันทึกงานของวันที่** (+ วันนี้ / ล่วงหน้า N วัน / ย้อนหลัง N วัน).
+  Three rules: **no bare date anywhere in this group** — the slip card, the header chip and the day
+  picker all carry their own label (`สร้าง …` / `📝 วันที่กำลังบันทึกงาน`); when the two differ the
+  band **says so in words** (`คนละวันกับวันที่สร้างใบ — หลังสร้างใบ N วัน`) instead of leaving the
+  reader to notice; and a tab that is not day-based shows `📊 ดูทั้งใบ` rather than a invented
+  working day. It is labelling only — no function, figure or default date changed.
+  **⏭ ④ คลังจัดส่ง is NOT one of the three** (same instruction: *"ส่วนของคลังจัดส่ง ช่วยเอามันไม่
+  ขึ้นที่เดียวกับเพื่อน ๆ หน่อย ส่วนนี้ไว้ให้แอดมินทำงานต่อหลังจากตรวจเลข GIN"*). Its `SP_TABS`
+  entry carries `sep:1`, which draws a dashed rule before it in the tab row, and the flow strip
+  ends with a line naming it as the step **after** the trio, with a button to it.
   **📅 The calendar is full width with 46px day cells** (42px under 400px), because the owner asked
   (*"ปรับหน้าปฏิทินให้ใหญ่ใหญ่เต็มช่องกดเลือกวันได้ง่ายง่ายหน่อย"*) — it used to be a 250px box
   squeezed beside the date field with ~28px cells, below the 44px finger target.
