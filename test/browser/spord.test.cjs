@@ -3920,41 +3920,48 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🛟 ...และยังอ่านอย่างเดียว ไม่แตะข้อมูล',mx2.safe===true,'');
 
  /* ============================================================================
-  * 19) 🧾 GIN เกิดหลังใบออเดอร์เสมอ · 🔀 แยกมุมมอง · 📦 ช่องจำนวนเหลือแค่ ลัง/ชิ้น
-  *   เจ้าของ 29 พ.ย. 69 (สามเรื่องในข้อความเดียว):
-  *     *"ทำไมระบบอ่านไฟล์จาก gin 196 มาให้ มันย้อนหลังไป 3 วันเลย ตรรกะผิดแล้ว
-  *       GIN ต้องเกิดหลังจากวันที่สร้างออเดอร์สิ ปรับส่วนนี้ทั้งระบบเลยนะ"*
-  *     *"ช่วยปรับแยกโซน ที่ระบบอ่านเอง และโซนที่เราให้เซลล์กรอกเอง … ให้กดเลือกดูหน่อย"*
-  *     *"มันมีสามหน่วยในไฟล์ dcode นะ คือ ลัง แพ็ค ไซส์ … ให้ขึ้นแบบไม่งง โดยแสดงแค่ ลัง ชิ้น"*
+  * 19) 🧾 หนึ่ง GIN = หนึ่งวัน · 🔀 กรอกเอง vs ระบบวิเคราะห์ · 📦 ลัง/ชิ้น · 📦 ชื่อใบ
+  *   เจ้าของ 29 พ.ย. 69 (สองรอบ):
+  *     *"GIN ต้องเกิดหลังจากวันที่สร้างออเดอร์สิ ปรับส่วนนี้ทั้งระบบเลยนะ"* แล้วต่อด้วย
+  *     *"เงื่อนไขของเวลาการออก GIN ในแต่ละวันจะไม่ซ้ำกัน ที่แสดงผลมาอาจจะผิดพลาดลองเช็คนะ"*
+  *     *"ปรับให้ฝั่งแอดมิน ซุป เซลล์ เป็นระบบกรอกเองแบบเดิม … ส่วนหน้าที่ระบบวิเคราะห์เอง
+  *       เอาไว้ให้ manager ดูได้เท่านั้นก่อน … ไม่ต้องโชว์แบบแสดงผลทั้งหมด มันงงมาก"*
+  *     *"หน้ารายละเอียดออเดอร์ ขึ้นโชว์สินค้าและจำนวนของมาหน่อย … แต่อย่าทำให้รกตานะ"*
+  *     *"มันมีสามหน่วยในไฟล์ dcode คือ ลัง แพ็ค ชิ้น … ให้ขึ้นแค่ ลัง ชิ้น"*
   *
-  *   วัดจากไฟล์ใบจัดของจริงก่อนแก้: GIN ถูกใช้ซ้ำข้ามวันได้ถึง +5 วัน (จึงกรองตาม
-  *   "วันของ GIN = วันนี้" ไม่ได้) และเลข GIN ไม่เรียงตามวัน (ถอยหลัง 25 ครั้งจาก 144)
-  *   ⇒ เกณฑ์เดียวที่ใช้ได้คือ **วันแรกที่เลขนั้นถูกใช้ ต้องไม่ก่อนวันที่สร้างใบ**
+  *   วัดกับไฟล์ใบจัดของจริง (187 GIN · 2,395 ใบ) ก่อนเขียน: ไฟล์ไม่มีช่องวันของ GIN เลย
+  *   GIN ออกหลังใบเสมอ (วันเดียวกัน 79.9% · วันหลัง 20.1%) ⇒ วันของ GIN = วันของใบที่
+  *   ใหม่ที่สุดในเลขนั้น ซึ่งทำให้ **เลขซ้ำข้ามวัน = 0** ตรงกับที่เจ้าของบอก
   * ========================================================================== */
  const GZ = `
    __as('manager','','ผู้จัดการ');
-   window.__dmk=spBackStep(todayISO(),-4);     /* วันที่สร้างใบ */
-   window.__dold=spBackStep(todayISO(),-6);    /* ก่อนสร้างใบ 2 วัน */
+   window.__dmk=spBackStep(todayISO(),-6);     /* วันที่สร้างใบ */
+   window.__dA=spBackStep(todayISO(),-4);      /* วันทำงานก่อนหน้า */
    window.__d0=spBackStep(todayISO(),-2);      /* วันที่กำลังบันทึกงาน */
+   window.__dB=spBackStep(todayISO(),-1);      /* วันถัดไป */
    CSTOCK.slips[B1].d=window.__dmk;CSTOCK.slips[B1].g='D';
    CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};
-   MASTER={items:{FO01:{nm:'คนอร์โจ๊กซอง รสไก่ FO P18X4X45ก'}},det:{FO01:{ps:72}}};
+   MASTER={items:{FO01:{nm:'คนอร์โจ๊กซอง รสไก่ FO P18X4X45ก'},FO02:{nm:'ลักส์ โรส FO'}},
+           det:{FO01:{ps:72},FO02:{ps:12}}};
    CSTOCK.lots={L1:{id:'L1',sl:B1,d:window.__dmk,code:'FO01',
-                    nm:'คนอร์โจ๊กซอง รสไก่ FO P18X4X45ก',cs:10,pc:0,ln:'CT11',clr:[]}};
+                    nm:'คนอร์โจ๊กซอง รสไก่ FO P18X4X45ก',cs:10,pc:0,ln:'CT11',clr:[]},
+                L2:{id:'L2',sl:B1,d:window.__dmk,code:'FO02',nm:'ลักส์ โรส FO',
+                    cs:8,pc:0,ln:'CT11',clr:[]}};
    STOREDAILY={data:{},ord:{}};
    const OTO={},OTD={};window.__nos=[];
-   /* ใบของวันที่บันทึก — ถือ GIN 203,204 (ใหม่) กับ 196 (เคยใช้ตั้งแต่ก่อนสร้างใบ) */
-   [['7000001','203'],['7000002','204'],['7000003','196']].forEach(function(p){
-     OTO[p[0]]={l:'209611',d:+window.__d0.slice(8,10),s:'SH'+p[0],w:1,p:0,c:1,n:1,g:p[1]};
-     OTD[p[0]]={FO01:[1,0,72]};
-     STOREDAILY.ord['BDD01'+p[0]]={s:'SH'+p[0],l:'209611',d:window.__d0,k:window.__d0,
-       v:10,c:1,cs:1,pc:0};
-     window.__nos.push('BDD01'+p[0]);
-   });
-   /* ใบเก่าก่อนวันสร้างใบ ที่ทำให้ GIN 196 เกิดขึ้นครั้งแรก */
-   OTO['6000001']={l:'209611',d:+window.__dold.slice(8,10),s:'SHOLD',w:1,p:0,c:1,n:1,g:'196'};
-   OTD['6000001']={FO01:[1,0,72]};
-   for(var k=-7;k<=0;k++){
+   const mk=function(t,day,g){
+     OTO[t]={l:'209611',d:+day.slice(8,10),s:'SH'+t,w:1,p:0,c:1,n:1,g:g};
+     OTD[t]={FO01:[1,0,72]};
+     STOREDAILY.ord['BDD01'+t]={s:'SH'+t,l:'209611',d:day,k:day,v:10,c:1,cs:1,pc:0};
+     window.__nos.push('BDD01'+t);
+   };
+   /* วันที่กำลังบันทึก: 203 · 204 เป็นของวันนี้ล้วน · 196 มีใบของวันถัดไปด้วย */
+   mk('7000001',window.__d0,'203');
+   mk('7000002',window.__d0,'204');
+   mk('7000003',window.__d0,'196');
+   mk('7000004',window.__dB,'196');      /* ⇒ 196 เป็นรอบของวันถัดไป */
+   mk('6000001',window.__dA,'185');      /* เลขของวันก่อนหน้า */
+   for(var k=-8;k<=0;k++){
      var m=spBackStep(todayISO(),k).slice(0,7);
      OT.cache[m]={ord:OTO,det:OTD,meta:null,none:0};
    }
@@ -3963,36 +3970,47 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    CSTOCK.rep[B1+'|'+window.__d0+'|CT11']={it:{},no:window.__nos.slice(),
      by:'209611',byName:'CT11',at:2,n:1};
    SP.sid=B1;SP.view='slip';SP.sec='adm';SP.day=window.__d0;SP.ym=window.__d0.slice(0,7);
-   SP.back={on:0,sid:'',busy:0,i:0,n:0,open:{}};SP.zone='';
+   SP.back={on:0,sid:'',busy:0,i:0,n:0,open:{}};SP.zone=undefined;
+   try{localStorage.removeItem('bdspzone');}catch(e){}
    _switchTab('spord');renderSpord();`;
 
  const gz=await ev(a=>{
    eval(a.setup);setup();eval(a.pre);
-   const codes={FO01:1};
-   const r=spBackDay(B1,window.__d0,codes,spSlipLines(B1));
+   const codes={FO01:1,FO02:1},ym=window.__d0.slice(0,7);
+   const day=d=>spBackDay(B1,d,codes,spSlipLines(B1));
+   const r0=day(window.__d0),rA=day(window.__dA),rB=day(window.__dB);
    const d=document.createElement('div');d.innerHTML=spAutoGinHtml(B1,window.__d0);
    const tx=d.textContent.replace(/\s+/g,' ');
-   /* ปุ่ม "ใส่ให้เลย" ต้องใส่เฉพาะเลขที่ผ่านเกณฑ์ (ช่องจริงบนหน้า) */
    const box=document.getElementById('spGinIn');box.value='';
    spAutoGinFill(B1,window.__d0);
    const filled=box.value;
-   return {gin:Object.keys(r.gin).sort(),old:Object.keys(r.ginOld||{}),
-     first196:spGinDay('196',window.__d0.slice(0,7)),
-     firstNew:spGinDay('203',window.__d0.slice(0,7)),
-     slDay:r.slDay,tx:tx,said:/196/.test(tx),filled:filled};
+   /* เลขซ้ำข้ามวันไหม */
+   const seen={};let dup=0;
+   [rA,r0,rB].forEach(r=>Object.keys(r.gin).forEach(g=>{if(seen[g])dup++;seen[g]=1;}));
+   return {g0:Object.keys(r0.gin).sort(),gA:Object.keys(rA.gin).sort(),
+     gB:Object.keys(rB.gin).sort(),late:Object.keys(r0.ginLate||{}),nLate:r0.nLate,
+     d196:spGinDay('196',ym),d203:spGinDay('203',ym),d185:spGinDay('185',ym),
+     dayB:+window.__dB.slice(8,10),day0:+window.__d0.slice(8,10),
+     dayA:+window.__dA.slice(8,10),
+     dup:dup,tx:tx,filled:filled,hasOld:('ginOld' in r0)};
  },{setup:PRE,pre:GZ});
- t('🧾 GIN ที่ถูกใช้ครั้งแรกก่อนวันที่สร้างใบ ต้องไม่ถูกเสนอ — เหลือแค่ 203, 204',
-   gz.gin.join(',')==='203,204'&&gz.old.join(',')==='196',
-   'เสนอ ['+gz.gin.join(',')+'] · ตัดออก ['+gz.old.join(',')+']');
- t('📏 ...ตัดสินจาก "วันแรกที่เลขนั้นถูกใช้" ไม่ใช่จากตัวเลข GIN',
-   gz.first196>0&&gz.firstNew>0&&gz.first196<gz.slDay&&gz.firstNew>=gz.slDay,
-   'วันแรกของ 196='+gz.first196+' · 203='+gz.firstNew+' · วันสร้างใบ='+gz.slDay);
- t('🛟 ...และบอกบนจอว่าตัดอะไรออกเพราะอะไร ไม่ใช่หายเงียบ',
-   gz.said===true&&/ก่อนวันที่สร้างใบ/.test(gz.tx),gz.tx.slice(0,170));
- t('▸ ...ปุ่มใส่ให้เลย ก็ใส่เฉพาะเลขที่ผ่านเกณฑ์',
+ t('🧾 หนึ่งเลข GIN อยู่ได้วันเดียว — 196 มีใบของวันถัดไปด้วย จึงเป็นรอบของวันนั้น',
+   gz.d196===gz.dayB&&gz.d203===gz.day0&&gz.d185===gz.dayA,
+   '196 → วันที่ '+gz.d196+' (ควรเป็น '+gz.dayB+') · 203 → '+gz.d203+' · 185 → '+gz.d185);
+ t('🧾 ...วันที่กำลังบันทึกจึงเสนอแค่ 203, 204 ไม่เอา 196',
+   gz.g0.join(',')==='203,204',"เสนอ ["+gz.g0.join(',')+"]");
+ t('🚫 เลข GIN ต้องไม่ซ้ำข้ามวันเลยสักเลข (เงื่อนไขที่เจ้าของบอก)',
+   gz.dup===0&&gz.gA.join(',')==='185'&&gz.gB.join(',')==='196',
+   'ซ้ำ '+gz.dup+' · วันก่อน ['+gz.gA.join(',')+'] · วันถัดไป ['+gz.gB.join(',')+']');
+ t('🛟 ...ใบของวันนี้ที่คลังไปจัดวันหลัง ต้องนับแล้วบอก ไม่ใช่หายเงียบ',
+   gz.late.join(',')==='196'&&gz.nLate===1&&/196/.test(gz.tx)&&/วันหลัง/.test(gz.tx),
+   'บอก ['+gz.late.join(',')+'] · '+gz.tx.slice(0,150));
+ t('▸ ...ปุ่มใส่ให้เลย ใส่เฉพาะเลขของวันนั้น',
    gz.filled==='203, 204',"ใส่ '"+gz.filled+"'");
+ t('🧹 ...และทิ้งทางที่วิ่งไม่ได้แล้ว (เลขของวันเก่ากว่าเกิดไม่ได้อีก)',
+   gz.hasOld===false,'ginOld ยังอยู่');
 
- /* ---- 🔀 สองมุมมอง ---- */
+ /* ---- 🔀 กรอกเอง vs ระบบวิเคราะห์ ---- */
  const gz2=await ev(a=>{
    eval(a.setup);setup();eval(a.pre);
    const blob=JSON.stringify(CSTOCK);
@@ -4001,25 +4019,62 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
        if(!e)return false;const r=e.getBoundingClientRect();
        return !!(r.width||r.height);};
      return {cls:z?z.className:'',auto:vis('#spordView .sp-auto'),
-       man:vis('#spordView .sp-man')};};
-   const all=V();
+       man:vis('#spordView .sp-man'),
+       chips:document.querySelectorAll('#spordView .sp-zchip button').length};};
+   const first=V();
    spSetZone('auto');const au=V();
    spSetZone('man');const mn=V();
-   spSetZone('');const back=V();
-   const chips=document.querySelectorAll('#spordView .sp-zchip button').length;
-   return {all:all,au:au,mn:mn,back:back,chips:chips,
+   /* คนทำงานสามฝ่าย ต้องไม่เห็นแม้แต่ปุ่ม และต้องได้หน้ากรอกเอง */
+   const team={};
+   [['sup',null,'หัวหน้าเซลล์'],['sales','209611','CT11'],
+    ['manager','','แอดมิน 1']].forEach(function(u,i){
+     __as(u[0],u[1],u[2]);
+     if(i===2)S.user.id='admin1';
+     try{localStorage.setItem('bdspzone','auto');}catch(e){}
+     SP.zone=undefined;SP.sec=(u[0]==='sales')?'rep':'adm';
+     _switchTab('spord');renderSpord();
+     const v=V();team[u[0]+(i===2?'/admin1':'')]={chips:v.chips,zone:spZone(),
+       cls:v.cls,auto:v.auto};
+   });
+   return {first:first,au:au,mn:mn,team:team,
      posts:(window.__posts||[]).length,safe:(JSON.stringify(CSTOCK)===blob)};
  },{setup:PRE,pre:GZ});
- t('🔀 มีชิปให้เลือก 3 แบบ และค่าเริ่มต้นเห็นทั้งสองส่วน',
-   gz2.chips===3&&gz2.all.auto===true&&gz2.all.man===true,
-   JSON.stringify(gz2.all));
- t('🤖 เลือก "ระบบอ่านเอง" → ซ่อนช่องกรอก เหลือส่วนที่ระบบอ่านให้',
+ t('🔀 เจ้าของได้สองโหมด ไม่ใช่สาม และเปิดมาเจอ "กรอกเอง" ก่อนเสมอ',
+   gz2.first.chips===2&&/sp-only-man/.test(gz2.first.cls)&&
+   gz2.first.man===true&&gz2.first.auto===false,JSON.stringify(gz2.first));
+ t('🤖 กด "ระบบวิเคราะห์" → เห็นส่วนที่ระบบอ่านให้ ซ่อนช่องกรอก',
    gz2.au.auto===true&&gz2.au.man===false,JSON.stringify(gz2.au));
- t('✍️ เลือก "กรอกเอง" → ซ่อนส่วนที่ระบบอ่าน เหลือช่องกรอก',
+ t('✍️ กดกลับ "กรอกเอง" → ช่องกรอกกลับมา ส่วนวิเคราะห์หายไป',
    gz2.mn.man===true&&gz2.mn.auto===false,JSON.stringify(gz2.mn));
- t('🛟 ...กดกลับ "ทั้งหมด" เห็นครบเหมือนเดิม และไม่แตะข้อมูลเลย',
-   gz2.back.auto===true&&gz2.back.man===true&&gz2.posts===0&&gz2.safe===true,
-   JSON.stringify(gz2.back)+' · โพสต์ '+gz2.posts);
+ t('🔒 ซุป · เซลล์ · แอดมิน ไม่เห็นแม้แต่ปุ่มสลับ และถูกบังคับเป็น "กรอกเอง"',
+   Object.keys(gz2.team).every(k=>gz2.team[k].chips===0&&gz2.team[k].zone==='man'&&
+     gz2.team[k].auto===false),JSON.stringify(gz2.team));
+ t('🛟 ...ทั้งหมดนี้เป็นการจัดหน้าจอ ไม่แตะข้อมูลและไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
+   gz2.posts===0&&gz2.safe===true,'โพสต์ '+gz2.posts+' · ข้อมูลเท่าเดิม '+gz2.safe);
+
+ /* ---- 📦 ชื่อใบต้องบอกว่าเป็นออเดอร์ไหน ---- */
+ const gz4=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const d=document.createElement('div');
+   d.innerHTML=spDayBandHtml(B1,window.__d0,0);
+   const p=d.querySelector('.sp-2d-p');
+   const sum=spSlipSum(B1);
+   /* ใบที่มีสินค้าเยอะ ต้องตัดเหลือ SP_SUMN แล้วบอก +N */
+   for(var i=3;i<=7;i++)CSTOCK.lots['LX'+i]={id:'LX'+i,sl:B1,d:window.__dmk,
+     code:'FO'+i,nm:'สินค้าทดสอบ '+i,cs:i,pc:0,ln:'CT11',clr:[]};
+   const many=spSlipSum(B1);
+   const mdiv=document.createElement('div');mdiv.innerHTML=many;
+   return {has:!!p,txt:p?p.textContent.replace(/\s+/g,' ').trim():'',
+     lines:(p?p.innerHTML:'').split(/<br\s*\/?>/).length,
+     many:mdiv.textContent.replace(/\s+/g,' ').trim(),
+     sum:sum};
+ },{setup:PRE,pre:GZ});
+ t('📦 หัวใบบอกสินค้าและจำนวน ไม่ใช่แค่วันที่ — วันนึงมีหลายออเดอร์',
+   gz4.has===true&&/คนอร์/.test(gz4.txt)&&/10 ลัง/.test(gz4.txt)&&
+   /ลักส์/.test(gz4.txt)&&/8 ลัง/.test(gz4.txt),"'"+gz4.txt+"'");
+ t('🧹 ...แต่บรรทัดเดียว ไม่รกตา และของเยอะตัดเหลือ 3 แล้วบอก +N',
+   gz4.lines===1&&/\+4 รายการ/.test(gz4.many)&&
+   gz4.many.split('·').length<=4,"'"+gz4.many+"'");
 
  /* ---- 📦 ช่องจำนวน: ลัง/ชิ้น เท่านั้น ---- */
  const gz3=await ev(a=>{
@@ -4042,6 +4097,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    gz3.raw1==='18 แพ็ค',"raw '"+gz3.raw1+"'");
  t('🛟 ...แปลงไม่ได้ต้องบอกว่าไม่รู้ และเป็นข้อความล้วน ไม่ใช่แท็ก HTML',
    gz3.noPack==='ไม่รู้ขนาดแพ็ค'&&gz3.tagless===true,"'"+gz3.noPack+"'");
+
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));

@@ -324,6 +324,10 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .sp-2d-v{font-size:15px;font-weight:800;color:var(--ink);line-height:1.35;
   overflow-wrap:anywhere}
 .sp-2d-x{font-size:11.5px;color:var(--muted);line-height:1.45}
+ 
+.sp-2d-p{font-size:12px;color:var(--mid);line-height:1.5;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-2d-p b{color:var(--ink);font-weight:800}
 .sp-2d-d{color:var(--bad)}
 .sp-2d-a{align-self:center;color:var(--muted);font-size:12px;flex:0 0 auto}
 @media(max-width:620px){
@@ -16010,12 +16014,28 @@ function spDayGap(a,b){
   const g=Math.round((Date.parse(b+"T00:00:00")-Date.parse(a+"T00:00:00"))/86400000);
   return isFinite(g)?g:null;
 }
+ 
+const SP_SUMN=3;
+function spSlipSum(sid,n){
+  const cs=spSlipCodes(sid);if(!cs.length)return "";
+  const lim=n||SP_SUMN;
+   
+  const one=c=>{
+    const nm=String(c.nm||c.code||"").trim();
+    const short=nm.length>18?(nm.slice(0,18)+"…"):nm;
+    return anaEsc(short)+" <b>"+spCsTxt(c.cs,c.pc)+"</b>";
+  };
+  const head=cs.slice(0,lim).map(one).join(" · ");
+  return head+(cs.length>lim?(' <span class="psub">+'+(cs.length-lim)+" รายการ</span>"):"");
+}
 function spDayBandHtml(sid,ymd,ro){
   const sl=spSlip(sid)||{};
   const made=sl.d||"",t=todayISO();
+  const sum=spSlipSum(sid);
   const L=`<div class="sp-2d-i sp-2d-s">
       <div class="sp-2d-l">📦 ใบออเดอร์</div>
       <div class="sp-2d-v">${anaEsc(spSlipTitle(sid,26)||sid)}</div>
+      ${sum?`<div class="sp-2d-p">${sum}</div>`:""}
       <div class="sp-2d-x">${anaEsc(sid)}${made?(" · สร้างเมื่อ <b>"+anaEsc(fmtDate(made))+"</b>"):" · ไม่ระบุวันที่สร้าง"}</div>
     </div>`;
   if(!ymd)return `<div class="sp-2d">${L}<div class="sp-2d-a">▶</div>
@@ -17067,7 +17087,7 @@ function spGinFirst(ym){
   Object.keys(O).forEach(k=>{
     const r=O[k];if(!r||!r.g)return;
     const g=String(r.g),d=+r.d||0;if(!d)return;
-    if(!m[g]||d<m[g])m[g]=d;
+    if(!m[g]||d>m[g])m[g]=d;           
   });
   _spGF={ym:ym,o:O,m:m};
   return m;
@@ -17077,10 +17097,10 @@ function spGinDay(g,ym){const m=spGinFirst(ym);return (m&&+m[String(g)])||0;}
 function spBackDay(sid,ymd,codes,lines){
   const ym=String(ymd||"").slice(0,7);
    
-  const sl=spSlip(sid),slD=String((sl&&sl.d)||"");
-  const slDay=(slD.slice(0,7)===ym)?(+slD.slice(8,10)||0):0;
-  const o={d:ymd,rows:[],gin:{},ginOld:{},nOrd:0,nNew:0,cx:0,unsure:0,pool:0,shops:0,
-    pcs:{},gpcs:{},unkPs:[],nGin:0,slDay:slDay,
+  const myDay=+String(ymd||"").slice(8,10)||0;
+  const o={d:ymd,rows:[],gin:{},ginLate:{},nLate:0,
+    nOrd:0,nNew:0,cx:0,unsure:0,pool:0,shops:0,
+    pcs:{},gpcs:{},unkPs:[],nGin:0,myDay:myDay,
     chk:spDayHas(spGinRec(sid,ymd)),noDet:!spBackHasDet(ym),noFile:false};
   (lines||[]).forEach(ln=>{
     const lc=spLineCode(ln);if(!lc)return;
@@ -17104,9 +17124,10 @@ function spBackDay(sid,ymd,codes,lines){
       if(ot){
         if(ot.s)L.sh[ot.s]=1;
          
-        if(ot.g){const gs=String(ot.g),gd=o.slDay?spGinDay(gs,ym):0;
-          if(o.slDay&&gd&&gd<o.slDay)o.ginOld[gs]=gd;
-          else{L.gin[gs]=1;o.gin[gs]=1;}}
+         
+        if(ot.g){const gs=String(ot.g),gd=spGinDay(gs,ym);
+          if(!gd||!o.myDay||gd<=o.myDay){L.gin[gs]=1;o.gin[gs]=1;}
+          else{o.ginLate[gs]=gd;o.nLate++;}}
         const tm=String(ot.tm||"");
         if(tm){if(!L.t0||tm<L.t0)L.t0=tm;if(!L.t1||tm>L.t1)L.t1=tm;}
       }
@@ -17613,25 +17634,31 @@ function spAutoNoFill(sid,ymd,ln){
 }
  
  
-const SP_ZONES=[["","ทั้งหมด"],["auto","🤖 ระบบอ่านเอง"],["man","✍️ กรอกเอง"]];
+ 
+const SP_ZONES=[["man","✍️ กรอกเอง"],["auto","🤖 ระบบวิเคราะห์"]];
+function spZoneOk(){try{return !!bdOwner();}catch(e){return false;}}
 function spZone(){
+  if(!spZoneOk())return "man";
   if(SP.zone===undefined){let v="";try{v=localStorage.getItem("bdspzone")||"";}catch(e){}
-    SP.zone=(v==="auto"||v==="man")?v:"";}
-  return SP.zone;
+    SP.zone=(v==="auto")?"auto":"man";}
+  return SP.zone==="auto"?"auto":"man";
 }
-function spZoneCls(){const z=spZone();return z?(" sp-only-"+z):"";}
+function spZoneCls(){return " sp-only-"+spZone();}
 function spSetZone(z){
-  SP.zone=(z==="auto"||z==="man")?z:"";
-  try{if(SP.zone)localStorage.setItem("bdspzone",SP.zone);else localStorage.removeItem("bdspzone");}catch(e){}
+  if(!spZoneOk())return;
+  SP.zone=(z==="auto")?"auto":"man";
+  try{localStorage.setItem("bdspzone",SP.zone);}catch(e){}
   renderSpord();
 }
 function spZoneChips(){
+  if(!spZoneOk())return "";                
   const z=spZone();
   return `<div class="sp-zchip">${SP_ZONES.map(x=>
     `<button type="button" class="${x[0]===z?"on":""}"
       onclick="spSetZone('${x[0]}')">${x[1]}</button>`).join("")}</div>
-    <div class="psub">${z==="auto"?"เห็นเฉพาะส่วนที่ระบบอ่านจากไฟล์ให้ — จะกรอกหรือบันทึก กดกลับไป <b>ทั้งหมด</b> หรือ <b>✍️ กรอกเอง</b>"
-      :(z==="man"?"เห็นเฉพาะช่องที่ต้องกรอกเอง":"เห็นทั้งสองส่วน")}</div>`;
+    <div class="psub">${z==="auto"
+      ?"หน้าวิเคราะห์ — อ่านอย่างเดียว · จะกรอกหรือบันทึก กด <b>✍️ กรอกเอง</b>"
+      :"หน้าทำงาน — กรอกและบันทึกตรงนี้"}</div>`;
 }
 function spAutoGinHtml(sid,ymd){
   if(!sid||!ymd)return "";
@@ -17639,11 +17666,12 @@ function spAutoGinHtml(sid,ymd){
   spOtWant(String(ymd||"").slice(0,7),1);
   let r;try{r=spBackDay(sid,ymd,codes,spSlipLines(sid));}catch(e){return "";}
   const g=Object.keys(r.gin).filter(Boolean);
-  const old=Object.keys(r.ginOld||{});
+  const late=Object.keys(r.ginLate||{});
+  const dayTxt=n=>fmtDate(ymd.slice(0,8)+("0"+n).slice(-2));
    
-  const oldTxt=old.length?`<div class="psub" style="margin-top:4px">🚫 ไม่เอา <b>${
-    old.map(anaEsc).join(" · ")}</b> — เลขนี้ถูกใช้ครั้งแรกก่อนวันที่สร้างใบออเดอร์นี้
-    (${fmtDate(ymd.slice(0,8)+("0"+r.slDay).slice(-2))}) จึงเป็นงานของใบอื่น · ถ้าต้องการจริง พิมพ์เองได้</div>`:"";
+  const oldTxt=late.length?`<div class="psub" style="margin-top:4px">⏭ ไม่เอา <b>${
+    late.map(x=>anaEsc(x)+" → "+dayTxt(r.ginLate[x])).join(" · ")}</b> — ใบของวันนี้อีก
+    <b>${r.nLate}</b> ใบ คลังไปจัดในรอบของวันหลัง จึงไปตรวจในวันนั้น · ถ้าต้องการจริง พิมพ์เองได้</div>`:"";
   if(r.noDet)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบกำลังอ่านไฟล์ของเดือนนี้ …</div></div>`;
   if(!g.length)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์แล้ว</div>
     <div class="psub">${r.noFile?"ยังไม่มีไฟล์ของวันนี้":"ยังไม่มีใบไหนของวันนี้ที่คลังออกเลข GIN ให้"} ·

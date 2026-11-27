@@ -386,6 +386,10 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .sp-2d-v{font-size:15px;font-weight:800;color:var(--ink);line-height:1.35;
   overflow-wrap:anywhere}
 .sp-2d-x{font-size:11.5px;color:var(--muted);line-height:1.45}
+/* 📦 สินค้าในใบ — บรรทัดเดียว เทา ตัดท้ายด้วย … ไม่ให้ดันกล่องสูงขึ้น (เจ้าของขอ "อย่ารกตา") */
+.sp-2d-p{font-size:12px;color:var(--mid);line-height:1.5;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-2d-p b{color:var(--ink);font-weight:800}
 .sp-2d-d{color:var(--bad)}
 .sp-2d-a{align-self:center;color:var(--muted);font-size:12px;flex:0 0 auto}
 @media(max-width:620px){
@@ -18240,12 +18244,37 @@ function spDayGap(a,b){
   const g=Math.round((Date.parse(b+"T00:00:00")-Date.parse(a+"T00:00:00"))/86400000);
   return isFinite(g)?g:null;
 }
+/* ============================================================================
+ * 📦 วันที่อย่างเดียวบอกไม่ได้ว่าเป็นออเดอร์พิเศษใบไหน — วันหนึ่งมีหลายใบ
+ *   เจ้าของ 29 พ.ย. 69: *"หน้ารายละเอียดออเดอร์ ขึ้นโชว์สินค้าและจำนวนของมาหน่อย
+ *     ให้มันรู้ว่าเป็นออเดอร์พิเศษรายการไหน ขึ้นแค่วันที่มันงง เพราะวันนึงมีหลายออเดอร์
+ *     **แต่อย่าทำให้รกตานะ แค่นี้ก็รกตามากพอแล้ว**"*
+ * ⇒ บรรทัดเดียว เทาเล็ก ตัดชื่อสั้น และจำกัดที่ `SP_SUMN` รายการ ที่เหลือเป็น "+N"
+ *   ห้ามขยายเป็นตารางหรือหลายบรรทัด — ประโยคหลังของเขาคือคำสั่งเท่ากับประโยคแรก
+ * ⚠️ อ่านจาก `spSlipCodes` ตัวเดียวกับที่การ์ดรายการใบใช้ ทั้งสองที่จึงพูดตรงกันเสมอ
+ * ==========================================================================*/
+const SP_SUMN=3;
+function spSlipSum(sid,n){
+  const cs=spSlipCodes(sid);if(!cs.length)return "";
+  const lim=n||SP_SUMN;
+  /* ⚠️ `spCsTxt` คืน HTML (มี <small>) — escape เฉพาะชื่อสินค้า ห้าม escape ทั้งก้อน
+     ไม่งั้นแท็กจะถูกพิมพ์ออกมาตรง ๆ บนจอ (กฎเดียวกับ `sub` ของ alQtyTxt) */
+  const one=c=>{
+    const nm=String(c.nm||c.code||"").trim();
+    const short=nm.length>18?(nm.slice(0,18)+"…"):nm;
+    return anaEsc(short)+" <b>"+spCsTxt(c.cs,c.pc)+"</b>";
+  };
+  const head=cs.slice(0,lim).map(one).join(" · ");
+  return head+(cs.length>lim?(' <span class="psub">+'+(cs.length-lim)+" รายการ</span>"):"");
+}
 function spDayBandHtml(sid,ymd,ro){
   const sl=spSlip(sid)||{};
   const made=sl.d||"",t=todayISO();
+  const sum=spSlipSum(sid);
   const L=`<div class="sp-2d-i sp-2d-s">
       <div class="sp-2d-l">📦 ใบออเดอร์</div>
       <div class="sp-2d-v">${anaEsc(spSlipTitle(sid,26)||sid)}</div>
+      ${sum?`<div class="sp-2d-p">${sum}</div>`:""}
       <div class="sp-2d-x">${anaEsc(sid)}${made?(" · สร้างเมื่อ <b>"+anaEsc(fmtDate(made))+"</b>"):" · ไม่ระบุวันที่สร้าง"}</div>
     </div>`;
   if(!ymd)return `<div class="sp-2d">${L}<div class="sp-2d-a">▶</div>
@@ -19575,22 +19604,34 @@ function spBackChkPcs(sid,ymd,codes,ym){
 }
 /* หนึ่งวัน: ใบของทุกสายในใบนี้ ที่มีสินค้าของใบนี้อยู่จริง */
 /* ============================================================================
- * 🧾 เลข GIN เกิด "หลัง" ใบออเดอร์เสมอ — ห้ามเสนอเลขที่มีมาก่อนใบนี้ถูกสร้าง
+ * 🧾 หนึ่งเลข GIN = หนึ่งวัน — และวันนั้นคือ "วันที่คลังออกเลข" ไม่ใช่วันที่เซลล์คีย์
  *
- * เจ้าของ 29 พ.ย. 69: *"ทำไมระบบอ่านไฟล์จาก gin 196 มาให้ มันย้อนหลังไป 3 วันเลย
+ * เจ้าของ 29 พ.ย. 69 รอบแรก: *"ทำไมระบบอ่านไฟล์จาก gin 196 มาให้ มันย้อนหลังไป 3 วันเลย
  *   ตรรกะผิดแล้ว GIN ต้องเกิดหลังจากวันที่สร้างออเดอร์สิ ปรับส่วนนี้ทั้งระบบเลยนะ"*
+ * รอบสอง (หลังเห็นว่า 196 ยังขึ้นทั้งวันที่ 26 และ 27):
+ *   *"เงื่อนไขของเวลาการออก GIN ในแต่ละวันจะไม่ซ้ำกัน ที่แสดงผลมาอาจจะผิดพลาดลองเช็คนะ"*
+ *   — เขาพูดถูก และนี่คือต้นเหตุจริง
  *
- * 🔍 วัดจากไฟล์ใบจัดของจริงของเขา (10,428 แถว · 144 GIN · 15-24 พ.ย.) ก่อนแก้:
- *   • **GIN หนึ่งเลขถูกใช้ซ้ำข้ามวันได้จริง** — 117 เลขอยู่วันเดียว · 27 เลขครอบหลายวัน
- *     และใบที่คีย์ทีหลังเกาะเลขเดิมได้ไกลถึง **+5 วัน** (คู่ วัน|GIN: +0 =144 · +1 =23 ·
- *     +2 =6 · +3 =3 · +4 =2 · +5 =1) ⇒ การกรอง "ต้องเป็นเลขของวันนี้เท่านั้น" จะทิ้งของจริง
- *   • **ห้ามเดาวันจากตัวเลข GIN** — เรียงตามเลขแล้ววันที่ถอยหลัง **25 ครั้งจาก 144**
- *     (148 = 24 พ.ย. แต่ 149 = 21 พ.ย.) ⇒ "196 < 203 แปลว่าเก่ากว่า" ใช้ไม่ได้
- * 🔑 สิ่งที่ตัดสินได้จริงคือ **วันแรกที่เลขนั้นถูกใช้** ซึ่งอ่านได้จากใบในเดือนนั้นเอง
- *    (`api/ordtrk` เก็บ `d` = วันของเดือน และ `g` = เลข GIN ไว้ทุกใบ) ⇒ เลขที่ถูกใช้
- *    **ก่อนวันที่สร้างใบออเดอร์นี้** เป็นงานของใบอื่น ไม่ใช่ของใบนี้
- * ⚠️ ตัดออกแล้วต้อง **บอกบนจอว่าตัดอะไรออกเพราะอะไร** ห้ามหายเงียบ — แอดมินยังพิมพ์เองได้
- * ⚠️ ใบที่ไม่มีวันสร้าง (ของเก่า) = ไม่มีเกณฑ์ ⇒ ไม่กรอง
+ * 🔍 ไฟล์ใบจัดของ **ไม่มีช่องวันที่ของ GIN เลย** มีแต่ `Order Creation Date` (วันที่เซลล์คีย์)
+ *    หน้านี้จึงเคยจัดกลุ่ม GIN ตาม "วันของใบสั่ง" ⇒ GIN ที่เก็บใบของหลายวันไว้ในรอบเดียว
+ *    จะโผล่ทุกวันที่มันแตะ — ซึ่งคือ 196 ที่ขึ้นทั้งวันที่ 26 และ 27
+ *
+ * 🔍 วัดกับไฟล์จริงของเขา (`Order_Allocation_ReportHistorical_3`, 187 GIN · 2,395 ใบ ·
+ *    15-26 พ.ย.) ก่อนเขียนอะไร:
+ *   • **GIN ออกทีหลังใบเสมอ** — 79.9% ของใบได้ GIN วันเดียวกับที่คีย์ · **20.1% ได้วันหลัง**
+ *     (+1 วัน 392 ใบ · +2 วัน 47 · +3 วัน 3 · +4 วัน 2 · +5 วัน 1)
+ *   • ⇒ **วันของ GIN = วันของใบที่ใหม่ที่สุดในเลขนั้น** เป็นข้อบังคับทางกายภาพ
+ *     (ออกเลขก่อนที่ใบจะมีไม่ได้) และพอใช้เกณฑ์นี้ **เลขซ้ำข้ามวัน = 0** ตรงกับที่เขาบอก
+ *   • ชุดของแต่ละวันออกมาเรียงติดกันสวย ๆ ตามที่เขาเล่า ("วันละ 4-6 ใบ") เช่น
+ *     26 พ.ย. = 176-178 · 180-181 · 185-190 · 192-194
+ * ⛔ สองเกณฑ์ที่ลองแล้วใช้ไม่ได้ ห้ามกลับไปใช้:
+ *   • **"วันแรกที่เลขถูกใช้"** (ของเดิม) — ขัดกับความจริง เพราะเลขออกหลังใบ และยังทำให้
+ *     196 ขึ้นสองวันอยู่ดี
+ *   • **"เลขมากกว่า = วันหลังกว่า"** — ไม่จริง เรียงตามเลขแล้ววันถอยหลัง **25 ครั้งจาก 144**
+ *     (148 = 24 พ.ย. แต่ 149 = 21 พ.ย.)
+ * ⚠️ ใบของวันนี้ที่คลังไปจัดในรอบของวันอื่น (20.1% ข้างบน) ต้อง **นับแล้วบอกว่าไปอยู่วันไหน**
+ *    ห้ามเงียบ — ไม่งั้นแอดมินจะนึกว่าใบพวกนั้นหาย
+ * ⚠️ ตัดเลขไหนออกต้อง **บอกบนจอพร้อมเหตุผล** แอดมินยังพิมพ์เองได้เสมอ
  * ==========================================================================*/
 let _spGF={};
 function spGinFirst(ym){
@@ -19601,20 +19642,20 @@ function spGinFirst(ym){
   Object.keys(O).forEach(k=>{
     const r=O[k];if(!r||!r.g)return;
     const g=String(r.g),d=+r.d||0;if(!d)return;
-    if(!m[g]||d<m[g])m[g]=d;
+    if(!m[g]||d>m[g])m[g]=d;          /* ใหม่ที่สุดชนะ = วันที่คลังออกเลขนั้น */
   });
   _spGF={ym:ym,o:O,m:m};
   return m;
 }
-/* วันแรกของ GIN นี้ (เลขวันของเดือน) — 0 = ไม่รู้ */
+/* วันที่คลังออกเลข GIN นี้ (เลขวันของเดือน) — 0 = ไม่รู้ */
 function spGinDay(g,ym){const m=spGinFirst(ym);return (m&&+m[String(g)])||0;}
 function spBackDay(sid,ymd,codes,lines){
   const ym=String(ymd||"").slice(0,7);
   /* วันที่สร้างใบออเดอร์ — GIN ที่เกิดก่อนวันนี้ ไม่ใช่ของใบนี้ */
-  const sl=spSlip(sid),slD=String((sl&&sl.d)||"");
-  const slDay=(slD.slice(0,7)===ym)?(+slD.slice(8,10)||0):0;
-  const o={d:ymd,rows:[],gin:{},ginOld:{},nOrd:0,nNew:0,cx:0,unsure:0,pool:0,shops:0,
-    pcs:{},gpcs:{},unkPs:[],nGin:0,slDay:slDay,
+  const myDay=+String(ymd||"").slice(8,10)||0;
+  const o={d:ymd,rows:[],gin:{},ginLate:{},nLate:0,
+    nOrd:0,nNew:0,cx:0,unsure:0,pool:0,shops:0,
+    pcs:{},gpcs:{},unkPs:[],nGin:0,myDay:myDay,
     chk:spDayHas(spGinRec(sid,ymd)),noDet:!spBackHasDet(ym),noFile:false};
   (lines||[]).forEach(ln=>{
     const lc=spLineCode(ln);if(!lc)return;
@@ -19639,10 +19680,14 @@ function spBackDay(sid,ymd,codes,lines){
       const ot=e.ot,hasG=!!(ot&&ot.g);
       if(ot){
         if(ot.s)L.sh[ot.s]=1;
-        /* 🧾 เลข GIN ที่ถูกใช้ครั้งแรกก่อนวันที่สร้างใบนี้ = งานของใบอื่น (ดูบันทึกเหนือ spGinFirst) */
-        if(ot.g){const gs=String(ot.g),gd=o.slDay?spGinDay(gs,ym):0;
-          if(o.slDay&&gd&&gd<o.slDay)o.ginOld[gs]=gd;
-          else{L.gin[gs]=1;o.gin[gs]=1;}}
+        /* 🧾 หนึ่งเลข GIN = หนึ่งวัน (ดูบันทึกเหนือ spGinFirst) — เสนอเฉพาะเลขที่คลัง
+           ออกในวันที่กำลังบันทึกอยู่ · ของวันก่อนหน้า = งานของรอบอื่น · ของวันถัดไป =
+           ใบของวันนี้ที่คลังไปจัดในรอบวันหลัง ซึ่งต้องนับแล้วบอก ไม่ใช่เงียบ */
+        /* ⚠️ วันของ GIN = วันของใบที่ใหม่ที่สุดในเลขนั้น ⇒ เลขที่เกาะใบของวันนี้
+           จะ "เก่ากว่าวันนี้" ไม่ได้เลย มีแค่สองทาง: วันนี้ (เสนอ) หรือวันหลัง (บอก) */
+        if(ot.g){const gs=String(ot.g),gd=spGinDay(gs,ym);
+          if(!gd||!o.myDay||gd<=o.myDay){L.gin[gs]=1;o.gin[gs]=1;}
+          else{o.ginLate[gs]=gd;o.nLate++;}}
         const tm=String(ot.tm||"");
         if(tm){if(!L.t0||tm<L.t0)L.t0=tm;if(!L.t1||tm>L.t1)L.t1=tm;}
       }
@@ -20232,25 +20277,49 @@ function spAutoNoFill(sid,ymd,ln){
 /* ----- ② ข้างช่องเลข GIN ของแอดมิน ----- */
 /* 🔀 มุมมองของหน้านี้: ทั้งหมด / ระบบอ่านเอง / กรอกเอง — จำไว้ต่อเครื่อง ไม่ sync ขึ้นเซิร์ฟเวอร์
    ⚠️ ทุก try/catch เพราะโหมดส่วนตัวบล็อก localStorage (กฎเดียวกับร่างของ bdreq:/bdcst:) */
-const SP_ZONES=[["","ทั้งหมด"],["auto","🤖 ระบบอ่านเอง"],["man","✍️ กรอกเอง"]];
+/* ============================================================================
+ * 🔀 "กรอกเอง" คือหน้าทำงาน · "ระบบวิเคราะห์" เป็นของเจ้าของคนเดียว
+ *
+ * เจ้าของ 29 พ.ย. 69 รอบสอง หลังลองของจริง:
+ *   *"เพื่อไม่ให้คนทำงานเข้ามางงในวันนี้ ปรับให้ฝั่งแอดมิน ซุป เซลล์ เป็นระบบกรอกเองแบบเดิม
+ *     ที่เราทำกันมา … ส่วนหน้าที่ระบบวิเคราะห์เอง เอาไว้ให้ manager ดูได้เท่านั้นก่อน
+ *     แล้วแบ่งให้แยกส่วนกันไปเลย ระหว่างระบบวิเคราะห์กับกรอกเอง
+ *     **ไม่ต้องโชว์แบบแสดงผลทั้งหมด มันงงมาก**"*
+ *
+ * สามข้อที่ประโยคนี้สั่ง และห้ามย้อนกลับโดยไม่ได้สั่ง:
+ *   ① โหมด "ทั้งหมด" **ถูกเอาออก** — เหลือสองโหมดที่แยกกันจริง ๆ ไม่ใช่สามแบบที่ซ้อนกัน
+ *   ② ค่าเริ่มต้นของทุกคนคือ **✍️ กรอกเอง** = หน้าทำงานแบบเดิมก่อนมีตัววิเคราะห์
+ *   ③ ชิปสลับโหมด **ขึ้นเฉพาะบัญชีเจ้าของ** (`bdOwner`) แอดมิน/ซุป/เซลล์ไม่เห็นแม้แต่ปุ่ม
+ * ⚠️ นี่คือการ **จัดหน้าจอ** ไม่ใช่สิทธิ์ — ตัวเลข สิทธิ์เขียน และ `api/spord.js` ไม่เปลี่ยน
+ *    สักตัว และไม่มีข้อมูลไหนถูกลบ (ของวันที่ 27 ที่เซลล์อัพและแอดมินตรวจ อยู่ครบเหมือนเดิม
+ *    แค่ถูก CSS ซ่อนไว้ตอนอยู่โหมดวิเคราะห์)
+ * ⚠️ ที่นี่ใช้ `bdOwner` ได้ เพราะเป็น "รายงานของเจ้าของ" แบบเดียวกับ 📊 รายงาน (`spRptOk`)
+ *    ไม่ใช่งานประจำของแอดมิน — ดูกฎ 🧑 ใน CLAUDE.md ก่อนเอา `bdOwner` ไปใช้ที่อื่น
+ * ==========================================================================*/
+const SP_ZONES=[["man","✍️ กรอกเอง"],["auto","🤖 ระบบวิเคราะห์"]];
+function spZoneOk(){try{return !!bdOwner();}catch(e){return false;}}
 function spZone(){
+  if(!spZoneOk())return "man";
   if(SP.zone===undefined){let v="";try{v=localStorage.getItem("bdspzone")||"";}catch(e){}
-    SP.zone=(v==="auto"||v==="man")?v:"";}
-  return SP.zone;
+    SP.zone=(v==="auto")?"auto":"man";}
+  return SP.zone==="auto"?"auto":"man";
 }
-function spZoneCls(){const z=spZone();return z?(" sp-only-"+z):"";}
+function spZoneCls(){return " sp-only-"+spZone();}
 function spSetZone(z){
-  SP.zone=(z==="auto"||z==="man")?z:"";
-  try{if(SP.zone)localStorage.setItem("bdspzone",SP.zone);else localStorage.removeItem("bdspzone");}catch(e){}
+  if(!spZoneOk())return;
+  SP.zone=(z==="auto")?"auto":"man";
+  try{localStorage.setItem("bdspzone",SP.zone);}catch(e){}
   renderSpord();
 }
 function spZoneChips(){
+  if(!spZoneOk())return "";               /* คนทำงานไม่เห็นแม้แต่ปุ่ม */
   const z=spZone();
   return `<div class="sp-zchip">${SP_ZONES.map(x=>
     `<button type="button" class="${x[0]===z?"on":""}"
       onclick="spSetZone('${x[0]}')">${x[1]}</button>`).join("")}</div>
-    <div class="psub">${z==="auto"?"เห็นเฉพาะส่วนที่ระบบอ่านจากไฟล์ให้ — จะกรอกหรือบันทึก กดกลับไป <b>ทั้งหมด</b> หรือ <b>✍️ กรอกเอง</b>"
-      :(z==="man"?"เห็นเฉพาะช่องที่ต้องกรอกเอง":"เห็นทั้งสองส่วน")}</div>`;
+    <div class="psub">${z==="auto"
+      ?"หน้าวิเคราะห์ — อ่านอย่างเดียว · จะกรอกหรือบันทึก กด <b>✍️ กรอกเอง</b>"
+      :"หน้าทำงาน — กรอกและบันทึกตรงนี้"}</div>`;
 }
 function spAutoGinHtml(sid,ymd){
   if(!sid||!ymd)return "";
@@ -20258,11 +20327,12 @@ function spAutoGinHtml(sid,ymd){
   spOtWant(String(ymd||"").slice(0,7),1);
   let r;try{r=spBackDay(sid,ymd,codes,spSlipLines(sid));}catch(e){return "";}
   const g=Object.keys(r.gin).filter(Boolean);
-  const old=Object.keys(r.ginOld||{});
-  /* เลขที่ถูกตัดออกเพราะเกิดก่อนวันที่สร้างใบ — ต้องบอก ไม่ใช่หายเงียบ */
-  const oldTxt=old.length?`<div class="psub" style="margin-top:4px">🚫 ไม่เอา <b>${
-    old.map(anaEsc).join(" · ")}</b> — เลขนี้ถูกใช้ครั้งแรกก่อนวันที่สร้างใบออเดอร์นี้
-    (${fmtDate(ymd.slice(0,8)+("0"+r.slDay).slice(-2))}) จึงเป็นงานของใบอื่น · ถ้าต้องการจริง พิมพ์เองได้</div>`:"";
+  const late=Object.keys(r.ginLate||{});
+  const dayTxt=n=>fmtDate(ymd.slice(0,8)+("0"+n).slice(-2));
+  /* เลขที่ไม่เสนอ ต้องบอกพร้อมเหตุผล ไม่ใช่หายเงียบ — แอดมินยังพิมพ์เองได้ */
+  const oldTxt=late.length?`<div class="psub" style="margin-top:4px">⏭ ไม่เอา <b>${
+    late.map(x=>anaEsc(x)+" → "+dayTxt(r.ginLate[x])).join(" · ")}</b> — ใบของวันนี้อีก
+    <b>${r.nLate}</b> ใบ คลังไปจัดในรอบของวันหลัง จึงไปตรวจในวันนั้น · ถ้าต้องการจริง พิมพ์เองได้</div>`:"";
   if(r.noDet)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบกำลังอ่านไฟล์ของเดือนนี้ …</div></div>`;
   if(!g.length)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์แล้ว</div>
     <div class="psub">${r.noFile?"ยังไม่มีไฟล์ของวันนี้":"ยังไม่มีใบไหนของวันนี้ที่คลังออกเลข GIN ให้"} ·
