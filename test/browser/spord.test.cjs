@@ -3571,6 +3571,239 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    /ซิตร้า เพิร์ล FO/.test(au4.tx),au4.tx.slice(0,240));
  t('📦 ...และไม่มีลังทศนิยม',au4.frac===false,'');
 
+ /* ============================================================================
+  * 17) 📦 เศษชิ้นต้องไม่เกินหนึ่งลัง + ครบไหมทีละสินค้า เกิน%/ขาด% (เจ้าของสั่ง 29 พ.ย. 69)
+  *   *"คุณหารสินค้าไม่ลงลังหรือเปล่า ทำไมจำนวนแปลก ๆ และผมต้องการข้อมูลสินค้ารวมทั้งหมด
+  *     ว่ารวมครบไหมในแต่ละสินค้าในออเดอร์นั้น ๆ เกินมากี่ % ขาดไปกี่ %"*
+  *
+  *   บนจอของเขา: **"3 ลัง 225 ชิ้น" · "12 ลัง 380 ชิ้น" · "27 ลัง 316 ชิ้น" ·
+  *   "558 ลัง 998 ชิ้น"** และการ์ด **เซลล์คีย์แล้ว 0 ลัง 0%** คู่กับ
+  *   **ส่งออกแล้ว 558 ลัง · 100% ของที่ตัดบิล** ขณะที่ตัดบิลไว้แค่ 390 ลัง
+  *
+  *   ฟิกซ์เจอร์ (ลังละ 12 ชิ้น): CT11 คีย์ 20 ใบ ใบละ 1 ลัง 7 ชิ้น = 19 ชิ้น
+  *     ของเก่า: บวก w กับ p แยกช่องกัน ⇒ "20 ลัง 140 ชิ้น"
+  *     ของใหม่: 20 × 19 = 380 ชิ้น แตกด้วยลังละ 12 ⇒ **31 ลัง 8 ชิ้น**
+  *   ⚠️ ชิ้นรวมต้องเท่ากันเป๊ะทั้งสองแบบ (20×12+140 = 31×12+8 = 380) — ตัวเลขไม่ได้เปลี่ยน
+  *      เปลี่ยนแค่การแตกลัง ⇒ ห้ามมีการสลับแหล่งข้อมูลโดยไม่รู้ตัว
+  * ========================================================================== */
+ const FOLD = `
+   __as('manager','','ผู้จัดการ');
+   window.__d0=spBackStep(todayISO(),-3);
+   CSTOCK.slips[B1].d=window.__d0;CSTOCK.slips[B1].g='D';
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};
+   MASTER={items:{FO01:{nm:'ซิตร้า เพิร์ล FO'}},det:{FO01:{ps:12}}};
+   CSTOCK.lots={L1:{id:'L1',sl:B1,d:window.__d0,code:'FO01',nm:'ซิตร้า เพิร์ล FO',
+                    cs:25,pc:0,ln:'CT11',clr:[]}};
+   STOREDAILY={data:{},ord:{}};
+   const OTO={},OTD={};window.__nos=[];
+   /* 20 ใบ ใบละ 1 ลัง 7 ชิ้น (19 ชิ้น) — อยู่ในไฟล์ยอดขายแล้ว (src "sale" ซึ่งต้องชนะ)
+      และไฟล์ใบจัดของบอกรายสินค้าของใบเดียวกันไว้ด้วย (det เป็นลังทศนิยมอย่างไฟล์จริง) */
+   for(var i=1;i<=20;i++){
+     var t='4'+(i<10?'000000':'00000')+i;
+     OTO[t]={l:'209611',d:+window.__d0.slice(8,10),s:'SH'+i,w:1,p:7,c:19/12,n:1};
+     OTD[t]={FO01:[19/12,0,12]};
+     STOREDAILY.ord['BDD01'+t]={s:'SH'+i,l:'209611',d:window.__d0,k:window.__d0,
+       v:10,c:1,cs:1,pc:7};
+     window.__nos.push('BDD01'+t);
+   }
+   /* อีกหนึ่งใบที่ไฟล์ใบจัดของยังไม่มีรายสินค้า — แตกลังใหม่ไม่ได้ ต้องบอก */
+   STOREDAILY.ord['BDD0100500001']={s:'SHX',l:'209611',d:window.__d0,k:window.__d0,
+     v:100,c:1,cs:2,pc:9};
+   /* และอีกหนึ่งใบที่สองไฟล์พูดจำนวนไม่ตรงกัน — ห้ามเอา det มาทับตัวเลขของไฟล์ยอดขาย
+      (คีย์ก่อนวันที่สร้างใบ จึงไม่ถูกนับเป็นงานของวันนั้น เอามาทดสอบด่านตรวจล้วน ๆ) */
+   window.__dold=spBackStep(window.__d0,-1);
+   STOREDAILY.ord['BDD0100600001']={s:'SHY',l:'209611',d:window.__dold,k:window.__dold,
+     v:100,c:1,cs:5,pc:0};
+   OTD['00600001']={FO01:[1,0,12]};   /* ใบนี้เซลล์ไม่ได้ส่งเลขมา จึงไม่อยู่ใน ord ของวัน */
+   for(var k=-1;k<=3;k++){
+     var m=spBackStep(todayISO(),-3+k).slice(0,7);
+     OT.cache[m]={ord:OTO,det:OTD,meta:null,none:0};
+   }
+   OT.months=Object.keys(OT.cache);
+   spRfBust();
+   CSTOCK.rep[B1+'|'+window.__d0+'|CT11']={it:{},no:window.__nos.slice(),
+     by:'209611',byName:'CT11',at:2,n:1};
+   SP.sid=B1;SP.view='slip';SP.sec='rep';SP.day=window.__d0;SP.ym=window.__d0.slice(0,7);
+   SP.back={on:0,sid:'',busy:0,i:0,n:0,open:{}};
+   renderSpord();`;
+
+ /* ---- ① เศษชิ้นต้องแตกลงลัง และชิ้นรวมต้องไม่เปลี่ยน ---- */
+ const fd1=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const o=spNoSum(window.__nos,{l:'209611',ym:window.__d0});
+   /* วิธีเดิม: บวก cs กับ pc ของแต่ละใบแยกช่องกัน */
+   let oc=0,op=0;
+   o.rows.forEach(r=>{if(r.q){oc+=r.q.cs;op+=r.q.pc;}});
+   return {cs:o.cs,pc:o.pc,oldCs:oc,oldPc:op,found:o.found,
+     nDet:o.nDet,noDet:o.noDet,rawPc:o.rawPc,
+     pcs:o.pcs&&o.pcs.FO01};
+ },{setup:PRE,pre:FOLD});
+ t('📦 เศษชิ้นต้องไม่เกินหนึ่งลัง — 20 ใบ ใบละ 1 ลัง 7 ชิ้น = 31 ลัง 8 ชิ้น ไม่ใช่ 20 ลัง 140 ชิ้น',
+   fd1.cs===31&&fd1.pc===8&&fd1.oldCs===20&&fd1.oldPc===140,
+   'ใหม่ '+fd1.cs+' ลัง '+fd1.pc+' ชิ้น · เดิม '+fd1.oldCs+' ลัง '+fd1.oldPc+' ชิ้น');
+ t('🔒 ...และชิ้นรวมเท่าเดิมเป๊ะ (380 ชิ้น) — แตกลังใหม่ ไม่ได้เปลี่ยนแหล่งตัวเลข',
+   (fd1.cs*12+fd1.pc)===380&&(fd1.oldCs*12+fd1.oldPc)===380&&fd1.pcs===380,
+   'ใหม่ '+(fd1.cs*12+fd1.pc)+' · เดิม '+(fd1.oldCs*12+fd1.oldPc)+' · ต่อรหัส '+fd1.pcs);
+ t('📦 ...ทุกใบมีรายสินค้าให้แตก จึงไม่มีเศษที่ค้างแบบแตกไม่ได้',
+   fd1.nDet===20&&fd1.noDet===0&&fd1.rawPc===0,
+   'แตกได้ '+fd1.nDet+' ใบ · แตกไม่ได้ '+fd1.noDet+' ใบ · เศษค้าง '+fd1.rawPc);
+
+ /* ---- ② ใบที่แตกไม่ได้ และใบที่สองไฟล์ไม่ลงรอย → ต้องบอก ไม่ใช่เงียบ/ไม่ใช่ทับ ---- */
+ const fd2=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const o=spNoSum(window.__nos.concat(['BDD0100500001','BDD0100600001']),
+     {l:'209611',ym:window.__d0});
+   const x={ln:'CT11',ord:o,rSrc:'order',repCs:{cs:0,pc:0}};
+   const d=document.createElement('div');d.innerHTML='<table><tr>'+spOrdCell(x)+'</tr></table>';
+   return {cs:o.cs,pc:o.pc,noDet:o.noDet,nDet:o.nDet,rawPc:o.rawPc,rawCs:o.rawCs,
+     fdiff:o.fdiff,star:/\*/.test(d.textContent),src:JSON.stringify(o.src)};
+ },{setup:PRE,pre:FOLD});
+ t('🛟 ใบที่ยังไม่มีรายสินค้า แตกลังทีละรหัสไม่ได้ → เก็บไว้ตามจริงและติด * บอก',
+   fd2.nDet===20&&fd2.noDet===2&&fd2.rawCs===7&&fd2.rawPc===9&&
+   fd2.cs===38&&fd2.pc===17&&fd2.star===true,
+   JSON.stringify({cs:fd2.cs,pc:fd2.pc,nDet:fd2.nDet,noDet:fd2.noDet,
+     rawCs:fd2.rawCs,rawPc:fd2.rawPc,star:fd2.star}));
+ t('🔒 ...และใบที่สองไฟล์พูดจำนวนไม่ตรงกัน ห้ามเอารายสินค้ามาทับตัวเลขของไฟล์ยอดขาย',
+   fd2.fdiff===1,'ไม่ลงรอย '+fd2.fdiff+' ใบ · src '+fd2.src);
+
+ /* ---- ③ ไม่มีเป้า ห้ามอ่านว่า "เกิน" ---- */
+ const fd3=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   /* ตั้งเป้าให้สายอื่น เพื่อให้คอลัมน์ เป้า/ยังขาด/ผล ขึ้นมา แต่ CT11 ไม่มีเป้า */
+   CSTOCK.key[B1+'|'+window.__d0+'|CT15']={it:{FO01:{sc:1,sp:0,fc:0,fp:0}},
+     by:'sup',byName:'ซุป',at:1,n:1};
+   const tr=spTrack(B1,window.__d0);
+   const me=tr.filter(x=>x.ln==='CT11')[0]||null;
+   const gap=me?spTrkGap(me).replace(/<[^>]*>/g,''):'';
+   const d=document.createElement('div');d.innerHTML=spTrackHtml(B1,window.__d0);
+   const tx=d.textContent.replace(/\s+/g,' ');
+   return {st:me&&me.st,has:me&&me.has,gap:gap,
+     over:/เกิน/.test(gap),noTgtTxt:/ยังไม่ได้ตั้งเป้า/.test(tx),
+     frac:/\d+\.\d+ ลัง/.test(tx),big:/\d{3} ชิ้น/.test(tx)};
+ },{setup:PRE,pre:FOLD});
+ t('🛟 สายที่ยังไม่ได้ตั้งเป้า ช่อง "ยังขาด" ต้องเป็นขีด ห้ามอ่านว่า "เกิน"',
+   fd3.st==='noTgt'&&fd3.has===false&&fd3.over===false&&/—/.test(fd3.gap),
+   'st='+fd3.st+' · ช่องยังขาด="'+fd3.gap+'"');
+ t('🛟 ...และช่องผลยังบอกว่า "ยังไม่ได้ตั้งเป้า" เหมือนเดิม',fd3.noTgtTxt===true,'');
+ t('📦 ...ทั้งตารางไม่มีลังทศนิยม และไม่มีเศษชิ้นสามหลัก',
+   fd3.frac===false&&fd3.big===false,'ลังทศนิยม='+fd3.frac+' · เศษ 3 หลัก='+fd3.big);
+
+ /* ---- ④ หน้ารายงาน: ครบไหมทีละสินค้า + เกิน%/ขาด% ---- */
+ const fd4=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   /* แอดมินตรวจแล้ว: คลังจัด FO01 เพียง 300 ชิ้น (25 ลัง) จากที่คีย์ 380 ⇒ ขาด 21.1% */
+   CSTOCK.gin[B1+'|'+window.__d0]={g:['70'],at:3,by:'admin1',byName:'แอดมิน 1',
+     rows:{'CT11|FO01':{sc:25,ss:0,sp:0,fc:0,fs:0,fp:0,xc:25,xs:0,xp:0,yc:0,ys:0,yp:0,
+       pk:12,nm:'ซิตร้า เพิร์ล FO',g:0,v:0}},money:0};
+   const blob=JSON.stringify(CSTOCK);
+   const B=spBal(B1);
+   const d=document.createElement('div');d.innerHTML=spRptHtml(B1);
+   const tx=d.textContent.replace(/\s+/g,' ');
+   const rows=spRptRows(B1);
+   return {tx:tx,keyed:B.keyed,gin:B.gin,short:B.short,pct:B.pct,
+     prod:/ครบไหม ทีละสินค้า/.test(tx),
+     colShort:/ขาดไป %/.test(tx),colOver:/เกินมา %/.test(tx),
+     p211:/21\.1%/.test(tx),
+     key0:/เซลล์คีย์แล้ว 0 ลัง/.test(tx),
+     rptKey:rows.map(r=>r.keyQ.cs+'/'+r.keyQ.pc).join(' '),
+     frac:/\d+\.\d+ ลัง/.test(tx),big:/\d{3} ชิ้น/.test(tx),
+     safe:(JSON.stringify(CSTOCK)===blob)};
+ },{setup:PRE,pre:FOLD});
+ t('📦 หน้ารายงานมีตาราง "ครบไหม ทีละสินค้า" พร้อมช่อง ขาดไป % และ เกินมา %',
+   fd4.prod===true&&fd4.colShort===true&&fd4.colOver===true,
+   JSON.stringify({prod:fd4.prod,sh:fd4.colShort,ov:fd4.colOver}));
+ t('📊 ...คิด % จากเซลล์คีย์เป็นฐาน — คีย์ 380 ชิ้น คลังจัด 300 ⇒ ขาด 21.1%',
+   fd4.keyed===380&&fd4.gin===300&&fd4.short===80&&fd4.p211===true&&
+   Math.round(fd4.pct*10)/10===78.9,
+   'คีย์ '+fd4.keyed+' · จัด '+fd4.gin+' · ขาด '+fd4.short+' · ตรง '+fd4.pct+'%');
+ t('🛟 ...การ์ด "เซลล์คีย์แล้ว" ต้องไม่ขึ้น 0 ลัง เมื่อเซลล์ใส่แต่เลขออเดอร์',
+   fd4.key0===false&&fd4.rptKey==='31/8',
+   'ขึ้น 0 ลัง='+fd4.key0+' · ต่อวัน '+fd4.rptKey);
+ t('📦 ...ทั้งหน้าไม่มีลังทศนิยม และไม่มีเศษชิ้นสามหลัก',
+   fd4.frac===false&&fd4.big===false,'ลังทศนิยม='+fd4.frac+' · เศษ 3 หลัก='+fd4.big);
+ t('🛟 ...และวาดหน้ารายงานไม่แตะข้อมูลเลย (อ่านอย่างเดียว)',fd4.safe===true,'');
+
+ /* ---- ⑤ ส่งออกเกินที่ตัดบิลไว้ ต้องบอกว่าเกิน ห้ามตัดเป็น 100% ---- */
+ const fd5=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   /* ตัดบิลไว้ 25 ลัง แต่คลังจัดออก 40 ลัง */
+   CSTOCK.gin[B1+'|'+window.__d0]={g:['70'],at:3,by:'admin1',byName:'แอดมิน 1',
+     rows:{'CT11|FO01':{sc:40,ss:0,sp:0,fc:0,fs:0,fp:0,xc:40,xs:0,xp:0,yc:0,ys:0,yp:0,
+       pk:12,nm:'ซิตร้า เพิร์ล FO',g:0,v:0}},money:0};
+   const sn=spSent(B1);
+   const d=document.createElement('div');d.innerHTML=spRptHtml(B1);
+   const tx=d.textContent.replace(/\s+/g,' ');
+   return {cut:sn.cut,out:sn.out,over:/เกินที่ตัดบิลไว้ 15 ลัง/.test(tx),
+     pct100:/100% ของที่ตัดบิล/.test(tx),frac:/\d+\.\d+ ลัง/.test(tx),
+     big:/\d{3} ชิ้น/.test(tx)};
+ },{setup:PRE,pre:FOLD});
+ t('🛟 ส่งออกมากกว่าที่ตัดบิลไว้ ต้องบอกว่า "เกิน" ไม่ใช่ตัดเป็น 100% แล้วอ่านว่าพอดี',
+   fd5.cut===25&&fd5.out===40&&fd5.over===true&&fd5.pct100===false,
+   'ตัดบิล '+fd5.cut+' · ส่งออก '+fd5.out+' · บอกเกิน='+fd5.over+' · ขึ้น 100%='+fd5.pct100);
+ t('📦 ...และยอดรวมของทุกวันไม่พูนเศษชิ้นข้ามวัน',
+   fd5.frac===false&&fd5.big===false,'ลังทศนิยม='+fd5.frac+' · เศษ 3 หลัก='+fd5.big);
+
+ /* ---- ⑥ ผลตรวจของแอดมิน: รหัสเดียวกันอยู่หลายสาย หลายวัน → ต้องรวมเป็นชิ้นก่อน ----
+    นี่คือต้นเหตุของ "558 ลัง 998 ชิ้น" บนหน้ารายงาน: วันหนึ่งมี 40 กว่าแถว (สาย×รหัส)
+    แตกลังทีละแถวแล้วบวก `w`/`p` ข้ามแถวและข้ามวัน เศษจึงพูนขึ้นเรื่อย ๆ
+      ฟิกซ์เจอร์: 3 สาย × 11 ชิ้น = 33 ชิ้น/วัน · 2 วัน = 66 ชิ้น (ลังละ 12)
+        ทีละแถว  → วันละ 0 ลัง 33 ชิ้น · รวมสองวัน 0 ลัง 66 ชิ้น
+        ทีละรหัส → วันละ 2 ลัง 9 ชิ้น  · รวมสองวัน 5 ลัง 6 ชิ้น  */
+ const fd6=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const d1=window.__d0,d2=spBackStep(window.__d0,1);
+   const mk=()=>{const r={};['CT11','CT15','CT17'].forEach(ln=>{
+     r[ln+'|FO01']={sc:0,ss:0,sp:11,fc:0,fs:0,fp:0,xc:0,xs:0,xp:11,yc:0,ys:0,yp:0,
+       pk:12,nm:'ซิตร้า เพิร์ล FO',g:0,v:0};});return r;};
+   [d1,d2].forEach((dd,i)=>{CSTOCK.gin[B1+'|'+dd]={g:[String(70+i)],at:3+i,
+     by:'admin1',byName:'แอดมิน 1',rows:mk(),money:0};});
+   const o=spAllOut(B1);
+   const day=o.days.filter(x=>x.d===d1)[0]||null;
+   const sn=spSent(B1);
+   const dv=document.createElement('div');dv.innerHTML=spRptHtml(B1);
+   const tx=dv.textContent.replace(/\s+/g,' ');
+   return {dayW:day&&day.w,dayP:day&&day.p,
+     outW:o.outQ.w,outP:o.outQ.p,snOut:sn.out,snP:sn.outP,
+     lnP:(o.lines[0]||{}).p,
+     tot:/5 ลัง 6 ชิ้น/.test(tx),dayTxt:/2 ลัง 9 ชิ้น/.test(tx),
+     bad33:/0 ลัง 33 ชิ้น|33 ชิ้น/.test(tx),bad66:/66 ชิ้น/.test(tx),
+     frac:/\d+\.\d+ ลัง/.test(tx)};
+ },{setup:PRE,pre:FOLD});
+ t('📦 ผลตรวจของแอดมิน: รหัสเดียวกันหลายสายในวันเดียว รวมเป็นชิ้นก่อนแตกลัง — 2 ลัง 9 ชิ้น ไม่ใช่ 0 ลัง 33 ชิ้น',
+   fd6.dayW===2&&fd6.dayP===9,'วันแรก '+fd6.dayW+' ลัง '+fd6.dayP+' ชิ้น');
+ t('📦 ...และรวมสองวันได้ 5 ลัง 6 ชิ้น ไม่ใช่ 0 ลัง 66 ชิ้น',
+   fd6.outW===5&&fd6.outP===6&&fd6.snOut===5&&fd6.snP===6&&
+   fd6.tot===true&&fd6.bad66===false,
+   'รวม '+fd6.outW+' ลัง '+fd6.outP+' ชิ้น · บนจอถูก='+fd6.tot+' · มี 66 ชิ้น='+fd6.bad66);
+ t('📦 ...ทั้งหน้ารายงานไม่มี 33 ชิ้น และไม่มีลังทศนิยม',
+   fd6.bad33===false&&fd6.frac===false,
+   'มี 33 ชิ้น='+fd6.bad33+' · ลังทศนิยม='+fd6.frac);
+
+ /* ---- ⑦ 📱 ตารางใหม่ต้องอ่านได้ทั้งคอมและมือถือ (วัดของจริง ไม่ใช่เดา) ---- */
+ const meas=async()=>ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   CSTOCK.gin[B1+'|'+window.__d0]={g:['70'],at:3,by:'admin1',byName:'แอดมิน 1',
+     rows:{'CT11|FO01':{sc:25,ss:0,sp:0,fc:0,fs:0,fp:0,xc:25,xs:0,xp:0,yc:0,ys:0,yp:0,
+       pk:12,nm:'ซิตร้า เพิร์ล FO',g:0,v:0}},money:0};
+   SP.sec='rpt';renderSpord();
+   const tb=document.querySelector('#spBody .sp-pfold');
+   const r=tb?tb.getBoundingClientRect():null;
+   return {doc:document.documentElement.scrollWidth,win:window.innerWidth,
+     has:!!tb,right:r?Math.round(r.right):0,
+     head:/ขาดไป %/.test(document.getElementById('spBody').textContent)};
+ },{setup:PRE,pre:FOLD});
+ await pg.setViewportSize({width:390,height:844});
+ const w390=await meas();
+ await pg.setViewportSize({width:1280,height:950});
+ const w1280=await meas();
+ t('📱 ตาราง "ครบไหม ทีละสินค้า" อยู่ในจอทั้ง 390px และ 1280px ไม่ดันหน้าให้เลื่อนข้าง',
+   w390.has&&w1280.has&&w390.doc<=w390.win+1&&w1280.doc<=w1280.win+1&&
+   w390.right<=w390.win+1&&w1280.right<=w1280.win+1,
+   '390: doc '+w390.doc+'/'+w390.win+' ขวา '+w390.right+
+   ' · 1280: doc '+w1280.doc+'/'+w1280.win+' ขวา '+w1280.right);
+ t('📱 ...และหัวตารางยังอ่านได้ทั้งสองความกว้าง',
+   w390.head===true&&w1280.head===true,'390='+w390.head+' · 1280='+w1280.head);
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}

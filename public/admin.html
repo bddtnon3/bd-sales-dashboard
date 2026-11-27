@@ -13855,6 +13855,18 @@ function spPcsSplit(pcs,ym){
   return o;
 }
  
+function spMapSplit(pcs,pk){
+  const o={cs:0,pc:0,un:0,unk:[]};
+  Object.keys(pcs||{}).forEach(c=>{
+    const v=Math.round(+pcs[c]||0);if(!v)return;
+    const q=+((pk||{})[c])||0;
+    if(!(q>0)){o.pc+=v;o.un++;if(o.unk.indexOf(c)<0)o.unk.push(c);return;}
+    o.cs+=Math.floor(v/q);o.pc+=v%q;
+  });
+  o.pc=Math.round(o.pc*100)/100;
+  return o;
+}
+ 
 function spPcsDiff(tgt,rep,ym){
   const sh={},ov={},seen={};
   Object.keys(tgt||{}).forEach(c=>{seen[c]=1;});
@@ -14624,20 +14636,80 @@ function spRptRows(sid){
     if(alloc){const a=alloc[d]||{cs:0,w:0,p:0};out=a.cs;outW=a.w;outP=a.p;}
     else lots.forEach(l=>((l.clr)||[]).forEach(c=>{if(c&&c.d===d){out+=(+c.cs||0);outW+=(+c.cs||0);
       outP+=(+c.pc||0);}}));
-    const rp=spRepByLine(sid,d);
-    let keyed=0,keyP=0;Object.keys(rp).forEach(ln=>{const it=(rp[ln]||{}).it||{};
-      Object.keys(it).forEach(c=>{const v=it[c]||{};keyed+=(+v.sc||0)+(+v.fc||0);
-        keyP+=(+v.sp||0)+(+v.fp||0);});});
+     
+    let kPcs={},tr=null;
+    try{tr=spTrack(sid,d);}catch(e){tr=null;}
+    (tr||[]).forEach(x=>{Object.keys((x.rep&&x.rep.pcs)||{}).forEach(c=>{
+      kPcs[c]=(kPcs[c]||0)+(+x.rep.pcs[c]||0);});});
+    const kq=spPcsSplit(kPcs,String(d).slice(0,7));
+    const keyed=kq.cs,keyP=kq.pc;
     const mn=spRptMoney(sid,d);
     const sale=(typeof ohSale==="function")?ohSale(d):null;
     const niv=mn?mn.niv:null;
-    return {d:d,cut:R(cut),out:R(out),keyed:R(keyed),
+    return {d:d,cut:R(cut),out:R(out),keyed:R(keyed),kPcs:kPcs,
       cutQ:{cs:cut,pc:R(cutP)},outQ:{cs:outW,pc:R(outP)},keyQ:{cs:keyed,pc:R(keyP)},
       gsv:mn?R(mn.gsv):null,niv:niv==null?null:R(niv),
       sale:sale==null?null:R(sale),
       net:(sale==null||niv==null)?null:R(sale-niv),
       pct:(sale&&niv!=null)?Math.round(niv/sale*1000)/10:null};
   });
+}
+ 
+function spRptProdHtml(B){
+  if(!B||!B.rows.length)return "";
+  const dash='<span style="color:var(--muted)">–</span>';
+  const P=(a,b)=>(b>0)?('<b>'+(Math.round(a/b*1000)/10).toFixed(1)+'%</b>'):dash;
+  const n={ok:0,short:0,over:0,wait:0};
+  B.rows.forEach(r=>{if(n[r.st]!=null)n[r.st]++;});
+  const rows=B.rows.map(r=>{
+    const S=SP_BST[r.st]||SP_BST.wait;
+    const miss=r.d<0?-r.d:0,extra=r.d>0?r.d:0;
+    const note=[];
+    if(r.toKey)note.push("ต้องคีย์อีก "+spBalOne(r.toKey,r.ps));
+    else if(r.overT)note.push("คีย์เกินตั้งต้น "+spBalOne(r.overT,r.ps));
+    return `<tr>
+      <td class="l"><b>${anaEsc(r.nm||oname(r.code)||("รหัส "+r.code))}</b>
+        <span class="psub" style="display:block">รหัส ${anaEsc(r.code)}${
+          r.ps?" · ลังละ "+r.ps+" ชิ้น":' · <span class="down">ไม่รู้ขนาดลัง</span>'}</span></td>
+      <td data-l="ตั้งต้นในใบ"><span>${r.tgt==null?dash:spBalOne(r.tgt,r.ps)}${
+        note.length?'<span class="psub" style="display:block">'+note.join("")+"</span>":""}</span></td>
+      <td data-l="📲 เซลล์คีย์"><span>${r.k?spBalOne(r.k,r.ps):dash}</span></td>
+      <td data-l="🚚 คลังจัด"><span>${r.g?spBalOne(r.g,r.ps):dash}</span></td>
+      <td data-l="ขาดไป %"><span class="down">${miss?P(miss,r.k):dash}${
+        miss?'<span class="psub" style="display:block">'+spBalOne(miss,r.ps)+"</span>":""}</span></td>
+      <td data-l="เกินมา %"><span style="color:#8a6500">${extra?P(extra,r.k):dash}${
+        extra?'<span class="psub" style="display:block">'+spBalOne(extra,r.ps)+"</span>":""}</span></td>
+      <td class="l" data-l="ผล"><span style="color:${S.c}"><b>${S.i} ${S.t}</b></span></td></tr>`;
+  }).join("");
+  return `<div class="panel" style="margin-top:12px">
+    <h3>📦 ครบไหม ทีละสินค้า</h3>
+    <div class="cards sp-c5" style="margin-top:10px">
+      <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">🟢 ครบ</div>
+        <div class="v up">${n.ok}</div><div class="s">รายการ</div></div>
+      <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">🔴 ขาด</div>
+        <div class="v down">${n.short}</div>
+        <div class="s">${n.short?("ขาดรวม "+(B.keyed?((Math.round(B.short/B.keyed*1000)/10).toFixed(1)+"%"):"–")
+          +" · "+spBalPcs(B.sh,B.ym)):"ไม่มี"}</div></div>
+      <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">🟠 เกิน</div>
+        <div class="v">${n.over}</div>
+        <div class="s">${n.over?("เกินรวม "+(B.keyed?((Math.round(B.overG/B.keyed*1000)/10).toFixed(1)+"%"):"–")
+          +" · "+spBalPcs(B.ov,B.ym)):"ไม่มี"}</div></div>
+      <div class="card"><div class="k">⏳ ยังไม่คีย์</div><div class="v">${n.wait}</div>
+        <div class="s">รายการ</div></div>
+      <div class="card" style="border-top:3px solid ${(B.pct!=null&&B.pct>=99.95)?"var(--good)":"var(--bad)"}">
+        <div class="k">ตรงกันทั้งใบ</div>
+        <div class="v" style="font-size:20px">${B.pct==null?dash:(B.pct.toFixed(1)+"%")}</div>
+        <div class="s">คลังจัด ÷ เซลล์คีย์</div></div>
+    </div>
+    <div class="tblwrap" style="margin-top:12px"><table class="sp-kt sp-rt sp-pt">
+      <thead><tr><th class="l">สินค้า</th><th>ตั้งต้นในใบ</th><th>📲 เซลล์คีย์</th>
+        <th>🚚 คลังจัด</th><th>ขาดไป %</th><th>เกินมา %</th><th class="l">ผล</th></tr></thead>
+      <tbody class="sp-pfold">${rows}</tbody></table></div>
+    <div class="psub" style="margin-top:8px">% คิดจาก <b>เซลล์คีย์</b> เป็นฐาน ·
+      ขาดกับเกินแยกกัน ไม่หักลบข้ามสินค้า${
+      B.noPs.length?'<br><b class="down">⚠️ '+B.noPs.length+' รหัสไม่รู้ขนาดลัง</b> นับเป็นชิ้น ไม่ได้เดาให้':""}${
+      B.nofile?'<br>อีก '+B.nofile+' วันยังไม่มีไฟล์ครอบ — ยังไม่ได้นับรวม':""}</div>
+  </div>`;
 }
 function spRptHtml(sid){
   if(!spRptOk())return `<div class="panel"><div class="insight">บัญชีนี้เปิดส่วนนี้ไม่ได้</div></div>`;
@@ -14650,13 +14722,22 @@ function spRptHtml(sid){
   const niv=rows.reduce((a,r)=>a+(r.niv||0),0), gsv=rows.reduce((a,r)=>a+(r.gsv||0),0);
   const haveMoney=rows.some(r=>r.niv!=null);
   const noNet=rows.filter(r=>r.net==null).length;
+   
+  let BL=null;try{if(spSlipCodes(sid).length)BL=spBal(sid);}catch(e){BL=null;}
   const pct=cut>0?Math.round((cut-left)/cut*100):0;
+   
+  const outOver=(sn.out||0)-cut;
   const kpct=cut>0?Math.round(keyed/cut*100):0;
    
-  const T=rows.reduce((a,r)=>{["cut","key","out"].forEach((k,i)=>{
-    const q=[r.cutQ,r.keyQ,r.outQ][i];a[k].cs+=q.cs;a[k].pc+=q.pc;});return a;},
-    {cut:{cs:0,pc:0},key:{cs:0,pc:0},out:{cs:0,pc:0}});
-  ["cut","key","out"].forEach(k=>{T[k].pc=Math.round(T[k].pc*100)/100;});
+  const T={cut:{cs:0,pc:0},key:{cs:0,pc:0},out:{cs:0,pc:0}};
+  rows.forEach(r=>{T.cut.cs+=r.cutQ.cs;T.cut.pc+=r.cutQ.pc;});
+  T.cut.pc=Math.round(T.cut.pc*100)/100;
+  {const kp={};rows.forEach(r=>Object.keys(r.kPcs||{}).forEach(c=>{
+     kp[c]=(kp[c]||0)+(+r.kPcs[c]||0);}));
+   T.key=spPcsSplit(kp,BL?BL.ym:"");}
+  if(sn.src==="alloc")T.out={cs:sn.out,pc:+sn.outP||0};
+  else rows.forEach(r=>{T.out.cs+=r.outQ.cs;T.out.pc+=r.outQ.pc;});
+  T.out.pc=Math.round(T.out.pc*100)/100;
   const bar=(p,col)=>`<div style="height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px">
     <div style="height:100%;width:${Math.max(0,Math.min(100,p))}%;background:${col}"></div></div>`;
   const body=rows.map(r=>`<tr>
@@ -14676,12 +14757,14 @@ function spRptHtml(sid){
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k">เซลล์คีย์แล้ว</div>
         <div class="v" style="font-size:20px">${spCsTxt(T.key.cs,T.key.pc)}</div>
         <div class="s">${kpct}% ของที่ตัดบิล</div>${bar(kpct,"var(--blue)")}</div>
-      <div class="card" style="border-top:3px solid ${cstPctCol(pct)}"><div class="k">ส่งออกแล้ว</div>
+      <div class="card" style="border-top:3px solid ${outOver>0?"var(--warn)":cstPctCol(pct)}"><div class="k">ส่งออกแล้ว</div>
         <div class="v" style="font-size:20px">${spCsTxt(T.out.cs,T.out.pc)}</div>
-        <div class="s">${pct}% ของที่ตัดบิล</div>${bar(pct,cstPctCol(pct))}</div>
+        <div class="s">${outOver>0?("เกินที่ตัดบิลไว้ "+R(outOver)+" ลัง"):(pct+"% ของที่ตัดบิล")}</div>${
+        bar(pct,outOver>0?"var(--warn)":cstPctCol(pct))}</div>
       <div class="card" style="border-top:3px solid var(--warn)"><div class="k" style="color:#8a6500">ยังค้างรอส่ง</div>
         <div class="v" style="font-size:20px">${spCsTxt(left,0)}</div><div class="s">ลัง</div></div>
     </div>
+    ${BL?spRptProdHtml(BL):""}
     <div class="cards" style="margin-top:10px">
       <div class="card" style="border-top:3px solid var(--good)"><div class="k">มูลค่าใบนี้ (NIV)</div>
         <div class="v" style="font-size:20px">${haveMoney?THB(niv):'<span style="color:var(--muted)">—</span>'}</div>
@@ -14711,13 +14794,15 @@ function spAllOut(sid){
   codes.forEach((c,i)=>{nmOf[c.code]=c.nm||"";cutOf[c.code]=+c.cs||0;cutPOf[c.code]=+c.pc||0;
     order[c.code]=i;});
   const by={},lines={},days=[],gset={},shopMax={},mech={};
+   
+  const pkOf={};
   let noPk=0,noShr=0;
   Object.keys(C.gin||{}).forEach(k=>{
     const p=k.split("|");if(p[0]!==sid||!p[1])return;
     const r=C.gin[k];if(!r||r.del)return;
     const rows=r.rows||{},ks=Object.keys(rows),gs=(r.g||[]).slice();
     if(!ks.length&&!gs.length)return;
-    const day={d:p[1],g:gs,n:ks.length,at:r.at||0,by:r.byName||r.by||"",cs:0,w:0,p:0};
+    const day={d:p[1],g:gs,n:ks.length,at:r.at||0,by:r.byName||r.by||"",cs:0,w:0,p:0,pcs:{}};
     days.push(day);
      
     Object.keys(r.shop||{}).forEach(c=>{shopMax[c]=Math.max(shopMax[c]||0,+r.shop[c]||0);});
@@ -14741,11 +14826,12 @@ function spAllOut(sid){
       t.sRaw.cs+=sale.cs;t.sRaw.sh+=sale.sh;t.sRaw.pc+=sale.pc;
       t.fRaw.cs+=free.cs;t.fRaw.sh+=free.sh;t.fRaw.pc+=free.pc;
       t.g+=(+a.g||0);t.v+=(+a.v||0);
-      const L=lines[ln]||(lines[ln]={ln:ln,cs:0,n:0,un:0,w:0,p:0});
+      const L=lines[ln]||(lines[ln]={ln:ln,cs:0,n:0,un:0,w:0,p:0,pcs:{}});
       L.n++;
+      if(pk>0&&!pkOf[code])pkOf[code]=pk;
        
-      const add=(pcs)=>{const sp=alSplit(pcs,pk);if(!sp)return;
-        L.w+=sp.cs;L.p+=sp.pc;day.w+=sp.cs;day.p+=sp.pc;};
+      const add=(pcs)=>{const v=Math.round(+pcs||0);if(!v)return;
+        L.pcs[code]=(L.pcs[code]||0)+v;day.pcs[code]=(day.pcs[code]||0)+v;};
       if(ps!=null&&pk>0){t.sCs+=ps/pk;t.sP+=ps;L.cs+=ps/pk;day.cs+=ps/pk;add(ps);}else{t.un++;L.un++;}
       if(pf!=null&&pk>0){t.fCs+=pf/pk;t.fP+=pf;L.cs+=pf/pk;day.cs+=pf/pk;add(pf);}
       else if(free.cs||free.sh||free.pc){t.un++;L.un++;}
@@ -14766,6 +14852,10 @@ function spAllOut(sid){
     cutQ.w+=+t.cut||0;cutQ.p+=+t.cutP||0;
   });
   outQ.p=Math.round(outQ.p*100)/100;cutQ.p=Math.round(cutQ.p*100)/100;
+   
+  days.forEach(d=>{const q=spMapSplit(d.pcs,pkOf);d.w=q.cs;d.p=q.pc;d.unk=q.unk;});
+  Object.keys(lines).forEach(k=>{const L=lines[k],q=spMapSplit(L.pcs,pkOf);
+    L.w=q.cs;L.p=q.pc;L.unk=q.unk;});
   days.sort((a,b)=>String(a.d).localeCompare(String(b.d)));
   const lnArr=Object.keys(lines).map(k=>lines[k])
     .sort((a,b)=>FOCUS_ORDER.indexOf(spLnKey(a.ln))-FOCUS_ORDER.indexOf(spLnKey(b.ln)));
@@ -16547,9 +16637,49 @@ function spOrdQty(no,r,ym){
     if(x.w===undefined&&x.p===undefined&&!x.c)continue;    
     const q=(typeof otQty==="function")?otQty(x)
       :{cs:Math.round(+x.c||0),pc:0,ok:(Math.abs((+x.c||0)%1)>1e-9)?0:1};
-    return {cs:q.cs,pc:q.pc,n:+x.n||0,ok:q.ok,src:"gin"};
+     
+    return {cs:q.cs,pc:q.pc,n:+x.n||0,ok:q.ok,src:"gin",m:ms[i]};
   }
   return null;
+}
+ 
+ 
+function spNoDetPcs(no,ms){
+  for(let i=0;i<ms.length;i++){
+    const ym=ms[i],d=spBackDet(no,ym);
+    if(!d)continue;
+    const m={};let bad=0;
+    Object.keys(d).forEach(c=>{
+      const a=d[c]||[],n=(+a[0]||0)+(+a[1]||0);
+      if(!n)return;
+      const ps=(+a[2]>0)?+a[2]:spPsOf(c,ym);
+      if(!ps){bad=1;return;}
+      m[c]=(m[c]||0)+n*ps;
+    });
+    if(bad||!Object.keys(m).length)return null;
+    return {pcs:m,ym:ym};
+  }
+  return null;
+}
+ 
+function spNoSame(m,q,ym){
+  const s=spPcsSplit(m,ym);
+  return Math.round(s.cs)===Math.round(+q.cs||0)&&Math.round(s.pc)===Math.round(+q.pc||0);
+}
+function spNoFold(rows,ym){
+  const o={pcs:{},cs:0,pc:0,nDet:0,noDet:0,diff:0};
+  (rows||[]).forEach(r=>{
+    const q=r.q;if(!q)return;
+    const rec=r.r||{},ms=[];
+    [q.m,rec.k,ym,rec.d].forEach(v=>{v=String(v||"").slice(0,7);
+      if(/^\d{4}-\d{2}$/.test(v)&&ms.indexOf(v)<0)ms.push(v);});
+    let D=spNoDetPcs(r.no,ms);
+    if(D&&!spNoSame(D.pcs,q,D.ym)){D=null;o.diff++;}   
+    if(D){o.nDet++;Object.keys(D.pcs).forEach(c=>{o.pcs[c]=(o.pcs[c]||0)+D.pcs[c];});}
+    else{o.cs+=(+q.cs||0);o.pc+=(+q.pc||0);o.noDet++;}
+  });
+  o.cs=Math.round(o.cs*100)/100;o.pc=Math.round(o.pc*100)/100;
+  return o;
 }
  
 function spNoSum(list,hint){
@@ -16574,12 +16704,19 @@ function spNoSum(list,hint){
     if(r.cx)o.cx++;
     if(r.s)o.shops[r.s]=1;
     const q=spOrdQty(f.no,r,ym);
+     
     if(!q)o.wait++;
-    else{o.cs+=q.cs;o.pc+=q.pc;o.src[q.src]=(o.src[q.src]||0)+1;if(!q.ok)o.star++;}
+    else{o.src[q.src]=(o.src[q.src]||0)+1;if(!q.ok)o.star++;}
     o.v+=+r.v||0;
     o.rows.push({ask:t,no:f.no,r:r,via:f.via,q:q});
   });
-  o.cs=Math.round(o.cs*100)/100;o.pc=Math.round(o.pc*100)/100;o.v=Math.round(o.v*100)/100;
+  o.v=Math.round(o.v*100)/100;
+   
+  const F=spNoFold(o.rows,ym);
+  const sp=spPcsSplit(F.pcs,ym);
+  o.pcs=F.pcs;o.noDet=F.noDet;o.nDet=F.nDet;o.rawCs=F.cs;o.rawPc=F.pc;o.fdiff=F.diff;
+  o.cs=Math.round((sp.cs+F.cs)*100)/100;
+  o.pc=Math.round((sp.pc+F.pc)*100)/100;
   o.nShop=Object.keys(o.shops).length;
   return o;
 }
@@ -17458,7 +17595,9 @@ function spOrdCell(x){
   const diff=Math.abs(dcs)+Math.abs(dpc);
   const cls=R?((!o.miss.length&&!o.wait&&diff<0.01)?"up":(diff>=0.01?"down":"")):"";
   const sgn=(dcs||dpc)>=0?"+":"-";
-  return '<b class="'+cls+'">'+spCsTxt(o.cs,o.pc)+'</b>'+
+   
+  const st=(o.rawPc>0)?'<span class="psub"> *</span>':"";
+  return '<b class="'+cls+'">'+spCsTxt(o.cs,o.pc)+'</b>'+st+
     ((R&&diff>=0.01)?'<span class="psub" style="display:block">ต่าง '+sgn+" "+
       spCsTxt(Math.abs(dcs),Math.abs(dpc))+'</span>':"")+
     (bits.length?'<span class="psub" style="display:block">'+bits.join(" · ")+'</span>':"");
@@ -17544,6 +17683,8 @@ function spTrkNote(x){
  
 function spTrkGap(x){
   if(x.st==="unk")return '<span class="psub">ยังเทียบไม่ได้</span>';
+   
+  if(!x.has)return '<span class="psub">—</span>';
   const b=[];
   if(x.shPc>0)b.push('<b class="down">ขาด '+spCsTxt(x.short.cs,x.short.pc)+"</b>");
   if(x.ovPc>0)b.push('<b class="up">เกิน '+spCsTxt(x.over.cs,x.over.pc)+"</b>");
@@ -17608,7 +17749,9 @@ function spTrackHtml(sid,ymd,tr){
       <b>🧾 จากเลขออเดอร์</b> คือยอด <b>ทั้งออเดอร์</b> ซึ่งมีสินค้าตัวอื่นรวมอยู่ด้วย
       — สองช่องนี้ไม่เท่ากันเป็นเรื่องปกติ<br>
       <b>ยังขาด</b> คิดเป็นชิ้นทีละรหัสสินค้าแล้วแตกกลับเป็นลัง+ชิ้น ·
-      ขาดกับเกินแยกกัน ไม่หักลบข้ามสินค้า</div>
+      ขาดกับเกินแยกกัน ไม่หักลบข้ามสินค้า${
+      show.some(x=>x.ord&&x.ord.rawPc>0)?`<br><b>*</b> ใบที่จำนวนมาจากไฟล์ยอดขาย
+      ไม่มีรายสินค้าให้แตกลังทีละรหัส เศษชิ้นของใบพวกนั้นจึงรวมกันไว้`:""}</div>
   </div>`;
 }
  
