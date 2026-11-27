@@ -3128,6 +3128,225 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    conv.frac===false&&conv.mixed===false,
    'ทศนิยม='+conv.frac+' · ลบลังบวกชิ้น='+conv.mixed);
 
+ /* ============================================================================
+  * 15) 🔁 เติมย้อนหลังทั้งใบ — "เซลล์คีย์" + "คลังจัด" (เจ้าของสั่ง 27 พ.ย. 69)
+  *   *"ผมต้องการทำให้คุณวิเคราะห์แล้วใส่ตัวเลขย้อนหลังของออเดอร์ที่เซลล์คีย์ และคลังจัดทั้งหมด
+  *     ตั้งแต่วันที่ 19 พย จนถึงวันนี้ … แค่วันที่ออเดอร์ เซลล์แต่ละสายจะคีย์คนละช่วงเวลา แต่จะ
+  *     คีย์พร้อมๆกัน ส่วนแอดมินจะจัดกลุ่มออเดอร์พวกนี้ออกมาขึ้น GIN แบบติดกัน"*
+  *
+  *   📏 ฟิกซ์เจอร์นี้สร้างจาก pattern ที่วัดได้จากไฟล์จริงของเจ้าของ (19 และ 21 พ.ย. 69):
+  *      1 ใบ = 1 ร้าน · 1 สาย = 1 GIN · GIN ของแต่ละสายออกมาติดกันเป็นชุด (68–71)
+  *      และมี GIN หลุดชุดจริง ๆ อยู่ด้วย (96) ซึ่งต้อง "บอกไว้" ไม่ใช่กรองทิ้ง
+  *   ⚠️ วันทั้งหมดอ้างจาก todayISO() ไม่ใช่วันที่ตายตัว — เทสต์ที่ผูกกับวันจริงจะพังเองวันหนึ่ง
+  *      (บทเรียนเดิมของ spord §8 ที่พังหลังห้าโมงเย็น และกฎ "เทสต์ต้องบังคับเงื่อนไข ไม่ใช่
+  *      รอให้วันนี้เป็นวันที่ถูก")
+  * ========================================================================== */
+ const BACKPRE = `
+   __as('manager','','ผู้จัดการ');
+   window.__d0=spBackStep(todayISO(),-8);     /* วันสร้างใบ = รอบแรก */
+   window.__dnf=spBackStep(todayISO(),-6);    /* วันที่ไม่มีไฟล์เลย */
+   window.__dchk=spBackStep(todayISO(),-5);   /* วันที่แอดมินตรวจเองไว้แล้ว */
+   CSTOCK.slips[B1].d=window.__d0;CSTOCK.slips[B1].g='D';
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};
+   MASTER={items:{FO01:{nm:'ซิตร้า เพิร์ล FO'},FO02:{nm:'ซิตร้า ทานาคา FO'},
+                  ZZ99:{nm:'สินค้าอื่นที่ไม่อยู่ในใบ'}},det:{FO01:{ps:12},FO02:{ps:12}}};
+   CSTOCK.lots={L1:{id:'L1',sl:B1,d:window.__d0,code:'FO01',nm:'ซิตร้า เพิร์ล FO',
+                    cs:6,pc:0,ln:'CT11',clr:[]},
+                L2:{id:'L2',sl:B1,d:window.__d0,code:'FO02',nm:'ซิตร้า ทานาคา FO',
+                    cs:6,pc:0,ln:'CT11',clr:[]}};
+   STOREDAILY={data:{},ord:{}};
+   const OTO={},OTD={};
+   /* 1 สาย = 1 GIN · GIN ติดกัน 68–71 · CT13 หลุดไปอยู่ 96 (ของจริงมีจริง) */
+   const PL=[['209615','CT15','68','10:45',2],['209622','CT22','69','14:28',2],
+             ['209611','CT11','70','14:22',3],['209617','CT17','71','10:35',2],
+             ['209613','CT13','96','11:36',1]];
+   window.__want={};
+   PL.forEach(function(p,pi){
+     for(var i=1;i<=p[4];i++){
+       var tail='1'+(pi+1)+'00000'+i;
+       var full='BDD01'+tail;
+       OTO[tail]={l:p[0],d:+window.__d0.slice(8,10),s:'SH'+p[1]+i,g:p[2],
+                  tm:(i===1?p[3]:'15:'+String(10+i).padStart(2,'0')),w:1,p:0,c:1,n:1};
+       OTD[tail]={FO01:[1,0,12]};
+       (window.__want[p[1]]=window.__want[p[1]]||[]).push(full);
+     }
+   });
+   /* ใบของ CT11 ที่มีแต่สินค้านอกใบ → ต้องไม่ถูกนับเลย */
+   OTO['20000001']={l:'209611',d:+window.__d0.slice(8,10),s:'SHX1',g:'70',tm:'15:30',w:9,p:0,c:9,n:1};
+   OTD['20000001']={ZZ99:[9,0,6]};
+   /* ใบที่ยกเลิก (มีสินค้าของใบนี้) → นับไว้ ไม่เติม */
+   OTO['20000002']={l:'209611',d:+window.__d0.slice(8,10),s:'SHX2',g:'70',tm:'15:35',
+                    w:1,p:0,c:1,n:1,cx:1};
+   OTD['20000002']={FO01:[1,0,12]};
+   /* ใบที่ยังไม่รู้รายการสินค้า (ไม่มีใน det) → กอง "ไม่แน่ใจ" ไม่เติมเอง */
+   OTO['20000003']={l:'209611',d:+window.__d0.slice(8,10),s:'SHX3',g:'70',tm:'15:40',w:1,p:0,c:1,n:1};
+   /* วันที่แอดมินตรวจไว้แล้ว — มีออเดอร์ของใบนี้ แต่ฝั่งคลังจัดต้องถูกข้าม */
+   OTO['30000001']={l:'209611',d:+window.__dchk.slice(8,10),s:'SHC1',g:'120',tm:'09:10',
+                    w:2,p:0,c:2,n:1};
+   OTD['30000001']={FO01:[2,0,12]};
+   CSTOCK.gin[B1+'|'+window.__dchk]={g:['120'],rows:{FO01:{fc:2}},dd:[window.__dchk],
+     miss:[],file:'ของแอดมินเอง',by:'manager',byName:'ผู้จัดการ',at:9};
+   /* det/ord ของทุกเดือนในช่วง 9 วัน (ช่วงอาจคาบสองเดือน) */
+   for(var k=0;k<=8;k++){
+     var m=spBackStep(todayISO(),-8+k).slice(0,7);
+     OT.cache[m]={ord:OTO,det:OTD,meta:null,none:0};
+   }
+   OT.months=Object.keys(OT.cache);
+   spRfBust();
+   /* CT11 เคยคีย์ไว้แล้ว 1 เลขจาก 3 → เติมต้องได้อีก 2 และของเดิมต้องอยู่ */
+   CSTOCK.rep[B1+'|'+window.__d0+'|CT11']={it:{},no:[window.__want.CT11[0]],n:1,h:[{at:1}],
+     by:'209611',byName:'CT11',at:2};
+   SP.sid=B1;SP.view='slip';SP.sec='rep';SP.day=window.__d0;SP.ym=window.__d0.slice(0,7);
+   SP.back={on:0,sid:'',busy:0,i:0,n:0,open:{}};
+   renderSpord();`;
+
+ /* ---- ① ช่วงวัน + จับออเดอร์เข้าใบด้วยรหัสสินค้า ---- */
+ const bk1=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const blob=JSON.stringify(CSTOCK);
+   const S=spBackScan(B1);
+   const d0=S.rows.filter(r=>r.d===window.__d0)[0]||null;
+   const L=ln=>(d0?(d0.rows.filter(x=>x.ln===ln)[0]||null):null);
+   return {days:S.days,d0:S.d0,d1:S.d1,today:todayISO(),codes:S.codes,
+     nOrd:S.nOrd,shops:S.shops,nNew:S.nNew,cx:S.cx,unsure:S.unsure,
+     nofile:S.nofile,chk:S.chk,gin:S.gin,
+     run:d0?spBackRunTxt(d0.run):'',top:d0?d0.run.top:0,
+     ct11:L('CT11')?{n:L('CT11').n,sh:L('CT11').shops,t0:L('CT11').t0,t1:L('CT11').t1,
+       gin:Object.keys(L('CT11').gin),add:L('CT11').add.length,
+       maybe:L('CT11').maybe.length,cx:L('CT11').cx.length}:null,
+     ct17:L('CT17')?{n:L('CT17').n,gin:Object.keys(L('CT17').gin),t0:L('CT17').t0}:null,
+     safe:(JSON.stringify(CSTOCK)===blob)};
+ },{setup:PRE,pre:BACKPRE});
+ t('🔁 กวาดทุกวันจากวันที่สร้างใบถึงวันนี้ ไม่ใช่แค่วันที่มีคนตั้งเป้าไว้',
+   bk1.days===9&&bk1.d1===bk1.today,
+   bk1.days+' วัน · '+bk1.d0+' → '+bk1.d1+' (วันนี้ '+bk1.today+')');
+ t('🔁 จับออเดอร์เข้าใบด้วยรหัสสินค้าของใบ — ใบที่มีแต่สินค้านอกใบต้องไม่ถูกนับ',
+   bk1.nOrd===11&&bk1.ct11&&bk1.ct11.n===3,
+   'รวม '+bk1.nOrd+' ใบ · CT11 '+(bk1.ct11&&bk1.ct11.n)+' ใบ (ถ้านับ ZZ99 ด้วยจะเป็น 4)');
+ t('🏪 1 ใบ = 1 ร้าน ตามที่วัดได้จากไฟล์จริง',
+   bk1.ct11&&bk1.ct11.n===bk1.ct11.sh&&bk1.shops===11,
+   'CT11 '+(bk1.ct11&&bk1.ct11.n)+' ใบ / '+(bk1.ct11&&bk1.ct11.sh)+' ร้าน · รวม '+bk1.shops+' ร้าน');
+ t('🕘 บอกช่วงเวลาที่แต่ละสายคีย์ — คนละช่วงกันจริงอย่างที่เจ้าของบอก',
+   bk1.ct11&&bk1.ct11.t0==='14:22'&&bk1.ct17&&bk1.ct17.t0==='10:35',
+   'CT11 '+(bk1.ct11&&bk1.ct11.t0)+'→'+(bk1.ct11&&bk1.ct11.t1)+' · CT17 '+(bk1.ct17&&bk1.ct17.t0));
+ t('🚚 1 สาย = 1 GIN และ GIN ออกมาติดกันเป็นชุด (68–71 = 4 ใบ)',
+   bk1.top===4&&/68–71 \(4 ใบ\)/.test(bk1.run)&&bk1.ct11.gin.length===1&&
+   bk1.ct11.gin[0]==='70'&&bk1.ct17.gin[0]==='71',
+   'ชุดยาวสุด '+bk1.top+' · '+bk1.run);
+ t('🚚 ...GIN ที่หลุดออกนอกชุดต้องบอกไว้ ไม่กรองทิ้งเงียบ ๆ',
+   /96/.test(bk1.run)&&bk1.gin===6,'GIN '+bk1.gin+' ใบ · '+bk1.run);
+ t('🔁 ใบที่ยกเลิกนับไว้ ไม่เติม · ใบที่ยังไม่รู้รายการสินค้าแยกเป็น "ไม่แน่ใจ"',
+   bk1.cx===1&&bk1.unsure===1&&bk1.ct11.cx===1&&bk1.ct11.maybe===1,
+   'ยกเลิก '+bk1.cx+' · ไม่แน่ใจ '+bk1.unsure);
+ t('🔁 วันที่ไม่มีไฟล์เลย = "รอไฟล์" ไม่ใช่ "ไม่มีอะไรตกหล่น"',
+   bk1.nofile===7,'รอไฟล์ '+bk1.nofile+' วัน');
+ t('🔁 วันที่แอดมินตรวจเองไว้แล้ว ต้องรู้ว่าตรวจแล้ว',bk1.chk===1,'ตรวจแล้ว '+bk1.chk+' วัน');
+ t('🛟 แค่กวาดดูต้องไม่แตะข้อมูลเลย (อ่านอย่างเดียว)',bk1.safe===true,'เปลี่ยน='+(!bk1.safe));
+
+ /* ---- ② หน้าจอ ---- */
+ const bk2=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   SP.back={on:1,sid:B1,busy:0,i:0,n:0,open:{}};
+   SP.back.open[window.__d0]=1;
+   const h=spBackHtml(B1);
+   const d=document.createElement('div');d.innerHTML=h;
+   const tx=d.textContent.replace(/\s+/g,' ');
+   return {tx:tx,rows:d.querySelectorAll('tr.sp-backd').length,
+     lines:d.querySelectorAll('tr.sp-backl').length,
+     btnRep:/เติมเลขออเดอร์ที่เซลล์คีย์/.test(h),btnGin:/เติมคลังจัด/.test(h),
+     frac:/\d+\.\d+ ลัง/.test(tx)};
+ },{setup:PRE,pre:BACKPRE});
+ t('🔁 หน้าจอบอกช่วงวัน จำนวนใบ ร้าน GIN และจำนวนที่ยังไม่อยู่ในระบบ',
+   /9 วัน/.test(bk2.tx)&&/11 ใบ/.test(bk2.tx)&&/11 ร้าน/.test(bk2.tx)&&/6 ใบ/.test(bk2.tx)&&
+   /10 เลข/.test(bk2.tx),bk2.tx.slice(0,190));
+ t('🔁 ...กางวันออกมาเห็นรายสาย พร้อมเวลาคีย์และเลข GIN',
+   bk2.rows===2&&bk2.lines===5&&/68–71/.test(bk2.tx)&&/14:22/.test(bk2.tx),
+   bk2.rows+' วัน · '+bk2.lines+' สาย');
+ t('🔁 ...บอกเหตุที่ไม่เติมให้ครบทุกข้อ (รอไฟล์ · ไม่แน่ใจ · ยกเลิก · แอดมินตรวจแล้ว)',
+   /ยังไม่มีไฟล์ของ 7 วัน/.test(bk2.tx)&&/ยังไม่รู้รายการสินค้าของ 1 ใบ/.test(bk2.tx)&&
+   /ใบที่ยกเลิก 1 ใบ/.test(bk2.tx)&&/แอดมินตรวจเองไว้แล้ว 1 วัน/.test(bk2.tx),
+   bk2.tx.slice(0,460));
+ t('📦 ...และไม่มีลังทศนิยมหลงอยู่บนหน้านี้',bk2.frac===false,'');
+
+ /* ---- ③ เติมกลับ: ต่อท้ายเสมอ ---- */
+ const bk3=await ev(async a=>{
+   eval(a.setup);setup();eval(a.pre);
+   window.__posts=[];
+   await spBackRun(B1,'rep');
+   await new Promise(r=>setTimeout(r,120));
+   const kb=B1+'|'+window.__d0+'|';
+   const no=ln=>((CSTOCK.rep[kb+ln]||{}).no||[]);
+   const all=[].concat(no('CT11'),no('CT13'),no('CT15'),no('CT17'),no('CT22'));
+   const S=spBackScan(B1);
+   return {ct11:no('CT11'),first:no('CT11')[0],want1:window.__want.CT11[0],
+     n:all.length,posts:window.__posts.length,
+     acts:window.__posts.map(p=>p.b&&p.b.act),
+     dup:all.length!==Object.keys(all.reduce((o,x)=>{o[x]=1;return o;},{})).length,
+     cxIn:all.indexOf('BDD0120000002')>=0,mbIn:all.indexOf('BDD0120000003')>=0,
+     left:S.nNew};
+ },{setup:PRE,pre:BACKPRE});
+ t('🔁 เติมแล้วต่อท้ายของเดิม ไม่เขียนทับ (CT11 1 → 3 เลข ตัวแรกยังอยู่)',
+   bk3.ct11.length===3&&bk3.first===bk3.want1,
+   'CT11 '+bk3.ct11.length+' เลข · ตัวแรก '+bk3.first);
+ t('🔁 ...ครบทั้ง 5 สาย ผ่าน api/spord act:"rep" เหมือนการบันทึกปกติ ไม่มีเลขซ้ำ',
+   bk3.n===10&&bk3.posts===6&&bk3.acts.every(x=>x==='rep')&&bk3.dup===false,
+   bk3.n+' เลข · '+bk3.posts+' โพสต์ · '+bk3.acts.join(','));
+ t('🔁 ...ใบที่ยกเลิกและใบที่ยังไม่รู้รายการสินค้า ต้องไม่ถูกเติมเข้าไป',
+   bk3.cxIn===false&&bk3.mbIn===false,'ยกเลิก='+bk3.cxIn+' · ไม่แน่ใจ='+bk3.mbIn);
+ t('🔁 ...เติมแล้วไม่เหลือค้างอีก',bk3.left===0,'เหลือ '+bk3.left);
+
+ /* ---- ④ สิทธิ์: เซลล์เห็นเฉพาะสายตัวเอง · ฝั่งคลังจัดเป็นของผู้จัดการ ---- */
+ const bk4=await ev(async a=>{
+   eval(a.setup);setup();eval(a.pre);
+   __as('sales','209611','CT11');
+   const S=spBackScan(B1);
+   const h=spBackHtml(B1);
+   window.__posts=[];
+   SP.back={on:1,sid:B1,busy:0,i:0,n:0,open:{}};
+   await spBackRun(B1,'gin');
+   await new Promise(r=>setTimeout(r,60));
+   return {lines:S.lines,lns:(S.rows[0]||{rows:[]}).rows.map(x=>x.ln),
+     btnGin:/เติมคลังจัด/.test(h),posts:window.__posts.length,
+     gin:Object.keys(CSTOCK.gin).length};
+ },{setup:PRE,pre:BACKPRE});
+ /* ---- ⑤ ฝั่งคลังจัด: เขียนผ่านทางเดิมของแอดมิน และข้ามวันที่แอดมินตรวจเองไว้ ---- */
+ const bk5=await ev(async a=>{
+   eval(a.setup);setup();eval(a.pre);
+   /* ⚠️ ALLOC เป็น let ระดับบนสุดของหน้า — ต้องกำหนดแบบไม่มี window. ไม่งั้นได้ตัวแปรใหม่ที่ไม่มีใครใช้ */
+   ALLOC={file:'ไฟล์ใบจัดของทดสอบ',days:[window.__d0],g:{},n:9,gins:['68','69','70','71','96'],
+     kept:0,money:0};
+   AL_GOT[window.__d0.slice(0,7)]=1;
+   /* ⚠️ คีย์ของ rows คือ "สาย|รหัส" ไม่ใช่รหัสเปล่า — ของปลอมที่ผิดรูปทำให้ renderSpord พัง
+      แล้ว spGinSave จะล้มทั้งที่ตรรกะถูก (เจอจริงตอนเขียนเทสต์นี้) */
+   window.alPick=()=>({rows:{'CT11|FO01':{sc:3,ss:0,sp:0,fc:0,fs:0,fp:0,xc:0,xs:0,xp:0,
+       yc:0,ys:0,yp:0,g:0,v:0,mn:0,nm:'ซิตร้า เพิร์ล FO',pk:12,sh:3}},
+     dd:[window.__d0],ords:[],miss:[],n:1,money:0,mech:{},shop:{FO01:3}});
+   const keep=JSON.stringify(CSTOCK.gin[B1+'|'+window.__dchk]);
+   window.__posts=[];
+   SP.back={on:1,sid:B1,busy:0,i:0,n:0,open:{}};
+   await spBackRun(B1,'gin');
+   await new Promise(r=>setTimeout(r,120));
+   const gp=window.__posts.filter(p=>p.b&&p.b.act==='gin');
+   return {posts:window.__posts.length,gin:gp.length,days:gp.map(p=>p.b.d),
+     sent:(gp[0]&&gp[0].b.gin)||[],
+     chkSame:JSON.stringify(CSTOCK.gin[B1+'|'+window.__dchk])===keep,
+     d0:window.__d0,dchk:window.__dchk};
+ },{setup:PRE,pre:BACKPRE});
+ t('🚚 ผู้จัดการเติมคลังจัดได้ — ส่งเลข GIN ที่หาได้ไปทาง api/spord act:"gin"',
+   bk5.gin===1&&bk5.posts===1&&bk5.days[0]===bk5.d0&&bk5.sent.length===5&&
+   bk5.sent.indexOf('70')>=0&&bk5.sent.indexOf('96')>=0,
+   bk5.gin+' โพสต์ · วัน '+bk5.days.join(',')+' · GIN '+bk5.sent.join(','));
+ t('🚚 ...และห้ามแตะวันที่แอดมินตรวจเองไว้แล้ว เลขที่เขาพิมพ์เองคือตัวจริง',
+   bk5.chkSame===true&&bk5.days.indexOf(bk5.dchk)<0,
+   'เหมือนเดิม='+bk5.chkSame+' · วันที่ส่ง '+bk5.days.join(','));
+
+ t('🔁 เซลล์กดดูได้ แต่เห็นเฉพาะสายตัวเอง',
+   bk4.lines===1&&bk4.lns.length===1&&bk4.lns[0]==='CT11',
+   'สาย '+bk4.lines+' · '+bk4.lns.join(' '));
+ t('🔁 ...และเขียนฝั่งคลังจัดไม่ได้ — เช็คในฟังก์ชัน ไม่ใช่แค่ซ่อนปุ่ม',
+   bk4.btnGin===false&&bk4.posts===0&&bk4.gin===1,
+   'ปุ่ม='+bk4.btnGin+' · โพสต์ '+bk4.posts+' · gin '+bk4.gin+' คีย์');
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}

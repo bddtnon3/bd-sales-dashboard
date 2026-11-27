@@ -478,6 +478,32 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .sp-missg{margin-top:14px;border:1px solid var(--line);border-radius:11px;padding:11px}
 .sp-missh{font-size:14.5px;font-weight:800;margin-bottom:6px}
 .sp-missh .psub{display:inline;margin-left:8px;font-weight:600}
+/* 🔁 เติมย้อนหลังทั้งใบ — เซลล์คีย์ + คลังจัด */
+.sp-backbar>.psub{margin:7px 0 0}
+.sp-backp{margin-top:12px}
+.sp-backsum{font-size:14.5px;line-height:1.6;background:var(--gr,#F3F5F8);
+  border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+.sp-backcards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 0}
+.sp-backc{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff}
+.sp-backc.bad{border-color:#F0A9A9;background:#FFF4F4}
+.sp-backc.ok{border-color:#A9D8B4;background:#F3FBF5}
+.sp-backct{font-size:12px;color:var(--muted);font-weight:700;line-height:1.35}
+.sp-backcv{font-size:17px;font-weight:800;margin-top:3px}
+.sp-backw{margin-top:10px;line-height:1.7}
+table.sp-backt{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:10px}
+table.sp-backt th,table.sp-backt td{border-bottom:1px solid var(--line);padding:7px 8px;
+  text-align:left;vertical-align:top}
+table.sp-backt th{background:var(--gr,#F3F5F8);font-size:12.5px;white-space:nowrap}
+tr.sp-backd{cursor:pointer}
+tr.sp-backd>td{background:#FAFBFD}
+tr.sp-backd.on>td{background:#EEF3FB}
+tr.sp-backl>td{background:#fff;font-size:13px}
+.sp-backbtn{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.sp-backft{margin-top:9px;line-height:1.7}
+@media(max-width:700px){
+  .sp-backcards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sp-backbtn button{flex:1 1 100%}
+}
 .sp-misslb{font-size:12.5px;font-weight:700;color:var(--muted);margin:10px 0 5px}
 .sp-misst{width:100%;border-collapse:collapse;font-size:13px}
 .sp-misst th,.sp-misst td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;
@@ -15069,7 +15095,8 @@ function alPick(gins,codes){
    📲 เซลล์คีย์ — เจ้าของทัก 27 พ.ย. 69: *"ให้ในส่วนออร์เดอร์พิเศษเปิดเข้ามาแล้วเจอหมวด
    เซลล์คีย์เลย ไม่ต้องพาไปหน้าซุปจดก่อนให้งง"* · ว่างไว้แล้วให้ spSec() เลือกตามบทบาทเอง */
 let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:"",sec:"",day:"",gin:"",cm:"",cmpLn:"",me:0,chkD:"",
-        trk:{},ocr:0,nodt:0,miss:{on:0,sid:"",day:undefined}};
+        trk:{},ocr:0,nodt:0,miss:{on:0,sid:"",day:undefined},
+        back:{on:0,sid:"",busy:0,i:0,n:0,open:{}}};
         /* trk = สายที่กางเลขออเดอร์ไว้ในตารางติดตาม · ocr = ชุดรูปที่กำลังอ่าน
            nodt = ตัวหน่วงเขียนร่างเลขออเดอร์ · miss = กล่องย้อนหาเลขที่ตกหล่น
            ไม่มีอะไรในนี้ sync */
@@ -18127,6 +18154,9 @@ function spRepTabHtml(sid,ymd){
     /* 🔁 ย้อนหาเลขที่ตกหล่น — อยู่ท้ายหน้าเพราะเป็นเครื่องมือตรวจ ไม่ใช่ขั้นตอนประจำวัน
        เซลล์ก็กดได้ แต่เห็นเฉพาะสายตัวเอง (กรองใน spMissScan) */
     `<div class="panel" style="margin-top:12px">${spMissBtnHtml(sid)}</div>`+
+    /* 🔁 เติมย้อนหลังทั้งใบ — เครื่องมือตรวจเหมือนกัน อยู่ถัดกันไปเลย
+       เซลล์เห็นเฉพาะสายตัวเอง · ปุ่มฝั่งคลังจัดเช็ค spAdmOk ในฟังก์ชัน ไม่ใช่ซ่อนปุ่ม */
+    `<div class="panel" style="margin-top:12px">${spBackBtnHtml(sid)}</div>`+
     `<div id="spHistBox" class="hidden"><div class="panel" style="margin-top:12px">
       <div class="cst-fb"><h3 id="spHistTitle" style="margin:0"></h3>
         <span style="flex:1"></span>
@@ -19082,6 +19112,332 @@ async function spMissAddAll(sid){
   }
   spMissPaint();
   alert("เติมให้แล้ว "+done+" สาย/วัน"+(fail?(" · ไม่สำเร็จ "+fail+" สาย/วัน ลองกดใหม่อีกครั้ง"):""));
+}
+/* ==========================================================================
+ * 🔁 เติมย้อนหลังทั้งใบ — "ออเดอร์ที่เซลล์คีย์" + "คลังจัด" (เจ้าของสั่ง 27 พ.ย. 69)
+ *
+ * *"ที่ผมทำออเดอร์พิเศษ เพราะมันเหตุเกิดจากซุปสั่งให้เซลคีย์ทีไร จำนวนไม่เคยตรงตามที่สั่งสักที
+ *   โดยมันจะมี pattern ที่คุณแกะมาจากไฟล์ transaction inquiry … คุณลองดู pattern วันที่เซลล์คีย์
+ *   และเริ่มต้นจากวันที่ออเดอร์พิเศษใหญ่นี้สร้าง ต่อเซลล์คีย์ และปิดท้ายโดยจับจากรหัสสินค้า
+ *   และจำนวนที่จัดของขึ้น GIN แบบติดต่อกันวันละ 4-6 ใบต่อวัน … ผมต้องการทำให้คุณวิเคราะห์แล้ว
+ *   ใส่ตัวเลขย้อนหลังของออเดอร์ที่เซลล์คีย์ และคลังจัดทั้งหมด ตั้งแต่วันที่ 19 พย จนถึงวันนี้
+ *   … แค่วันที่ออเดอร์ เซลล์แต่ละสายจะคีย์คนละช่วงเวลา แต่จะคีย์พร้อมๆกัน ส่วนแอดมินจะจัดกลุ่ม
+ *   ออเดอร์พวกนี้ออกมาขึ้น GIN แบบติดกัน นี้คือหัวใจสำคัญของ project นี้"*
+ *
+ * 📏 วัดจากไฟล์จริงก่อนเขียนโค้ดบรรทัดแรก — ใบจัดของ 15-24 พ.ย. (10,428 แถว) + ไฟล์รายการ
+ *    สั่งซื้อถึง 26 พ.ย. (2,107 ใบ) · **pattern ที่เจ้าของบอกไว้ตรงทุกคำ**:
+ *
+ *    19 พ.ย. · ซิตร้า FO (65691961+65691963): **71 ใบ · 5 สาย · 1 ใบ = 1 ร้าน** (20 ใบ = 20 ร้าน,
+ *      28 ใบ = 28 ร้าน) — รูปทรงของ "ตัวกระจาย" คือกระจายหลายร้าน จำนวนน้อย ๆ ต่อร้าน
+ *      เวลาคีย์แยกช่วงกันจริง: CT17 10:35→14:56 · CT15 10:45 · CT13 11:36 · CT11 14:22 · CT22 14:28
+ *      **1 สาย = 1 GIN** — CT15→68 · CT22→69 · CT11→70 · CT17→71 ⇒ **68–71 ติดกัน 4 ใบ**
+ *    21 พ.ย. · ลักส์ FO + ซิตร้า FO: **115 ใบ · 1 ใบ = 1 ร้าน**
+ *      CT15→101 · CT22→102 · CT11→103 · CT17→104 ⇒ **101–104 ติดกัน 4 ใบ**
+ *
+ *    ⇒ แอดมินหยิบของทีละสาย เลข GIN จึงออกมาติดกันเป็นชุด ตรงกับ "วันละ 4-6 ใบต่อวัน" พอดี
+ *
+ * ⛔ สิ่งที่วัดแล้วใช้เป็นตัวแยกไม่ได้ และห้ามเอามาเดา: **"สินค้าที่ขายหลายสายในวันเดียว"**
+ *    ทุกวันมีรหัสแบบนั้น 11–48 รหัส และล้วนเป็นสินค้าขายดีประจำวัน (โอโมน้ำยาล้างจาน · ซันซิล ·
+ *    บรีส) ไม่ใช่ตัวกระจาย ⇒ **ตัวแยกคือ "รหัสสินค้าของใบนี้" ซึ่งเป็นข้อเท็จจริงที่ใบระบุไว้แล้ว**
+ *    ส่วน GIN ติดกันและช่วงเวลาคีย์เป็น **หลักฐานยืนยันที่เอามาโชว์ ไม่ใช่เงื่อนไขคัดกรอง**
+ *
+ * 🔒 กฎที่ยกมาจากหน้าอื่นทั้งหมด ห้ามผ่อนข้อใดข้อหนึ่ง:
+ *   • เลขออเดอร์ **ต่อท้ายเสมอ ไม่เขียนทับ** (กฎเดียวกับ spMissAdd) — ของเดิมในช่องอยู่ครบ
+ *   • วันที่แอดมินตรวจไปแล้ว **ข้ามฝั่งคลังจัดไว้** เลข GIN ที่แอดมินพิมพ์เองคือตัวจริง
+ *   • ไม่มีใบของสายไหนเลยในวันนั้น = **"รอไฟล์" ไม่ใช่ "ไม่มีอะไรตกหล่น"**
+ *   • ยังไม่ได้โหลดรายการสินค้าของเดือนนั้น = **"รอไฟล์" ทั้งวัน ไม่ใช่เดาว่าทุกใบเข้าข่าย**
+ *   • ใบที่ยังไม่รู้รายการสินค้า = **ไม่แน่ใจ แยกกอง ไม่เติมเอง** · ใบที่ยกเลิก = **ลิสต์ไว้ ไม่เติม**
+ *   • GIN ที่หลุดออกนอกชุดติดกัน = **บอกเลขไว้** ไม่กรองทิ้งเงียบ ๆ (ของจริงมีจริง ๆ)
+ *   • เขียนผ่าน **`api/spord.js` เดิมทั้งคู่** (`act:"rep"` / `act:"gin"`) — ไม่มี endpoint ใหม่
+ *     ไม่มีสิทธิ์ใหม่ · ฝั่งคลังจัดเป็นของผู้จัดการอยู่แล้ว เพราะ `api/alloc.js` ก็ผู้จัดการเท่านั้น
+ *   • อ่านอย่างเดียวตอนกวาด — กดปุ่มเท่านั้นที่เขียน
+ * ==========================================================================*/
+const BACK_DAYS=62;        /* เพดานจำนวนวันที่กวาดต่อใบ */
+const BACK_ORD=400;        /* เพดานใบที่พิจารณาต่อสายต่อวัน */
+/* ⚠️ เดินวันด้วย Date.UTC + getUTC* ทั้งสองฝั่ง (ข้อยกเว้นที่ถูกต้องของกฎ ymdOf) */
+function spBackStep(ymd,n){
+  const s=String(ymd||""),y=+s.slice(0,4),m=+s.slice(5,7),d=+s.slice(8,10);
+  if(!y||!m||!d)return "";
+  const t=new Date(Date.UTC(y,m-1,d+(+n||0)));
+  return t.getUTCFullYear()+"-"+String(t.getUTCMonth()+1).padStart(2,"0")+"-"+
+    String(t.getUTCDate()).padStart(2,"0");
+}
+/* ทุกวันจากวันที่สร้างใบ → วันนี้ · รวมวันที่ยังไม่มีใครตั้งเป้า เพราะนั่นคือวันที่ต้องเติม
+   (spDays คืนแค่วันที่มีข้อมูลแล้ว จึงใช้ที่นี่ไม่ได้ — แต่ต้องรวมเข้ามาด้วย กันใบที่แก้วันที่) */
+function spBackDays(sid){
+  const sl=spSlip(sid);
+  const d0=String((sl&&sl.d)||"").slice(0,10),t=todayISO();
+  const out=[],seen={};
+  if(/^\d{4}-\d{2}-\d{2}$/.test(d0))
+    for(let i=0;i<BACK_DAYS;i++){
+      const d=spBackStep(d0,i);
+      if(!d||d>t)break;
+      if(!seen[d]){seen[d]=1;out.push(d);}
+    }
+  spDays(sid).forEach(d=>{if(!seen[d]){seen[d]=1;out.push(d);}});
+  return out.sort();
+}
+/* เลข GIN ที่ติดกันเป็นชุด → {runs:[[68,71],[74,74]], other:[…]} */
+function spBackRuns(gins){
+  const ns=[],other=[];
+  (gins||[]).forEach(g=>{const s=String(g||"").trim();if(!s)return;
+    if(/^\d+$/.test(s))ns.push(+s);else if(other.indexOf(s)<0)other.push(s);});
+  const u=[];ns.sort((a,b)=>a-b).forEach(n=>{if(u[u.length-1]!==n)u.push(n);});
+  const runs=[];let st=null,pv=null;
+  u.forEach(n=>{if(st===null){st=pv=n;return;}
+    if(n===pv+1){pv=n;return;}runs.push([st,pv]);st=pv=n;});
+  if(st!==null)runs.push([st,pv]);
+  return {runs:runs,other:other,n:u.length+other.length,
+    /* ชุดที่ยาวที่สุด — "วันละ 4-6 ใบ" ที่เจ้าของบอก */
+    top:runs.reduce((a,x)=>Math.max(a,x[1]-x[0]+1),0)};
+}
+function spBackRunTxt(r){
+  if(!r||!r.n)return "";
+  return r.runs.map(x=>x[0]===x[1]?String(x[0]):(x[0]+"–"+x[1]+" ("+(x[1]-x[0]+1)+" ใบ)"))
+    .concat(r.other).join(" · ");
+}
+/* รายการสินค้าต่อใบ (det) ของเดือนนั้นโหลดมาแล้วหรือยัง — ถ้ายัง ตอบ "ยังไม่รู้" ทั้งวัน */
+function spBackHasDet(ym){
+  const C=(typeof OT!=="undefined"&&OT&&OT.cache)?OT.cache[ym]:null;
+  return !!(C&&C.det);
+}
+/* หนึ่งวัน: ใบของทุกสายในใบนี้ ที่มีสินค้าของใบนี้อยู่จริง */
+function spBackDay(sid,ymd,codes,lines){
+  const ym=String(ymd||"").slice(0,7);
+  const o={d:ymd,rows:[],gin:{},nOrd:0,nNew:0,cx:0,unsure:0,pool:0,shops:0,
+    chk:spDayHas(spGinRec(sid,ymd)),noDet:!spBackHasDet(ym),noFile:false};
+  (lines||[]).forEach(ln=>{
+    const lc=spLineCode(ln);if(!lc)return;
+    const P=spMissPool(lc,ymd),keys=Object.keys(P);
+    o.pool+=keys.length;
+    if(!keys.length)return;
+    const H=spMissHave(spRepRec(sid,ymd,ln),ln,ym);
+    const L={ln:ln,n:0,add:[],maybe:[],cx:[],sh:{},gin:{},t0:"",t1:"",got:0};
+    keys.slice(0,BACK_ORD).forEach(full=>{
+      const e=P[full],inS=o.noDet?null:spMissInSlip(full,ym,codes);
+      if(inS===false)return;                       /* ใบนี้ไม่มีสินค้าของใบออเดอร์นี้ */
+      const ask=String(e.rf||full).toUpperCase();
+      const got=!!(H.have[full]||H.have[ask]||H.have[otTail(full,"BDD01")]||
+        (e.rf&&H.have[String(e.rf).slice(-SP_TAIL)]));
+      if(e.cx){if(!got){L.cx.push(ask);o.cx++;}return;}
+      /* ⚠️ ใบที่ยังไม่รู้รายการสินค้า **ห้ามนับเป็นใบของรอบนี้** — ยังไม่รู้ว่าเกี่ยวหรือไม่
+         เลขที่โชว์ (ใบ/ร้าน/GIN/เวลา) จึงนับจากใบที่ det ยืนยันแล้วเท่านั้น ส่วนที่ยังไม่รู้
+         แยกเป็นกอง "ไม่แน่ใจ" ตามกฎ sure/maybe เดิม (ไม่รู้ ≠ ใช่ และไม่รู้ ≠ ศูนย์) */
+      if(inS===null){if(!got){L.maybe.push(ask);o.unsure++;}return;}
+      L.n++;if(got)L.got++;
+      const ot=e.ot;
+      if(ot){
+        if(ot.s)L.sh[ot.s]=1;
+        if(ot.g){L.gin[String(ot.g)]=1;o.gin[String(ot.g)]=1;}
+        const tm=String(ot.tm||"");
+        if(tm){if(!L.t0||tm<L.t0)L.t0=tm;if(!L.t1||tm>L.t1)L.t1=tm;}
+      }
+      if(got)return;
+      L.add.push(ask);o.nNew++;
+    });
+    if(L.n||L.cx.length){
+      L.shops=Object.keys(L.sh).length;
+      L.run=spBackRuns(Object.keys(L.gin));
+      o.rows.push(L);o.nOrd+=L.n;o.shops+=L.shops;
+    }
+  });
+  o.noFile=!o.pool;
+  o.run=spBackRuns(Object.keys(o.gin));
+  return o;
+}
+/* กวาดทั้งใบ — อ่านอย่างเดียว */
+function spBackScan(sid){
+  const codes={};spSlipCodes(sid).forEach(c=>{codes[c.code]=1;});
+  const mine=spMineOnly()?spMyLine():"";
+  const lines=mine?[mine]:spSlipLines(sid);
+  const days=spBackDays(sid);
+  const out=[],months={};
+  const S={rows:out,days:days.length,lines:lines.length,mine:mine,
+    nOrd:0,nNew:0,cx:0,unsure:0,nofile:0,chk:0,gin:0,noDet:0,shops:0,
+    d0:days[0]||"",d1:days[days.length-1]||"",codes:Object.keys(codes).length};
+  days.forEach(d=>{
+    months[d.slice(0,7)]=1;
+    const r=spBackDay(sid,d,codes,lines);
+    if(r.noFile){S.nofile++;return;}
+    if(r.noDet)S.noDet++;
+    if(!r.nOrd&&!r.cx)return;
+    S.nOrd+=r.nOrd;S.nNew+=r.nNew;S.cx+=r.cx;S.unsure+=r.unsure;
+    S.gin+=r.run.n;S.shops+=r.shops;
+    if(r.chk)S.chk++;
+    out.push(r);
+  });
+  S.months=Object.keys(months).sort();
+  return S;
+}
+/* ---------- เติมกลับ ---------- */
+/* เลขออเดอร์ของสายหนึ่ง วันหนึ่ง — ต่อท้ายเสมอ ไม่เขียนทับ */
+async function spBackFillLine(sid,ymd,ln,list){
+  const rec=spRepRec(sid,ymd,ln);
+  if(!spRepCan(ln,rec))return false;
+  const no=((rec&&Array.isArray(rec.no))?rec.no.slice():[]);
+  const seen={};no.forEach(x=>{seen[String(x).toUpperCase()]=1;});
+  let add=0;
+  (list||[]).forEach(v=>{const s=String(v||"").toUpperCase();
+    if(!s||seen[s])return;seen[s]=1;no.push(s);add++;});
+  if(!add)return false;
+  const it=(rec&&rec.it&&typeof rec.it==="object")?rec.it:{};
+  return await spRepSave(sid,ymd,ln,it,no);
+}
+/* เลข GIN ของวันหนึ่ง — ใช้ทางเดิมของแอดมิน (spGinSave → alPick) จะได้ไม่มีผลตรวจสองแบบ
+   ⚠️ ต้องมีไฟล์ใบจัดของของเดือนนั้นอยู่ในเครื่องก่อน จึงดึงจาก api/alloc ให้เองทีละเดือน */
+async function spBackFillGin(sid,ymd,gins){
+  if(!spAdmOk())return false;
+  if(!gins||!gins.length)return false;
+  const ym=String(ymd||"").slice(0,7);
+  if(ym&&!alHasMon(ym)){try{await alFetch(ym);}catch(e){}}
+  if(typeof ALLOC==="undefined"||!ALLOC)return false;
+  return await spGinSave(sid,ymd,gins);
+}
+/* what = "rep" (เลขที่เซลล์คีย์) | "gin" (คลังจัด) | "both" */
+async function spBackRun(sid,what){
+  if(SP.back&&SP.back.busy){alert("กำลังเติมอยู่ — รอให้เสร็จก่อนนะ");return;}
+  const S=spBackScan(sid);
+  const doRep=(what==="rep"||what==="both"),doGin=(what==="gin"||what==="both");
+  const jobs=[];
+  S.rows.forEach(r=>{
+    if(doRep)r.rows.forEach(L=>{
+      if(L.add.length&&spRepCan(L.ln,spRepRec(sid,r.d,L.ln)))
+        jobs.push({t:"rep",d:r.d,ln:L.ln,no:L.add.slice()});
+    });
+    /* วันที่แอดมินตรวจไว้แล้วไม่แตะ — เลข GIN ที่เขาพิมพ์เองคือตัวจริง */
+    if(doGin&&!r.chk&&r.run.n&&spAdmOk())
+      jobs.push({t:"gin",d:r.d,gin:Object.keys(r.gin).filter(Boolean)});
+  });
+  if(!jobs.length){
+    alert(doGin&&!spAdmOk()?"บัญชีนี้แก้ส่วนนี้ไม่ได้"
+      :"ไม่มีอะไรต้องเติมแล้ว — ที่หาได้อยู่ในระบบครบแล้ว");
+    return;
+  }
+  const nRep=jobs.filter(j=>j.t==="rep").length,nGin=jobs.filter(j=>j.t==="gin").length;
+  const nNo=jobs.filter(j=>j.t==="rep").reduce((a,j)=>a+j.no.length,0);
+  const msg=["เติมย้อนหลังใบนี้ "+fmtDate(S.d0)+" → "+fmtDate(S.d1)+" ?",""];
+  if(nRep)msg.push("📲 เลขออเดอร์ที่เซลล์คีย์  "+nNo+" เลข ใน "+nRep+" สาย/วัน");
+  if(nGin)msg.push("🚚 คลังจัด  "+nGin+" วัน (อ่านจากไฟล์ใบจัดของ)");
+  msg.push("","ของเดิมที่อยู่ในระบบแล้วยังอยู่ครบ ระบบต่อท้ายให้เท่านั้น");
+  if(S.chk)msg.push("ข้ามวันที่แอดมินตรวจเองไว้แล้ว "+S.chk+" วัน");
+  if(S.unsure)msg.push("ไม่เติมใบที่ยังไม่รู้รายการสินค้า "+S.unsure+" ใบ");
+  if(S.cx)msg.push("ไม่เติมใบที่ยกเลิก "+S.cx+" ใบ");
+  if(!confirm(msg.join("\n")))return;
+  SP.back=SP.back||{};SP.back.busy=1;SP.back.i=0;SP.back.n=jobs.length;
+  spBackPaint();
+  let ok=0,fail=0;
+  for(let i=0;i<jobs.length;i++){
+    const j=jobs[i];
+    SP.back.i=i+1;spBackPaint();
+    let r=false;
+    try{
+      r=(j.t==="rep")?await spBackFillLine(sid,j.d,j.ln,j.no)
+                     :await spBackFillGin(sid,j.d,j.gin);
+    }catch(e){r=false;}
+    if(r)ok++;else fail++;
+  }
+  SP.back.busy=0;spBackPaint();
+  alert("เติมให้แล้ว "+ok+" รายการ"+(fail?(" · ไม่สำเร็จ "+fail+" รายการ — กดเติมอีกครั้งได้เลย "+
+    "ของที่เติมไปแล้วไม่ซ้ำ"):""));
+}
+/* ---------- หน้าจอ ---------- */
+function spBackOpen(sid){
+  SP.back=SP.back||{};
+  SP.back.on=!SP.back.on;SP.back.sid=sid;
+  if(SP.back.on)spMissWant(spBackScan(sid).months);
+  spBackPaint();
+}
+function spBackTog(d){
+  SP.back=SP.back||{};SP.back.open=SP.back.open||{};
+  SP.back.open[d]=!SP.back.open[d];
+  spBackPaint();
+}
+function spBackPaint(){
+  const b=document.getElementById("spBackBox");
+  if(b)b.innerHTML=spBackHtml(SP.back&&SP.back.sid);
+}
+function spBackHtml(sid){
+  if(!sid||!SP.back||!SP.back.on||SP.back.sid!==sid)return "";
+  const S=spBackScan(sid);
+  spMissWant(S.months);
+  if(!S.codes)return `<div class="sp-backp"><div class="warnbox">ใบนี้ยังไม่มีรายการสินค้า —
+    ระบบใช้รหัสสินค้าของใบเป็นตัวจับว่าออเดอร์ไหนเป็นของใบนี้ ใส่สินค้าในใบก่อนนะ</div></div>`;
+  const h=[`<div class="sp-backp">`];
+  h.push(`<div class="sp-backsum">
+    <b>${fmtDate(S.d0)} → ${fmtDate(S.d1)}</b> · ${S.days} วัน · ${S.lines} สาย ·
+    สินค้าในใบ ${S.codes} รายการ</div>`);
+  h.push(`<div class="sp-backcards">
+    ${spBackCard("📲 ออเดอร์ที่เซลล์คีย์",S.nOrd+" ใบ","")}
+    ${spBackCard("🏪 ร้านที่ถึง",S.shops+" ร้าน","")}
+    ${spBackCard("🚚 เลข GIN ที่คลังใช้",S.gin+" ใบ","")}
+    ${spBackCard("➕ ยังไม่อยู่ในระบบ",S.nNew+" เลข",S.nNew?"bad":"ok")}
+  </div>`);
+  const warn=[];
+  if(S.noDet)warn.push("ยังไม่ได้อ่านรายการสินค้าของ "+S.noDet+" วัน — รอไฟล์ใบจัดของเดือน "+
+    S.months.join(", ")+" (ระบบกำลังดึงให้)");
+  if(S.nofile)warn.push("ยังไม่มีไฟล์ของ "+S.nofile+" วัน — วันพวกนั้นยังตอบไม่ได้ ไม่ใช่ว่าไม่มีงาน");
+  if(S.unsure)warn.push("ยังไม่รู้รายการสินค้าของ "+S.unsure+" ใบ — แยกไว้ ไม่เติมเอง");
+  if(S.cx)warn.push("ใบที่ยกเลิก "+S.cx+" ใบ — ลิสต์ไว้ ไม่เติม");
+  if(S.chk)warn.push("แอดมินตรวจเองไว้แล้ว "+S.chk+" วัน — ข้ามฝั่งคลังจัดของวันพวกนั้นไว้");
+  if(warn.length)h.push(`<div class="warnbox sp-backw">${warn.map(x=>"• "+x).join("<br>")}</div>`);
+  if(!S.rows.length){
+    h.push(`<div class="psub" style="padding:10px 0">ยังไม่พบออเดอร์ที่มีสินค้าของใบนี้ในช่วงวันดังกล่าว`+
+      (S.nofile||S.noDet?` — รอไฟล์อยู่`:``)+`</div></div>`);
+    return h.join("");
+  }
+  h.push(`<div class="tblwrap"><table class="sp-backt"><thead><tr>
+    <th>วันที่</th><th>สาย</th><th>ใบ</th><th>ร้าน</th><th>เวลาคีย์</th>
+    <th>GIN</th><th>เติมได้</th></tr></thead><tbody>`);
+  S.rows.forEach(r=>{
+    const op=!!(SP.back.open&&SP.back.open[r.d]);
+    const run=spBackRunTxt(r.run);
+    h.push(`<tr class="sp-backd${op?" on":""}" onclick="spBackTog('${anaEsc(r.d)}')">
+      <td colspan="5"><b>${fmtDate(r.d)}</b>
+        <span class="psub"> · ${r.nOrd} ใบ · ${r.shops} ร้าน · ${r.rows.length} สาย</span>
+        ${r.chk?'<span class="sp-ok"> · แอดมินตรวจแล้ว</span>':''}</td>
+      <td>${anaEsc(run)||'<span class="psub">—</span>'}</td>
+      <td>${r.nNew?('<b class="sp-bad">+'+r.nNew+'</b>'):'<span class="psub">—</span>'}</td></tr>`);
+    if(!op)return;
+    r.rows.forEach(L=>{
+      const t=(L.t0&&L.t1)?(L.t0.slice(0,5)+(L.t1.slice(0,5)!==L.t0.slice(0,5)?"→"+L.t1.slice(0,5):"")):"";
+      h.push(`<tr class="sp-backl"><td></td><td><b>${anaEsc(L.ln)}</b></td>
+        <td>${L.n}</td><td>${L.shops}</td><td>${anaEsc(t)||'<span class="psub">—</span>'}</td>
+        <td>${anaEsc(spBackRunTxt(L.run))||'<span class="psub">—</span>'}</td>
+        <td>${L.add.length?('<b class="sp-bad">+'+L.add.length+'</b>'):
+             (L.got?'<span class="sp-ok">ครบ</span>':'<span class="psub">—</span>')}
+            ${L.maybe.length?('<span class="psub"> · ไม่แน่ใจ '+L.maybe.length+'</span>'):''}
+            ${L.cx.length?('<span class="psub"> · ยกเลิก '+L.cx.length+'</span>'):''}</td></tr>`);
+    });
+  });
+  h.push(`</tbody></table></div>`);
+  const busy=!!(SP.back&&SP.back.busy);
+  h.push(`<div class="sp-backbtn">`);
+  if(busy)h.push(`<div class="psub">กำลังเติม ${SP.back.i} จาก ${SP.back.n} รายการ — อย่าปิดหน้านี้</div>`);
+  else{
+    h.push(`<button type="button" class="btn-go" onclick="spBackRun('${anaEsc(sid)}','rep')">
+      📲 เติมเลขออเดอร์ที่เซลล์คีย์${S.nNew?" ("+S.nNew+" เลข)":""}</button>`);
+    if(spAdmOk())h.push(`<button type="button" class="btn-go" onclick="spBackRun('${anaEsc(sid)}','gin')">
+      🚚 เติมคลังจัด</button>
+      <button type="button" class="btn-go" onclick="spBackRun('${anaEsc(sid)}','both')">
+      ✅ เติมทั้งสองฝั่ง</button>`);
+  }
+  h.push(`</div><div class="psub sp-backft">
+    จับออเดอร์เข้าใบนี้ด้วย <b>รหัสสินค้าของใบ</b> · เลข GIN ที่คลังใช้และช่วงเวลาที่แต่ละสายคีย์
+    แสดงไว้ให้ตรวจเอง · ของเดิมในระบบอยู่ครบ ระบบต่อท้ายให้เท่านั้น</div></div>`);
+  return h.join("");
+}
+function spBackCard(t,v,k){
+  return `<div class="sp-backc${k?" "+k:""}"><div class="sp-backct">${t}</div>
+    <div class="sp-backcv">${v}</div></div>`;
+}
+function spBackBtnHtml(sid){
+  return `<div class="sp-backbar">
+    <button type="button" class="btn-go" onclick="spBackOpen('${anaEsc(sid)}')">
+      🔁 เติมย้อนหลังทั้งใบ (เซลล์คีย์ + คลังจัด)</button>
+    <div class="psub">อ่านจากไฟล์ที่อัพไว้แล้ว ตั้งแต่วันที่สร้างใบจนถึงวันนี้ —
+      ดูก่อนได้ว่าเจออะไร แล้วค่อยกดเติม</div>
+    <div id="spBackBox">${(SP.back&&SP.back.on&&SP.back.sid===sid)?spBackHtml(sid):""}</div>
+  </div>`;
 }
 /* ---------- ตารางติดตาม: สายไหนคีย์ครบเป้าแล้วบ้าง ---------- */
 const SP_TRK={ok:['<span class="sp-ok">✓ ครบเป้า</span>',"var(--good)"],
