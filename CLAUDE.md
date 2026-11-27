@@ -1629,8 +1629,8 @@ code, never printed.
   **รอไฟล์ยอดขาย**, never 0 (the `spRow`/`spCases`/`spNoSum` rule). `cstOk()` builds `whq` with the
   rest of CSTOCK's permanent shape, and `mergeState` merges it `newestByAt` per key with a deleted
   slip dropping its keys. Prove it with the §10 cases in **`node test/browser/spord.test.cjs`**
-  (348 checks — §11 covers the per-line expand, the picking-file quantity source and the
-  per-role landing) and the `CSTOCK.whq` cases in `merge-safety` (337).
+  (352 checks — §11 covers the per-line expand, the picking-file quantity source, the per-order
+  date and the per-role landing) and the `CSTOCK.whq` cases in `merge-safety` (337).
   **📊 รายงาน answers "what is this slip worth, and what is it net of the reps' sales?"** — cases cut
   / keyed / sent / outstanding from the lots and `CSTOCK.rep`, money from the **admin's stored check**
   (`CSTOCK.gin[].rows[].g`/`.v`, the allocation file's own GSV/NIV), and the day's total from
@@ -1882,6 +1882,20 @@ code, never printed.
   two pages can never state different quantities; and **neither file = `null`, never 0** — the
   screen says *ยังไม่รู้จำนวน … รอไฟล์ใบจัดของ หรือไฟล์ยอดขาย*, naming both files so the user knows
   what to upload.
+  **📅 …and each order carries ITS OWN date, because that is the answer to "why does this one
+  have a figure and that one not?"** (`spOrdDay`, owner 29 Nov 26: *"ทำไมบางเลขมีจำนวน บางเลข
+  ไม่มี ส่วนนี้มันจับจากอะไร … เพราะเค้าส่งมาเวลาพร้อม ๆ กันมันต้องขึ้นพร้อม ๆ กัน"*). His screen
+  showed CT11's 8 numbers with 6 waiting and 2 carrying a quantity — and the 2 were
+  `BDD0100000575` and `BDD0100001275` sitting among `BDD010000259x`–`262x`. **Order numbers never
+  overlap between days**, so those two are orders from earlier days that the rep included by
+  mistake (each duplicates a shop already in the list — ศิริมา and ศิริชัย appear twice), and they
+  have a figure precisely because those older days' files are already uploaded. **No code was
+  wrong; the screen just did not say which day each order was from.** It now prints the order's own
+  date under the number, marks one that differs from the day being recorded, and counts them in the
+  footer; `spNoInfoHtml` warns the rep the same way while they type, so the mistake is caught at the
+  source. Two rules: the date is **`k` (the rep's keying day) before `d` (the invoice day)** — they
+  differ on 53% of orders and the question here is "when was this keyed"; and an order with neither
+  shows **nothing**, never the working day.
   **🧭 Opening a slip lands every role on its own step** (`SP_HOME`/`spHomeSec`, owner 29 Nov 26:
   *"ถ้าแอคเค้าซุป ให้ขึ้นหน้าซุปจด แอคเค้าเซลล์ให้เด้งไปหน้าเซลล์คีย์ แอดมินก็เด้งไปแอดมิน … ให้เวป
   พาไปในส่วนที่เค้าต้องทำเองอย่างอัตโนมัติไปเลย"*): `sup`→✍️ ซุปจด · `sales`→📲 เซลล์คีย์ ·

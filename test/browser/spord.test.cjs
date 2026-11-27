@@ -2700,6 +2700,36 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    trk.qSale&&trk.qSale.cs===5&&trk.qSale.src==='sale',JSON.stringify(trk.qSale));
  t('🛟 ไม่มีไฟล์ไหนรู้จำนวนเลย ต้องตอบ "ไม่รู้" (null) ไม่ใช่ 0',trk.qNone===null,
    JSON.stringify(trk.qNone));
+ /* ---- 📅 ทำไมบางใบมีจำนวน บางใบไม่มี (เจ้าของถาม 29 พ.ย. 69) ----
+    หน้าจอจริงของเขา: 8 เลขของสาย CT11 · 6 ใบขึ้น "ยังไม่รู้จำนวน" · 2 ใบมีจำนวน
+    เลขที่มีจำนวนคือ BDD0100000575 กับ BDD0100001275 ซึ่งเป็น **ออเดอร์ของวันเก่า**
+    ปนมากับ BDD010000259x-262x ของวันนั้น (ร้านเดียวกันซ้ำสองใบ: ศิริมา · ศิริชัย)
+    ⇒ ไม่ใช่บั๊ก แต่หน้าจอไม่ได้บอกวันที่ จึงดูเหมือนสุ่ม · ลงวันที่ไว้ให้เห็น */
+ const trkDay=await ev(a=>{
+   eval(a.setup);setup();
+   STOREDAILY.ord['BDD0100002597']={s:'4862383',l:'209611',k:WORK_,v:0,tx:1,rf:'1034757015'};
+   STOREDAILY.ord['BDD0100000575']={s:'4862365',l:'209611',k:'2026-11-10',d:'2026-11-10',
+     cs:0,pc:24,v:900,c:2,rf:'1034364918'};
+   CSTOCK.rep[B1+'|'+WORK_+'|CT11']={it:{},no:['1034757015','1034364918'],n:1,h:[],by:'ct11',at:2000};
+   spRfBust();
+   SP.sec='rep';SP.trk={CT11:true};renderSpord();
+   return {tx:document.getElementById('sptrk-CT11').textContent.replace(/\s+/g,' '),
+     old:spOrdDay(STOREDAILY.ord['BDD0100000575']),
+     now:spOrdDay(STOREDAILY.ord['BDD0100002597']),
+     none:spOrdDay({s:'x'}),blank:spOrdDay(null)};
+ },{setup:PRE});
+ t('📅 แต่ละใบขึ้นวันที่ของตัวเอง — คำถาม "ทำไมบางใบมีจำนวน" จะตอบตัวเองได้',
+   /27 พ\.ย\. 2569/.test(trkDay.tx)&&/10 พ\.ย\. 2569/.test(trkDay.tx),trkDay.tx.slice(0,220));
+ t('📅 ...และใบที่เป็นของวันอื่นถูกทักไว้ ไม่ใช่ปล่อยให้งง',
+   /คนละวันกับที่กำลังบันทึก/.test(trkDay.tx)&&/1 ใบเป็นออเดอร์ของวันอื่น/.test(trkDay.tx),
+   trkDay.tx.slice(-260));
+ t('🔑 ใบของวันเก่ามีจำนวน (ไฟล์วันนั้นอัพแล้ว) · ใบของวันนี้ยังไม่รู้ — คนละเหตุ ไม่ใช่สุ่ม',
+   /24 ชิ้น/.test(trkDay.tx)&&/ไฟล์ยอดขาย/.test(trkDay.tx)&&/ยังไม่รู้จำนวน/.test(trkDay.tx),
+   trkDay.tx.slice(0,220));
+ t('🛟 วันของใบอ่านจาก k ก่อน d · ไม่มีทั้งคู่ต้องเงียบ ห้ามเดาเป็นวันที่กำลังบันทึก',
+   trkDay.old==='2026-11-10'&&trkDay.now===WORK&&trkDay.none===''&&trkDay.blank==='',
+   [trkDay.old,trkDay.now,JSON.stringify(trkDay.none),JSON.stringify(trkDay.blank)].join(' · '));
+
  /* ---- พาแต่ละบทบาทไปขั้นของตัวเอง ---- */
  const home=await ev(a=>{
    eval(a.setup);setup();

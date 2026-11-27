@@ -13641,6 +13641,12 @@ function spNoInfoHtml(list,ln){
   if(o.same)h+=`<div class="psub" style="margin-top:4px">🔁 ตัดเลขซ้ำออก <b>${o.same}</b> เลข (${
     o.sameList.slice(0,6).map(anaEsc).join(" · ")}${o.sameList.length>6?" …":""}) — เป็นใบเดียวกัน นับครั้งเดียว</div>`;
    
+  {const day=String((typeof SP!=="undefined"&&SP&&SP.day)||"").slice(0,10);
+   const od=day?(o.rows||[]).filter(r=>{const v=spOrdDay(r.r);return v&&v!==day;}):[];
+   if(od.length)h+=`<div class="psub down" style="margin-top:4px">📅 <b>${od.length}</b> ใบเป็นออเดอร์ของวันอื่น (${
+     od.slice(0,4).map(r=>anaEsc(r.ask)+" = "+anaEsc(fmtDate(spOrdDay(r.r)))).join(" · ")}${
+     od.length>4?" …":""}) — ตรวจดูว่าใส่เลขผิดใบหรือเปล่า</div>`;}
+   
   if(o.wait)h+=`<div class="psub" style="margin-top:4px">⏳ <b>${o.wait}</b> ใบยังไม่รู้จำนวนลัง — รอไฟล์ใบจัดของ หรือไฟล์ยอดขายของวันนั้น</div>`;
   if(o.miss.length)h+=`<div class="psub down" style="margin-top:4px">❓ ยังหาไม่เจอ <b>${o.miss.length}</b> เลข (${
     o.miss.slice(0,6).map(anaEsc).join(" · ")}${o.miss.length>6?" …":""}) — ถ้าเพิ่งคีย์วันนี้ ให้รอไฟล์ของวันนั้นก่อน</div>`;
@@ -16309,17 +16315,29 @@ function spTrkTog(ln){
 }
  
 const SP_QSRC={sale:["🧾","ไฟล์ยอดขาย"],gin:["🚚","ใบจัดของ"]};
-function spTrkOrdHtml(x){
+ 
+function spOrdDay(rec){
+  const v=String((rec&&(rec.k||rec.d))||"").slice(0,10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(v)?v:"";
+}
+ 
+function spTrkOrdHtml(x,ymd){
   const o=x.ord;
   if(!o||!o.n)return "";
+  const day=String(ymd||"").slice(0,10);
+  let other=0;
   const rows=(o.rows||[]).map(r=>{
     const rec=r.r||{},q=r.q;
     const nm=spShop(rec.s)||"";
     const src=SP_QSRC[(q&&q.src)||""]||null;
+    const od=spOrdDay(rec),diff=!!(day&&od&&od!==day);
+    if(diff)other++;
     return `<tr>
       <td class="l" style="font-family:ui-monospace,monospace"><b>${anaEsc(r.no||r.ask)}</b>${
         (String(r.ask).toUpperCase()!==String(r.no).toUpperCase())
           ?'<span class="psub" style="display:block">พิมพ์มาว่า '+anaEsc(r.ask)+"</span>":""}${
+        od?('<span class="'+(diff?"down":"psub")+'" style="display:block;font-family:inherit">📅 '+
+            anaEsc(fmtDate(od))+(diff?" · คนละวันกับที่กำลังบันทึก":"")+"</span>"):""}${
         rec.cx?' <span class="pill w">ยกเลิก</span>':""}</td>
       <td class="l" data-l="ร้าน"><div>${
         nm?("<b>"+anaEsc(nm)+"</b>"):'<span class="psub">ยังไม่รู้ชื่อร้าน</span>'}${
@@ -16337,6 +16355,8 @@ function spTrkOrdHtml(x){
   if(o.same)note.push("ตัดเลขซ้ำออก "+o.same+" เลข — เป็นใบเดียวกัน นับครั้งเดียว");
   if(o.wait)note.push("⏳ <b>"+o.wait+"</b> ใบยังไม่รู้จำนวน — รอไฟล์ใบจัดของ หรือไฟล์ยอดขายของวันนั้น");
   if(o.star)note.push("* "+o.star+" ใบมาจากไฟล์ที่อัพไว้ก่อนระบบแยกลัง/ชิ้น จึงขึ้นเฉพาะลังเต็ม");
+  if(other)note.unshift('<b class="down">📅 '+other+" ใบเป็นออเดอร์ของวันอื่น</b> — "+
+    "ตรวจดูว่าใส่เลขผิดใบหรือเปล่า (ใบของวันเก่ามักมีจำนวนขึ้นแล้ว เพราะไฟล์ของวันนั้นอัพไปแล้ว)");
   return `<div class="sp-trkbox">
     <div class="psub" style="margin-bottom:6px">สาย <b>${anaEsc(x.ln)}</b> ส่งมา
       <b>${o.n}</b> เลข · เจอในระบบ <b>${o.found}</b> · รวม <b>${spCsTxt(o.cs,o.pc)}</b></div>
@@ -16353,7 +16373,7 @@ function spMyOrdHtml(ln,rec,ymd){
   spOtWant(String(ymd||"").slice(0,7));
   const x={ln:ln,ord:spNoSum(nos,{l:spLineCode(ln),ym:ymd})};
   return `<details class="sp-trkdet"><summary>📋 ดูเลขออเดอร์ที่ใส่ไว้ (${x.ord.n} เลข)</summary>
-    ${spTrkOrdHtml(x)}</details>`;
+    ${spTrkOrdHtml(x,ymd)}</details>`;
 }
 function spTrackHtml(sid,ymd,tr){
   tr=tr||spTrack(sid,ymd);
@@ -16396,7 +16416,7 @@ function spTrackHtml(sid,ymd,tr){
     <td class="l" data-l="กรอกเมื่อ">${x.rec?`<span class="psub">${anaEsc(x.rec.byName||x.rec.by||"")} · ${fmtDateTime(x.rec.at)}${
       x.n?" · แก้ไป "+(x.n-1)+" ครั้ง":""}</span>`:'<span class="psub">—</span>'}</td></tr>`+
     (nOrd?`<tr id="sptrk-${anaEsc(x.ln)}" class="sp-trkd${open?"":" hidden"}"><td colspan="${ncol}"
-      class="l">${spTrkOrdHtml(x)}</td></tr>`:"");}).join("");
+      class="l">${spTrkOrdHtml(x,ymd)}</td></tr>`:"");}).join("");
   return `<div class="panel" style="margin-top:12px">
     <h3>📋 ${one?"สรุปของสายฉัน":(tg?"ติดตามการคีย์รายสาย":"จำนวนที่เซลล์คีย์")} · ${fmtDate(ymd)}</h3>
     ${cards}
