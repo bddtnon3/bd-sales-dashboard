@@ -4564,6 +4564,134 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    'เป้า '+tg.tgt+' คีย์ '+tg.keyed+' คลังจัด '+tg.gin+' ต้องคีย์อีก '+tg.toKey+
    ' · same='+tg.same);
 
+ /* ================================================================
+  * 24) 🕒 "บันทึกเมื่อ" ไม่ใช่วันที่ของงาน · 📦 ห้ามมีเศษลังบนปฏิทินของเซลล์
+  *   เจ้าของถาม 27 พ.ย. 69 จากหน้าจอจริง:
+  *     *"ทำไมสาย 17 กดไปวันที่ 19 มีแนบไฟล์รูป แต่ไฟล์รูปแนบเป็นของวันที่ 27"*
+  *   บนจอ: การ์ด "กรอกเลขออเดอร์ · 19 พ.ย." แล้วบรรทัดถัดมาเขียนลอย ๆ ว่า
+  *   `ล่าสุด 27 พ.ย. 2569 21:36 น.` — ไม่มีคำกำกับว่าคือเวลาที่กดบันทึก
+  *   และกล่องวันที่เลือกขึ้น "ระบบหาได้ 18.07 ลัง" ขณะที่การ์ดข้างล่างขึ้น
+  *   "18 ลัง 446 ชิ้น" — เลขเดียวกันพิมพ์สองแบบในจอเดียว
+  *   ⚠️ ไม่มีรูปเก็บในระบบเลย — ชุดนี้ยืนยันว่าเรคอร์ดที่บันทึกไม่มีช่องรูป
+  *   ⚠️ แก้แค่ "วิธีพิมพ์" — ตัวเลขที่เก็บต้องเท่าเดิม และหน้านี้ต้องอ่านอย่างเดียว
+  * ================================================================ */
+ const SAV = `
+   __reset();cstOk();
+   /* 🧾 ใบ 🎯 ตัวกระจาย · สายที่ทดสอบคือ CT17 (รหัส 209617) */
+   window.__w=spBackStep(todayISO(),-8);                 /* "วันที่ของงาน" — ย้อนหลัง 8 วัน */
+   CSTOCK.slips[B1].d=window.__w;CSTOCK.slips[B1].g='D';CSTOCK.slips[B1].at=1;
+   CSTOCK.lots={};CSTOCK.key={};CSTOCK.rep={};CSTOCK.gin={};
+   MASTER={items:{ZZ01:{nm:'สินค้าทดสอบ ซี'}},det:{ZZ01:{ps:12}}};
+   CSTOCK.lots['LS1']={id:'LS1',sl:B1,d:window.__w,code:'ZZ01',nm:'สินค้าทดสอบ ซี',
+     cs:30,pc:0,ln:'CT17',clr:[],up:1};
+   CSTOCK.key[B1+'|'+window.__w+'|CT17']={it:{ZZ01:{sc:30,sp:0}},by:'sup',at:10};
+   /* 📦 สามใบที่ไฟล์ยอดขายบอกจำนวนมาเป็น "เศษลัง" และยังไม่มีรายการสินค้ารายใบ
+      ⇒ spNoSum พับไม่ได้ ต้องคืน cs = 18.07 · pc = 446 เหมือนที่เจ้าของเห็น
+      ⛔ เลขออเดอร์/รหัสร้าน สมมติขึ้นเอง — รีโปเป็นสาธารณะ */
+   STOREDAILY={data:{},ord:{}};
+   STOREDAILY.ord['BDD0100008001']={s:'SH91',l:'209617',d:window.__w,k:window.__w,
+     cs:6,pc:150,v:6000,c:3};
+   STOREDAILY.ord['BDD0100008002']={s:'SH92',l:'209617',d:window.__w,k:window.__w,
+     cs:6,pc:150,v:6000,c:3};
+   /* ใบที่สามเป็นเศษลัง และเป็นใบที่คลังไม่ได้จัด ⇒ ทั้งยอดรวมและช่อง "ห่างกัน" ต้องไม่โชว์ทศนิยม */
+   STOREDAILY.ord['BDD0100008003']={s:'SH93',l:'209617',d:window.__w,k:window.__w,
+     cs:6.07,pc:146,v:7244,c:3};
+   OT.cache={};OT.months=[];spRfBust();
+   /* 🕒 บันทึกเมื่อ "วันนี้" ขณะที่งานเป็นของวันย้อนหลัง — และคนบันทึกคือบัญชีผู้จัดการ
+      ซึ่งเป็นเคสจริงของเจ้าของ (เขาเติมย้อนหลังให้ CT17 เอง) */
+   CSTOCK.rep[B1+'|'+window.__w+'|CT17']={it:{},
+     no:['BDD0100008001','BDD0100008002','BDD0100008003'],
+     by:'manager',byName:'ผู้จัดการฝ่ายขาย',at:Date.now(),n:1,
+     h:[{at:Date.now(),by:'manager',byName:'ผู้จัดการฝ่ายขาย',it:{},
+         no:['BDD0100008001','BDD0100008002','BDD0100008003']}]};
+   /* 🔎 แอดมินตรวจแล้ว แต่ใบจัดของไม่มีใบที่สาม ⇒ ต้องขึ้น "ห่างกัน" */
+   CSTOCK.gin[B1+'|'+window.__w]={g:['88'],
+     rows:{'CT17|ZZ01':{sc:12,sp:0,nm:'สินค้าทดสอบ ซี',pk:12}},
+     ords:['BDD0100008001','BDD0100008002'],dd:[window.__w],by:'manager',at:30};
+   __as('sales','209617','CT17 · เซลล์');
+   SP.view='slip';SP.sid=B1;SP.sec='rep';SP.day=window.__w;
+   SP.ym=window.__w.slice(0,7);SP.cm=window.__w.slice(0,7);SP.me=0;SP.zone=undefined;
+   try{localStorage.removeItem('bdspzone');}catch(e){}
+   _switchTab('spord');renderSpord();`;
+ const sav=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const before=JSON.stringify(CSTOCK),p0=window.__posts.length;
+   const V=document.getElementById('spordView');
+   const txt=el=>el?el.textContent.replace(/\s+/g,' ').trim():'';
+   const chk=spMeChk(B1,window.__w,'CT17');
+   /* กล่องสรุปของวันที่เลือกในปฏิทิน + การ์ดกรอกเลข */
+   const boxEl=V.querySelector('.sp-mebox');
+   const card=[...V.querySelectorAll('.panel')]
+     .filter(p=>/กรอกเลขออเดอร์/.test(p.textContent))[0]||null;
+   const o={w:window.__w,today:todayISO(),
+     cs:chk.cs,pc:chk.pc,gap:chk.gap,gapCs:chk.gapCs,gapR:chk.gapR,
+     box:txt(boxEl),card:txt(card),all:txt(V),
+     /* เรคอร์ดที่เก็บจริงมีช่องรูปไหม */
+     keys:Object.keys(CSTOCK.rep[B1+'|'+window.__w+'|CT17']).sort().join(',')};
+   o.hist=spHistHtml(B1,window.__w,'CT17').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+   /* 🎨 ปุ่มที่ "ตัวหนังสือสีเดียวกับพื้น" = มองไม่เห็น — เจอกับปุ่ม 💾 ของเซลล์
+      เพราะ .sp-zone .upload-btn (0,2,0) ชนะ .sp-save button (0,1,1) · ไล่ทุกขั้น */
+   o.blind=(()=>{
+     const px=s=>{const m=String(s).match(/rgba?\(([^)]+)\)/);
+       return m?m[1].split(',').map(parseFloat).slice(0,3).join(','):null;};
+     const outs=[],keep=SP.sec;
+     ['key','rep','adm','out','rpt'].forEach(sec=>{
+       SP.sec=sec;try{renderSpord();}catch(e){return;}
+       document.querySelectorAll('#spordView button').forEach(bt=>{
+         const cs=getComputedStyle(bt);
+         if(/rgba\(0, 0, 0, 0\)/.test(cs.backgroundColor))return;
+         if(px(cs.color)&&px(cs.color)===px(cs.backgroundColor))
+           outs.push(sec+':'+bt.textContent.replace(/\s+/g,' ').trim().slice(0,24));
+       });
+     });
+     SP.sec=keep;renderSpord();
+     return outs;
+   })();
+   o.saveCol=(()=>{const bt=document.querySelector('#spordView .sp-save button');
+     return bt?getComputedStyle(bt).color:'(none)';})();
+   /* บันทึกวันเดียวกับวันที่ของงาน = ต้องไม่ฟ้องว่าย้อนหลัง */
+   const ymdAt=(()=>{const d=new Date();d.setHours(10,0,0,0);return d;})();
+   CSTOCK.rep[B1+'|'+o.today+'|CT17']={it:{},no:['BDD0100008001'],
+     by:'209617',byName:'CT17 · เซลล์',at:+ymdAt,n:1,h:[]};
+   SP.day=o.today;renderSpord();
+   const c2=[...document.querySelectorAll('#spordView .panel')]
+     .filter(p=>/กรอกเลขออเดอร์/.test(p.textContent))[0]||null;
+   o.same=txt(c2);
+   SP.day=window.__w;renderSpord();
+   delete CSTOCK.rep[B1+'|'+o.today+'|CT17'];
+   o.ro=JSON.stringify(CSTOCK)===before;o.posts=window.__posts.length-p0;
+   return o;
+ },{setup:PRE,pre:SAV});
+ t('📦 กล่องวันที่เลือกขึ้น "ลัง + ชิ้น" ไม่ใช่ 18.07 ลัง',
+   sav.cs===18.07&&sav.pc===446&&
+   /ระบบหาได้ 18 ลัง 446 ชิ้น/.test(sav.box),
+   'cs='+sav.cs+' pc='+sav.pc+' · '+sav.box.slice(0,150));
+ t('📦 ทั้งหน้าไม่มีเศษลังหลุดออกมาเลยแม้แต่ตัวเดียว',
+   !/\d+\.\d+\s*ลัง/.test(sav.all)&&!/\d+\.\d+\s*ลัง/.test(sav.box),
+   (sav.all.match(/\S*\d+\.\d+\s*ลัง/)||['(ไม่มี)'])[0]);
+ t('📦 "ห่างกัน" รวมข้ามใบ จึงขึ้นลังเต็ม + เศษ ไม่ใช่ทศนิยม',
+   sav.gap===6.07&&sav.gapCs===6&&sav.gapR===1&&
+   /ห่างกัน 6 ลัง \+เศษ/.test(sav.box),
+   'gap='+sav.gap+' gapCs='+sav.gapCs+' · '+sav.box.slice(0,200));
+ t('🕒 บอกว่า "บันทึกเมื่อ" และใครบันทึก ไม่ใช่วันที่ลอย ๆ',
+   /บันทึกเมื่อ/.test(sav.card)&&/โดย ผู้จัดการฝ่ายขาย/.test(sav.card)&&
+   !/· ล่าสุด \d/.test(sav.card),sav.card.slice(0,200));
+ t('🔑 วันที่บันทึกไม่ใช่วันที่ของงาน ⇒ ต้องพูดออกมาว่าบันทึกย้อนหลัง',
+   /บันทึกย้อนหลัง — ไม่ใช่วันที่ของงาน/.test(sav.card)&&
+   !/บันทึกย้อนหลัง/.test(sav.same),
+   'ย้อนหลัง: '+/บันทึกย้อนหลัง/.test(sav.card)+' · วันเดียวกัน: '+sav.same.slice(0,120));
+ t('🕘 ประวัติการกรอกก็บอก "บันทึกเมื่อ … โดย …" และฟ้องว่าย้อนหลัง',
+   /บันทึกเมื่อ/.test(sav.hist)&&/โดย ผู้จัดการฝ่ายขาย/.test(sav.hist)&&
+   /บันทึกย้อนหลัง/.test(sav.hist),sav.hist.slice(0,180));
+ t('⚠️ เรคอร์ดที่เก็บไม่มีช่องรูปเลย — รูปอ่านในเครื่องแล้วทิ้ง',
+   sav.keys==='at,by,byName,h,it,n,no'&&!/img|photo|รูป/i.test(sav.keys),sav.keys);
+ t('🎨 ปุ่ม 💾 บันทึก ตัวหนังสือขาวบนพื้นสี — ไม่ใช่สีเดียวกับพื้นจนมองไม่เห็น',
+   /rgb\(255, 255, 255\)/.test(sav.saveCol),sav.saveCol);
+ t('🎨 ...และไม่มีปุ่มไหนในทุกขั้นที่ตัวหนังสือสีเดียวกับพื้น',
+   sav.blind.length===0,sav.blind.join(' | '));
+ t('🛟 หน้านี้อ่านอย่างเดียว — CSTOCK เท่าเดิมทุกไบต์ ไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
+   sav.ro===true&&sav.posts===0,'same='+sav.ro+' posts='+sav.posts);
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}

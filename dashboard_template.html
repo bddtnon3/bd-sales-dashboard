@@ -828,7 +828,11 @@ tr.sp-backl>td{background:#fff;font-size:13px}
 .sp-only-man .sp-auto,.sp-only-man .sp-bal{display:none}
 .sp-only-auto .sp-man,.sp-only-auto .sp-save{display:none}
 .sp-zone .sp-save{background:linear-gradient(to top,#fff 68%,rgba(255,255,255,0))}
-.sp-zone .sp-save button{background:var(--z);box-shadow:0 3px 10px var(--zg)}
+/* ⚠️ `color:#fff` ต้องอยู่ตรงนี้ ห้ามพึ่ง `.sp-save button` ข้างบน — ปุ่มบันทึกใส่คลาส
+   `upload-btn` ไว้ด้วย และ `.sp-zone .upload-btn{color:var(--z)}` มีความจำเพาะ (0,2,0)
+   ซึ่งชนะ `.sp-save button` (0,1,1) ⇒ ตัวหนังสือกลายเป็นสีเดียวกับพื้น มองไม่เห็นเลย
+   เจอบนปุ่ม 💾 บันทึกเลขออเดอร์ ของเซลล์ทุกสาย ซึ่งเป็นปุ่มที่ต้องกดทุกวัน */
+.sp-zone .sp-save button{background:var(--z);color:#fff;box-shadow:0 3px 10px var(--zg)}
 .sp-zone .sp-save button:hover{filter:brightness(.92)}
 /* ช่องกรอกเดี่ยว ๆ ที่ไม่ได้อยู่ในตาราง (เช่นช่องเลข GIN) — เดิมเขียนสไตล์ไว้ในแท็กเลย
    ย้ายมาเป็นคลาสเพื่อให้รับสีของโซนได้ หน้าตาและขนาดเท่าเดิมทุกค่า */
@@ -15866,6 +15870,9 @@ function spHistHtml(sid,ymd,ln){
   const h=((rec&&rec.h)||[]).slice().reverse();
   if(!h.length)return '<div class="insight">สายนี้ยังไม่เคยกรอกจำนวน</div>';
   const nm={};codes.forEach(c=>{nm[c.code]=c.nm||"";});
+  /* 🕒 วันที่กดบันทึก ≠ วันที่ของงาน — ถ้าต่างกันต้องพูดออกมา (ดูบันทึกเหนือ spSavedTxt) */
+  const late=at=>{let s="";try{s=ymdOf(new Date(+at||0));}catch(x){s="";}
+    return !!(s&&String(ymd)&&s!==String(ymd));};
   return h.map((e,i)=>{
     const rows=Object.keys(e.it||{}).map(c=>{
       const v=e.it[c]||{},cs=(+v.sc||0)+(+v.fc||0),pc=(+v.sp||0)+(+v.fp||0);
@@ -15874,7 +15881,8 @@ function spHistHtml(sid,ymd,ln){
     }).join("")||'<tr><td colspan="5" class="l">ไม่ได้กรอกจำนวนใด ๆ</td></tr>';
     return `<div class="panel" style="margin-bottom:10px">
       <div class="cst-fb"><b>${i===0?"ครั้งล่าสุด":"ครั้งที่ "+(h.length-i)}</b>
-        <span class="psub">${fmtDateTime(e.at)} · โดย ${anaEsc(e.byName||e.by||"-")}</span></div>
+        <span class="psub">บันทึกเมื่อ ${fmtDateTime(e.at)} · โดย ${anaEsc(e.byName||e.by||"-")}${
+          late(e.at)?' · <b class="sp-2d-d">บันทึกย้อนหลัง</b>':""}</span></div>
       <div class="tblwrap" style="margin-top:8px"><table class="sp-kt">
         <thead><tr><th class="l">สินค้า</th><th>ขาย (ลัง)</th><th>แถม (ลัง)</th><th>รวม (ลัง)</th><th>ชิ้น</th></tr></thead>
         <tbody>${rows}</tbody></table></div></div>`;
@@ -18599,14 +18607,16 @@ function spHasTgt(sid){return spGrpOf(spSlip(sid))==="D";}
  * ⚠️ อ่านอย่างเดียว ไม่เขียนอะไรทั้งนั้น
  * ==========================================================================*/
 function spMeChk(sid,ymd,ln){
-  const o={sid:sid,d:ymd,ln:ln,st:"none",has:false,nNo:0,cs:0,wait:0,miss:0,amb:0,
-    chk:0,bad:[],extra:[],fwait:0,gap:0};
+  const o={sid:sid,d:ymd,ln:ln,st:"none",has:false,nNo:0,cs:0,pc:0,wait:0,miss:0,amb:0,
+    chk:0,bad:[],extra:[],fwait:0,gap:0,gapCs:0,gapR:0};
   const tgt=spKeyByLine(sid,ymd)[ln]||null;
   const rec=spRepRec(sid,ymd,ln);
   const nos=(rec&&Array.isArray(rec.no))?rec.no.slice():[];
   o.has=!!tgt;o.nNo=nos.length;
   const sum=nos.length?spNoSum(nos,{l:spLineCode(ln),ym:ymd}):null;
-  if(sum){o.cs=sum.cs;o.wait=sum.wait;o.miss=sum.miss.length;o.amb=sum.amb.length;}
+  /* 📦 cs/pc คู่กันเสมอ — ลังเต็ม + เศษชิ้น (spNoSum แตกให้ทีละรหัสมาแล้ว)
+     ห้ามเอา cs ไปพิมพ์เดี่ยว ๆ มันเป็นเศษลังได้ (เจ้าของเห็น "18.07 ลัง" 27 พ.ย. 69) */
+  if(sum){o.cs=sum.cs;o.pc=sum.pc;o.wait=sum.wait;o.miss=sum.miss.length;o.amb=sum.amb.length;}
   if(!nos.length&&!(rec&&spDayHas(rec))){o.st=tgt?"todo":"none";return o;}
   const g=spGinRec(sid,ymd);
   if(!spDayHas(g)){o.st="keyed";return o;}
@@ -18618,8 +18628,9 @@ function spMeChk(sid,ymd,ln){
     mine[full]=1;
     if(inFile[full])return;
     const cs=(r.r&&r.r.cs!==undefined)?(+r.r.cs||0):null;
-    o.bad.push({no:r.ask,full:r.no,cs:cs});
-    if(cs!=null)o.gap+=cs;
+    const pc=(r.r&&r.r.cs!==undefined)?(+r.r.pc||0):0;
+    o.bad.push({no:r.ask,full:r.no,cs:cs,pc:pc});
+    if(cs!=null){o.gap+=cs;o.gapCs+=Math.floor(cs);if(pc||cs%1)o.gapR=1;}
   });
   const lc=spLineCode(ln);
   Object.keys(inFile).forEach(x=>{
@@ -18627,8 +18638,12 @@ function spMeChk(sid,ymd,ln){
     const r=spOrd(x);
     if(!r){o.fwait++;return;}
     if(String(r.l||"")!==String(lc))return;
-    o.extra.push({full:x,cs:(r.cs!==undefined)?(+r.cs||0):null});
+    o.extra.push({full:x,cs:(r.cs!==undefined)?(+r.cs||0):null,
+      pc:(r.cs!==undefined)?(+r.pc||0):0});
   });
+  /* `gap` = ผลรวมจริง (ตัวเลข ใช้ตรวจ) · `gapCs`/`gapR` = รูปที่เอาไปพิมพ์
+     รวมข้ามใบ ข้ามรหัสสินค้า จึงขึ้นได้แค่ "ลัง + เศษ" ตามกฎ spSumTxt
+     ห้ามพิมพ์ gap ตรง ๆ — มันเป็นเศษลัง */
   o.gap=Math.round(o.gap*100)/100;
   o.st=(o.bad.length||o.extra.length)?"bad":"ok";
   return o;
@@ -18730,22 +18745,25 @@ function spRepHomeHtml(sid){
         <div class="sp-mehd">${S.ic} <b>${anaEsc(S.nm)}</b>${
           other?' <span class="psub">· ใบ '+anaEsc(spSlipTitle(c.sid)||c.sid)+"</span>":""}</div>
         <div class="psub">${c.has?"เป้า <b>"+N(c.tc)+"</b> ลัง"+(c.tp?" + "+N(c.tp)+" ชิ้น":""):"ไม่มีเป้าของวันนี้"}
-          ${c.nNo?" · ใส่เลขไว้ <b>"+c.nNo+"</b> เลข":""}${c.cs?" · ระบบหาได้ <b>"+N(c.cs)+"</b> ลัง":""}</div>`;
+          ${c.nNo?" · ใส่เลขไว้ <b>"+c.nNo+"</b> เลข":""}${
+          (c.cs||c.pc)?" · ระบบหาได้ <b>"+spCsTxt(c.cs,c.pc)+"</b>":""}</div>`;
       /* สิ่งที่ "ยังไม่รู้" ต้องบอก ห้ามปล่อยให้ดูเหมือนครบ */
       if(c.wait||c.miss||c.amb)b+=`<div class="psub" style="margin-top:4px">${
         c.wait?"⏳ <b>"+c.wait+"</b> เลขยังไม่รู้จำนวนลัง — รอไฟล์ใบจัดของ หรือไฟล์ยอดขาย ":""}${
         c.miss?'<span class="down">❓ ยังหาไม่เจอ <b>'+c.miss+"</b> เลข</span> ":""}${
         c.amb?'<span class="down">⚠️ <b>'+c.amb+"</b> เลขตรงกับหลายใบ ใส่เลขเต็มให้ไม่ซ้ำ</span>":""}</div>`;
       if(c.bad.length)b+=`<div class="sp-mebad">⚠️ <b>${c.bad.length}</b> เลขที่คุณคีย์ไว้
-        ยังไม่อยู่ในของที่คลังจัดออก${c.gap?" — ห่างกัน <b>"+N(c.gap)+"</b> ลัง":""}
+        ยังไม่อยู่ในของที่คลังจัดออก${c.gapCs||c.gapR
+          ?" — ห่างกัน <b>"+c.gapCs.toLocaleString()+" <small>ลัง</small></b>"+
+            (c.gapR?'<span class="psub"> +เศษ</span>':""):""}
         <ul>${c.bad.slice(0,12).map(x=>`<li><b>${anaEsc(x.no)}</b>${
           x.full&&x.full!==x.no?' <span class="psub">('+anaEsc(x.full)+")</span>":""}${
-          x.cs!=null?" · "+N(x.cs)+" ลัง":' <span class="psub">· รอไฟล์ยอดขาย</span>'}</li>`).join("")}${
+          x.cs!=null?" · "+spCsTxt(x.cs,x.pc):' <span class="psub">· รอไฟล์ยอดขาย</span>'}</li>`).join("")}${
           c.bad.length>12?"<li>…</li>":""}</ul></div>`;
       if(c.extra.length)b+=`<div class="sp-mebad">📦 คลังจัดออกไปแล้ว <b>${c.extra.length}</b> เลข
         ที่คุณยังไม่ได้คีย์ไว้
         <ul>${c.extra.slice(0,12).map(x=>`<li><b>${anaEsc(x.full)}</b>${
-          x.cs!=null?" · "+N(x.cs)+" ลัง":' <span class="psub">· รอไฟล์ยอดขาย</span>'}</li>`).join("")}${
+          x.cs!=null?" · "+spCsTxt(x.cs,x.pc):' <span class="psub">· รอไฟล์ยอดขาย</span>'}</li>`).join("")}${
           c.extra.length>12?"<li>…</li>":""}</ul></div>`;
       if(c.fwait)b+=`<div class="psub" style="margin-top:4px">⏳ ใบจัดของมีอีก <b>${c.fwait}</b> เลข
         ที่ยังไม่รู้ว่าสายไหน — รอไฟล์ยอดขายของวันนั้น</div>`;
@@ -18762,6 +18780,34 @@ function spRepHomeHtml(sid){
         (ahead?" · ล่วงหน้า <b>"+ahead+"</b> วัน คีย์ไว้ก่อนได้เลย":"")+" · กดวันในปฏิทินเพื่อกรอก"+
         (nSlip>1?" · รวมทุกใบออเดอร์แล้ว ("+nSlip+" ใบ)":""))}</div>
     ${cal}${det}</div>`;
+}
+/* ============================================================================
+ * 🕒 "บันทึกเมื่อ" ไม่ใช่ "วันที่ของงาน" — ต้องเขียนกำกับไว้ทุกครั้ง
+ *
+ * เจ้าของถาม 27 พ.ย. 69 จากหน้าจอจริง:
+ *   *"ทำไมสาย 17 กดไปวันที่ 19 มีแนบไฟล์รูป แต่ไฟล์รูปแนบเป็นของวันที่ 27"*
+ *
+ * 🔎 บนจอคือการ์ด "กรอกเลขออเดอร์ · 19 พ.ย. 2569" แล้วบรรทัดถัดมาเขียนลอย ๆ ว่า
+ *    `· ล่าสุด 27 พ.ย. 2569 21:36 น.` — ไม่มีคำกำกับว่านั่นคือ "เวลาที่กดบันทึก"
+ *    จึงอ่านได้ว่าของที่แนบมาเป็นของวันที่ 27 ซึ่งไม่ใช่
+ *
+ * ⚠️ ไม่มีรูปเก็บอยู่ในระบบเลย — ตัวอ่านรูป 📷 อ่านเลขในเครื่องแล้วทิ้งรูปทันที
+ *    (กฎเดียวกับไฟล์ allocation) และ api/spord.js act:"rep" เก็บแค่
+ *    { it, no, by, byName, at, n, h } ไม่มีช่องรูปแม้แต่ช่องเดียว
+ *    ⇒ ตัวเลขที่เห็นคือ `at` = เวลาที่เซิร์ฟเวอร์รับบันทึก
+ *
+ * กฎ: พิมพ์คำว่า **บันทึกเมื่อ** และบอกว่า **ใครบันทึก** เสมอ · ถ้าวันที่บันทึก
+ *     ไม่ใช่วันที่ของงาน ให้ **พูดออกมาเป็นคำ** ว่าเป็นการบันทึกย้อนหลัง
+ *     ห้ามวางวันที่ไว้เฉย ๆ ให้คนอ่านเดาเอง (กฎเดียวกับ spDayBandHtml)
+ * ==========================================================================*/
+function spSavedTxt(rec,ymd){
+  const at=+((rec&&rec.at)||0);
+  if(!at)return "";
+  let sd="";try{sd=ymdOf(new Date(at));}catch(e){sd="";}
+  const who=String((rec&&rec.byName)||"").trim();
+  return " · บันทึกเมื่อ "+fmtDateTime(at)+(who?" โดย "+anaEsc(who):"")+
+    ((sd&&String(ymd)&&sd!==String(ymd))
+      ?' <b class="sp-2d-d">(บันทึกย้อนหลัง — ไม่ใช่วันที่ของงาน)</b>':"");
 }
 /* ---------- ตารางของ "สายฉัน" — เซลล์กรอกจำนวนที่คีย์จริง ----------
    📱 เป็น "การ์ดต่อสินค้า" ไม่ใช่ตาราง 7 ช่อง — ทีมขายกรอกจากมือถือ Android เป็นหลัก
@@ -18805,7 +18851,7 @@ function spRepMineHtml(sid,ymd){
                                                       :"(วันนี้เหลืออีก "+left+" ครั้ง)")
       : (rec?"<b>วันนี้บันทึกครบจำนวนครั้งที่ตั้งไว้แล้ว</b> — ถ้าต้องแก้อีก แจ้งผู้จัดการ"
             :"ดูอย่างเดียว")}
-      ${rec?` · ล่าสุด ${fmtDateTime(rec.at)}`:""}</div>
+      ${rec?spSavedTxt(rec,ymd):""}</div>
     ${rec?`<div class="cst-fb" style="margin-top:10px">
       <button type="button" class="btn-ghost" onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">🕘 ดูประวัติการกรอก</button></div>`:""}
     ${spRepNoHtml(ln,rec,can,sid,ymd)}
