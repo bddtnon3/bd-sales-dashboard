@@ -3424,27 +3424,35 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    const d=document.createElement('div');d.innerHTML=spBalHtml(B1);
    const tx=d.textContent.replace(/\s+/g,' ');
    const row=c=>B.rows.filter(r=>r.code===c)[0]||null;
-   return {tgt:B.tgt,keyed:B.keyed,gin:B.gin,left:B.left,pct:B.pct,dist:B.dist,
+   return {tgt:B.tgt,keyed:B.keyed,gin:B.gin,pct:B.pct,st:B.st,
+     short:B.short,overG:B.overG,toKey:B.toKey,
      f1:row('FO01'),f2:row('FO02'),
-     lns:B.byLn.map(x=>x.ln+':'+x.k+':'+x.g),
+     lns:B.byLn.map(x=>x.ln+':'+x.k+':'+x.g+':'+x.st),
      tx:tx,frac:/\d+\.\d+ ลัง/.test(tx),
      safe:(JSON.stringify(CSTOCK)===blob)};
  },{setup:PRE,pre:AUTOPRE});
- t('🎯 ตั้งต้นในใบ 15 ลัง · เซลล์คีย์ 11 ลัง · คลังจัด 9 ลัง · เหลือ 4 ลัง (คิดเป็นชิ้นทีละรหัส)',
-   au1.tgt===180&&au1.keyed===132&&au1.gin===108&&au1.left===48,
-   JSON.stringify({tgt:au1.tgt,k:au1.keyed,g:au1.gin,left:au1.left}));
+ t('🎯 ตั้งต้นในใบ 15 ลัง · เซลล์คีย์ 11 ลัง · คลังจัด 9 ลัง (คิดเป็นชิ้นทีละรหัส)',
+   au1.tgt===180&&au1.keyed===132&&au1.gin===108,
+   JSON.stringify({tgt:au1.tgt,k:au1.keyed,g:au1.gin}));
+ /* 🎨 เกณฑ์เดียวที่ตัดสินสี: เซลล์คีย์ เทียบ คลังจัด ถึงหน่วยชิ้น (เจ้าของสั่ง 27 พ.ย. 69) */
+ t('🔴 ขาด = คลังจัดน้อยกว่าที่เซลล์คีย์ → ทั้งใบขึ้นสถานะ "ขาด" และบอกจำนวน 2 ลัง',
+   au1.st==='short'&&au1.short===24&&au1.overG===0&&/ขาด/.test(au1.tx)&&/2 ลัง/.test(au1.tx),
+   'st='+au1.st+' · ขาด '+au1.short+' ชิ้น · เกิน '+au1.overG);
+ t('🎯 ...และยังบอกแยกว่าต้องคีย์เพิ่มให้ครบตั้งต้นอีกเท่าไหร่ (4 ลัง)',
+   au1.toKey===48&&/ต้องคีย์เพิ่ม/.test(au1.tx),'toKey='+au1.toKey);
  t('🎯 ...และบอก % ที่ตรงกับคลังจัด = 108/132 = 81.8% (ขาดตกหล่น 18.2%)',
    Math.abs(au1.pct-81.8)<0.05&&/81\.8%/.test(au1.tx)&&/ขาดตกหล่น 18\.2%/.test(au1.tx),
    'pct='+au1.pct);
- t('🎯 ...บอกด้วยว่ากระจายไปแล้วกี่ % ของใบ (132/180 = 73.3%)',
-   Math.abs(au1.dist-73.3)<0.05,'dist='+au1.dist);
- t('🎯 ...แยกรายสินค้า — FO01 ตั้งต้น 10 ลัง คีย์ 8 คลังจัด 6 เหลือ 2',
-   au1.f1&&au1.f1.tgt===120&&au1.f1.k===96&&au1.f1.g===72&&au1.f1.left===24&&
-   au1.f2&&au1.f2.tgt===60&&au1.f2.k===36&&au1.f2.g===36&&au1.f2.left===24,
+ t('🎯 ...แยกรายสินค้า — FO01 คีย์ 8 ลัง คลังจัด 6 ลัง = ขาด 2 ลัง · FO02 ตรงเป๊ะ = ครบ',
+   au1.f1&&au1.f1.k===96&&au1.f1.g===72&&au1.f1.st==='short'&&au1.f1.d===-24&&
+   au1.f2&&au1.f2.k===36&&au1.f2.g===36&&au1.f2.st==='ok'&&au1.f2.d===0,
    JSON.stringify([au1.f1,au1.f2]));
- t('🎯 ...และแยกรายสายว่าคีย์ไปสายละเท่าไหร่',
-   au1.lns.length===3&&au1.lns.indexOf('CT11:60:48')>=0&&au1.lns.indexOf('CT15:36:36')>=0,
-   au1.lns.join(' '));
+ t('🎯 ...และแยกรายสาย พร้อมสถานะของแต่ละสาย',
+   au1.lns.length===3&&au1.lns.indexOf('CT11:60:48:short')>=0&&
+   au1.lns.indexOf('CT15:36:36:ok')>=0,au1.lns.join(' '));
+ t('📋 ...มีหน้าสรุปให้ผู้จัดการว่าต้องทำอะไรต่อ ทั้งที่ขาดและที่ต้องคีย์เพิ่ม',
+   /ต้องทำอะไรต่อ/.test(au1.tx)&&/คลังยังจัดไม่ครบ/.test(au1.tx)&&
+   /ซิตร้า เพิร์ล FO/.test(au1.tx),au1.tx.slice(0,200));
  t('📦 ...ไม่มีลังทศนิยมบนแถบนี้',au1.frac===false,'');
  t('🛟 ...และวาดแถบนี้ไม่แตะข้อมูลเลย (อ่านอย่างเดียว)',au1.safe===true,'');
 
@@ -3513,6 +3521,55 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('⏳ วันที่ยังไม่มีไฟล์ ต้องบอกว่ารอไฟล์ ไม่ใช่ขึ้น 0%',
    /ยังไม่มีไฟล์ของวันนี้|ยังไม่มีใบไหนของวันนี้/.test(au3.nf)&&!/0%/.test(au3.nf),
    au3.nf.slice(0,140));
+
+ /* ---- ⑤ สามสถานะ ครบ / ขาด / เกิน และสีที่เดินตามกันทุกที่ ---- */
+ const au4=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   /* วันที่แอดมินตรวจแล้ว → "คลังจัด" อ่านจากจำนวนที่คลังจัดจริง (ช่อง Allocated) ของผลตรวจนั้น
+      ⇒ เป็นแหล่งเดียวที่มากกว่าที่เซลล์คีย์ได้ จึงทำให้สถานะ "เกิน" เกิดขึ้นจริงได้ */
+   CSTOCK.gin[B1+'|'+window.__d0]={g:['70'],at:9,by:'manager',byName:'ผู้จัดการ',
+     rows:{
+       /* CT11 คีย์ FO01 5 ลัง — คลังจัดจริง 6 ลัง ⇒ เกิน 1 ลัง ต้องหักออก */
+       'CT11|FO01':{sc:5,ss:0,sp:0,fc:0,fs:0,fp:0,xc:6,xs:0,xp:0,yc:0,ys:0,yp:0,nm:'ซิตร้า',pk:12},
+       /* CT17 คีย์ FO01 3 ลัง — คลังจัดจริง 3 ลัง ⇒ ครบ */
+       'CT17|FO01':{sc:3,ss:0,sp:0,fc:0,fs:0,fp:0,xc:3,xs:0,xp:0,yc:0,ys:0,yp:0,nm:'ซิตร้า',pk:12},
+       /* CT15 คีย์ FO02 3 ลัง — คลังจัดจริง 1 ลัง ⇒ ขาด 2 ลัง */
+       'CT15|FO02':{sc:3,ss:0,sp:0,fc:0,fs:0,fp:0,xc:1,xs:0,xp:0,yc:0,ys:0,yp:0,nm:'ลักส์',pk:12}}};
+   const B=spBal(B1);
+   const d=document.createElement('div');d.innerHTML=spBalHtml(B1);
+   const tx=d.textContent.replace(/\s+/g,' ');
+   const row=c=>B.rows.filter(r=>r.code===c)[0]||null;
+   const cal=document.createElement('div');cal.innerHTML=spCalHtml(B1);
+   return {src:B.srcChk+'/'+B.srcGin,
+     f1:row('FO01'),f2:row('FO02'),st:B.st,short:B.short,over:B.overG,
+     lns:B.byLn.map(x=>x.ln+':'+x.st),
+     tx:tx,frac:/\d+\.\d+ ลัง/.test(tx),
+     dayStat:spDayStat(B1,window.__d0),slipStat:spSlipStat(B1),
+     calShort:cal.querySelectorAll('.cal-day.st-short').length,
+     calOk:cal.querySelectorAll('.cal-day.st-ok').length,
+     pill:/sp-stpill/.test(spStPill('short'))};
+ },{setup:PRE,pre:AUTOPRE});
+ /* คลังจัด 9 ลัง (108 ชิ้น) มากกว่าที่คีย์ 8 ลัง (96) ได้ก็ต่อเมื่ออ่านจากผลตรวจของแอดมิน —
+    ฝั่ง "ใบที่มีเลข GIN" เป็นสับเซตของที่คีย์เสมอ จึงเกินไม่ได้ */
+ t('🚚 วันที่แอดมินตรวจแล้ว อ่าน "คลังจัด" จากจำนวนที่คลังจัดจริงในผลตรวจ ไม่ใช่แค่ใบที่มี GIN',
+   au4.src==='1/0'&&au4.f1&&au4.f1.g===108&&au4.f1.g>au4.f1.k,
+   'ตรวจแล้ว/ยังไม่ตรวจ = '+au4.src+' · คลังจัด '+(au4.f1&&au4.f1.g)+' ชิ้น vs คีย์ '+(au4.f1&&au4.f1.k));
+ t('🟠 เกิน = คลังจัดมากกว่าที่เซลล์คีย์ → บอกว่าเกิน และต้องหักลบออก',
+   au4.f1&&au4.f1.st==='over'&&au4.f1.d===12&&/เกิน/.test(au4.tx)&&/หักออก/.test(au4.tx),
+   'FO01 '+JSON.stringify(au4.f1));
+ t('🔴 ขาด = คลังจัดน้อยกว่า → สีแดง บอกจำนวนที่ขาด 2 ลัง',
+   au4.f2&&au4.f2.st==='short'&&au4.f2.d===-24&&/ขาด/.test(au4.tx),
+   'FO02 '+JSON.stringify(au4.f2));
+ t('🎯 ...ทั้งใบถือว่า "ขาด" เมื่อมีรหัสไหนขาด แม้รหัสอื่นจะเกิน (ขาดกับเกินคนละถัง ไม่หักกลบ)',
+   au4.st==='short'&&au4.short===24&&au4.over===12,
+   'st='+au4.st+' · ขาด '+au4.short+' · เกิน '+au4.over);
+ t('🎨 ...สีเดินตามกันทุกที่ — ปฏิทินวัน การ์ดใบ และป้ายสถานะ ใช้เกณฑ์เดียวกัน',
+   au4.dayStat==='short'&&au4.slipStat==='short'&&au4.calShort===1&&au4.calOk===0&&au4.pill===true,
+   'วัน='+au4.dayStat+' · ใบ='+au4.slipStat+' · ปฏิทินขาด '+au4.calShort+' วัน');
+ t('📋 ...หน้าสรุปผู้จัดการลิสต์ทั้งที่ขาดและที่เกิน พร้อมจำนวน',
+   /🔴 ขาด/.test(au4.tx)&&/🟠 เกิน/.test(au4.tx)&&/ลักส์ โรส FO/.test(au4.tx)&&
+   /ซิตร้า เพิร์ล FO/.test(au4.tx),au4.tx.slice(0,240));
+ t('📦 ...และไม่มีลังทศนิยม',au4.frac===false,'');
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));

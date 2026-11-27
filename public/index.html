@@ -450,6 +450,27 @@ table.sp-balt td .psub{display:block;font-size:11.5px}
   table.sp-balt td:first-child{display:block}
   table.sp-balt td:first-child::before{content:""}
 }
+.sp-stpill{display:inline-block;border:1px solid var(--line);border-radius:999px;
+  padding:1px 9px;font-size:12px;font-weight:800;margin-left:6px;white-space:nowrap;background:#fff}
+.cal-day.st-ok{box-shadow:inset 0 0 0 2px var(--good)}
+.cal-day.st-short{box-shadow:inset 0 0 0 2px var(--bad)}
+.cal-day.st-over{box-shadow:inset 0 0 0 2px var(--warn)}
+.cal-dot.st-ok{background:var(--good)}
+.cal-dot.st-short{background:var(--bad)}
+.cal-dot.st-over{background:var(--warn)}
+tr.sp-balr.short>td{background:#FFF5F5}
+tr.sp-balr.over>td{background:#FFFAF0}
+tr.sp-balr.ok>td{background:#F5FCF7}
+.sp-baltd{margin-top:12px}
+.sp-baltdh{font-size:15px;font-weight:800;margin-bottom:7px}
+.sp-baltdg{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;
+  padding:9px 11px;margin-bottom:8px;background:#fff;font-size:13.5px;line-height:1.7}
+.sp-baltdg.bad{border-left-color:var(--bad);background:#FFF5F5}
+.sp-baltdg.warn{border-left-color:var(--warn);background:#FFFAF0}
+.sp-baltdg.ok{border-left-color:var(--good);background:#F5FCF7}
+.sp-baltdr{display:flex;justify-content:space-between;gap:12px;align-items:baseline;
+  padding:3px 0;border-top:1px dotted var(--line);margin-top:3px}
+.sp-baltdr span{flex:1;min-width:0}
 .sp-backbar>.psub{margin:7px 0 0}
 .sp-backp{margin-top:12px}
 .sp-backsum{font-size:14.5px;line-height:1.6;background:var(--gr,#F3F5F8);
@@ -14511,11 +14532,15 @@ function spSlipCard(x){
          <i>${N(c.cs)} ลัง${c.pc?" + "+N(c.pc)+" ชิ้น":""}</i></span>`).join("")}${
          more>0?`<span class="sp-it more">…และอีก ${more} รายการ</span>`:""}</div>`
     : `<div class="psub" style="margin-top:6px">ใบนี้ยังไม่มีรายการสินค้า</div>`;
-  return `<div class="cst-grp" style="border-left-color:${cstPctCol(pct)};cursor:pointer"
+   
+  let bst="wait";try{bst=spSlipStat(x.id);}catch(e){bst="wait";}
+  const bcol=(SP_BST[bst]||SP_BST.wait).c;
+  return `<div class="cst-grp" style="border-left-color:${bst==="wait"?cstPctCol(pct):bcol};cursor:pointer"
       onclick="spOpenSlip('${anaEsc(x.id)}')">
     <div class="cst-gh">
       <div class="cst-t"><b>${anaEsc(spSlipTitle(x.id)||x.id)}</b>
         <span class="sp-tag">${g.ic} ${anaEsc(g.n)}</span>
+        ${bst==="wait"?"":spStPill(bst)}
         <span class="psub">${anaEsc(x.id)}${x.d?" · สร้าง "+anaEsc(fmtDate(x.d)):""}${
           x.own?" · 👤 "+anaEsc(x.own):""}</span></div>
       <div class="cst-n">${cstPctPill(pct,left,cs)}
@@ -15824,6 +15849,11 @@ function spCalHtml(sid){
   const ds=spDays(sid),cur=spDay(sid),ym=spCalMon(sid);
   const has={};ds.forEach(d=>has[d]=1);
   const chk={};ds.forEach(d=>{if(spDayHas(spGinRec(sid,d)))chk[d]=1;});
+   
+  const st={},nSt={ok:0,short:0,over:0};
+  ds.forEach(d=>{if(d.slice(0,7)!==ym)return;
+    let v="wait";try{v=spDayStat(sid,d);}catch(e){v="wait";}
+    if(v!=="wait"){st[d]=v;nSt[v]++;}});
   const last=new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();
   const first=new Date(ym+"-01T00:00:00");
   const lead=(first.getDay()+6)%7;                  
@@ -15841,12 +15871,18 @@ function spCalHtml(sid){
     <div class="cal-grid">${DOW.map(x=>`<div class="cal-wd">${x}</div>`).join("")}${
       cells.map(d=>{
         if(!d)return `<div class="cal-day"></div>`;
-        const cls=(has[d]?" has":"")+(chk[d]?" chk":"")+(d===cur?" sel":"")+(d===todayISO()?" today":"");
+        const cls=(has[d]?" has":"")+(chk[d]?" chk":"")+(st[d]?(" st-"+st[d]):"")+
+          (d===cur?" sel":"")+(d===todayISO()?" today":"");
+        const sx=st[d]?(" · "+(SP_BST[st[d]]||{}).t):"";
         return `<div class="cal-day${cls}" onclick="spSetDay('${d}')"
-          title="${anaEsc(fmtDate(d))}${has[d]?" · มีข้อมูลแล้ว":""}${chk[d]?" · แอดมินตรวจแล้ว":""}">${+d.slice(8,10)}</div>`;
+          title="${anaEsc(fmtDate(d))}${has[d]?" · มีข้อมูลแล้ว":""}${chk[d]?" · แอดมินตรวจแล้ว":""}${sx}">${+d.slice(8,10)}</div>`;
       }).join("")}</div>
     <div class="cal-legend"><span class="cal-dot"></span> มีข้อมูล ${nIn} วัน
-      <span class="cal-dot chk" style="margin-left:10px"></span> แอดมินตรวจแล้ว ${nChk} วัน</div></div>`;
+      <span class="cal-dot chk" style="margin-left:10px"></span> แอดมินตรวจแล้ว ${nChk} วัน
+      ${nSt.ok?`<span class="cal-dot st-ok" style="margin-left:10px"></span> ครบ ${nSt.ok} วัน`:""}
+      ${nSt.short?`<span class="cal-dot st-short" style="margin-left:10px"></span> ขาด ${nSt.short} วัน`:""}
+      ${nSt.over?`<span class="cal-dot st-over" style="margin-left:10px"></span> เกิน ${nSt.over} วัน`:""}
+      </div></div>`;
 }
  
  
@@ -16835,6 +16871,26 @@ function spBackHasDet(ym){
   return !!(C&&C.det);
 }
  
+function spBackChkPcs(sid,ymd,codes,ym){
+  const g=spGinRec(sid,ymd);
+  if(!g||g.del||!g.rows||!Object.keys(g.rows).length)return null;
+  const all={},byLn={};let any=0;
+  Object.keys(g.rows).forEach(k=>{
+    const r=g.rows[k]||{},p=String(k).split("|"),ln=p[0]||"",code=p[1]||"";
+    if(!code||!codes[code])return;
+    const pk=+r.pk||spPsOf(code,ym);
+    if(!pk)return;
+    const shr=(typeof alShrink==="function")?(alShrink(r.nm||"",pk)||0):0;
+    const sv=spPcs(r.xc,r.xs,r.xp,pk,shr),fv=spPcs(r.yc,r.ys,r.yp,pk,shr);
+    if(sv===null&&fv===null)return;
+    const v=(+sv||0)+(+fv||0);
+    all[code]=(all[code]||0)+v;
+    const B=byLn[ln]||(byLn[ln]={});B[code]=(B[code]||0)+v;
+    any=1;
+  });
+  return any?{all:all,byLn:byLn}:null;
+}
+ 
 function spBackDay(sid,ymd,codes,lines){
   const ym=String(ymd||"").slice(0,7);
   const o={d:ymd,rows:[],gin:{},nOrd:0,nNew:0,cx:0,unsure:0,pool:0,shops:0,
@@ -16889,6 +16945,13 @@ function spBackDay(sid,ymd,codes,lines){
   });
   o.noFile=!o.pool;
   o.run=spBackRuns(Object.keys(o.gin));
+   
+  const C=o.chk?spBackChkPcs(sid,ymd,codes,ym):null;
+  o.src=C?"chk":"gin";
+  if(C){
+    o.gpcs=C.all;
+    o.rows.forEach(L=>{L.gpcs=C.byLn[L.ln]||{};});
+  }
   return o;
 }
  
@@ -16901,7 +16964,7 @@ function spBackScan(sid,all){
   const out=[],months={};
   const S={rows:out,days:days.length,lines:lines.length,mine:mine,
     nOrd:0,nNew:0,cx:0,unsure:0,nofile:0,chk:0,gin:0,noDet:0,shops:0,
-    pcs:{},gpcs:{},unkPs:[],nGin:0,byLn:{},
+    pcs:{},gpcs:{},unkPs:[],nGin:0,byLn:{},srcChk:0,srcGin:0,
     d0:days[0]||"",d1:days[days.length-1]||"",codes:Object.keys(codes).length};
   days.forEach(d=>{
     months[d.slice(0,7)]=1;
@@ -16911,6 +16974,7 @@ function spBackScan(sid,all){
     if(!r.nOrd&&!r.cx)return;
     S.nOrd+=r.nOrd;S.nNew+=r.nNew;S.cx+=r.cx;S.unsure+=r.unsure;
     S.gin+=r.run.n;S.shops+=r.shops;S.nGin+=r.nGin;
+    if(r.src==="chk")S.srcChk++;else S.srcGin++;
     Object.keys(r.pcs).forEach(c=>{S.pcs[c]=(S.pcs[c]||0)+r.pcs[c];});
     Object.keys(r.gpcs).forEach(c=>{S.gpcs[c]=(S.gpcs[c]||0)+r.gpcs[c];});
     r.unkPs.forEach(c=>{if(S.unkPs.indexOf(c)<0)S.unkPs.push(c);});
@@ -17097,35 +17161,58 @@ function spBackBtnHtml(sid){
 }
  
  
+ 
+const SP_BST={ok:{t:"ครบ",c:"var(--good)",i:"🟢"},short:{t:"ขาด",c:"var(--bad)",i:"🔴"},
+  over:{t:"เกิน",c:"var(--warn)",i:"🟠"},wait:{t:"ยังไม่คีย์",c:"var(--line)",i:"⏳"}};
+function spBalSt(k,g){
+  if(!k&&!g)return "wait";
+  const d=Math.round(g)-Math.round(k);
+  return d<0?"short":(d>0?"over":"ok");
+}
 function spBal(sid){
   const sl=spSlip(sid);
   const ym=String((sl&&sl.d)||todayISO()).slice(0,7);
   const S=spBackScan(sid,1);
-  const o={rows:[],tgt:0,keyed:0,gin:0,left:0,over:0,unk:[],noPs:[],
+  const o={rows:[],tgt:0,keyed:0,gin:0,short:0,overG:0,toKey:0,overT:0,unk:[],noPs:[],
     nOrd:S.nOrd,nGin:S.nGin,days:S.days,nofile:S.nofile,noDet:S.noDet,
-    d0:S.d0,d1:S.d1,byLn:[],months:S.months,mine:S.mine};
+    srcChk:S.srcChk,srcGin:S.srcGin,
+    d0:S.d0,d1:S.d1,byLn:[],months:S.months,mine:S.mine,
+    sh:{},ov:{},tk:{},ot:{}};           
   spSlipCodes(sid).forEach(c=>{
     const ps=spPsOf(c.code,ym);
     const k=Math.round(+S.pcs[c.code]||0),g=Math.round(+S.gpcs[c.code]||0);
-    if(!ps){o.noPs.push(c.code);o.rows.push({code:c.code,nm:c.nm,ps:0,tgt:null,k:k,g:g});return;}
+    const st=spBalSt(k,g),d=g-k;
+    if(!ps){
+      o.noPs.push(c.code);
+      o.rows.push({code:c.code,nm:c.nm,ps:0,tgt:null,k:k,g:g,st:st,d:d,toKey:0,overT:0});
+      if(d<0){o.sh[c.code]=-d;o.short+=-d;}else if(d>0){o.ov[c.code]=d;o.overG+=d;}
+      return;
+    }
     const t=Math.round((+c.cs||0)*ps+(+c.pc||0));
-    o.tgt+=t;o.keyed+=k;o.gin+=g;
-    o.rows.push({code:c.code,nm:c.nm,ps:ps,tgt:t,k:k,g:g,
-      left:Math.max(0,t-k),over:Math.max(0,k-t),
+    const tk=Math.max(0,t-k),ot=Math.max(0,k-t);
+    o.tgt+=t;o.keyed+=k;o.gin+=g;o.toKey+=tk;o.overT+=ot;
+    if(d<0){o.sh[c.code]=-d;o.short+=-d;}else if(d>0){o.ov[c.code]=d;o.overG+=d;}
+    if(tk)o.tk[c.code]=tk;
+    if(ot)o.ot[c.code]=ot;
+    o.rows.push({code:c.code,nm:c.nm,ps:ps,tgt:t,k:k,g:g,st:st,d:d,toKey:tk,overT:ot,
       pct:k?Math.round(g/k*1000)/10:null});
   });
   S.unkPs.forEach(c=>{if(o.unk.indexOf(c)<0)o.unk.push(c);});
-  o.left=Math.max(0,o.tgt-o.keyed);
-  o.over=Math.max(0,o.keyed-o.tgt);
   o.pct=o.keyed?Math.round(o.gin/o.keyed*1000)/10:null;       
-  o.dist=o.tgt?Math.round(o.keyed/o.tgt*1000)/10:null;         
+  o.st=spBalSt(o.keyed,o.gin);
+   
+  o.st=o.short?"short":(o.overG?"over":(o.keyed?"ok":"wait"));
   Object.keys(S.byLn).forEach(ln=>{
     const B=S.byLn[ln];
-    const k=Object.keys(B.pcs).reduce((a,c)=>a+B.pcs[c],0);
-    const g=Object.keys(B.gpcs).reduce((a,c)=>a+B.gpcs[c],0);
+    const k=Math.round(Object.keys(B.pcs).reduce((a,c)=>a+B.pcs[c],0));
+    const g=Math.round(Object.keys(B.gpcs).reduce((a,c)=>a+B.gpcs[c],0));
     if(!k&&!B.n)return;
-    o.byLn.push({ln:ln,n:B.n,nGin:B.nGin,k:Math.round(k),g:Math.round(g),
-      pcs:B.pcs,gpcs:B.gpcs,pct:k?Math.round(g/k*1000)/10:null});
+    const sh={},ov={};
+    Object.keys(B.pcs).forEach(c=>{const dd=Math.round(B.gpcs[c]||0)-Math.round(B.pcs[c]||0);
+      if(dd<0)sh[c]=-dd;else if(dd>0)ov[c]=dd;});
+    o.byLn.push({ln:ln,n:B.n,nGin:B.nGin,k:k,g:g,pcs:B.pcs,gpcs:B.gpcs,sh:sh,ov:ov,
+      st:(Object.keys(sh).length?"short":(Object.keys(ov).length?"over":(k?"ok":"wait"))),
+      pct:k?Math.round(g/k*1000)/10:null});
   });
   o.byLn.sort((a,b)=>b.k-a.k);
   o.ym=ym;
@@ -17138,49 +17225,113 @@ function spBalOne(v,ps){
   if(!ps)return n.toLocaleString()+" ชิ้น";
   return spCsTxt(Math.floor(n/ps),n%ps);
 }
+ 
+function spDayStat(sid,ymd){
+  const codes={};spSlipCodes(sid).forEach(c=>{codes[c.code]=1;});
+  let r;try{r=spBackDay(sid,ymd,codes,spSlipLines(sid));}catch(e){return "wait";}
+  if(r.noFile||r.noDet)return "wait";
+  let sh=0,ov=0,k=0;
+  Object.keys(r.pcs).forEach(c=>{
+    const d=Math.round(r.gpcs[c]||0)-Math.round(r.pcs[c]||0);
+    k+=Math.round(r.pcs[c]||0);
+    if(d<0)sh++;else if(d>0)ov++;});
+  return sh?"short":(ov?"over":(k?"ok":"wait"));
+}
+ 
+let _spStC={};
+function spSlipStat(sid){
+  const C=(typeof OT!=="undefined"&&OT&&OT.cache)?OT.cache:null;
+  const k=sid+"|"+((SP.back&&SP.back.v)||0)+"|"+(C?Object.keys(C).length:0);
+  if(_spStC.k===k&&_spStC.m&&_spStC.m[sid]!==undefined)return _spStC.m[sid];
+  if(_spStC.k!==k)_spStC={k:k,m:{}};
+  let v="wait";
+  try{if(spSlipCodes(sid).length)v=spBal(sid).st;}catch(e){v="wait";}
+  _spStC.m[sid]=v;
+  return v;
+}
+function spStPill(st,extra){
+  const S=SP_BST[st]||SP_BST.wait;
+  return `<span class="sp-stpill" style="border-color:${S.c};color:${S.c}">${S.i} ${S.t}${
+    extra?(" "+anaEsc(extra)):""}</span>`;
+}
 function spBalHtml(sid){
   const codes=spSlipCodes(sid);
   if(!codes.length)return "";
   const B=spBal(sid);
   spMissWant(B.months);
   const pc=v=>(v===null||v===undefined)?'<span class="psub">—</span>':(v.toFixed(1)+"%");
-  const col=v=>(v===null||v===undefined)?"var(--line)":(v>=99.95?"var(--good)":(v>=90?"var(--warn)":"var(--bad)"));
+  const col=v=>(v===null||v===undefined)?"var(--line)":(v>=99.95?"var(--good)":"var(--bad)");
   const T=(v,ps)=>spBalOne(v,ps);
-  const sumT=()=>spBalPcs(B.rows.reduce((m,r)=>{if(r.tgt!==null)m[r.code]=r.tgt;return m;},{}),B.ym);
+  const mapT=f=>spBalPcs(B.rows.reduce((m,r)=>{const v=f(r);if(v)m[r.code]=v;return m;},{}),B.ym);
   const h=[`<div class="panel sp-bal"><div class="sp-balh">🎯 ใบนี้ไปถึงไหนแล้ว
-    <span class="psub"> · ${fmtDate(B.d0)} → ${fmtDate(B.d1)} · ${B.nOrd} ใบออเดอร์</span></div>`];
+    <span class="psub"> · ${fmtDate(B.d0)} → ${fmtDate(B.d1)} · ${B.nOrd} ใบออเดอร์</span>
+    ${spStPill(B.st)}</div>`];
   h.push(`<div class="sp-balc">
     <div class="sp-balk"><div class="sp-balkt">📦 ตั้งต้นในใบ</div>
-      <div class="sp-balkv">${sumT()}</div></div>
+      <div class="sp-balkv">${mapT(r=>r.tgt)||"0"}</div></div>
     <div class="sp-balk"><div class="sp-balkt">📲 เซลล์คีย์ไปแล้ว</div>
-      <div class="sp-balkv">${spBalPcs(B.rows.reduce((m,r)=>{m[r.code]=r.k;return m;},{}),B.ym)}</div>
-      <div class="psub">${B.dist===null?"":("= "+B.dist.toFixed(1)+"% ของใบ")}</div></div>
+      <div class="sp-balkv">${mapT(r=>r.k)||"0"}</div>
+      <div class="psub">${B.nOrd} ใบ</div></div>
     <div class="sp-balk"><div class="sp-balkt">🚚 คลังจัดแล้ว (มีเลข GIN)</div>
-      <div class="sp-balkv">${spBalPcs(B.rows.reduce((m,r)=>{m[r.code]=r.g;return m;},{}),B.ym)}</div>
+      <div class="sp-balkv">${mapT(r=>r.g)||"0"}</div>
       <div class="psub">${B.nGin} จาก ${B.nOrd} ใบ</div></div>
-    <div class="sp-balk"><div class="sp-balkt">⏳ เหลือต้องกระจาย</div>
-      <div class="sp-balkv">${spBalPcs(B.rows.reduce((m,r)=>{if(r.left)m[r.code]=r.left;return m;},{}),B.ym)||"0"}</div></div>
+    <div class="sp-balk" style="border-color:${B.short?"var(--bad)":(B.overG?"var(--warn)":"var(--good)")}">
+      <div class="sp-balkt">${B.short?"🔴 ขาด (คลังยังจัดไม่ครบ)":(B.overG?"🟠 เกิน (ต้องหักออก)":"🟢 ผลต่าง")}</div>
+      <div class="sp-balkv" style="color:${B.short?"var(--bad)":(B.overG?"var(--warn)":"var(--good)")}">${
+        B.short?spBalPcs(B.sh,B.ym):(B.overG?spBalPcs(B.ov,B.ym):"ครบ")}</div></div>
     <div class="sp-balk" style="border-color:${col(B.pct)}"><div class="sp-balkt">✅ ตรงกับคลังจัด</div>
       <div class="sp-balkv" style="color:${col(B.pct)}">${pc(B.pct)}</div>
       <div class="psub">${B.pct===null?"รอไฟล์":(B.pct>=99.95?"ครบ 100%":("ขาดตกหล่น "+(100-B.pct).toFixed(1)+"%"))}</div></div>
   </div>`);
+   
+  const todoK=B.rows.filter(r=>r.toKey>0).sort((a,b)=>b.toKey-a.toKey);
+  const todoS=B.rows.filter(r=>r.d<0).sort((a,b)=>a.d-b.d);
+  const todoO=B.rows.filter(r=>r.d>0).sort((a,b)=>b.d-a.d);
+  if(todoK.length||todoS.length||todoO.length){
+    h.push(`<div class="sp-baltd"><div class="sp-baltdh">📋 ต้องทำอะไรต่อ</div>`);
+    if(todoS.length)h.push(`<div class="sp-baltdg bad"><b>🔴 ขาด — คลังยังจัดไม่ครบตามที่เซลล์คีย์
+      รวม ${spBalPcs(B.sh,B.ym)}</b>${todoS.map(r=>
+      `<div class="sp-baltdr"><span>${anaEsc(r.nm||r.code)}</span>
+        <b>ขาด ${T(-r.d,r.ps)}</b></div>`).join("")}</div>`);
+    if(todoO.length)h.push(`<div class="sp-baltdg warn"><b>🟠 เกิน — ต้องหักลบออก
+      รวม ${spBalPcs(B.ov,B.ym)}</b>${todoO.map(r=>
+      `<div class="sp-baltdr"><span>${anaEsc(r.nm||r.code)}</span>
+        <b>เกิน ${T(r.d,r.ps)}</b></div>`).join("")}</div>`);
+    if(todoK.length)h.push(`<div class="sp-baltdg"><b>📲 ต้องคีย์เพิ่มให้ครบตั้งต้นในใบ
+      รวม ${spBalPcs(B.tk,B.ym)}</b>${todoK.map(r=>
+      `<div class="sp-baltdr"><span>${anaEsc(r.nm||r.code)}</span>
+        <b>อีก ${T(r.toKey,r.ps)}</b></div>`).join("")}</div>`);
+    h.push(`</div>`);
+  }else if(B.keyed){
+    h.push(`<div class="sp-baltd"><div class="sp-baltdg ok"><b>🟢 ครบทุกรายการ —
+      เซลล์คีย์ตรงกับคลังจัดถึงหน่วยชิ้น และคีย์ครบตั้งต้นในใบแล้ว</b></div></div>`);
+  }
   const w=[];
   if(B.nofile)w.push("ยังไม่มีไฟล์ของ "+B.nofile+" วัน — วันพวกนั้นยังตอบไม่ได้ ไม่ใช่ว่าไม่มีงาน");
   if(B.noDet)w.push("ยังไม่ได้อ่านรายการสินค้าของ "+B.noDet+" วัน (ระบบกำลังดึงให้)");
-  if(B.over)w.push("คีย์เกินตั้งต้นในใบ "+spBalPcs(B.rows.reduce((m,r)=>{if(r.over)m[r.code]=r.over;return m;},{}),B.ym));
+  if(B.overT)w.push("คีย์เกินตั้งต้นในใบ "+spBalPcs(B.ot,B.ym)+" — ตั้งต้นเป็นข้อมูลประกอบ ไม่ได้ใช้ตัดสินว่าครบ");
+  if(B.srcChk&&B.srcGin)w.push("คลังจัด: "+B.srcChk+" วันอ่านจากผลตรวจของแอดมิน (จำนวนที่คลังจัดจริง) · "+
+    B.srcGin+" วันยังไม่ตรวจ จึงนับจากใบที่ออกเลข GIN แล้ว");
   if(B.unk.length||B.noPs.length)w.push("ไม่รู้ขนาดลัง "+
     [].concat(B.unk,B.noPs).filter((x,i,a)=>a.indexOf(x)===i).length+" รหัส — นับเป็นชิ้นไว้ ไม่เดาขนาด");
   if(w.length)h.push(`<div class="warnbox sp-balw">${w.map(x=>"• "+x).join("<br>")}</div>`);
   h.push(`<div class="tblwrap"><table class="sp-balt"><thead><tr>
-    <th>สินค้า</th><th>ตั้งต้นในใบ</th><th>เซลล์คีย์</th><th>คลังจัด</th><th>เหลือ</th><th>ตรง</th>
+    <th>สินค้า</th><th>ตั้งต้นในใบ</th><th>เซลล์คีย์</th><th>คลังจัด</th><th>ผลต่าง</th><th>ตรง</th>
     </tr></thead><tbody>`);
   B.rows.forEach(r=>{
-    h.push(`<tr><td data-l="สินค้า"><b>${anaEsc(r.nm||r.code)}</b>
+    const S=SP_BST[r.st]||SP_BST.wait;
+    const diff=(r.st==="ok")?`<span class="sp-ok">🟢 ครบ</span>`
+      :(r.st==="wait")?'<span class="psub">—</span>'
+      :`<b style="color:${S.c}">${S.i} ${S.t} ${T(Math.abs(r.d),r.ps)}${
+         r.st==="over"?" (หักออก)":""}</b>`;
+    h.push(`<tr class="sp-balr ${anaEsc(r.st)}"><td data-l="สินค้า"><b>${anaEsc(r.nm||r.code)}</b>
         <span class="psub">${anaEsc(r.code)}</span></td>
-      <td data-l="ตั้งต้นในใบ">${r.tgt===null?'<span class="psub">?</span>':T(r.tgt,r.ps)}</td>
+      <td data-l="ตั้งต้นในใบ">${r.tgt===null?'<span class="psub">?</span>':T(r.tgt,r.ps)}${
+        r.toKey?`<span class="psub">ต้องคีย์อีก ${T(r.toKey,r.ps)}</span>`
+        :(r.overT?`<span class="psub">คีย์เกิน ${T(r.overT,r.ps)}</span>`:"")}</td>
       <td data-l="เซลล์คีย์">${T(r.k,r.ps)}</td>
       <td data-l="คลังจัด">${T(r.g,r.ps)}</td>
-      <td data-l="เหลือ">${r.tgt===null?'<span class="psub">?</span>':(r.left?T(r.left,r.ps):'<span class="sp-ok">ครบ</span>')}</td>
+      <td data-l="ผลต่าง">${diff}</td>
       <td data-l="ตรง" style="color:${col(r.pct)};font-weight:800">${pc(r.pct)}</td></tr>`);
   });
   h.push(`</tbody></table></div>`);
@@ -17190,15 +17341,17 @@ function spBalHtml(sid){
     h.push(`<div class="sp-ballnh">📲 เซลล์คีย์ไปแล้ว ${me?("สาย "+anaEsc(me)):"รายสาย"}</div>
       <div class="sp-ballns">`);
     lns.forEach(x=>{
-      h.push(`<div class="sp-balln"><b>${anaEsc(x.ln)}</b>
+      const S=SP_BST[x.st]||SP_BST.wait;
+      h.push(`<div class="sp-balln" style="border-color:${S.c}"><b>${anaEsc(x.ln)}</b>
         <span>${spBalPcs(x.pcs,B.ym)}</span>
         <span class="psub">${x.n} ใบ · คลังจัด ${x.nGin}</span>
-        <span style="color:${col(x.pct)};font-weight:800">${pc(x.pct)}</span></div>`);
+        <span style="color:${S.c};font-weight:800">${S.i} ${S.t}${
+          x.st==="short"?(" "+spBalPcs(x.sh,B.ym)):(x.st==="over"?(" "+spBalPcs(x.ov,B.ym)):"")}</span></div>`);
     });
     h.push(`</div>`);
   }
-  h.push(`<div class="psub sp-balft">จับออเดอร์เข้าใบนี้ด้วย <b>รหัสสินค้าของใบ</b> ·
-    <b>คลังจัด</b> นับใบที่คลังออกเลข GIN ให้แล้ว · ส่วนที่ยังไม่ออก GIN คือส่วนที่ยังไม่ตรง</div></div>`);
+  h.push(`<div class="psub sp-balft">สีของแถวตัดสินจาก <b>เซลล์คีย์ เทียบกับ คลังจัด ถึงหน่วยชิ้น</b> ·
+    <b>คลังจัด</b> นับใบที่คลังออกเลข GIN ให้แล้ว · <b>ตั้งต้นในใบ</b> เป็นข้อมูลประกอบ</div></div>`);
   return h.join("");
 }
  
