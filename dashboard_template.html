@@ -73,7 +73,9 @@ main{max-width:1180px;margin:0 auto;padding:22px}
   display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;margin-bottom:20px}
 .ctl{display:flex;flex-direction:column;gap:6px}
 .ctl label{font-size:12px;font-weight:600;color:var(--muted)}
-.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
+/* 🖱 แถวปุ่มสลับ — ตกบรรทัดเสมอ ไม่เลื่อนซ้ายขวา (เหตุผลเดียวกับ .tabs ดูคอมเมนต์ที่นั่น:
+   คอมวินโดวส์ไม่มีแทร็กแพด และ html{overflow-x:hidden} จะตัดส่วนที่เลยจอทิ้งไปเลย) */
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
 .seg button{border:none;background:none;padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;color:var(--muted)}
 .seg button.on{background:var(--blue);color:#fff}
 /* ปุ่มที่กดไม่ได้เพราะไฟล์ไม่มีข้อมูลนั้น ต้องดู "กดไม่ได้" ออก ไม่ใช่กดแล้วเงียบ */
@@ -1130,11 +1132,28 @@ main.wide{max-width:1560px}
 #orderDrop table td:first-child,#orderRecv table td:first-child{font-variant-numeric:tabular-nums;color:var(--muted)}
 
 /* tabs */
-/* The tab strip is wider than a phone. It must scroll INSIDE itself — otherwise the whole
-   page scrolls sideways and every heading below gets cut off at the left edge. */
-.tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:2px solid var(--line);
-  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
+/* 🖱 แถวแท็บ **ขึ้นบรรทัดใหม่ ไม่ใช่เลื่อนซ้ายขวา** — เจ้าของสั่ง 29 พ.ย. 69:
+   *"เป็นเรื่องสำคัญมากเวลาทำอินเตอร์เฟส ให้คนในคอมใช้ ส่วนใหญ่เค้าใช้วินโดวส์ไม่มีแทร็กแพด
+     เขาเลื่อนซ้ายขวาเหมือนที่ผมใช้ไม่ได้ ผมใช้แมค M1"*
+
+   ของเดิมเป็น `overflow-x:auto` **บวกกับซ่อนแถบเลื่อน** (`scrollbar-width:none`) ซึ่งบนวินโดวส์
+   + เมาส์ธรรมดาแปลว่า **ไม่มีทางเลื่อนได้เลย**: ไม่มีแถบให้ลาก ล้อเมาส์เลื่อนได้แต่แนวตั้ง และ
+   ไม่มีแทร็กแพดให้ปัดสองนิ้ว ⇒ หมวดที่เลยขอบขวาไป "ไม่มีอยู่จริง" สำหรับคนใช้คอม
+   บนแมค/มือถือมันเลื่อนได้ จึงไม่มีใครเห็นปัญหานี้ตอนทำ
+
+   📐 วัดของเดิมจริงก่อนแก้ (แถว 12 หมวดแบบแบนราบ): แถวต้องการ **1,705px ในกรอบ 1,136px**
+      ⇒ **4 หมวดอยู่เลยขอบขวา** — 📋 สถานะออเดอร์ (ขาย) · 📦 ออเดอร์พิเศษ · 🗓 ปฏิทินงาน ·
+      🏪 ร้านใหม่ของฉัน — ตัวสุดท้ายเลยไป **569px** และ `elementFromPoint` กลางปุ่มได้ค่าว่าง
+      คือ "ไม่มีอะไรอยู่ที่นั่น" จริง ๆ ไม่ใช่แค่กดยาก
+      ⚠️ **จอใหญ่กว่าก็ไม่ช่วย** — กรอบหน้าเว็บมีเพดานกว้าง จอ 1512px วัดได้เท่ากันทุกตัวเลข
+      บนมือถือ 390px หนักกว่า: 9 จาก 12 หมวดเข้าไม่ถึง
+
+   `flex-wrap:wrap` แก้ให้ทุกอุปกรณ์พร้อมกัน: แถวยาวเกินก็ตกบรรทัด ไม่มีอะไรถูกตัดหาย และ
+   หน้าเว็บก็ยังเลื่อนออกด้านข้างไม่ได้เหมือนเดิม (ซึ่งเป็นเหตุผลเดิมที่ต้องมี overflow)
+   ⚠️ กฎนี้ใช้กับ **ทุกแถวที่ซ่อนแถบเลื่อน** ห้ามเขียน `scrollbar-width:none` คู่กับ
+      `overflow-x:auto` อีก · ตาราง (.tblwrap/.cst-tw) ไม่ได้ซ่อนแถบเลื่อน จึงลากด้วยเมาส์ได้ตามปกติ */
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;
+  border-bottom:2px solid var(--line)}
 .tab{background:none;border:none;padding:11px 18px;font-size:15px;font-weight:700;color:var(--muted);
   border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;flex:0 0 auto}
 .tab.on{color:var(--blue);border-bottom-color:var(--blue)}
@@ -1162,10 +1181,8 @@ main.wide{max-width:1560px}
 }
 /* แถวแท็บย่อย — ทำเป็นปุ่มกลมบนพื้นอ่อน ไม่ให้ดูเหมือนแท็บหลักสองแถวซ้อนกัน
    กลุ่มที่มีหน้าเดียวจะไม่ขึ้นแถวนี้เลย (ดู renderTabs) */
-.tabs2{display:flex;gap:4px;margin:-8px 0 16px;padding:5px;background:var(--bg);
-  border:1px solid var(--line);border-radius:11px;
-  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.tabs2::-webkit-scrollbar{display:none}
+.tabs2{display:flex;flex-wrap:wrap;gap:4px;margin:-8px 0 16px;padding:5px;background:var(--bg);
+  border:1px solid var(--line);border-radius:11px}
 /* แถบแท็บของใบออเดอร์พิเศษ อยู่บนสุดของหน้าเหมือนแท็บย่อยหมวดอื่น จึงใช้ระยะเดียวกับ .tabs2
    เจ้าของสั่ง 26 พ.ย. 69: *"เอากรอบในนั้นขยับขึ้นมาอยู่ด้านบนให้เห็นชัดชัด"* — เดิมอยู่ใต้การ์ดใบ
    ต้องเลื่อนจอลงไปหา ทั้งที่เป็นปุ่มที่พนักงานทุกฝ่ายต้องกดเป็นอย่างแรก */
@@ -1658,7 +1675,6 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
   main{padding:12px 10px}
   .controls{padding:12px;gap:12px}
   .ctl select,.seg{width:100%}
-  .seg{overflow-x:auto}
   .tab{padding:10px 14px;font-size:14px}
   .cards{gap:10px}
   .card .v{font-size:22px}
@@ -3973,9 +3989,21 @@ function tabSupOf(gk){
  *   พอแบ่งเป็นปุ่มใหญ่ เว็บแอดมินเหลือ 3 ปุ่ม (ซื้อเข้า/ขายออก/อื่น ๆ) แถวละ 2-3 หมวด เห็นครบในจอ
  *   ส่วน **เว็บของทีมขาย** ยังรอถึง 1 ธ.ค. 69 ตามที่สั่งไว้ เพราะที่นั่นคือคนใช้งานจริงทุกวัน */
 const TAB_SUP_FROM="2026-12-01";
+/* 🖱 29 พ.ย. 69 — เปิดปุ่มใหญ่ให้ **ทุกบัญชี role manager** (เจ้าของ + แอดมิน 1-4) ทันที
+ *   เจ้าของแจ้งว่าแอดมินเปิด "เว็บหลัก" แล้วหัวข้อยังเป็นแถวเดิม 12 หมวด และกดไปหมวดขวา ๆ ไม่ได้:
+ *   *"ทำไมในเวปแอดมิน หัวข้อมันยังเป็นแบบเดิม ผมเปิดจากเครื่องผมมันเปลี่ยนแล้ว … เป็นเรื่องสำคัญมาก
+ *     เวลาทำอินเตอร์เฟส ให้คนในคอมใช้ ส่วนใหญ่เค้าใช้วินโดวส์ไม่มีแทร็กแพด เขาเลื่อนซ้ายขวาเหมือนที่
+ *     ผมใช้ไม่ได้ ผมใช้แมค M1 … แก้ส่วนนี้ด่วนเลย ผมจะให้แอดมินทำงานต่อ"*
+ *
+ * 🔍 **ไม่ใช่ปัญหา cache** — ของเดิม `bdOwner()` ผ่านเฉพาะ id `manager` (เครื่องเจ้าของ)
+ *    แอดมิน 1-4 เป็น role manager แต่ id คนละตัว จึงตกไปที่ประตูวันที่ `TAB_SUP_FROM`
+ *    รีเฟรชกี่รอบก็เหมือนเดิม เพราะไม่ได้ขึ้นกับไฟล์ที่โหลดมา (กฎเดียวกับที่เจอตอน /admin 28 พ.ย.)
+ * ⚠️ ฝั่งเซลล์ / ซุป / ทีมคลัง-สายส่ง **ยังเป็นแถวเดิมถึง 1 ธ.ค.** ตามที่เจ้าของสั่งไว้เอง 27 พ.ย.
+ *    (*"เพื่อไม่ให้คนใช้งานจริงงง"*) — แต่แถวนั้น **ขึ้นบรรทัดใหม่แทนการเลื่อน** แล้ว (ดู .tabs ใน CSS)
+ *    จึงไม่มีหมวดไหนเข้าไม่ถึงอีก ไม่ว่าจะใช้เมาส์ แทร็กแพด หรือนิ้ว */
 function tabSupOn(){
   if(typeof BD_SITE!=="undefined"&&BD_SITE==="admin")return true;
-  if(typeof bdOwner==="function"&&bdOwner())return true;
+  if(((S&&S.user)||{}).role==="manager")return true;      /* เจ้าของ + แอดมิน 1-4 */
   try{return ymdOf(new Date())>=TAB_SUP_FROM;}catch(e){return false;}
 }
 function renderTabs(){

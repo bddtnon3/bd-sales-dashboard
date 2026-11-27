@@ -72,7 +72,8 @@ main{max-width:1180px;margin:0 auto;padding:22px}
   display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;margin-bottom:20px}
 .ctl{display:flex;flex-direction:column;gap:6px}
 .ctl label{font-size:12px;font-weight:600;color:var(--muted)}
-.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
+ 
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
 .seg button{border:none;background:none;padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;color:var(--muted)}
 .seg button.on{background:var(--blue);color:#fff}
  
@@ -1029,9 +1030,8 @@ main.wide{max-width:1560px}
 
  
  
-.tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:2px solid var(--line);
-  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;
+  border-bottom:2px solid var(--line)}
 .tab{background:none;border:none;padding:11px 18px;font-size:15px;font-weight:700;color:var(--muted);
   border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;flex:0 0 auto}
 .tab.on{color:var(--blue);border-bottom-color:var(--blue)}
@@ -1054,10 +1054,8 @@ main.wide{max-width:1560px}
   .tabs-sup{grid-template-columns:1fr}
 }
  
-.tabs2{display:flex;gap:4px;margin:-8px 0 16px;padding:5px;background:var(--bg);
-  border:1px solid var(--line);border-radius:11px;
-  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.tabs2::-webkit-scrollbar{display:none}
+.tabs2{display:flex;flex-wrap:wrap;gap:4px;margin:-8px 0 16px;padding:5px;background:var(--bg);
+  border:1px solid var(--line);border-radius:11px}
  
 .sp-tabs{margin:-8px 0 14px}
  
@@ -1515,7 +1513,6 @@ tbody tr:hover #stTbl td:first-child{background:var(--bg)}
   main{padding:12px 10px}
   .controls{padding:12px;gap:12px}
   .ctl select,.seg{width:100%}
-  .seg{overflow-x:auto}
   .tab{padding:10px 14px;font-size:14px}
   .cards{gap:10px}
   .card .v{font-size:22px}
@@ -3560,9 +3557,10 @@ function tabSupOf(gk){
 }
  
 const TAB_SUP_FROM="2026-12-01";
+ 
 function tabSupOn(){
   if(typeof BD_SITE!=="undefined"&&BD_SITE==="admin")return true;
-  if(typeof bdOwner==="function"&&bdOwner())return true;
+  if(((S&&S.user)||{}).role==="manager")return true;       
   try{return ymdOf(new Date())>=TAB_SUP_FROM;}catch(e){return false;}
 }
 function renderTabs(){

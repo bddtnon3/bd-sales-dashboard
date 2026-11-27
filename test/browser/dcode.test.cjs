@@ -234,12 +234,20 @@ const STATE=`JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYT
    window.ymdOf=R;S.user={id:'manager',role:'manager',name:'ผู้จัดการ'};renderTabs();
    out.from=TAB_SUP_FROM;return out;});
  t('⏳ วันเริ่มใช้ปุ่มใหญ่กับทุกคนคือ 1 ธ.ค. 2026',gateD.from==='2026-12-01',gateD.from);
- t('⏳ ก่อนวันนั้น เซลล์ · ซุป · แอดมิน ยังเห็นแถวหมวดแบนราบแบบเดิม (ไม่มีแถวปุ่มใหญ่)',
-   gateD.beforeAdmin.sup===''&&gateD.beforeSales.sup===''&&gateD.beforeSup.sup===''
-   &&gateD.beforeAdmin.row===12,
-   JSON.stringify([gateD.beforeAdmin,gateD.beforeSales,gateD.beforeSup]));
- t('⏳ ...แต่เจ้าของเห็นแบบใหม่ได้เลย (เป็นคนตรวจงานเอง)',
-   gateD.beforeOwner.sup==='buy,sell,field,etc',gateD.beforeOwner.sup);
+ t('⏳ ก่อนวันนั้น เซลล์ · ซุป ยังเห็นแถวหมวดแบนราบครบทุกหมวดแบบเดิม (ไม่มีแถวปุ่มใหญ่)',
+   gateD.beforeSales.sup===''&&gateD.beforeSup.sup===''&&gateD.beforeSales.row===12,
+   JSON.stringify([gateD.beforeSales,gateD.beforeSup]));
+ /* 🖱 29 พ.ย. 69 — แอดมิน 1-4 ย้ายมาอยู่ฝั่งเดียวกับเจ้าของ (ทุกบัญชี role manager)
+    เจ้าของแจ้งว่าแอดมินเปิดเว็บหลักในคอมวินโดวส์แล้วยังเป็นแถวเดิม และกดหมวดขวา ๆ ไม่ได้เลย
+    *"ส่วนใหญ่เค้าใช้วินโดวส์ไม่มีแทร็กแพด เขาเลื่อนซ้ายขวาเหมือนที่ผมใช้ไม่ได้ ผมใช้แมค M1"*
+    วัดของเดิม: แถว 12 หมวดต้องการ 1,705px ในกรอบ 1,136px ⇒ 4 หมวดสุดท้ายอยู่เลยขอบขวา
+    (ตัวสุดท้ายเลยไป 569px) และ `elementFromPoint` กลางปุ่มได้ค่าว่าง = กดไม่โดนจริง
+    ⚠️ ฝั่งเซลล์/ซุป ยังรอ 1 ธ.ค. ตามที่เจ้าของสั่งเอง แต่แถวนั้นตกบรรทัดแล้ว (ดู layout.test.cjs) */
+ t('🖱 ...แต่เจ้าของ "และแอดมิน 1-4" เห็นปุ่มใหญ่ได้เลย ไม่ต้องรอ 1 ธ.ค.',
+   gateD.beforeOwner.sup==='buy,sell,field,etc'&&
+   gateD.beforeAdmin.sup==='buy,sell,field,etc'&&gateD.beforeAdmin.row<12,
+   'เจ้าของ '+gateD.beforeOwner.sup+' · แอดมิน '+gateD.beforeAdmin.sup+
+   ' ('+gateD.beforeAdmin.row+' หมวดในแถวถัดมา)');
  /* เช็กนี้อยู่บนเว็บเดิม (index.html) แอดมิน 1 เป็น role manager จึงเห็นครบทั้ง 4 ปุ่ม
     และแถวถัดมาเหลือเฉพาะหมวดของปุ่มที่เปิดอยู่ (น้อยกว่า 12 แน่นอน) */
  t('⏳ พอถึง 1 ธ.ค. ทุกคนได้ปุ่มใหญ่เอง ไม่ต้องแก้โค้ดอีก',

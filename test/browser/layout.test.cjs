@@ -142,6 +142,83 @@ const B1='B20261118-01';
   await ctx.close();
  }
 
+ /* ---------- 3) แถวแท็บต้องกดได้ครบทุกปุ่ม ไม่มีอะไรเลยขอบขวา ----------
+    เจ้าของแจ้ง 29 พ.ย. 69 ว่าแอดมินเปิดเว็บหลักในคอมวินโดวส์แล้วหัวข้อยังเป็นแถวเดิม
+    และกดหมวดขวา ๆ ไม่ได้: *"ส่วนใหญ่เค้าใช้วินโดวส์ไม่มีแทร็กแพด เขาเลื่อนซ้ายขวา
+    เหมือนที่ผมใช้ไม่ได้ ผมใช้แมค M1"*
+    สองเหตุแยกกัน และเช็กทั้งสอง:
+      ① ประตูวันที่ — แอดมิน 1-4 เป็น role manager แต่ id ไม่ใช่ `manager` จึงไม่ได้ปุ่มใหญ่
+      ② CSS — `overflow-x:auto` + ซ่อนแถบเลื่อน = เมาส์ธรรมดาเลื่อนไม่ได้เลย
+    วัดจริง: ทุกปุ่มต้องอยู่ในกรอบแถว (ไม่มีปุ่มไหน right เลยขอบ) และ `elementFromPoint`
+    กลางปุ่มสุดท้ายต้องได้ปุ่มนั้น ไม่ใช่สิ่งที่อยู่ข้างหลัง */
+ {
+  const WHO={
+    owner:{id:'manager',role:'manager',name:'ผู้จัดการ'},
+    admin:{id:'admin1', role:'manager',name:'แอดมิน 1'},
+    sales:{id:'209611', role:'sales',  name:'CT11',code:'2096_11'}};
+  for(const [w,h,dev] of [[1280,950,'คอม 1280'],[1100,820,'คอมแคบ 1100'],[390,780,'มือถือ 390']]){
+   const ctx=await b.newContext({viewport:{width:w,height:h},timezoneId:'Asia/Bangkok'});
+   const pg=await ctx.newPage();
+   const errs=[];pg.on('pageerror',e=>errs.push(String(e)));
+   await pg.route(ORIGIN+'**',r=>r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}));
+   await pg.goto(ORIGIN,{waitUntil:'domcontentloaded'});
+   const got=await pg.evaluate(W=>{
+     document.getElementById('login').classList.add('hidden');
+     document.getElementById('app').classList.remove('hidden');
+     window.ulog=()=>{};window.syncToServer=()=>{};window.plBadge=()=>{};
+     const out={};
+     Object.keys(W).forEach(k=>{
+       S.user=W[k];CURTAB='sales';renderTabs();
+       const rows={};
+       [['sup','tabSup'],['top','tabTop'],['sub','tabSub']].forEach(([nm,id])=>{
+         const el=document.getElementById(id);
+         const btns=el?[...el.children]:[];
+         if(!el||!btns.length||getComputedStyle(el).display==='none'){rows[nm]={n:0};return;}
+         const R=el.getBoundingClientRect(),cs=getComputedStyle(el);
+         /* ปุ่มที่ยื่นเลยขอบขวาของแถว = มองไม่เห็น/กดไม่โดนบนคอมวินโดวส์ */
+         const over=btns.filter(x=>x.getBoundingClientRect().right>R.right+1).length;
+         /* กี่บรรทัด — ถ้าตกบรรทัดจริงจะมีค่า top หลายค่า */
+         const lines=new Set(btns.map(x=>Math.round(x.getBoundingClientRect().top))).size;
+         const last=btns[btns.length-1].getBoundingClientRect();
+         const hit=document.elementFromPoint(Math.round(last.left+last.width/2),
+                                             Math.round(last.top+last.height/2));
+         rows[nm]={n:btns.length,over:over,lines:lines,
+           clip:el.scrollWidth-el.clientWidth,ox:cs.overflowX,
+           hit:!!(hit&&(hit===btns[btns.length-1]||btns[btns.length-1].contains(hit))),
+           hitTag:hit?(hit.tagName+'.'+String(hit.className).slice(0,22)):'-'};
+       });
+       out[k]={rows:rows,doc:document.documentElement.scrollWidth,win:innerWidth};
+     });
+     return out;},WHO);
+   const pre=dev+': ';
+   ['owner','admin','sales'].forEach(k=>{
+     const g=got[k],names={owner:'เจ้าของ',admin:'แอดมิน 1',sales:'เซลล์ CT11'};
+     const live=Object.keys(g.rows).filter(r=>g.rows[r].n);
+     t(pre+'🖱 '+names[k]+' — ทุกปุ่มหมวดอยู่ในกรอบ ไม่มีปุ่มไหนเลยขอบขวา',
+       live.every(r=>g.rows[r].over===0),
+       live.map(r=>r+':'+g.rows[r].over+'/'+g.rows[r].n+' ปุ่ม '+g.rows[r].lines+' บรรทัด').join(' · '));
+     t(pre+'...แถวแท็บไม่ได้ซ่อนเนื้อหาไว้ด้านข้าง (ไม่ใช่ overflow-x:auto)',
+       live.every(r=>g.rows[r].clip<=1&&g.rows[r].ox!=='auto'&&g.rows[r].ox!=='scroll'),
+       live.map(r=>r+':clip '+g.rows[r].clip+' ox='+g.rows[r].ox).join(' · '));
+     t(pre+'...กดปุ่มหมวดสุดท้ายโดนจริง (elementFromPoint)',
+       live.every(r=>g.rows[r].hit),
+       live.map(r=>r+':'+(g.rows[r].hit?'ok':g.rows[r].hitTag)).join(' · '));
+     t(pre+'...หน้าเว็บไม่กว้างเกินจอ',g.doc<=g.win,g.doc+'/'+g.win);
+   });
+   /* ประตูวันที่: แอดมินต้องได้ปุ่มใหญ่เหมือนเจ้าของ (ไม่ต้องรอ 1 ธ.ค.) */
+   t(pre+'🗂 แอดมิน 1 เห็นปุ่มใหญ่ 4 ปุ่มเหมือนเจ้าของ (ไม่ติดประตูวันที่)',
+     got.admin.rows.sup.n>=2&&got.admin.rows.sup.n===got.owner.rows.sup.n,
+     'แอดมิน '+got.admin.rows.sup.n+' · เจ้าของ '+got.owner.rows.sup.n);
+   /* ฝั่งเซลล์ยังเป็นแถวแบนราบถึง 1 ธ.ค. ตามที่เจ้าของสั่งเอง — แต่ต้องตกบรรทัด ไม่ใช่ถูกตัด */
+   t(pre+'⏳ เซลล์ยังเห็นแถวหมวดแบบเดิม (รอ 1 ธ.ค.) แต่ขึ้นครบทุกหมวด',
+     !got.sales.rows.sup.n&&got.sales.rows.top.n>=8&&got.sales.rows.top.over===0,
+     'ปุ่มใหญ่ '+got.sales.rows.sup.n+' · หมวด '+got.sales.rows.top.n+
+     ' ปุ่ม '+got.sales.rows.top.lines+' บรรทัด · เลยขอบ '+got.sales.rows.top.over);
+   t(pre+'ไม่มี error ตอนวาดแถบแท็บ',errs.length===0,errs.join(' | '));
+   await ctx.close();
+  }
+ }
+
  await b.close();
  let bad=0;A.forEach(([ok,n,x])=>{if(!ok)bad++;console.log((ok?'  ✓ ':'  ✗ FAIL: ')+n+(x?' → '+x:''));});
  console.log(bad?('\n'+bad+' FAILED of '+A.length):('\nALL PASS ('+A.length+' checks)'));

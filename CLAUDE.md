@@ -763,19 +763,47 @@ code, never printed.
   `#planBadge2` (the group), or outstanding work would be hidden one level down.
   📱 On a phone the row is a **2×2 grid, not a scrolling strip** — measured at 390px, the fourth
   button sat half off the right edge, and this is the top level of the whole site's navigation.
-  **⏳ It does not reach the team until 1 Dec 26** (`TAB_SUP_FROM`/`tabSupOn`, owner 27 Nov 26:
-  *"เพื่อไม่ให้คนใช้งานจริงงง ช่วยปรับของฝั่งเซลล์ ซุป แอดมิน ให้กลายเป็นหมวดย่อยตามเดิมไปก่อน
-  เดี๋ยวค่อยปรับใหม่เป็นแบบที่เราทำกัน (1st 2nd หน้างาน อื่นๆ) วันที่ 1 ธค.2026 แทน"*). Until that
-  date a rep, the supervisor, the admins and the team roles get the **old flat row of all 12
-  groups**; only **`bdOwner()`** sees the buckets, because he is the one reviewing them. On 1 Dec
-  it switches on for everyone with no code change.
+  **🖱 NO TAB ROW ANYWHERE MAY SCROLL SIDEWAYS — it wraps** (`.tabs`/`.tabs2`/`.seg` are
+  `flex-wrap:wrap`, owner 29 Nov 26 after an admin could not reach the right-hand groups on a
+  Windows desktop: *"เป็นเรื่องสำคัญมากเวลาทำอินเตอร์เฟส ให้คนในคอมใช้ ส่วนใหญ่เค้าใช้วินโดวส์
+  ไม่มีแทร็กแพด เขาเลื่อนซ้ายขวาเหมือนที่ผมใช้ไม่ได้ ผมใช้แมค M1"*). All three rows used to pair
+  `overflow-x:auto` with a **hidden scrollbar** (`scrollbar-width:none` +
+  `::-webkit-scrollbar{display:none}`), which on Windows with a plain mouse means there is **no way
+  to scroll at all**: no bar to drag, the wheel only moves vertically, no two-finger swipe. It works
+  on a Mac and on a phone, which is why nobody saw it. Measured on the flat 12-group row before the
+  fix: it needs **1,705px inside a 1,136px box**, so **4 groups sat past the right edge**
+  (📋 สถานะออเดอร์ (ขาย) · 📦 ออเดอร์พิเศษ · 🗓 ปฏิทินงาน · 🏪 ร้านใหม่ของฉัน), the last one
+  **569px** past it, and `elementFromPoint` at its centre returned **nothing** — genuinely absent,
+  not merely awkward. **A bigger monitor does not help**: the page frame is capped, so 1512px
+  measures identically; at 390px 9 of 12 were unreachable. `html{overflow-x:hidden}` is what the
+  `overflow-x` was there for, and wrapping removes the need for it. **Never write
+  `scrollbar-width:none` beside `overflow-x:auto` again.** Tables (`.tblwrap`/`.cst-tw`/`.dci-bars`)
+  keep their native scrollbar and so are draggable with a mouse — they are the exception, not the
+  pattern. `layout.test.cjs` now asserts, for the owner, an admin and a rep at 1280 / 1100 / 390px,
+  that every tab button is inside its row, that `overflow-x` is not `auto`, and that
+  `elementFromPoint` on the last button hits that button.
+  **⏳ It does not reach the SALES SIDE until 1 Dec 26** (`TAB_SUP_FROM`/`tabSupOn`, owner
+  27 Nov 26: *"เพื่อไม่ให้คนใช้งานจริงงง ช่วยปรับของฝั่งเซลล์ ซุป แอดมิน ให้กลายเป็นหมวดย่อยตามเดิม
+  ไปก่อน เดี๋ยวค่อยปรับใหม่เป็นแบบที่เราทำกัน (1st 2nd หน้างาน อื่นๆ) วันที่ 1 ธค.2026 แทน"*). Until
+  that date a rep, the supervisor and the team roles get the **old flat row of all 12 groups** —
+  which now wraps, so nothing is out of reach either way. On 1 Dec it switches on for them with no
+  code change.
+  **⚠️ The admins were moved off that gate on 29 Nov 26 — every `role:"manager"` account now gets
+  the buckets at once**, not just `bdOwner()`. The owner opened the main site on an admin's Windows
+  machine and found the old row still there: *"ทำไมในเวปแอดมิน หัวข้อมันยังเป็นแบบเดิม ผมเปิดจาก
+  เครื่องผมมันเปลี่ยนแล้ว แต่ไปเปิดเครื่องแอดมิน Refresh หลายรอบ ก็ยังไม่เปลี่ยน … แก้ส่วนนี้ด่วนเลย
+  ผมจะให้แอดมินทำงานต่อ"*. **It was never a cache problem** and saying so was important: `bdOwner()`
+  admits role `manager` **and** id `manager`, so admin1–4 fell through to the date gate and no number
+  of refreshes could change that. This is the same lesson as `/admin` the day before — **`bdOwner`
+  is for the owner's own reports, never for the admins' routine work** (see the 🧑 section). The
+  four of them are the people reviewing these pages with him, so the gate is now `role==="manager"`.
   **⚠️ The ADMIN SITE is exempt and already uses the buckets** — the owner found the reason himself
   the next day: *"เข้าหน้าเวปแอดมิน แล้วมันคลิ๊กเลื่อนหมวดไปออเดอร์พิเศษไม่ได้ ช่วยปับให้เฉพาะฝั่ง
   แอดมิน แบ่งแยกหมวดแบบ manager ได้เลย"*. Measured at 390px: `/admin` has **8 groups in one row,
   964px wide inside a 362px frame**, so 📦 ออเดอร์พิเศษ sat **271px past the right edge** and
   `elementFromPoint` on it returned `MAIN` — genuinely invisible and un-tappable, not just awkward.
   With the buckets the admin site is 3 buttons of 2–3 groups each and everything fits. So
-  `tabSupOn()` returns true for `BD_SITE==="admin"` as well; the sales site still waits for 1 Dec,
+  `tabSupOn()` returns true for `BD_SITE==="admin"` as well; the sales side still waits for 1 Dec,
   because that is where the whole team works every day. Three rules: this **hides the row only** — the
   whole `TAB_SUPERS` table, `tabSupOf` and `switchSuper` are untouched, the same way retiring a
   feature only removes its line from a table; the date is read through **`ymdOf`, never
@@ -2127,7 +2155,9 @@ code, never printed.
   the containers whose grid is written as an inline style (`#anaPieGrid`). **`bdReflow`** on
   `orientationchange`/`resize` then tells every live chart to re-measure (iOS settles the new size
   after the event), which is insurance, not the fix. Prove it with
-  **`node test/browser/layout.test.cjs`** (18 checks, self-contained).
+  **`node test/browser/layout.test.cjs`** (63 checks, self-contained — it also measures every tab
+  row for the owner, an admin and a rep at 1280 / 1100 / 390px; see the 🖱 rule in the tab-bar
+  section above).
   **🎨 The ออเดอร์พิเศษ pages are colour-zoned per step** (`TAB_SUPERS`'s sibling idea; `.sp-zone`
   + `.spz-key|rep|adm|out|rpt`, owner 27 Nov 26: *"ขอปรับหน้าออเดอร์พิเศษ ให้มันมีแบ่งโซนแบ่งสีช่อง
   หน้าจอการทำงานนิดนึง สำหรับทุกฝ่าย ให้มันดูง่าย เห็นช่องกรอกง่าย ๆ … ตอนนี้มันดูขาวโล่ง แซมน้ำเงิน
