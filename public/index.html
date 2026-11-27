@@ -284,22 +284,28 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cal-dot.jg{background:var(--good);border-color:var(--good)}
  
  
-.sp-zone{--z:var(--blue);--zs:var(--blue-soft);--zb:#C6D9F7;--zg:rgba(22,82,184,.16)}
-.spz-key{--z:#A35A06;--zs:#FFF6EA;--zb:#F0D4A8;--zg:rgba(163,90,6,.16)}
-.spz-rep{--z:#1652B8;--zs:#EFF5FF;--zb:#C6D9F7;--zg:rgba(22,82,184,.16)}
-.spz-adm{--z:#6A3EA1;--zs:#F6F1FD;--zb:#DCC9F2;--zg:rgba(106,62,161,.16)}
-.spz-out{--z:#0F7A52;--zs:#EDF8F2;--zb:#BCE3D0;--zg:rgba(15,122,82,.16)}
-.spz-rpt,.spz-old{--z:#3F4A5A;--zs:#F2F5F9;--zb:#D2DAE5;--zg:rgba(63,74,90,.16)}
+.sp-zone{--z:var(--blue);--zs:#DCE8FB;--zt:#F1F6FF;--zb:#B9D0F3;--zg:rgba(22,82,184,.16);
+  --gr:#EFF2F6}
+.spz-key{--z:#A35A06;--zs:#FBEBD2;--zt:#FFF8EE;--zb:#EBC894;--zg:rgba(163,90,6,.16)}
+.spz-rep{--z:#1652B8;--zs:#DCE8FB;--zt:#F1F6FF;--zb:#B9D0F3;--zg:rgba(22,82,184,.16)}
+.spz-adm{--z:#6A3EA1;--zs:#E8DCF7;--zt:#F7F2FD;--zb:#D3BDEE;--zg:rgba(106,62,161,.16)}
+.spz-out{--z:#0F7A52;--zs:#D6EFE3;--zt:#EEF9F3;--zb:#AEDCC6;--zg:rgba(15,122,82,.16)}
+.spz-rpt,.spz-old{--z:#3F4A5A;--zs:#E3E9F0;--zt:#F3F6FA;--zb:#CAD4E0;--zg:rgba(63,74,90,.16)}
  
 .sp-zone>.panel,.sp-zone>.cst-lot,.sp-zone>.sp-sec{border-top:3px solid var(--z)}
-.sp-zone .panel>h3{color:var(--z);font-size:16.5px;letter-spacing:-.1px}
-.sp-zone .panel>h3+.psub{font-size:12.5px}
+.sp-zone .panel>h3{background:var(--z);color:#fff;font-size:16px;letter-spacing:-.1px;
+  margin:-18px -20px 0;padding:13px 20px;border-radius:11px 11px 0 0;line-height:1.35}
  
-.sp-zone .cards>.card{border-top:3px solid var(--zb)}
+.sp-zone .panel>h3+.psub{font-size:12.5px;background:var(--zt);color:var(--ink);
+  margin:0 -20px 14px;padding:9px 20px;border-bottom:1px solid var(--zb)}
+ 
+.sp-zone .cards>.card{border-top:3px solid var(--zb);background:#fff}
 .sp-zone .cards>.card .v{color:var(--z);font-variant-numeric:tabular-nums}
-.sp-zone .cards>.card:first-child{border-top-color:var(--z);background:var(--zs)}
+.sp-zone .cards>.card:first-child{background:var(--z);border-color:var(--z)}
+.sp-zone .cards>.card:first-child .k,.sp-zone .cards>.card:first-child .s{color:rgba(255,255,255,.85)}
+.sp-zone .cards>.card:first-child .v{color:#fff}
  
-.sp-zone>.panel.sp-nav{border-top-color:var(--zb);background:linear-gradient(#fff,var(--zs))}
+.sp-zone>.panel.sp-nav{border-top-color:var(--zb);background:var(--gr)}
 .sp-zone .sp-daybar{background:#fff;border-color:var(--zb)}
  
 .sp-flow{border:1.5px solid var(--zb,var(--line));border-radius:12px;padding:10px 12px;
@@ -472,15 +478,23 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .sp-kt input:focus{border-color:var(--blue);outline:none}
 .sp-kt tr.lnh>td{background:#eef3fb;font-weight:800;text-align:left}
  
-.sp-zone .sp-kt th{background:var(--zs);color:var(--z);border-bottom:2px solid var(--zb)}
-.sp-zone .sp-kt.sp-k4 th.c1{background:var(--zs)}
+ 
+.sp-zone .sp-kt th{background:var(--z);color:#fff;border-bottom:none}
+.sp-zone .sp-kt.sp-k4 th.c1,.sp-zone .sp-kt.sp-k4 th.c2{background:var(--z);color:#fff}
 .sp-zone .sp-kt tr.lnh>td{background:var(--zs);color:var(--z);
-  border-top:2px solid var(--zb);border-bottom:1px solid var(--zb)}
+  border-top:2px solid var(--z);border-bottom:1px solid var(--zb)}
 .sp-zone .sp-kt.sp-k4 tr.lnh>td.c1{background:var(--zs)}
-.sp-zone .sp-kt tr.sub>td,.sp-zone .sp-kt.sp-k4 tr.sub>td.c1{background:#fff;color:var(--z)}
-.sp-zone .sp-kt tr.sub>td{border-bottom:2px solid var(--zb)}
+ 
+.sp-zone .sp-kt tbody td{background:#fff}
+.sp-zone .sp-kt.sp-k4 tbody td.c1{background:#fff}
+ 
+.sp-zone .sp-kt tr.sub>td,.sp-zone .sp-kt.sp-k4 tr.sub>td.c1{background:var(--gr);color:var(--z)}
+.sp-zone .sp-kt tr.sub>td{border-top:1.5px solid var(--zb);border-bottom:2px solid var(--z)}
+ 
+.sp-zone .tblwrap.sp-freeze thead th{background:var(--z);color:#fff}
+.sp-zone .tblwrap.sp-freeze tr.lnh>td{background:var(--zs)}
 .sp-zone .sp-kt td{font-variant-numeric:tabular-nums}
-.sp-zone .sp-kt input{background:var(--zs);border-color:var(--zb);font-weight:700;color:var(--z)}
+.sp-zone .sp-kt input{background:var(--zt);border-color:var(--zb);font-weight:700;color:var(--z)}
 .sp-zone .sp-kt input:not(:placeholder-shown){background:#fff;border-color:var(--z);
   color:var(--ink);font-weight:800}
 .sp-zone .sp-kt input:focus{border-color:var(--z);background:#fff;
@@ -503,17 +517,32 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .sp-rf input:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 3px rgba(33,106,212,.12)}
 .sp-rsum{margin-top:9px;font-size:13.5px;font-weight:800;color:var(--blue)}
  
-.sp-zone .sp-rc{border-color:var(--zb);border-left:4px solid var(--zb)}
+.sp-zone .sp-rc{border-color:var(--zb);border-left:4px solid var(--zb);background:#fff}
 .sp-zone .sp-rc.on{border-left-color:var(--z);border-color:var(--z);box-shadow:0 2px 10px var(--zg)}
-.sp-zone .sp-rno{border-color:var(--z);border-left:4px solid var(--z);background:linear-gradient(#fff,var(--zs))}
-.sp-zone .sp-rf input{background:var(--zs);border-color:var(--zb);color:var(--z);
+.sp-zone .sp-rc>.sp-rn{background:var(--zt);color:var(--z);
+  margin:-13px -14px 0;padding:11px 14px;border-radius:11px 11px 0 0;
+  border-bottom:1px solid var(--zb)}
+.sp-zone .sp-rc.on>.sp-rn{background:var(--zs)}
+.sp-zone .sp-rno{border-color:var(--z);border-left:4px solid var(--z);background:#fff}
+.sp-zone .sp-rno>.sp-rn{background:var(--z);color:#fff;
+  margin:-13px -14px 0;padding:11px 14px;border-radius:9px 9px 0 0}
+.sp-zone .sp-rf input{background:var(--zt);border-color:var(--zb);color:var(--z);
   font-variant-numeric:tabular-nums}
 .sp-zone .sp-rf input:not(:placeholder-shown){background:#fff;border-color:var(--z);color:var(--ink)}
 .sp-zone .sp-rf input:focus{border-color:var(--z);background:#fff;box-shadow:0 0 0 3px var(--zg)}
 .sp-zone .sp-rf label{color:var(--z);opacity:.85}
 .sp-zone .sp-rsum{color:var(--z)}
 .sp-zone .sp-job.on{border-color:var(--z);border-left-color:var(--z)}
-.sp-zone .insight{border-left-color:var(--z);background:var(--zs)}
+.sp-zone .insight{border-left-color:var(--z);background:var(--zt)}
+ 
+.sp-zone .cst-rt th,.sp-zone .sp-chk th,.sp-zone .cst-sum th{
+  background:var(--z);color:#fff;border-bottom:none}
+.sp-zone .cst-rt tbody td,.sp-zone .sp-chk tbody td{background:#fff}
+.sp-zone .cst-rt tbody tr:hover>td,.sp-zone .sp-chk tbody tr:hover>td{background:var(--zt)}
+ 
+.sp-zone .sp-mebox{background:#fff}
+.sp-zone .tblwrap{border-radius:10px;overflow:hidden;border:1px solid var(--zb)}
+.sp-zone .tblwrap.sp-freeze{overflow:auto}
 .sp-jobs{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .sp-job{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1.5px solid var(--line);
   border-radius:12px;background:#fff;cursor:pointer;text-align:left}
@@ -2772,18 +2801,43 @@ async function loadData(){
 function logout(){S.user=null;TOKEN=null;_switchTab("sales");localStorage.removeItem("bd_token");localStorage.removeItem("bd_user");
   document.getElementById("app").classList.add("hidden");document.getElementById("login").classList.remove("hidden");document.getElementById("p").value="";}
 let _syncTimer=null;
-function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบันทึกขึ้นเซิร์ฟเวอร์กลาง...");clearTimeout(_syncTimer);_syncTimer=setTimeout(_doSync,700);}
-async function _doSync(){
+function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบันทึกขึ้นเซิร์ฟเวอร์กลาง...");clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>_doSync(0),700);}
+ 
+const SAVE_CAP=4.5e6,SAVE_WARN=3.0e6,SAVE_MAX=4.2e6;
+function _mb(n){return (n/1048576).toFixed(2)+" MB";}
+ 
+function _bigSecs(o){
+  const a=[];for(const k in o){try{a.push([k,JSON.stringify(o[k]||null).length]);}catch(e){}}
+  return a.sort((x,y)=>y[1]-x[1]).slice(0,4).map(x=>x[0]+" "+_mb(x[1])).join(" · ");
+}
+async function _doSync(try2){
   if(!TOKEN)return;
+  const SEC={DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY,
+             PSTORE,EB2B,POSTATUS,LEADS,DCI,MINSTOCK,PLAN,PROMO,PJP,CSTOCK,PSI};
   try{
-    const payload=JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY,PSTORE,EB2B,POSTATUS,LEADS,DCI,MINSTOCK,PLAN,PROMO,PJP,CSTOCK,PSI});
-    let body=payload,headers={"Content-Type":"application/json","Authorization":"Bearer "+TOKEN};
+    const payload=JSON.stringify(SEC);
+    let body=payload,gz=0,headers={"Content-Type":"application/json","Authorization":"Bearer "+TOKEN};
      
-    try{if(typeof CompressionStream!=="undefined"){const cs=new Blob([payload]).stream().pipeThrough(new CompressionStream("gzip"));body=await new Response(cs).arrayBuffer();headers={"Content-Type":"application/octet-stream","x-body-gzip":"1","Authorization":"Bearer "+TOKEN};}}catch(e){}
+    try{if(typeof CompressionStream!=="undefined"){const cs=new Blob([payload]).stream().pipeThrough(new CompressionStream("gzip"));body=await new Response(cs).arrayBuffer();gz=1;headers={"Content-Type":"application/octet-stream","x-body-gzip":"1","Authorization":"Bearer "+TOKEN};}}catch(e){}
+    const n=gz?body.byteLength:payload.length;
+     
+    if(!gz&&!try2)ulog("⚠️ เบราว์เซอร์นี้บีบอัดข้อมูลไม่ได้ ถ้าบันทึกไม่ผ่าน ให้ลองใช้ Chrome");
+    if(n>=SAVE_WARN&&!try2)
+      ulog("⚠️ ข้อมูลเริ่มใหญ่ "+_mb(n)+" จากที่รับได้ "+_mb(SAVE_CAP)+" — ส่วนที่ใหญ่สุด: "+_bigSecs(SEC));
     const r=await fetch("/api/save",{method:"POST",headers,body});
-    if(r.ok)ulog("✅ บันทึกขึ้นเซิร์ฟเวอร์กลางแล้ว — ทุกคนจะเห็นเมื่อรีเฟรช");
-    else{const e=await r.json().catch(()=>({}));ulog("⚠️ บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status)));}
-  }catch(ex){ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
+    if(r.ok){ulog("✅ บันทึกขึ้นเซิร์ฟเวอร์กลางแล้ว ("+_mb(n)+") — ทุกคนจะเห็นเมื่อรีเฟรช");return;}
+    const e=await r.json().catch(()=>({}));
+    if(r.status===413||n>=SAVE_MAX){
+      ulog("⛔ ข้อมูลใหญ่เกินกว่าที่ส่งได้ ("+_mb(n)+" จากเพดาน "+_mb(SAVE_CAP)+") — อย่าเพิ่งปิดหน้านี้ "+
+        "ไฟล์ที่เพิ่งอ่านยังไม่ถูกบันทึก · ส่วนที่ใหญ่สุด: "+_bigSecs(SEC));return;}
+     
+    if(r.status>=500&&!try2){ulog("↻ บันทึกไม่ผ่าน กำลังลองใหม่อีกครั้ง...");
+      return void setTimeout(()=>_doSync(1),1500);}
+    ulog("⚠️ บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status))+" — อย่าเพิ่งปิดหน้านี้ แล้วลองอัปโหลดไฟล์เดิมซ้ำ");
+  }catch(ex){
+    if(!try2){ulog("↻ เชื่อมต่อไม่ได้ กำลังลองใหม่อีกครั้ง...");return void setTimeout(()=>_doSync(1),1500);}
+    ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message+" — อย่าเพิ่งปิดหน้านี้ แล้วลองอัปโหลดไฟล์เดิมซ้ำ");
+  }
 }
 document.getElementById("p").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 window.addEventListener("DOMContentLoaded",()=>{const t=localStorage.getItem("bd_token"),u=localStorage.getItem("bd_user");if(t&&u){try{const su=JSON.parse(u);
@@ -3446,6 +3500,7 @@ function tabSupOf(gk){
  
 const TAB_SUP_FROM="2026-12-01";
 function tabSupOn(){
+  if(typeof BD_SITE!=="undefined"&&BD_SITE==="admin")return true;
   if(typeof bdOwner==="function"&&bdOwner())return true;
   try{return ymdOf(new Date())>=TAB_SUP_FROM;}catch(e){return false;}
 }

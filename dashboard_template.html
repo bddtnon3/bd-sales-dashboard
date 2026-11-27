@@ -319,28 +319,51 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
  *    ผูกกับสี  ใครแก้อะไรได้ยังตรวจที่ `api/spord.js` เหมือนเดิมทุกประการ
  * ⚠️ สีบอก "ขั้นไหน" ไม่ได้บอก "ผ่าน/ไม่ผ่าน" — เขียว/แดงที่แปลว่าสำเร็จหรือพลาดยังเป็น
  *    `.sp-ok`/`.sp-bad`/`.cal-dot` ชุดเดิม ห้ามเอาสีประจำขั้นไปใช้แทน ไม่งั้นอ่านกันคนละเรื่อง
- * ⚠️ ค่าทั้งสี่ต้องตั้งครบทุกขั้น (`--z` เส้น/ตัวอักษร · `--zs` พื้นอ่อน · `--zb` เส้นขอบอ่อน ·
- *    `--zg` เงาตอนโฟกัส) เพราะกฎข้างล่างอ้างทั้งสี่ตัว
+ * ⚠️ ค่าทั้งห้าต้องตั้งครบทุกขั้น (`--z` สีทึบ · `--zs` พื้นกลาง · `--zt` พื้นบาง ·
+ *    `--zb` เส้นขอบ · `--zg` เงาตอนโฟกัส) เพราะกฎข้างล่างอ้างทั้งห้าตัว
+ *
+ * 🪜 **แต่ละขั้นมีสี่ระดับน้ำหนัก ไม่ใช่โทนเดียวทั้งหน้า** — เจ้าของสั่ง 27 พ.ย. 69:
+ *   *"อยากปรับสีในแต่ละรายขั้นตอน ให้มันมีทึบหนาบางในตัวหน่อย เช่นหน้าซุปมันเหลือง แต่ก็เหลือง
+ *     โทน ๆ เดียวกันหมดเลย … ไม่ใช่ว่าต้องหลากสี แต่เป็นเรื่องของความเข้ม อ่อน สีขาวแทรก
+ *     สีเทาแทรก ทำให้มันมีทึบมีบางมากกว่านี้นิดนึง สำหรับทุก flow ออเดอร์พิเศษเลยนะ"*
+ *   บันไดน้ำหนักที่ใช้ทั้งหน้า เรียงจากหนักไปเบา:
+ *     ทึบ  `--z`  = หัวตาราง · หัวการ์ด · ปุ่มลงมือทำ (พื้นสีเข้ม ตัวอักษรขาว)
+ *     กลาง `--zs` = แถบคั่นสาย/กลุ่ม — บอกว่า "ของใหม่เริ่มตรงนี้"
+ *     บาง  `--zt` = คำอธิบายใต้หัวข้อ · ช่องกรอกที่ยังว่าง
+ *     ขาว  #fff   = แถวข้อมูลจริง ซึ่งเป็นสิ่งที่ต้องอ่าน จึงต้องสะอาดที่สุด
+ *   และคั่นด้วยเทากลาง ๆ `--gr` ตรงแถวรวม/ส่วนอ่านอย่างเดียว เพื่อให้สีของขั้นมีอะไรให้ตัดกัน
+ * ⚠️ เทา `--gr` เป็นสีเดียวกันทุกขั้นโดยตั้งใจ — มันคือ "ไม่ใช่สีของขั้น" ถ้าทำให้เป็นสีตามขั้น
+ *    บันไดจะเหลือโทนเดียวอีกเหมือนเดิม ซึ่งคือปัญหาที่กำลังแก้อยู่พอดี
  * ==========================================================================*/
 /* โซน = ทั้งหน้าจอของขั้นนั้น · ค่า fallback เผื่อมีขั้นใหม่ที่ยังไม่ได้ให้สี
    ⚠️ บรรทัดนี้ต้องอยู่ "ก่อน" `.spz-*` เสมอ — ทั้งคู่เป็นคลาสเดี่ยวเหมือนกัน ตัวที่เขียนทีหลังชนะ
       เคยสลับที่กันแล้วทุกขั้นกลายเป็นน้ำเงินหมด ทั้งที่คลาสติดถูกแล้ว */
-.sp-zone{--z:var(--blue);--zs:var(--blue-soft);--zb:#C6D9F7;--zg:rgba(22,82,184,.16)}
-.spz-key{--z:#A35A06;--zs:#FFF6EA;--zb:#F0D4A8;--zg:rgba(163,90,6,.16)}
-.spz-rep{--z:#1652B8;--zs:#EFF5FF;--zb:#C6D9F7;--zg:rgba(22,82,184,.16)}
-.spz-adm{--z:#6A3EA1;--zs:#F6F1FD;--zb:#DCC9F2;--zg:rgba(106,62,161,.16)}
-.spz-out{--z:#0F7A52;--zs:#EDF8F2;--zb:#BCE3D0;--zg:rgba(15,122,82,.16)}
-.spz-rpt,.spz-old{--z:#3F4A5A;--zs:#F2F5F9;--zb:#D2DAE5;--zg:rgba(63,74,90,.16)}
-/* ชั้นแรกที่ตาเห็น: แถบสีบนหัวการ์ด + หัวข้อเป็นสีของขั้น */
+.sp-zone{--z:var(--blue);--zs:#DCE8FB;--zt:#F1F6FF;--zb:#B9D0F3;--zg:rgba(22,82,184,.16);
+  --gr:#EFF2F6}
+.spz-key{--z:#A35A06;--zs:#FBEBD2;--zt:#FFF8EE;--zb:#EBC894;--zg:rgba(163,90,6,.16)}
+.spz-rep{--z:#1652B8;--zs:#DCE8FB;--zt:#F1F6FF;--zb:#B9D0F3;--zg:rgba(22,82,184,.16)}
+.spz-adm{--z:#6A3EA1;--zs:#E8DCF7;--zt:#F7F2FD;--zb:#D3BDEE;--zg:rgba(106,62,161,.16)}
+.spz-out{--z:#0F7A52;--zs:#D6EFE3;--zt:#EEF9F3;--zb:#AEDCC6;--zg:rgba(15,122,82,.16)}
+.spz-rpt,.spz-old{--z:#3F4A5A;--zs:#E3E9F0;--zt:#F3F6FA;--zb:#CAD4E0;--zg:rgba(63,74,90,.16)}
+/* ① ทึบที่สุด — หัวการ์ดเป็นแถบสีเต็มความกว้าง ตัวอักษรขาว
+   ⚠️ margin ติดลบต้องเท่ากับ padding ของ .panel (18px 20px) พอดี
+   ⚠️ ห้ามใส่ overflow:hidden ที่ .panel (แถบติ๊กของสต็อคกลางใช้ sticky อยู่) จึงให้มุมบนของ
+      แถบโค้ง 11px เองให้พอดีกับขอบการ์ด แทนการครอบ */
 .sp-zone>.panel,.sp-zone>.cst-lot,.sp-zone>.sp-sec{border-top:3px solid var(--z)}
-.sp-zone .panel>h3{color:var(--z);font-size:16.5px;letter-spacing:-.1px}
-.sp-zone .panel>h3+.psub{font-size:12.5px}
-/* การ์ดตัวเลขบนสุดของแต่ละขั้น ให้เป็นสีของขั้น ไม่ใช่น้ำเงินหมดทุกหน้า */
-.sp-zone .cards>.card{border-top:3px solid var(--zb)}
+.sp-zone .panel>h3{background:var(--z);color:#fff;font-size:16px;letter-spacing:-.1px;
+  margin:-18px -20px 0;padding:13px 20px;border-radius:11px 11px 0 0;line-height:1.35}
+/* ③ บาง — คำอธิบายใต้หัวข้อเป็นแถบสีอ่อน คั่นเนื้อหาขาวข้างล่าง */
+.sp-zone .panel>h3+.psub{font-size:12.5px;background:var(--zt);color:var(--ink);
+  margin:0 -20px 14px;padding:9px 20px;border-bottom:1px solid var(--zb)}
+/* การ์ดตัวเลข: ใบแรกทึบ (ตัวเลขหลักของหน้า) ที่เหลือขาวขอบเทา — ให้ตาจับใบแรกได้ก่อน */
+.sp-zone .cards>.card{border-top:3px solid var(--zb);background:#fff}
 .sp-zone .cards>.card .v{color:var(--z);font-variant-numeric:tabular-nums}
-.sp-zone .cards>.card:first-child{border-top-color:var(--z);background:var(--zs)}
-/* กล่องนำทางด้านบน (ปุ่มกลับ + จังหวะงาน + ปฏิทิน) เบากว่าเนื้องาน จะได้ไม่แย่งสายตา */
-.sp-zone>.panel.sp-nav{border-top-color:var(--zb);background:linear-gradient(#fff,var(--zs))}
+.sp-zone .cards>.card:first-child{background:var(--z);border-color:var(--z)}
+.sp-zone .cards>.card:first-child .k,.sp-zone .cards>.card:first-child .s{color:rgba(255,255,255,.85)}
+.sp-zone .cards>.card:first-child .v{color:#fff}
+/* กล่องนำทางด้านบน (ปุ่มกลับ + จังหวะงาน + ปฏิทิน) เป็น "เทา" ไม่ใช่สีของขั้น
+   มันคือทางเดิน ไม่ใช่เนื้องาน จะได้ไม่แย่งสายตากับช่องกรอก */
+.sp-zone>.panel.sp-nav{border-top-color:var(--zb);background:var(--gr)}
 .sp-zone .sp-daybar{background:#fff;border-color:var(--zb)}
 /* 🕘 แถบจังหวะงาน เช้า → บ่าย → เย็น (spFlowHtml) */
 .sp-flow{border:1.5px solid var(--zb,var(--line));border-radius:12px;padding:10px 12px;
@@ -527,15 +550,24 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
    และ "ช่องที่ยังว่าง" กับ "ช่องที่กรอกแล้ว" ต้องแยกออกด้วยตาเปล่า (เจ้าของขอ *"เห็นช่องกรอกง่าย ๆ"*)
    ⚠️ `:placeholder-shown` = ช่องยังว่าง — ทุกช่องตั้ง placeholder="0" ไว้แล้ว จึงใช้ได้จริง
       ถ้าวันหลังเอา placeholder ออก กฎนี้จะเงียบไปเฉย ๆ (ไม่พัง แค่ไม่ไฮไลต์) */
-.sp-zone .sp-kt th{background:var(--zs);color:var(--z);border-bottom:2px solid var(--zb)}
-.sp-zone .sp-kt.sp-k4 th.c1{background:var(--zs)}
+/* 🪜 บันไดน้ำหนักในตารางกรอก: หัวตารางทึบ → แถบสายกลาง → แถวข้อมูลขาว → แถวรวมเทา */
+.sp-zone .sp-kt th{background:var(--z);color:#fff;border-bottom:none}
+.sp-zone .sp-kt.sp-k4 th.c1,.sp-zone .sp-kt.sp-k4 th.c2{background:var(--z);color:#fff}
 .sp-zone .sp-kt tr.lnh>td{background:var(--zs);color:var(--z);
-  border-top:2px solid var(--zb);border-bottom:1px solid var(--zb)}
+  border-top:2px solid var(--z);border-bottom:1px solid var(--zb)}
 .sp-zone .sp-kt.sp-k4 tr.lnh>td.c1{background:var(--zs)}
-.sp-zone .sp-kt tr.sub>td,.sp-zone .sp-kt.sp-k4 tr.sub>td.c1{background:#fff;color:var(--z)}
-.sp-zone .sp-kt tr.sub>td{border-bottom:2px solid var(--zb)}
+/* ④ ขาว — แถวสินค้าคือสิ่งที่ต้องอ่าน ต้องสะอาดที่สุดในหน้า */
+.sp-zone .sp-kt tbody td{background:#fff}
+.sp-zone .sp-kt.sp-k4 tbody td.c1{background:#fff}
+/* แถวรวมเป็น "เทา" คั่น ไม่ใช่สีของขั้น — ตัดกับทั้งแถบสายและแถวขาว */
+.sp-zone .sp-kt tr.sub>td,.sp-zone .sp-kt.sp-k4 tr.sub>td.c1{background:var(--gr);color:var(--z)}
+.sp-zone .sp-kt tr.sub>td{border-top:1.5px solid var(--zb);border-bottom:2px solid var(--z)}
+/* ⚠️ หัวตาราง/แถบสายของตารางที่ freeze หัวไว้ มีกฎของตัวเองที่เจาะจงกว่า (.tblwrap.sp-freeze …)
+   ต้องเขียนทับให้ตรงตัว ไม่งั้นช่อง ลัง/ชิ้น จะยังเป็นเทาอ่อนของเดิมอยู่ครึ่งแถว */
+.sp-zone .tblwrap.sp-freeze thead th{background:var(--z);color:#fff}
+.sp-zone .tblwrap.sp-freeze tr.lnh>td{background:var(--zs)}
 .sp-zone .sp-kt td{font-variant-numeric:tabular-nums}
-.sp-zone .sp-kt input{background:var(--zs);border-color:var(--zb);font-weight:700;color:var(--z)}
+.sp-zone .sp-kt input{background:var(--zt);border-color:var(--zb);font-weight:700;color:var(--z)}
 .sp-zone .sp-kt input:not(:placeholder-shown){background:#fff;border-color:var(--z);
   color:var(--ink);font-weight:800}
 .sp-zone .sp-kt input:focus{border-color:var(--z);background:#fff;
@@ -560,18 +592,35 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   font-size:17px;font-weight:700;text-align:right;-webkit-appearance:none;appearance:none;background:#fff}
 .sp-rf input:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 3px rgba(33,106,212,.12)}
 .sp-rsum{margin-top:9px;font-size:13.5px;font-weight:800;color:var(--blue)}
-/* 🎨 การ์ดกรอกของเซลล์และกล่องเลขออเดอร์ในโซนสี */
-.sp-zone .sp-rc{border-color:var(--zb);border-left:4px solid var(--zb)}
+/* 🎨 การ์ดกรอกของเซลล์และกล่องเลขออเดอร์ — บันไดน้ำหนักเดียวกัน
+   หัวการ์ด (.sp-rn) ทึบ · ตัวการ์ดขาว · ช่องว่างสีบาง · การ์ดที่กำลังทำอยู่ได้ขอบซ้ายหนา */
+.sp-zone .sp-rc{border-color:var(--zb);border-left:4px solid var(--zb);background:#fff}
 .sp-zone .sp-rc.on{border-left-color:var(--z);border-color:var(--z);box-shadow:0 2px 10px var(--zg)}
-.sp-zone .sp-rno{border-color:var(--z);border-left:4px solid var(--z);background:linear-gradient(#fff,var(--zs))}
-.sp-zone .sp-rf input{background:var(--zs);border-color:var(--zb);color:var(--z);
+.sp-zone .sp-rc>.sp-rn{background:var(--zt);color:var(--z);
+  margin:-13px -14px 0;padding:11px 14px;border-radius:11px 11px 0 0;
+  border-bottom:1px solid var(--zb)}
+.sp-zone .sp-rc.on>.sp-rn{background:var(--zs)}
+.sp-zone .sp-rno{border-color:var(--z);border-left:4px solid var(--z);background:#fff}
+.sp-zone .sp-rno>.sp-rn{background:var(--z);color:#fff;
+  margin:-13px -14px 0;padding:11px 14px;border-radius:9px 9px 0 0}
+.sp-zone .sp-rf input{background:var(--zt);border-color:var(--zb);color:var(--z);
   font-variant-numeric:tabular-nums}
 .sp-zone .sp-rf input:not(:placeholder-shown){background:#fff;border-color:var(--z);color:var(--ink)}
 .sp-zone .sp-rf input:focus{border-color:var(--z);background:#fff;box-shadow:0 0 0 3px var(--zg)}
 .sp-zone .sp-rf label{color:var(--z);opacity:.85}
 .sp-zone .sp-rsum{color:var(--z)}
 .sp-zone .sp-job.on{border-color:var(--z);border-left-color:var(--z)}
-.sp-zone .insight{border-left-color:var(--z);background:var(--zs)}
+.sp-zone .insight{border-left-color:var(--z);background:var(--zt)}
+/* 🪜 ตารางอ่านอย่างเดียวในโซน (ประวัติการตรวจ · รายการค้าง · สรุปรายสินค้า)
+   หัวตารางทึบ แถวขาว — บันไดเดียวกับตารางกรอก คนจะได้อ่านทุกหน้าเหมือนกัน */
+.sp-zone .cst-rt th,.sp-zone .sp-chk th,.sp-zone .cst-sum th{
+  background:var(--z);color:#fff;border-bottom:none}
+.sp-zone .cst-rt tbody td,.sp-zone .sp-chk tbody td{background:#fff}
+.sp-zone .cst-rt tbody tr:hover>td,.sp-zone .sp-chk tbody tr:hover>td{background:var(--zt)}
+/* ส่วนอ่านอย่างเดียวที่ไม่ใช่เนื้องานหลัก ใช้เทาคั่น ไม่ต้องแย่งสายตา */
+.sp-zone .sp-mebox{background:#fff}
+.sp-zone .tblwrap{border-radius:10px;overflow:hidden;border:1px solid var(--zb)}
+.sp-zone .tblwrap.sp-freeze{overflow:auto}
 .sp-jobs{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .sp-job{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1.5px solid var(--line);
   border-radius:12px;background:#fff;cursor:pointer;text-align:left}
@@ -3843,9 +3892,18 @@ function tabSupOf(gk){
  * ⚠️ นี่คือการ "ซ่อนแถวปุ่มใหญ่" อย่างเดียว — `TAB_SUPERS` ทั้งตารางยังอยู่ครบ ไม่มีหมวดไหนหาย
  *    และ `switchSuper` ยังทำงานได้ตามเดิม เหมือนกฎเลิกใช้ฟีเจอร์ที่ลบแค่บรรทัดในตาราง
  * ⚠️ วันต้องอ่านผ่าน `ymdOf` ไม่ใช่ `toISOString()` — ทั้งศูนย์อยู่ UTC+7 ถ้าใช้ UTC
- *    เช้าวันที่ 1 ธ.ค. ก่อนเจ็ดโมงจะยังอ่านว่าเป็นวันที่ 30 พ.ย. */
+ *    เช้าวันที่ 1 ธ.ค. ก่อนเจ็ดโมงจะยังอ่านว่าเป็นวันที่ 30 พ.ย.
+ * ⚠️ **เว็บแอดมินเปิดใช้ไปแล้ว ไม่ต้องรอวันที่** — เจ้าของเจอเอง 27 พ.ย. 69:
+ *   *"เข้าหน้าเวปแอดมิน แล้วมันคลิ๊กเลื่อนหมวดไปออเดอร์พิเศษไม่ได้ ช่วยปับให้เฉพาะฝั่งแอดมิน
+ *     แบ่งแยกหมวดแบบ manager ได้เลย"*
+ *   วัดจริงบนมือถือ 390px: เว็บแอดมินมี 8 หมวดในแถวเดียว กว้างรวม 964px ในกรอบ 362px
+ *   ปุ่ม 📦 ออเดอร์พิเศษ จึงอยู่เลยขอบขวาไป 271px — `elementFromPoint` ตรงกลางปุ่มได้ `MAIN`
+ *   แปลว่ามองไม่เห็นและกดไม่โดนจริง ๆ ไม่ใช่แค่รู้สึก
+ *   พอแบ่งเป็นปุ่มใหญ่ เว็บแอดมินเหลือ 3 ปุ่ม (ซื้อเข้า/ขายออก/อื่น ๆ) แถวละ 2-3 หมวด เห็นครบในจอ
+ *   ส่วน **เว็บของทีมขาย** ยังรอถึง 1 ธ.ค. 69 ตามที่สั่งไว้ เพราะที่นั่นคือคนใช้งานจริงทุกวัน */
 const TAB_SUP_FROM="2026-12-01";
 function tabSupOn(){
+  if(typeof BD_SITE!=="undefined"&&BD_SITE==="admin")return true;
   if(typeof bdOwner==="function"&&bdOwner())return true;
   try{return ymdOf(new Date())>=TAB_SUP_FROM;}catch(e){return false;}
 }

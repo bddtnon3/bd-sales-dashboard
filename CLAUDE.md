@@ -255,6 +255,25 @@ payload (`CompressionStream`, header `x-body-gzip:1`, content-type `application/
 and `api/save.js` inflates it (`gunzipSync`). Do NOT set `Content-Encoding: gzip` (the edge would
 auto-decompress and the server would double-read). Keep this scheme intact.
 
+**A failed save must never be silent** (`_doSync` in `build.cjs`, owner 27 Nov 26: *"ช่วงนี้ผมใช้
+เวปกดันเข้มข้นมาก จนถึงสิ้นเดือน ฝากดูเรื่องความต่อเนื่องของข้อมูลหน่อย อย่าให้ข้อมูลเต็มแล้วส่งไม่ได้
+อีก"*). It used to print a bare `⚠️ บันทึกไม่สำเร็จ: HTTP 413` — no size, no cause, no next step,
+and a `CompressionStream` failure was swallowed so an old browser posted 8 MB of raw JSON and
+failed for ever without saying why. Now, in order: the **size is printed on every successful save**
+(`_mb`), so the growth is visible before it is a problem; at **`SAVE_WARN` (3 MB gzipped)** the log
+warns and **names the four biggest sections** (`_bigSecs`, which only stringifies again when it is
+actually near the ceiling, so the normal path pays nothing); a **413 or a body over `SAVE_MAX`
+(4.2 MB)** says it is over the cap, gives both figures and the biggest sections, and tells the user
+not to close the page because the file just read is not saved yet; a **5xx or a network error
+retries once** after 1.5 s, which is safe because `api/save.js` merges key-by-key so a repeat write
+cannot double anything; and **401/403/409 are final answers and are never retried**. A browser with
+no `CompressionStream` is told so instead of silently sending raw. Prove it with
+**`node test/browser/savesize.test.cjs`** (15 checks). ⚠️ That test must build its oversized
+fixture from **real random bytes** (base64 of `crypto.getRandomValues`), not a repeated string: the
+thresholds are measured **after gzip**, and 3.6 MB of repeating text compresses to 0.01 MB, so a
+lazy fixture tests nothing. ⚠️ `ANALYTICS` and the other sections are top-level `let`, so a test
+that overrides one must assign **without `window.`** or it creates a second, unused variable.
+
 ## Staying logged in (why `bdPost` exists)
 A login used to last 7 days with nothing to renew it, and `loadData()`'s 401→logout only runs at
 page load — so a rep who leaves the app open on a laptop kept a page that looked fine and only
@@ -749,7 +768,15 @@ code, never printed.
   เดี๋ยวค่อยปรับใหม่เป็นแบบที่เราทำกัน (1st 2nd หน้างาน อื่นๆ) วันที่ 1 ธค.2026 แทน"*). Until that
   date a rep, the supervisor, the admins and the team roles get the **old flat row of all 12
   groups**; only **`bdOwner()`** sees the buckets, because he is the one reviewing them. On 1 Dec
-  it switches on for everyone with no code change. Three rules: this **hides the row only** — the
+  it switches on for everyone with no code change.
+  **⚠️ The ADMIN SITE is exempt and already uses the buckets** — the owner found the reason himself
+  the next day: *"เข้าหน้าเวปแอดมิน แล้วมันคลิ๊กเลื่อนหมวดไปออเดอร์พิเศษไม่ได้ ช่วยปับให้เฉพาะฝั่ง
+  แอดมิน แบ่งแยกหมวดแบบ manager ได้เลย"*. Measured at 390px: `/admin` has **8 groups in one row,
+  964px wide inside a 362px frame**, so 📦 ออเดอร์พิเศษ sat **271px past the right edge** and
+  `elementFromPoint` on it returned `MAIN` — genuinely invisible and un-tappable, not just awkward.
+  With the buckets the admin site is 3 buttons of 2–3 groups each and everything fits. So
+  `tabSupOn()` returns true for `BD_SITE==="admin"` as well; the sales site still waits for 1 Dec,
+  because that is where the whole team works every day. Three rules: this **hides the row only** — the
   whole `TAB_SUPERS` table, `tabSupOf` and `switchSuper` are untouched, the same way retiring a
   feature only removes its line from a table; the date is read through **`ymdOf`, never
   `toISOString()`** (the depot is on UTC+7, so a UTC read would still say 30 Nov at 06:30 on the
@@ -1989,6 +2016,20 @@ code, never printed.
   must be declared BEFORE the `.spz-*` lines** — both are single-class selectors, so the later one
   wins and putting the fallback last turned every step blue. Prove it with
   **`node test/browser/layout.test.cjs`** at 1280 and 390.
+  **🪜 Each step is a four-step ladder of weight, not one flat tone** (owner, 27 Nov 26: *"อยากปรับ
+  สีในแต่ละรายขั้นตอน ให้มันมีทึบหนาบางในตัวหน่อย เช่นหน้าซุปมันเหลือง แต่ก็เหลืองโทน ๆ เดียวกัน
+  หมดเลย … ไม่ใช่ว่าต้องหลากสี แต่เป็นเรื่องของความเข้ม อ่อน สีขาวแทรก สีเทาแทรก … สำหรับทุก flow
+  ออเดอร์พิเศษเลยนะ"*). Heaviest to lightest: **`--z` solid** (table header, card header, action
+  button — white text on the step colour) · **`--zs` medium** (the band that starts a new line or
+  group) · **`--zt` light** (the strip under a heading, and an empty entry field) · **white** (the
+  data rows, which are what people actually read, so they stay the cleanest thing on the page) —
+  with a shared neutral **`--gr` grey** on totals rows and read-only areas. **`--gr` is the same
+  grey in every step on purpose**: it is the "not the step colour" note, and tinting it per step
+  would collapse the ladder back into one tone, which is the problem being fixed. Two traps:
+  `.tblwrap.sp-freeze thead th` and `tr.lnh>td` carry their own more-specific rules, so the zone
+  must override them by name or half the header row stays the old pale grey; and the heading band
+  uses negative margins equal to `.panel`'s padding with its own `border-radius`, because
+  **`.panel` must never get `overflow:hidden`** (the cstock sticky bulk bar depends on that).
 - `test/browser/_chrome.cjs` — finds the installed Chromium at run time. Never hard-code a
   `/opt/pw-browsers/chromium-NNNN/...` path in a test again: the image moved once and took all 15
   browser tests down with it.

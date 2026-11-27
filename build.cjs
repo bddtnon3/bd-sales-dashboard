@@ -285,18 +285,44 @@ async function loadData(){
 function logout(){S.user=null;TOKEN=null;_switchTab("sales");localStorage.removeItem("bd_token");localStorage.removeItem("bd_user");
   document.getElementById("app").classList.add("hidden");document.getElementById("login").classList.remove("hidden");document.getElementById("p").value="";}
 let _syncTimer=null;
-function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบันทึกขึ้นเซิร์ฟเวอร์กลาง...");clearTimeout(_syncTimer);_syncTimer=setTimeout(_doSync,700);}
-async function _doSync(){
+function syncToServer(){ if(!TOKEN)return;ulog("☁️ เตรียมบันทึกขึ้นเซิร์ฟเวอร์กลาง...");clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>_doSync(0),700);}
+/* เพดานคำขอของ Vercel อยู่ที่ ~4.5 MB (หลังบีบอัด) — เตือนก่อนถึง ไม่ใช่รอให้ส่งไม่ได้แล้วค่อยรู้ */
+const SAVE_CAP=4.5e6,SAVE_WARN=3.0e6,SAVE_MAX=4.2e6;
+function _mb(n){return (n/1048576).toFixed(2)+" MB";}
+/* ส่วนไหนใหญ่ — คิดเฉพาะตอนใกล้เต็ม เพราะต้อง stringify ซ้ำอีกรอบ */
+function _bigSecs(o){
+  const a=[];for(const k in o){try{a.push([k,JSON.stringify(o[k]||null).length]);}catch(e){}}
+  return a.sort((x,y)=>y[1]-x[1]).slice(0,4).map(x=>x[0]+" "+_mb(x[1])).join(" · ");
+}
+async function _doSync(try2){
   if(!TOKEN)return;
+  const SEC={DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY,
+             PSTORE,EB2B,POSTATUS,LEADS,DCI,MINSTOCK,PLAN,PROMO,PJP,CSTOCK,PSI};
   try{
-    const payload=JSON.stringify({DATA,STORE,KPI,ORDERS,STOCKD,REQUESTS,MASTER,ANALYTICS,STOREPROD,STOREDAILY,PSTORE,EB2B,POSTATUS,LEADS,DCI,MINSTOCK,PLAN,PROMO,PJP,CSTOCK,PSI});
-    let body=payload,headers={"Content-Type":"application/json","Authorization":"Bearer "+TOKEN};
+    const payload=JSON.stringify(SEC);
+    let body=payload,gz=0,headers={"Content-Type":"application/json","Authorization":"Bearer "+TOKEN};
     /* gzip to stay under the serverless request-size limit (~4.5MB); 8-9MB -> ~1.5MB */
-    try{if(typeof CompressionStream!=="undefined"){const cs=new Blob([payload]).stream().pipeThrough(new CompressionStream("gzip"));body=await new Response(cs).arrayBuffer();headers={"Content-Type":"application/octet-stream","x-body-gzip":"1","Authorization":"Bearer "+TOKEN};}}catch(e){}
+    try{if(typeof CompressionStream!=="undefined"){const cs=new Blob([payload]).stream().pipeThrough(new CompressionStream("gzip"));body=await new Response(cs).arrayBuffer();gz=1;headers={"Content-Type":"application/octet-stream","x-body-gzip":"1","Authorization":"Bearer "+TOKEN};}}catch(e){}
+    const n=gz?body.byteLength:payload.length;
+    /* เบราว์เซอร์ที่บีบอัดไม่ได้ จะส่งของดิบซึ่งใหญ่กว่า 5-6 เท่า — ต้องรู้ตัว ไม่ใช่เงียบ */
+    if(!gz&&!try2)ulog("⚠️ เบราว์เซอร์นี้บีบอัดข้อมูลไม่ได้ ถ้าบันทึกไม่ผ่าน ให้ลองใช้ Chrome");
+    if(n>=SAVE_WARN&&!try2)
+      ulog("⚠️ ข้อมูลเริ่มใหญ่ "+_mb(n)+" จากที่รับได้ "+_mb(SAVE_CAP)+" — ส่วนที่ใหญ่สุด: "+_bigSecs(SEC));
     const r=await fetch("/api/save",{method:"POST",headers,body});
-    if(r.ok)ulog("✅ บันทึกขึ้นเซิร์ฟเวอร์กลางแล้ว — ทุกคนจะเห็นเมื่อรีเฟรช");
-    else{const e=await r.json().catch(()=>({}));ulog("⚠️ บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status)));}
-  }catch(ex){ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message);}
+    if(r.ok){ulog("✅ บันทึกขึ้นเซิร์ฟเวอร์กลางแล้ว ("+_mb(n)+") — ทุกคนจะเห็นเมื่อรีเฟรช");return;}
+    const e=await r.json().catch(()=>({}));
+    if(r.status===413||n>=SAVE_MAX){
+      ulog("⛔ ข้อมูลใหญ่เกินกว่าที่ส่งได้ ("+_mb(n)+" จากเพดาน "+_mb(SAVE_CAP)+") — อย่าเพิ่งปิดหน้านี้ "+
+        "ไฟล์ที่เพิ่งอ่านยังไม่ถูกบันทึก · ส่วนที่ใหญ่สุด: "+_bigSecs(SEC));return;}
+    /* 5xx หรือเน็ตสะดุด = ลองใหม่ได้ (เซิร์ฟเวอร์รวมข้อมูลทีละคีย์ ส่งซ้ำจึงไม่ทำให้อะไรซ้อน)
+       ส่วน 401/403/409 เป็นคำตอบที่ชัดแล้ว ส่งซ้ำไปก็ได้คำตอบเดิม */
+    if(r.status>=500&&!try2){ulog("↻ บันทึกไม่ผ่าน กำลังลองใหม่อีกครั้ง...");
+      return void setTimeout(()=>_doSync(1),1500);}
+    ulog("⚠️ บันทึกไม่สำเร็จ: "+(e.error||("HTTP "+r.status))+" — อย่าเพิ่งปิดหน้านี้ แล้วลองอัปโหลดไฟล์เดิมซ้ำ");
+  }catch(ex){
+    if(!try2){ulog("↻ เชื่อมต่อไม่ได้ กำลังลองใหม่อีกครั้ง...");return void setTimeout(()=>_doSync(1),1500);}
+    ulog("⚠️ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: "+ex.message+" — อย่าเพิ่งปิดหน้านี้ แล้วลองอัปโหลดไฟล์เดิมซ้ำ");
+  }
 }
 document.getElementById("p").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 window.addEventListener("DOMContentLoaded",()=>{const t=localStorage.getItem("bd_token"),u=localStorage.getItem("bd_user");if(t&&u){try{const su=JSON.parse(u);
