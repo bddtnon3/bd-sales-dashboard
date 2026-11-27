@@ -4418,7 +4418,9 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
   *       ตรวจสอบกันดู ว่าตั้งแต่วันที่ 16 เป็นต้นมา การที่เซลล์คีย์ คลังจัดออกตรงกันไหม
   *       แต่จะขึ้นสีทึบแบบเดิมเวลาซุปตั้งเป้า"*
   *     *"พยายามทำให้ทุกส่วนอ่านข้อมูลเชื่อมกันได้หมด ไม่ต้องมีใครรอใคร"*
-  *   ⚠️ "สีทึบ = ซุปตั้งเป้า" เป็นคำสั่งตรง ๆ — วันที่เซลล์เปิดเองต้องเป็นขอบ ไม่ใช่สีทึบ
+  *   ⚠️ "แยกให้ออกว่าซุปตั้งเป้าไว้ไหม" เป็นคำสั่งตรง ๆ — แต่ตั้งแต่ 27 พ.ย. 69 แยกด้วย
+  *      **จุดใต้ตัวเลข (`tg`)** ไม่ใช่สีของช่อง เพราะเจ้าของบอกว่า *"สีงงมาก"*
+  *      (สีของช่อง = สถานะอย่างเดียว เสมอ · §25 ทดสอบตรง ๆ ว่าครบทั้งสี่สถานะ)
   * ========================================================================== */
  const DAY = `
    __as('sales','209611','CT11 · ทดสอบ');
@@ -4448,7 +4450,7 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
      panel:/ย้อนหาเลขออเดอร์ที่ตกหล่น/.test(tx),
      fn:typeof spMissBtnHtml==='function'&&typeof spMissFind==='function'&&
         typeof spMissScan==='function'&&typeof spMissAdd==='function',
-     legend:/ลงเอง/.test(tx)&&/สีทึบ = ซุปตั้งเป้า/.test(tx)};
+     legend:/ยังไม่คีย์/.test(tx)&&/จุดใต้เลข = ซุปตั้งเป้า/.test(tx)};
    /* กดวันเก่าที่ไม่มีงานเลย → ต้องเปิดการ์ดกรอกของวันนั้นได้ */
    if(oldC)oldC.click();
    const t2=document.getElementById('spordView').textContent.replace(/\s+/g,' ');
@@ -4477,9 +4479,10 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    dayo.day===dayo.want&&dayo.box===true&&dayo.photo===true&&dayo.save===true&&
    dayo.back===true,
    'วัน '+dayo.day+' ช่อง='+dayo.box+' รูป='+dayo.photo+' บันทึก='+dayo.save);
- t('🎨 สีทึบยังหมายถึง "ซุปตั้งเป้า" เท่านั้น — วันที่เซลล์ลงเองเป็นขอบ',
-   /\bjr\b/.test(dayo.tgtCls)&&!/\bjr\b|\bjk\b|\bjg\b/.test(dayo.oldCls)&&
-   /\bjo\b/.test(dayo.selfCls)&&!/\bjk\b|\bjg\b|\bjr\b/.test(dayo.selfCls),
+ t('🎨 "ซุปตั้งเป้า" แยกด้วยจุดใต้เลข (tg) ไม่ใช่สีช่อง — สีคือสถานะอย่างเดียว',
+   /\bjr\b/.test(dayo.tgtCls)&&/\btg\b/.test(dayo.tgtCls)&&
+   !/\bjr\b|\bjk\b|\bjg\b|\btg\b/.test(dayo.oldCls)&&
+   /\bjk\b/.test(dayo.selfCls)&&!/\btg\b/.test(dayo.selfCls),
    'เป้า="'+dayo.tgtCls+'" · ว่าง="'+dayo.oldCls+'" · ลงเอง="'+dayo.selfCls+'"');
  t('🛟 ไม่มีเป้าสักวัน ปฏิทินก็ยังต้องขึ้น — ไม่ต้องรอซุป',
    dayo.calAlways===true&&dayo.msg===true&&dayo.legend===true,
@@ -4691,6 +4694,100 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    sav.blind.length===0,sav.blind.join(' | '));
  t('🛟 หน้านี้อ่านอย่างเดียว — CSTOCK เท่าเดิมทุกไบต์ ไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
    sav.ro===true&&sav.posts===0,'same='+sav.ro+' posts='+sav.posts);
+
+ /* ================================================================
+  * 25) 🎨 ปฏิทินของเซลล์ — หนึ่งสี = หนึ่งสถานะ เสมอ
+  *   เจ้าของ 27 พ.ย. 69 พร้อมภาพปฏิทินของตัวเอง:
+  *     *"สีงงมาก ดูไม่ออกเลยว่าคืออะไร ปรับให้อ่านง่ายกว่านี้ แก้ไขการ design หน่อย"*
+  *   บนจอเขา: 19/21 ขอบน้ำเงิน · 20/22-26 ขอบแดง · 27 แดงอ่อน แล้วคำอธิบายเขียน
+  *   "ไม่ตรง 0" ทั้งที่มีวันแดงหกวัน — เพราะช่องเดียวตอบสองคำถาม (สถานะ + ใครเปิดวันนั้น)
+  *   และตัวนับข้างล่างนับเฉพาะวันที่ซุปตั้งเป้า
+  *   ชุดนี้สร้างครบทั้ง 4 สถานะ × (ซุปตั้งเป้า / เซลล์เปิดเอง) = 8 กรณี แล้วตรวจว่า
+  *   สีไม่ชนกันสักคู่ และตัวเลขใต้ปฏิทินตรงกับจำนวนช่องที่เห็นจริง
+  * ================================================================ */
+ const CAL = `
+   __reset();cstOk();
+   __as('sales','209617','CT17 · เซลล์');
+   CSTOCK.slips[B1].d=spBackStep(todayISO(),-12);CSTOCK.slips[B1].g='D';
+   CSTOCK.slips[B1].at=1;
+   CSTOCK.lots={};CSTOCK.key={};CSTOCK.rep={};CSTOCK.gin={};
+   MASTER={items:{ZZ01:{nm:'สินค้าทดสอบ ซี'}},det:{ZZ01:{ps:12}}};
+   STOREDAILY={data:{},ord:{}};OT.cache={};OT.months=[];spRfBust();
+   CSTOCK.lots['LS1']={id:'LS1',sl:B1,d:spBackStep(todayISO(),-12),code:'ZZ01',
+     nm:'สินค้าทดสอบ ซี',cs:30,pc:0,ln:'CT17',clr:[],up:1};
+   /* [ย้อนกี่วัน, สถานะที่ต้องการ, ซุปตั้งเป้าไหม] — ครบทั้งแปดคู่ */
+   window.__CS=[[-8,'todo',1],[-7,'todo',0],[-6,'keyed',1],[-5,'keyed',0],
+                [-4,'ok',1],[-3,'ok',0],[-2,'bad',1],[-1,'bad',0]];
+   let n=9000;
+   window.__CS.forEach(function(c){
+     const k=c[0],st=c[1],tg=c[2];
+     const d=spBackStep(todayISO(),k),key=B1+'|'+d+'|CT17';
+     if(tg)CSTOCK.key[key]={it:{ZZ01:{sc:5,sp:0}},by:'sup',at:10};
+     if(st==='todo')return;
+     const a='BDD01'+String(++n).padStart(8,'0');
+     STOREDAILY.ord[a]={s:'SH'+n,l:'209617',d:d,k:d,cs:5,pc:0,v:900,c:2};
+     CSTOCK.rep[key]={it:{},no:[a],by:'209617',byName:'CT17',at:2,n:1,h:[]};
+     if(st==='keyed')return;
+     CSTOCK.gin[B1+'|'+d]={g:['88'],rows:{'CT17|ZZ01':{sc:5,sp:0,nm:'สินค้าทดสอบ ซี',pk:12}},
+       ords:st==='ok'?[a]:['BDD0100000777'],dd:[d],by:'manager',at:30};
+   });
+   const D0=spBackStep(todayISO(),-8);
+   SP.view='slip';SP.sid=B1;SP.sec='rep';SP.day=D0;
+   SP.ym=D0.slice(0,7);SP.cm=D0.slice(0,7);SP.zone=undefined;
+   try{localStorage.removeItem('bdspzone');}catch(e){}
+   _switchTab('spord');renderSpord();`;
+ const rcal=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const before=JSON.stringify(CSTOCK),p0=window.__posts.length;
+   const V=document.getElementById('spordView');
+   const cells=[...V.querySelectorAll('.sp-cal .cal-day')]
+     .filter(c=>c.textContent.trim()&&c.className.replace('cal-day','').trim());
+   /* "ระบายสี" = มีคลาสสถานะจริง (jr/jk/jg) — ไม่นับช่องที่มีแค่ sel/today */
+   const o={got:{},look:{},tg:0,
+     painted:cells.filter(c=>/\b(jr|jk|jg)\b/.test(c.className)).length};
+   /* คลาสจริง + "หน้าตาที่ตาเห็น" ของแต่ละกรณี */
+   window.__CS.forEach(function(c){
+     const d=spBackStep(todayISO(),c[0]);
+     const el=cells.filter(x=>x.textContent.trim()===String(+d.slice(8,10)))[0];
+     if(!el)return;
+     const cs=getComputedStyle(el);
+     o.got[c[1]+'/'+c[2]]=el.className.replace('cal-day','').replace('sel','').trim();
+     o.look[c[1]+'/'+c[2]]=cs.backgroundColor+'|'+cs.color;
+     if(/\btg\b/.test(el.className))o.tg++;
+   });
+   /* ตัวเลขใต้ปฏิทินต้องตรงกับจำนวนช่องที่ระบายสีจริง */
+   const lg=V.querySelector('.cal-legend2');
+   o.legend=lg?lg.textContent.replace(/\s+/g,' ').trim():'';
+   o.nums=(o.legend.match(/\d+/g)||[]).map(Number);
+   o.sw=lg?[...lg.querySelectorAll('.cal-sw')].length:0;
+   o.ro=JSON.stringify(CSTOCK)===before;o.posts=window.__posts.length-p0;
+   return o;
+ },{setup:PRE,pre:CAL});
+ t('🎨 สีของช่อง = สถานะอย่างเดียว — ซุปตั้งเป้ากับเซลล์เปิดเอง สีเดียวกันทุกสถานะ',
+   /* ⚠️ "ยังไม่คีย์ + เซลล์เปิดเอง" ไม่มีจริง — วันที่ไม่มีเป้าและเซลล์ยังไม่พิมพ์อะไร
+      ไม่มีเรคอร์ดสักอัน จึงไม่ใช่งานของวันนั้น ต้องไม่ระบายสีเลย */
+   ['keyed','ok','bad'].every(s=>{
+     const a=(rcal.got[s+'/1']||'').replace(/\btg\b/,'').trim();
+     const b=(rcal.got[s+'/0']||'').trim();
+     return a&&a===b;})&&!rcal.got['todo/0'],
+   JSON.stringify(rcal.got));
+ t('🎨 สี่สถานะต้องแยกกันออกจริง ๆ — ไม่มีสองสถานะไหนหน้าตาเหมือนกัน',
+   (()=>{const v=['todo','keyed','ok','bad'].map(s=>rcal.look[s+'/1']);
+     return new Set(v).size===4&&v.every(Boolean);})(),
+   JSON.stringify(rcal.look));
+ t('🎯 "ซุปตั้งเป้า" อยู่ที่จุดใต้เลข — มีครบ 4 วันที่ตั้งเป้า ไม่ใช่ 8',
+   rcal.tg===4,'tg='+rcal.tg);
+ t('🔢 ตัวเลขใต้ปฏิทินตรงกับจำนวนช่องที่ระบายสีจริง (ของเดิมขึ้น "ไม่ตรง 0" ทั้งที่มีวันแดง)',
+   rcal.nums.length===5&&rcal.nums.slice(0,4).join(',')==='1,2,2,2'&&
+   rcal.nums.slice(0,4).reduce((s,x)=>s+x,0)===rcal.painted&&rcal.nums[4]===4,
+   'นับได้ '+rcal.nums.join('/')+' · ช่องที่ระบายสี '+rcal.painted);
+ t('🏷 คำอธิบายมีตัวอย่างสีครบห้าอัน และบอกว่าจุดคืออะไร',
+   rcal.sw===5&&/จุดใต้เลข = ซุปตั้งเป้า/.test(rcal.legend)&&
+   /ยังไม่คีย์/.test(rcal.legend)&&/คีย์แล้ว รอตรวจ/.test(rcal.legend)&&
+   /ตรวจแล้ว ตรงกัน/.test(rcal.legend)&&/ตรวจแล้ว ไม่ตรง/.test(rcal.legend),
+   rcal.sw+' อัน · '+rcal.legend.slice(0,140));
+ t('🛟 ปฏิทินอ่านอย่างเดียว — CSTOCK เท่าเดิมทุกไบต์ ไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
+   rcal.ro===true&&rcal.posts===0,'same='+rcal.ro+' posts='+rcal.posts);
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));

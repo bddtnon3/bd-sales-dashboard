@@ -280,18 +280,32 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
  
 .cal-day.jr{background:#FDECEA;color:var(--bad);font-weight:800;box-shadow:inset 0 0 0 1.5px #F3C9C4}
 .cal-day.jr.jx{background:var(--bad);color:#fff;box-shadow:inset 0 0 0 1.5px var(--bad)}
-.cal-day.jk{background:#EAF7F0;color:#0F7A52;font-weight:800;box-shadow:inset 0 0 0 1.5px #BFE6D2}
+.cal-day.jk{background:#FFF6DC;color:#8A6400;font-weight:800;box-shadow:inset 0 0 0 1.5px #F0DCA0}
 .cal-day.jg{background:var(--good);color:#fff;font-weight:800}
  
-.cal-day.jo{background:#fff;color:var(--blue);font-weight:800;box-shadow:inset 0 0 0 2px var(--blue)}
-.cal-day.jo.jx{color:var(--bad);box-shadow:inset 0 0 0 2px var(--bad)}
+.sp-cal .cal-day{position:relative}
+.sp-cal .cal-day.tg::after{content:"";position:absolute;left:50%;bottom:6px;width:5px;height:5px;
+  margin-left:-2.5px;border-radius:50%;background:currentColor;opacity:.8}
+@media(max-width:400px){.sp-cal .cal-day.tg::after{bottom:5px}}
  
 .cal-lg{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin-right:10px}
 .cal-dot.jr{background:#FDECEA;border-color:var(--bad)}
 .cal-dot.jx{background:var(--bad);border-color:var(--bad)}
-.cal-dot.jk{background:#EAF7F0;border-color:#0F7A52}
+.cal-dot.jk{background:#FFF6DC;border-color:#8A6400}
 .cal-dot.jg{background:var(--good);border-color:var(--good)}
-.cal-dot.jo{background:#fff;border-color:var(--blue);border-width:2px}
+ 
+.cal-legend2{margin-top:12px;display:grid;gap:8px 12px;font-size:12.5px;color:var(--ink);
+  grid-template-columns:repeat(auto-fit,minmax(142px,1fr))}
+.cal-legend2 .cal-lg{margin-right:0;gap:7px;font-weight:600}
+.cal-legend2 b{font-weight:800}
+.cal-sw{width:19px;height:19px;border-radius:6px;display:inline-block;flex:none;position:relative;
+  background:#fff;box-shadow:inset 0 0 0 1.5px var(--line)}
+.cal-sw.jr{background:#FDECEA;box-shadow:inset 0 0 0 1.5px #F3C9C4}
+.cal-sw.jr.jx{background:var(--bad);box-shadow:none}
+.cal-sw.jk{background:#FFF6DC;box-shadow:inset 0 0 0 1.5px #F0DCA0}
+.cal-sw.jg{background:var(--good);box-shadow:none}
+.cal-sw.tg::after{content:"";position:absolute;left:50%;bottom:3px;width:5px;height:5px;
+  margin-left:-2.5px;border-radius:50%;background:var(--ink);opacity:.8}
  
  
 .sp-zone{--z:var(--blue);--zs:#DCE8FB;--zt:#F1F6FF;--zb:#B9D0F3;--zg:rgba(22,82,184,.16);
@@ -391,9 +405,13 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   .sp-flow-a{align-self:center;transform:rotate(90deg);margin:-2px 0}
 }
  
-.sp-mebox{border:1px solid var(--line);border-left:4px solid var(--good);border-radius:10px;
+ 
+.sp-mebox{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;
   padding:10px 12px;margin-top:10px;background:#fff}
-.sp-mebox.bad{border-left-color:var(--bad);background:#FFFBFA}
+.sp-mebox.s-todo{border-left-color:var(--bad);background:#FFFBFA}
+.sp-mebox.s-keyed{border-left-color:var(--warn);background:#FFFDF6}
+.sp-mebox.s-ok{border-left-color:var(--good)}
+.sp-mebox.bad,.sp-mebox.s-bad{border-left-color:var(--bad);background:#FFFBFA}
 .sp-mebox .psub{margin:0}
 .sp-mehd{font-size:13.5px;margin-bottom:4px}
 .sp-mebad{margin-top:8px;font-size:13px;background:#FDECEA;border-radius:8px;padding:8px 10px;color:var(--ink)}
@@ -16344,10 +16362,11 @@ function spMeDays(ln){
   });
   return out;
 }
+ 
 const SP_ME_ST={
   todo:{cls:"jr",ic:"🔴",nm:"ยังไม่ได้คีย์เลขออเดอร์"},
-  bad :{cls:"jr jx",ic:"🔴",nm:"ไม่ตรงกับที่คลังจัดออก"},
-  keyed:{cls:"jk",ic:"🟢",nm:"คีย์แล้ว — รอแอดมินตรวจ"},
+  bad :{cls:"jr jx",ic:"❌",nm:"ไม่ตรงกับที่คลังจัดออก"},
+  keyed:{cls:"jk",ic:"🟡",nm:"คีย์แล้ว — รอแอดมินตรวจ"},
   ok  :{cls:"jg",ic:"🟢",nm:"ตรงกับที่คลังจัดออก"},
   none:{cls:"",ic:"",nm:""}
 };
@@ -16362,9 +16381,10 @@ function spRepHomeHtml(sid){
   const ym=spCalMon(sid);
   const cnt=s=>ks.filter(d=>days[d].st===s).length;
    
-  const cntM=s=>ks.filter(d=>days[d].st===s&&days[d].tgt&&d.slice(0,7)===spCalMon(sid)).length;
    
-  const cntM0=()=>ks.filter(d=>!days[d].tgt&&days[d].st!=="none"&&d.slice(0,7)===spCalMon(sid)).length;
+  const cntM=s=>ks.filter(d=>days[d].st===s&&d.slice(0,7)===spCalMon(sid)).length;
+   
+  const cntTg=()=>ks.filter(d=>days[d].tgt&&days[d].st!=="none"&&d.slice(0,7)===spCalMon(sid)).length;
   const nTodo=cnt("todo"),nBad=cnt("bad");
   const ahead=ks.filter(d=>d>today&&days[d].st==="todo").length;
   const nSlip=Object.keys(ks.reduce((m,d)=>{days[d].jobs.forEach(j=>{m[j.sid]=1;});return m;},{})).length;
@@ -16386,24 +16406,25 @@ function spRepHomeHtml(sid){
         const S=e?(SP_ME_ST[e.st]||SP_ME_ST.none):SP_ME_ST.none;
         const cls=[];
          
-        if(e&&S.cls)cls.push(e.tgt?S.cls:("jo"+(e.st==="bad"?" jx":"")));
+        if(e&&S.cls)cls.push(S.cls);
+        if(e&&e.tgt&&e.st!=="none")cls.push("tg");
         if(d===cur)cls.push("sel");
         if(d===todayISO())cls.push("today");
         const go=(e&&e.jobs[0]&&e.jobs[0].sid)||sid;
-        const tip=fmtDate(d)+(e?(" · "+S.nm+(e.tgt?"":" (ลงเอง ไม่มีเป้า)")):" · ยังไม่มีงาน — กดเพื่อใส่เลข/อัพรูป");
+        const tip=fmtDate(d)+(e?(" · "+S.nm+(e.tgt?" · ซุปตั้งเป้าไว้":" · เซลล์เปิดเอง ไม่มีเป้า")):" · ยังไม่มีงาน — กดเพื่อใส่เลข/อัพรูป");
         return `<div class="cal-day ${cls.join(" ")}"
           onclick="spGoJob('${anaEsc(go)}','${d}')"
           title="${anaEsc(tip)}">${+d.slice(8,10)}</div>`;
       }).join("")}</div>
-    <div class="cal-legend">
-      <span class="cal-lg"><span class="cal-dot jr"></span> ยังไม่คีย์ ${cntM("todo")}</span>
-      <span class="cal-lg"><span class="cal-dot jk"></span> รอตรวจ ${cntM("keyed")}</span>
-      <span class="cal-lg"><span class="cal-dot jg"></span> ตรงกัน ${cntM("ok")}</span>
-      <span class="cal-lg"><span class="cal-dot jx"></span> ไม่ตรง ${cntM("bad")}</span>
-      <span class="cal-lg"><span class="cal-dot jo"></span> ลงเอง ${cntM0()}</span>
-      <span class="psub" style="margin:0">(เดือนนี้ · สีทึบ = ซุปตั้งเป้า)</span></div>
-    <div class="psub" style="margin-top:6px">กดวันไหนก็ได้ รวมวันย้อนหลัง เพื่อใส่เลขออเดอร์
-      หรืออัพรูปหน้าจอของวันนั้น ไม่ต้องรอซุปตั้งเป้า</div></div>`;
+    <div class="cal-legend2">
+      <span class="cal-lg"><span class="cal-sw jr"></span> ยังไม่คีย์ <b>${cntM("todo")}</b></span>
+      <span class="cal-lg"><span class="cal-sw jk"></span> คีย์แล้ว รอตรวจ <b>${cntM("keyed")}</b></span>
+      <span class="cal-lg"><span class="cal-sw jg"></span> ตรวจแล้ว ตรงกัน <b>${cntM("ok")}</b></span>
+      <span class="cal-lg"><span class="cal-sw jr jx"></span> ตรวจแล้ว ไม่ตรง <b>${cntM("bad")}</b></span>
+      <span class="cal-lg"><span class="cal-sw tg"></span> จุดใต้เลข = ซุปตั้งเป้า <b>${cntTg()}</b></span>
+    </div>
+    <div class="psub" style="margin-top:8px">นับเฉพาะเดือนนี้ · กดวันไหนก็ได้ รวมวันย้อนหลัง
+      เพื่อใส่เลขออเดอร์หรืออัพรูป ไม่ต้องรอซุปตั้งเป้า</div></div>`;
    
   const sel=days[cur];
   let det="";
@@ -16411,7 +16432,7 @@ function spRepHomeHtml(sid){
     det=sel.jobs.map(c=>{
       const S=SP_ME_ST[c.st]||SP_ME_ST.none;
       const other=c.sid!==sid;
-      let b=`<div class="sp-mebox${c.st==="bad"?" bad":""}">
+      let b=`<div class="sp-mebox s-${anaEsc(c.st)}${c.st==="bad"?" bad":""}">
         <div class="sp-mehd">${S.ic} <b>${anaEsc(S.nm)}</b>${
           other?' <span class="psub">· ใบ '+anaEsc(spSlipTitle(c.sid)||c.sid)+"</span>":""}</div>
         <div class="psub">${c.has?"เป้า <b>"+N(c.tc)+"</b> ลัง"+(c.tp?" + "+N(c.tp)+" ชิ้น":""):"ไม่มีเป้าของวันนี้"}
