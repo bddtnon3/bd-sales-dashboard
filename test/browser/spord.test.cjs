@@ -4178,6 +4178,237 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🛟 ...แปลงไม่ได้ต้องบอกว่าไม่รู้ และเป็นข้อความล้วน ไม่ใช่แท็ก HTML',
    gz3.noPack==='ไม่รู้ขนาดแพ็ค'&&gz3.tagless===true,"'"+gz3.noPack+"'");
 
+ /* ==========================================================================
+  * 20) ⏰ ยึด "เวลาที่แอดมินสร้างใบ" — ใบที่คีย์ก่อนนั้น ไม่ใช่ของใบนี้
+  *   เจ้าของ 29 พ.ย. 69: *"พอเลือกออเดอร์วันที่ 27 แต่แอดมินเพิ่งสร้างไปเย็นวันนี้ ตัวระบบ
+  *     กลับไปอ่านออเดอร์ที่เซลล์คีย์เข้ามาเมื่อรอบเช้า เมื่อเป็นตัวสินค้าซ้ำกัน มันเลยคิดว่า
+  *     เป็นออเดอร์เดียวกัน … จะต้องยึดจากเวลาที่แอดมินเข้ามาสร้างออเดอร์พิเศษ เพราะหลังจาก
+  *     สร้างออเดอร์นี้ ซุปจะเข้าไปตั้งเป้า แล้วเซลล์จึงจะคีย์กันเข้ามารายวันได้ … น่าจะมี
+  *     ทับซ้อนกันค่อนข้างเยอะแน่"*
+  *   วัดกับ `Transaction_Inquiry_26112026` จริงก่อนเขียน: ช่อง `เวลาสั่งซื้อ` มีครบ
+  *   2,107/2,107 ใบ (100%) และ 94.5% คีย์ในช่วง 08:00-16:00 ⇒ ใบที่สร้างตอนเย็นจะกิน
+  *   เกือบทั้งวันถ้าไม่ตัดด้วยเวลา
+  *   ฟิกซ์เจอร์นี้คือเคสของเขาเป๊ะ ๆ: สร้างใบ 17:40 · เช้า 09:15 (ต้องตัด) · เย็น 18:20 (เอา)
+  * ========================================================================== */
+ const MKT = `
+   __as('manager','','ผู้จัดการ');
+   window.__d1=spBackStep(todayISO(),-1);      /* วันก่อนวันที่สร้างใบ (= วันตัดบิลของใบ) */
+   window.__d0=todayISO();                     /* วันที่สร้างใบ = วันที่กำลังบันทึกงาน */
+   var _t=new Date();_t.setHours(17,40,0,0);window.__mkAt=_t.getTime();
+   CSTOCK.slips[B1].d=window.__d1;CSTOCK.slips[B1].g='D';
+   CSTOCK.slips[B1].at=window.__mkAt;          /* แอดมินสร้างใบตอนเย็น 17:40 */
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};
+   MASTER={items:{FO01:{nm:'คนอร์โจ๊กซอง รสไก่ FO'}},det:{FO01:{ps:12}}};
+   CSTOCK.lots={L1:{id:'L1',sl:B1,d:window.__d1,code:'FO01',
+     nm:'คนอร์โจ๊กซอง รสไก่ FO',cs:10,pc:0,ln:'CT11',clr:[]}};
+   STOREDAILY={data:{},ord:{}};
+   const OTO={},OTD={};
+   /* tail 8 หลักเสมอ ไม่งั้น spOrdFind หาไม่เจอ (บทเรียน §17) */
+   const mk=function(t,day,g,tm){
+     OTO[t]={l:'209611',d:+day.slice(8,10),s:'SH'+t,w:1,p:0,c:1,n:1,g:g};
+     if(tm)OTO[t].tm=tm;
+     OTD[t]={FO01:[2,0,12]};
+     STOREDAILY.ord['BDD01'+t]={s:'SH'+t,l:'209611',d:day,k:day,v:10,c:1,cs:2,pc:0};
+   };
+   mk('80000001',window.__d1,'301','10:00');   /* วันก่อนสร้างใบ → ตัด */
+   mk('80000002',window.__d0,'302','09:15');   /* วันเดียวกัน เช้า → ตัด (เคสของเจ้าของ) */
+   mk('80000003',window.__d0,'303','18:20');   /* วันเดียวกัน เย็น → เอา */
+   mk('80000004',window.__d0,'304','');        /* ไฟล์ไม่บอกเวลา → ไม่แน่ใจ ไม่เติมให้ */
+   mk('80000005',window.__d0,'305','08:30');   /* เช้า แต่คนบันทึกไว้เองแล้ว → ไม่แตะ */
+   for(var k=-3;k<=0;k++){
+     var m=spBackStep(todayISO(),k).slice(0,7);
+     OT.cache[m]={ord:OTO,det:OTD,meta:null,none:0};
+   }
+   OT.months=Object.keys(OT.cache);
+   spRfBust();
+   CSTOCK.rep[B1+'|'+window.__d0+'|CT11']={it:{},no:['BDD0180000005'],
+     by:'209611',byName:'CT11',at:2,n:1};
+   SP.sid=B1;SP.view='slip';SP.sec='rep';SP.day=window.__d0;SP.ym=window.__d0.slice(0,7);
+   SP.back={on:0,sid:'',busy:0,i:0,n:0,open:{}};SP.zone=undefined;
+   try{localStorage.removeItem('bdspzone');}catch(e){}
+   _switchTab('spord');renderSpord();`;
+
+ const mkt=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const codes={FO01:1};
+   const before=JSON.stringify(CSTOCK),p0=window.__posts.length,s0=window.__sync;
+   const made=spSlipMade(B1);
+   const r0=spBackDay(B1,window.__d0,codes,['CT11']);
+   const r1=spBackDay(B1,window.__d1,codes,['CT11']);
+   const B=spBal(B1);
+   const A=spAutoFind(B1,window.__d0,'CT11');
+   const dv=document.createElement('div');dv.innerHTML=spAutoNoHtml(B1,window.__d0,'CT11',1);
+   const dg=document.createElement('div');dg.innerHTML=spAutoGinHtml(B1,window.__d0);
+   const db=document.createElement('div');db.innerHTML=spBalHtml(B1);
+   /* ① ใบเก่าที่ไม่มีเวลา = ไม่กรองเลย */
+   CSTOCK.slips[B1].at=1;
+   const noAt=spBackDay(B1,window.__d0,codes,['CT11']),noAtMade=spSlipMade(B1);
+   /* ② ใบที่มีงานบันทึกไว้ "ก่อน" at ของตัวเอง (ใบที่ import มา) = ไม่กรองเลย */
+   CSTOCK.slips[B1].at=window.__mkAt;
+   CSTOCK.key[B1+'|'+window.__d1+'|CT11']={it:{FO01:{sc:1,sp:0}},by:'sup',
+     at:window.__mkAt-86400000};
+   const imp=spBackDay(B1,window.__d0,codes,['CT11']),impMade=spSlipMade(B1);
+   delete CSTOCK.key[B1+'|'+window.__d1+'|CT11'];
+   return {hm:made?made.hm:'',mkYmd:made?made.ymd:'',
+     n0:r0.n0,cut0:r0.cut,cut1:r1.cut,
+     keep0:(r0.rows[0]||{}).no||[],pre0:(r0.rows[0]||{}).pre||[],
+     noTm0:(r0.rows[0]||{}).noTm||[],
+     nOrd0:r0.nOrd,pre0n:r0.pre,noTm0n:r0.noTm,gin0:Object.keys(r0.gin).sort(),
+     nOrd1:r1.nOrd,pre1n:r1.pre,gin1:Object.keys(r1.gin).sort(),
+     balPre:B.pre,balNoTm:B.noTm,balHm:B.madeHm,balOrd:B.nOrd,
+     Apre:A.pre,AnoTm:A.noTm,Aadd:A.add.length,
+     txt:dv.textContent.replace(/\s+/g,' '),
+     gtx:dg.textContent.replace(/\s+/g,' '),
+     btx:db.textContent.replace(/\s+/g,' '),
+     noAtN:noAt.nOrd,noAtPre:noAt.pre,noAtMade:noAtMade,
+     impN:imp.nOrd,impPre:imp.pre,impMade:impMade,
+     same:JSON.stringify(CSTOCK)===before,
+     posts:window.__posts.length-p0,sync:window.__sync===s0};
+ },{setup:PRE,pre:MKT});
+ t('⏰ อ่านเวลาที่แอดมินสร้างใบได้ และวันที่ตรงกับปฏิทินเครื่อง (ไม่ใช่ UTC)',
+   mkt.hm==='17:40'&&mkt.mkYmd===new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'}),
+   "'"+mkt.hm+"' · "+mkt.mkYmd);
+ t('⏰ ใบที่เซลล์คีย์ "เช้า" ก่อนแอดมินสร้างใบตอนเย็น ต้องไม่ถูกดูดเข้ามา (เคสของเจ้าของ)',
+   mkt.pre0.indexOf('BDD0180000002')>=0&&mkt.keep0.indexOf('BDD0180000002')<0,
+   'เอา '+mkt.keep0.join(',')+' · ตัด '+mkt.pre0.join(','));
+ t('⏰ ใบที่คีย์ "เย็น" หลังสร้างใบ ต้องเอาเข้ามาตามเดิม',
+   mkt.keep0.indexOf('BDD0180000003')>=0&&mkt.nOrd0===2,
+   'nOrd='+mkt.nOrd0+' · '+mkt.keep0.join(','));
+ t('⏰ วันก่อนวันที่สร้างใบ ตัดทั้งวัน (ใบยังไม่เกิด) และนับไว้บอก',
+   mkt.cut1===2&&mkt.nOrd1===0&&mkt.pre1n===1&&!mkt.gin1.length,
+   'cut='+mkt.cut1+' nOrd='+mkt.nOrd1+' pre='+mkt.pre1n+' gin='+mkt.gin1.join(','));
+ t('⏰ ไฟล์ไม่บอกเวลา = ไม่รู้ ≠ ใช่ → เข้ากองไม่แน่ใจ ไม่เติมให้',
+   mkt.noTm0.indexOf('BDD0180000004')>=0&&mkt.noTm0n===1&&
+   mkt.keep0.indexOf('BDD0180000004')<0,
+   'noTm='+mkt.noTm0.join(',')+' n='+mkt.noTm0n);
+ t('🛟 เลขที่คนกดบันทึกไว้เองแล้ว ไม่ถูกตัด แม้จะคีย์ก่อนสร้างใบ',
+   mkt.keep0.indexOf('BDD0180000005')>=0&&mkt.pre0.indexOf('BDD0180000005')<0,
+   'เอา '+mkt.keep0.join(','));
+ t('🧾 เลข GIN ของใบที่ถูกตัด ต้องไม่ถูกเสนอด้วย',
+   mkt.gin0.join(',')==='303,305',mkt.gin0.join(','));
+ t('📣 ตัดออกต้องบอกบนจอพร้อมเวลา — ทั้งช่องเซลล์ ช่อง GIN และแถบสรุป',
+   /ก่อนที่ใบนี้จะถูกสร้าง/.test(mkt.txt)&&/17:40/.test(mkt.txt)&&
+   /ไฟล์ไม่บอกเวลา/.test(mkt.txt)&&
+   /ก่อนที่ใบนี้จะถูกสร้าง/.test(mkt.gtx)&&/ไม่นับ/.test(mkt.btx)&&
+   mkt.balPre===2&&mkt.balNoTm===1&&mkt.balHm==='17:40',
+   'pre='+mkt.balPre+' noTm='+mkt.balNoTm+" · '"+mkt.txt.slice(0,150)+"'");
+ t('▸ ปุ่มใส่ให้เลย เหลือเฉพาะใบที่ใบนี้เป็นเจ้าของจริง',
+   mkt.Apre===1&&mkt.AnoTm===1&&mkt.Aadd===1,
+   'add='+mkt.Aadd+' pre='+mkt.Apre+' noTm='+mkt.AnoTm);
+ t('🛟 ใบเก่าที่ไม่มีเวลาสร้าง = ไม่กรองเลย (ของเดิมต้องไม่หาย)',
+   mkt.noAtMade===null&&mkt.noAtN===4&&mkt.noAtPre===0,
+   'made='+JSON.stringify(mkt.noAtMade)+' nOrd='+mkt.noAtN);
+ t('🛟 ใบที่มีงานบันทึกไว้ก่อนเวลา at ของตัวเอง (ใบ import) = ไม่กรองเลย',
+   mkt.impMade===null&&mkt.impN===4&&mkt.impPre===0,
+   'made='+JSON.stringify(mkt.impMade)+' nOrd='+mkt.impN);
+ t('🛟 ...ทั้งหมดนี้อ่านอย่างเดียว ไม่แตะข้อมูลและไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
+   mkt.same===true&&mkt.posts===0&&mkt.sync===true,
+   'same='+mkt.same+' posts='+mkt.posts);
+
+ /* ==========================================================================
+  * 21) 📱 หน้า 📊 รายงาน บนมือถือต้อง "ตรง" ไม่ใช่เบี้ยว
+  *   เจ้าของ 29 พ.ย. 69: *"ตอนนี้ report ในมือถือ grid มันเบี้ยวไม่ค่อยตรง ช่วยปรับให้
+  *     มันตรงดูอ่านง่าย ไม่ลายตาหน่อย ตอนนี้แบบตัวอักษร หน่วยอะไร สลับมั่วไปหมดเลย"*
+  *   วัดที่ 390px ก่อนแก้ แล้วเจอสองอย่าง:
+  *     ① ตารางรายวัน 8 คอลัมน์ **กว้าง 620px ในกรอบ 320px** เลื่อนข้าง 302px ⇒ "฿5,1…"
+  *        ถูกตัดกลางตัวเลข และอีก 4 คอลัมน์อยู่นอกจอ (บนวินโดวส์ที่ไม่มีแทร็กแพด เลื่อนไม่ได้เลย
+  *        — กฎ 🖱 ของเจ้าของ) ⇒ พับเป็นการ์ดวันละใบด้วย `.sp-fold` + `data-l`
+  *     ② `.panel` ซ้อน `.panel` กินขอบในสองชั้น: การ์ดแถวบนเริ่มที่ x=21 กว้าง 320 แต่แถวล่าง
+  *        เริ่มที่ x=42 กว้าง **278** ⇒ สองแถวไม่ตรงกัน ซึ่งคือ "grid เบี้ยว"
+  *   ⚠️ ที่ 1280px ต้องเหมือนเดิมทุกอย่าง — เป็นตารางจริง ไม่ใช่การ์ด
+  * ========================================================================== */
+ const RPT = `
+   __as('manager','','ผู้จัดการ');
+   window.__d0=spBackStep(todayISO(),-3);window.__d1=spBackStep(todayISO(),-2);
+   CSTOCK.slips[B1].d=window.__d0;CSTOCK.slips[B1].g='D';CSTOCK.slips[B1].at=1;
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};CSTOCK.lots={};
+   MASTER={items:{},det:{}};
+   [['FO01','คนอร์โจ๊กซอง รสไก่ FO P18X4X45ก',8,72],
+    ['FO02','ลักส์ โรส FO 2 แถม 2',3,12],
+    ['FO03','ซิตร้า เพอร์เฟค ไวท์ FO',5,24]].forEach(function(c){
+     MASTER.items[c[0]]={nm:c[1]};MASTER.det[c[0]]={ps:c[3]};
+     CSTOCK.lots['L'+c[0]]={id:'L'+c[0],sl:B1,d:window.__d0,code:c[0],nm:c[1],
+       cs:c[2],pc:0,ln:'CT11',clr:[]};});
+   STOREDAILY={data:{},ord:{}};
+   const OTO={},OTD={};let tt=90000000;
+   [window.__d0,window.__d1].forEach(function(dy,di){
+     ['CT11','CT12'].forEach(function(ln){
+       const nos=[];
+       for(let i=0;i<2;i++){
+         tt++;const t=String(tt),full='BDD01'+t;
+         OTO[t]={l:'2096'+ln.slice(2),d:+dy.slice(8,10),s:'SH'+ln+i,w:1,p:0,c:1,n:1,
+           g:String(180+di),tm:'09:0'+i};
+         OTD[t]={FO01:[1,0,72],FO02:[1,0,12],FO03:[1,0,24]};
+         STOREDAILY.ord[full]={s:'SH'+ln+i,l:'2096'+ln.slice(2),d:dy,k:dy,v:1200,c:3,cs:3,pc:0};
+         nos.push(full);
+       }
+       CSTOCK.rep[B1+'|'+dy+'|'+ln]={it:{},no:nos,by:'2096'+ln.slice(2),byName:ln,at:2,n:1};
+     });
+     CSTOCK.gin[B1+'|'+dy]={g:[String(180+di)],dd:[dy],ords:[],miss:[],money:1,
+       by:'manager',byName:'แอดมิน 1',at:20,
+       rows:{'CT11|FO01':{sc:2,ss:0,sp:0,xc:2,xs:0,xp:0,fc:0,fs:0,fp:0,yc:0,ys:0,yp:0,
+               nm:'คนอร์โจ๊กซอง รสไก่ FO P18X4X45ก',pk:72,g:6200,v:5100}}};
+   });
+   for(let k=-6;k<=0;k++){const m=spBackStep(todayISO(),k).slice(0,7);
+     OT.cache[m]={ord:OTO,det:OTD,meta:null,none:0};}
+   OT.months=Object.keys(OT.cache);
+   spRfBust();
+   SP.sid=B1;SP.view='slip';SP.sec='rpt';SP.day=window.__d0;SP.ym=window.__d0.slice(0,7);
+   SP.back={on:0,sid:'',busy:0,i:0,n:0,open:{}};SP.zone=undefined;
+   try{localStorage.removeItem('bdspzone');}catch(e){}
+   _switchTab('spord');renderSpord();`;
+ const rmeas=async()=>ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const V=document.getElementById('spordView'),vr=V.getBoundingClientRect();
+   /* ตารางรายวันคือตารางที่มีหัว "หักแล้วเหลือ" */
+   const tb=[...V.querySelectorAll('table')].filter(x=>
+     /หักแล้วเหลือ/.test(x.textContent))[0]||null;
+   const wr=tb?tb.closest('.tblwrap'):null;
+   const r1=tb?tb.querySelector('tbody tr'):null;
+   const cells=r1?[...r1.children].map(td=>{
+     const cr=td.getBoundingClientRect();
+     return {l:td.getAttribute('data-l')||'',disp:getComputedStyle(td).display,
+       txt:td.textContent.replace(/\s+/g,' ').trim(),
+       over:wr?Math.round(cr.right-wr.getBoundingClientRect().right):0};
+   }):[];
+   /* ขอบซ้ายของทุกแถวการ์ด/ตารางในหน้านี้ ต้องตรงกันหมด */
+   const xs=[...V.querySelectorAll('.cards,.tblwrap')].map(e=>
+     Math.round(e.getBoundingClientRect().left-vr.left));
+   /* 🔎 แอดมินตรวจ มีกล่องย่อยในกล่องแบบเดียวกัน — ต้องตรงเหมือนกัน
+      (นับเฉพาะกล่องที่เห็นจริง · กล่องที่ถูกซ่อนให้ rect กว้าง 0 ที่ตำแหน่งแปลก ๆ) */
+   SP.sec='adm';renderSpord();
+   const V2=document.getElementById('spordView'),vr2=V2.getBoundingClientRect();
+   const axs=[...V2.querySelectorAll('.cards,.tblwrap')]
+     .filter(e=>e.getBoundingClientRect().width>0)
+     .map(e=>Math.round(e.getBoundingClientRect().left-vr2.left));
+   SP.sec='rpt';renderSpord();
+   return {win:window.innerWidth,doc:document.documentElement.scrollWidth,
+     has:!!tb,sx:wr?(wr.scrollWidth-wr.clientWidth):-1,
+     cells:cells,xs:xs,xn:xs.filter((v,i,a)=>a.indexOf(v)===i).length,
+     axs:axs,axn:axs.filter((v,i,a)=>a.indexOf(v)===i).length,
+     right:tb?Math.round(tb.getBoundingClientRect().right-vr.right):0};
+ },{setup:PRE,pre:RPT});
+ await pg.setViewportSize({width:390,height:844});
+ const r390=await rmeas();
+ await pg.setViewportSize({width:1280,height:950});
+ const r1280=await rmeas();
+ t('📱 ตารางรายวันบนมือถือพับเป็นการ์ด — ไม่ต้องเลื่อนข้าง ไม่มีคอลัมน์หลุดจอ',
+   r390.has&&r390.sx===0&&r390.doc<=r390.win+1&&r390.right<=1&&
+   r390.cells.every(c=>c.disp==='block'&&c.over<=1),
+   'เลื่อนข้าง '+r390.sx+'px · doc '+r390.doc+'/'+r390.win+' · ขวาเกิน '+r390.right);
+ t('📱 ...และทุกช่องมีป้ายกำกับ ค่าอ่านครบ ไม่ถูกตัดกลางตัวเลข',
+   r390.cells.length===8&&r390.cells.slice(1).every(c=>!!c.l)&&
+   r390.cells.some(c=>/฿5,100/.test(c.txt)),
+   r390.cells.map(c=>c.l+'="'+c.txt+'"').join(' | '));
+ t('📱 ขอบซ้ายของทุกแถวการ์ด/ตารางตรงกันหมด — ไม่ใช่กล่องซ้อนกล่องที่ร่นเข้าไปอีกชั้น',
+   r390.xn===1&&r390.axn===1,
+   'รายงาน x = '+r390.xs.join(',')+' · แอดมินตรวจ x = '+r390.axs.join(','));
+ t('🖥 ที่ 1280px ยังเป็นตารางจริงเหมือนเดิม และอยู่ในจอ',
+   r1280.has&&r1280.cells.length===8&&
+   r1280.cells.every(c=>c.disp==='table-cell')&&
+   r1280.doc<=r1280.win+1&&r1280.right<=1,
+   'disp='+(r1280.cells[0]||{}).disp+' · doc '+r1280.doc+'/'+r1280.win);
+ await pg.setViewportSize({width:1280,height:950});
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));

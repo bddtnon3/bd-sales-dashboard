@@ -922,13 +922,24 @@ tr.sp-backl>td{background:#fff;font-size:13px}
 /* 📱 ตารางสรุปรายสินค้าบนมือถือ: พับเป็นการ์ดต่อหนึ่งรหัส (แบบเดียวกับ .ot-tbl)
    ⚠️ แต่ละ <td> ต้องมี data-l และเนื้อหาต้องอยู่ใน element เดียว ไม่งั้น flex จะแตกเป็นสองชิ้น */
 @media(max-width:720px){
+  /* 📱 กล่องย่อยในกล่อง (`.panel.sp-sub`) ต้องไม่กินขอบในอีกชั้น — วัดที่ 390px ก่อนแก้:
+     panel นอก 362 → การ์ดแถวบน 320 → panel ใน 320 → การ์ดแถวล่าง **278** ⇒ สองแถวเริ่มคนละ x
+     ซึ่งคือ "grid มันเบี้ยวไม่ค่อยตรง" ที่เจ้าของเห็น · บนจอใหญ่ยังเป็นกล่องซ้อนกล่องเหมือนเดิม */
+  .panel .panel.sp-sub{padding-left:0;padding-right:0;border:0;box-shadow:none;border-radius:0;
+    border-top:1px solid var(--line);margin-top:14px}
   .sp-pt thead{display:none}
   .sp-pt,.sp-rt .sp-pfold{display:block}
   .sp-rt .sp-pfold tr{display:block;border:1px solid var(--line);border-radius:12px;
     padding:10px 12px;margin-bottom:10px}
-  .sp-rt .sp-pfold td{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
-    border:0;padding:3px 0;text-align:left;background:transparent!important;box-shadow:none!important}
-  .sp-rt .sp-pfold td::before{content:attr(data-l);color:var(--muted);font-size:12px;flex:0 0 auto}
+  .sp-rt .sp-pfold td{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+    border:0;padding:3px 0;text-align:left;min-height:25px;
+    background:transparent!important;box-shadow:none!important}
+  .sp-rt .sp-pfold td::before{content:attr(data-l);color:var(--muted);font-size:12px;flex:0 0 auto;
+    line-height:1.55}
+  /* 📱 ตัวเลขกับหมายเหตุใต้มันต้องชิดขวาเป็นแนวเดียวกัน ไม่งั้นอ่านเป็น "66.7%8 ลัง"
+     ปนกันไปหมด ซึ่งคือ "ตัวอักษร หน่วยอะไร สลับมั่วไปหมด" ที่เจ้าของทัก 29 พ.ย. 69 */
+  .sp-rt .sp-pfold td:not(:first-child)>span{text-align:right;flex:1 1 auto;line-height:1.55}
+  .sp-rt .sp-pfold td:not(:first-child)>span>.psub{margin-top:1px;line-height:1.4}
   .sp-rt .sp-pfold td:first-child{display:block;border-bottom:1px solid var(--line);
     padding-bottom:8px;margin-bottom:6px}
   .sp-rt .sp-pfold td:first-child::before{content:none}
@@ -16781,7 +16792,9 @@ function spRptProdHtml(B){
         extra?'<span class="psub" style="display:block">'+spBalOne(extra,r.ps)+"</span>":""}</span></td>
       <td class="l" data-l="ผล"><span style="color:${S.c}"><b>${S.i} ${S.t}</b></span></td></tr>`;
   }).join("");
-  return `<div class="panel" style="margin-top:12px">
+  /* 📱 `sp-sub` = กล่องย่อยในกล่อง — บนมือถือทิ้งขอบในซ้ายขวา ไม่งั้นแถวการ์ดข้างในจะร่นเข้ามา
+     อีก 21px (วัดที่ 390px: ข้างนอก 320 ข้างใน 278) แล้วสองแถวการ์ดไม่ตรงกัน = "grid เบี้ยว" */
+  return `<div class="panel sp-sub" style="margin-top:12px">
     <h3>📦 ครบไหม ทีละสินค้า</h3>
     <div class="cards sp-c5" style="margin-top:10px">
       <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">🟢 ครบ</div>
@@ -16870,15 +16883,18 @@ function spRptHtml(sid){
      (`spAllOut` นับเฉพาะวันที่แอดมินตรวจแล้ว · `spBal` เติมวันที่ยังไม่ตรวจด้วยใบที่มีเลข GIN) */
   const Tg={};
   if(isD)(BL?BL.rows:[]).forEach(r=>{if(r.g)Tg[r.code]=r.g;});
+  /* 📱 ทุกช่องต้องมี data-l เพราะที่ ≤720px ตารางนี้พับเป็นการ์ดวันละใบ (ดู .sp-fold)
+     8 คอลัมน์กว้าง 620px ในกรอบ 320px — เจ้าของเห็น "฿5,1…" ถูกตัดกลางตัวเลข
+     และอีก 4 คอลัมน์หลุดออกนอกจอ (วัดที่ 390px ก่อนแก้) */
   const body=rows.map(r=>`<tr>
     <td class="l"><b>${fmtDate(r.d)}</b></td>
-    <td>${(r.cutQ.cs||r.cutQ.pc)?(Object.keys(r.cutPcs).length?Tt(r.cutPcs):spCsTxt(r.cutQ.cs,r.cutQ.pc)):"-"}</td>
-    <td>${(r.keyQ.cs||r.keyQ.pc)?Tt(r.kPcs):"-"}</td>
-    <td>${(r.outQ.cs||r.outQ.pc)?(Object.keys(r.outPcs).length?Tt(r.outPcs):spCsTxt(r.outQ.cs,r.outQ.pc)):"-"}</td>
-    <td>${r.niv==null?'<span style="color:var(--muted)">รอแอดมินตรวจ</span>':THB(r.niv)}</td>
-    <td>${r.sale==null?'<span style="color:var(--muted)">รอไฟล์ยอดขาย</span>':THB(r.sale)}</td>
-    <td>${r.net==null?'<span style="color:var(--muted)">—</span>':"<b>"+THB(r.net)+"</b>"}</td>
-    <td>${r.pct==null?"-":r.pct+"%"}</td></tr>`).join("");
+    <td data-l="ตัดบิล">${(r.cutQ.cs||r.cutQ.pc)?(Object.keys(r.cutPcs).length?Tt(r.cutPcs):spCsTxt(r.cutQ.cs,r.cutQ.pc)):"-"}</td>
+    <td data-l="เซลล์คีย์">${(r.keyQ.cs||r.keyQ.pc)?Tt(r.kPcs):"-"}</td>
+    <td data-l="ส่งออก">${(r.outQ.cs||r.outQ.pc)?(Object.keys(r.outPcs).length?Tt(r.outPcs):spCsTxt(r.outQ.cs,r.outQ.pc)):"-"}</td>
+    <td data-l="มูลค่าออเดอร์พิเศษ">${r.niv==null?'<span style="color:var(--muted)">รอแอดมินตรวจ</span>':THB(r.niv)}</td>
+    <td data-l="ยอดขายทั้งวัน">${r.sale==null?'<span style="color:var(--muted)">รอไฟล์ยอดขาย</span>':THB(r.sale)}</td>
+    <td data-l="หักแล้วเหลือ">${r.net==null?'<span style="color:var(--muted)">—</span>':"<b>"+THB(r.net)+"</b>"}</td>
+    <td data-l="คิดเป็น %">${r.pct==null?"-":r.pct+"%"}</td></tr>`).join("");
   return `<div class="panel">
     <h3>📊 รายงานใบนี้</h3>
     <div class="cards" style="margin-top:10px">
@@ -16924,7 +16940,7 @@ function spRptHtml(sid){
     ${noNet?`<div class="psub" style="margin-top:8px"><b class="down">⚠️ มี ${noNet} วันที่ยังคิด
       "ยอดขายหลังหักออเดอร์พิเศษ" ไม่ได้</b> — ต้องมีทั้งผลตรวจของแอดมิน (มูลค่า) และไฟล์ยอดขายของวันนั้น
       จึงจะหักได้ ระบบจะไม่เดาให้</div>`:""}
-    <div class="tblwrap sp-freeze" style="margin-top:12px"><table class="sp-kt">
+    <div class="tblwrap" style="margin-top:12px"><table class="sp-kt sp-fold">
       <thead><tr><th class="l">วันที่</th><th>ตัดบิล</th><th>เซลล์คีย์</th><th>ส่งออก</th>
         <th>มูลค่าออเดอร์พิเศษ</th><th>ยอดขายทั้งวัน</th><th>หักแล้วเหลือ</th><th>คิดเป็น %</th></tr></thead>
       <tbody>${body||'<tr><td colspan="8" class="l">ยังไม่มีรายการของใบนี้</td></tr>'}</tbody></table></div>
@@ -19596,6 +19612,7 @@ async function spMissAddAll(sid){
  * ==========================================================================*/
 const BACK_DAYS=62;        /* เพดานจำนวนวันที่กวาดต่อใบ */
 const BACK_ORD=400;        /* เพดานใบที่พิจารณาต่อสายต่อวัน */
+const BACK_NOTE=12;        /* เพดานเลขที่ยกมาโชว์ในหมายเหตุ (ตัวเลขนับเต็มเสมอ) */
 /* ⚠️ เดินวันด้วย Date.UTC + getUTC* ทั้งสองฝั่ง (ข้อยกเว้นที่ถูกต้องของกฎ ymdOf) */
 function spBackStep(ymd,n){
   const s=String(ymd||""),y=+s.slice(0,4),m=+s.slice(5,7),d=+s.slice(8,10);
@@ -19725,12 +19742,71 @@ function spGinFirst(ym){
 }
 /* วันที่คลังออกเลข GIN นี้ (เลขวันของเดือน) — 0 = ไม่รู้ */
 function spGinDay(g,ym){const m=spGinFirst(ym);return (m&&+m[String(g)])||0;}
-function spBackDay(sid,ymd,codes,lines){
+/* ============================================================================
+ * ⏰ ใบที่เซลล์คีย์ "ก่อน" ที่แอดมินจะสร้างออเดอร์พิเศษใบนี้ ไม่ใช่ของใบนี้
+ *
+ * เจ้าของ 29 พ.ย. 69: *"พอเลือกออเดอร์วันที่ 27 แต่แอดมินเพิ่งสร้างไปเย็นวันนี้ ตัวระบบกลับไป
+ *   อ่านออเดอร์ที่เซลล์คีย์เข้ามาเมื่อรอบเช้า เมื่อเป็นตัวสินค้าซ้ำกัน มันเลยคิดว่าเป็นออเดอร์
+ *   เดียวกัน ตอนนี้จะต้องยึดจากเวลาที่แอดมินเข้ามาสร้างออเดอร์พิเศษ เพราะหลังจากสร้างออเดอร์นี้
+ *   ซุปจะเข้าไปตั้งเป้า แล้วเซลล์จึงจะคีย์กันเข้ามารายวันได้ เพราะฉะนั้นปรับการอ่านอัตโนมัติส่วนนี้
+ *   ให้หน่อย น่าจะมีทับซ้อนกันค่อนข้างเยอะแน่"*
+ *
+ * ลำดับงานที่เขาวางไว้คือ **สร้างใบ → ซุปตั้งเป้า → เซลล์คีย์** จึงเป็นข้อบังคับทางเวลาแบบเดียวกับ
+ * "GIN ออกหลังใบเสมอ" — ใบที่เกิดก่อนใบออเดอร์พิเศษ เป็นของรอบอื่นแน่นอน ไม่ใช่เรื่องน่าจะ
+ *
+ * 🔍 วัดกับไฟล์จริงก่อนเขียน (`Transaction_Inquiry_26112026`, 2,107 ใบ · 15-26 พ.ย. 69):
+ *   • ช่อง `เวลาสั่งซื้อ` มี **ครบ 2,107/2,107 ใบ = 100%** (เก็บเป็น `tm` "HH:MM" โดย `parseTxn`)
+ *   • เวลาคีย์กระจายทั้งวัน: 08:00-16:00 เป็นช่วงหลัก (1,992 ใบ = 94.5%) และมีหางถึง 22:00
+ *     ⇒ ใบที่แอดมินสร้างตอนเย็น ถ้าไม่ตัดด้วยเวลาจะกิน "เกือบทั้งวัน" ซึ่งคือ "ทับซ้อนกัน
+ *     ค่อนข้างเยอะ" ที่เจ้าของทักไว้เป๊ะ ๆ
+ * สามทาง ไม่มีการเดา (กฎ "ไม่รู้ ≠ ใช่" และ "ไม่รู้ ≠ ศูนย์" เหมือนทุกหน้า):
+ *   • วันหลังวันที่สร้างใบ → ของใบนี้
+ *   • วันก่อนวันที่สร้างใบ · หรือวันเดียวกันแต่เวลาคีย์ก่อนเวลาสร้าง → **ตัดออก แล้วบอกบนจอ**
+ *   • วันเดียวกันแต่ไฟล์ไม่บอกเวลา (ไฟล์ใบจัดของไม่มีช่องเวลา มีแต่ไฟล์ Transaction Inquiry)
+ *     → เข้ากอง "ไม่แน่ใจ" **ไม่เติมให้อัตโนมัติ** และบอกว่ากี่ใบ
+ * ⚠️ เลขที่ "อยู่ในช่องแล้ว" (คนกดบันทึกไว้เอง) **ไม่ถูกตัดและยังนับเหมือนเดิม** — ตัวกรองนี้
+ *    ตัดสินแค่ว่าระบบจะ **เสนอ** อะไร ห้ามไปล้มงานที่คนตัดสินใจไว้แล้ว
+ * ⚠️ ใบที่ไม่มี `at` (ของเก่าก่อนเก็บเวลา) = **ไม่กรองเลย** และใบที่มีงานบันทึกไว้ "ก่อน" `at`
+ *    ของตัวเอง ก็ไม่กรอง เพราะแสดงว่า `at` ไม่ใช่เวลาที่งานเริ่มจริง (ใบ 4 ล็อตเดือน ต.ค. 69 ที่
+ *    `cstImport` หยอดเข้ามา ใส่ `at` เป็นเวลา import ไม่ใช่เวลาสร้าง) — `spPreWork` เป็นตัวกัน
+ * ==========================================================================*/
+const SP_AT_MIN=1262304000000;          /* 1 ม.ค. 2010 — น้อยกว่านี้ไม่ใช่เวลาจริง */
+function spPreWork(sid,at){
+  const C=(typeof CSTOCK!=="undefined"&&CSTOCK)?CSTOCK:null;
+  if(!C)return false;
+  const pre=String(sid)+"|";
+  return ["key","gin","rep","whq"].some(k=>{
+    const M=C[k];
+    if(!M||typeof M!=="object")return false;
+    return Object.keys(M).some(x=>{
+      if(String(x).indexOf(pre)!==0)return false;
+      const a=+((M[x]||{}).at||0);
+      return a>=SP_AT_MIN&&a<at;
+    });
+  });
+}
+/* เวลาที่แอดมินสร้างใบนี้ — {at,ymd,hm} · null = ไม่มีเวลาที่เชื่อถือได้ ⇒ ไม่กรอง */
+function spSlipMade(sid){
+  const sl=spSlip(sid),at=+((sl&&sl.at)||0);
+  if(!(at>=SP_AT_MIN))return null;
+  const t=new Date(at);
+  if(isNaN(t.getTime()))return null;
+  if(spPreWork(sid,at))return null;
+  /* 📅 วันที่ต้องเป็นวันบนปฏิทินของคนใช้ — ผ่าน ymdOf เสมอ ห้าม toISOString() (UTC+7) */
+  return {at:at,ymd:ymdOf(t),
+    hm:String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0")};
+}
+function spBackDay(sid,ymd,codes,lines,made){
   const ym=String(ymd||"").slice(0,7);
   /* วันที่สร้างใบออเดอร์ — GIN ที่เกิดก่อนวันนี้ ไม่ใช่ของใบนี้ */
   const myDay=+String(ymd||"").slice(8,10)||0;
+  const MD=(made===undefined)?spSlipMade(sid):made;
+  /* 0 = หลังวันที่สร้างใบ (รับทั้งวัน) · 1 = วันเดียวกัน (เทียบเวลา) · 2 = ก่อนวันที่สร้างใบ */
+  const cut=MD?(ymd<MD.ymd?2:(ymd===MD.ymd?1:0)):0;
   const o={d:ymd,rows:[],gin:{},ginLate:{},nLate:0,
     nOrd:0,nNew:0,cx:0,unsure:0,pool:0,shops:0,
+    pre:0,preList:[],noTm:0,noTmList:[],
+    made:MD?MD.ymd:"",madeHm:MD?MD.hm:"",cut:cut,
     pcs:{},gpcs:{},unkPs:[],nGin:0,myDay:myDay,
     chk:spDayHas(spGinRec(sid,ymd)),noDet:!spBackHasDet(ym),noFile:false};
   (lines||[]).forEach(ln=>{
@@ -19740,13 +19816,20 @@ function spBackDay(sid,ymd,codes,lines){
     if(!keys.length)return;
     const H=spMissHave(spRepRec(sid,ymd,ln),ln,ym);
     const L={ln:ln,n:0,add:[],maybe:[],cx:[],sh:{},gin:{},t0:"",t1:"",got:0,
-      pcs:{},gpcs:{},nGin:0,no:[]};
+      pre:[],noTm:[],pcs:{},gpcs:{},nGin:0,no:[]};
     keys.slice(0,BACK_ORD).forEach(full=>{
       const e=P[full],inS=o.noDet?null:spMissInSlip(full,ym,codes);
       if(inS===false)return;                       /* ใบนี้ไม่มีสินค้าของใบออเดอร์นี้ */
       const ask=String(e.rf||full).toUpperCase();
       const got=!!(H.have[full]||H.have[ask]||H.have[otTail(full,"BDD01")]||
         (e.rf&&H.have[String(e.rf).slice(-SP_TAIL)]));
+      /* ⏰ ใบที่คีย์ก่อนใบออเดอร์พิเศษนี้เกิด = ของรอบอื่น (ดูบันทึกเหนือ spSlipMade)
+         เลขที่อยู่ในช่องแล้วไม่แตะ — คนบันทึกไว้เอง */
+      if(cut&&!got){
+        const t0=String((e.ot&&e.ot.tm)||"").slice(0,5);
+        if(cut===2||(t0&&t0<MD.hm)){o.pre++;L.pre.push(ask);return;}
+        if(!t0){o.noTm++;L.noTm.push(ask);return;}
+      }
       if(e.cx){if(!got){L.cx.push(ask);o.cx++;}return;}
       /* ⚠️ ใบที่ยังไม่รู้รายการสินค้า **ห้ามนับเป็นใบของรอบนี้** — ยังไม่รู้ว่าเกี่ยวหรือไม่
          เลขที่โชว์ (ใบ/ร้าน/GIN/เวลา) จึงนับจากใบที่ det ยืนยันแล้วเท่านั้น ส่วนที่ยังไม่รู้
@@ -19786,10 +19869,12 @@ function spBackDay(sid,ymd,codes,lines){
       if(got)return;
       L.add.push(ask);o.nNew++;
     });
-    if(L.n||L.cx.length){
+    if(L.n||L.cx.length||L.pre.length||L.noTm.length){
       L.shops=Object.keys(L.sh).length;
       L.run=spBackRuns(Object.keys(L.gin));
       o.rows.push(L);o.nOrd+=L.n;o.shops+=L.shops;
+      L.pre.forEach(x=>{if(o.preList.length<BACK_NOTE)o.preList.push(x);});
+      L.noTm.forEach(x=>{if(o.noTmList.length<BACK_NOTE)o.noTmList.push(x);});
     }
   });
   o.noFile=!o.pool;
@@ -19814,16 +19899,22 @@ function spBackScan(sid,all){
   const lines=mine?[mine]:spSlipLines(sid);
   const days=spBackDays(sid);
   const out=[],months={};
+  /* ⏰ เวลาที่สร้างใบ อ่านครั้งเดียวต่อการกวาด แล้วส่งต่อให้ทุกวัน (ดูบันทึกเหนือ spSlipMade) */
+  const MD=spSlipMade(sid);
   const S={rows:out,days:days.length,lines:lines.length,mine:mine,
     nOrd:0,nNew:0,cx:0,unsure:0,nofile:0,chk:0,gin:0,noDet:0,shops:0,
+    pre:0,preList:[],noTm:0,noTmList:[],made:MD?MD.ymd:"",madeHm:MD?MD.hm:"",
     pcs:{},gpcs:{},unkPs:[],nGin:0,byLn:{},srcChk:0,srcGin:0,
     d0:days[0]||"",d1:days[days.length-1]||"",codes:Object.keys(codes).length};
   days.forEach(d=>{
     months[d.slice(0,7)]=1;
-    const r=spBackDay(sid,d,codes,lines);
+    const r=spBackDay(sid,d,codes,lines,MD);
     if(r.noFile){S.nofile++;return;}
     if(r.noDet)S.noDet++;
-    if(!r.nOrd&&!r.cx)return;
+    S.pre+=r.pre;S.noTm+=r.noTm;
+    r.preList.forEach(x=>{if(S.preList.length<BACK_NOTE)S.preList.push(x);});
+    r.noTmList.forEach(x=>{if(S.noTmList.length<BACK_NOTE)S.noTmList.push(x);});
+    if(!r.nOrd&&!r.cx&&!r.pre&&!r.noTm)return;
     S.nOrd+=r.nOrd;S.nNew+=r.nNew;S.cx+=r.cx;S.unsure+=r.unsure;
     S.gin+=r.run.n;S.shops+=r.shops;S.nGin+=r.nGin;
     if(r.src==="chk")S.srcChk++;else S.srcGin++;
@@ -20080,6 +20171,8 @@ function spBal(sid){
   const o={rows:[],tgt:0,keyed:0,gin:0,short:0,overG:0,toKey:0,overT:0,unk:[],noPs:[],
     nOrd:S.nOrd,nGin:S.nGin,days:S.days,nofile:S.nofile,noDet:S.noDet,
     srcChk:S.srcChk,srcGin:S.srcGin,
+    pre:S.pre,preList:S.preList,noTm:S.noTm,noTmList:S.noTmList,
+    made:S.made,madeHm:S.madeHm,
     d0:S.d0,d1:S.d1,byLn:[],months:S.months,mine:S.mine,
     sh:{},ov:{},tk:{},ot:{}};          /* ชิ้นต่อรหัส: ขาด · เกิน · ต้องคีย์เพิ่ม · คีย์เกินตั้งต้น */
   spSlipCodes(sid).forEach(c=>{
@@ -20252,6 +20345,12 @@ function spBalHtml(sid){
       เซลล์คีย์ตรงกับคลังจัดถึงหน่วยชิ้น และคีย์ครบตั้งต้นในใบแล้ว</b></div></div>`);
   }
   const w=[];
+  /* ⏰ ตัดด้วยเวลาที่สร้างใบ — ต้องบอกจำนวนและเหตุผล ห้ามหายเงียบ (ดูบันทึกเหนือ spSlipMade) */
+  if(B.pre)w.push("ไม่นับ "+B.pre+" ใบ — เซลล์คีย์ไว้ก่อนที่ใบนี้จะถูกสร้าง ("+
+    (B.made?fmtDate(B.made)+" ":"")+B.madeHm+") จึงเป็นงานของรอบอื่น"+
+    (B.preList.length?" · เช่น "+B.preList.slice(0,6).join(" "):""));
+  if(B.noTm)w.push("อีก "+B.noTm+" ใบของวันที่สร้างใบ ไฟล์ไม่ได้บอกเวลาที่คีย์ — ยังไม่นับและไม่เติมให้ "+
+    "(อัปไฟล์รายการสั่งซื้อของวันนั้นแล้วจะรู้เวลา)");
   if(B.nofile)w.push("ยังไม่มีไฟล์ของ "+B.nofile+" วัน — วันพวกนั้นยังตอบไม่ได้ ไม่ใช่ว่าไม่มีงาน");
   if(B.noDet)w.push("ยังไม่ได้อ่านรายการสินค้าของ "+B.noDet+" วัน (ระบบกำลังดึงให้)");
   if(B.overT)w.push("คีย์เกินตั้งต้นในใบ "+spSumTxt(B.ot,B.ym)+" — ตั้งต้นเป็นข้อมูลประกอบ ไม่ได้ใช้ตัดสินว่าครบ");
@@ -20311,15 +20410,24 @@ function spAutoFind(sid,ymd,ln){
   const L=r.rows.filter(x=>x.ln===ln)[0]||null;
   return {r:r,L:L,n:L?L.n:0,add:L?L.add:[],no:L?L.no:[],
     gin:Object.keys(r.gin).filter(Boolean),run:r.run,
-    noFile:r.noFile,noDet:r.noDet,cx:L?L.cx.length:0,maybe:L?L.maybe.length:0};
+    noFile:r.noFile,noDet:r.noDet,cx:L?L.cx.length:0,maybe:L?L.maybe.length:0,
+    pre:L?L.pre.length:0,noTm:L?L.noTm.length:0,made:r.made,madeHm:r.madeHm};
 }
 function spAutoNoHtml(sid,ymd,ln,can){
   if(!sid||!ymd||!ln)return "";
   let A;try{A=spAutoFind(sid,ymd,ln);}catch(e){return "";}
   if(A.noDet)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบกำลังอ่านไฟล์ของเดือนนี้ …</div></div>`;
-  if(A.noFile||!A.n)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์แล้ว</div>
-    <div class="psub">ยังไม่พบออเดอร์ของสาย ${anaEsc(ln)} วันที่ ${fmtDate(ymd)} ในไฟล์ —
-    ${A.noFile?"ยังไม่มีไฟล์ของวันนั้น":"ยังไม่มีใบที่มีสินค้าของใบนี้"} · กรอกเองได้เลย</div></div>`;
+  if(A.noFile||!A.n){
+    /* ⏰ "ไม่มีใบ" กับ "มีใบแต่คีย์ก่อนสร้างใบนี้" เป็นสองเรื่อง ห้ามใช้ข้อความเดียวกัน */
+    const why=A.noFile?"ยังไม่มีไฟล์ของวันนั้น"
+      :(A.pre?("มี "+A.pre+" ใบของวันนั้น แต่เซลล์คีย์ไว้ก่อนที่ใบนี้จะถูกสร้าง ("+
+        A.madeHm+") จึงเป็นงานของรอบอื่น")
+      :(A.noTm?("มี "+A.noTm+" ใบของวันนั้น แต่ไฟล์ไม่ได้บอกเวลาที่คีย์ จึงยังไม่ใส่ให้")
+      :"ยังไม่มีใบที่มีสินค้าของใบนี้"));
+    return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์แล้ว</div>
+      <div class="psub">ยังไม่พบออเดอร์ของสาย ${anaEsc(ln)} วันที่ ${fmtDate(ymd)} —
+      ${anaEsc(why)} · กรอกเองได้เลย</div></div>`;
+  }
   const h=[`<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์ให้แล้ว —
     สาย ${anaEsc(ln)} วันที่ ${fmtDate(ymd)} มี <b>${A.n}</b> ใบ</div>`];
   h.push(`<div class="sp-autol">${A.no.slice(0,40).map(x=>`<code>${anaEsc(x)}</code>`).join(" ")}${
@@ -20330,6 +20438,8 @@ function spAutoNoHtml(sid,ymd,ln,can){
     <span class="psub"> (ใส่ให้ในช่องเท่านั้น ตรวจแล้วกดบันทึกเองเหมือนเดิม)</span>`);
   else if(!A.add.length)h.push(`<div class="psub sp-ok">อยู่ในช่องครบแล้ว</div>`);
   const n=[];
+  if(A.pre)n.push("คีย์ก่อนที่ใบนี้จะถูกสร้าง ("+A.madeHm+") "+A.pre+" ใบ — ไม่ใส่ให้");
+  if(A.noTm)n.push("ไฟล์ไม่บอกเวลาที่คีย์ "+A.noTm+" ใบ — ไม่ใส่ให้");
   if(A.maybe)n.push("ยังไม่รู้รายการสินค้าอีก "+A.maybe+" ใบ — ไม่ใส่ให้");
   if(A.cx)n.push("ใบที่ยกเลิก "+A.cx+" ใบ — ไม่ใส่ให้");
   if(n.length)h.push(`<div class="psub">${n.join(" · ")}</div>`);
@@ -20409,14 +20519,19 @@ function spAutoGinHtml(sid,ymd){
   const oldTxt=late.length?`<div class="psub" style="margin-top:4px">⏭ ไม่เอา <b>${
     late.map(x=>anaEsc(x)+" → "+dayTxt(r.ginLate[x])).join(" · ")}</b> — ใบของวันนี้อีก
     <b>${r.nLate}</b> ใบ คลังไปจัดในรอบของวันหลัง จึงไปตรวจในวันนั้น · ถ้าต้องการจริง พิมพ์เองได้</div>`:"";
+  /* ⏰ ใบที่คีย์ก่อนสร้างใบนี้ ถูกตัดไปก่อนจะเก็บเลข GIN ของมัน จึงต้องบอกตรงนี้ด้วย */
+  const preTxt=(r.pre||r.noTm)?`<div class="psub" style="margin-top:4px">⏰ ไม่นับ${
+    r.pre?(" <b>"+r.pre+"</b> ใบที่เซลล์คีย์ก่อนที่ใบนี้จะถูกสร้าง ("+anaEsc(r.madeHm)+")"):""}${
+    (r.pre&&r.noTm)?" ·":""}${r.noTm?(" <b>"+r.noTm+"</b> ใบที่ไฟล์ไม่บอกเวลาคีย์"):""} —
+    เลข GIN ของใบพวกนั้นจึงไม่ถูกเสนอ · ถ้าต้องการจริง พิมพ์เองได้</div>`:"";
   if(r.noDet)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบกำลังอ่านไฟล์ของเดือนนี้ …</div></div>`;
   if(!g.length)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์แล้ว</div>
     <div class="psub">${r.noFile?"ยังไม่มีไฟล์ของวันนี้":"ยังไม่มีใบไหนของวันนี้ที่คลังออกเลข GIN ให้"} ·
-    กรอกเองได้เลย</div>${oldTxt}</div>`;
+    กรอกเองได้เลย</div>${oldTxt}${preTxt}</div>`;
   return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์ให้แล้ว —
       เลข GIN ของวันที่ ${fmtDate(ymd)}</div>
     <div class="sp-autol">${g.map(x=>`<code>${anaEsc(x)}</code>`).join(" ")}</div>
-    <div class="psub">เรียงติดกัน: ${anaEsc(spBackRunTxt(r.run))} · จาก ${r.nGin} ใบใน ${r.nOrd} ใบที่เซลล์คีย์</div>${oldTxt}
+    <div class="psub">เรียงติดกัน: ${anaEsc(spBackRunTxt(r.run))} · จาก ${r.nGin} ใบใน ${r.nOrd} ใบที่เซลล์คีย์</div>${oldTxt}${preTxt}
     <button type="button" class="btn-go btn-mini"
       onclick="spAutoGinFill('${anaEsc(sid)}','${anaEsc(ymd)}')">▸ ใส่ลงในช่องให้เลย</button>
     <span class="psub"> (ใส่ให้ในช่องเท่านั้น กด 🔎 ตรวจและบันทึก เองเหมือนเดิม)</span></div>`;
@@ -20974,7 +21089,9 @@ function spProdSumHtml(cmp){
         :(t.ovPcs?'<b class="up">+'+qp(t.qOv,t.pk)+'</b>':dash)}</span></td>
       <td class="l" data-l="ผล"><span>${st[0]}${t.bad?'<span class="psub down" style="display:block">แปลงหน่วยไม่ได้ '+
         t.bad+' แถว ('+anaEsc(t.badLn.join(" "))+')</span>':""}</span></td></tr>`;}).join("");
-  return `<div class="panel" style="margin-top:12px">
+  /* 📱 `sp-sub` — กล่องย่อยในกล่อง บนมือถือทิ้งขอบในซ้ายขวา ไม่งั้นการ์ดข้างในร่นเข้ามาอีก 21px
+     แล้วไม่ตรงกับแถวข้างบน (กฎเดียวกับ 📦 ครบไหม ทีละสินค้า ในหน้ารายงาน) */
+  return `<div class="panel sp-sub" style="margin-top:12px">
     <h3>📦 สรุปรายสินค้า — คีย์เท่าไหร่ คลังจัดเท่าไหร่</h3>
     ${uqTogHtml()}
     <div class="cards sp-c5" style="margin-top:10px">
