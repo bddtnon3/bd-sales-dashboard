@@ -2761,58 +2761,151 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
 
 
  /* ============================================================================
-  * 12) 🧯 เลขที่อ่านจากรูปหายกลางทาง — เจ้าของเจอ 29 พ.ย. 69
+  * 12) 🧯 เลขที่อ่านจากรูปต้องหายไม่ได้เลย — เจ้าของเจอ 27 พ.ย. 69 แล้วสั่งต่อ 28 พ.ย. 69
   *   *"ทำไมที่เค้าอัพมาจำนวนไม่ตรงกัน เช่นสาย 17 เค้าแคปมาว่าส่งมา 20-21 รูป
-  *     ที่มันในระบบขึ้นแค่ 13 รูป"*
+  *     ที่มันในระบบขึ้นแค่ 13 รูป"* → *"มันทำให้คนทำงานต้องทำซ้ำสอง"*
   *   OCR อ่านได้ครบ 20 แต่เก็บแค่ 13 เลขแรก เพราะเซลล์กดบันทึกกลางคัน → หน้าถูกวาดใหม่
   *   → ช่องกรอกเดิมหลุดออกจากหน้า → รูปที่ 14-20 เขียนลงช่องที่ไม่มีอยู่แล้ว
+  *   เป้าหมายรอบนี้คือ **เลขหายไม่ได้ และไม่มีเคสไหนที่เซลล์ต้องอัพรูปซ้ำ**
+  *   ⚠️ สวมตัวอ่านปลอม (spOcrNos/ocrWords/FileReader) เพื่อเดิน spOcrGo จริงทั้งลูป
+  *      โดยไม่ต้องโหลด Tesseract 8 MB · ตัวอ่านจริงกับรูปจริงอยู่ใน ocr-promo.test.cjs
   * ========================================================================== */
- const ocrKeep=await ev(a=>{
-   eval(a.setup);setup();
+ const OCRPRE=`
    __as('sales','209611','CT11');
-   SP.sid=B1;SP.view='slip';SP.ym='2026-11';SP.day=WORK_;SP.sec='rep';SP.ocr=null;
+   /* ⚠️ ล้างตัวหน่วงเขียนร่างที่ค้างจากบล็อกก่อน ไม่งั้นมันจะเขียนร่างของบล็อกก่อนกลับมา
+      กลางบล็อกนี้ (เจอจริงตอนเขียนเทสต์: ร่าง 5 เลขกลายเป็น 20 เลขของบล็อกก่อนหน้า) */
+   clearTimeout(SP.nodt);SP.nodt=0;
+   SP.sid=B1;SP.view='slip';SP.ym='2026-11';SP.day=WORK_;SP.sec='rep';SP.ocr=0;
+   CSTOCK.rep={};
    CSTOCK.rep[B1+'|'+WORK_+'|CT11']={it:{},no:[],n:0,h:[],by:'209611',byName:'CT11',at:1};
+   window.__lsKeys=p=>{const a=[];try{for(let i=0;i<localStorage.length;i++){
+     const k=localStorage.key(i);if(k&&(!p||p.test(k)))a.push(k);}}catch(e){}return a;};
+   window.__lsKeys(/^bdspno:/).forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
    renderSpord();
-   const ta=()=>document.getElementById('spRNo_CT11');
-   const o={box:!!ta()};
-   const mk=i=>({n:'img'+i+'.jpg',got:[{no:'10347'+String(70000+i),cf:90}],err:''});
-   /* อ่านไปแล้ว 13 จาก 20 รูป */
-   SP.ocr={ln:'CT11',busy:1,n:20,i:13,rows:[],add:0,dup:0,err:''};
-   for(let i=1;i<=13;i++)SP.ocr.rows.push(mk(i));
-   spOcrSync('CT11');
-   o.a13=spNoSplit(ta().value).length;
-   /* เซลล์กดบันทึกกลางคัน — ต้องไม่บันทึก และต้องบอกว่าอ่านไปกี่รูปแล้ว */
-   window.__alert='';window.__posts=[];
-   spRepLineSave(B1,WORK_,'CT11');
-   o.alert=window.__alert;o.posts=window.__posts.length;
-   /* จำลองการ "วาดหน้าใหม่" ที่เคยทำให้เลขหาย */
-   renderSpord();
-   o.afterRender=spNoSplit(ta().value).length;
-   /* อ่านต่อจนครบ 20 แล้วเขียนกลับ — ต้องได้ 20 ไม่ใช่ 7 */
-   for(let i=14;i<=20;i++)SP.ocr.rows.push(mk(i));
-   SP.ocr.i=20;
-   spOcrSync('CT11');
-   o.a20=spNoSplit(ta().value).length;
-   /* อ่านจบแล้วค่อยบันทึก */
-   SP.ocr.busy=0;window.__alert='';window.__posts=[];
-   spRepLineSave(B1,WORK_,'CT11');
-   return new Promise(r=>setTimeout(()=>{
-     o.saved=((CSTOCK.rep[B1+'|'+WORK_+'|CT11']||{}).no||[]).length;
-     o.sent=(((window.__posts[0]||{}).b||{}).no||[]).length;
-     o.alert2=window.__alert;
-     r(o);},80));
- },{setup:PRE});
- t('🧯 กดบันทึกระหว่างยังอ่านรูปไม่เสร็จ ต้องไม่บันทึก และบอกว่าอ่านไปกี่รูปแล้ว',
-   ocrKeep.posts===0&&/ยังอ่านรูปไม่เสร็จ/.test(ocrKeep.alert)&&/13 จาก 20/.test(ocrKeep.alert),
-   'โพสต์ '+ocrKeep.posts+' · '+String(ocrKeep.alert).slice(0,80));
- t('🧯 หน้าถูกวาดใหม่กลางคัน เลขที่อ่านไปแล้วต้องยังอยู่ครบ ไม่ใช่เริ่มนับใหม่',
-   ocrKeep.box&&ocrKeep.a13===13&&ocrKeep.afterRender===13,
-   'ก่อนวาด '+ocrKeep.a13+' · หลังวาด '+ocrKeep.afterRender);
- t('🧯 อ่านรูปที่เหลือต่อ ต้องได้ครบ 20 เลข (ของเดิมไม่หาย)',ocrKeep.a20===20,
-   'ได้ '+ocrKeep.a20+' เลข');
- t('🧯 พออ่านครบแล้วกดบันทึก เก็บครบ 20 เลขทั้งในเครื่องและที่ส่งขึ้นเซิร์ฟเวอร์',
-   ocrKeep.saved===20&&ocrKeep.sent===20&&!/ยังอ่านรูป/.test(ocrKeep.alert2||''),
-   'เก็บ '+ocrKeep.saved+' · ส่ง '+ocrKeep.sent);
+   window.__ta=()=>document.getElementById('spRNo_CT11');
+   window.__n=()=>{const e=window.__ta();return e?spNoSplit(e.value).length:-1;};
+   window.__dk=()=>spNoDraftKey('CT11',B1,WORK_);
+   window.__files=n=>{const a=[];for(let i=1;i<=n;i++)a.push({name:'img'+i+'.jpg'});return a;};
+   FileReader=function(){this.readAsDataURL=function(){const s=this;setTimeout(()=>s.onload&&s.onload(),0);};};
+   ocrWords=async()=>[];
+   window.__seq=0;window.__mid=null;
+   spOcrNos=()=>{window.__seq++;
+     if(window.__mid&&window.__seq===13)window.__mid();
+     return [{no:'10347'+String(70000+window.__seq),c:90}];};`;
+
+ /* ---- ① กดบันทึกกลางคัน = จองคิว แล้วระบบบันทึกให้เองตอนอ่านครบ ---- */
+ const ocrQ=await ev(async a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const o={box:!!window.__ta()};
+   window.__mid=()=>{window.__alert='';spRepLineSave(B1,WORK_,'CT11');
+     o.midAlert=window.__alert;o.midPosts=window.__posts.length;o.want=!!(SP.ocr&&SP.ocr.want);
+     o.midBox=(document.getElementById('spOcrBox_CT11')||{}).innerHTML||'';};
+   window.__posts=[];window.__alert='';
+   await spOcrGo('CT11',window.__files(20));
+   await new Promise(r=>setTimeout(r,120));
+   o.endN=window.__n();
+   o.posts=window.__posts.length;
+   o.sent=(((window.__posts[0]||{}).b||{}).no||[]).length;
+   o.saved=((CSTOCK.rep[B1+'|'+WORK_+'|CT11']||{}).no||[]).length;
+   o.n=(CSTOCK.rep[B1+'|'+WORK_+'|CT11']||{}).n;
+   o.drafted=(()=>{try{return localStorage.getItem(window.__dk());}catch(e){return null;}})();
+   return o;
+ },{setup:PRE,pre:OCRPRE});
+ t('🧯 กดบันทึกระหว่างอ่านรูป = จองคิว ไม่ใช่ถูกปฏิเสธ (บอกว่าจะบันทึกให้เอง)',
+   ocrQ.midPosts===0&&ocrQ.want===true&&/จองบันทึกไว้แล้ว/.test(ocrQ.midAlert||'')
+   &&/13 จาก 20/.test(ocrQ.midAlert||''),
+   'โพสต์ '+ocrQ.midPosts+' · '+String(ocrQ.midAlert||'').slice(0,60));
+ t('🧯 ...และบนจอบอกว่าจองไว้แล้ว ไม่ต้องกดอีก',/จองบันทึกไว้แล้ว/.test(ocrQ.midBox||''),
+   String(ocrQ.midBox||'').replace(/<[^>]*>/g,' ').slice(0,70));
+ t('🧯 อ่านครบแล้วระบบบันทึกเอง ครั้งเดียว และได้ครบ 20 เลข (ไม่ใช่ 13)',
+   ocrQ.posts===1&&ocrQ.sent===20&&ocrQ.saved===20,
+   'โพสต์ '+ocrQ.posts+' · ส่ง '+ocrQ.sent+' · เก็บ '+ocrQ.saved);
+ t('🧯 ...ช่องบนจอก็ครบ 20 และกินโควต้าแก้ของเซลล์แค่ 1 ครั้ง',
+   ocrQ.endN===20&&ocrQ.n===1,'ช่อง '+ocrQ.endN+' · โควต้าใช้ไป '+ocrQ.n);
+ t('🧯 ...ร่างในเครื่องถูกลบหลังเซิร์ฟเวอร์ตอบรับแล้ว',ocrQ.drafted===null,
+   String(ocrQ.drafted||'null').slice(0,40));
+
+ /* ---- ② ช่องกรอกหลุดไปจากหน้ากลางคัน: อ่านต่อให้จบ ไม่หยุด และเลขอยู่ครบในร่าง ---- */
+ const ocrGone=await ev(async a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const o={};
+   /* จำลองกรณีแย่สุด: หน้าถูกล้างกลางคัน ช่องกรอกหายไปเลย */
+   window.__mid=()=>{const e=window.__ta();if(e&&e.remove)e.remove();o.gone=window.__n();};
+   window.__posts=[];window.__alert='';
+   await spOcrGo('CT11',window.__files(20));
+   await new Promise(r=>setTimeout(r,60));
+   o.read=SP.ocr.rows.length;o.off=SP.ocr.off;o.alert=window.__alert;
+   o.draft=spNoDraftGet('CT11',B1,WORK_).length;
+   o.posts=window.__posts.length;
+   o.inState=JSON.stringify(CSTOCK).indexOf('1034770001')>=0;
+   /* เปิดหน้าสายนี้ใหม่ — เลขต้องกลับมาครบเอง ไม่ต้องอัพรูปซ้ำ */
+   SP.ocr=0;renderSpord();
+   o.back=window.__n();
+   o.banner=/sp-nodr/.test(document.getElementById('spordView').innerHTML)
+     &&/ยังไม่ได้บันทึก/.test(document.getElementById('spordView').innerHTML);
+   /* แล้วกดบันทึกได้เลย ครบ 20 */
+   window.__posts=[];
+   await spRepLineSave(B1,WORK_,'CT11');
+   await new Promise(r=>setTimeout(r,80));
+   o.sent=(((window.__posts[0]||{}).b||{}).no||[]).length;
+   return o;
+ },{setup:PRE,pre:OCRPRE});
+ t('🧯 ช่องกรอกหายกลางคัน ต้องอ่านรูปต่อให้จบทั้ง 20 รูป ไม่หยุดให้ไปอัพซ้ำ',
+   ocrGone.read===20&&ocrGone.gone===-1,'อ่านได้ '+ocrGone.read+' รูป');
+ t('🧯 ...เลขทั้ง 20 ถูกเก็บไว้ในร่างในเครื่องครบ และยังไม่ถูกบันทึกขึ้นเซิร์ฟเวอร์',
+   ocrGone.draft===20&&ocrGone.posts===0&&ocrGone.off===8,
+   'ร่าง '+ocrGone.draft+' · โพสต์ '+ocrGone.posts+' · รูปที่ช่องหาย '+ocrGone.off);
+ t('🧯 ...บอกผู้ใช้ว่าไม่มีเลขหาย (ไม่ใช่ให้ไปอัพรูปใหม่)',
+   /ไม่มีเลขหาย/.test(ocrGone.alert||'')&&!/อัพรูปใหม่/.test(ocrGone.alert||''),
+   String(ocrGone.alert||'').slice(0,70));
+ t('🧯 เปิดหน้าสายนี้ใหม่ เลขกลับมาครบ 20 เอง พร้อมป้ายบอกว่ายังไม่ได้บันทึก',
+   ocrGone.back===20&&ocrGone.banner===true,'ช่อง '+ocrGone.back+' · ป้าย '+ocrGone.banner);
+ t('🧯 ...กดบันทึกแล้วส่งครบ 20 เลข',ocrGone.sent===20,'ส่ง '+ocrGone.sent);
+ t('🛟 ร่างเลขออเดอร์ไม่อยู่ใน CSTOCK (ไม่แตะข้อมูลที่ sync ขึ้น bd-data-*)',
+   ocrGone.inState===false,'อยู่ใน state = '+ocrGone.inState);
+
+ /* ---- ③ ร่างอยู่ใน localStorage เท่านั้น · เซฟไม่ผ่าน ร่างต้องไม่หาย · โหมดส่วนตัวไม่พัง ---- */
+ const ocrDr=await ev(async a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const o={};
+   await spOcrGo('CT11',window.__files(5));
+   await new Promise(r=>setTimeout(r,60));
+   o.key=window.__dk();
+   o.keys=window.__lsKeys(/^bdspno:/);
+   /* คนละวัน / คนละสาย / คนละใบ ต้องไม่เห็นร่างของกันเอง */
+   o.otherDay=spNoDraftGet('CT11',B1,'2026-11-01').length;
+   o.otherLn=spNoDraftGet('CT12',B1,WORK_).length;
+   /* 🛟 เซฟไม่ผ่าน (เน็ตหลุด) → ร่างต้องยังอยู่ ไม่ใช่หายทั้งสองที่ */
+   bdPost=()=>Promise.reject(new Error('จำลองเน็ตหลุด'));
+   await spRepLineSave(B1,WORK_,'CT11');
+   await new Promise(r=>setTimeout(r,80));
+   o.afterFail=spNoDraftGet('CT11',B1,WORK_).length;
+   o.savedFail=((CSTOCK.rep[B1+'|'+WORK_+'|CT11']||{}).no||[]).length;
+   /* พิมพ์เองก็ลงร่าง (หน่วง 400ms) */
+   window.__ta().value='715426 715427';spNoLive('CT11');
+   await new Promise(r=>setTimeout(r,550));
+   o.typed=spNoDraftGet('CT11',B1,WORK_).length;
+   /* โหมดส่วนตัว: localStorage ใช้ไม่ได้ ต้องไม่ throw และหน้ายังวาดได้ */
+   const real=window.localStorage;
+   try{Object.defineProperty(window,'localStorage',{configurable:true,get(){throw new Error('blocked')}});}catch(e){}
+   let boom='';
+   try{spNoDraftPut('CT11',['1']);spNoDraftGet('CT11');spNoDraftClear('CT11');renderSpord();}
+   catch(e){boom=e.message;}
+   try{Object.defineProperty(window,'localStorage',{configurable:true,value:real});}catch(e){}
+   o.boom=boom;o.stillBox=!!window.__ta();
+   return o;
+ },{setup:PRE,pre:OCRPRE});
+ t('🛟 ร่างเก็บใน localStorage ของเครื่องเท่านั้น และคีย์ขึ้นต้นด้วย bdspno:',
+   /^bdspno:/.test(ocrDr.key||'')&&ocrDr.keys.length===1,
+   String(ocrDr.key||'')+' · พบ '+ocrDr.keys.length+' คีย์');
+ t('🛟 ร่างแยกตามใบ+วันที่+สาย — วันอื่นหรือสายอื่นไม่เห็นของเรา',
+   ocrDr.otherDay===0&&ocrDr.otherLn===0,'วันอื่น '+ocrDr.otherDay+' · สายอื่น '+ocrDr.otherLn);
+ t('🛟 บันทึกไม่ผ่าน (เน็ตหลุด) ร่างต้องยังอยู่ครบ 5 เลข ไม่หายทั้งสองที่',
+   ocrDr.afterFail===5&&ocrDr.savedFail===0,
+   'ร่าง '+ocrDr.afterFail+' · ในเครื่อง '+ocrDr.savedFail);
+ t('🛟 พิมพ์เลขเองก็เก็บลงร่างให้เหมือนกัน',ocrDr.typed===2,'ร่าง '+ocrDr.typed+' เลข');
+ t('🛟 เบราว์เซอร์ที่ห้าม localStorage (โหมดส่วนตัว) ยังใช้งานได้ ไม่พัง',
+   !ocrDr.boom&&ocrDr.stillBox===true,ocrDr.boom||'ok');
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));

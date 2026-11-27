@@ -1983,6 +1983,34 @@ code, never printed.
   is refused with the progress named, the 13 survive the re-render, and the final total is 20 both
   in the record and in what is posted. ⚠️ Verified by reverting each guard and watching the suite
   fail: a test that passes on the broken code proves nothing here.
+  **🛟 …and blocking the save was NOT the fix — the owner said so the next day** (28 Nov 26:
+  *"เดี๋ยวผมจะให้เซลล์อัพใหม่ให้หมดทุกคน ช่วยปรับแก้เรื่องตรงนี้หน่อย มันทำให้คนทำงานต้องทำซ้ำสอง
+  ด่วนเลยนะ ต้องเสร็จวันนี้"*). The guard above stops the loss but **pushes the work back onto the
+  rep**: one mis-timed press means waiting, and switching apps, locking the phone or a flat battery
+  still loses everything, because the numbers only ever lived in a `<textarea>`. The goal is
+  therefore **"a number cannot be lost, whatever the rep presses"**, not "the rep must not press the
+  wrong thing". Two more layers:
+  **③ every number is written to a device draft the moment it is read** (`spNoDraftKey`/`Get`/`Put`/
+  `Clear`, key `bdspno:<uid>:<sid>|<ymd>|<line>`) — the `bdreq:` / `bdcst:` pattern exactly:
+  **never part of the synced state**, so it cannot touch `bd-data-*`, every access in try/catch, and
+  **cleared only after the server accepts** (clearing first then losing the network would lose it in
+  both places, which is the original bug wearing a new hat). `spRepNoHtml` therefore seeds the box
+  with **saved ∪ draft ∪ what this batch has read, always** — that is what makes the numbers come
+  back by themselves — and says how many are not saved yet (`.sp-nodr`, *"ไม่ต้องอัพรูปซ้ำ"*).
+  Because the draft survives a missing box, `spOcrGo` **no longer aborts** when the textarea is
+  gone: it reads every image to the end and says afterwards that nothing was lost.
+  **④ pressing 💾 mid-batch queues the save instead of refusing it** (`SP.ocr.want`): the page says
+  *"จองบันทึกไว้แล้ว"* and `spOcrGo` runs the save itself the moment the last image is read —
+  **once**, so the rep's daily edit quota (`REP_MAX`) is not spent twice.
+  Three rules this exposed: the card passes **`sid`/`ymd` down to `spRepNoHtml`/`spNoLive`** instead
+  of re-deriving them from `SP.sid`/`spDay()`, or the card and the draft can read different keys;
+  `spOcrGo` **freezes the slip and day at batch start**, so changing day mid-read cannot move the
+  draft; and a successful save must **cancel the pending `spNoLive` debounce** before clearing the
+  draft, or that timer rewrites the draft a moment later and the banner claims unsaved numbers that
+  were in fact saved (found by the test, not by reading the code). §12 now also asserts the draft
+  survives a failed save, is keyed per slip+day+line, takes typed numbers too, and that a browser
+  with `localStorage` blocked still works — six checks fail without the draft layer, including
+  *"reopen the page and the 20 numbers come back"*, which is the whole point.
   **🔐 A second code guards the whole page** (owner, 26 Nov 26: *"ให้ใส่รหัสอีกหนึ่งชั้นเพื่อเข้าชั้นนี้"*).
   `renderSpord` returns the PIN screen and **draws nothing of the page** until `spPinOk()`. Two
   rules. **The repo is public, so the digits are never written into any file** — only the SHA-256

@@ -466,6 +466,9 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .sp-ocrls{margin:8px 0 0;padding-left:20px}
 .sp-ocrls li{font-size:12.5px;line-height:1.8;word-break:break-all}
 .sp-ocror{text-align:center;color:var(--muted);font-size:12px;font-weight:700;margin:14px 0 2px}
+/* 🛟 มีเลขค้างอยู่ในเครื่องที่ยังไม่ได้บันทึก — ต้องเด่นพอให้เซลล์เห็นว่าไม่ต้องอัพรูปซ้ำ */
+.sp-nodr{margin:8px 0 0;font-size:13.5px;line-height:1.6;background:#FFF6E5;color:#8A5300;
+  border:1px solid #F0CE8E;border-radius:9px;padding:9px 11px}
 /* sales request modal */
 #reqModal{position:fixed;inset:0;background:rgba(16,42,93,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px}
 /* กล่อง "บันทึกว่าขายออกไปแล้ว" ของสต็อคกลาง — ต้องมีกฎของตัวเอง ไม่งั้นมันจะไหลไปท้ายหน้า
@@ -15051,7 +15054,9 @@ function alPick(gins,codes){
    📲 เซลล์คีย์ — เจ้าของทัก 27 พ.ย. 69: *"ให้ในส่วนออร์เดอร์พิเศษเปิดเข้ามาแล้วเจอหมวด
    เซลล์คีย์เลย ไม่ต้องพาไปหน้าซุปจดก่อนให้งง"* · ว่างไว้แล้วให้ spSec() เลือกตามบทบาทเอง */
 let SP={sid:"",q:"",busy:0,view:"mon",ym:"",yr:"",sec:"",day:"",gin:"",cm:"",cmpLn:"",me:0,chkD:"",
-        trk:{}};   /* trk = สายที่กางเลขออเดอร์ไว้ในตารางติดตาม (ไม่ sync) */
+        trk:{},ocr:0,nodt:0};
+        /* trk = สายที่กางเลขออเดอร์ไว้ในตารางติดตาม · ocr = ชุดรูปที่กำลังอ่าน
+           nodt = ตัวหน่วงเขียนร่างเลขออเดอร์ — ไม่มีอะไรในนี้ sync */
 function spOk(){const C=cstOk();if(!C.sub)C.sub={};if(!C.subdel)C.subdel={};return C;}
 /* ---------- สองฝั่งของงาน: ฝั่งเซลล์ (sup) กับ ฝั่งแอดมิน ----------
    เจ้าของย่อจาก 6 ขั้นตอนเหลือ 2 เมื่อ 25 พ.ย. 69 — *"เริ่มจากง่าย ๆ ก่อน เป็นแค่ฝั่งเซลล์และ
@@ -15357,6 +15362,12 @@ async function spRepSave(sid,ymd,ln,it,no){
   try{
     const r=await bdPost("/api/spord",{act:"rep",sid:sid,d:ymd,ln:ln,it:it,no:nos});
     if(!r||!r.ok)throw new Error((r&&r.error)||"บันทึกไม่สำเร็จ");
+    /* 🛟 ลบร่างในเครื่อง **หลังเซิร์ฟเวอร์ตอบรับแล้วเท่านั้น** (กฎเดียวกับ reqDraftClear) —
+       ลบก่อนแล้วเน็ตหลุด = เลขหายทั้งสองที่ ซึ่งคือบั๊กเดิมในรูปแบบใหม่
+       ⚠️ ต้องล้างตัวหน่วงของ spNoLive ก่อน ไม่งั้นตัวหน่วงที่ค้างอยู่จะเขียนร่างกลับมาหลังลบ
+          แล้วป้าย "ยังไม่ได้บันทึก N เลข" จะโกหกว่ามีของค้างทั้งที่เซฟไปแล้ว */
+    clearTimeout(SP.nodt);SP.nodt=0;
+    spNoDraftClear(ln,sid,ymd);
     const left=spRepLeft(C.rep[k]);
     toast("บันทึกแล้ว · "+ln+" "+fmtDate(ymd)+(mine?(left?" · แก้ได้อีก "+left+" ครั้ง":" · แก้ครบแล้ว"):""));
     return true;
@@ -15372,15 +15383,27 @@ function spRepLineSave(sid,ymd,ln){
      แต่จำนวนที่เคยกรอกไว้ในวันเก่า ๆ ต้องไม่ถูกลบ จึงส่งของเดิมกลับไปตามเดิม */
   const prev=spRepRec(sid,ymd,ln);
   const it=(prev&&prev.it&&typeof prev.it==="object")?prev.it:{};
-  /* ⏳ ยังอ่านรูปไม่เสร็จ ห้ามเซฟ — เซฟแล้วหน้าจะถูกวาดใหม่ และเลขของรูปที่เหลือจะหาย
-     (ดูบันทึกยาวที่ spOcrGo) · ปุ่มยังกดได้ตามกฎเดิม แต่ต้องตอบว่าทำไมยังไม่เซฟ */
+  /* 📌 ยังอ่านรูปไม่เสร็จ → **จองคิวบันทึก** ไม่ใช่ปฏิเสธ (เจ้าของสั่ง 28 พ.ย. 69:
+     *"มันทำให้คนทำงานต้องทำซ้ำสอง"*) · ระบบบันทึกให้เองทันทีที่อ่านครบ ครั้งเดียว
+     ⇒ กดผิดจังหวะไม่ต้องรอ ไม่ต้องกดซ้ำ และไม่เสียโควต้าแก้เพิ่ม (ดูบันทึกยาวที่ spOcrGo) */
   if(SP.ocr&&SP.ocr.busy&&SP.ocr.ln===ln){
-    alert("⏳ ยังอ่านรูปไม่เสร็จ — อ่านไปแล้ว "+SP.ocr.i+" จาก "+SP.ocr.n+" รูป\n\n"+
-          "รอให้ขึ้นว่า ✅ อ่านครบ ก่อนแล้วค่อยกดบันทึก ไม่งั้นเลขของรูปที่เหลือจะไม่ถูกบันทึก");
+    SP.ocr.want={sid:sid,ymd:ymd,ln:ln};
+    spOcrPaint(ln);
+    alert("📌 จองบันทึกไว้แล้ว — ตอนนี้อ่านรูปที่ "+SP.ocr.i+" จาก "+SP.ocr.n+"\n\n"+
+          "ระบบจะบันทึกให้เองทันทีที่อ่านครบ ไม่ต้องกดอีก\n"+
+          "เลขทุกเลขถูกเก็บไว้ในเครื่องแล้ว ปิดหน้าไปก็ไม่หาย");
     return;
   }
   const el=document.getElementById("spRNo_"+ln);
-  const no=el?spNoSplit(el.value):((spRepRec(sid,ymd,ln)||{}).no||[]);
+  /* 🛟 ไม่มีช่องกรอก (หน้าถูกวาดใหม่) → อ่านจาก **ร่างในเครื่อง + ของที่เซฟไว้** รวมกัน
+     ไม่ใช่ของที่เซฟไว้อย่างเดียว ไม่งั้นเลขที่ยังไม่ได้เซฟหายตรงนี้พอดี */
+  let no;
+  if(el)no=spNoSplit(el.value);
+  else{
+    const seen={};no=[];
+    (((spRepRec(sid,ymd,ln)||{}).no)||[]).concat(spNoDraftGet(ln,sid,ymd))
+      .forEach(x=>{if(x&&!seen[x]){seen[x]=1;no.push(x);}});
+  }
   const rec=spRepRec(sid,ymd,ln);
   const left=spRepLeft(rec);
   /* เตือนเฉพาะตอนใกล้หมดโควต้า — เมื่อก่อนเซฟได้ 2 ครั้ง เลยต้องถามทุกครั้ง
@@ -15424,10 +15447,18 @@ async function spRepLineDel(sid,ymd,ln){
   await spRepSave(sid,ymd,ln,{},[]);
 }
 /* ช่องเลขคำสั่งซื้อของเซลล์ — พิมพ์แล้วสรุปให้ดูทันที โดยไม่วาดหน้าใหม่ (เคอร์เซอร์จะได้ไม่กระโดด) */
-function spNoLive(ln){
+function spNoLive(ln,sid,ymd){
   const el=document.getElementById("spRNo_"+ln),box=document.getElementById("spRNoInfo_"+ln);
   if(!el||!box)return;
-  box.innerHTML=spNoInfoHtml(spNoSplit(el.value),ln);
+  const no=spNoSplit(el.value);
+  box.innerHTML=spNoInfoHtml(no,ln);
+  /* 🛟 พิมพ์เองก็เก็บลงร่างเหมือนกัน — หน่วงไว้ 400 มิลลิวินาที จะได้ไม่เขียนทุกตัวอักษร
+     (กฎเดียวกับ cstDraftLater) · ไม่เกี่ยวกับ state ที่ sync เลย
+     ⚠️ ใบ+วันที่ต้องเป็นตัวเดียวกับที่การ์ดนี้วาดไว้ ถ้าไม่ได้ส่งมาให้ใช้ของชุดรูปที่กำลังอ่าน */
+  let s=sid,d=ymd;
+  if(!s&&SP.ocr&&SP.ocr.ln===ln){s=SP.ocr.sid;d=SP.ocr.ymd;}
+  clearTimeout(SP.nodt);
+  SP.nodt=setTimeout(()=>{spNoDraftPut(ln,no,s,d);},400);
 }
 function spNoInfoHtml(list,ln){
   if(!list.length)return `<span class="psub">ยังไม่ได้ใส่เลข</span>`;
@@ -18188,7 +18219,7 @@ function spRepMineHtml(sid,ymd){
       ${rec?` · ล่าสุด ${fmtDateTime(rec.at)}`:""}</div>
     ${rec?`<div class="cst-fb" style="margin-top:10px">
       <button type="button" class="btn-ghost" onclick="spHistOpen('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">🕘 ดูประวัติการกรอก</button></div>`:""}
-    ${spRepNoHtml(ln,rec,can)}
+    ${spRepNoHtml(ln,rec,can,sid,ymd)}
     ${spMyOrdHtml(ln,rec,ymd)}
     ${can?`<div class="sp-save"><button class="upload-btn"
       onclick="spRepLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกเลขออเดอร์</button></div>`:""}
@@ -18244,10 +18275,16 @@ function spOcrHtml(ln){
   const S=(SP.ocr&&SP.ocr.ln===ln)?SP.ocr:null;
   if(!S)return "";
   let h=S.busy
-    ? `<div class="sp-ocrst">⏳ กำลังอ่านรูปที่ <b>${S.i}</b> จาก <b>${S.n}</b> … <span class="psub">รออีกสักครู่ อย่าเพิ่งปิดหน้านี้ และ<b> อย่าเพิ่งกดบันทึก</b></span></div>`
+    ? `<div class="sp-ocrst">⏳ กำลังอ่านรูปที่ <b>${S.i}</b> จาก <b>${S.n}</b> …
+        <span class="psub">${S.want
+          ?"📌 จองบันทึกไว้แล้ว — จะบันทึกให้เองทันทีที่อ่านครบ ไม่ต้องกดอีก"
+          :"รออีกสักครู่ · เลขที่อ่านได้ถูกเก็บไว้ในเครื่องแล้วทุกเลข ไม่หายแน่นอน"}</span></div>`
     : `<div class="sp-ocrst ok">✅ อ่านครบ <b>${S.n}</b> รูป · ใส่เลขให้ <b>${S.add}</b> เลข${
         S.dup?` · ซ้ำกับที่มีอยู่แล้ว ${S.dup} เลข (ไม่ใส่ซ้ำ)`:""}</div>`;
   if(S.err)h+=`<div class="psub down">${anaEsc(S.err)}</div>`;
+  /* หน้าถูกวาดใหม่ระหว่างอ่าน — บอกให้รู้ว่าเลขอยู่ครบ ไม่ใช่ให้ไปอัพซ้ำ */
+  if(S.off&&!S.busy)h+=`<div class="psub">🛟 หน้าจอถูกวาดใหม่ระหว่างอ่าน ${S.off} รูป —
+    เลขถูกเก็บไว้ในเครื่องครบ เปิดหน้าสายนี้อีกครั้งแล้วเลขจะกลับมาเอง</div>`;
   h+=`<ul class="sp-ocrls">`+S.rows.map(r=>{
     const nm=anaEsc(String(r.n||"").slice(0,30));
     if(r.err)return `<li class="down">⚠️ ${nm} — ${anaEsc(r.err)}</li>`;
@@ -18275,14 +18312,50 @@ function spOcrHtml(ln){
  *       → หายเงียบ ๆ · ส่วน `spNoLive` อ่าน id ใหม่ทุกครั้ง จึงโชว์ 13 ตรงกับที่เซฟ
  *    เวลาบนจอตรงกันหมด (เซฟ 15:33 · แคปจอ 15:33 · แก้ไป 1 ครั้ง = เซฟสองรอบ)
  *
- * แก้สามชั้น ไม่พึ่งชั้นใดชั้นเดียว:
+ * ⚠️ **รอบแรกแก้ไม่พอ และเจ้าของบอกเองว่าทำไม** (28 พ.ย. 69, สั่งให้แก้ให้เสร็จวันเดียวกัน):
+ *   *"เดี๋ยวผมจะให้เซลล์อัพใหม่ให้หมดทุกคน ช่วยปรับแก้เรื่องตรงนี้หน่อย
+ *     มันทำให้คนทำงานต้องทำซ้ำสอง"*
+ *   รอบแรก "กันไม่ให้กดบันทึกระหว่างอ่าน" ซึ่งกันเลขหายได้จริง แต่ **ยังผลักงานกลับไปให้คน** —
+ *   กดผิดจังหวะทีเดียวก็ต้องรอ/อัพซ้ำ และถ้าสลับแอพ ปิดจอ หรือแบตหมดกลางทาง เลขก็หายอยู่ดี
+ *   เพราะเลขอยู่แค่ในช่องกรอกบนหน้าจอเท่านั้น · เป้าหมายจึงเปลี่ยนเป็น
+ *   **"เลขหายไม่ได้เลย ไม่ว่าเซลล์จะกดอะไร"** ไม่ใช่ "ห้ามเซลล์กดผิด"
+ *
+ * แก้สี่ชั้น ไม่พึ่งชั้นใดชั้นเดียว:
  *   ① **ไม่จับ element ค้างไว้** — หา `#spRNo_<ln>` ใหม่ทุกครั้งก่อนเขียน (`spOcrTa`)
  *   ② **เขียนเป็น "ยอดรวมทั้งชุด" ไม่ใช่ต่อท้าย** (`spOcrSync`) — ต่อให้หน้าถูกวาดใหม่กลางคัน
  *      รูปถัดไปก็เติมเลขที่อ่านได้ทั้งหมดกลับเข้าไปเอง
- *   ③ **ห้ามบันทึกระหว่างยังอ่านรูปไม่เสร็จ** (`spRepLineSave`) — บอกว่าอ่านถึงรูปที่เท่าไหร่แล้ว
- *      ⚠️ ไม่ใช้ปุ่ม disabled (กฎเดิม: ปุ่มที่กดแล้วเงียบคือบั๊ก) — ปุ่มยังกดได้ แต่ตอบว่าทำไมยังไม่เซฟ
+ *   ③ 🛟 **ทุกเลขลงฉบับร่างในเครื่องทันทีที่อ่านได้** (`spNoDraft*`, กฎเดียวกับตะกร้าคำขอ
+ *      `bdreq:` และใบตัดบิล `bdcst:`) — **ไม่อยู่ใน state ที่ sync** จึงไม่มีทางไปแตะ `bd-data-*`
+ *      ⇒ หน้าถูกวาดใหม่ · ปิดแอพ · แบตหมด · เน็ตหลุด เลขก็กลับมาครบเองตอนเปิดหน้าใหม่
+ *      ⇒ และช่องกรอกที่หลุดไปแล้วก็ **ไม่ต้องหยุดอ่าน** อีก — อ่านต่อให้จบ เก็บลงร่างไว้
+ *   ④ 📌 **กดบันทึกระหว่างอ่าน = จองคิวบันทึก ไม่ใช่ถูกปฏิเสธ** (`SP.ocr.want`) — ระบบบันทึก
+ *      ให้เองทันทีที่อ่านครบ **ครั้งเดียว** (ไม่กินโควต้าแก้ของเซลล์เพิ่ม) ไม่ต้องรอ ไม่ต้องกดซ้ำ
+ *      ⚠️ ไม่ใช้ปุ่ม disabled (กฎเดิม: ปุ่มที่กดแล้วเงียบคือบั๊ก) และไม่ใช้คำว่า "ห้าม" อีก
  * ==========================================================================*/
 function spOcrTa(ln){return document.getElementById("spRNo_"+ln);}
+/* ---- 🛟 ฉบับร่างเลขออเดอร์ในเครื่อง ----
+   แยกคีย์ตาม "คนล็อกอิน + ใบ + วันที่ + สาย" เพื่อไม่ให้ร่างของวันอื่น สายอื่น หรือคนอื่น
+   บนเครื่องเดียวกันโผล่มาปนกัน · ทุกจุดครอบ try/catch เพราะโหมดส่วนตัวจะ throw
+   ลบทิ้งเมื่อ **เซิร์ฟเวอร์ตอบรับแล้วเท่านั้น** (กฎเดียวกับ reqDraftClear) */
+function spNoDraftKey(ln,sid,ymd){
+  const u=(S.user&&(S.user.id||S.user.code||S.user.name))||"x";
+  const s=sid||SP.sid||"";
+  let d=ymd||"";
+  if(!d){try{d=spDay(s)||"";}catch(e){d="";}}
+  return "bdspno:"+u+":"+s+"|"+d+"|"+ln;
+}
+function spNoDraftGet(ln,sid,ymd){
+  try{const d=JSON.parse(localStorage.getItem(spNoDraftKey(ln,sid,ymd))||"null");
+    return (d&&Array.isArray(d.no))?d.no.filter(x=>typeof x==="string"&&x):[];}catch(e){return [];}
+}
+function spNoDraftPut(ln,list,sid,ymd){
+  try{const no=(list||[]).filter(x=>typeof x==="string"&&x).slice(0,SP_NOMAX);
+    const k=spNoDraftKey(ln,sid,ymd);
+    if(!no.length){localStorage.removeItem(k);return;}
+    localStorage.setItem(k,JSON.stringify({at:Date.now(),no:no}));
+  }catch(e){}
+}
+function spNoDraftClear(ln,sid,ymd){try{localStorage.removeItem(spNoDraftKey(ln,sid,ymd));}catch(e){}}
 /* เลขทั้งหมดที่ชุดนี้อ่านได้ (ไม่รวมตัวที่ซ้ำกับของเดิม) — ใช้เติมกลับเมื่อหน้าถูกวาดใหม่ */
 function spOcrGot(ln){
   const S=(SP.ocr&&SP.ocr.ln===ln)?SP.ocr:null;
@@ -18292,13 +18365,17 @@ function spOcrGot(ln){
     if(g&&g.no&&!g.dup&&!seen[g.no]){seen[g.no]=1;out.push(g.no);}}));
   return out;
 }
-/* เขียนช่องกรอกเป็น "ของเดิมที่อยู่ในช่อง + ทุกเลขที่ชุดนี้อ่านได้" — คืนค่า false ถ้าหาช่องไม่เจอ */
+/* เขียน "ของเดิม + ทุกเลขที่ชุดนี้อ่านได้" ลงทั้งช่องกรอกและฉบับร่าง
+   ⚠️ ร่างต้องถูกเขียน **เสมอ** แม้ช่องกรอกจะหลุดไปจากหน้าแล้ว — นั่นคือชั้นที่กันเลขหายจริง
+   คืนค่า false เมื่อหาช่องกรอกไม่เจอ (ไว้บอกผู้ใช้ตอนท้าย ไม่ใช่ไว้หยุดอ่าน) */
 function spOcrSync(ln){
-  const ta=spOcrTa(ln);if(!ta)return false;
+  const ta=spOcrTa(ln),S=(SP.ocr&&SP.ocr.ln===ln)?SP.ocr:null;
+  const base=ta?spNoSplit(ta.value):spNoDraftGet(ln,S&&S.sid,S&&S.ymd);
   const seen={},out=[];
-  spNoSplit(ta.value).concat(spOcrGot(ln)).forEach(x=>{if(!seen[x]){seen[x]=1;out.push(x);}});
-  ta.value=out.join(" ");
-  return true;
+  base.concat(spOcrGot(ln)).forEach(x=>{if(!seen[x]){seen[x]=1;out.push(x);}});
+  if(ta)ta.value=out.join(" ");
+  spNoDraftPut(ln,out,S&&S.sid,S&&S.ymd);
+  return !!ta;
 }
 async function spOcrGo(ln,files){
   const list=Array.prototype.slice.call(files||[]);
@@ -18307,7 +18384,9 @@ async function spOcrGo(ln,files){
   if(!ta){alert("ช่องกรอกเลขหายไป ลองเปิดหน้านี้ใหม่อีกครั้ง");return;}
   if(SP.ocr&&SP.ocr.busy){alert("กำลังอ่านรูปชุดก่อนอยู่ รอให้เสร็จก่อนนะ");return;}
   const use=list.slice(0,SP_OCR_MAX);
-  SP.ocr={ln:ln,busy:1,n:use.length,i:0,rows:[],add:0,dup:0,
+  /* ⚠️ ตรึงใบ+วันที่ไว้ตั้งแต่เริ่ม — ถ้าระหว่างอ่านมีการเปลี่ยนวัน ร่างจะต้องไม่ย้ายคีย์ตามไป */
+  const sid0=SP.sid||"";let ymd0="";try{ymd0=spDay(sid0)||"";}catch(e){ymd0="";}
+  SP.ocr={ln:ln,busy:1,n:use.length,i:0,rows:[],add:0,dup:0,off:0,want:0,sid:sid0,ymd:ymd0,
     err:list.length>SP_OCR_MAX?("เลือกมา "+list.length+" รูป อ่านให้ "+SP_OCR_MAX+" รูปแรกก่อน ที่เหลือเลือกเพิ่มได้อีกรอบ"):""};
   spOcrPaint(ln);
   const have={},tail={};
@@ -18339,29 +18418,41 @@ async function spOcrGo(ln,files){
     if(fresh.length)SP.ocr.add+=fresh.length;
     SP.ocr.rows.push({n:(f&&f.name)||("รูปที่ "+(i+1)),got:got,err:bad});
     /* ⚠️ เขียนลงช่องที่อยู่ในหน้า "ตอนนี้" เสมอ และเขียนเป็นยอดรวมทั้งชุด —
-       ถ้าหน้าถูกวาดใหม่กลางคัน เลขของรูปก่อน ๆ จะถูกเติมกลับให้เองในรอบนี้ */
-    if(!spOcrSync(ln)){
-      SP.ocr.busy=0;SP.ocr.lost=1;spOcrPaint(ln);
-      alert("ช่องกรอกเลขหายไประหว่างอ่านรูป (อ่านไปแล้ว "+(i+1)+" จาก "+use.length+" รูป)\n"+
-            "เปิดหน้าของสายนี้อีกครั้งแล้วอัพรูปใหม่ ระบบยังไม่ได้บันทึกอะไรทั้งนั้น");
-      return;
-    }
+       ถ้าหน้าถูกวาดใหม่กลางคัน เลขของรูปก่อน ๆ จะถูกเติมกลับให้เองในรอบนี้
+       🛟 และไม่ว่าช่องจะอยู่หรือหลุดไป เลขลงฉบับร่างในเครื่องทุกรอบ — จึง **อ่านต่อให้จบ**
+          ไม่หยุดกลางทางอีก (หยุด = เซลล์ต้องอัพซ้ำ ซึ่งเป็นเรื่องที่เจ้าของสั่งให้เลิก) */
+    if(!spOcrSync(ln))SP.ocr.off++;
     spNoLive(ln);spOcrPaint(ln);
   }
-  SP.ocr.busy=0;spOcrSync(ln);spOcrPaint(ln);spNoLive(ln);
+  SP.ocr.busy=0;
+  const box=spOcrSync(ln),want=SP.ocr.want;SP.ocr.want=0;
+  spOcrPaint(ln);spNoLive(ln);
+  /* 📌 กดบันทึกไว้ระหว่างอ่าน = จองคิว → บันทึกให้เองเดี๋ยวนี้ ครั้งเดียว ไม่ต้องกดซ้ำ
+     (ตรงนี้ busy=0 แล้ว จึงไม่วนกลับมาจองคิวซ้ำ) */
+  if(want&&typeof spRepLineSave==="function"){spRepLineSave(want.sid,want.ymd,want.ln);return;}
+  if(!box)alert("อ่านรูปครบ "+use.length+" รูปแล้ว และ"+
+    "เลขทุกเลขถูกเก็บไว้ในเครื่องเรียบร้อย ไม่มีเลขหาย\n\n"+
+    "หน้าจอถูกวาดใหม่ระหว่างอ่าน — เปิดหน้าของสาย "+ln+" อีกครั้ง เลขจะกลับมาครบในช่อง แล้วกดบันทึกได้เลย");
 }
 /* 🧾 ช่องเลขคำสั่งซื้อ — อยู่ "ล่างสุด" ตามที่เจ้าของสั่ง (27 พ.ย. 69)
    แคปหน้าจอให้ระบบอ่านเลขให้ หรือพิมพ์เลขเองก็ได้ (#1034715426 / 6 หลักท้าย / BDD01…) */
-function spRepNoHtml(ln,rec,can){
-  /* ⚠️ ระหว่างที่ชุดรูปยังอ่านอยู่ ช่องกรอกต้องมีเลขที่อ่านได้แล้วติดมาด้วย —
-     ถ้าหน้าถูกวาดใหม่กลางคัน (เช่นมีการบันทึก) ช่องใหม่จะมีแต่เลขที่เซฟไว้ แล้วของที่เหลือหาย */
-  let no=(rec&&Array.isArray(rec.no))?rec.no.slice():[];
-  if(SP.ocr&&SP.ocr.busy&&SP.ocr.ln===ln){
-    const seen={};no.forEach(x=>{seen[x]=1;});
-    spOcrGot(ln).forEach(x=>{if(!seen[x]){seen[x]=1;no.push(x);}});
-  }
+/* ⚠️ sid/ymd ส่งมาจากการ์ดที่กำลังวาด ไม่ใช่เดาจาก SP.sid/spDay() — การ์ดกับร่าง
+   ต้องอ่านคีย์เดียวกันเสมอ ไม่งั้นร่างของวันหนึ่งไปโผล่อีกวัน หรืออ่านไม่เจอเลย */
+function spRepNoHtml(ln,rec,can,sid,ymd){
+  /* 🛟 ช่องกรอกตั้งต้นเป็น "เลขที่เซฟไว้ + ร่างในเครื่อง + เลขที่ชุดรูปอ่านได้แล้ว" เสมอ
+     — ไม่ใช่แค่ตอนที่ยังอ่านรูปอยู่ · นี่คือจุดที่เลขกลับมาเองหลังปิดแอพ แบตหมด หรือหน้าถูกวาดใหม่
+     ร่างถูกลบเมื่อเซิร์ฟเวอร์ตอบรับแล้วเท่านั้น จึงไม่มีเลขเก่าค้างมาหลอก */
+  const no=[],seen={};
+  const push=x=>{if(x&&!seen[x]){seen[x]=1;no.push(x);}};
+  ((rec&&Array.isArray(rec.no))?rec.no:[]).forEach(push);
+  const nSaved=no.length;
+  spNoDraftGet(ln,sid,ymd).forEach(push);
+  if(SP.ocr&&SP.ocr.ln===ln)spOcrGot(ln).forEach(push);
+  const nNew=no.length-nSaved;
   return `<div class="sp-rno">
     <div class="sp-rn">🧾 เลขคำสั่งซื้อของวันนี้</div>
+    ${(nNew&&can)?`<div class="sp-nodr">🛟 มีเลขที่ยังไม่ได้บันทึก <b>${nNew}</b> เลข
+      เก็บไว้ในเครื่องให้แล้ว ไม่ต้องอัพรูปซ้ำ — <b>ตรวจแล้วกดบันทึก</b> ได้เลย</div>`:""}
     ${can?`<div class="sp-ocr">
       <input type="file" id="spOcrIn_${anaEsc(ln)}" accept="image/*" multiple class="hidden"
         onchange="spOcrGo('${anaEsc(ln)}',this.files);this.value='';">
@@ -18375,7 +18466,7 @@ function spRepNoHtml(ln,rec,can){
     <div class="psub">ใส่ <b>6 หลักสุดท้าย</b> ของเลขในแอพก็พอ — เลข <b>1034<u>715426</u></b> ใส่แค่ <b>715426</b>
       · หลายเลขได้ คั่นด้วยเว้นวรรคหรือขึ้นบรรทัดใหม่ · เลขเต็ม 10 หลัก หรือ <b>BDD01…</b> ก็ยังใช้ได้</div>
     ${can?`<textarea id="spRNo_${anaEsc(ln)}" rows="3" inputmode="numeric" autocomplete="off"
-      oninput="spNoLive('${anaEsc(ln)}')"
+      oninput="spNoLive('${anaEsc(ln)}','${anaEsc(sid||"")}','${anaEsc(ymd||"")}')"
       placeholder="715426 715427 715428 …"
       style="width:100%;margin-top:8px;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:16px;font-family:inherit">${
       anaEsc(no.join(" "))}</textarea>`
