@@ -283,11 +283,15 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cal-day.jk{background:#EAF7F0;color:#0F7A52;font-weight:800;box-shadow:inset 0 0 0 1.5px #BFE6D2}
 .cal-day.jg{background:var(--good);color:#fff;font-weight:800}
  
+.cal-day.jo{background:#fff;color:var(--blue);font-weight:800;box-shadow:inset 0 0 0 2px var(--blue)}
+.cal-day.jo.jx{color:var(--bad);box-shadow:inset 0 0 0 2px var(--bad)}
+ 
 .cal-lg{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin-right:10px}
 .cal-dot.jr{background:#FDECEA;border-color:var(--bad)}
 .cal-dot.jx{background:var(--bad);border-color:var(--bad)}
 .cal-dot.jk{background:#EAF7F0;border-color:#0F7A52}
 .cal-dot.jg{background:var(--good);border-color:var(--good)}
+.cal-dot.jo{background:#fff;border-color:var(--blue);border-width:2px}
  
  
 .sp-zone{--z:var(--blue);--zs:#DCE8FB;--zt:#F1F6FF;--zb:#B9D0F3;--zg:rgba(22,82,184,.16);
@@ -13572,9 +13576,11 @@ function spLnKey(disp){
 }
  
  
+ 
 function spDayHas(r){
   if(!r||r.del)return false;
   if(r.it&&Object.keys(r.it).length)return true;         
+  if(Array.isArray(r.no)&&r.no.length)return true;       
   if(r.rows&&Object.keys(r.rows).length)return true;     
   if(Array.isArray(r.g)&&r.g.length)return true;         
   return false;
@@ -16267,7 +16273,6 @@ function spRepTabHtml(sid,ymd){
   return bal+(isSales?spRepHomeHtml(sid)+spRepMineHtml(sid,ymd)
                  :spTrackHtml(sid,ymd,tr))+
      
-    `<div class="panel" style="margin-top:12px">${spMissBtnHtml(sid)}</div>`+
      
     `<div id="spHistBox" class="hidden"><div class="panel" style="margin-top:12px">
       <div class="cst-fb"><h3 id="spHistTitle" style="margin:0"></h3>
@@ -16322,8 +16327,10 @@ function spMeDays(ln){
   spRepJobsAll(ln).forEach(j=>{
     const c=spMeChk(j.sid,j.d,ln);
     c.slip=j.slip;c.tc=j.tc;c.tp=j.tp;c.done=j.done;
-    const e=out[j.d]||(out[j.d]={d:j.d,jobs:[],st:"none"});
+    const e=out[j.d]||(out[j.d]={d:j.d,jobs:[],st:"none",tgt:0});
     e.jobs.push(c);
+     
+    if(c.has)e.tgt=1;
     if(SP_ME_RANK[c.st]>SP_ME_RANK[e.st])e.st=c.st;
   });
   return out;
@@ -16341,13 +16348,14 @@ function spRepHomeHtml(sid){
   const days=spMeDays(ln),ks=Object.keys(days).sort();
   const cur=spDay(sid),today=todayISO();
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
-  if(!ks.length)return `<div class="panel"><h3>📋 งานของสาย ${anaEsc(ln)}</h3>
-    <div class="insight" style="margin-top:8px">ยังไม่มีวันที่ต้องคีย์ของสายคุณ —
-    รอหัวหน้าเซลล์ตั้งจำนวนให้ก่อน</div></div>`;
+   
+  const noJob=!ks.length;
   const ym=spCalMon(sid);
   const cnt=s=>ks.filter(d=>days[d].st===s).length;
    
-  const cntM=s=>ks.filter(d=>days[d].st===s&&d.slice(0,7)===spCalMon(sid)).length;
+  const cntM=s=>ks.filter(d=>days[d].st===s&&days[d].tgt&&d.slice(0,7)===spCalMon(sid)).length;
+   
+  const cntM0=()=>ks.filter(d=>!days[d].tgt&&days[d].st!=="none"&&d.slice(0,7)===spCalMon(sid)).length;
   const nTodo=cnt("todo"),nBad=cnt("bad");
   const ahead=ks.filter(d=>d>today&&days[d].st==="todo").length;
   const nSlip=Object.keys(ks.reduce((m,d)=>{days[d].jobs.forEach(j=>{m[j.sid]=1;});return m;},{})).length;
@@ -16364,20 +16372,29 @@ function spRepHomeHtml(sid){
     <div class="cal-grid">${DOW.map(x=>`<div class="cal-wd">${x}</div>`).join("")}${
       cells.map(d=>{
         if(!d)return `<div class="cal-day"></div>`;
+         
         const e=days[d];
-        if(!e)return `<div class="cal-day${d===todayISO()?" today":""}">${+d.slice(8,10)}</div>`;
-        const S=SP_ME_ST[e.st]||SP_ME_ST.none;
-        const go=e.jobs[0];
-        return `<div class="cal-day ${S.cls}${d===cur?" sel":""}${d===todayISO()?" today":""}"
-          onclick="spGoJob('${anaEsc(go.sid)}','${d}')"
-          title="${anaEsc(fmtDate(d))} · ${anaEsc(S.nm)}">${+d.slice(8,10)}</div>`;
+        const S=e?(SP_ME_ST[e.st]||SP_ME_ST.none):SP_ME_ST.none;
+        const cls=[];
+         
+        if(e&&S.cls)cls.push(e.tgt?S.cls:("jo"+(e.st==="bad"?" jx":"")));
+        if(d===cur)cls.push("sel");
+        if(d===todayISO())cls.push("today");
+        const go=(e&&e.jobs[0]&&e.jobs[0].sid)||sid;
+        const tip=fmtDate(d)+(e?(" · "+S.nm+(e.tgt?"":" (ลงเอง ไม่มีเป้า)")):" · ยังไม่มีงาน — กดเพื่อใส่เลข/อัพรูป");
+        return `<div class="cal-day ${cls.join(" ")}"
+          onclick="spGoJob('${anaEsc(go)}','${d}')"
+          title="${anaEsc(tip)}">${+d.slice(8,10)}</div>`;
       }).join("")}</div>
     <div class="cal-legend">
       <span class="cal-lg"><span class="cal-dot jr"></span> ยังไม่คีย์ ${cntM("todo")}</span>
       <span class="cal-lg"><span class="cal-dot jk"></span> รอตรวจ ${cntM("keyed")}</span>
       <span class="cal-lg"><span class="cal-dot jg"></span> ตรงกัน ${cntM("ok")}</span>
       <span class="cal-lg"><span class="cal-dot jx"></span> ไม่ตรง ${cntM("bad")}</span>
-      <span class="psub" style="margin:0">(เดือนนี้)</span></div></div>`;
+      <span class="cal-lg"><span class="cal-dot jo"></span> ลงเอง ${cntM0()}</span>
+      <span class="psub" style="margin:0">(เดือนนี้ · สีทึบ = ซุปตั้งเป้า)</span></div>
+    <div class="psub" style="margin-top:6px">กดวันไหนก็ได้ รวมวันย้อนหลัง เพื่อใส่เลขออเดอร์
+      หรืออัพรูปหน้าจอของวันนั้น ไม่ต้องรอซุปตั้งเป้า</div></div>`;
    
   const sel=days[cur];
   let det="";
@@ -16414,10 +16431,12 @@ function spRepHomeHtml(sid){
     }).join("");
   }
   return `<div class="panel"><h3>📅 ปฏิทินงานของสาย ${anaEsc(ln)}</h3>
-    <div class="psub">${nTodo?("ยังไม่ได้คีย์ <b>"+nTodo+"</b> วัน"):"คีย์ครบทุกวันแล้ว"}${
-      nBad?' · <b class="down">ไม่ตรง '+nBad+' วัน</b>':""}${
-      ahead?" · ล่วงหน้า <b>"+ahead+"</b> วัน คีย์ไว้ก่อนได้เลย":""} · กดวันในปฏิทินเพื่อกรอก${
-      nSlip>1?" · รวมทุกใบออเดอร์แล้ว ("+nSlip+" ใบ)":""}</div>
+    <div class="psub">${noJob
+      ?"ยังไม่มีวันที่หัวหน้าเซลล์ตั้งเป้าให้สายคุณ — แต่กดวันไหนก็ได้เพื่อใส่เลขออเดอร์หรืออัพรูปไว้ก่อน"
+      :((nTodo?("ยังไม่ได้คีย์ <b>"+nTodo+"</b> วัน"):"คีย์ครบทุกวันแล้ว")+
+        (nBad?' · <b class="down">ไม่ตรง '+nBad+' วัน</b>':"")+
+        (ahead?" · ล่วงหน้า <b>"+ahead+"</b> วัน คีย์ไว้ก่อนได้เลย":"")+" · กดวันในปฏิทินเพื่อกรอก"+
+        (nSlip>1?" · รวมทุกใบออเดอร์แล้ว ("+nSlip+" ใบ)":""))}</div>
     ${cal}${det}</div>`;
 }
  
@@ -17713,7 +17732,9 @@ function spAutoFind(sid,ymd,ln){
   return {r:r,L:L,n:L?L.n:0,add:L?L.add:[],no:L?L.no:[],
     gin:Object.keys(r.gin).filter(Boolean),run:r.run,
     noFile:r.noFile,noDet:r.noDet,cx:L?L.cx.length:0,maybe:L?L.maybe.length:0,
-    pre:L?L.pre.length:0,noTm:L?L.noTm.length:0,made:r.made,madeHm:r.madeHm};
+    pre:L?L.pre.length:0,noTm:L?L.noTm.length:0,made:r.made,madeHm:r.madeHm,
+     
+    preList:(L?L.pre:[]).concat(L?L.noTm:[])};
 }
 function spAutoNoHtml(sid,ymd,ln,can){
   if(!sid||!ymd||!ln)return "";
@@ -17745,10 +17766,21 @@ function spAutoNoHtml(sid,ymd,ln,can){
   if(A.maybe)n.push("ยังไม่รู้รายการสินค้าอีก "+A.maybe+" ใบ — ไม่ใส่ให้");
   if(A.cx)n.push("ใบที่ยกเลิก "+A.cx+" ใบ — ไม่ใส่ให้");
   if(n.length)h.push(`<div class="psub">${n.join(" · ")}</div>`);
+   
+  if(A.preList.length&&can)h.push(`<div style="margin-top:6px">
+    <button type="button" class="btn-ghost btn-mini"
+      onclick="spAutoNoFill('${anaEsc(sid)}','${anaEsc(ymd)}','${anaEsc(ln)}',1)">▸ ใส่เลขที่ระบบไม่นับให้
+      ${A.preList.length} เลข ลงในช่องด้วย</button>
+    <span class="psub"> (ใช้ตอนย้อนไปตรวจวันเก่า — ตรวจแล้วกดบันทึกเองเหมือนเดิม)</span></div>`);
   return h.join("")+`</div>`;
 }
-function spAutoNoFill(sid,ymd,ln){
+function spAutoNoFill(sid,ymd,ln,pre){
   let A;try{A=spAutoFind(sid,ymd,ln);}catch(e){A=null;}
+  if(pre){
+     
+    if(!A||!A.preList.length){alert("ไม่มีเลขในกลุ่มนี้");return;}
+    A={add:A.preList};
+  }
   if(!A||!A.add.length){alert("ไม่มีเลขที่ต้องใส่เพิ่มแล้ว");return;}
   const ta=spOcrTa(ln);
   if(!ta){alert("เปิดหน้าของสาย "+ln+" อีกครั้งแล้วลองใหม่");return;}

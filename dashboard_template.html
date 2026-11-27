@@ -306,12 +306,19 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .cal-day.jr.jx{background:var(--bad);color:#fff;box-shadow:inset 0 0 0 1.5px var(--bad)}
 .cal-day.jk{background:#EAF7F0;color:#0F7A52;font-weight:800;box-shadow:inset 0 0 0 1.5px #BFE6D2}
 .cal-day.jg{background:var(--good);color:#fff;font-weight:800}
+/* 🖊 วันที่ "เซลล์มาลงเอง" (ไม่มีเป้าของซุป) — ขอบ ไม่ใช่สีทึบ
+   เจ้าของ 29 พ.ย. 69: *"ฝากปรับให้เซลล์เข้าไปอัพรูปออเดอร์ได้รายวันได้เลย ย้อนหลังก็ได้ …
+   แต่จะขึ้นสีทึบแบบเดิมเวลาซุปตั้งเป้า"* ⇒ สีทึบยังหมายถึง "ซุปตั้งเป้าไว้" อย่างเดียวเหมือนเดิม
+   ส่วนวันที่เซลล์เปิดเอง ใช้ขอบประ จะได้อ่านออกว่าใครเป็นคนเปิดงานวันนั้น */
+.cal-day.jo{background:#fff;color:var(--blue);font-weight:800;box-shadow:inset 0 0 0 2px var(--blue)}
+.cal-day.jo.jx{color:var(--bad);box-shadow:inset 0 0 0 2px var(--bad)}
 /* คำอธิบายสีต้องอยู่ติดกันเป็นชุด ๆ ไม่ใช่จุดสีตกไปคนละบรรทัดกับคำ */
 .cal-lg{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin-right:10px}
 .cal-dot.jr{background:#FDECEA;border-color:var(--bad)}
 .cal-dot.jx{background:var(--bad);border-color:var(--bad)}
 .cal-dot.jk{background:#EAF7F0;border-color:#0F7A52}
 .cal-dot.jg{background:var(--good);border-color:var(--good)}
+.cal-dot.jo{background:#fff;border-color:var(--blue);border-width:2px}
 /* ============================================================================
  * 🎨 สีประจำขั้นงานของหน้าออเดอร์พิเศษ — เจ้าของสั่ง 27 พ.ย. 69
  * *"ขอปรับหน้าออเดอร์พิเศษ ให้มันมีแบ่งโซนแบ่งสีช่องหน้าจอการทำงานนิดนึง สำหรับทุกฝ่าย
@@ -15312,9 +15319,20 @@ function spLnKey(disp){
 /* ⚠️ "ลบ" ในหน้านี้คือเขียนทับด้วยเรคอร์ดเปล่า/del:1 ไม่ใช่ลบคีย์ (แท็บเก่าจะ union กลับมา)
    ชิปวันที่จึงต้องเช็ค "ยังมีข้อมูลจริงไหม" ไม่ใช่เช็คว่ามีคีย์อยู่ — เจ้าของเจอเอง 26 พ.ย. 69
    ว่ากดลบผลตรวจแล้ววันที่ยังค้างอยู่ในแถบ */
+/* ============================================================================
+ * 🛟 "วันนี้มีงานจริงไหม" ต้องนับ **เลขออเดอร์** ด้วย ไม่ใช่แค่จำนวนที่พิมพ์
+ *   ตั้งแต่ 27 พ.ย. 69 เซลล์ใส่ "เลขออเดอร์" อย่างเดียว ไม่พิมพ์จำนวนแล้ว ⇒ `it` ว่าง
+ *   ฟังก์ชันนี้จึงตอบว่า "ไม่มีงาน" ทั้งที่เซลล์เพิ่งบันทึกไป 20 เลข — วันนั้นเลยหายจาก
+ *   ปฏิทินของเซลล์ (spRepJobs) และจากรายการวัน (spDays)
+ *   `spRepHas` นับ `no` อยู่แล้ว ⇒ ตารางติดตามของซุปเห็น แต่ปฏิทินไม่เห็น = สองที่ขัดกัน
+ *   ซึ่งเป็นกฎเดิมของไฟล์นี้: ตัวนับทุกตัวต้องใช้ฟังก์ชันเดียวกัน ไม่งั้นมันไม่ตรงกัน
+ * ⚠️ เพิ่มอย่างเดียว: เรคอร์ดเป้า/ผลตรวจไม่มีช่อง `no` อยู่แล้ว และ "ยกเลิก" เขียน
+ *    `it:{} no:[]` ซึ่งยาว 0 จึงยังอ่านว่าไม่มีงานเหมือนเดิม
+ * ==========================================================================*/
 function spDayHas(r){
   if(!r||r.del)return false;
   if(r.it&&Object.keys(r.it).length)return true;        /* เป้า / จำนวนที่เซลล์คีย์ */
+  if(Array.isArray(r.no)&&r.no.length)return true;      /* เลขออเดอร์ที่เซลล์ใส่ */
   if(r.rows&&Object.keys(r.rows).length)return true;    /* ผลตรวจของแอดมิน */
   if(Array.isArray(r.g)&&r.g.length)return true;        /* เลข GIN ที่บันทึกไว้ */
   return false;
@@ -18536,9 +18554,14 @@ function spRepTabHtml(sid,ymd){
   /* เซลล์: รายการงานของตัวเอง → การ์ดกรอก → ประวัติ · ไม่ต้องมีตารางติดตาม 12 สายให้งง */
   return bal+(isSales?spRepHomeHtml(sid)+spRepMineHtml(sid,ymd)
                  :spTrackHtml(sid,ymd,tr))+
-    /* 🔁 ย้อนหาเลขที่ตกหล่น — อยู่ท้ายหน้าเพราะเป็นเครื่องมือตรวจ ไม่ใช่ขั้นตอนประจำวัน
-       เซลล์ก็กดได้ แต่เห็นเฉพาะสายตัวเอง (กรองใน spMissScan) */
-    `<div class="panel" style="margin-top:12px">${spMissBtnHtml(sid)}</div>`+
+    /* 🔁 แผง "ย้อนหาเลขออเดอร์ที่ตกหล่น" **ปลดออกจากหน้าจอแล้ว** (เจ้าของ 29 พ.ย. 69:
+       *"เอาส่วนนี้ออกไปให้หมด เดี๋ยวคนจะงงกว่าเดิม"* — บนจอเขามันขึ้น "พบเลขที่ยังไม่ได้ใส่
+       14 เลข — แน่ใจ 0 · ไม่แน่ใจ 14" ซึ่งอ่านแล้วเหมือนมีงานค้าง ทั้งที่ 14 ใบนั้นคือใบที่
+       ยังไม่รู้รายการสินค้า จึงตอบไม่ได้ว่าเป็นของใบนี้ไหม)
+       กฎเดิมของโปรเจกต์: ปลดบรรทัดที่เรียกออกบรรทัดเดียว **ไม่ลบฟังก์ชัน** —
+       spMissBtnHtml / spMissHtml / spMissFind / spMissScan / spMissAdd ยังอยู่ครบและทำงานได้
+       ใส่บรรทัดนี้คืนเมื่อไหร่ก็กลับมาพร้อมของเดิม · คำตอบเดียวกันนี้ยังขึ้นเองอยู่แล้วใต้ช่อง
+       กรอกของเซลล์ (spAutoNoHtml) ซึ่งเป็นที่ที่คนทำงานอยู่จริง */
     /* 🔁 แผง "เติมย้อนหลังทั้งใบ" ที่ต้องกดเอง **ปลดออกจากหน้าจอแล้ว** (เจ้าของบอกว่างง
        27 พ.ย. 69) — เอาบรรทัดที่เรียกออกบรรทัดเดียว ฟังก์ชัน spBack… ทุกตัวยังอยู่ครบ
        เอากลับมาได้ด้วยการใส่บรรทัดนี้คืน · ตรรกะเดิมถูกใช้ต่อโดย spBal/spAuto* ที่อ่านให้เอง */
@@ -18617,8 +18640,10 @@ function spMeDays(ln){
   spRepJobsAll(ln).forEach(j=>{
     const c=spMeChk(j.sid,j.d,ln);
     c.slip=j.slip;c.tc=j.tc;c.tp=j.tp;c.done=j.done;
-    const e=out[j.d]||(out[j.d]={d:j.d,jobs:[],st:"none"});
+    const e=out[j.d]||(out[j.d]={d:j.d,jobs:[],st:"none",tgt:0});
     e.jobs.push(c);
+    /* 🎯 "ซุปตั้งเป้าไว้ไหม" เป็นคนละคำถามกับสถานะของวัน — สีทึบผูกกับอันนี้ ไม่ใช่กับ st */
+    if(c.has)e.tgt=1;
     if(SP_ME_RANK[c.st]>SP_ME_RANK[e.st])e.st=c.st;
   });
   return out;
@@ -18641,14 +18666,18 @@ function spRepHomeHtml(sid){
   const days=spMeDays(ln),ks=Object.keys(days).sort();
   const cur=spDay(sid),today=todayISO();
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
-  if(!ks.length)return `<div class="panel"><h3>📋 งานของสาย ${anaEsc(ln)}</h3>
-    <div class="insight" style="margin-top:8px">ยังไม่มีวันที่ต้องคีย์ของสายคุณ —
-    รอหัวหน้าเซลล์ตั้งจำนวนให้ก่อน</div></div>`;
+  /* 📅 ปฏิทินต้องขึ้นเสมอ แม้ซุปยังไม่ได้ตั้งเป้าสักวัน — เจ้าของ 29 พ.ย. 69:
+     *"ฝากปรับให้เซลล์เข้าไปอัพรูปออเดอร์ได้รายวันได้เลย ย้อนหลังก็ได้ … ไม่ต้องมีใครรอใคร"*
+     เดิมฟังก์ชันนี้ return ทิ้งตั้งแต่บรรทัดนี้เมื่อไม่มีวันไหนมีงาน เซลล์จึงเปิดวันย้อนหลัง
+     ไม่ได้เลย ตอนนี้แค่บอกว่ายังไม่มีเป้า แล้วปล่อยให้ปฏิทินขึ้นต่อ */
+  const noJob=!ks.length;
   const ym=spCalMon(sid);
   const cnt=s=>ks.filter(d=>days[d].st===s).length;
   /* หัวข้อนับ "ทุกเดือน" (เซลล์ต้องรู้ว่ายังค้างที่ไหนบ้าง) ส่วนคำอธิบายสีใต้ปฏิทินนับ
      เฉพาะเดือนที่กำลังดู ไม่งั้นตัวเลขสองที่ขัดกันเองบนจอเดียว */
-  const cntM=s=>ks.filter(d=>days[d].st===s&&d.slice(0,7)===spCalMon(sid)).length;
+  const cntM=s=>ks.filter(d=>days[d].st===s&&days[d].tgt&&d.slice(0,7)===spCalMon(sid)).length;
+  /* วันที่เซลล์เปิดเอง (ไม่มีเป้าของซุป) นับแยก — คนละคำถามกับสี่สถานะข้างบน */
+  const cntM0=()=>ks.filter(d=>!days[d].tgt&&days[d].st!=="none"&&d.slice(0,7)===spCalMon(sid)).length;
   const nTodo=cnt("todo"),nBad=cnt("bad");
   const ahead=ks.filter(d=>d>today&&days[d].st==="todo").length;
   const nSlip=Object.keys(ks.reduce((m,d)=>{days[d].jobs.forEach(j=>{m[j.sid]=1;});return m;},{})).length;
@@ -18665,20 +18694,30 @@ function spRepHomeHtml(sid){
     <div class="cal-grid">${DOW.map(x=>`<div class="cal-wd">${x}</div>`).join("")}${
       cells.map(d=>{
         if(!d)return `<div class="cal-day"></div>`;
+        /* 📅 ทุกวันกดได้ แม้ยังไม่มีงาน — เซลล์ต้องเปิดวันย้อนหลังไปใส่เลข/อัพรูปเองได้
+           วันที่ไม่มีงานเลยจะพาไปที่ "ใบที่เปิดอยู่" (sid) เพราะนั่นคือใบที่เขากำลังทำ */
         const e=days[d];
-        if(!e)return `<div class="cal-day${d===todayISO()?" today":""}">${+d.slice(8,10)}</div>`;
-        const S=SP_ME_ST[e.st]||SP_ME_ST.none;
-        const go=e.jobs[0];
-        return `<div class="cal-day ${S.cls}${d===cur?" sel":""}${d===todayISO()?" today":""}"
-          onclick="spGoJob('${anaEsc(go.sid)}','${d}')"
-          title="${anaEsc(fmtDate(d))} · ${anaEsc(S.nm)}">${+d.slice(8,10)}</div>`;
+        const S=e?(SP_ME_ST[e.st]||SP_ME_ST.none):SP_ME_ST.none;
+        const cls=[];
+        /* 🎨 สีทึบ = ซุปตั้งเป้าไว้ (เหมือนเดิม) · ขอบ = เซลล์มาลงเอง ไม่มีเป้า */
+        if(e&&S.cls)cls.push(e.tgt?S.cls:("jo"+(e.st==="bad"?" jx":"")));
+        if(d===cur)cls.push("sel");
+        if(d===todayISO())cls.push("today");
+        const go=(e&&e.jobs[0]&&e.jobs[0].sid)||sid;
+        const tip=fmtDate(d)+(e?(" · "+S.nm+(e.tgt?"":" (ลงเอง ไม่มีเป้า)")):" · ยังไม่มีงาน — กดเพื่อใส่เลข/อัพรูป");
+        return `<div class="cal-day ${cls.join(" ")}"
+          onclick="spGoJob('${anaEsc(go)}','${d}')"
+          title="${anaEsc(tip)}">${+d.slice(8,10)}</div>`;
       }).join("")}</div>
     <div class="cal-legend">
       <span class="cal-lg"><span class="cal-dot jr"></span> ยังไม่คีย์ ${cntM("todo")}</span>
       <span class="cal-lg"><span class="cal-dot jk"></span> รอตรวจ ${cntM("keyed")}</span>
       <span class="cal-lg"><span class="cal-dot jg"></span> ตรงกัน ${cntM("ok")}</span>
       <span class="cal-lg"><span class="cal-dot jx"></span> ไม่ตรง ${cntM("bad")}</span>
-      <span class="psub" style="margin:0">(เดือนนี้)</span></div></div>`;
+      <span class="cal-lg"><span class="cal-dot jo"></span> ลงเอง ${cntM0()}</span>
+      <span class="psub" style="margin:0">(เดือนนี้ · สีทึบ = ซุปตั้งเป้า)</span></div>
+    <div class="psub" style="margin-top:6px">กดวันไหนก็ได้ รวมวันย้อนหลัง เพื่อใส่เลขออเดอร์
+      หรืออัพรูปหน้าจอของวันนั้น ไม่ต้องรอซุปตั้งเป้า</div></div>`;
   /* กล่องสรุปของวันที่เลือก — รวมทุกใบของวันนั้น */
   const sel=days[cur];
   let det="";
@@ -18715,10 +18754,12 @@ function spRepHomeHtml(sid){
     }).join("");
   }
   return `<div class="panel"><h3>📅 ปฏิทินงานของสาย ${anaEsc(ln)}</h3>
-    <div class="psub">${nTodo?("ยังไม่ได้คีย์ <b>"+nTodo+"</b> วัน"):"คีย์ครบทุกวันแล้ว"}${
-      nBad?' · <b class="down">ไม่ตรง '+nBad+' วัน</b>':""}${
-      ahead?" · ล่วงหน้า <b>"+ahead+"</b> วัน คีย์ไว้ก่อนได้เลย":""} · กดวันในปฏิทินเพื่อกรอก${
-      nSlip>1?" · รวมทุกใบออเดอร์แล้ว ("+nSlip+" ใบ)":""}</div>
+    <div class="psub">${noJob
+      ?"ยังไม่มีวันที่หัวหน้าเซลล์ตั้งเป้าให้สายคุณ — แต่กดวันไหนก็ได้เพื่อใส่เลขออเดอร์หรืออัพรูปไว้ก่อน"
+      :((nTodo?("ยังไม่ได้คีย์ <b>"+nTodo+"</b> วัน"):"คีย์ครบทุกวันแล้ว")+
+        (nBad?' · <b class="down">ไม่ตรง '+nBad+' วัน</b>':"")+
+        (ahead?" · ล่วงหน้า <b>"+ahead+"</b> วัน คีย์ไว้ก่อนได้เลย":"")+" · กดวันในปฏิทินเพื่อกรอก"+
+        (nSlip>1?" · รวมทุกใบออเดอร์แล้ว ("+nSlip+" ใบ)":""))}</div>
     ${cal}${det}</div>`;
 }
 /* ---------- ตารางของ "สายฉัน" — เซลล์กรอกจำนวนที่คีย์จริง ----------
@@ -20411,7 +20452,9 @@ function spAutoFind(sid,ymd,ln){
   return {r:r,L:L,n:L?L.n:0,add:L?L.add:[],no:L?L.no:[],
     gin:Object.keys(r.gin).filter(Boolean),run:r.run,
     noFile:r.noFile,noDet:r.noDet,cx:L?L.cx.length:0,maybe:L?L.maybe.length:0,
-    pre:L?L.pre.length:0,noTm:L?L.noTm.length:0,made:r.made,madeHm:r.madeHm};
+    pre:L?L.pre.length:0,noTm:L?L.noTm.length:0,made:r.made,madeHm:r.madeHm,
+    /* เลขที่ถูกตัดด้วยเวลา/ไม่รู้เวลา — ไม่เติมให้เอง แต่คนกดใส่เองได้ (ดู spAutoNoHtml) */
+    preList:(L?L.pre:[]).concat(L?L.noTm:[])};
 }
 function spAutoNoHtml(sid,ymd,ln,can){
   if(!sid||!ymd||!ln)return "";
@@ -20443,10 +20486,23 @@ function spAutoNoHtml(sid,ymd,ln,can){
   if(A.maybe)n.push("ยังไม่รู้รายการสินค้าอีก "+A.maybe+" ใบ — ไม่ใส่ให้");
   if(A.cx)n.push("ใบที่ยกเลิก "+A.cx+" ใบ — ไม่ใส่ให้");
   if(n.length)h.push(`<div class="psub">${n.join(" · ")}</div>`);
+  /* ⏰ เลขที่ถูกตัดด้วยเวลา: ระบบไม่เติมให้เอง (จะทับซ้อนกับรอบอื่น) แต่ **คนกดใส่เองได้**
+     — ใช้ตอนตรวจย้อนหลัง ที่เจ้าของสั่ง 29 พ.ย. 69 ว่า *"ไม่ต้องมีใครรอใคร"*
+     กฎเดิมทั้งหมดยังอยู่: ใส่ลงในช่องเท่านั้น ไม่บันทึกให้ คนตรวจแล้วกดบันทึกเอง */
+  if(A.preList.length&&can)h.push(`<div style="margin-top:6px">
+    <button type="button" class="btn-ghost btn-mini"
+      onclick="spAutoNoFill('${anaEsc(sid)}','${anaEsc(ymd)}','${anaEsc(ln)}',1)">▸ ใส่เลขที่ระบบไม่นับให้
+      ${A.preList.length} เลข ลงในช่องด้วย</button>
+    <span class="psub"> (ใช้ตอนย้อนไปตรวจวันเก่า — ตรวจแล้วกดบันทึกเองเหมือนเดิม)</span></div>`);
   return h.join("")+`</div>`;
 }
-function spAutoNoFill(sid,ymd,ln){
+function spAutoNoFill(sid,ymd,ln,pre){
   let A;try{A=spAutoFind(sid,ymd,ln);}catch(e){A=null;}
+  if(pre){
+    /* ⏰ เลขที่ระบบไม่นับให้ (คีย์ก่อนสร้างใบ หรือไฟล์ไม่บอกเวลา) — ใส่เมื่อคนสั่งเท่านั้น */
+    if(!A||!A.preList.length){alert("ไม่มีเลขในกลุ่มนี้");return;}
+    A={add:A.preList};
+  }
   if(!A||!A.add.length){alert("ไม่มีเลขที่ต้องใส่เพิ่มแล้ว");return;}
   const ta=spOcrTa(ln);
   if(!ta){alert("เปิดหน้าของสาย "+ln+" อีกครั้งแล้วลองใหม่");return;}

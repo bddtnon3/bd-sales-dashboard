@@ -4410,6 +4410,81 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    'disp='+(r1280.cells[0]||{}).disp+' · doc '+r1280.doc+'/'+r1280.win);
  await pg.setViewportSize({width:1280,height:950});
 
+ /* ==========================================================================
+  * 22) 📅 เซลล์เปิดวันไหนก็ได้ รวมวันย้อนหลัง · 🔁 แผงย้อนหาเลขออกจากจอ
+  *   เจ้าของ 29 พ.ย. 69 (พร้อมรูปหน้าจอที่ขึ้น "พบเลขที่ยังไม่ได้ใส่ 14 เลข — แน่ใจ 0 ·
+  *     ไม่แน่ใจ 14"): *"เอาส่วนนี้ออกไปให้หมด เดี๋ยวคนจะงงกว่าเดิม"*
+  *     *"ฝากปรับให้เซลล์เข้าไปอัพรูปออเดอร์ได้รายวันได้เลย ย้อนหลังก็ได้ เผื่อที่เราจะได้ลอง
+  *       ตรวจสอบกันดู ว่าตั้งแต่วันที่ 16 เป็นต้นมา การที่เซลล์คีย์ คลังจัดออกตรงกันไหม
+  *       แต่จะขึ้นสีทึบแบบเดิมเวลาซุปตั้งเป้า"*
+  *     *"พยายามทำให้ทุกส่วนอ่านข้อมูลเชื่อมกันได้หมด ไม่ต้องมีใครรอใคร"*
+  *   ⚠️ "สีทึบ = ซุปตั้งเป้า" เป็นคำสั่งตรง ๆ — วันที่เซลล์เปิดเองต้องเป็นขอบ ไม่ใช่สีทึบ
+  * ========================================================================== */
+ const DAY = `
+   __as('sales','209611','CT11 · ทดสอบ');
+   window.__dTgt=spBackStep(todayISO(),-1);    /* วันที่ซุปตั้งเป้า */
+   window.__dOld=spBackStep(todayISO(),-9);    /* วันเก่า ไม่มีใครตั้งเป้า */
+   CSTOCK.slips[B1].d=spBackStep(todayISO(),-2);CSTOCK.slips[B1].g='D';
+   CSTOCK.slips[B1].at=1;
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};CSTOCK.lots={};
+   MASTER={items:{FO01:{nm:'คนอร์โจ๊กซอง FO'}},det:{FO01:{ps:12}}};
+   CSTOCK.lots['L1']={id:'L1',sl:B1,d:spBackStep(todayISO(),-2),code:'FO01',
+     nm:'คนอร์โจ๊กซอง FO',cs:10,pc:0,ln:'CT11',clr:[]};
+   CSTOCK.key[B1+'|'+window.__dTgt+'|CT11']={it:{FO01:{sc:5,sp:0}},by:'sup',at:10};
+   STOREDAILY={data:{},ord:{}};
+   SP.sid=B1;SP.view='slip';SP.sec='rep';SP.day=window.__dTgt;
+   SP.ym=window.__dTgt.slice(0,7);SP.cm=window.__dTgt.slice(0,7);
+   SP.back={on:0,sid:'',busy:0,i:0,n:0,open:{}};
+   _switchTab('spord');renderSpord();`;
+ const dayo=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const V=document.getElementById('spordView');
+   const tx=V.textContent.replace(/\s+/g,' ');
+   const cells=[...V.querySelectorAll('.sp-cal .cal-day')].filter(c=>c.textContent.trim());
+   const by=n=>cells.filter(c=>c.textContent.trim()===String(n))[0]||null;
+   const tgtC=by(+window.__dTgt.slice(8,10)),oldC=by(+window.__dOld.slice(8,10));
+   const o={n:cells.length,click:cells.filter(c=>c.getAttribute('onclick')).length,
+     tgtCls:tgtC?tgtC.className:'',oldCls:oldC?oldC.className:'',
+     panel:/ย้อนหาเลขออเดอร์ที่ตกหล่น/.test(tx),
+     fn:typeof spMissBtnHtml==='function'&&typeof spMissFind==='function'&&
+        typeof spMissScan==='function'&&typeof spMissAdd==='function',
+     legend:/ลงเอง/.test(tx)&&/สีทึบ = ซุปตั้งเป้า/.test(tx)};
+   /* กดวันเก่าที่ไม่มีงานเลย → ต้องเปิดการ์ดกรอกของวันนั้นได้ */
+   if(oldC)oldC.click();
+   const t2=document.getElementById('spordView').textContent.replace(/\s+/g,' ');
+   o.day=SP.day;o.want=window.__dOld;
+   o.box=!!document.getElementById('spRNo_CT11');
+   o.photo=/รูป/.test(t2);o.save=/บันทึกเลขออเดอร์/.test(t2);o.back=/ย้อนหลัง/.test(t2);
+   /* เซลล์ลงเลขเองในวันเก่า → ต้องขึ้น "ขอบ" ไม่ใช่สีทึบ */
+   CSTOCK.rep[B1+'|'+window.__dOld+'|CT11']={it:{},no:['BDD0190000001'],
+     by:'209611',byName:'CT11',at:2,n:1};
+   SP.day=window.__dTgt;renderSpord();
+   const c2=[...document.querySelectorAll('#spordView .sp-cal .cal-day')]
+     .filter(c=>c.textContent.trim()===String(+window.__dOld.slice(8,10)))[0];
+   o.selfCls=c2?c2.className:'';
+   /* ไม่มีเป้าสักวัน → ปฏิทินยังต้องขึ้น ไม่ใช่ตัดจบว่า "รอซุป" */
+   CSTOCK.key={};CSTOCK.rep={};renderSpord();
+   const V3=document.getElementById('spordView');
+   o.calAlways=V3.querySelectorAll('.sp-cal .cal-day').length>0;
+   o.msg=/กดวันไหนก็ได้เพื่อใส่เลขออเดอร์/.test(V3.textContent.replace(/\s+/g,' '));
+   return o;
+ },{setup:PRE,pre:DAY});
+ t('🔁 แผง "ย้อนหาเลขออเดอร์ที่ตกหล่น" ออกจากหน้าจอแล้ว แต่ฟังก์ชันยังอยู่ครบ',
+   dayo.panel===false&&dayo.fn===true,'บนจอ='+dayo.panel+' ฟังก์ชัน='+dayo.fn);
+ t('📅 ปฏิทินของเซลล์กดได้ทุกวันในเดือน ไม่ใช่เฉพาะวันที่ซุปตั้งเป้า',
+   dayo.n>=28&&dayo.click===dayo.n,'กดได้ '+dayo.click+' จาก '+dayo.n+' วัน');
+ t('📅 กดวันย้อนหลังที่ไม่มีงานเลย → เปิดการ์ดใส่เลข/อัพรูปของวันนั้นได้',
+   dayo.day===dayo.want&&dayo.box===true&&dayo.photo===true&&dayo.save===true&&
+   dayo.back===true,
+   'วัน '+dayo.day+' ช่อง='+dayo.box+' รูป='+dayo.photo+' บันทึก='+dayo.save);
+ t('🎨 สีทึบยังหมายถึง "ซุปตั้งเป้า" เท่านั้น — วันที่เซลล์ลงเองเป็นขอบ',
+   /\bjr\b/.test(dayo.tgtCls)&&!/\bjr\b|\bjk\b|\bjg\b/.test(dayo.oldCls)&&
+   /\bjo\b/.test(dayo.selfCls)&&!/\bjk\b|\bjg\b|\bjr\b/.test(dayo.selfCls),
+   'เป้า="'+dayo.tgtCls+'" · ว่าง="'+dayo.oldCls+'" · ลงเอง="'+dayo.selfCls+'"');
+ t('🛟 ไม่มีเป้าสักวัน ปฏิทินก็ยังต้องขึ้น — ไม่ต้องรอซุป',
+   dayo.calAlways===true&&dayo.msg===true&&dayo.legend===true,
+   'ปฏิทิน='+dayo.calAlways+' ข้อความ='+dayo.msg);
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}
