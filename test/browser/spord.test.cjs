@@ -4879,6 +4879,92 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🛟 การอ่านรูปซ้ำไม่ส่งอะไรขึ้นเซิร์ฟเวอร์เอง — คนกดบันทึกเองเหมือนเดิม',
    rdup.posts===0,'posts='+rdup.posts);
 
+ /* ================================================================
+  * 27) 📦 กลุ่มสินค้าในใบตัวกระจาย — คละสูตรได้ จึงหักลบในกลุ่ม
+  *   เจ้าของวางกติกาเอง 28 พ.ย. 69 พร้อมใบ 19 พ.ย. ของจริง 390 ลัง:
+  *     *"ซิตร้า 320มล. 4 สูตร · ซิตร้า 10มล. 2 สูตร · ลักส์ 450มล. 2 สูตร …
+  *       เช่นซิตร้า 320มล. รวม 240 ลัง ก็ให้ระบบคำนวณว่ารวมจำนวนออกมาแล้ว 4 สูตรนี้
+  *       ยังขาดหรือเกินอีกกี่ชิ้น"*
+  *   ชื่อสินค้าคือชื่อ SKU ของยูนิลีเวอร์ ไม่ใช่ข้อมูลลูกค้าหรือรายได้ จึงใส่ในเทสต์ได้
+  * ================================================================ */
+ const GRP = `
+   __reset();cstOk();
+   __as('manager','','ผู้จัดการ');
+   window.__w=spBackStep(todayISO(),-1);
+   CSTOCK.slips[B1].d=window.__w;CSTOCK.slips[B1].g='D';CSTOCK.slips[B1].at=1;
+   CSTOCK.lots={};CSTOCK.key={};CSTOCK.rep={};CSTOCK.gin={};
+   STOREDAILY={data:{},ord:{}};OT.cache={};OT.months=[];spRfBust();
+   /* 8 รายการจริงของใบ 19 พ.ย. · ลังละ 12 ชิ้นเท่ากันทุกรหัส */
+   window.__PS=12;
+   window.__it=[['ซิตร้า ทานาคา AHA FO 4x3x320มล',60],
+     ['ซิตร้า เพิร์ล เอเอชเอ FO 4x3x320มล',90],
+     ['ซิตร้า สาหร่าย AHA FO 4x3x320มล',60],
+     ['ซิตร้าเพิร์ลสปอตเลสเซรั่ม12X6X10ML',15],
+     ['ซิตร้าวอเตอร์เมลอนโทนอัพ12X6X10ML',15],
+     ['ลักส์สบู่เหลวโรสปั๊ม FO 8X450มล',60],
+     ['ลักส์สบู่เหลวซากุระปั๊ม FO 8X450มล',60],
+     ['ซิตร้า ซากุระ AHA FO 4x3x320มล',30]];
+   MASTER={items:{},det:{}};
+   window.__it.forEach(function(x,i){
+     const c='G'+(900+i);
+     MASTER.items[c]={nm:x[0]};MASTER.det[c]={ps:window.__PS};
+     CSTOCK.lots['L'+i]={id:'L'+i,sl:B1,d:window.__w,code:c,nm:x[0],
+       cs:x[1],pc:0,ln:'CT11',clr:[],up:1};
+   });
+   SP.sid=B1;SP.view='slip';SP.sec='rep';SP.day=window.__w;
+   SP.ym=window.__w.slice(0,7);SP.cm=window.__w.slice(0,7);SP.zone=undefined;
+   try{localStorage.removeItem('bdspzone');}catch(e){}
+   _switchTab('spord');renderSpord();`;
+ const rgrp=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const before=JSON.stringify(CSTOCK),p0=window.__posts.length;
+   const B=spBal(B1),G=spGroups(B),PS=window.__PS;
+   const o={n:G.gs.length,nosz:G.nosz.length,
+     gs:G.gs.map(g=>({nm:g.brand+' '+g.size,sku:g.nSku,cs:g.tgt/PS,mix:g.mixPs}))};
+   /* 🔑 คละสูตรได้ ⇒ ขาดสูตรหนึ่ง เกินอีกสูตรหนึ่ง ในกลุ่มเดียวกัน = ครบ */
+   const C=spSlipCodes(B1);
+   const c320=C.filter(c=>/320มล/.test(c.nm));
+   const B2=JSON.parse(JSON.stringify(B));
+   B2.rows.forEach(r=>{r.k=r.tgt;});
+   const i0=B2.rows.findIndex(r=>r.code===c320[0].code);
+   const i1=B2.rows.findIndex(r=>r.code===c320[1].code);
+   B2.rows[i0].k-=10*PS;B2.rows[i1].k+=10*PS;    /* ย้าย 10 ลังจากสูตรหนึ่งไปอีกสูตร */
+   const G2=spGroups(B2);
+   const g320=G2.gs.filter(g=>/320มล/.test(g.size))[0];
+   o.net={toKey:g320.toKey,overT:g320.overT};
+   /* 🛟 ชื่อที่อ่านขนาดไม่ออก ต้องไม่ถูกยัดเข้ากลุ่ม */
+   const B3={rows:[{code:'X1',nm:'ของแถมพิเศษไม่ระบุขนาด',ps:12,tgt:120,k:0,g:0}]};
+   o.unk=spGroups(B3).nosz.length;
+   /* 📦 บนจอ */
+   SP.sec='adm';renderSpord();
+   const V=document.getElementById('spordView');
+   const tb=V.querySelector('.sp-grpt');
+   o.tbl=tb?tb.textContent.replace(/\s+/g,' ').trim():'';
+   o.rows=tb?[...tb.querySelectorAll('tbody tr:not(.sp-grps)')].length:0;
+   o.frac=/\d+\.\d+\s*ลัง/.test(o.tbl);
+   o.ro=JSON.stringify(CSTOCK)===before;o.posts=window.__posts.length-p0;
+   return o;
+ },{setup:PRE,pre:GRP});
+ t('📦 ใบ 390 ลัง แตกเป็น 3 กลุ่มตามที่เจ้าของบอก — 240 / 120 / 30 ลัง',
+   rgrp.n===3&&rgrp.nosz===0&&
+   rgrp.gs.map(g=>g.cs).join(',')==='240,120,30'&&
+   rgrp.gs.map(g=>g.sku).join(',')==='4,2,2',
+   JSON.stringify(rgrp.gs));
+ t('📦 ...และตั้งชื่อกลุ่มเป็น แบรนด์ + ขนาด (ชื่อไม่มีเว้นวรรคก็จับได้)',
+   /ซิตร้า 320มล/.test(rgrp.gs.map(g=>g.nm).join('|'))&&
+   /ซิตร้า 10ML/.test(rgrp.gs.map(g=>g.nm).join('|'))&&
+   /450มล/.test(rgrp.gs.map(g=>g.nm).join('|')),
+   rgrp.gs.map(g=>g.nm).join(' · '));
+ t('🔑 คละสูตรในกลุ่มเดียวกันได้ — ขาด 10 ลังสูตรหนึ่ง เกิน 10 ลังอีกสูตร = ครบ',
+   rgrp.net.toKey===0&&rgrp.net.overT===0,JSON.stringify(rgrp.net));
+ t('🛟 ชื่อที่อ่านขนาดไม่ออก ไม่ถูกยัดเข้ากลุ่ม — นับแยกแล้วบอกบนจอ',
+   rgrp.unk===1,'nosz='+rgrp.unk);
+ t('📦 ตารางกลุ่มขึ้นบนจอครบ 3 แถว และไม่มีเศษลัง',
+   rgrp.rows===3&&/สรุปตามกลุ่มสินค้า|กลุ่มสินค้า/.test(rgrp.tbl)&&rgrp.frac===false,
+   rgrp.rows+' แถว · '+rgrp.tbl.slice(0,120));
+ t('🛟 สรุปกลุ่มอ่านอย่างเดียว — CSTOCK เท่าเดิม ไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
+   rgrp.ro===true&&rgrp.posts===0,'same='+rgrp.ro+' posts='+rgrp.posts);
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}

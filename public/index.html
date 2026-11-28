@@ -478,12 +478,16 @@ table.sp-balt td .psub{display:block;font-size:11.5px}
 }
 .sp-stpill{display:inline-block;border:1px solid var(--line);border-radius:999px;
   padding:1px 9px;font-size:12px;font-weight:800;margin-left:6px;white-space:nowrap;background:#fff}
-.cal-day.st-ok{box-shadow:inset 0 0 0 2px var(--good)}
-.cal-day.st-short{box-shadow:inset 0 0 0 2px var(--bad)}
-.cal-day.st-over{box-shadow:inset 0 0 0 2px var(--warn)}
-.cal-dot.st-ok{background:var(--good)}
-.cal-dot.st-short{background:var(--bad)}
-.cal-dot.st-over{background:var(--warn)}
+ 
+.cal-day.st-ok{background:var(--good);color:#fff;font-weight:800;box-shadow:none}
+.cal-day.st-short{background:var(--bad);color:#fff;font-weight:800;box-shadow:none}
+.cal-day.st-over{background:var(--warn);color:#3A2B00;font-weight:800;box-shadow:none}
+.sp-cal .cal-day.sel,.sp-zone .sp-cal .cal-day.sel{
+  outline:3px solid #7C8696;outline-offset:1px;background-clip:padding-box}
+.cal-dot.st-ok{background:var(--good);border-color:var(--good)}
+.cal-dot.st-short{background:var(--bad);border-color:var(--bad)}
+.cal-dot.st-over{background:var(--warn);border-color:var(--warn)}
+.cal-dot.selx{background:#fff;border:3px solid #7C8696}
 tr.sp-balr.short>td{background:#FFF5F5}
 tr.sp-balr.over>td{background:#FFFAF0}
 tr.sp-balr.ok>td{background:#F5FCF7}
@@ -16108,12 +16112,18 @@ function spCalHtml(sid){
         return `<div class="cal-day${cls}" onclick="spSetDay('${d}')"
           title="${anaEsc(fmtDate(d))}${has[d]?" · มีข้อมูลแล้ว":""}${chk[d]?" · แอดมินตรวจแล้ว":""}${sx}">${+d.slice(8,10)}</div>`;
       }).join("")}</div>
-    <div class="cal-legend"><span class="cal-dot"></span> มีข้อมูล ${nIn} วัน
-      <span class="cal-dot chk" style="margin-left:10px"></span> แอดมินตรวจแล้ว ${nChk} วัน
-      ${nSt.ok?`<span class="cal-dot st-ok" style="margin-left:10px"></span> ครบ ${nSt.ok} วัน`:""}
-      ${nSt.short?`<span class="cal-dot st-short" style="margin-left:10px"></span> ขาด ${nSt.short} วัน`:""}
-      ${nSt.over?`<span class="cal-dot st-over" style="margin-left:10px"></span> เกิน ${nSt.over} วัน`:""}
-      </div></div>`;
+    <div class="cal-legend2">
+      <span class="cal-lg"><span class="cal-sw" style="background:var(--good);box-shadow:none"></span>
+        🟢 ครบ <b>${nSt.ok}</b> วัน</span>
+      <span class="cal-lg"><span class="cal-sw" style="background:var(--bad);box-shadow:none"></span>
+        🔴 ขาด <b>${nSt.short}</b> วัน</span>
+      <span class="cal-lg"><span class="cal-sw" style="background:var(--warn);box-shadow:none"></span>
+        🟡 เกิน <b>${nSt.over}</b> วัน</span>
+      <span class="cal-lg"><span class="cal-sw" style="box-shadow:inset 0 0 0 3px #7C8696"></span>
+        กรอบเทา = วันที่เลือก</span>
+      <span class="cal-lg"><span class="cal-dot"></span> มีข้อมูล <b>${nIn}</b> วัน</span>
+      <span class="cal-lg"><span class="cal-dot chk"></span> แอดมินตรวจแล้ว <b>${nChk}</b> วัน</span>
+    </div></div>`;
 }
  
  
@@ -16701,6 +16711,8 @@ async function spOcrGo(ln,files){
       got=spOcrNos(await ocrWords(url,null,SP_OCR_W));
        
       if(!got.length)got=spOcrNos(await ocrWords(url,null,SP_OCR_W,1));
+       
+      if(!got.length&&OCR_W>SP_OCR_W)got=spOcrNos(await ocrWords(url,null,OCR_W));
     }catch(e){bad=(e&&e.message)?e.message:"อ่านรูปนี้ไม่ได้";}
      
     const fresh=[];
@@ -17715,6 +17727,86 @@ function spStPill(st,extra){
     extra?(" "+anaEsc(extra)):""}</span>`;
 }
  
+ 
+const SP_GRP_MIN=3;                  
+const SP_SZ_RE=/(\d+(?:\.\d+)?)\s*(มล|ml|ลิตร|ltr|l|กรัม|กก|ก|g|kg|ชิ้น|ซอง|แผ่น|ม้วน)(?![0-9A-Za-z฀-๿])/gi;
+const SP_SZ_U={"มล":"ml","ML":"ml","ลิตร":"l","LTR":"l","L":"l","กรัม":"g","ก":"g","G":"g",
+  "กก":"kg","KG":"kg","ชิ้น":"pc","ซอง":"pc","แผ่น":"pc","ม้วน":"pc"};
+function spSizeKey(nm){
+  const s=String(nm||"");
+  let m,last=null;
+  SP_SZ_RE.lastIndex=0;
+  while((m=SP_SZ_RE.exec(s))){
+    const u=SP_SZ_U[m[2]]||SP_SZ_U[m[2].toUpperCase()];
+    if(u)last={k:m[1]+u,txt:(m[1]+m[2])};
+  }
+  return last;                        
+}
+function spLeadTh(nm){
+  const s=String(nm||"").trim();
+  const m=s.match(/^[฀-๿]+/);
+  if(m)return m[0];
+  const l=s.match(/^[A-Za-z]+/);
+  return l?l[0].toUpperCase():s.slice(0,12);
+}
+function spPrefix(a,b){let i=0;while(i<a.length&&i<b.length&&a[i]===b[i])i++;return a.slice(0,i);}
+ 
+function spGrpMerge(leads){
+  let ks=leads.slice();
+  for(;;){
+    let hit=false;
+    for(let i=0;i<ks.length&&!hit;i++)for(let j=i+1;j<ks.length;j++){
+      const p=spPrefix(ks[i],ks[j]);
+      if(p.length>=SP_GRP_MIN&&(p!==ks[i]||p!==ks[j])){
+        const a=ks[i],b=ks[j];
+        ks=ks.map(x=>(x===a||x===b)?p:x);
+        hit=true;break;
+      }
+    }
+    if(!hit)break;
+  }
+  const map={};leads.forEach((l,i)=>{map[l]=ks[i];});
+  return map;
+}
+ 
+function spGroups(B){
+  const rows=(B&&B.rows)||[];
+  if(!rows.length)return {gs:[],nosz:[]};
+  const bySz={},nosz=[];
+  rows.forEach(r=>{
+    const sz=spSizeKey(r.nm||r.code);
+    if(!sz){nosz.push(r);return;}
+    (bySz[sz.k]=bySz[sz.k]||{txt:sz.txt,rows:[]}).rows.push(r);
+  });
+  const gs=[];
+  Object.keys(bySz).forEach(szk=>{
+    const bk=bySz[szk];
+    const leads=bk.rows.map(r=>spLeadTh(r.nm||r.code));
+    const map=spGrpMerge(leads);
+    const byBrand={};
+    bk.rows.forEach((r,i)=>{const b=map[leads[i]];(byBrand[b]=byBrand[b]||[]).push(r);});
+    Object.keys(byBrand).forEach(b=>{
+      const rs=byBrand[b];
+      const g={key:b+"|"+szk,brand:b,size:bk.txt,rows:rs,
+        tgt:0,keyed:0,gin:0,ps:0,mixPs:false,nSku:rs.length};
+      const pss={};
+      rs.forEach(r=>{
+        g.tgt+=Math.max(0,+r.tgt||0);g.keyed+=Math.max(0,+r.k||0);g.gin+=Math.max(0,+r.g||0);
+        if(+r.ps>0)pss[r.ps]=1;
+      });
+      const pk=Object.keys(pss);
+      g.mixPs=pk.length>1;g.ps=pk.length===1?+pk[0]:0;
+       
+      g.toKey=Math.max(0,g.tgt-g.keyed);
+      g.overT=Math.max(0,g.keyed-g.tgt);
+      g.d=g.gin-g.keyed;
+      g.st=g.d<0?"short":(g.d>0?"over":(g.keyed?"ok":"wait"));
+      gs.push(g);
+    });
+  });
+  gs.sort((a,b)=>b.tgt-a.tgt||b.keyed-a.keyed);
+  return {gs:gs,nosz:nosz};
+}
 function spBalHtml(sid,mode){
   const codes=spSlipCodes(sid);
   if(!codes.length)return "";
@@ -17770,8 +17862,48 @@ function spBalHtml(sid,mode){
    
   const todoS=keyOnly?[]:B.rows.filter(r=>r.d<0).sort((a,b)=>a.d-b.d);
   const todoO=keyOnly?[]:B.rows.filter(r=>r.d>0).sort((a,b)=>b.d-a.d);
+   
+   
+  if(spGrpOf(spSlip(sid))==="D"){
+    const G=spGroups(B);
+    if(G.gs.length){
+       
+      const gq=(v,g)=>g.mixPs
+        ?('<b>'+Math.round(v).toLocaleString()+' <small>ชิ้น</small></b>')
+        :('<b>'+spBalOne(v,g.ps)+'</b>');
+      h.push(`<div class="sp-baltd"><div class="sp-baltdh">📦 สรุปตามกลุ่มสินค้า — คละสูตรได้</div>
+        <div class="psub" style="margin:0 0 8px">สินค้ากลุ่มเดียวกันคือโปรเดียวกัน เซลล์คีย์สูตรไหนก็ได้
+          ขอให้ครบยอดของกลุ่ม · ตัวเลขข้างล่างจึง<b>หักลบข้ามสูตรในกลุ่มเดียวกันแล้ว</b></div>`);
+      h.push(`<div class="tblwrap"><table class="sp-kt sp-fold sp-grpt"><thead><tr>
+        <th class="l">กลุ่มสินค้า</th><th>ตั้งต้นในใบ</th><th>📲 เซลล์คีย์</th>${
+        keyOnly?"":"<th>🚚 คลังจัด</th>"}<th>ต้องคีย์เพิ่ม / เกิน</th></tr></thead><tbody>`);
+      G.gs.forEach(g=>{
+        const need=g.toKey?`<b class="down">ยังต้องคีย์อีก ${gq(g.toKey,g)}</b>`
+          :(g.overT?`<b style="color:var(--warn)">คีย์เกิน ${gq(g.overT,g)}</b>`
+          :`<span class="sp-ok">🟢 ครบตามใบ</span>`);
+        h.push(`<tr><td class="l" data-l="กลุ่มสินค้า"><b>${anaEsc(g.brand)} ${anaEsc(g.size)}</b>
+          <span class="psub" style="display:block">${g.nSku} สูตร${
+            g.mixPs?' · <b class="down">ขนาดลังไม่เท่ากัน จึงบอกเป็นชิ้น</b>':
+            (g.ps?' · ลังละ '+g.ps+' ชิ้น':"")}</span></td>
+          <td data-l="ตั้งต้นในใบ">${gq(g.tgt,g)}</td>
+          <td data-l="เซลล์คีย์">${gq(g.keyed,g)}</td>${
+          keyOnly?"":`<td data-l="คลังจัด">${gq(g.gin,g)}</td>`}
+          <td data-l="ต้องคีย์เพิ่ม / เกิน">${need}</td></tr>`);
+        h.push(`<tr class="sp-grps"><td class="l" colspan="${keyOnly?4:5}">${
+          g.rows.map(r=>anaEsc((r.nm||r.code).slice(0,26))+" "+
+            (r.ps?spBalOne(Math.max(0,+r.tgt||0),r.ps)
+                 :Math.round(+r.tgt||0).toLocaleString()+" ชิ้น"))
+            .join(" · ")}</td></tr>`);
+      });
+      h.push(`</tbody></table></div>`);
+      if(G.nosz.length)h.push(`<div class="psub down" style="margin-top:6px">⚠️ อ่านขนาดจากชื่อไม่ได้
+        ${G.nosz.length} รายการ จึงไม่ได้จัดเข้ากลุ่ม — ${
+        G.nosz.slice(0,4).map(r=>anaEsc(r.nm||r.code)).join(" · ")}${G.nosz.length>4?" …":""}</div>`);
+      h.push(`</div>`);
+    }
+  }
   if(todoK.length||todoS.length||todoO.length){
-    h.push(`<div class="sp-baltd"><div class="sp-baltdh">📋 ต้องทำอะไรต่อ</div>`);
+    h.push(`<div class="sp-baltd"><div class="sp-baltdh">📋 ต้องทำอะไรต่อ · ทีละสินค้า</div>`);
      
     const nTxt=n=>`<span class="psub"> · ${n} รายการ</span>`;
     if(todoS.length)h.push(`<div class="sp-baltdg bad"><b>🔴 ขาด — คลังยังจัดไม่ครบตามที่เซลล์คีย์</b>${
@@ -18125,7 +18257,10 @@ function spTrkGap(x){
   if(!x.has)return '<span class="psub">—</span>';
   const b=[];
   if(x.shPc>0)b.push('<b class="down">ขาด '+spCsTxt(x.short.cs,x.short.pc)+"</b>");
-  if(x.ovPc>0)b.push('<b class="up">เกิน '+spCsTxt(x.over.cs,x.over.pc)+"</b>");
+  if(x.ovPc>0)b.push('<b style="color:var(--warn)">เกิน '+spCsTxt(x.over.cs,x.over.pc)+"</b>");
+   
+  if(b.length===2)b.push('<span class="psub" style="display:block">คนละสินค้ากัน — '+
+    'คีย์ตัวที่ขาดเพิ่ม และหักตัวที่เกินออก</span>');
   return b.length?b.join('<span style="display:block"></span>'):"-";
 }
 function spTrackHtml(sid,ymd,tr){
@@ -18137,8 +18272,9 @@ function spTrackHtml(sid,ymd,tr){
   const show=tr.filter(x=>x.has||x.done);
   if(!show.length)return `<div class="panel" style="margin-top:12px">
     <h3>📋 ${tg?"ติดตามการคีย์รายสาย":"จำนวนที่เซลล์คีย์"}</h3>
-    <div class="insight" style="margin-top:8px">${tg?"ยังไม่ได้ตั้งเป้าของวันนี้"
-      :"ยังไม่มีสายไหนคีย์จำนวนของวันนี้"}</div></div>`;
+    ${spWorkDayBar(ymd)}
+    <div class="insight" style="margin-top:8px">${tg?"ยังไม่ได้ตั้งเป้าของ "+anaEsc(fmtDayMon(ymd))
+      :"ยังไม่มีสายไหนคีย์จำนวนของ "+anaEsc(fmtDayMon(ymd))}</div></div>`;
   const n={ok:0,short:0,over:0,wait:0,unk:0};show.forEach(x=>{if(n[x.st]!=null)n[x.st]++;});
   const cards=(one||!tg)?"":`<div class="cards" style="margin-top:10px">
       <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">ครบเป้า</div>
@@ -18169,17 +18305,22 @@ function spTrackHtml(sid,ymd,tr){
     <td data-l="🧾 จากเลขออเดอร์">${spOrdCell(x)}</td>
     ${tg?`<td data-l="ยังขาด">${spTrkGap(x)}</td>
     <td data-l="ผล">${SP_TRK[x.st][0]}</td>`:""}
-    <td class="l" data-l="กรอกเมื่อ">${x.rec?`<span class="psub">${anaEsc(x.rec.byName||x.rec.by||"")} · ${fmtDateTime(x.rec.at)}${
-      x.n?" · แก้ไป "+(x.n-1)+" ครั้ง":""}</span>`:'<span class="psub">—</span>'}</td></tr>`+
+    ${ ""}
+    <td class="l" data-l="บันทึกเมื่อ">${x.rec?`<span class="psub">${anaEsc(x.rec.byName||x.rec.by||"")} · ${fmtDateTime(x.rec.at)}${
+      x.n?" · แก้ไป "+(x.n-1)+" ครั้ง":""}${
+      (()=>{let sd="";try{sd=ymdOf(new Date(+x.rec.at||0));}catch(e){sd="";}
+        return (sd&&String(ymd)&&sd!==String(ymd))
+          ?' <b class="sp-2d-d">(บันทึกย้อนหลัง)</b>':"";})()}</span>`:'<span class="psub">—</span>'}</td></tr>`+
     (nOrd?`<tr id="sptrk-${anaEsc(x.ln)}" class="sp-trkd${open?"":" hidden"}"><td colspan="${ncol}"
       class="l">${spTrkOrdHtml(x,ymd)}</td></tr>`:"");}).join("");
   return `<div class="panel" style="margin-top:12px">
-    <h3>📋 ${one?"สรุปของสายฉัน":(tg?"ติดตามการคีย์รายสาย":"จำนวนที่เซลล์คีย์")} · ${fmtDate(ymd)}</h3>
+    <h3>📋 ${one?"สรุปของสายฉัน":(tg?"ติดตามการคีย์รายสาย":"จำนวนที่เซลล์คีย์")}</h3>
+    ${spWorkDayBar(ymd)}
     ${cards}
     <div class="tblwrap" style="margin-top:10px"><table class="sp-kt sp-fold">
       <thead><tr><th class="l">สาย</th>${tg?"<th>เป้า</th>":""}<th>คีย์จริง</th>
         <th>🧾 จากเลขออเดอร์</th>${
-        tg?"<th>ยังขาด</th><th>ผล</th>":""}<th class="l">กรอกเมื่อ</th></tr></thead>
+        tg?"<th>ยังขาด</th><th>ผล</th>":""}<th class="l">บันทึกเมื่อ</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div class="psub" style="margin-top:8px">กดที่ <b>ชื่อสาย</b> เพื่อดูว่าสายนั้นส่งเลขออเดอร์ไหนมาบ้าง
       ใบละกี่ลัง · กดที่ตัวเลข <b>คีย์จริง</b> เพื่อดูประวัติการกรอก<br>
