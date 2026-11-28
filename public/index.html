@@ -13877,14 +13877,25 @@ function spNoInfoHtml(list,ln){
   if(o.same)h+=`<div class="psub" style="margin-top:4px">🔁 ตัดเลขซ้ำออก <b>${o.same}</b> เลข (${
     o.sameList.slice(0,6).map(anaEsc).join(" · ")}${o.sameList.length>6?" …":""}) — เป็นใบเดียวกัน นับครั้งเดียว</div>`;
    
-  {const day=String((typeof SP!=="undefined"&&SP&&SP.day)||"").slice(0,10);
-   const od=day?(o.rows||[]).filter(r=>{const v=spOrdDay(r.r);return v&&v!==day;}):[];
+   
+  if(o.day)h+=`<div class="pm-chips" style="margin:4px 0 0">`+
+    chip(`📅 <b>${o.dSame}</b> <span>ของ ${anaEsc(fmtDayMon(o.day))}</span>`,
+      o.dSame?"up":"down")+
+    (o.dOther?chip(`<b>${o.dOther}</b> <span>ของวันอื่น</span>`,"down"):"")+
+    (o.dUnk?chip(`<b>${o.dUnk}</b> <span>ยังไม่รู้วัน</span>`):"")+`</div>`;
+  {const day=o.day;
+   const od=o.dList||[];
     
-   if(od.length)h+=`<div class="sp-nodr" style="background:#FDECEA;border-color:#F3C9C4;color:#8A2020">
-     📅 <b>${od.length}</b> ใบเป็นออเดอร์ของ<b>วันอื่น</b> ขณะที่กำลังบันทึกงานของ
+   if(o.dOther)h+=`<div class="sp-nodr" style="background:#FDECEA;border-color:#F3C9C4;color:#8A2020">
+     📅 <b>${o.dOther}</b> ใบเป็นออเดอร์ของ<b>วันอื่น</b> ขณะที่กำลังบันทึกงานของ
      <b>${anaEsc(day?fmtDayMon(day):"วันที่เลือก")}</b> (${
-     od.slice(0,4).map(r=>anaEsc(r.ask)+" = "+anaEsc(fmtDayMon(spOrdDay(r.r)))).join(" · ")}${
-     od.length>4?" …":""}) — อาจอัพรูปผิดวัน หรือใส่เลขผิดใบ ตรวจก่อนกดบันทึก</div>`;}
+     od.slice(0,4).map(r=>anaEsc(r.ask)+" = "+anaEsc(fmtDayMon(r.d))).join(" · ")}${
+     od.length>4?" …":""}) — อาจอัพรูปผิดวัน หรือใส่เลขผิดใบ ตรวจก่อนกดบันทึก</div>`;
+    
+   if(day&&o.found&&!o.dSame&&!o.dUnk)h+=`<div class="sp-nodr"
+     style="background:#FDECEA;border-color:#F3C9C4;color:#8A2020">
+     ⚠️ <b>ไม่มีเลขไหนเป็นออเดอร์ของ ${anaEsc(fmtDayMon(day))} เลย</b> —
+     ตรวจว่าเปิดถูกวันไหม ถ้าใส่ผิดวัน ให้ผู้จัดการกดล้างของวันนี้แล้วใส่ใหม่</div>`;}
    
   if(o.wait)h+=`<div class="psub" style="margin-top:4px">⏳ <b>${o.wait}</b> ใบยังไม่รู้จำนวนลัง — รอไฟล์ใบจัดของ หรือไฟล์ยอดขายของวันนั้น</div>`;
   if(o.miss.length)h+=`<div class="psub down" style="margin-top:4px">❓ ยังหาไม่เจอ <b>${o.miss.length}</b> เลข (${
@@ -16979,6 +16990,16 @@ function spNoSum(list,hint){
   o.cs=Math.round((sp.cs+F.cs)*100)/100;
   o.pc=Math.round((sp.pc+F.pc)*100)/100;
   o.nShop=Object.keys(o.shops).length;
+   
+  const day=String((hint&&hint.d)||(typeof SP!=="undefined"&&SP&&SP.day)||"").slice(0,10);
+  o.day=day;o.dSame=0;o.dOther=0;o.dUnk=0;o.dList=[];
+  if(day)o.rows.forEach(r=>{
+    const v=spOrdDay(r.r);
+    if(!v){o.dUnk++;return;}
+    if(v===day){o.dSame++;return;}
+    o.dOther++;
+    if(o.dList.length<BACK_NOTE)o.dList.push({ask:r.ask,d:v});
+  });
   return o;
 }
  
@@ -17335,6 +17356,20 @@ function spGinPure(ym,codes){
   return m;
 }
  
+ 
+function spGinSet(sid){
+  const C=spKeyOk(),G=C.gin||{};
+  const set={},days=[];let n=0;
+  Object.keys(G).forEach(k=>{
+    if(String(k).indexOf(sid+"|")!==0)return;
+    const r=G[k];if(!r||r.del)return;
+    const gs=r.g||[];if(!gs.length)return;
+    days.push(String(k).slice(sid.length+1));
+    gs.forEach(x=>{const v=String(x).trim();if(v&&!set[v]){set[v]=1;n++;}});
+  });
+  return {set:set,n:n,days:days.sort()};
+}
+ 
 function spGinIsDist(g,ym,codes){
   const m=spGinPure(ym,codes);
   if(!m)return null;
@@ -17384,7 +17419,14 @@ function spBackDay(sid,ymd,codes,lines,made){
     pcs:{},gpcs:{},unkPs:[],nGin:0,myDay:myDay,
      
     dist:spGrpOf(spSlip(sid))==="D",mix:0,mixList:[],ginMix:{},
+     
+    gLock:0,gSet:null,gOth:0,gOthList:[],gNone:0,gNoneList:[],
     chk:spDayHas(spGinRec(sid,ymd)),noDet:!spBackHasDet(ym),noFile:false};
+   
+  if(o.dist){
+    const GR=spGinRec(sid,ymd);
+    if(GR&&(GR.g||[]).length){const GS=spGinSet(sid);if(GS.n){o.gLock=GS.n;o.gSet=GS.set;}}
+  }
   (lines||[]).forEach(ln=>{
     const lc=spLineCode(ln);if(!lc)return;
     const P=spMissPool(lc,ymd),keys=Object.keys(P);
@@ -17408,6 +17450,14 @@ function spBackDay(sid,ymd,codes,lines,made){
        
       if(o.dist&&!got&&inS===true&&spMissPure(full,ym,codes)===false){
         o.mix++;if(L.mix.length<BACK_NOTE)L.mix.push(ask);return;}
+       
+      if(o.gLock&&!got){
+        const gg=String((e.ot&&e.ot.g)||"").trim();
+         
+        if(!gg){o.gNone++;if(o.gNoneList.length<BACK_NOTE)o.gNoneList.push(ask);}
+        else if(!o.gSet[gg]){o.gOth++;
+          if(o.gOthList.length<BACK_NOTE)o.gOthList.push(ask+" (GIN "+gg+")");return;}
+      }
       if(e.cx){if(!got){L.cx.push(ask);o.cx++;}return;}
        
       if(inS===null){if(!got){L.maybe.push(ask);o.unsure++;}return;}
@@ -17475,6 +17525,7 @@ function spBackScan(sid,all){
     nOrd:0,nNew:0,cx:0,unsure:0,nofile:0,chk:0,gin:0,noDet:0,shops:0,
     pre:0,preList:[],noTm:0,noTmList:[],made:MD?MD.ymd:"",madeHm:MD?MD.hm:"",
     mix:0,mixList:[],ginMix:{},
+    gLock:0,gOth:0,gOthList:[],gNone:0,gNoneList:[],gDays:0,gOn:0,gOff:0,
     pcs:{},gpcs:{},unkPs:[],nGin:0,byLn:{},srcChk:0,srcGin:0,
     d0:days[0]||"",d1:days[days.length-1]||"",codes:Object.keys(codes).length};
   days.forEach(d=>{
@@ -17483,11 +17534,15 @@ function spBackScan(sid,all){
     if(r.noFile){S.nofile++;return;}
     if(r.noDet)S.noDet++;
     S.pre+=r.pre;S.noTm+=r.noTm;S.mix+=r.mix;
+    S.gOth+=r.gOth;S.gNone+=r.gNone;
+    if(r.gLock){S.gLock=r.gLock;S.gOn++;}else S.gOff++;
     r.preList.forEach(x=>{if(S.preList.length<BACK_NOTE)S.preList.push(x);});
     r.noTmList.forEach(x=>{if(S.noTmList.length<BACK_NOTE)S.noTmList.push(x);});
     r.mixList.forEach(x=>{if(S.mixList.length<BACK_NOTE)S.mixList.push(x);});
+    r.gOthList.forEach(x=>{if(S.gOthList.length<BACK_NOTE)S.gOthList.push(x);});
+    r.gNoneList.forEach(x=>{if(S.gNoneList.length<BACK_NOTE)S.gNoneList.push(x);});
     Object.keys(r.ginMix).forEach(g=>{S.ginMix[g]=1;});
-    if(!r.nOrd&&!r.cx&&!r.pre&&!r.noTm&&!r.mix)return;
+    if(!r.nOrd&&!r.cx&&!r.pre&&!r.noTm&&!r.mix&&!r.gOth&&!r.gNone)return;
     S.nOrd+=r.nOrd;S.nNew+=r.nNew;S.cx+=r.cx;S.unsure+=r.unsure;
     S.gin+=r.run.n;S.shops+=r.shops;S.nGin+=r.nGin;
     if(r.src==="chk")S.srcChk++;else S.srcGin++;
@@ -17504,6 +17559,8 @@ function spBackScan(sid,all){
     out.push(r);
   });
   S.months=Object.keys(months).sort();
+   
+  {const GS=spGinSet(sid);S.gDays=(GS.days||[]).length;}
   return S;
 }
  
@@ -17693,6 +17750,10 @@ function spBal(sid){
     nOrd:S.nOrd,nGin:S.nGin,days:S.days,nofile:S.nofile,noDet:S.noDet,
     srcChk:S.srcChk,srcGin:S.srcGin,
     pre:S.pre,preList:S.preList,noTm:S.noTm,noTmList:S.noTmList,
+     
+    gLock:S.gLock,gDays:S.gDays,gOn:S.gOn,gOff:S.gOff,gOth:S.gOth,gOthList:S.gOthList,
+    gNone:S.gNone,gNoneList:S.gNoneList,
+    mix:S.mix,mixList:S.mixList,
     made:S.made,madeHm:S.madeHm,
     d0:S.d0,d1:S.d1,byLn:[],months:S.months,mine:S.mine,
     sh:{},ov:{},tk:{},ot:{}};           
@@ -17892,6 +17953,15 @@ function spBalHtml(sid,mode){
   const h=[`<div class="panel sp-bal"><div class="sp-balh">🎯 ใบนี้ไปถึงไหนแล้ว
     <span class="psub"> · ${fmtDate(B.d0)} → ${fmtDate(B.d1)} · ${B.nOrd} ใบออเดอร์</span>
     ${kPill}</div>`];
+   
+  h.push(`<div class="psub" style="margin:2px 0 8px">${B.gOn
+    ? `🎯 <b>${B.gOn} วัน</b> นับเฉพาะใบที่ออกไปกับ <b>เลข GIN ที่ยืนยันไว้</b> (${B.gLock} เลข)${
+        B.gOth?` · ไม่นับ <b>${B.gOth}</b> ใบที่เป็นเลข GIN อื่น`:""}${
+        B.gNone?` · อีก <b>${B.gNone}</b> ใบยังไม่มีเลข GIN จึงยังไม่นับ`:""}`
+    :""}${(B.gOn&&B.gOff)?"<br>":""}${B.gOff
+    ? `⚠️ อีก <b>${B.gOff} วัน</b> ยังไม่ได้ใส่เลข GIN — วันพวกนั้นเป็น <b>(ประเมิน)</b>
+        ระบบจับจากรหัสสินค้าอย่างเดียว จึงรวมบิลขายปกติที่มีสินค้าตัวเดียวกันเข้ามาด้วย`
+    :""}</div>`);
   h.push(`<div class="sp-balc">
     <div class="sp-balk"><div class="sp-balkt">📦 ตั้งต้นในใบ</div>
       <div class="sp-balkv">${mapT(r=>r.tgt)||"0"}</div>
@@ -18330,14 +18400,15 @@ function spGinPasteOut(sid){
   }
   return h.join("")+notes.join("");
 }
+ 
 function spGinPasteHtml(sid){
-  if(!spAdmOk())return "";                  
+  if(!bdOwner())return "";                  
   const G=SP.gp||(SP.gp={txt:"",open:false});
-  if(!G.open)return `<div class="sp-man" style="margin-top:8px">
+  if(!G.open)return `<div class="sp-auto" style="margin-top:8px">
     <button type="button" class="btn-ghost btn-mini" onclick="spGinPasteOpen(1)">
       📋 วางเลข GIN หลายวันทีเดียว</button>
     <span class="psub"> รายการที่แอดมินยืนยันมาทั้งเดือน วางได้ในครั้งเดียว</span></div>`;
-  return `<div class="sp-man sp-gp" style="margin-top:8px">
+  return `<div class="sp-auto sp-gp" style="margin-top:8px">
     <div class="sp-autot">📋 วางรายการเลข GIN ที่แอดมินยืนยัน — ได้ทั้งเดือนในครั้งเดียว</div>
     <div class="psub">วางตามที่เขาเขียนมาได้เลย บรรทัดละวัน เช่น <code>19/11 - 51,55</code></div>
     <textarea id="spGpTa" rows="5" class="sp-fin" spellcheck="false"
@@ -18347,6 +18418,34 @@ function spGinPasteHtml(sid){
     <div id="spGpOut">${spGinPasteOut(sid)}</div>
     <div style="margin-top:8px"><button type="button" class="btn-ghost btn-mini"
       onclick="spGinPasteOpen(0)">ปิดช่องนี้</button></div></div>`;
+}
+ 
+function spCutHtml(sid){
+  if(!bdOwner())return "";
+  if(spGrpOf(spSlip(sid))!=="D")return "";
+  let B;try{B=spBal(sid);}catch(e){return "";}
+  const GS=spGinSet(sid);
+  const lst=a=>(a&&a.length)?(anaEsc(a.slice(0,5).join(" · "))+(a.length>5?" …":"")):"";
+  const row=(ic,t,n,note)=>`<tr><td style="text-align:left">${ic} ${anaEsc(t)}</td>
+    <td style="text-align:right"><b>${(+n||0).toLocaleString()}</b></td>
+    <td style="text-align:left" class="psub">${note||""}</td></tr>`;
+  return `<div class="sp-auto" style="margin-top:8px">
+    <div class="sp-autot">📊 ระบบตัดอะไรออกไปบ้าง — ใบนี้</div>
+    <div class="psub">${B.d0?anaEsc(fmtDate(B.d0))+" → "+anaEsc(fmtDate(B.d1)):""} ·
+      ยืนยันเลข GIN แล้ว <b>${GS.n}</b> เลข ใน <b>${B.gOn||0}</b> วัน ·
+      ยังไม่ได้ใส่เลข <b>${B.gOff||0}</b> วัน · นับเป็นของรอบนี้ <b>${B.nOrd}</b> ใบ</div>
+    <div class="tblwrap" style="margin-top:8px"><table class="cst-rt"><thead><tr>
+      <th style="text-align:left">รายการที่ไม่ถูกนับ</th><th>ใบ</th>
+      <th style="text-align:left">ตัวอย่าง</th></tr></thead><tbody>
+      ${row("🎯","เลข GIN อื่น — ไม่ใช่รอบนี้",B.gOth,lst(B.gOthList))}
+      ${row("⏳","ยังไม่มีเลข GIN — ยังตอบไม่ได้",B.gNone,lst(B.gNoneList))}
+      ${row("🛒","ร้านซื้อของอื่นปนมาด้วย",B.mix,lst(B.mixList))}
+      ${row("⏰","คีย์ก่อนที่ใบนี้จะถูกสร้าง",B.pre,lst(B.preList))}
+      ${row("❔","ไฟล์ไม่บอกเวลาคีย์",B.noTm,lst(B.noTmList))}
+    </tbody></table></div>
+    <div class="psub" style="margin-top:6px">${B.gOff
+      ? "⚠️ วันที่ยังไม่ได้ใส่เลข GIN ยอดยังเป็น <b>(ประเมิน)</b> — ใส่เลขของวันนั้นแล้วตัวเลขจะล็อกทันที"
+      : "✅ ทุกวันของใบนี้ล็อกด้วยเลข GIN ที่ยืนยันแล้ว"}</div></div>`;
 }
  
 function spGinPasteFill(sid,ymd){
@@ -18669,6 +18768,7 @@ function spAdmHtml(sid){
           onclick="spGinGo('${anaEsc(sid)}','${ymd}')">🔎 ตรวจและบันทึก</button></div>
       ${spAutoGinHtml(sid,ymd)}
       ${spGinPasteHtml(sid)}
+      ${spCutHtml(sid)}
       ${haveFile?`<div class="psub" style="margin-top:6px">เลข GIN ที่มีในไฟล์: ${
         ALLOC.gins.slice(0,40).map(x=>`<code>${anaEsc(x)}</code>`).join(" ")}${
         ALLOC.gins.length>40?" …":""}</div>`:""}`;

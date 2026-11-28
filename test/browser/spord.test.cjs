@@ -3574,7 +3574,9 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    eval(a.setup);setup();eval(a.pre);
    /* วันที่แอดมินตรวจแล้ว → "คลังจัด" อ่านจากจำนวนที่คลังจัดจริง (ช่อง Allocated) ของผลตรวจนั้น
       ⇒ เป็นแหล่งเดียวที่มากกว่าที่เซลล์คีย์ได้ จึงทำให้สถานะ "เกิน" เกิดขึ้นจริงได้ */
-   CSTOCK.gin[B1+'|'+window.__d0]={g:['70'],at:9,by:'manager',byName:'ผู้จัดการ',
+   /* ⚠️ แอดมินยืนยันเลข GIN **ของวันนั้นครบทุกเลข** (68-73 ตามฟิกซ์เจอร์) ไม่ใช่เลขเดียว
+      ตั้งแต่ §29 ยอดถูกล็อกด้วยรายการนี้ ใส่ไม่ครบ = ใบที่เหลือถูกตัดออกอย่างถูกต้อง */
+   CSTOCK.gin[B1+'|'+window.__d0]={g:['68','69','70','71','72','73'],at:9,by:'manager',byName:'ผู้จัดการ',
      rows:{
        /* CT11 คีย์ FO01 5 ลัง — คลังจัดจริง 6 ลัง ⇒ เกิน 1 ลัง ต้องหักออก */
        'CT11|FO01':{sc:5,ss:0,sp:0,fc:0,fs:0,fp:0,xc:6,xs:0,xp:0,yc:0,ys:0,yp:0,nm:'ซิตร้า',pk:12},
@@ -3739,7 +3741,9 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  const fd4=await ev(a=>{
    eval(a.setup);setup();eval(a.pre);
    /* แอดมินตรวจแล้ว: คลังจัด FO01 เพียง 300 ชิ้น (25 ลัง) จากที่คีย์ 380 ⇒ ขาด 21.1% */
-   CSTOCK.gin[B1+'|'+window.__d0]={g:['70'],at:3,by:'admin1',byName:'แอดมิน 1',
+   /* ⚠️ แอดมินยืนยันเลข GIN **ของวันนั้นครบทุกเลข** (68-73 ตามฟิกซ์เจอร์) ไม่ใช่เลขเดียว
+      ตั้งแต่ §29 ยอดถูกล็อกด้วยรายการนี้ ใส่ไม่ครบ = ใบที่เหลือถูกตัดออกอย่างถูกต้อง */
+   CSTOCK.gin[B1+'|'+window.__d0]={g:['68','69','70','71','72','73'],at:3,by:'admin1',byName:'แอดมิน 1',
      rows:{'CT11|FO01':{sc:25,ss:0,sp:0,fc:0,fs:0,fp:0,xc:25,xs:0,xp:0,yc:0,ys:0,yp:0,
        pk:12,nm:'ซิตร้า เพิร์ล FO',g:0,v:0}},money:0};
    const blob=JSON.stringify(CSTOCK);
@@ -3865,7 +3869,9 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  /* ---- ⑦ 📱 ตารางใหม่ต้องอ่านได้ทั้งคอมและมือถือ (วัดของจริง ไม่ใช่เดา) ---- */
  const meas=async()=>ev(a=>{
    eval(a.setup);setup();eval(a.pre);
-   CSTOCK.gin[B1+'|'+window.__d0]={g:['70'],at:3,by:'admin1',byName:'แอดมิน 1',
+   /* ⚠️ แอดมินยืนยันเลข GIN **ของวันนั้นครบทุกเลข** (68-73 ตามฟิกซ์เจอร์) ไม่ใช่เลขเดียว
+      ตั้งแต่ §29 ยอดถูกล็อกด้วยรายการนี้ ใส่ไม่ครบ = ใบที่เหลือถูกตัดออกอย่างถูกต้อง */
+   CSTOCK.gin[B1+'|'+window.__d0]={g:['68','69','70','71','72','73'],at:3,by:'admin1',byName:'แอดมิน 1',
      rows:{'CT11|FO01':{sc:25,ss:0,sp:0,fc:0,fs:0,fp:0,xc:25,xs:0,xp:0,yc:0,ys:0,yp:0,
        pk:12,nm:'ซิตร้า เพิร์ล FO',g:0,v:0}},money:0};
    SP.sec='rpt';renderSpord();
@@ -3934,7 +3940,9 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
      by:'209611',byName:'CT11',at:2,n:1};
    /* แอดมินตรวจแล้ว: FO72 เข้า 1 ลัง 28 ชิ้น = 100 ชิ้น (คีย์ 144 ⇒ ขาด 44 ชิ้น)
                       FO12 เข้า 2 ลัง 10 ชิ้น = 34 ชิ้น (คีย์ 48 ⇒ ขาด 1 ลัง 2 ชิ้น) */
-   CSTOCK.gin[B1+'|'+window.__d0]={g:['70'],at:3,by:'admin1',byName:'แอดมิน 1',
+   /* ⚠️ แอดมินยืนยันเลข GIN **ของวันนั้นครบทุกเลข** (68-73 ตามฟิกซ์เจอร์) ไม่ใช่เลขเดียว
+      ตั้งแต่ §29 ยอดถูกล็อกด้วยรายการนี้ ใส่ไม่ครบ = ใบที่เหลือถูกตัดออกอย่างถูกต้อง */
+   CSTOCK.gin[B1+'|'+window.__d0]={g:['68','69','70','71','72','73'],at:3,by:'admin1',byName:'แอดมิน 1',
      rows:{'CT11|FO72':{sc:1,ss:0,sp:28,fc:0,fs:0,fp:0,xc:1,xs:0,xp:28,yc:0,ys:0,yp:0,
              pk:24,nm:'ซิตร้าวอเตอร์เมลอนโทนอัพ',g:0,v:0},
            'CT11|FO12':{sc:2,ss:0,sp:10,fc:0,fs:0,fp:0,xc:2,xs:0,xp:10,yc:0,ys:0,yp:0,
@@ -5144,6 +5152,180 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🎨 ปุ่ม ▸ ตัวอักษรสีขาวบนพื้นสีของขั้น ไม่ใช่สีเดียวกับพื้น',
    gpc.btn.length>0&&gpc.btn.every(x=>x.fg!==x.bg&&/255, 255, 255/.test(x.fg)),
    JSON.stringify(gpc.btn));
+
+ /* ===========================================================================
+  * §29 🎯 ล็อกยอดด้วยเลข GIN ที่แอดมินยืนยัน + การ์ดต้องบอกว่าเลขเป็นของวันไหน
+  *
+  * เจ้าของ 29 พ.ย. 69 จากหน้าจอจริง: ใบตั้งต้น **14 ลัง** แต่หน้าวิเคราะห์อ่านได้
+  * **379 ใบ · เซลล์คีย์ 120 ลัง · เกิน 106 ลัง** — *"มันจับกันไม่ถูกแล้วมันเกิดเยอะเกินไป
+  * อาจจะเป็นออเดอร์จริงหรือออเดอร์ของวันก่อน"*
+  * สาเหตุ: ใบนั้นมี **คอมฟอร์ท 420มล** กับ **คนอร์โจ๊กซอง 45ก** ซึ่งขายทุกวัน ร้านเล็กซื้อ
+  * ตัวเดียวก็มีเป็นร้อยใบ ⇒ "ใบสะอาด" ตามเกณฑ์สินค้า แต่ไม่ใช่รอบตัวกระจาย
+  * ⇒ เกณฑ์ที่ตัดสินได้คือ **เลข GIN ที่แอดมินยืนยันไว้** (คำสั่งของเขาเอง)
+  *
+  * ฟิกซ์เจอร์: ใบตัวกระจาย ตั้งต้น 14 ลัง · รอบจริง 6 ใบใน GIN 201 ·
+  *   บิลขายปกติ 40 ใบใน GIN 300 ที่มีแต่คนอร์ (สะอาดตามเกณฑ์สินค้า) · 2 ใบยังไม่มี GIN
+  * ========================================================================== */
+ const LOCKPRE = `
+   __as('manager','','ผู้จัดการ');
+   window.__d0=(function(){
+     const t=todayISO(),dd=+t.slice(8,10);
+     if(dd>=12)return t.slice(0,7)+'-10';
+     const y=+t.slice(0,4),m=+t.slice(5,7);
+     return ((m>1)?(y+'-'+('0'+(m-1)).slice(-2)):((y-1)+'-12'))+'-10';
+   })();
+   window.__ym=window.__d0.slice(0,7);window.__dom=+window.__d0.slice(8,10);
+   CSTOCK.slips[B1].d=window.__d0;CSTOCK.slips[B1].g='D';CSTOCK.slips[B1].at=0;
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};
+   MASTER={items:{CF01:{nm:'คอมฟอร์ท ซากุระ 420มล'},CF02:{nm:'คอมฟอร์ท ออร่า 420มล'},
+                  KN01:{nm:'คนอร์โจ๊กหมู 45ก'},KN02:{nm:'คนอร์โจ๊กไก่ 45ก'}},
+           det:{CF01:{ps:12},CF02:{ps:12},KN01:{ps:72},KN02:{ps:72}}};
+   CSTOCK.lots={L1:{id:'L1',sl:B1,d:window.__d0,code:'CF01',nm:'คอมฟอร์ท ซากุระ 420มล',
+                    cs:6,pc:0,ln:'CT11',clr:[]},
+                L2:{id:'L2',sl:B1,d:window.__d0,code:'CF02',nm:'คอมฟอร์ท ออร่า 420มล',
+                    cs:6,pc:0,ln:'CT11',clr:[]},
+                L3:{id:'L3',sl:B1,d:window.__d0,code:'KN01',nm:'คนอร์โจ๊กหมู 45ก',
+                    cs:2,pc:0,ln:'CT11',clr:[]}};
+   STOREDAILY={data:{},ord:{}};
+   window.__mk=function(){
+     const OTO={},OTD={};
+     /* รอบจริง 6 ใบ — GIN 201 · มีสินค้าของใบครบ */
+     for(var i=1;i<=6;i++){var a='2010000'+i;
+       OTO[a]={l:'209611',d:window.__dom,s:'SHR'+i,g:'201',tm:'09:0'+i,w:1,p:0,c:1,n:1};
+       OTD[a]={CF01:[1,0,12],CF02:[1,0,12]};}
+     /* บิลขายปกติ 40 ใบ — GIN 300 · มีแต่คนอร์ ซึ่งเป็นรหัสในใบ ⇒ "สะอาด" ตามเกณฑ์สินค้า */
+     for(var j=1;j<=40;j++){var b='300'+('0000'+j).slice(-5);
+       OTO[b]={l:'209611',d:window.__dom,s:'SHX'+j,g:'300',tm:'1'+(j%5)+':0'+(j%6),
+               w:1,p:0,c:1,n:1};
+       OTD[b]={KN01:[1,0,72]};}
+     /* 2 ใบยังไม่มีเลข GIN — ยังไม่รู้ ไม่ใช่ใช่ */
+     for(var k=1;k<=2;k++){var c='4000000'+k;
+       OTO[c]={l:'209611',d:window.__dom,s:'SHN'+k,tm:'16:0'+k,w:1,p:0,c:1,n:1};
+       OTD[c]={CF01:[1,0,12]};}
+     return {ord:OTO,det:OTD,meta:null,none:0};
+   };
+   OT.cache={};OT.cache[window.__ym]=window.__mk();
+   OT.cache[spGpPrevYm(window.__ym)]={ord:{},det:{},meta:null,none:0};
+   OT.months=Object.keys(OT.cache);
+   spRfBust();
+   SP.sid=B1;SP.view='slip';SP.sec='adm';SP.day=window.__d0;SP.ym=window.__ym;
+   SP.gp={txt:'',open:false};SP.zone='man';
+   renderSpord();`;
+
+ const lk=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const codes={CF01:1,CF02:1,KN01:1,KN02:1};
+   const sum=o=>Object.keys(o).reduce((s,c)=>s+o[c],0);
+   /* ① ยังไม่ยืนยันเลข GIN — เกณฑ์สินค้าอย่างเดียว ยอดบวมเหมือนที่เจ้าของเจอ */
+   const open=spBackDay(B1,window.__d0,codes,['CT11']);
+   const b0=spBal(B1);
+   const t0=spBalHtml(B1,'key').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ');
+   /* ② แอดมินยืนยันเลข GIN ของวันนั้น = 201 */
+   CSTOCK.gin[B1+'|'+window.__d0]={g:['201'],rows:{},dd:[window.__d0],miss:[],
+     file:'ของแอดมิน',by:'manager',byName:'ผู้จัดการ',at:9};
+   const lock=spBackDay(B1,window.__d0,codes,['CT11']);
+   const b1=spBal(B1);
+   const t1=spBalHtml(B1,'key').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ');
+   return {openOrd:open.nOrd,openPcs:sum(open.pcs),openLock:open.gLock,
+     lockOrd:lock.nOrd,lockPcs:sum(lock.pcs),lockN:lock.gLock,
+     gOth:lock.gOth,gNone:lock.gNone,gOthList:lock.gOthList.slice(0,2),
+     b0Ord:b0.nOrd,b1Ord:b1.nOrd,b0On:b0.gOn,b0Off:b0.gOff,b1On:b1.gOn,
+     est0:/ประเมิน/.test(t0),est1On:/เลข GIN ที่ยืนยันไว้/.test(t1),
+     set:spGinSet(B1).n};
+ },{setup:PRE,pre:LOCKPRE});
+ t('🎯 ยังไม่ยืนยันเลข GIN — ยอดบวมตามที่เจ้าของเจอ (48 ใบ จากของจริง 6 ใบ)',
+   lk.openOrd===48&&lk.openLock===0,'ใบ='+lk.openOrd+' lock='+lk.openLock);
+ t('🔑 พอยืนยันเลข GIN 201 — เหลือ 6 ใบของรอบ + 2 ใบที่คลังยังไม่จัด = 8 ใบ',
+   lk.lockOrd===8&&lk.lockN===1,'ใบ='+lk.lockOrd+' เลขที่ยืนยัน='+lk.lockN);
+ t('🎯 บิลขายปกติ 40 ใบถูกตัดเพราะเป็นเลข GIN อื่น — นับแล้วบอก ไม่หายเงียบ',
+   lk.gOth===40&&lk.gOthList.length===2&&/GIN 300/.test(lk.gOthList.join(" ")),
+   'gOth='+lk.gOth+' · '+lk.gOthList.join(" · "));
+ t('🛟 ใบที่ยังไม่มีเลข GIN ยังนับเป็นเซลล์คีย์ (คลังยังไม่จัด) แต่ถูกนับแยกแล้วบอก',
+   lk.gNone===2&&lk.lockPcs===6*24+2*12,'gNone='+lk.gNone+' ชิ้น='+lk.lockPcs);
+ t('🔑 จำนวนชิ้นลดตามใบ — 40 ใบคนอร์ (72 ชิ้น/ใบ) หายไปจากยอด',
+   lk.openPcs===lk.lockPcs+40*72,'เปิด='+lk.openPcs+' ล็อก='+lk.lockPcs);
+ t('⚠️ แถบบอกชัดว่าวันไหนเป็น (ประเมิน) และวันไหนล็อกด้วยเลข GIN แล้ว',
+   lk.est0===true&&lk.est1On===true&&lk.b0On===0&&lk.b1On===1,
+   'ประเมิน='+lk.est0+' ล็อก='+lk.est1On+' วันล็อก '+lk.b0On+'→'+lk.b1On);
+ t('🔑 ยอดรวมทั้งใบก็ลดตามไปด้วย ไม่ใช่แค่หน้าวันเดียว',
+   lk.b0Ord===48&&lk.b1Ord===8,'ทั้งใบ '+lk.b0Ord+' → '+lk.b1Ord);
+
+ /* ---- วันที่ยังไม่ยืนยัน ต้องไม่ถูกล็อกตามวันอื่น (บทเรียนจาก §15) ---- */
+ const lk2=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   /* ยืนยันเลข GIN ของ "วันถัดไป" เท่านั้น — วันนี้ต้องยังไม่ล็อก */
+   const nx=spBackStep(window.__d0,1);
+   CSTOCK.gin[B1+'|'+nx]={g:['999'],rows:{},dd:[nx],miss:[],file:'x',
+     by:'manager',byName:'ผู้จัดการ',at:9};
+   const r=spBackDay(B1,window.__d0,{CF01:1,CF02:1,KN01:1,KN02:1},['CT11']);
+   return {lock:r.gLock,ord:r.nOrd,set:spGinSet(B1).n};
+ },{setup:PRE,pre:LOCKPRE});
+ t('🛟 วันที่แอดมินยังไม่ได้ยืนยัน ต้องไม่ถูกล็อกตามวันอื่น — ไม่งั้นงานหายทั้งวัน',
+   lk2.lock===0&&lk2.ord===48&&lk2.set===1,
+   'lock='+lk2.lock+' ใบ='+lk2.ord+' ชุดเลข='+lk2.set);
+
+ /* ---- ช่องวางเลข GIN ย้ายไปโซนวิเคราะห์ของเจ้าของ + รายงานที่ตัดออก ---- */
+ const zn=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   CSTOCK.gin[B1+'|'+window.__d0]={g:['201'],rows:{},dd:[window.__d0],miss:[],
+     file:'x',by:'manager',byName:'ผู้จัดการ',at:9};
+   const own=spGinPasteHtml(B1),cut=spCutHtml(B1);
+   const adm=(function(){__as('admin1','','แอดมิน 1');
+     const a1=spGinPasteHtml(B1),c1=spCutHtml(B1);
+     __as('manager','','ผู้จัดการ');return {p:a1,c:c1};})();
+   const sal=(function(){__as('ct11','209611','สาย CT11');
+     const a1=spGinPasteHtml(B1),c1=spCutHtml(B1);
+     __as('manager','','ผู้จัดการ');return {p:a1,c:c1};})();
+   SP.gp={txt:'',open:false};renderSpord();
+   const body=document.getElementById('spBody');
+   const inMan=!!body.querySelector('.sp-man .btn-ghost[onclick*="spGinPasteOpen"]');
+   const inAuto=[...body.querySelectorAll('.sp-auto')].some(
+     x=>/spGinPasteOpen/.test(x.innerHTML));
+   const cutTx=cut.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ');
+   return {own:own.length>0,admP:adm.p,admC:adm.c,salP:sal.p,salC:sal.c,
+     inMan:inMan,inAuto:inAuto,cutTx:cutTx};
+ },{setup:PRE,pre:LOCKPRE});
+ t('📋 ช่องวางเลข GIN อยู่ในโซน 🤖 ระบบวิเคราะห์ ไม่ใช่หน้าทำงาน',
+   zn.own===true&&zn.inAuto===true&&zn.inMan===false,
+   'มี='+zn.own+' โซนวิเคราะห์='+zn.inAuto+' โซนกรอกเอง='+zn.inMan);
+ t('🔒 แอดมินและเซลล์ไม่เห็นช่องนี้และไม่เห็นรายงานเลย',
+   zn.admP===''&&zn.admC===''&&zn.salP===''&&zn.salC==='',
+   'admin="'+zn.admP.slice(0,30)+'/'+zn.admC.slice(0,30)+'"');
+ t('📊 รายงานบอกครบว่าตัดอะไรออกไปบ้าง และเหลือกี่ใบ',
+   /ระบบตัดอะไรออกไปบ้าง/.test(zn.cutTx)&&/เลข GIN อื่น/.test(zn.cutTx)&&
+   /ยังไม่มีเลข GIN/.test(zn.cutTx)&&/ยืนยันเลข GIN แล้ว 1 เลข/.test(zn.cutTx),
+   zn.cutTx.slice(0,220));
+
+ /* ---- การ์ดเซลล์ต้องบอกว่าเลขเป็นออเดอร์ของวันไหน (เคส CT17 19 พ.ย.) ---- */
+ const dd=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const other=spBackStep(window.__d0,5);
+   /* 3 เลข: ของวันนี้ 1 · ของวันอื่น 1 · ยังไม่รู้วัน 1 */
+   STOREDAILY.ord['BDD0150000001']={s:'S1',l:'209611',k:window.__d0,d:window.__d0,
+     cs:1,pc:0,v:100,c:1,rf:'0050000001'};
+   STOREDAILY.ord['BDD0150000002']={s:'S2',l:'209611',k:other,d:other,
+     cs:1,pc:0,v:100,c:1,rf:'0050000002'};
+   STOREDAILY.ord['BDD0150000003']={s:'S3',l:'209611',cs:1,pc:0,v:100,c:1,
+     rf:'0050000003'};
+   spRfBust();
+   const o=spNoSum(['BDD0150000001','BDD0150000002','BDD0150000003'],
+     {l:'209611',ym:window.__ym,d:window.__d0});
+   SP.day=window.__d0;
+   const h=spNoInfoHtml(['BDD0150000001','BDD0150000002','BDD0150000003'],'CT11')
+     .replace(/<[^>]*>/g,' ').replace(/\s+/g,' ');
+   /* ไม่มีเลขไหนเป็นของวันนี้เลย = ต้องเตือนดัง ๆ */
+   const h2=spNoInfoHtml(['BDD0150000002'],'CT11')
+     .replace(/<[^>]*>/g,' ').replace(/\s+/g,' ');
+   return {same:o.dSame,other:o.dOther,unk:o.dUnk,h:h,h2:h2};
+ },{setup:PRE,pre:LOCKPRE});
+ t('📅 นับครบสามกอง — ของวันนี้ / ของวันอื่น / ยังไม่รู้วัน',
+   dd.same===1&&dd.other===1&&dd.unk===1,
+   'วันนี้='+dd.same+' วันอื่น='+dd.other+' ไม่รู้='+dd.unk);
+ t('📅 การ์ดโชว์ทั้งสามกองทุกครั้ง ไม่ใช่เตือนเฉพาะตอนผิด',
+   /ของวันอื่น/.test(dd.h)&&/ยังไม่รู้วัน/.test(dd.h)&&/ของ \d/.test(dd.h),
+   dd.h.slice(0,230));
+ t('⚠️ ไม่มีเลขไหนเป็นของวันที่เปิดอยู่เลย ต้องพูดออกมาตรง ๆ',
+   /ไม่มีเลขไหนเป็นออเดอร์ของ/.test(dd.h2),dd.h2.slice(0,200));
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));

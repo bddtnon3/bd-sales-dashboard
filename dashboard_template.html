@@ -15752,15 +15752,27 @@ function spNoInfoHtml(list,ln){
     o.sameList.slice(0,6).map(anaEsc).join(" · ")}${o.sameList.length>6?" …":""}) — เป็นใบเดียวกัน นับครั้งเดียว</div>`;
   /* 📅 ใบที่คีย์คนละวันกับวันที่กำลังบันทึก — เบาะแสว่าใส่เลขผิดใบ (ดูบันทึกที่ spTrkOrdHtml)
      บอกเฉย ๆ ไม่ใช่ error เพราะคีย์ย้อนหลังก็มีจริง */
-  {const day=String((typeof SP!=="undefined"&&SP&&SP.day)||"").slice(0,10);
-   const od=day?(o.rows||[]).filter(r=>{const v=spOrdDay(r.r);return v&&v!==day;}):[];
+  /* 📅 สามกองนี้ขึ้น **ทุกครั้ง** ไม่ใช่เฉพาะตอนผิด — "ของวันนี้ 0" คือสิ่งที่ต้องเห็น
+     (ดูบันทึกท้าย spNoSum) · ยังไม่รู้วัน = ยังไม่รู้ ห้ามนับเป็นของวันนี้ */
+  if(o.day)h+=`<div class="pm-chips" style="margin:4px 0 0">`+
+    chip(`📅 <b>${o.dSame}</b> <span>ของ ${anaEsc(fmtDayMon(o.day))}</span>`,
+      o.dSame?"up":"down")+
+    (o.dOther?chip(`<b>${o.dOther}</b> <span>ของวันอื่น</span>`,"down"):"")+
+    (o.dUnk?chip(`<b>${o.dUnk}</b> <span>ยังไม่รู้วัน</span>`):"")+`</div>`;
+  {const day=o.day;
+   const od=o.dList||[];
    /* 🛟 นี่คือตาข่ายกันอัพผิดวันตัวจริง จึงเป็นกล่องเตือน ไม่ใช่บรรทัดเล็ก ๆ ท้ายสุด
       และต้องบอก "วันที่กำลังบันทึก" คู่กันไปด้วย ไม่งั้นคนอ่านไม่รู้ว่าต่างจากอะไร */
-   if(od.length)h+=`<div class="sp-nodr" style="background:#FDECEA;border-color:#F3C9C4;color:#8A2020">
-     📅 <b>${od.length}</b> ใบเป็นออเดอร์ของ<b>วันอื่น</b> ขณะที่กำลังบันทึกงานของ
+   if(o.dOther)h+=`<div class="sp-nodr" style="background:#FDECEA;border-color:#F3C9C4;color:#8A2020">
+     📅 <b>${o.dOther}</b> ใบเป็นออเดอร์ของ<b>วันอื่น</b> ขณะที่กำลังบันทึกงานของ
      <b>${anaEsc(day?fmtDayMon(day):"วันที่เลือก")}</b> (${
-     od.slice(0,4).map(r=>anaEsc(r.ask)+" = "+anaEsc(fmtDayMon(spOrdDay(r.r)))).join(" · ")}${
-     od.length>4?" …":""}) — อาจอัพรูปผิดวัน หรือใส่เลขผิดใบ ตรวจก่อนกดบันทึก</div>`;}
+     od.slice(0,4).map(r=>anaEsc(r.ask)+" = "+anaEsc(fmtDayMon(r.d))).join(" · ")}${
+     od.length>4?" …":""}) — อาจอัพรูปผิดวัน หรือใส่เลขผิดใบ ตรวจก่อนกดบันทึก</div>`;
+   /* ไม่มีใบไหนเป็นของวันนี้เลย = เกือบแน่ว่าใส่ผิดวัน ต้องพูดออกมาตรง ๆ */
+   if(day&&o.found&&!o.dSame&&!o.dUnk)h+=`<div class="sp-nodr"
+     style="background:#FDECEA;border-color:#F3C9C4;color:#8A2020">
+     ⚠️ <b>ไม่มีเลขไหนเป็นออเดอร์ของ ${anaEsc(fmtDayMon(day))} เลย</b> —
+     ตรวจว่าเปิดถูกวันไหม ถ้าใส่ผิดวัน ให้ผู้จัดการกดล้างของวันนี้แล้วใส่ใหม่</div>`;}
   /* สิ่งที่ยัง "ไม่รู้" ต้องบอก ห้ามปล่อยให้ยอดดูเหมือนครบ */
   if(o.wait)h+=`<div class="psub" style="margin-top:4px">⏳ <b>${o.wait}</b> ใบยังไม่รู้จำนวนลัง — รอไฟล์ใบจัดของ หรือไฟล์ยอดขายของวันนั้น</div>`;
   if(o.miss.length)h+=`<div class="psub down" style="margin-top:4px">❓ ยังหาไม่เจอ <b>${o.miss.length}</b> เลข (${
@@ -19554,6 +19566,28 @@ function spNoSum(list,hint){
   o.cs=Math.round((sp.cs+F.cs)*100)/100;
   o.pc=Math.round((sp.pc+F.pc)*100)/100;
   o.nShop=Object.keys(o.shops).length;
+  /* ============================================================================
+   * 📅 เลขพวกนี้เป็นออเดอร์ของวันไหน — **สามกอง ห้ามยุบรวม**
+   *
+   * เจ้าของ 29 พ.ย. 69 จากการ์ดของสาย CT17: *"จำนวนรูปของวันที่ 27 มันไปขึ้นทั้งที่ปฏิทิน
+   *   ชี้วันที่ 19 … ถ้าวันที่ 19 ยังไม่เคยอัพ ก็ต้องไม่มีรูปและเลขสิ"*
+   *
+   * ⚠️ ของเดิมเตือนเฉพาะใบที่ **รู้วันแล้วและไม่ตรง** — ใบที่ยังไม่รู้วันจึงเงียบสนิท
+   *    การ์ดเลยอ่านได้ว่า "28 เลข · 28 เจอในระบบ" โดยไม่มีอะไรบอกว่าเป็นของวันไหนเลย
+   *    ซึ่งผิดกฎเดิมของโปรเจกต์เอง: **ไม่รู้ ≠ ใช่**
+   * ⇒ นับให้ครบสามกองแล้วโชว์เป็นชิปทุกครั้ง: ของวันนี้ / ของวันอื่น / ยังไม่รู้วัน
+   *    "ของวันนี้ 0" คือคำตอบที่เขาต้องการเห็น และเห็นได้ทันทีโดยไม่ต้องไล่อ่านทีละเลข
+   * วันของใบอ่านจาก `k` (วันที่เซลล์คีย์) ก่อน `d` (วันออกบิล) — ต่างกัน 53% ของใบ
+   * ========================================================================== */
+  const day=String((hint&&hint.d)||(typeof SP!=="undefined"&&SP&&SP.day)||"").slice(0,10);
+  o.day=day;o.dSame=0;o.dOther=0;o.dUnk=0;o.dList=[];
+  if(day)o.rows.forEach(r=>{
+    const v=spOrdDay(r.r);
+    if(!v){o.dUnk++;return;}
+    if(v===day){o.dSame++;return;}
+    o.dOther++;
+    if(o.dList.length<BACK_NOTE)o.dList.push({ask:r.ask,d:v});
+  });
   return o;
 }
 /* ============================================================================
@@ -20053,6 +20087,45 @@ function spGinPure(ym,codes){
   _spGP={ym:ym,o:O,ck:ck,m:m};
   return m;
 }
+/* ============================================================================
+ * 🎯 เลข GIN ที่ "แอดมินยืนยันไว้เอง" ของใบนี้ = คำตอบสุดท้าย
+ *
+ * เจ้าของ 29 พ.ย. 69: *"เลขนี้แอดมินยืนยันว่าเป็นออเดอร์ตัวกระจายนี้จริง ๆ ดังนั้นนอกเหนือจาก
+ *   เลขพวกนี้ถ้าระบบคุณเอามาคำนวณ จะถือว่าผิดหรือเกินแน่นอน"*
+ *
+ * ⚠️ ทำไมเกณฑ์ "ใบสะอาด" อย่างเดียวไม่พอ — เขาเจอเองจากใบจริงวันเดียวกัน:
+ *   ใบที่มี **คอมฟอร์ท 420มล (4 สูตร)** กับ **คนอร์โจ๊กซอง 45ก (2 สูตร)** เป็นสินค้าขายทุกวัน
+ *   ร้านเล็กซื้อแค่ตัวเดียวก็มีเป็นร้อยใบ ⇒ ใบพวกนั้น **"สะอาด" ตามเกณฑ์** แต่ไม่ใช่รอบตัวกระจาย
+ *   หน้าวิเคราะห์จึงอ่านได้ **379 ใบ · เซลล์คีย์ 120 ลัง เทียบตั้งต้น 14 ลัง = เกิน 106 ลัง**
+ *   ซึ่งคือยอดขายปกติของทั้งศูนย์ ไม่ใช่ของรอบนี้
+ *   (*"จำนวนที่เซลล์คีย์มันเกินไปเป็น 100 ลังขนาดนี้ แสดงว่ามันจับกันไม่ถูกแล้ว"*)
+ *   ⇒ เกณฑ์สินค้าแยกได้เฉพาะ SKU โปรล้วน (ซิตร้า/ลักส์ FO) **แต่แยกสินค้าขายทั่วไปไม่ได้เลย**
+ *
+ * ✅ สิ่งเดียวที่ตัดสินได้แน่นอนคือ **เลข GIN ที่แอดมินบันทึกไว้เอง** (`CSTOCK.gin[sid|วัน].g`)
+ *   **รวมทุกวันของใบนั้นเป็นชุดเดียว** เพราะ GIN ของใบนี้ออกคนละวันกับวันที่เซลล์คีย์ได้
+ *   (วัดแล้ว 20.1% ของใบได้ GIN วันถัดไป) — ถ้าแยกเป็นรายวันจะตัดใบที่ถูกต้องทิ้ง
+ *
+ * กฎสี่ข้อ
+ *   • ใบที่มี GIN **นอกชุด** = ไม่ใช่รอบนี้ → ตัด นับ แล้วบอกบนจอ
+ *   • ใบที่ **ยังไม่มี GIN** = ยังไม่รู้ ไม่ใช่ "ใช่" → กองแยก นับแล้วบอก ไม่เอามารวมยอด
+ *   • เลขที่คนบันทึกไว้ในช่องแล้ว (`got`) **ไม่แตะ** — เกณฑ์นี้ตัดแค่สิ่งที่ระบบคิดให้
+ *   • ใบที่ยังไม่มีการยืนยัน GIN เลยสักวัน ใช้เกณฑ์เดิม (ใบสะอาด) ไปก่อน **และบอกว่าเป็นค่าประเมิน**
+ * ==========================================================================*/
+/* ⚠️ ไม่จำผลไว้ — `CSTOCK.gin` เป็นวัตถุเดิมตลอด แอดมินบันทึกเลขเพิ่มแล้วตัวอ้างอิงไม่เปลี่ยน
+   แคชที่ดูแค่ identity จึงคืนของเก่า และยอดจะไม่ล็อกจนกว่าจะรีเฟรช (เทส §29 จับได้)
+   วนคีย์ของ CSTOCK.gin ตรง ๆ ถูกกว่าการสร้างลายเซ็นมาเทียบ — ตัวหนักคือ spGinFirst/spGinPure */
+function spGinSet(sid){
+  const C=spKeyOk(),G=C.gin||{};
+  const set={},days=[];let n=0;
+  Object.keys(G).forEach(k=>{
+    if(String(k).indexOf(sid+"|")!==0)return;
+    const r=G[k];if(!r||r.del)return;
+    const gs=r.g||[];if(!gs.length)return;
+    days.push(String(k).slice(sid.length+1));
+    gs.forEach(x=>{const v=String(x).trim();if(v&&!set[v]){set[v]=1;n++;}});
+  });
+  return {set:set,n:n,days:days.sort()};
+}
 /* เลขนี้เป็นของรอบตัวกระจายไหม — true=ใช่ · false=เลขของบิลทั่วไป · null=ยังไม่รู้ */
 function spGinIsDist(g,ym,codes){
   const m=spGinPure(ym,codes);
@@ -20130,7 +20203,18 @@ function spBackDay(sid,ymd,codes,lines,made){
     pcs:{},gpcs:{},unkPs:[],nGin:0,myDay:myDay,
     /* 🎯 ใบ/เลขที่ตัดออกเพราะเป็นบิลขายปกติ ไม่ใช่รอบตัวกระจาย (ดูบันทึกเหนือ spMissPure) */
     dist:spGrpOf(spSlip(sid))==="D",mix:0,mixList:[],ginMix:{},
+    /* 🎯 ตัดด้วยเลข GIN ที่แอดมินยืนยันไว้ (ดูบันทึกเหนือ spGinSet) */
+    gLock:0,gSet:null,gOth:0,gOthList:[],gNone:0,gNoneList:[],
     chk:spDayHas(spGinRec(sid,ymd)),noDet:!spBackHasDet(ym),noFile:false};
+  /* 🔑 ล็อก **เป็นรายวัน**: เฉพาะวันที่แอดมินยืนยันเลข GIN ของวันนั้นไว้แล้วเท่านั้น
+     ⚠️ ห้ามล็อกทั้งใบจากวันเดียว — แอดมินตรวจทีละวัน ถ้าตรวจวันแรกแล้วล็อกทั้งใบ
+        วันที่เหลือจะถูกตัดจนเหลือศูนย์ทันที (เทส §15 จับได้)
+     แต่ "ชุดเลข" ที่ใช้เทียบเอา **รวมทุกวันของใบ** เพราะ GIN ของใบวันนี้ออกวันหลังได้
+     (วัดแล้ว 20.1%) — ถ้าเทียบเฉพาะเลขของวันนั้นจะตัดใบที่ถูกต้องทิ้ง */
+  if(o.dist){
+    const GR=spGinRec(sid,ymd);
+    if(GR&&(GR.g||[]).length){const GS=spGinSet(sid);if(GS.n){o.gLock=GS.n;o.gSet=GS.set;}}
+  }
   (lines||[]).forEach(ln=>{
     const lc=spLineCode(ln);if(!lc)return;
     const P=spMissPool(lc,ymd),keys=Object.keys(P);
@@ -20158,6 +20242,19 @@ function spBackDay(sid,ymd,codes,lines,made){
          ⚠️ ใช้กับใบตัวกระจายเท่านั้น (o.dist) ดูเหตุผลเหนือ spMissPure */
       if(o.dist&&!got&&inS===true&&spMissPure(full,ym,codes)===false){
         o.mix++;if(L.mix.length<BACK_NOTE)L.mix.push(ask);return;}
+      /* 🎯 ใบนี้ยืนยันเลข GIN ไว้แล้ว — ใบที่ไม่ได้ออกไปกับเลขพวกนั้น ไม่ใช่รอบนี้
+         เป็นเกณฑ์ที่เจ้าของสั่งเอง และเป็นตัวเดียวที่แยกสินค้าขายทั่วไปได้
+         ⚠️ ยังไม่มี GIN = ยังไม่รู้ ไม่ใช่ "ใช่" — กองแยก นับแล้วบอก (ดูบันทึกเหนือ spGinSet) */
+      if(o.gLock&&!got){
+        const gg=String((e.ot&&e.ot.g)||"").trim();
+        /* ⚠️ ใบที่ "ยังไม่มีเลข GIN" **ห้ามตัดออกจากยอดเซลล์คีย์** — เซลล์คีย์ไปแล้วจริง ๆ
+           แค่คลังยังไม่จัด และช่องว่างระหว่าง เซลล์คีย์ กับ คลังจัด **คือ** คำตอบของ
+           "ขาดตกหล่นกี่ %" ที่เจ้าของถามไว้ ถ้าตัดทิ้ง ช่องว่างนั้นจะเป็นศูนย์ตลอดกาล
+           จึงแค่นับแล้วบอก · ที่ตัดจริงคือใบที่ **มีเลข GIN แต่เป็นเลขอื่น** = คนละรอบแน่นอน */
+        if(!gg){o.gNone++;if(o.gNoneList.length<BACK_NOTE)o.gNoneList.push(ask);}
+        else if(!o.gSet[gg]){o.gOth++;
+          if(o.gOthList.length<BACK_NOTE)o.gOthList.push(ask+" (GIN "+gg+")");return;}
+      }
       if(e.cx){if(!got){L.cx.push(ask);o.cx++;}return;}
       /* ⚠️ ใบที่ยังไม่รู้รายการสินค้า **ห้ามนับเป็นใบของรอบนี้** — ยังไม่รู้ว่าเกี่ยวหรือไม่
          เลขที่โชว์ (ใบ/ร้าน/GIN/เวลา) จึงนับจากใบที่ det ยืนยันแล้วเท่านั้น ส่วนที่ยังไม่รู้
@@ -20237,6 +20334,7 @@ function spBackScan(sid,all){
     nOrd:0,nNew:0,cx:0,unsure:0,nofile:0,chk:0,gin:0,noDet:0,shops:0,
     pre:0,preList:[],noTm:0,noTmList:[],made:MD?MD.ymd:"",madeHm:MD?MD.hm:"",
     mix:0,mixList:[],ginMix:{},
+    gLock:0,gOth:0,gOthList:[],gNone:0,gNoneList:[],gDays:0,gOn:0,gOff:0,
     pcs:{},gpcs:{},unkPs:[],nGin:0,byLn:{},srcChk:0,srcGin:0,
     d0:days[0]||"",d1:days[days.length-1]||"",codes:Object.keys(codes).length};
   days.forEach(d=>{
@@ -20245,11 +20343,15 @@ function spBackScan(sid,all){
     if(r.noFile){S.nofile++;return;}
     if(r.noDet)S.noDet++;
     S.pre+=r.pre;S.noTm+=r.noTm;S.mix+=r.mix;
+    S.gOth+=r.gOth;S.gNone+=r.gNone;
+    if(r.gLock){S.gLock=r.gLock;S.gOn++;}else S.gOff++;
     r.preList.forEach(x=>{if(S.preList.length<BACK_NOTE)S.preList.push(x);});
     r.noTmList.forEach(x=>{if(S.noTmList.length<BACK_NOTE)S.noTmList.push(x);});
     r.mixList.forEach(x=>{if(S.mixList.length<BACK_NOTE)S.mixList.push(x);});
+    r.gOthList.forEach(x=>{if(S.gOthList.length<BACK_NOTE)S.gOthList.push(x);});
+    r.gNoneList.forEach(x=>{if(S.gNoneList.length<BACK_NOTE)S.gNoneList.push(x);});
     Object.keys(r.ginMix).forEach(g=>{S.ginMix[g]=1;});
-    if(!r.nOrd&&!r.cx&&!r.pre&&!r.noTm&&!r.mix)return;
+    if(!r.nOrd&&!r.cx&&!r.pre&&!r.noTm&&!r.mix&&!r.gOth&&!r.gNone)return;
     S.nOrd+=r.nOrd;S.nNew+=r.nNew;S.cx+=r.cx;S.unsure+=r.unsure;
     S.gin+=r.run.n;S.shops+=r.shops;S.nGin+=r.nGin;
     if(r.src==="chk")S.srcChk++;else S.srcGin++;
@@ -20266,6 +20368,8 @@ function spBackScan(sid,all){
     out.push(r);
   });
   S.months=Object.keys(months).sort();
+  /* วันของใบที่แอดมินยืนยันเลข GIN ไว้แล้ว — ใช้บอกว่ายอดนี้แน่นอนหรือยังเป็นค่าประเมิน */
+  {const GS=spGinSet(sid);S.gDays=(GS.days||[]).length;}
   return S;
 }
 /* ---------- เติมกลับ ---------- */
@@ -20507,6 +20611,10 @@ function spBal(sid){
     nOrd:S.nOrd,nGin:S.nGin,days:S.days,nofile:S.nofile,noDet:S.noDet,
     srcChk:S.srcChk,srcGin:S.srcGin,
     pre:S.pre,preList:S.preList,noTm:S.noTm,noTmList:S.noTmList,
+    /* 🎯 ยอดนี้ล็อกด้วยเลข GIN ที่แอดมินยืนยันหรือยัง (ดูบันทึกเหนือ spGinSet) */
+    gLock:S.gLock,gDays:S.gDays,gOn:S.gOn,gOff:S.gOff,gOth:S.gOth,gOthList:S.gOthList,
+    gNone:S.gNone,gNoneList:S.gNoneList,
+    mix:S.mix,mixList:S.mixList,
     made:S.made,madeHm:S.madeHm,
     d0:S.d0,d1:S.d1,byLn:[],months:S.months,mine:S.mine,
     sh:{},ov:{},tk:{},ot:{}};          /* ชิ้นต่อรหัส: ขาด · เกิน · ต้องคีย์เพิ่ม · คีย์เกินตั้งต้น */
@@ -20771,6 +20879,16 @@ function spBalHtml(sid,mode){
   const h=[`<div class="panel sp-bal"><div class="sp-balh">🎯 ใบนี้ไปถึงไหนแล้ว
     <span class="psub"> · ${fmtDate(B.d0)} → ${fmtDate(B.d1)} · ${B.nOrd} ใบออเดอร์</span>
     ${kPill}</div>`];
+  /* 🎯 ยอดนี้มาจากไหน — ล็อกด้วยเลข GIN ที่ยืนยันแล้ว หรือยังเป็นค่าประเมินจากรหัสสินค้า
+     ⚠️ ต้องบอกเสมอ: ถ้าไม่บอก ค่าประเมินจะถูกอ่านเป็นตัวเลขจริง ซึ่งเคยอ่านได้ 379 ใบ */
+  h.push(`<div class="psub" style="margin:2px 0 8px">${B.gOn
+    ? `🎯 <b>${B.gOn} วัน</b> นับเฉพาะใบที่ออกไปกับ <b>เลข GIN ที่ยืนยันไว้</b> (${B.gLock} เลข)${
+        B.gOth?` · ไม่นับ <b>${B.gOth}</b> ใบที่เป็นเลข GIN อื่น`:""}${
+        B.gNone?` · อีก <b>${B.gNone}</b> ใบยังไม่มีเลข GIN จึงยังไม่นับ`:""}`
+    :""}${(B.gOn&&B.gOff)?"<br>":""}${B.gOff
+    ? `⚠️ อีก <b>${B.gOff} วัน</b> ยังไม่ได้ใส่เลข GIN — วันพวกนั้นเป็น <b>(ประเมิน)</b>
+        ระบบจับจากรหัสสินค้าอย่างเดียว จึงรวมบิลขายปกติที่มีสินค้าตัวเดียวกันเข้ามาด้วย`
+    :""}</div>`);
   h.push(`<div class="sp-balc">
     <div class="sp-balk"><div class="sp-balkt">📦 ตั้งต้นในใบ</div>
       <div class="sp-balkv">${mapT(r=>r.tgt)||"0"}</div>
@@ -21260,14 +21378,19 @@ function spGinPasteOut(sid){
   }
   return h.join("")+notes.join("");
 }
+/* ⚠️ อยู่ใน **โซน 🤖 ระบบวิเคราะห์ ของ manager เท่านั้น** ไม่ใช่หน้าทำงานของแอดมิน
+   เจ้าของสั่ง 29 พ.ย. 69: *"เอาช่องให้ใส่เลข GIN ทั้งเดือนออกไป เดี๋ยวแอดมินงง ผมแค่ส่งให้คุณ
+   เป็นข้อมูลให้คุณเอาไปวางย้อนหลัง ในส่วนของฝั่ง Manager คนเดียวที่เป็นระบบวิเคราะห์เอง"*
+   ⇒ คลาสเป็น `.sp-auto` (ซ่อนตอนอยู่โหมดกรอกเอง) และเช็ค `bdOwner()` ในฟังก์ชันเอง
+   แอดมิน/ซุป/เซลล์ ไม่เห็นแม้แต่ปุ่ม เพราะชิปสลับโหมดขึ้นเฉพาะเจ้าของ (spZoneOk) */
 function spGinPasteHtml(sid){
-  if(!spAdmOk())return "";                 /* เช็คในฟังก์ชัน ไม่พึ่งการซ่อนปุ่ม */
+  if(!bdOwner())return "";                 /* เช็คในฟังก์ชัน ไม่พึ่งการซ่อนปุ่ม */
   const G=SP.gp||(SP.gp={txt:"",open:false});
-  if(!G.open)return `<div class="sp-man" style="margin-top:8px">
+  if(!G.open)return `<div class="sp-auto" style="margin-top:8px">
     <button type="button" class="btn-ghost btn-mini" onclick="spGinPasteOpen(1)">
       📋 วางเลข GIN หลายวันทีเดียว</button>
     <span class="psub"> รายการที่แอดมินยืนยันมาทั้งเดือน วางได้ในครั้งเดียว</span></div>`;
-  return `<div class="sp-man sp-gp" style="margin-top:8px">
+  return `<div class="sp-auto sp-gp" style="margin-top:8px">
     <div class="sp-autot">📋 วางรายการเลข GIN ที่แอดมินยืนยัน — ได้ทั้งเดือนในครั้งเดียว</div>
     <div class="psub">วางตามที่เขาเขียนมาได้เลย บรรทัดละวัน เช่น <code>19/11 - 51,55</code></div>
     <textarea id="spGpTa" rows="5" class="sp-fin" spellcheck="false"
@@ -21277,6 +21400,39 @@ function spGinPasteHtml(sid){
     <div id="spGpOut">${spGinPasteOut(sid)}</div>
     <div style="margin-top:8px"><button type="button" class="btn-ghost btn-mini"
       onclick="spGinPasteOpen(0)">ปิดช่องนี้</button></div></div>`;
+}
+/* ============================================================================
+ * 📊 รายงานของเจ้าของ: ระบบตัดอะไรออกไปบ้าง และตรงไหนที่ยังไม่ตรงกัน
+ * เจ้าของ 29 พ.ย. 69: *"เผื่อผมจะดูรีพอร์ตว่ารายการที่ตัดออกไป และโฟลงานนี้ยังมีส่วนไหน
+ *   ที่ยังไม่ตรงกันอีกบ้าง"*
+ * อ่านอย่างเดียวทั้งหมด — ไม่แตะ CSTOCK ไม่ยิงอะไรขึ้นเซิร์ฟเวอร์ · โซน 🤖 ของเจ้าของเท่านั้น
+ * ==========================================================================*/
+function spCutHtml(sid){
+  if(!bdOwner())return "";
+  if(spGrpOf(spSlip(sid))!=="D")return "";
+  let B;try{B=spBal(sid);}catch(e){return "";}
+  const GS=spGinSet(sid);
+  const lst=a=>(a&&a.length)?(anaEsc(a.slice(0,5).join(" · "))+(a.length>5?" …":"")):"";
+  const row=(ic,t,n,note)=>`<tr><td style="text-align:left">${ic} ${anaEsc(t)}</td>
+    <td style="text-align:right"><b>${(+n||0).toLocaleString()}</b></td>
+    <td style="text-align:left" class="psub">${note||""}</td></tr>`;
+  return `<div class="sp-auto" style="margin-top:8px">
+    <div class="sp-autot">📊 ระบบตัดอะไรออกไปบ้าง — ใบนี้</div>
+    <div class="psub">${B.d0?anaEsc(fmtDate(B.d0))+" → "+anaEsc(fmtDate(B.d1)):""} ·
+      ยืนยันเลข GIN แล้ว <b>${GS.n}</b> เลข ใน <b>${B.gOn||0}</b> วัน ·
+      ยังไม่ได้ใส่เลข <b>${B.gOff||0}</b> วัน · นับเป็นของรอบนี้ <b>${B.nOrd}</b> ใบ</div>
+    <div class="tblwrap" style="margin-top:8px"><table class="cst-rt"><thead><tr>
+      <th style="text-align:left">รายการที่ไม่ถูกนับ</th><th>ใบ</th>
+      <th style="text-align:left">ตัวอย่าง</th></tr></thead><tbody>
+      ${row("🎯","เลข GIN อื่น — ไม่ใช่รอบนี้",B.gOth,lst(B.gOthList))}
+      ${row("⏳","ยังไม่มีเลข GIN — ยังตอบไม่ได้",B.gNone,lst(B.gNoneList))}
+      ${row("🛒","ร้านซื้อของอื่นปนมาด้วย",B.mix,lst(B.mixList))}
+      ${row("⏰","คีย์ก่อนที่ใบนี้จะถูกสร้าง",B.pre,lst(B.preList))}
+      ${row("❔","ไฟล์ไม่บอกเวลาคีย์",B.noTm,lst(B.noTmList))}
+    </tbody></table></div>
+    <div class="psub" style="margin-top:6px">${B.gOff
+      ? "⚠️ วันที่ยังไม่ได้ใส่เลข GIN ยอดยังเป็น <b>(ประเมิน)</b> — ใส่เลขของวันนั้นแล้วตัวเลขจะล็อกทันที"
+      : "✅ ทุกวันของใบนี้ล็อกด้วยเลข GIN ที่ยืนยันแล้ว"}</div></div>`;
 }
 /* ▸ ใส่ให้ในช่องเท่านั้น — ไม่บันทึก คนกด 🔎 ตรวจและบันทึก เองเหมือนเดิม */
 function spGinPasteFill(sid,ymd){
@@ -21653,6 +21809,7 @@ function spAdmHtml(sid){
           onclick="spGinGo('${anaEsc(sid)}','${ymd}')">🔎 ตรวจและบันทึก</button></div>
       ${spAutoGinHtml(sid,ymd)}
       ${spGinPasteHtml(sid)}
+      ${spCutHtml(sid)}
       ${haveFile?`<div class="psub" style="margin-top:6px">เลข GIN ที่มีในไฟล์: ${
         ALLOC.gins.slice(0,40).map(x=>`<code>${anaEsc(x)}</code>`).join(" ")}${
         ALLOC.gins.length>40?" …":""}</div>`:""}`;
