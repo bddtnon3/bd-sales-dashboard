@@ -5405,6 +5405,113 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('⚠️ ไม่มีเลขไหนเป็นของวันที่เปิดอยู่เลย ต้องพูดออกมาตรง ๆ',
    /ไม่มีเลขไหนเป็นออเดอร์ของ/.test(dd.h2),dd.h2.slice(0,200));
 
+
+ /* ===========================================================================
+  * §30 📦 ขนาดลังมาจาก Product Master แล้วค่อยไฟล์ราคา · 🎯 GIN ที่ถือสินค้าทั้งวัน
+  *
+  * เจ้าของ 29 พ.ย. 69: *"1 ลังมี 12 ขวด ดูจากใน product master file สิ ไม่น่าต้องถามผมนะ
+  *   … จับจากรหัสแล้วหาร quantity ได้เลย bum huasuer อะไรก็มีบอก"*
+  *
+  * วัดกับไฟล์จริงของเขา (สมุดแอดมิน + Order_Allocation_ReportHistorical_3 13,005 แถว):
+  *   • สมุดแอดมินตรงกับไฟล์ **28/28 บล็อก** ทั้งเลข GIN · สาย · และวันที่
+  *   • ไฟล์ใบจัดของรอบนี้ **ไม่เคยบอกเป็นลังเลย** (CS = 0 ทั้ง 2,643 แถว) ต้องแปลงเองทุกตัว
+  *   • ขนาดลังของรอบ: ซิตร้า 320มล **12** · ลักส์ 450มล **8** · 10ML **72**
+  *     ตรงกันทั้ง Product Master (Pack Size + น้ำหนัก/ลัง÷น้ำหนัก/ชิ้น) และไฟล์หัวเสือ (ช่อง J)
+  *   • GIN รอบตัวกระจาย ถือ **1-8 รหัส** · GIN ปกติสาย CT ที่มี ≥10 ใบ ถือ **44-159 รหัส**
+  * ========================================================================== */
+ const WIDEPRE = `
+   __as('manager','','ผู้จัดการ');
+   window.__d0=(function(){
+     const t=todayISO(),dd=+t.slice(8,10);
+     if(dd>=12)return t.slice(0,7)+'-10';
+     const y=+t.slice(0,4),m=+t.slice(5,7);
+     return ((m>1)?(y+'-'+('0'+(m-1)).slice(-2)):((y-1)+'-12'))+'-10';
+   })();
+   window.__ym=window.__d0.slice(0,7);window.__dom=+window.__d0.slice(8,10);
+   CSTOCK.slips[B1].d=window.__d0;CSTOCK.slips[B1].g='D';CSTOCK.slips[B1].at=0;
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};
+   MASTER={items:{CF01:{nm:'คอมฟอร์ท ซากุระ 420มล'},CF02:{nm:'คอมฟอร์ท ออร่า 420มล'},
+                  KN01:{nm:'คนอร์โจ๊กหมู 45ก'}},
+           det:{CF01:{ps:12},CF02:{ps:12},KN01:{ps:72}}};
+   CSTOCK.lots={L1:{id:'L1',sl:B1,d:window.__d0,code:'CF01',nm:'คอมฟอร์ท ซากุระ 420มล',
+                    cs:6,pc:0,ln:'CT11',clr:[]},
+                L2:{id:'L2',sl:B1,d:window.__d0,code:'CF02',nm:'คอมฟอร์ท ออร่า 420มล',
+                    cs:6,pc:0,ln:'CT11',clr:[]},
+                L3:{id:'L3',sl:B1,d:window.__d0,code:'KN01',nm:'คนอร์โจ๊กหมู 45ก',
+                    cs:2,pc:0,ln:'CT11',clr:[]}};
+   STOREDAILY={data:{},ord:{}};
+   window.__mk=function(){
+     const OTO={},OTD={};
+     /* รอบจริง 6 ใบ — GIN 201 ถือแค่ 2 รหัส (รูปทรงของรอบตัวกระจาย) */
+     for(var i=1;i<=6;i++){var a='2010000'+i;
+       OTO[a]={l:'209611',d:window.__dom,s:'SHR'+i,g:'201',tm:'09:0'+i,w:1,p:0,c:1,n:1};
+       OTD[a]={CF01:[1,0,12],CF02:[1,0,12]};}
+     /* บิลขายปกติ 40 ใบใน GIN 300 — มีแต่คนอร์ ⇒ "สะอาด" ตามเกณฑ์สินค้า ตัดด้วยเกณฑ์เดิมไม่ได้ */
+     for(var j=1;j<=40;j++){var b='300'+('0000'+j).slice(-5);
+       OTO[b]={l:'209611',d:window.__dom,s:'SHX'+j,g:'300',tm:'1'+(j%5)+':0'+(j%6),w:1,p:0,c:1,n:1};
+       OTD[b]={KN01:[1,0,72]};}
+     /* …แต่ GIN 300 ยังถือสินค้าอีก 30 รหัสของบิลวันนั้นทั้งวัน = GIN ปกติ */
+     for(var q=1;q<=30;q++){var e='39'+('000000'+q).slice(-6);
+       OTO[e]={l:'209611',d:window.__dom,s:'SHZ'+q,g:'300',tm:'14:0'+(q%6),w:1,p:0,c:1,n:1};
+       OTD[e]={};OTD[e]['ZZ'+('00'+q).slice(-2)]=[1,0,12];}
+     /* 2 ใบยังไม่มีเลข GIN — ยังไม่รู้ ไม่ใช่ใช่ ห้ามตัด */
+     for(var k=1;k<=2;k++){var c='4000000'+k;
+       OTO[c]={l:'209611',d:window.__dom,s:'SHN'+k,tm:'16:0'+k,w:1,p:0,c:1,n:1};
+       OTD[c]={CF01:[1,0,12]};}
+     return {ord:OTO,det:OTD,meta:null,none:0};
+   };
+   OT.cache={};OT.cache[window.__ym]=window.__mk();
+   OT.cache[spGpPrevYm(window.__ym)]={ord:{},det:{},meta:null,none:0};
+   OT.months=Object.keys(OT.cache);
+   spRfBust();
+   SP.sid=B1;SP.view='slip';SP.sec='adm';SP.day=window.__d0;SP.ym=window.__ym;
+   SP.gp={txt:'',open:false};SP.zone='man';
+   renderSpord();`;
+
+ const wd=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const codes={CF01:1,CF02:1,KN01:1};
+   const sum=o=>Object.keys(o).reduce((s,c)=>s+o[c],0);
+   const before=JSON.stringify(CSTOCK);const p0=window.__posts.length;
+   const r=spBackDay(B1,window.__d0,codes,['CT11']);
+   const B=spBal(B1);
+   const rep=spCutHtml(B1).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ');
+   /* 📦 ขนาดลัง: Master ชนะเสมอ · ไม่มีใน Master ค่อยถามไฟล์ราคา · ไม่มีทั้งคู่ = 0 */
+   PRICE={loaded:true,err:'',hs:{items:{
+     CF01:{p:8,ip:4},            /* ขัดกับ Master (12) — Master ต้องชนะ */
+     PR01:{p:24,ip:6},           /* ไม่มีใน Master — ต้องได้ 24 จากไฟล์ราคา */
+     SH01:{p:72,ip:6}            /* ชื่ออ่านขนาดแพ็คไม่ออก — ต้องได้ 6 จากไฟล์ราคา */
+   },rounds:[]},bum:null};
+   const ps={master:spPsOf('CF01',window.__ym),price:spPsOf('PR01',window.__ym),
+             none:spPsOf('NOPE',window.__ym)};
+   const shr={name:alShrink('คอมฟอร์ท 4X3X420มล',12,'CF01'),
+              price:alShrink('สินค้าไม่บอกขนาด 72 ชิ้น',72,'SH01'),
+              blind:alShrink('สินค้าไม่บอกขนาด',72,'NOPE')};
+   return {ord:r.nOrd,pcs:sum(r.pcs),wide:r.wide,mix:r.mix,gNone:r.gNone,
+     wideList:r.wideList.slice(0,2),bOrd:B.nOrd,bWide:B.wide,
+     rep:rep,ps:ps,shr:shr,
+     frozen:JSON.stringify(CSTOCK)===before,posts:window.__posts.length-p0};
+ },{setup:PRE,pre:WIDEPRE});
+ t('🔑 GIN ที่ถือสินค้าทั้งวันถูกตัด — เหลือ 6 ใบของรอบ + 2 ใบที่คลังยังไม่จัด = 8 ใบ',
+   wd.ord===8,'ใบ='+wd.ord+' (ตัดเพราะ GIN กว้าง '+wd.wide+' · เพราะของปน '+wd.mix+')');
+ t('🎯 บิลขายปกติ 40 ใบถูกตัดด้วยเกณฑ์นี้ โดยแอดมินไม่ต้องพิมพ์เลข GIN เลย',
+   wd.wide===40&&/GIN 300/.test(wd.wideList.join(' ')),
+   'wide='+wd.wide+' · '+wd.wideList.join(' · '));
+ t('🛟 ใบที่ยังไม่มีเลข GIN ไม่ถูกตัดด้วยกฎนี้ (เซลล์คีย์แล้ว คลังยังไม่จัด)',
+   wd.gNone===0&&wd.pcs===6*24+2*12,'ชิ้น='+wd.pcs);
+ t('🔑 ยอดรวมทั้งใบลดตามไปด้วย และรายงานของเจ้าของบอกว่าตัดอะไรไป',
+   wd.bOrd===8&&wd.bWide===40&&/ถือสินค้าทั้งวัน/.test(wd.rep),
+   'ทั้งใบ='+wd.bOrd+' wide='+wd.bWide);
+ t('📦 ขนาดลัง: Product Master ชนะไฟล์ราคาเสมอ (12 ไม่ใช่ 8)',
+   wd.ps.master===12,'ได้ '+wd.ps.master);
+ t('📦 รหัสที่ไม่มีใน Master ใช้ช่อง Pack/CS ของไฟล์ราคาหัวเสือ',
+   wd.ps.price===24&&wd.ps.none===0,'ไฟล์ราคา='+wd.ps.price+' ไม่มีเลย='+wd.ps.none);
+ t('📦 ขนาดแพ็ค: อ่านจากชื่อได้ก่อนเหมือนเดิม ชื่ออ่านไม่ออกค่อยใช้ Inner Pack ของไฟล์ราคา',
+   wd.shr.name===3&&wd.shr.price===6&&!wd.shr.blind,
+   'จากชื่อ='+wd.shr.name+' จากไฟล์ราคา='+wd.shr.price+' ไม่รู้เลย='+wd.shr.blind);
+ t('🔒 ทั้งหมดอ่านอย่างเดียว — CSTOCK ไม่ขยับ และไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
+   wd.frozen===true&&wd.posts===0,'frozen='+wd.frozen+' posts='+wd.posts);
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}

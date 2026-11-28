@@ -13245,7 +13245,7 @@ function parseAlloc(name,buf){
       const lnP=dsLineKey(String(x[col.pj]==null?"":x[col.pj]).trim());
       const kk=dd+"|"+lnP,bb=pmBuf[kk]||(pmBuf[kk]={}),
         ee=bb[code]||(bb[code]={cs:0,pc:0,fc:0,fp:0,niv:0,sh:{}});
-      const pk=alNum(x[col.pk]),shr=alShrink(String(x[col.nm]||""),pk);
+      const pk=alNum(x[col.pk]),shr=alShrink(String(x[col.nm]||""),pk,code);
       const sPc=alPcs({cs:alNum(x[col.sc]),sh:alNum(x[col.ss]),pc:alNum(x[col.sp])},pk,shr);
       const fPc=alPcs({cs:alNum(x[col.fc]),sh:alNum(x[col.fs]),pc:alNum(x[col.fp])},pk,shr);
       ee.cs+=alNum(x[col.sc]);ee.fc+=alNum(x[col.fc]);
@@ -13371,7 +13371,7 @@ function parseAlloc(name,buf){
   return ALLOC;
 }
  
-function alShrink(nm,pk){
+function alShrink(nm,pk,code){
   const q=+pk||0;if(q<=0)return null;
   const re=/(\d+)\s*[Xx×]\s*(\d+)/g;let m,best=null;
   const t=String(nm||"");
@@ -13379,7 +13379,9 @@ function alShrink(nm,pk){
     const a=+m[1],b=+m[2];
     if(b>1&&a*b===q)best=b;
   }
-  return best;
+  if(best)return best;
+   
+  return (code?prShrOf(code,q):0)||best;
 }
  
 function alPcs(o,pk,shr){
@@ -13921,10 +13923,23 @@ function spPsMap(ym){
   _spPsIdx={k:D,map:map};
   return map;
 }
+ 
+function prPkOf(code){
+  const it=((typeof PRICE!=="undefined"&&PRICE&&PRICE.hs&&PRICE.hs.items)||{})[String(code||"").trim()];
+  const p=+((it&&it.p)||0);
+  return p>1?p:0;
+}
+ 
+function prShrOf(code,pk){
+  const it=((typeof PRICE!=="undefined"&&PRICE&&PRICE.hs&&PRICE.hs.items)||{})[String(code||"").trim()];
+  const s=+((it&&it.ip)||0),q=+pk||0;
+  return (s>1&&q>0&&s<q&&q%s===0)?s:0;
+}
 function spPsOf(code,ym){
   const c=String(code||"").trim();if(!c)return 0;
   const m=((typeof MASTER!=="undefined"&&MASTER&&MASTER.det)||{})[c];
   const p=+((m&&m.ps)||0);if(p>0)return p;
+  const q=prPkOf(c);if(q>0)return q;
   return +(spPsMap(ym)[c]||0);
 }
  
@@ -14218,7 +14233,7 @@ function spCmp(sid,ymd){
     if(o.g)sum.rGsv+=(+o.g||0);else sum.rNoGsv++;
   });
   rows.forEach(r=>{
-    r.shr=alShrink(r.nm||(r.a&&r.a.nm)||"",r.pk);
+    r.shr=alShrink(r.nm||(r.a&&r.a.nm)||"",r.pk,r.code);
     r.qS=r.a?alQtyTxt(r.aSale,r.pk,r.shr):null;
     r.qF=r.a?alQtyTxt(r.aFree,r.pk,r.shr):null;
     r.qT=r.a?alQtyTxt(r.aTot,r.pk,r.shr):null;
@@ -14981,7 +14996,7 @@ function spAllOut(sid){
     ks.forEach(kk=>{
       const a=rows[kk]||{},pp=kk.split("|"),ln=pp[0],code=pp[1];
       const pk=spPsOf(code,sym)||(+a.pk||0),nm=nmOf[code]||a.nm||"";
-      const shr=alShrink(nm,pk);
+      const shr=alShrink(nm,pk,code);
       const sale={cs:+a.sc||0,sh:+a.ss||0,pc:+a.sp||0};
       const free={cs:+a.fc||0,sh:+a.fs||0,pc:+a.fp||0};
       const ps=alPcs(sale,pk,shr),pf=alPcs(free,pk,shr);
@@ -15039,7 +15054,7 @@ function spBbf(sid){
   o.prod.forEach(t=>{by[t.code]=t;});
   const hasBum=!!(typeof PRICE!=="undefined"&&PRICE&&PRICE.bum&&PRICE.bum.items);
   const P3=a=>({cs:+((a||[])[0]||0),sh:+((a||[])[1]||0),pc:+((a||[])[2]||0)});
-  const pcs=(q,t)=>t?alPcs(q,t.pk,alShrink(t.nm||"",t.pk)):null;
+  const pcs=(q,t)=>t?alPcs(q,t.pk,alShrink(t.nm||"",t.pk,t.code)):null;
   const rows=[],none=[],want={},seen={};
    
   Object.keys(o.mech||{}).forEach(fc=>{
@@ -17325,7 +17340,7 @@ function spBackChkPcs(sid,ymd,codes,ym){
     if(!code||!codes[code])return;
     const pk=spPsOf(code,ym)||(+r.pk||0);
     if(!pk)return;
-    const shr=(typeof alShrink==="function")?(alShrink(r.nm||"",pk)||0):0;
+    const shr=(typeof alShrink==="function")?(alShrink(r.nm||"",pk,code)||0):0;
     const sv=spPcs(r.xc,r.xs,r.xp,pk,shr),fv=spPcs(r.yc,r.ys,r.yp,pk,shr);
     if(sv===null&&fv===null)return;
     const v=(+sv||0)+(+fv||0);
@@ -17379,6 +17394,32 @@ function spGinPure(ym,codes){
   });
   _spGP={ym:ym,o:O,ck:ck,m:m};
   return m;
+}
+ 
+const SP_GIN_WIDE=20;
+let _spGW={};
+function spGinWide(ym){
+  const O=spOtOrd(ym);
+  if(!O)return null;
+  if(_spGW.ym===ym&&_spGW.o===O)return _spGW.m;
+  const cnt={};
+  Object.keys(O).forEach(k=>{
+    const r=O[k];if(!r||!r.g)return;
+    const d=spBackDet(k,ym);if(!d)return;
+    const g=String(r.g),s=cnt[g]||(cnt[g]={});
+    Object.keys(d).forEach(c=>{s[c]=1;});
+  });
+  const m={};
+  Object.keys(cnt).forEach(g=>{m[g]=Object.keys(cnt[g]).length;});
+  _spGW={ym:ym,o:O,m:m};
+  return m;
+}
+ 
+function spGinIsWide(g,ym){
+  const m=spGinWide(ym);
+  if(!m)return null;
+  const n=m[String(g)];
+  return (n===undefined)?null:(n>SP_GIN_WIDE);
 }
  
  
@@ -17446,6 +17487,8 @@ function spBackDay(sid,ymd,codes,lines,made){
     dist:spGrpOf(spSlip(sid))==="D",mix:0,mixList:[],ginMix:{},
      
     gLock:0,gSet:null,gOth:0,gOthList:[],gNone:0,gNoneList:[],
+     
+    wide:0,wideList:[],
     chk:spDayHas(spGinRec(sid,ymd)),noDet:!spBackHasDet(ym),noFile:false};
    
   if(o.dist){
@@ -17482,6 +17525,12 @@ function spBackDay(sid,ymd,codes,lines,made){
         if(!gg){o.gNone++;if(o.gNoneList.length<BACK_NOTE)o.gNoneList.push(ask);}
         else if(!o.gSet[gg]){o.gOth++;
           if(o.gOthList.length<BACK_NOTE)o.gOthList.push(ask+" (GIN "+gg+")");return;}
+      }
+       
+      if(o.dist&&!o.gLock&&!got){
+        const gw=String((e.ot&&e.ot.g)||"").trim();
+        if(gw&&spGinIsWide(gw,ym)===true){o.wide++;
+          if(o.wideList.length<BACK_NOTE)o.wideList.push(ask+" (GIN "+gw+")");return;}
       }
       if(e.cx){if(!got){L.cx.push(ask);o.cx++;}return;}
        
@@ -17551,6 +17600,7 @@ function spBackScan(sid,all){
     pre:0,preList:[],noTm:0,noTmList:[],made:MD?MD.ymd:"",madeHm:MD?MD.hm:"",
     mix:0,mixList:[],ginMix:{},
     gLock:0,gOth:0,gOthList:[],gNone:0,gNoneList:[],gDays:0,gOn:0,gOff:0,
+    wide:0,wideList:[],
     pcs:{},gpcs:{},unkPs:[],nGin:0,byLn:{},srcChk:0,srcGin:0,
     d0:days[0]||"",d1:days[days.length-1]||"",codes:Object.keys(codes).length};
   days.forEach(d=>{
@@ -17558,7 +17608,7 @@ function spBackScan(sid,all){
     const r=spBackDay(sid,d,codes,lines,MD);
     if(r.noFile){S.nofile++;return;}
     if(r.noDet)S.noDet++;
-    S.pre+=r.pre;S.noTm+=r.noTm;S.mix+=r.mix;
+    S.pre+=r.pre;S.noTm+=r.noTm;S.mix+=r.mix;S.wide+=r.wide;
     S.gOth+=r.gOth;S.gNone+=r.gNone;
     if(r.gLock){S.gLock=r.gLock;S.gOn++;}else S.gOff++;
     r.preList.forEach(x=>{if(S.preList.length<BACK_NOTE)S.preList.push(x);});
@@ -17566,8 +17616,9 @@ function spBackScan(sid,all){
     r.mixList.forEach(x=>{if(S.mixList.length<BACK_NOTE)S.mixList.push(x);});
     r.gOthList.forEach(x=>{if(S.gOthList.length<BACK_NOTE)S.gOthList.push(x);});
     r.gNoneList.forEach(x=>{if(S.gNoneList.length<BACK_NOTE)S.gNoneList.push(x);});
+    r.wideList.forEach(x=>{if(S.wideList.length<BACK_NOTE)S.wideList.push(x);});
     Object.keys(r.ginMix).forEach(g=>{S.ginMix[g]=1;});
-    if(!r.nOrd&&!r.cx&&!r.pre&&!r.noTm&&!r.mix&&!r.gOth&&!r.gNone)return;
+    if(!r.nOrd&&!r.cx&&!r.pre&&!r.noTm&&!r.mix&&!r.gOth&&!r.gNone&&!r.wide)return;
     S.nOrd+=r.nOrd;S.nNew+=r.nNew;S.cx+=r.cx;S.unsure+=r.unsure;
     S.gin+=r.run.n;S.shops+=r.shops;S.nGin+=r.nGin;
     if(r.src==="chk")S.srcChk++;else S.srcGin++;
@@ -17779,6 +17830,7 @@ function spBal(sid){
     gLock:S.gLock,gDays:S.gDays,gOn:S.gOn,gOff:S.gOff,gOth:S.gOth,gOthList:S.gOthList,
     gNone:S.gNone,gNoneList:S.gNoneList,
     mix:S.mix,mixList:S.mixList,
+    wide:S.wide,wideList:S.wideList,
     made:S.made,madeHm:S.madeHm,
     d0:S.d0,d1:S.d1,byLn:[],months:S.months,mine:S.mine,
     sh:{},ov:{},tk:{},ot:{}};           
@@ -18270,14 +18322,18 @@ function spAutoGinHtml(sid,ymd){
     (r.mix&&gm.length)?" ·":""}${gm.length?(" เลข <b>"+gm.map(anaEsc).join(" · ")+
       "</b> ที่เป็นเลขของบิลขายปกติ"):""} — รอบตัวกระจายเซลล์จะคีย์แยกใบเสมอ ·
     ถ้าต้องการจริง พิมพ์เองได้</div>`:"";
+   
+  const wideTxt=r.wide?`<div class="psub" style="margin-top:4px">📦 ไม่นับ <b>${r.wide}</b>
+    ใบที่ออกไปกับเลข GIN ซึ่งถือสินค้าทั้งวันของศูนย์ — รอบตัวกระจายคลังจะจัดแยกเลขเสมอ ·
+    ถ้าต้องการจริง พิมพ์เองได้</div>`:"";
   if(r.noDet)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบกำลังอ่านไฟล์ของเดือนนี้ …</div></div>`;
   if(!g.length)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์แล้ว</div>
     <div class="psub">${r.noFile?"ยังไม่มีไฟล์ของวันนี้":"ยังไม่มีใบไหนของวันนี้ที่คลังออกเลข GIN ให้"} ·
-    กรอกเองได้เลย</div>${oldTxt}${preTxt}${mixTxt}</div>`;
+    กรอกเองได้เลย</div>${oldTxt}${preTxt}${mixTxt}${wideTxt}</div>`;
   return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์ให้แล้ว —
       เลข GIN ของวันที่ ${fmtDate(ymd)}</div>
     <div class="sp-autol">${g.map(x=>`<code>${anaEsc(x)}</code>`).join(" ")}</div>
-    <div class="psub">เรียงติดกัน: ${anaEsc(spBackRunTxt(r.run))} · จาก ${r.nGin} ใบใน ${r.nOrd} ใบที่เซลล์คีย์</div>${oldTxt}${preTxt}${mixTxt}
+    <div class="psub">เรียงติดกัน: ${anaEsc(spBackRunTxt(r.run))} · จาก ${r.nGin} ใบใน ${r.nOrd} ใบที่เซลล์คีย์</div>${oldTxt}${preTxt}${mixTxt}${wideTxt}
     <button type="button" class="btn-go btn-mini"
       onclick="spAutoGinFill('${anaEsc(sid)}','${anaEsc(ymd)}')">▸ ใส่ลงในช่องให้เลย</button>
     <span class="psub"> (ใส่ให้ในช่องเท่านั้น กด 🔎 ตรวจและบันทึก เองเหมือนเดิม)</span></div>`;
@@ -18465,6 +18521,7 @@ function spCutHtml(sid){
       ${row("🎯","เลข GIN อื่น — ไม่ใช่รอบนี้",B.gOth,lst(B.gOthList))}
       ${row("⏳","ยังไม่มีเลข GIN — ยังตอบไม่ได้",B.gNone,lst(B.gNoneList))}
       ${row("🛒","ร้านซื้อของอื่นปนมาด้วย",B.mix,lst(B.mixList))}
+      ${row("📦","เลข GIN นั้นถือสินค้าทั้งวันของศูนย์",B.wide,lst(B.wideList))}
       ${row("⏰","คีย์ก่อนที่ใบนี้จะถูกสร้าง",B.pre,lst(B.preList))}
       ${row("❔","ไฟล์ไม่บอกเวลาคีย์",B.noTm,lst(B.noTmList))}
     </tbody></table></div>
