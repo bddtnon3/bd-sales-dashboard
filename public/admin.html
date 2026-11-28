@@ -288,6 +288,8 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
   margin-left:-2.5px;border-radius:50%;background:currentColor;opacity:.8}
 @media(max-width:400px){.sp-cal .cal-day.tg::after{bottom:5px}}
  
+.sp-cal .cal-day.nb{opacity:.5}
+ 
 .cal-lg{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin-right:10px}
 .cal-dot.jr{background:#FDECEA;border-color:var(--bad)}
 .cal-dot.jx{background:var(--bad);border-color:var(--bad)}
@@ -16399,10 +16401,13 @@ function spMeChk(sid,ymd,ln){
 }
  
 const SP_ME_RANK={bad:4,todo:3,keyed:2,ok:1,none:0};
-function spMeDays(ln){
+function spMeDays(ln,sid){
   const out={};
   if(!ln)return out;
-  spRepJobsAll(ln).forEach(j=>{
+  const js=sid
+    ?spRepJobs(sid,ln).map(j=>Object.assign({sid:sid,slip:spSlip(sid)},j))
+    :spRepJobsAll(ln);
+  js.forEach(j=>{
     const c=spMeChk(j.sid,j.d,ln);
     c.slip=j.slip;c.tc=j.tc;c.tp=j.tp;c.done=j.done;
     const e=out[j.d]||(out[j.d]={d:j.d,jobs:[],st:"none",tgt:0});
@@ -16412,6 +16417,13 @@ function spMeDays(ln){
     if(SP_ME_RANK[c.st]>SP_ME_RANK[e.st])e.st=c.st;
   });
   return out;
+}
+ 
+function spMeOther(ln,sid){
+  if(!ln)return 0;
+  const m={};
+  spRepJobsAll(ln).forEach(j=>{if(j.sid===sid||!j.has||j.done)return;m[j.sid]=1;});
+  return Object.keys(m).length;
 }
  
 const SP_ME_ST={
@@ -16424,7 +16436,8 @@ const SP_ME_ST={
  
 function spRepHomeHtml(sid){
   const ln=spMyLine();if(!ln)return "";
-  const days=spMeDays(ln),ks=Object.keys(days).sort();
+  const days=spMeDays(ln,sid),ks=Object.keys(days).sort();
+  const made=spSlipMade(sid);
   const cur=spDay(sid),today=todayISO();
   const N=n=>(Math.round((+n||0)*100)/100).toLocaleString();
    
@@ -16438,7 +16451,7 @@ function spRepHomeHtml(sid){
   const cntTg=()=>ks.filter(d=>days[d].tgt&&days[d].st!=="none"&&d.slice(0,7)===spCalMon(sid)).length;
   const nTodo=cnt("todo"),nBad=cnt("bad");
   const ahead=ks.filter(d=>d>today&&days[d].st==="todo").length;
-  const nSlip=Object.keys(ks.reduce((m,d)=>{days[d].jobs.forEach(j=>{m[j.sid]=1;});return m;},{})).length;
+  const nOth=spMeOther(ln,sid);
   const last=new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();
   const lead=(new Date(ym+"-01T00:00:00").getDay()+6)%7;
   const DOW=["จ","อ","พ","พฤ","ศ","ส","อา"];
@@ -16459,12 +16472,15 @@ function spRepHomeHtml(sid){
          
         if(e&&S.cls)cls.push(S.cls);
         if(e&&e.tgt&&e.st!=="none")cls.push("tg");
+         
+        const pre=!!(made&&d<made.ymd);
+        if(pre&&!e&&d!==cur)cls.push("nb");
         if(d===cur)cls.push("sel");
         if(d===todayISO())cls.push("today");
-        const go=(e&&e.jobs[0]&&e.jobs[0].sid)||sid;
-        const tip=fmtDate(d)+(e?(" · "+S.nm+(e.tgt?" · ซุปตั้งเป้าไว้":" · เซลล์เปิดเอง ไม่มีเป้า")):" · ยังไม่มีงาน — กดเพื่อใส่เลข/อัพรูป");
+        const tip=fmtDate(d)+(e?(" · "+S.nm+(e.tgt?" · ซุปตั้งเป้าไว้":" · เซลล์เปิดเอง ไม่มีเป้า"))
+          :(pre?" · ก่อนวันที่สร้างใบนี้ — กดได้ถ้าต้องใส่ย้อนหลัง":" · ยังไม่มีงาน — กดเพื่อใส่เลข/อัพรูป"));
         return `<div class="cal-day ${cls.join(" ")}"
-          onclick="spGoJob('${anaEsc(go)}','${d}')"
+          onclick="spGoJob('${anaEsc(sid)}','${d}')"
           title="${anaEsc(tip)}">${+d.slice(8,10)}</div>`;
       }).join("")}</div>
     <div class="cal-legend2">
@@ -16474,8 +16490,9 @@ function spRepHomeHtml(sid){
       <span class="cal-lg"><span class="cal-sw jr jx"></span> ตรวจแล้ว ไม่ตรง <b>${cntM("bad")}</b></span>
       <span class="cal-lg"><span class="cal-sw tg"></span> จุดใต้เลข = ซุปตั้งเป้า <b>${cntTg()}</b></span>
     </div>
-    <div class="psub" style="margin-top:8px">นับเฉพาะเดือนนี้ · กดวันไหนก็ได้ รวมวันย้อนหลัง
-      เพื่อใส่เลขออเดอร์หรืออัพรูป ไม่ต้องรอซุปตั้งเป้า</div></div>`;
+    <div class="psub" style="margin-top:8px">นับเฉพาะเดือนนี้ และเฉพาะใบนี้${
+      made?" · วันที่จาง = ก่อนวันสร้างใบ":""} · กดวันไหนก็ได้
+      รวมวันย้อนหลัง เพื่อใส่เลขออเดอร์หรืออัพรูป ไม่ต้องรอซุปตั้งเป้า</div></div>`;
    
   const sel=days[cur];
   let det="";
@@ -16516,13 +16533,21 @@ function spRepHomeHtml(sid){
       return b+`</div>`;
     }).join("");
   }
-  return `<div class="panel"><h3>📅 ปฏิทินงานของสาย ${anaEsc(ln)}</h3>
+   
+  const slTtl=spSlipTitle(sid)||sid;
+  return `<div class="panel"><h3>📅 ปฏิทินงานของสาย ${anaEsc(ln)}
+      <span class="psub">· เฉพาะใบนี้</span></h3>
+    <div class="psub" style="margin-bottom:2px">📦 ใบ <b>${anaEsc(slTtl)}</b>${
+      made?' <span class="sp-2d-p">· สร้าง '+anaEsc(spDayFull(made.ymd))+"</span>":""}</div>
     <div class="psub">${noJob
-      ?"ยังไม่มีวันที่หัวหน้าเซลล์ตั้งเป้าให้สายคุณ — แต่กดวันไหนก็ได้เพื่อใส่เลขออเดอร์หรืออัพรูปไว้ก่อน"
+      ?"ใบนี้ยังไม่มีวันที่หัวหน้าเซลล์ตั้งเป้าให้สายคุณ — แต่กดวันไหนก็ได้เพื่อใส่เลขออเดอร์หรืออัพรูปไว้ก่อน"
       :((nTodo?("ยังไม่ได้คีย์ <b>"+nTodo+"</b> วัน"):"คีย์ครบทุกวันแล้ว")+
         (nBad?' · <b class="down">ไม่ตรง '+nBad+' วัน</b>':"")+
-        (ahead?" · ล่วงหน้า <b>"+ahead+"</b> วัน คีย์ไว้ก่อนได้เลย":"")+" · กดวันในปฏิทินเพื่อกรอก"+
-        (nSlip>1?" · รวมทุกใบออเดอร์แล้ว ("+nSlip+" ใบ)":""))}</div>
+        (ahead?" · ล่วงหน้า <b>"+ahead+"</b> วัน คีย์ไว้ก่อนได้เลย":"")+" · กดวันในปฏิทินเพื่อกรอก")}</div>${
+     
+    nOth?`<div class="psub" style="margin-top:4px">📌 ยังมีงานค้างในใบอื่นอีก <b>${nOth}</b> ใบ
+      <button type="button" class="btn-ghost btn-mini" onclick="spBack()"
+        style="margin-left:6px">เลือกใบ ▶</button></div>`:""}
     ${cal}${det}</div>`;
 }
  

@@ -1267,39 +1267,117 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🔑 กดยกเลิกสายนี้ ก็ไม่เด้งขึ้นสายบนสุด',
    Math.abs(keep.cAfter-240)<20,'ก่อน 240 → หลัง '+keep.cAfter);
 
- /* 📅 เซลล์ต้องเห็น "ทุกวัน ทุกใบ" (เจ้าของสั่ง 27 พ.ย. 69)
-    ซุปเปิดใบใหม่ต่อหนึ่งออเดอร์ ถ้าอ่านเฉพาะใบที่เปิดอยู่ เซลล์จะเห็นวันเดียว */
+ /* ============================================================================
+    📅 ปฏิทินของเซลล์ต้องผูกกับ "ใบที่เปิดอยู่" ใบเดียว — เจ้าของสั่ง 29 พ.ย. 69
+      *"ทำไมออเดอร์พิเศษวันที่ 26 ปฏิทินของฝั่งเซลล์ถึงขึ้นรายงานย้อนหลังไปถึงวันที่ 19
+        ทั้งที่เราดูกันอยู่แค่โปรเจกต์นี้ … เลือกโปรเจกต์ไหนอยู่ให้ในรายงานโชว์เฉพาะที่ต้อง
+        คีย์ในช่วงวันนั้น ๆ ก็พอ ไม่ต้องแสดงผลของวันอื่น และชุดออเดอร์อื่น"*
+
+    ⚠️ กลับทางจากคำสั่ง 27 พ.ย. 69 (*"ช่วยปรับให้เซลล์เห็นทุกวันหน่อย"*) **ครึ่งเดียว**:
+       วันของใบนี้ยังเห็นครบทั้งย้อนหลังและล่วงหน้า แค่ไม่เอาวันของใบอื่นมาปน
+    ⚠️ spRepJobsAll/spGoJob ยังทำงานได้ (ถอดสาย ไม่ลบทิ้ง) — หน้าเลือกใบตอนเซลล์เปิด
+       หมวดมา และการนับ "ใบอื่นค้างกี่ใบ" ยังกวาดทุกใบ เพราะเป็นคำถามข้ามใบจริง ๆ
+    ========================================================================= */
  const days=await ev(()=>{
+   /* ใบอื่นมีงานวันที่ 5 พ.ย. (เดือนเดียวกับปฏิทินที่เปิดอยู่ จึงอยู่ในตารางเดียวกัน)
+      ส่วนใบที่เปิดอยู่มีงานวันที่ 6 พ.ย. — สองช่องนี้คือตัววัดว่าปฏิทินผูกกับใบจริงไหม */
    CSTOCK.slips['B20261128-02']={d:'2026-11-28',by:'admin1',byName:'แอดมิน 1',at:9,up:9,g:'D'};
    CSTOCK.lots['L-28-1']={id:'L-28-1',sl:'B20261128-02',d:'2026-11-28',code:'64849613',
      nm:'โอโมลิควิด ซากุระ 6x1000มล',cs:9,pc:0,sq:0,ln:'CT11',clr:[],up:9};
-   CSTOCK.key['B20261128-02|2026-11-28|CT11']={it:{'64849613':{sc:5,sp:0}},by:'sup',at:9};
+   CSTOCK.key['B20261128-02|2026-11-05|CT11']={it:{'64849613':{sc:5,sp:0}},by:'sup',at:9};
    CSTOCK.key['B20261128-02|2026-12-02|CT11']={it:{'64849613':{sc:7,sp:0}},by:'sup',at:9};
+   CSTOCK.key['B20261118-01|2026-11-06|CT11']={it:{'64849613':{sc:3,sp:0}},by:'sup',at:9};
+   /* วันล่วงหน้าของ "ใบที่เปิดอยู่" — ต้องยังนับให้ แม้ปฏิทินจะตัดใบอื่นออกไปแล้ว */
+   CSTOCK.key['B20261118-01|2026-12-03|CT11']={it:{'64849613':{sc:4,sp:0}},by:'sup',at:9};
    __as('sales','209611','CT11 · เซลล์');
    SP.sid='B20261118-01';SP.view='slip';SP.sec='rep';SP.day='';SP.cm='2026-11';renderSpord();
    const all=spRepJobsAll('CT11').map(j=>j.sid+'/'+j.d);
-   const one=spRepJobs('B20261118-01','CT11').map(j=>j.d);
-   /* 📅 ตั้งแต่ 27 พ.ย. 69 รายการวันของเซลล์เป็น "ปฏิทิน" ไม่ใช่ลิสต์ปุ่มต่อวันแล้ว */
+   const one=spRepJobs('B20261118-01','CT11').map(j=>j.d).sort();
+   const D=spMeDays('CT11','B20261118-01'),mine=Object.keys(D).sort();
+   const every=Object.keys(spMeDays('CT11')).sort();
+   const todo=mine.filter(d=>D[d].st==='todo').length;
+   /* 📅 ตั้งแต่ 27 พ.ย. 69 รายการวันของเซลล์เป็น "ปฏิทิน" ไม่ใช่ลิสต์ปุ่มต่อวันแล้ว
+      วัดที่ "ช่องในปฏิทินจริง" ไม่ใช่ที่ค่าที่ฟังก์ชันคืนมา — ไม่งั้นเทสผ่านทั้งที่จอยังผิด */
    const cells=[...document.querySelectorAll('#spBody .sp-cal .cal-day[onclick]')];
-   const btns=cells.length;
+   const cellOf=d=>cells.find(c=>String(c.getAttribute('onclick')||'').indexOf("'"+d+"'")>=0);
+   const paint=d=>{const c=cellOf(d);return c?['jr','jk','jg','tg']
+     .filter(x=>c.classList.contains(x)).join('+'):'(ไม่มีช่อง)';};
+   const oth=cells.filter(c=>String(c.getAttribute('onclick')||'').indexOf('B20261118-01')<0).length;
    const txt=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
-   /* กดวันของใบอื่น ต้องเปิดใบนั้นให้เลย */
-   const other=cells.find(c=>String(c.getAttribute('onclick')||'').indexOf('B20261128-02')>=0);
-   if(other)other.click();
-   return {all:all,one:one,btns:btns,txt:txt,sid:SP.sid,day:SP.day,
-     meDays:Object.keys(spMeDays('CT11')).sort().join(',')};
+   const m=txt.match(/ยังไม่ได้คีย์ (\d+) วัน/);
+   /* หัวข้อ (h3) ของกล่องปฏิทิน — วัดที่หัวข้อเอง ไม่ใช่ที่ข้อความทั้งหน้า ไม่งั้นคำว่า
+      "นับเฉพาะเดือนนี้ และเฉพาะใบนี้" ใต้ปฏิทินทำให้เทสผ่านทั้งที่หัวข้อยังไม่บอก */
+   const hd=[...document.querySelectorAll('#spBody h3')]
+     .map(h=>h.textContent.replace(/\s+/g,' ')).filter(x=>x.indexOf('ปฏิทินงานของสาย')>=0)[0]||'';
+   /* spGoJob ยังพาไปใบอื่นได้ตามเดิม (ปฏิทินเลิกเรียกมันข้ามใบ ไม่ใช่ตัวมันพัง) */
+   spGoJob('B20261128-02','2026-11-05');
+   const out={all:all,one:one,mine:mine,every:every,todo:todo,btns:cells.length,oth:oth,txt:txt,
+     hd:hd,p05:paint('2026-11-05'),p06:paint('2026-11-06'),shown:m?+m[1]:-1,
+     nOth:spMeOther('CT11','B20261118-01'),sid:SP.sid,day:SP.day};
+   delete CSTOCK.key['B20261118-01|2026-12-03|CT11'];
+   delete CSTOCK.key['B20261118-01|2026-11-06|CT11'];
+   return out;
  });
- t('🔑 เซลล์เห็นวันของทุกใบ ไม่ใช่แค่ใบที่เปิดอยู่',
-   days.all.length>days.one.length&&days.all.some(x=>x.indexOf('B20261128-02/')===0),
-   days.all.join(' , ')+' | ใบเดียว: '+days.one.join(' , '));
- t('...และบอกว่ารวมมาจากกี่ใบ พร้อมนับวันล่วงหน้าให้',
-   /รวมทุกใบออเดอร์แล้ว/.test(days.txt)&&/ล่วงหน้า/.test(days.txt),
-   days.meDays+' || '+days.txt.slice(0,400));
- t('🔑 วันที่มีงานกดได้จากปฏิทิน (แทนลิสต์ปุ่มต่อวันแบบเดิม)',
-   days.btns>=2,days.btns+' วันที่กดได้');
- t('🔑 กดวันของใบอื่น ระบบเปิดใบนั้นแล้วไปวันนั้นให้เลย',
-   days.sid==='B20261128-02'&&(days.day==='2026-11-28'||days.day==='2026-12-02'),
+ t('🔑 วันของใบอื่น (5 พ.ย.) ไม่ถูกลงสีในปฏิทินของใบนี้',
+   days.p05===''&&days.p06.indexOf('jr')>=0,
+   '5 พ.ย. → "'+days.p05+'" · 6 พ.ย. (ใบนี้) → "'+days.p06+'"');
+ t('...และรายการวันก็ตรงกับ spRepJobs ของใบนี้เป๊ะ ๆ',
+   days.mine.join(',')===days.one.join(',')&&!days.mine.some(d=>d==='2026-11-05'),
+   'ใบนี้: '+days.mine.join(' , ')+' | ทุกใบ: '+days.every.join(' , '));
+ t('...spRepJobsAll ยังกวาดทุกใบได้ (ถอดสายจากปฏิทิน ไม่ได้ลบทิ้ง)',
+   days.all.some(x=>x.indexOf('B20261128-02/')===0)&&days.every.length>days.mine.length,
+   days.all.join(' , '));
+ t('🔑 ตัวเลขบนหัวปฏิทินนับเฉพาะใบนี้ ไม่ขัดกับสีในตาราง',
+   days.shown===days.todo&&days.todo>0,
+   'บนจอ '+days.shown+' · ใบนี้มี '+days.todo+' วัน');
+ t('🔑 ทุกช่องในปฏิทินพาไปใบที่เปิดอยู่ ไม่กระโดดไปใบอื่น',
+   days.btns>=28&&days.oth===0,days.btns+' ช่อง · ชี้ใบอื่น '+days.oth+' ช่อง');
+ t('...หัวปฏิทินบอกว่าเป็นของใบไหน และเลิกพูดว่า "รวมทุกใบ"',
+   /เฉพาะใบนี้/.test(days.hd)&&!/รวมทุกใบออเดอร์แล้ว/.test(days.txt)&&
+   /📦 ใบ/.test(days.txt),'หัวข้อ: "'+days.hd+'"');
+ t('...วันล่วงหน้าของใบนี้ยังนับให้เหมือนเดิม',
+   /ล่วงหน้า/.test(days.txt),days.txt.slice(0,300));
+ t('🔑 ใบอื่นที่ยังค้าง บอกเป็น "จำนวนใบ" บรรทัดเดียว งานจึงไม่หายไปจากสายตา',
+   days.nOth===1&&/ยังมีงานค้างในใบอื่นอีก/.test(days.txt),
+   'nOth='+days.nOth);
+ t('🔑 spGoJob ยังพาไปใบอื่นแล้วเปิดวันนั้นให้ได้ตามเดิม',
+   days.sid==='B20261128-02'&&days.day==='2026-11-05',
    days.sid+' / '+days.day);
+
+ /* 📅 "ช่วงวันของใบนี้" ต้องมองออก — วันก่อนที่แอดมินสร้างใบ ไม่ใช่งานของใบนี้
+    ⚠️ ต้องยังกดได้ (กฎ 29 พ.ย. 69) และวันที่มีงานอยู่แล้วห้ามจาง สีสถานะชนะเสมอ */
+ const nb=await ev(()=>{
+   const keepAt=CSTOCK.slips['B20261118-01'].at;
+   CSTOCK.slips['B20261118-01'].at=new Date('2026-11-10T09:00:00').getTime();
+   CSTOCK.key['B20261118-01|2026-11-06|CT11']={it:{'64849613':{sc:3,sp:0}},by:'sup',at:9};
+   __as('sales','209611','CT11 · เซลล์');
+   SP.sid='B20261118-01';SP.view='slip';SP.sec='rep';SP.day='';SP.cm='2026-11';renderSpord();
+   /* ⚠️ อ่านช่องใหม่ทุกครั้ง — renderSpord เขียน innerHTML ใหม่ ช่องที่เก็บไว้จะหลุด DOM
+      (บทเรียนเดียวกับ spOcrTa ที่แคช textarea ข้าม await) */
+   const info=d=>{const c=[...document.querySelectorAll('#spBody .sp-cal .cal-day[onclick]')]
+     .find(x=>String(x.getAttribute('onclick')||'').indexOf("'"+d+"'")>=0);
+     return c?{nb:c.classList.contains('nb'),
+       click:!!c.getAttribute('onclick'),tip:c.getAttribute('title')||''}:null;};
+   const out={pre:info('2026-11-04'),work:info('2026-11-06'),after:info('2026-11-20'),
+     made:!!spSlipMade('B20261118-01'),
+     txt:document.getElementById('spBody').textContent.replace(/\s+/g,' ')};
+   /* เปิดวันก่อนสร้างใบจริง ๆ — กรอบ "วันที่เลือก" ต้องไม่จางไปด้วย */
+   spGoJob('B20261118-01','2026-11-04');
+   out.sel=info('2026-11-04');
+   delete CSTOCK.key['B20261118-01|2026-11-06|CT11'];
+   CSTOCK.slips['B20261118-01'].at=keepAt;
+   return out;
+ });
+ t('🔑 วันก่อนสร้างใบ จางลงให้เห็นว่าอยู่นอกช่วงของใบนี้ แต่ยังกดได้',
+   nb.made&&nb.pre&&nb.pre.nb&&nb.pre.click&&/ก่อนวันที่สร้างใบนี้/.test(nb.pre.tip),
+   JSON.stringify(nb.pre));
+ t('...วันที่มีงานอยู่แล้วห้ามจาง สีสถานะชนะเสมอ แม้อยู่ก่อนวันสร้างใบ',
+   !!nb.work&&!nb.work.nb&&!!nb.after&&!nb.after.nb,
+   JSON.stringify(nb.work)+' | '+JSON.stringify(nb.after));
+ t('...และบอกวันที่สร้างใบไว้บนปฏิทินด้วย',
+   /สร้าง อังคาร 10 พ\.ย\./.test(nb.txt),nb.txt.slice(0,220));
+ t('🔑 ...แต่พอเปิดวันนั้นจริง ๆ ต้องเลิกจาง ไม่งั้นกรอบวันที่เลือกอ่านไม่ออก',
+   !!nb.sel&&!nb.sel.nb&&nb.sel.click,JSON.stringify(nb.sel));
 
  /* 🗑 ซุป/ผู้จัดการ แก้จำนวนหรือยกเลิกเป้าของสายหนึ่งได้ (เจ้าของสั่ง 27 พ.ย. 69) */
  const cxl=await ev(async()=>{
