@@ -3215,8 +3215,11 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
        (window.__want[p[1]]=window.__want[p[1]]||[]).push(full);
      }
    });
-   /* ใบของ CT11 ที่มีแต่สินค้านอกใบ → ต้องไม่ถูกนับเลย */
-   OTO['20000001']={l:'209611',d:+window.__d0.slice(8,10),s:'SHX1',g:'70',tm:'15:30',w:9,p:0,c:9,n:1};
+   /* ใบของ CT11 ที่มีแต่สินค้านอกใบ → ต้องไม่ถูกนับเลย
+      ⚠️ ต้องอยู่ใน GIN ของตัวเอง (97) ไม่ใช่ 70 — วัดกับไฟล์จริงแล้ว GIN ของรอบตัวกระจาย
+         ไม่เคยมีใบแบบนี้ปนอยู่เลย (สะอาด 36/36) ดู §28 · ถ้ายัดไว้ใน 70 เกณฑ์ใหม่จะตัด
+         ทั้งเลขอย่างถูกต้อง แล้วฟิกซ์เจอร์นี้จะไม่เหมือนของจริงอีก */
+   OTO['20000001']={l:'209611',d:+window.__d0.slice(8,10),s:'SHX1',g:'97',tm:'15:30',w:9,p:0,c:9,n:1};
    OTD['20000001']={ZZ99:[9,0,6]};
    /* ใบที่ยกเลิก (มีสินค้าของใบนี้) → นับไว้ ไม่เติม */
    OTO['20000002']={l:'209611',d:+window.__d0.slice(8,10),s:'SHX2',g:'70',tm:'15:35',
@@ -4964,6 +4967,183 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
    rgrp.rows+' แถว · '+rgrp.tbl.slice(0,120));
  t('🛟 สรุปกลุ่มอ่านอย่างเดียว — CSTOCK เท่าเดิม ไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
    rgrp.ro===true&&rgrp.posts===0,'same='+rgrp.ro+' posts='+rgrp.posts);
+
+ /* ===========================================================================
+  * §28 🎯 เลข GIN ของรอบตัวกระจาย — เกณฑ์ "ใบสะอาด" + ช่องวางเลขทั้งเดือน
+  *
+  * แอดมินยืนยันเลข GIN รายวันมาให้ (เจ้าของส่งต่อ 29 พ.ย. 69): 19/11 51,55 ·
+  * 20/11 68-71 · 21/11 83-86 · 23/11 101-104 · 24/11 120-123 · 25/11 135,140,141,
+  * 143,148,151 · 26/11 161-164 · 27/11 185,187-190,192-194 · 28/11 199,203-207,215,216
+  *   *"นอกเหนือจากเลขพวกนี้ถ้าระบบคุณเอามาคำนวณ จะถือว่าผิดหรือเกินแน่นอน"*
+  *
+  * 🔍 วัดกับไฟล์จริงก่อนเขียน (`Order_Allocation_ReportHistorical_3`, 2,395 ใบ · 187 GIN):
+  *   • เกณฑ์เดิม "มีรหัสของใบอย่างน้อย 1 ตัว" ดึงมา 105 GIN ⇒ เกิน 69 เลข
+  *   • ใบใน GIN ที่ยืนยัน **สะอาด 964/964 = 100%** · ใบใน GIN อื่นสะอาดแค่ 29.2%
+  *   • GIN ที่ยืนยัน สะอาด **36/36** ⇒ รวมสองชั้น เสนอ 71 → 38 เลข เลขที่ยืนยันอยู่ครบ 36/36
+  *     เหลือเกิน 2 เลข · ตัดใบที่ไม่ใช่รอบนี้ออก 217 ใบ = 1,172 ชิ้น = 20.5%
+  *
+  * ฟิกซ์เจอร์ (ลังละ 12 ชิ้นทุกรหัส · สาย CT11 · วันทำงาน __d0 วันที่ 10 ของเดือน):
+  *   GIN 70 — 4 ใบ มีแต่ FO01            = ใบสะอาด ⇒ ต้องเสนอ
+  *   GIN 61 — 3 ใบ FO01 ปนกับ XX01       = บิลขายปกติ ⇒ ต้องไม่นับ
+  *   GIN 62 — 1 ใบสะอาด + 1 ใบคละ        = เลขของบิลทั่วไป ⇒ ต้องไม่เสนอเลขนี้
+  *   GIN 99 — 1 ใบที่ยังไม่รู้รายการสินค้า = ไม่รู้ ≠ ไม่ใช่ ⇒ เข้ากอง "ไม่แน่ใจ"
+  *   ⇒ เกณฑ์ใหม่ 5 ใบ 60 ชิ้น (5 ลัง) · เกณฑ์เดิม 9 ใบ 108 ชิ้น (9 ลัง)
+  * ========================================================================== */
+ const GPPRE = `
+   __as('manager','','ผู้จัดการ');
+   /* 📅 วันทำงานกลางเดือน อิงวันนี้ ไม่ฟิกซ์เดือน (บทเรียน §8) และมีที่ให้ +1 วันในเดือนเดียวกัน */
+   window.__d0=(function(){
+     const t=todayISO(),dd=+t.slice(8,10);
+     if(dd>=12)return t.slice(0,7)+'-10';
+     const y=+t.slice(0,4),m=+t.slice(5,7);
+     return ((m>1)?(y+'-'+('0'+(m-1)).slice(-2)):((y-1)+'-12'))+'-10';
+   })();
+   window.__d1=window.__d0.slice(0,8)+'11';        /* วันที่แอดมินออกเลข GIN = +1 วัน */
+   window.__ym=window.__d0.slice(0,7);
+   window.__dom=+window.__d0.slice(8,10);
+   CSTOCK.slips[B1].d=window.__d0;CSTOCK.slips[B1].g='D';CSTOCK.slips[B1].at=0;
+   CSTOCK.rep={};CSTOCK.key={};CSTOCK.gin={};
+   MASTER={items:{FO01:{nm:'ซิตร้า เพิร์ล FO'},FO02:{nm:'ลักส์ โรส FO'},
+                  XX01:{nm:'โอโมน้ำยาล้างจาน'}},
+           det:{FO01:{ps:12},FO02:{ps:12},XX01:{ps:12}}};
+   CSTOCK.lots={L1:{id:'L1',sl:B1,d:window.__d0,code:'FO01',nm:'ซิตร้า เพิร์ล FO',
+                    cs:10,pc:0,ln:'CT11',clr:[]},
+                L2:{id:'L2',sl:B1,d:window.__d0,code:'FO02',nm:'ลักส์ โรส FO',
+                    cs:5,pc:0,ln:'CT11',clr:[]}};
+   STOREDAILY={data:{},ord:{}};
+   window.__mk=function(){
+     const OTO={},OTD={};
+     for(var i=1;i<=4;i++){var a='7000000'+i;
+       OTO[a]={l:'209611',d:window.__dom,s:'SHA'+i,g:'70',tm:'09:0'+i,w:1,p:0,c:1,n:1};
+       OTD[a]={FO01:[1,0,12]};}
+     for(var j=1;j<=3;j++){var b='6100000'+j;
+       OTO[b]={l:'209611',d:window.__dom,s:'SHB'+j,g:'61',tm:'10:0'+j,w:1,p:0,c:1,n:1};
+       OTD[b]={FO01:[1,0,12],XX01:[1,0,12]};}
+     OTO['62000001']={l:'209611',d:window.__dom,s:'SHC1',g:'62',tm:'11:01',w:1,p:0,c:1,n:1};
+     OTD['62000001']={FO02:[1,0,12]};
+     OTO['62000002']={l:'209611',d:window.__dom,s:'SHC2',g:'62',tm:'11:02',w:1,p:0,c:1,n:1};
+     OTD['62000002']={FO02:[1,0,12],XX01:[1,0,12]};
+     OTO['99000001']={l:'209611',d:window.__dom,s:'SHD1',g:'99',tm:'12:01',w:1,p:0,c:1,n:1};
+     return {ord:OTO,det:OTD,meta:null,none:0};
+   };
+   OT.cache={};
+   OT.cache[window.__ym]=window.__mk();
+   /* เดือนก่อนหน้าใส่กล่องว่างไว้ กันไม่ให้ spOtWant ยิงไฟล์ออกไปตอนทดสอบ */
+   OT.cache[spGpPrevYm(window.__ym)]={ord:{},det:{},meta:null,none:0};
+   OT.months=Object.keys(OT.cache);
+   spRfBust();
+   SP.sid=B1;SP.view='slip';SP.sec='adm';SP.day=window.__d0;SP.ym=window.__ym;
+   SP.gp={txt:'',open:false};
+   renderSpord();`;
+
+ const gpa=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const codes={FO01:1,FO02:1};
+   const pcs=o=>Object.keys(o).reduce((s,c)=>s+o[c],0);
+   const r=spBackDay(B1,window.__d0,codes,['CT11']);
+   /* ใบ A/B ไม่ใช้เกณฑ์นี้ — ของจริงอยู่ที่ lots และร้านซื้อของอื่นปนได้ตามปกติ */
+   CSTOCK.slips[B1].g='B';
+   const rb=spBackDay(B1,window.__d0,codes,['CT11']);
+   CSTOCK.slips[B1].g='D';
+   SP.day=window.__d0;renderSpord();
+   const tx=document.getElementById('spBody').textContent.replace(/\s+/g,' ');
+   return {gin:Object.keys(r.gin).sort(),ginMix:Object.keys(r.ginMix).sort(),
+     mix:r.mix,mixList:r.mixList,unsure:r.unsure,nOrd:r.nOrd,pcs:pcs(r.pcs),
+     bOrd:rb.nOrd,bPcs:pcs(rb.pcs),bMix:rb.mix,bGin:Object.keys(rb.gin).sort(),
+     say:/ร้านซื้อของอื่นปนมาด้วย/.test(tx),sayG:/เลขของบิลขายปกติ/.test(tx),
+     shown:(tx.match(/เลข GIN ของวันที่/)||[]).length>0,
+     dist:typeof spGinIsDist==='function'?
+       [spGinIsDist('70',window.__ym,codes),spGinIsDist('61',window.__ym,codes),
+        spGinIsDist('62',window.__ym,codes),spGinIsDist('99',window.__ym,codes)]:null};
+ },{setup:PRE,pre:GPPRE});
+ t('🎯 เสนอแต่เลขของรอบตัวกระจาย — GIN 70 เท่านั้น ไม่เอา 61 / 62 / 99',
+   gpa.gin.join(',')==='70',gpa.gin.join(',')||'(ว่าง)');
+ t('🎯 เลขที่ในนั้นมีบิลขายปกติปนอยู่ ถูกตัดแล้ว "บอกบนจอ" ไม่ใช่หายเงียบ',
+   gpa.ginMix.join(',')==='62'&&gpa.sayG===true,
+   'ginMix='+gpa.ginMix.join(',')+' · บนจอ='+gpa.sayG);
+ t('🎯 ใบที่ร้านซื้อของอื่นปนมา ไม่นับ 4 ใบ (GIN 61 สามใบ + GIN 62 หนึ่งใบ) และบอกบนจอ',
+   gpa.mix===4&&gpa.say===true&&gpa.mixList.length===4,
+   'mix='+gpa.mix+' · บนจอ='+gpa.say);
+ t('🔑 เหลือ 5 ใบ 60 ชิ้น (5 ลัง) — เดิมนับ 9 ใบ 108 ชิ้น',
+   gpa.nOrd===5&&gpa.pcs===60,'ใบ='+gpa.nOrd+' ชิ้น='+gpa.pcs);
+ t('🛟 ใบที่ยังไม่รู้รายการสินค้า ยังอยู่กอง "ไม่แน่ใจ" ไม่ถูกตัดเป็นใบคละ (ไม่รู้ ≠ ไม่ใช่)',
+   gpa.unsure===1,'unsure='+gpa.unsure);
+ t('🛟 ใบ A/B ไม่ใช้เกณฑ์นี้ — ยังนับ 9 ใบ 108 ชิ้น ตามเดิม ไม่มีอะไรเปลี่ยน',
+   gpa.bOrd===9&&gpa.bPcs===108&&gpa.bMix===0&&gpa.bGin.join(',')==='61,62,70',
+   'ใบ='+gpa.bOrd+' ชิ้น='+gpa.bPcs+' mix='+gpa.bMix+' gin='+gpa.bGin.join(','));
+ t('🎯 spGinIsDist ตอบสามสถานะ — ใช่ / ไม่ใช่ / ยังไม่รู้ ไม่ยุบรวม',
+   gpa.dist&&gpa.dist[0]===true&&gpa.dist[1]===false&&gpa.dist[2]===false&&
+   gpa.dist[3]===null,JSON.stringify(gpa.dist));
+
+ const gpb=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   /* เลขที่คนบันทึกไว้แล้วห้ามแตะ — แม้จะเป็นใบคละก็ยังต้องนับ */
+   CSTOCK.rep[B1+'|'+window.__d0+'|CT11']={it:{},no:['BDD0161000001'],n:1,h:[],by:'manager',at:1};
+   const r=spBackDay(B1,window.__d0,{FO01:1,FO02:1},['CT11']);
+   return {mix:r.mix,nOrd:r.nOrd,
+     pcs:Object.keys(r.pcs).reduce((s,c)=>s+r.pcs[c],0)};
+ },{setup:PRE,pre:GPPRE});
+ t('🔑 เลขที่คนบันทึกไว้ในช่องแล้ว ไม่ถูกตัด — เกณฑ์นี้ตัดแค่สิ่งที่ระบบจะเสนอ',
+   gpb.mix===3&&gpb.nOrd===6&&gpb.pcs===72,
+   'mix='+gpb.mix+' ใบ='+gpb.nOrd+' ชิ้น='+gpb.pcs);
+
+ const gpc=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const before=JSON.stringify(CSTOCK),p0=window.__posts.length;
+   const dm=(+window.__d1.slice(8,10))+'/'+(+window.__d1.slice(5,7));
+   const txt=dm+' - 70, 70, 62\n'+dm+' - 777\nวันไหนก็ไม่รู้ - 9';
+   const R=spGinPasteRead(txt,window.__ym);
+   SP.gp={txt:txt,open:true};
+   renderSpord();
+   const box=document.getElementById('spGpOut');
+   const tx=box?box.textContent.replace(/\s+/g,' '):'';
+   /* ▸ ใส่ให้ในช่อง — ต้องไม่บันทึกอะไร */
+   spGinPasteFill(B1,window.__d0);
+   const el=document.getElementById('spGinIn');
+   const val=el?el.value:'';
+   const sales=(function(){__as('ct11','209611','สาย CT11');
+     const h=spGinPasteHtml(B1);__as('manager','','ผู้จัดการ');return h;})();
+   /* 🎨 ปุ่มพื้นทึบในโซนสีต้องเป็นตัวอักษรสีขาว — `.btn-mini` เคยทับ `.btn-go{color:#fff}`
+      ทำให้เป็นน้ำเงินบนม่วง อ่านไม่ออก (บทเรียนเดียวกับปุ่ม 💾 ของเซลล์ §24) */
+   const btn=[...document.querySelectorAll('#spBody .sp-gp .btn-go')].map(x=>{
+     const c=getComputedStyle(x);return {fg:c.color,bg:c.backgroundColor,
+       w:Math.round(x.getBoundingClientRect().width)};});
+   return {btn:btn,n:R.n,dup:R.dup,dupList:R.dupList,bad:R.bad.length,
+     items:R.items.map(x=>x.g+'@'+x.gin),
+     work:spGinWorkOf('70',window.__d1),work777:spGinWorkOf('777',window.__d1),
+     tx:tx,val:val,sales:sales,
+     ro:JSON.stringify(CSTOCK)===before,posts:window.__posts.length-p0,
+     d0:window.__d0,d1:window.__d1,
+     d0txt:fmtDate(window.__d0),d1txt:fmtDate(window.__d1)};
+ },{setup:PRE,pre:GPPRE});
+ t('📋 อ่านรูปแบบที่แอดมินเขียนมาได้ — "11/12 - 70, 70, 62" บรรทัดละวัน',
+   gpc.n===3&&gpc.items.join(',')===('70@'+gpc.d1+',62@'+gpc.d1+',777@'+gpc.d1),
+   gpc.items.join(' · '));
+ t('🔁 เลขซ้ำ (แอดมินพิมพ์ 188 สองครั้งในวันที่ 27) นับครั้งเดียวแล้วบอก',
+   gpc.dup===1&&gpc.dupList.join(',')==='70'&&/เลขซ้ำ/.test(gpc.tx),
+   'dup='+gpc.dup+' '+gpc.dupList.join(','));
+ t('⚠️ บรรทัดที่อ่านไม่ออก นับแล้วบอก ไม่ทิ้งเงียบ',
+   gpc.bad===1&&/อ่านไม่ออก/.test(gpc.tx),'bad='+gpc.bad);
+ t('🔑 วันที่เซลล์คีย์อ่านจากไฟล์ ไม่ใช่ลบหนึ่งวันเอง — เลข 70 ไปอยู่วันที่ของไฟล์',
+   gpc.work===gpc.d0,'work='+gpc.work+' ควรเป็น '+gpc.d0);
+ t('🔑 หน้าจอบอกทั้งสองวันที่ — งานของวันไหน และแอดมินออกเลขวันไหน',
+   gpc.tx.indexOf('งานของวันที่')>=0&&gpc.tx.indexOf('แอดมินออกเลขวันที่')>=0&&
+   /วันที่คลังออกเลข/.test(gpc.tx)&&/วันที่เซลล์คีย์/.test(gpc.tx)&&
+   gpc.tx.indexOf(gpc.d0txt)>=0&&gpc.tx.indexOf(gpc.d1txt)>=0,gpc.tx.slice(0,200));
+ t('🛟 เลขที่ไฟล์ยังไม่ครอบ บอกว่ายังหาไม่เจอ — ห้ามเดาวันให้',
+   gpc.work777===''&&/ยังหาไม่เจอในไฟล์/.test(gpc.tx)&&
+   /ยังไม่มีไฟล์ใบจัดของที่ครอบเลขพวกนี้/.test(gpc.tx),
+   'work777="'+gpc.work777+'"');
+ t('⚠️ เลขที่ไฟล์บอกว่ามีบิลขายปกติปนอยู่ (62) เตือนก่อนบันทึก',
+   /มีบิลขายปกติอยู่ด้วย/.test(gpc.tx)&&/62/.test(gpc.tx),gpc.tx.slice(-220));
+ t('▸ ใส่ให้ในช่องเท่านั้น — ช่องเลข GIN ได้ 70 และไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
+   /\b70\b/.test(gpc.val)&&!/\b777\b/.test(gpc.val)&&gpc.posts===0&&gpc.ro===true,
+   'ช่อง="'+gpc.val+'" posts='+gpc.posts+' same='+gpc.ro);
+ t('🔒 เซลล์ไม่เห็นช่องนี้เลย (เช็คในฟังก์ชัน ไม่ใช่ซ่อนปุ่ม)',
+   gpc.sales==='',gpc.sales.slice(0,80));
+ t('🎨 ปุ่ม ▸ ตัวอักษรสีขาวบนพื้นสีของขั้น ไม่ใช่สีเดียวกับพื้น',
+   gpc.btn.length>0&&gpc.btn.every(x=>x.fg!==x.bg&&/255, 255, 255/.test(x.fg)),
+   JSON.stringify(gpc.btn));
 
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));

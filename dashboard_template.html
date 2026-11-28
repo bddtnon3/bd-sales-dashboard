@@ -529,6 +529,16 @@ tbody tr.drill:hover{background:var(--blue-soft)!important;box-shadow:inset 3px 
 .sp-autol{margin:6px 0;font-size:12.5px;line-height:2}
 .sp-autol code{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1px 5px}
 .sp-auto .psub{line-height:1.6}
+/* 📋 ช่องวางเลข GIN หลายวัน — โทนเทา เพราะเป็น "กรอกเอง" ไม่ใช่โซนวิเคราะห์ */
+.sp-gp{border:1px solid var(--line);border-left:4px solid var(--z,#2E6BE6);
+  border-radius:10px;padding:9px 11px;background:var(--gr,#F6F7F9)}
+.sp-gp .psub{line-height:1.6}
+.sp-gpd{margin-top:8px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;
+  background:#fff}
+.sp-gpd.on{border-color:var(--z,#2E6BE6);box-shadow:inset 0 0 0 1px var(--z,#2E6BE6)}
+.sp-gpd-h{font-size:13.5px;font-weight:700;line-height:1.5}
+.sp-gpd-t{display:inline-block;font-size:11px;font-weight:700;padding:1px 6px;border-radius:999px;
+  background:var(--gr,#F6F7F9);border:1px solid var(--line);vertical-align:2px}
 /* 🎯 ใบนี้ไปถึงไหนแล้ว */
 .sp-bal{margin-bottom:12px}
 .sp-balh{font-size:15.5px;font-weight:800;line-height:1.5}
@@ -896,8 +906,15 @@ tr.sp-backl>td{background:#fff;font-size:13px}
 .sp-zone .sp-fin:not(:placeholder-shown){background:#fff;border-color:var(--z);color:var(--ink)}
 .sp-zone .sp-fin:focus{border-color:var(--z);background:#fff;box-shadow:0 0 0 3px var(--zg);outline:none}
 /* ปุ่มลงมือทำในโซน (ตรวจและบันทึก / บันทึก) ใช้สีของขั้น เช่นเดียวกับปุ่มบันทึกใหญ่ */
-.sp-zone .btn-go{background:var(--z);box-shadow:0 2px 7px var(--zg)}
-.sp-zone .btn-go:hover{background:var(--z);filter:brightness(.92)}
+/* ⚠️ `.btn-mini` ตั้ง `color:var(--blue)` ไว้และอยู่ทีหลังในไฟล์ จึงชนะ `.btn-go{color:#fff}`
+   ที่ความจำเพาะเท่ากัน (0,1,0 ทั้งคู่) — ปุ่มพื้นทึบสีของขั้นจึงได้ตัวอักษรสีน้ำเงินบนพื้นม่วง
+   อ่านไม่ออกเลย เป็นบทเรียนเดียวกับปุ่ม 💾 ของเซลล์ที่เคยเป็นน้ำเงินบนน้ำเงิน
+   ⇒ ปุ่ม "go" เป็นปุ่มพื้นทึบเสมอ ไม่ว่าจะพ่วงคลาสอะไรมา ต้องระบุ color เองทุกที่ */
+.btn-go.btn-mini{background:var(--blue);color:#fff;border:none}
+.btn-go.btn-mini:hover{background:var(--blue-dark);border:none}
+.sp-zone .btn-go,.sp-zone .btn-go.btn-mini{background:var(--z);color:#fff;border:none;
+  box-shadow:0 2px 7px var(--zg)}
+.sp-zone .btn-go:hover,.sp-zone .btn-go.btn-mini:hover{background:var(--z);filter:brightness(.92)}
 .sp-zone .upload-btn{color:var(--z);border-color:var(--z);background:var(--zs)}
 /* วันที่เลือกอยู่ในปฏิทินเป็นสีของขั้น — เป็นการนำทาง ไม่ใช่สถานะงาน
    ⚠️ จุดสีบอกสถานะ (.has/.chk/.jr/.jg …) ห้ามแตะ มันบอกคนละเรื่องกัน */
@@ -19972,6 +19989,80 @@ function spGinFirst(ym){
 /* วันที่คลังออกเลข GIN นี้ (เลขวันของเดือน) — 0 = ไม่รู้ */
 function spGinDay(g,ym){const m=spGinFirst(ym);return (m&&+m[String(g)])||0;}
 /* ============================================================================
+ * 🎯 "ใบนี้เป็นของรอบตัวกระจายจริงไหม" — ใบสะอาด และ GIN สะอาด
+ *
+ * เจ้าของส่งเลข GIN ที่ **แอดมินยืนยันเอง** มาให้รายวันทั้งเดือน (29 พ.ย. 69):
+ *   19/11 51,55 · 20/11 68-71 · 21/11 83-86 · 23/11 101-104 · 24/11 120-123 ·
+ *   25/11 135,140,141,143,148,151 · 26/11 161-164 · 27/11 185,187-190,192-194 ·
+ *   28/11 199,203-207,215,216
+ *   *"เลขนี้แอดมินยืนยันว่าเป็นออเดอร์ตัวกระจายนี้จริง ๆ ดังนั้นนอกเหนือจากเลขพวกนี้ถ้าระบบคุณ
+ *   เอามาคำนวณ จะถือว่าผิดหรือเกินแน่นอน แล้วใช้ข้อมูลนี้ปรับให้ระบบวิเคราะห์ pattern
+ *   การกระจายของเซลล์ด้วย"*
+ *
+ * 🔍 วัดกับไฟล์ใบจัดของจริงก่อนเขียนทุกบรรทัด (`Order_Allocation_ReportHistorical_3`,
+ *    13,005 แถว · 2,395 ใบ · 187 GIN · 15-26 พ.ย. 69 — 36 ใน 44 เลขที่เขาให้มาอยู่ในไฟล์นี้):
+ *
+ *   ⛔ เกณฑ์เดิม "ใบนี้มีรหัสของใบออเดอร์พิเศษอย่างน้อย 1 ตัว" ดึงมา **105 GIN จาก 187**
+ *      ⇒ **เกินของจริง 69 เลข** เพราะซิตร้า/ลักส์ เป็นสินค้าขายปกติ อยู่ในบิลทั่วไปทุกวันด้วย
+ *      (GIN ธรรมดามีสินค้า 27-159 รหัส ตรงกับใบนี้แค่ 8.6% เป็นค่ากลาง)
+ *
+ *   ✅ ที่แยกได้สะอาดคือ **"ใบนั้นมีแต่สินค้าของใบออเดอร์พิเศษ"** (ใบสะอาด):
+ *      • ใบใน GIN ที่แอดมินยืนยัน สะอาด **964/964 = 100.0%** ไม่มีข้อยกเว้นแม้ใบเดียว
+ *      • ใบใน GIN อื่นสะอาดแค่ **127/435 = 29.2%**
+ *      ⇒ เซลล์คีย์รอบตัวกระจาย "แยกใบ" เสมอ ไม่ปนกับของที่ร้านซื้อปกติ
+ *   ✅ และ **"GIN สะอาด"** (ทุกใบในเลขนั้นสะอาด): GIN ที่ยืนยัน สะอาด **36/36 = 100%**
+ *
+ *   รวมสองชั้น วัดบน 8 วันที่รอบตัวกระจายเดินจริง (18,19,20,21,23,24,25,26 พ.ย.):
+ *      เสนอ **71 → 48 (ใบสะอาด) → 38 เลข (GIN สะอาด)**
+ *      และ **เลขที่แอดมินยืนยันอยู่ครบ 36/36 ไม่ตกหายแม้เลขเดียว**
+ *      เหลือเกินแค่ **2 เลข** (124 สาย 14 · 133 สาย 11 — ทั้งคู่มีใบเดียว) ⇒ เลขผิด 33 → 2
+ *      ผลต่อจำนวน: ตัดใบที่ไม่ใช่รอบนี้ออก 217 ใบ = 1,172 ชิ้น = **20.5% ของยอดที่เคยนับ**
+ *
+ * ⚠️ กฎที่ต้องรักษา
+ *   • ตัดอะไรออกต้อง **นับแล้วบอกบนจอ** ไม่ใช่หายเงียบ (กฎเดียวกับ pre/noTm/cx/unsure)
+ *   • ใบที่ยังไม่รู้รายการสินค้า = **ไม่รู้ ไม่ใช่ "ไม่ใช่"** → เข้ากอง "ไม่แน่ใจ" ตามเดิม
+ *   • เลขที่คนบันทึกไว้ในช่องแล้ว **ไม่แตะ** — เกณฑ์นี้ตัดแค่ "สิ่งที่ระบบจะเสนอ"
+ *   • ใช้กับใบ **🎯 ตัวกระจาย เท่านั้น** — ใบ A/B ร้านซื้อของอื่นปนได้ตามปกติ และความจริง
+ *     ของใบ A/B อยู่ที่ lots ไม่ใช่ไฟล์ใบจัดของ
+ *   • 2 เลขที่เหลือแยกไม่ได้ คือเหตุผลว่าทำไม **รายการที่แอดมินบันทึกเองคือคำตอบสุดท้าย**
+ *     — วันที่แอดมินตรวจแล้ว ระบบไม่เสนอทับอยู่แล้ว (o.chk)
+ * ==========================================================================*/
+/* ใบนี้มี "แต่" สินค้าของใบออเดอร์พิเศษไหม — true / false / null (ยังไม่รู้รายการสินค้า) */
+function spMissPure(full,ym,codes){
+  const d=spBackDet(full,ym);
+  if(!d)return null;
+  const ks=Object.keys(d);
+  if(!ks.length)return null;
+  for(let i=0;i<ks.length;i++)if(!codes[ks[i]])return false;
+  return true;
+}
+/* GIN ไหนสะอาด — นับใบสะอาด/ใบคละ/ใบที่ยังไม่รู้ ต่อหนึ่งเลข (จำผลไว้เหมือน spGinFirst) */
+let _spGP={};
+function spGinPure(ym,codes){
+  const O=spOtOrd(ym);
+  if(!O)return null;
+  const ck=Object.keys(codes||{}).sort().join(",");
+  if(_spGP.ym===ym&&_spGP.o===O&&_spGP.ck===ck)return _spGP.m;
+  const m={};
+  Object.keys(O).forEach(k=>{
+    const r=O[k];if(!r||!r.g)return;
+    const g=String(r.g),s=m[g]||(m[g]={pure:0,mix:0,unk:0});
+    const v=spMissPure(k,ym,codes);
+    if(v===true)s.pure++;else if(v===false)s.mix++;else s.unk++;
+  });
+  _spGP={ym:ym,o:O,ck:ck,m:m};
+  return m;
+}
+/* เลขนี้เป็นของรอบตัวกระจายไหม — true=ใช่ · false=เลขของบิลทั่วไป · null=ยังไม่รู้ */
+function spGinIsDist(g,ym,codes){
+  const m=spGinPure(ym,codes);
+  if(!m)return null;
+  const s=m[String(g)];
+  if(!s)return null;
+  if(s.mix>0)return false;
+  return s.pure>0?true:null;
+}
+/* ============================================================================
  * ⏰ ใบที่เซลล์คีย์ "ก่อน" ที่แอดมินจะสร้างออเดอร์พิเศษใบนี้ ไม่ใช่ของใบนี้
  *
  * เจ้าของ 29 พ.ย. 69: *"พอเลือกออเดอร์วันที่ 27 แต่แอดมินเพิ่งสร้างไปเย็นวันนี้ ตัวระบบกลับไป
@@ -20037,6 +20128,8 @@ function spBackDay(sid,ymd,codes,lines,made){
     pre:0,preList:[],noTm:0,noTmList:[],
     made:MD?MD.ymd:"",madeHm:MD?MD.hm:"",cut:cut,
     pcs:{},gpcs:{},unkPs:[],nGin:0,myDay:myDay,
+    /* 🎯 ใบ/เลขที่ตัดออกเพราะเป็นบิลขายปกติ ไม่ใช่รอบตัวกระจาย (ดูบันทึกเหนือ spMissPure) */
+    dist:spGrpOf(spSlip(sid))==="D",mix:0,mixList:[],ginMix:{},
     chk:spDayHas(spGinRec(sid,ymd)),noDet:!spBackHasDet(ym),noFile:false};
   (lines||[]).forEach(ln=>{
     const lc=spLineCode(ln);if(!lc)return;
@@ -20045,7 +20138,7 @@ function spBackDay(sid,ymd,codes,lines,made){
     if(!keys.length)return;
     const H=spMissHave(spRepRec(sid,ymd,ln),ln,ym);
     const L={ln:ln,n:0,add:[],maybe:[],cx:[],sh:{},gin:{},t0:"",t1:"",got:0,
-      pre:[],noTm:[],pcs:{},gpcs:{},nGin:0,no:[]};
+      pre:[],noTm:[],mix:[],pcs:{},gpcs:{},nGin:0,no:[]};
     keys.slice(0,BACK_ORD).forEach(full=>{
       const e=P[full],inS=o.noDet?null:spMissInSlip(full,ym,codes);
       if(inS===false)return;                       /* ใบนี้ไม่มีสินค้าของใบออเดอร์นี้ */
@@ -20059,6 +20152,12 @@ function spBackDay(sid,ymd,codes,lines,made){
         if(cut===2||(t0&&t0<MD.hm)){o.pre++;L.pre.push(ask);return;}
         if(!t0){o.noTm++;L.noTm.push(ask);return;}
       }
+      /* 🎯 ใบคละสินค้า = บิลขายปกติของวันนั้น ไม่ใช่รอบตัวกระจาย — นับแล้วบอก ห้ามเงียบ
+         วัดกับไฟล์จริง: ใบในรอบตัวกระจายสะอาด 964/964 ส่วนใบใน GIN อื่นสะอาดแค่ 29.2%
+         ⚠️ เลขที่คนบันทึกไว้แล้ว (got) ไม่แตะ — เกณฑ์นี้ตัดแค่สิ่งที่ระบบจะเสนอ
+         ⚠️ ใช้กับใบตัวกระจายเท่านั้น (o.dist) ดูเหตุผลเหนือ spMissPure */
+      if(o.dist&&!got&&inS===true&&spMissPure(full,ym,codes)===false){
+        o.mix++;if(L.mix.length<BACK_NOTE)L.mix.push(ask);return;}
       if(e.cx){if(!got){L.cx.push(ask);o.cx++;}return;}
       /* ⚠️ ใบที่ยังไม่รู้รายการสินค้า **ห้ามนับเป็นใบของรอบนี้** — ยังไม่รู้ว่าเกี่ยวหรือไม่
          เลขที่โชว์ (ใบ/ร้าน/GIN/เวลา) จึงนับจากใบที่ det ยืนยันแล้วเท่านั้น ส่วนที่ยังไม่รู้
@@ -20074,8 +20173,11 @@ function spBackDay(sid,ymd,codes,lines,made){
         /* ⚠️ วันของ GIN = วันของใบที่ใหม่ที่สุดในเลขนั้น ⇒ เลขที่เกาะใบของวันนี้
            จะ "เก่ากว่าวันนี้" ไม่ได้เลย มีแค่สองทาง: วันนี้ (เสนอ) หรือวันหลัง (บอก) */
         if(ot.g){const gs=String(ot.g),gd=spGinDay(gs,ym);
-          if(!gd||!o.myDay||gd<=o.myDay){L.gin[gs]=1;o.gin[gs]=1;}
-          else{o.ginLate[gs]=gd;o.nLate++;}}
+          if(gd&&o.myDay&&gd>o.myDay){o.ginLate[gs]=gd;o.nLate++;}
+          /* 🎯 GIN ที่มีใบคละสินค้าอยู่ด้วย = เลขของบิลทั่วไป ไม่ใช่รอบนี้
+             (วัดแล้ว: เลขที่แอดมินยืนยัน สะอาด 36/36 — ตัดเลขผิดจาก 33 เหลือ 2) */
+          else if(o.dist&&spGinIsDist(gs,ym,codes)===false)o.ginMix[gs]=1;
+          else{L.gin[gs]=1;o.gin[gs]=1;}}
         const tm=String(ot.tm||"");
         if(tm){if(!L.t0||tm<L.t0)L.t0=tm;if(!L.t1||tm>L.t1)L.t1=tm;}
       }
@@ -20098,12 +20200,13 @@ function spBackDay(sid,ymd,codes,lines,made){
       if(got)return;
       L.add.push(ask);o.nNew++;
     });
-    if(L.n||L.cx.length||L.pre.length||L.noTm.length){
+    if(L.n||L.cx.length||L.pre.length||L.noTm.length||L.mix.length){
       L.shops=Object.keys(L.sh).length;
       L.run=spBackRuns(Object.keys(L.gin));
       o.rows.push(L);o.nOrd+=L.n;o.shops+=L.shops;
       L.pre.forEach(x=>{if(o.preList.length<BACK_NOTE)o.preList.push(x);});
       L.noTm.forEach(x=>{if(o.noTmList.length<BACK_NOTE)o.noTmList.push(x);});
+      L.mix.forEach(x=>{if(o.mixList.length<BACK_NOTE)o.mixList.push(x);});
     }
   });
   o.noFile=!o.pool;
@@ -20133,6 +20236,7 @@ function spBackScan(sid,all){
   const S={rows:out,days:days.length,lines:lines.length,mine:mine,
     nOrd:0,nNew:0,cx:0,unsure:0,nofile:0,chk:0,gin:0,noDet:0,shops:0,
     pre:0,preList:[],noTm:0,noTmList:[],made:MD?MD.ymd:"",madeHm:MD?MD.hm:"",
+    mix:0,mixList:[],ginMix:{},
     pcs:{},gpcs:{},unkPs:[],nGin:0,byLn:{},srcChk:0,srcGin:0,
     d0:days[0]||"",d1:days[days.length-1]||"",codes:Object.keys(codes).length};
   days.forEach(d=>{
@@ -20140,10 +20244,12 @@ function spBackScan(sid,all){
     const r=spBackDay(sid,d,codes,lines,MD);
     if(r.noFile){S.nofile++;return;}
     if(r.noDet)S.noDet++;
-    S.pre+=r.pre;S.noTm+=r.noTm;
+    S.pre+=r.pre;S.noTm+=r.noTm;S.mix+=r.mix;
     r.preList.forEach(x=>{if(S.preList.length<BACK_NOTE)S.preList.push(x);});
     r.noTmList.forEach(x=>{if(S.noTmList.length<BACK_NOTE)S.noTmList.push(x);});
-    if(!r.nOrd&&!r.cx&&!r.pre&&!r.noTm)return;
+    r.mixList.forEach(x=>{if(S.mixList.length<BACK_NOTE)S.mixList.push(x);});
+    Object.keys(r.ginMix).forEach(g=>{S.ginMix[g]=1;});
+    if(!r.nOrd&&!r.cx&&!r.pre&&!r.noTm&&!r.mix)return;
     S.nOrd+=r.nOrd;S.nNew+=r.nNew;S.cx+=r.cx;S.unsure+=r.unsure;
     S.gin+=r.run.n;S.shops+=r.shops;S.nGin+=r.nGin;
     if(r.src==="chk")S.srcChk++;else S.srcGin++;
@@ -20967,14 +21073,21 @@ function spAutoGinHtml(sid,ymd){
     r.pre?(" <b>"+r.pre+"</b> ใบที่เซลล์คีย์ก่อนที่ใบนี้จะถูกสร้าง ("+anaEsc(r.madeHm)+")"):""}${
     (r.pre&&r.noTm)?" ·":""}${r.noTm?(" <b>"+r.noTm+"</b> ใบที่ไฟล์ไม่บอกเวลาคีย์"):""} —
     เลข GIN ของใบพวกนั้นจึงไม่ถูกเสนอ · ถ้าต้องการจริง พิมพ์เองได้</div>`:"";
+  /* 🎯 ใบ/เลขที่ตัดเพราะเป็นบิลขายปกติ — นับแล้วบอก (ดูบันทึกเหนือ spMissPure) */
+  const gm=Object.keys(r.ginMix||{});
+  const mixTxt=(r.mix||gm.length)?`<div class="psub" style="margin-top:4px">🎯 ไม่นับ${
+    r.mix?(" <b>"+r.mix+"</b> ใบที่ร้านซื้อของอื่นปนมาด้วย"):""}${
+    (r.mix&&gm.length)?" ·":""}${gm.length?(" เลข <b>"+gm.map(anaEsc).join(" · ")+
+      "</b> ที่เป็นเลขของบิลขายปกติ"):""} — รอบตัวกระจายเซลล์จะคีย์แยกใบเสมอ ·
+    ถ้าต้องการจริง พิมพ์เองได้</div>`:"";
   if(r.noDet)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบกำลังอ่านไฟล์ของเดือนนี้ …</div></div>`;
   if(!g.length)return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์แล้ว</div>
     <div class="psub">${r.noFile?"ยังไม่มีไฟล์ของวันนี้":"ยังไม่มีใบไหนของวันนี้ที่คลังออกเลข GIN ให้"} ·
-    กรอกเองได้เลย</div>${oldTxt}${preTxt}</div>`;
+    กรอกเองได้เลย</div>${oldTxt}${preTxt}${mixTxt}</div>`;
   return `<div class="sp-auto"><div class="sp-autot">🔎 ระบบอ่านจากไฟล์ให้แล้ว —
       เลข GIN ของวันที่ ${fmtDate(ymd)}</div>
     <div class="sp-autol">${g.map(x=>`<code>${anaEsc(x)}</code>`).join(" ")}</div>
-    <div class="psub">เรียงติดกัน: ${anaEsc(spBackRunTxt(r.run))} · จาก ${r.nGin} ใบใน ${r.nOrd} ใบที่เซลล์คีย์</div>${oldTxt}${preTxt}
+    <div class="psub">เรียงติดกัน: ${anaEsc(spBackRunTxt(r.run))} · จาก ${r.nGin} ใบใน ${r.nOrd} ใบที่เซลล์คีย์</div>${oldTxt}${preTxt}${mixTxt}
     <button type="button" class="btn-go btn-mini"
       onclick="spAutoGinFill('${anaEsc(sid)}','${anaEsc(ymd)}')">▸ ใส่ลงในช่องให้เลย</button>
     <span class="psub"> (ใส่ให้ในช่องเท่านั้น กด 🔎 ตรวจและบันทึก เองเหมือนเดิม)</span></div>`;
@@ -20992,6 +21105,198 @@ function spAutoGinFill(sid,ymd){
   g.forEach(x=>{if(seen[x])return;seen[x]=1;cur.push(x);add++;});
   el.value=cur.join(", ");
   toast(add?("ใส่ให้ "+add+" เลข · กดตรวจและบันทึก"):"เลขพวกนี้อยู่ในช่องแล้ว");
+}
+/* ============================================================================
+ * 📋 วางเลข GIN ทั้งเดือนทีเดียว — รายการที่ "แอดมินยืนยันเอง"
+ *
+ * แอดมินยืนยันเลข GIN ของรอบตัวกระจายมาเป็นข้อความรายวัน (เจ้าของส่งต่อ 29 พ.ย. 69):
+ *     19/11 - 51,55        20/11 - 68,69,70,71      21/11 - 83,84,85,86
+ *     23/11 - 101..104     24/11 - 120..123         25/11 - 135,140,143,141,148,151
+ *     26/11 - 161..164     27/11 - 185,187..194     28/11 - 199,203..207,215,216
+ * เดิมต้องเปิดวันละครั้งแล้วพิมพ์เอง 9 วัน — ช่องนี้รับข้อความก้อนนั้นทั้งก้อน
+ * และ **รายการที่แอดมินบันทึกไว้คือคำตอบสุดท้าย** วันที่เขาตรวจแล้ว ระบบไม่เสนอทับ (o.chk)
+ *
+ * 🔑 สองวันที่ ห้ามสลับกัน — วัดกับไฟล์จริงแล้ว **36/36 เลข ไม่มีข้อยกเว้น**
+ *   • วันที่แอดมินเขียนไว้ = **วันที่คลังออกเลข GIN**
+ *   • วันที่ระบบเก็บงาน    = **วันที่เซลล์คีย์** (ขั้น ① ซุปจด ② เซลล์คีย์ ③ แอดมินตรวจ
+ *     เป็นวันเดียวกันตามจังหวะงานที่เจ้าของวางไว้)
+ *   ทั้งสองห่างกัน **1 วันทำการ เป๊ะ ๆ ทั้ง 36 เลข** — 32 เลขเป็น +1 วัน และ 4 เลขที่ดูเหมือน
+ *   +2 วันคือ 101-104 ซึ่งเซลล์คีย์วันเสาร์ 21 พ.ย. แล้ว 22 พ.ย. เป็นวันอาทิตย์ (ตรงกับที่
+ *   วัดไว้เดิมว่า 79.9% ออก GIN วันเดียวกับที่คีย์ · 20.1% ออกวันหลัง · เสาร์ส่วนใหญ่ +2 วัน)
+ *   ⇒ ที่เจ้าของทักว่า *"ลองเช็ควันที่ดู ดูเหมือนมันจะ +1 วันไป"* **ไม่ใช่บั๊ก** — เป็นวันที่
+ *     คนละคำถามกัน ที่ขาดไปคือป้ายบอกว่าตัวไหนเป็นตัวไหน ซึ่งช่องนี้บอกให้ทั้งสองตัว
+ *   ⚠️ **ห้ามลบ 1 วันเอง** — อ่าน "วันของเลขนั้น" จากไฟล์ใบจัดของตรง ๆ (spGinWorkOf) เพราะ
+ *     วันหยุดทำให้ส่วนต่างไม่คงที่ · เลขที่ไฟล์ยังไม่ครอบ = **บอกว่ายังไม่มีไฟล์ ไม่ใช่เดาวันให้**
+ *
+ * ⚠️ ระบบอ่าน คนกดบันทึก — ปุ่ม ▸ ใส่ให้ในช่องเท่านั้น ไม่เคยบันทึกเอง (กฎเดียวกับ 📷 OCR)
+ * ⚠️ อ่านอย่างเดียวทั้งหมด: วางแล้วพรีวิว ไม่แตะ CSTOCK และไม่ยิงอะไรขึ้นเซิร์ฟเวอร์
+ * ==========================================================================*/
+const GP_MAX=400;              /* เพดานเลขที่อ่านจากที่วางมาหนึ่งครั้ง */
+/* เดือนก่อนหน้า — เลขคณิตล้วน ไม่สร้าง Date (กฎห้าม toISOString) */
+function spGpPrevYm(ym){
+  const y=+String(ym||"").slice(0,4),m=+String(ym||"").slice(5,7);
+  if(!y||!m)return "";
+  return (m>1)?(y+"-"+("0"+(m-1)).slice(-2)):((y-1)+"-12");
+}
+/* ปีของ "19/11" ที่ไม่ได้เขียนปีมา — เอาปีของเดือนที่กำลังดู แล้วเลือกปีที่ใกล้ที่สุด */
+function spGpYear(mo,ym){
+  const s=String(ym||todayISO());
+  const y=+s.slice(0,4)||0,m0=+s.slice(5,7)||1;
+  if(!y)return 0;
+  const diff=mo-m0;
+  if(diff>6)return y-1;         /* ดูเดือน ม.ค. แล้วพิมพ์ 28/12 = ปีก่อน */
+  if(diff<-6)return y+1;
+  return y;
+}
+/* อ่านข้อความที่วาง → เลข GIN พร้อม "วันที่แอดมินบอกว่าออกเลขนี้" (อ่านอย่างเดียว) */
+function spGinPasteRead(txt,ym){
+  const out={items:[],bad:[],dup:0,dupList:[],n:0,over:false};
+  const seen={};
+  String(txt||"").split(/\r?\n/).forEach(raw=>{
+    const s=String(raw||"").trim();
+    if(!s)return;
+    let y=0,mo=0,d=0,rest="";
+    let m=s.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})\s*[-:–—]*\s*([\s\S]*)$/);
+    if(m){y=+m[1];mo=+m[2];d=+m[3];rest=m[4];}
+    else{
+      m=s.match(/^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?\s*[-:–—]*\s*([\s\S]*)$/);
+      if(!m){if(out.bad.length<BACK_NOTE)out.bad.push(s.slice(0,40));return;}
+      d=+m[1];mo=+m[2];rest=m[4];
+      const yy=m[3]?+m[3]:0;
+      /* ปี 2 หลัก · ปี พ.ศ. (>2400) · ปี ค.ศ. — หรือเอาจากเดือนที่กำลังดู */
+      y=yy?(yy<100?2000+yy:(yy>2400?yy-543:yy)):spGpYear(mo,ym);
+    }
+    if(!(mo>=1&&mo<=12)||!(d>=1&&d<=31)||!y){
+      if(out.bad.length<BACK_NOTE)out.bad.push(s.slice(0,40));return;}
+    const gs=String(rest).match(/\d+/g)||[];
+    if(!gs.length){if(out.bad.length<BACK_NOTE)out.bad.push(s.slice(0,40));return;}
+    const ymd=y+"-"+("0"+mo).slice(-2)+"-"+("0"+d).slice(-2);
+    gs.forEach(g=>{
+      if(out.n>=GP_MAX){out.over=true;return;}
+      const k=String(+g);
+      /* 🔁 แอดมินพิมพ์ 188 ซ้ำสองครั้งในวันที่ 27 — นับครั้งเดียวแล้วบอก */
+      if(seen[k]){out.dup++;if(out.dupList.indexOf(k)<0)out.dupList.push(k);return;}
+      seen[k]=1;out.n++;
+      out.items.push({g:k,gin:ymd});
+    });
+  });
+  return out;
+}
+/* วันที่เซลล์คีย์ของเลขนี้ — **อ่านจากไฟล์ใบจัดของ** ไม่ใช่ลบหนึ่งวันเอง · "" = ไฟล์ยังไม่มี */
+function spGinWorkOf(g,ginYmd){
+  const ym=String(ginYmd||"").slice(0,7);
+  let dd=spGinDay(g,ym);
+  if(dd)return ym+"-"+("0"+dd).slice(-2);
+  /* เลขที่ออกวันที่ 1 มักเป็นงานของวันสุดท้ายเดือนก่อน */
+  const pm=spGpPrevYm(ym);
+  dd=pm?spGinDay(g,pm):0;
+  return dd?(pm+"-"+("0"+dd).slice(-2)):"";
+}
+function spGinPasteOpen(on){
+  SP.gp=SP.gp||{txt:"",open:false};
+  SP.gp.open=!!on;
+  renderSpord();
+}
+/* พิมพ์/วางแล้ววาดพรีวิวเฉพาะกล่องของตัวเอง — ห้ามวาดหน้าใหม่ ไม่งั้น caret กระเด็น */
+function spGpLive(sid){
+  const el=document.getElementById("spGpTa");
+  if(!el)return;
+  SP.gp=SP.gp||{};SP.gp.txt=el.value;SP.gp.open=true;
+  const box=document.getElementById("spGpOut");
+  if(box)box.innerHTML=spGinPasteOut(sid);
+}
+function spGinPasteOut(sid){
+  const G=SP.gp||{},ym0=String(spDay(sid)||"").slice(0,7);
+  const R=spGinPasteRead(G.txt,ym0);
+  const notes=[];
+  if(R.dup)notes.push(`<div class="psub" style="margin-top:6px">🔁 เลขซ้ำ <b>${R.dup}</b> เลข
+    (${R.dupList.map(anaEsc).join(" · ")}) — เป็นเลขเดียวกัน นับครั้งเดียว</div>`);
+  if(R.bad.length)notes.push(`<div class="psub" style="margin-top:6px">⚠️ อ่านไม่ออก
+    <b>${R.bad.length}</b> บรรทัด: ${R.bad.map(x=>"<code>"+anaEsc(x)+"</code>").join(" · ")}
+    — เขียนแบบ <code>19/11 - 51,55</code></div>`);
+  if(R.over)notes.push(`<div class="psub" style="margin-top:6px">⚠️ อ่านให้แค่
+    ${GP_MAX} เลขแรก</div>`);
+  if(!R.items.length)
+    return (notes.join("")||`<div class="psub" style="margin-top:8px">ยังไม่ได้วางอะไร</div>`);
+  /* ไฟล์ของเดือนที่เกี่ยวข้อง — ขอครั้งเดียวต่อเดือนต่อแท็บ แล้ววาดใหม่เมื่อได้ของ */
+  const mons={};
+  R.items.forEach(x=>{const m=x.gin.slice(0,7);mons[m]=1;mons[spGpPrevYm(m)]=1;});
+  Object.keys(mons).forEach(m=>{if(m)spOtWant(m,1);});
+  const codes={};spSlipCodes(sid).forEach(c=>{codes[c.code]=1;});
+  const by={},un=[];
+  R.items.forEach(x=>{
+    const w=spGinWorkOf(x.g,x.gin);
+    if(!w){un.push(x);return;}
+    const b=by[w]||(by[w]={ymd:w,gs:[],gin:{},mix:[]});
+    b.gs.push(x.g);b.gin[x.gin]=1;
+    /* ไม่ใช่เลขของรอบตัวกระจายตามไฟล์ — ของจริงไม่เคยเกิด (วัด 36/36) แต่ถ้าเกิดต้องบอก */
+    if(spGinIsDist(x.g,x.gin.slice(0,7),codes)===false)b.mix.push(x.g);
+  });
+  const ds=Object.keys(by).sort(),now=spDay(sid);
+  /* ⚠️ บอกแค่ "ตัวเลขนี้นับอะไร" ซึ่งคนใช้ต้องรู้เพื่อทำงาน — ไม่เล่าว่าระบบทำงานยังไง
+     และกระชับให้จบในบรรทัดเดียว (เจ้าของสั่งเรื่องความยาวมาแล้วรอบหนึ่ง) */
+  const h=[`<div class="psub" style="margin-top:8px">อ่านได้ <b>${R.n}</b> เลข ·
+    วันที่ที่เขียนมาคือ <b>วันที่คลังออกเลข</b> ส่วนงานเก็บตาม <b>วันที่เซลล์คีย์</b> —
+    จับคู่ให้แล้ว</div>`];
+  ds.forEach(w=>{
+    const b=by[w],gin=Object.keys(b.gin).sort();
+    const done=spDayHas(spGinRec(sid,w));
+    h.push(`<div class="sp-gpd${w===now?" on":""}">
+      <div class="sp-gpd-h">📝 งานของวันที่ <b>${anaEsc(spDayFull(w))}</b>${
+        w===now?' <span class="sp-gpd-t">วันที่เปิดอยู่</span>':""}${
+        done?' <span class="sp-gpd-t">แอดมินตรวจแล้ว</span>':""}</div>
+      <div class="psub">🧾 แอดมินออกเลขวันที่ ${gin.map(x=>anaEsc(fmtDate(x))).join(" · ")}</div>
+      <div class="sp-autol">${b.gs.map(x=>`<code>${anaEsc(x)}</code>`).join(" ")}</div>${
+      b.mix.length?`<div class="psub">⚠️ ไฟล์บอกว่าเลข ${b.mix.map(anaEsc).join(" · ")}
+        มีบิลขายปกติอยู่ด้วย — ตรวจอีกครั้งก่อนบันทึก</div>`:""}
+      <button type="button" class="btn-go btn-mini"
+        onclick="spGinPasteFill('${anaEsc(sid)}','${w}')">▸ ใส่ลงในช่องของวันนี้</button></div>`);
+  });
+  if(un.length){
+    const g={};un.forEach(x=>{(g[x.gin]||(g[x.gin]=[])).push(x.g);});
+    h.push(`<div class="psub" style="margin-top:8px">⏳ ยังหาไม่เจอในไฟล์ <b>${un.length}</b> เลข —
+      ${Object.keys(g).sort().map(k=>anaEsc(fmtDate(k))+": "+g[k].map(anaEsc).join(",")).join(" · ")}
+      <br>ยังไม่มีไฟล์ใบจัดของที่ครอบเลขพวกนี้ — อัพไฟล์ก่อน หรือเลือกวันเองแล้วพิมพ์ลงช่องได้</div>`);
+  }
+  return h.join("")+notes.join("");
+}
+function spGinPasteHtml(sid){
+  if(!spAdmOk())return "";                 /* เช็คในฟังก์ชัน ไม่พึ่งการซ่อนปุ่ม */
+  const G=SP.gp||(SP.gp={txt:"",open:false});
+  if(!G.open)return `<div class="sp-man" style="margin-top:8px">
+    <button type="button" class="btn-ghost btn-mini" onclick="spGinPasteOpen(1)">
+      📋 วางเลข GIN หลายวันทีเดียว</button>
+    <span class="psub"> รายการที่แอดมินยืนยันมาทั้งเดือน วางได้ในครั้งเดียว</span></div>`;
+  return `<div class="sp-man sp-gp" style="margin-top:8px">
+    <div class="sp-autot">📋 วางรายการเลข GIN ที่แอดมินยืนยัน — ได้ทั้งเดือนในครั้งเดียว</div>
+    <div class="psub">วางตามที่เขาเขียนมาได้เลย บรรทัดละวัน เช่น <code>19/11 - 51,55</code></div>
+    <textarea id="spGpTa" rows="5" class="sp-fin" spellcheck="false"
+      placeholder="19/11 - 51,55&#10;20/11 - 68,69,70,71&#10;21/11 - 83,84,85,86"
+      style="width:100%;margin-top:8px;font-family:ui-monospace,monospace"
+      oninput="spGpLive('${anaEsc(sid)}')">${anaEsc(G.txt||"")}</textarea>
+    <div id="spGpOut">${spGinPasteOut(sid)}</div>
+    <div style="margin-top:8px"><button type="button" class="btn-ghost btn-mini"
+      onclick="spGinPasteOpen(0)">ปิดช่องนี้</button></div></div>`;
+}
+/* ▸ ใส่ให้ในช่องเท่านั้น — ไม่บันทึก คนกด 🔎 ตรวจและบันทึก เองเหมือนเดิม */
+function spGinPasteFill(sid,ymd){
+  const ym0=String(spDay(sid)||"").slice(0,7);
+  const R=spGinPasteRead((SP.gp||{}).txt,ym0);
+  const gs=[];
+  R.items.forEach(x=>{
+    if(spGinWorkOf(x.g,x.gin)!==ymd)return;
+    if(gs.indexOf(x.g)<0)gs.push(x.g);
+  });
+  if(!gs.length){alert("ไม่มีเลขของวันที่ "+fmtDate(ymd)+" ในรายการที่วางไว้");return;}
+  if(spDay(sid)!==ymd)spSetDay(ymd);        /* ย้ายไปวันนั้นก่อน หน้าจะวาดใหม่ทั้งกล่อง */
+  const el=document.getElementById("spGinIn");
+  if(!el){alert("เปิดวันที่ "+fmtDate(ymd)+" แล้วกดอีกครั้ง");return;}
+  const cur=String(el.value||"").split(/[,\s]+/).map(x=>x.trim()).filter(Boolean);
+  const seen={};cur.forEach(x=>{seen[x]=1;});
+  let add=0;
+  gs.forEach(x=>{if(seen[x])return;seen[x]=1;cur.push(x);add++;});
+  el.value=cur.join(", ");
+  toast(add?("ใส่ให้ "+add+" เลข · กด 🔎 ตรวจและบันทึก"):"เลขพวกนี้อยู่ในช่องแล้ว");
 }
 /* ---------- ตารางติดตาม: สายไหนคีย์ครบเป้าแล้วบ้าง ---------- */
 const SP_TRK={ok:['<span class="sp-ok">✓ ครบเป้า</span>',"var(--good)"],
@@ -21347,6 +21652,7 @@ function spAdmHtml(sid){
         <button class="btn-go"
           onclick="spGinGo('${anaEsc(sid)}','${ymd}')">🔎 ตรวจและบันทึก</button></div>
       ${spAutoGinHtml(sid,ymd)}
+      ${spGinPasteHtml(sid)}
       ${haveFile?`<div class="psub" style="margin-top:6px">เลข GIN ที่มีในไฟล์: ${
         ALLOC.gins.slice(0,40).map(x=>`<code>${anaEsc(x)}</code>`).join(" ")}${
         ALLOC.gins.length>40?" …":""}</div>`:""}`;
