@@ -4789,6 +4789,96 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🛟 ปฏิทินอ่านอย่างเดียว — CSTOCK เท่าเดิมทุกไบต์ ไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
    rcal.ro===true&&rcal.posts===0,'same='+rcal.ro+' posts='+rcal.posts);
 
+ /* ================================================================
+  * 26) 🔁 อัพรูปชุดเดิมซ้ำ = ไม่มีเลขซ้ำ · 📅 วันที่ของงานต้องอ่านออกในการ์ดคีย์
+  *   เจ้าของสั่ง 28 พ.ย. 69 ก่อนให้เซลล์ทุกสายอัพรูปของวันที่ 27 ใหม่:
+  *     *"ผมจะให้เซลล์แนบรูปออเดอร์เมื่อวานใหม่ ให้ทำระบบให้พร้อมกับการอ่านข้อมูลนะ
+  *       อย่าอ่านให้เลขซ้ำกัน และปรับให้เซลล์มองเห็นง่าย ๆ ว่าเค้าอยู่หน้าของวันที่เท่าไหร่ …
+  *       ช่วยแสดงให้ชัด เซลล์จะได้อัพไม่ผิดวัน"*
+  *   เดินเคสจริง: บันทึกไว้แล้ว 20 เลข → อัพรูปชุดเดิมทั้ง 20 ใบซ้ำ → ต้องไม่เพิ่มสักเลข
+  *   และทุกจุดที่พูดถึงเลขออเดอร์ต้องมีวันที่กำกับ ห้ามมีคำว่า "วันนี้" ลอย ๆ
+  * ================================================================ */
+ const DUP=`
+   __as('sales','209611','CT11');
+   clearTimeout(SP.nodt);SP.nodt=0;
+   window.__back=spBackStep(todayISO(),-1);          /* "เมื่อวาน" — วันที่เจ้าของจะให้อัพซ้ำ */
+   CSTOCK.slips[B1].at=1;
+   SP.sid=B1;SP.view='slip';SP.sec='rep';SP.day=window.__back;
+   SP.ym=window.__back.slice(0,7);SP.cm=window.__back.slice(0,7);SP.ocr=0;
+   CSTOCK.rep={};CSTOCK.key={};
+   /* 20 เลขที่เซลล์บันทึกไว้แล้วเมื่อวาน (เลขสมมติ — รีโปเป็นสาธารณะ) */
+   window.__nos=[];for(let i=1;i<=20;i++)window.__nos.push('10347'+String(70000+i));
+   CSTOCK.rep[B1+'|'+window.__back+'|CT11']={it:{},no:window.__nos.slice(),
+     n:1,h:[],by:'209611',byName:'CT11',at:2};
+   try{for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);
+     if(k&&/^bdspno:/.test(k))localStorage.removeItem(k);}}catch(e){}
+   renderSpord();
+   window.__ta=()=>document.getElementById('spRNo_CT11');
+   window.__n=()=>{const e=window.__ta();return e?spNoSplit(e.value).length:-1;};
+   window.__files=n=>{const a=[];for(let i=1;i<=n;i++)a.push({name:'img'+i+'.jpg'});return a;};
+   FileReader=function(){this.readAsDataURL=function(){const s=this;setTimeout(()=>s.onload&&s.onload(),0);};};
+   ocrWords=async()=>[];
+   /* ตัวอ่านปลอมคืน "เลขเดิมทั้ง 20 ใบ" ตามลำดับ — คือการอัพรูปชุดเดิมซ้ำเป๊ะ ๆ */
+   window.__seq=0;
+   spOcrNos=()=>{window.__seq++;return [{no:window.__nos[(window.__seq-1)%20],c:90}];};`;
+ const rdup=await ev(async a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const o={start:window.__n()};
+   window.__posts=[];window.__alert='';
+   await spOcrGo('CT11',window.__files(20));
+   await new Promise(r=>setTimeout(r,120));
+   o.endN=window.__n();
+   o.add=SP.ocr.add;o.dupN=SP.ocr.dup;
+   o.panel=(document.getElementById('spOcrBox_CT11')||{textContent:''}).textContent
+     .replace(/\s+/g,' ').trim();
+   /* 🔁 เลขเดียวกันเขียนคนละแบบ (เลขเต็ม vs 6 หลักท้าย) ก็ต้องไม่เพิ่ม */
+   const ta=window.__ta();ta.value=window.__nos.map(x=>x.slice(-6)).join(' ');
+   SP.ocr=0;window.__seq=0;
+   await spOcrGo('CT11',window.__files(20));
+   await new Promise(r=>setTimeout(r,120));
+   o.tailN=window.__n();o.tailAdd=SP.ocr.add;o.tailDup=SP.ocr.dup;
+   /* 📅 วันที่บนการ์ดคีย์ */
+   const V=document.getElementById('spordView');
+   const card=[...V.querySelectorAll('.panel')]
+     .filter(p=>/กรอกเลขออเดอร์/.test(p.textContent))[0];
+   const tx=card?card.textContent.replace(/\s+/g,' ').trim():'';
+   const bar=card?card.querySelector('.sp-wd'):null;
+   o.bar=bar?bar.textContent.replace(/\s+/g,' ').trim():'';
+   o.barCls=bar?bar.className:'';
+   o.barSize=bar?Math.round(parseFloat(getComputedStyle(bar.querySelector('.sp-wd-v')).fontSize)):0;
+   o.ocrBtn=((card&&card.querySelector('.sp-ocrbtn'))||{textContent:''}).textContent
+     .replace(/\s+/g,' ').trim();
+   o.saveBtn=((card&&card.querySelector('.sp-save button'))||{textContent:''}).textContent
+     .replace(/\s+/g,' ').trim();
+   o.boxHd=((card&&card.querySelector('.sp-rn'))||{textContent:''}).textContent
+     .replace(/\s+/g,' ').trim();
+   o.today=/วันนี้/.test(tx);
+   o.dayTxt=fmtDayMon(window.__back);
+   o.posts=window.__posts.length;
+   return o;
+ },{setup:PRE,pre:DUP});
+ t('🔁 อัพรูปชุดเดิมซ้ำทั้ง 20 ใบ — ไม่เพิ่มเลขสักเลข ยังเป็น 20 เท่าเดิม',
+   rdup.start===20&&rdup.endN===20&&rdup.add===0&&rdup.dupN===20,
+   'เริ่ม '+rdup.start+' → '+rdup.endN+' · ใส่เพิ่ม '+rdup.add+' · ซ้ำ '+rdup.dupN);
+ t('🔁 ...และพูดออกมาว่ามีครบอยู่แล้ว ไม่ใช่ปล่อยให้อ่านว่า "ใส่ให้ 0 เลข"',
+   /ซ้ำกับที่มีอยู่แล้ว 20 เลข/.test(rdup.panel)&&/มีอยู่ในช่องครบแล้ว/.test(rdup.panel),
+   rdup.panel.slice(0,130));
+ t('🔁 ...เลขเต็ม 10 หลักกับ 6 หลักท้าย = ใบเดียวกัน ก็ไม่นับซ้ำ',
+   rdup.tailN===20&&rdup.tailAdd===0&&rdup.tailDup===20,
+   'ช่อง '+rdup.tailN+' · ใส่เพิ่ม '+rdup.tailAdd+' · ซ้ำ '+rdup.tailDup);
+ t('📅 การ์ดคีย์มีแถบวันที่ตัวใหญ่ บอกชื่อวันและว่าเป็นวันย้อนหลัง',
+   /กำลังใส่เลขออเดอร์ของวันที่/.test(rdup.bar)&&/ย้อนหลัง 1 วัน/.test(rdup.bar)&&
+   /\bback\b/.test(rdup.barCls)&&rdup.barSize>=17,
+   '"'+rdup.bar.slice(0,90)+'" · '+rdup.barCls+' · '+rdup.barSize+'px');
+ t('📅 ปุ่ม 📷 และ 💾 มีวันที่อยู่บนปุ่มเอง — กดแล้วรู้ว่าของวันไหน',
+   rdup.ocrBtn.indexOf(rdup.dayTxt)>=0&&rdup.saveBtn.indexOf(rdup.dayTxt)>=0,
+   '📷 "'+rdup.ocrBtn+'" · 💾 "'+rdup.saveBtn+'"');
+ t('📅 หัวกล่องเลขบอกวันที่ ไม่ใช่คำว่า "ของวันนี้" และทั้งการ์ดไม่มีคำว่าวันนี้ลอย ๆ',
+   rdup.boxHd.indexOf(rdup.dayTxt)>=0&&rdup.today===false,
+   '"'+rdup.boxHd+'" · มีคำว่าวันนี้='+rdup.today);
+ t('🛟 การอ่านรูปซ้ำไม่ส่งอะไรขึ้นเซิร์ฟเวอร์เอง — คนกดบันทึกเองเหมือนเดิม',
+   rdup.posts===0,'posts='+rdup.posts);
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}

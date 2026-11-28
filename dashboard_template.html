@@ -798,6 +798,20 @@ tr.sp-backl>td{background:#fff;font-size:13px}
    เพราะ ".sp-rc" แปลว่า "หนึ่งการ์ด = หนึ่งสินค้า" ทั้งหน้าจอและในเทส */
 .sp-rno{border:1.5px solid var(--blue);border-radius:13px;padding:13px 14px;margin:10px 0;background:#fff}
 .sp-rn{font-weight:800;font-size:15.5px;line-height:1.35}
+/* 📅 แถบ "กำลังใส่เลขของวันที่ …" — ตัวใหญ่พอให้อ่านโดยไม่ต้องตั้งใจมอง
+   เหลือง = วันย้อนหลัง (ต้องสะดุดตา) · ฟ้า = วันนี้ · ม่วง = ล่วงหน้า */
+.sp-wd{margin:10px 0 2px;border-radius:12px;padding:10px 13px;border:1.5px solid var(--blue);
+  background:var(--blue-soft)}
+.sp-wd.back{border-color:#E0A400;background:#FFF6DC}
+.sp-wd.fwd{border-color:#8B6ACB;background:#F4F0FC}
+.sp-wd-l{font-size:11.5px;font-weight:800;color:var(--muted);letter-spacing:.2px}
+.sp-wd-v{font-size:19px;font-weight:800;color:var(--ink);line-height:1.35;margin-top:2px}
+.sp-wd-p{display:inline-block;font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;
+  background:var(--blue);color:#fff;vertical-align:3px;margin-left:4px}
+.sp-wd.back .sp-wd-p{background:#8A6400}
+.sp-wd.fwd .sp-wd-p{background:#6B4CA8}
+.sp-wd-x{font-size:12px;color:#8A6400;font-weight:700;margin-top:4px;line-height:1.5}
+@media(max-width:400px){.sp-wd-v{font-size:17.5px}}
 .sp-rg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:11px}
 .sp-rf label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px}
 .sp-rf input{width:100%;padding:13px 12px;border:1.6px solid var(--line);border-radius:11px;
@@ -15715,13 +15729,17 @@ function spNoInfoHtml(list,ln){
      บอกเฉย ๆ ไม่ใช่ error เพราะคีย์ย้อนหลังก็มีจริง */
   {const day=String((typeof SP!=="undefined"&&SP&&SP.day)||"").slice(0,10);
    const od=day?(o.rows||[]).filter(r=>{const v=spOrdDay(r.r);return v&&v!==day;}):[];
-   if(od.length)h+=`<div class="psub down" style="margin-top:4px">📅 <b>${od.length}</b> ใบเป็นออเดอร์ของวันอื่น (${
-     od.slice(0,4).map(r=>anaEsc(r.ask)+" = "+anaEsc(fmtDate(spOrdDay(r.r)))).join(" · ")}${
-     od.length>4?" …":""}) — ตรวจดูว่าใส่เลขผิดใบหรือเปล่า</div>`;}
+   /* 🛟 นี่คือตาข่ายกันอัพผิดวันตัวจริง จึงเป็นกล่องเตือน ไม่ใช่บรรทัดเล็ก ๆ ท้ายสุด
+      และต้องบอก "วันที่กำลังบันทึก" คู่กันไปด้วย ไม่งั้นคนอ่านไม่รู้ว่าต่างจากอะไร */
+   if(od.length)h+=`<div class="sp-nodr" style="background:#FDECEA;border-color:#F3C9C4;color:#8A2020">
+     📅 <b>${od.length}</b> ใบเป็นออเดอร์ของ<b>วันอื่น</b> ขณะที่กำลังบันทึกงานของ
+     <b>${anaEsc(day?fmtDayMon(day):"วันที่เลือก")}</b> (${
+     od.slice(0,4).map(r=>anaEsc(r.ask)+" = "+anaEsc(fmtDayMon(spOrdDay(r.r)))).join(" · ")}${
+     od.length>4?" …":""}) — อาจอัพรูปผิดวัน หรือใส่เลขผิดใบ ตรวจก่อนกดบันทึก</div>`;}
   /* สิ่งที่ยัง "ไม่รู้" ต้องบอก ห้ามปล่อยให้ยอดดูเหมือนครบ */
   if(o.wait)h+=`<div class="psub" style="margin-top:4px">⏳ <b>${o.wait}</b> ใบยังไม่รู้จำนวนลัง — รอไฟล์ใบจัดของ หรือไฟล์ยอดขายของวันนั้น</div>`;
   if(o.miss.length)h+=`<div class="psub down" style="margin-top:4px">❓ ยังหาไม่เจอ <b>${o.miss.length}</b> เลข (${
-    o.miss.slice(0,6).map(anaEsc).join(" · ")}${o.miss.length>6?" …":""}) — ถ้าเพิ่งคีย์วันนี้ ให้รอไฟล์ของวันนั้นก่อน</div>`;
+    o.miss.slice(0,6).map(anaEsc).join(" · ")}${o.miss.length>6?" …":""}) — ถ้าเพิ่งคีย์ไป ให้รอไฟล์ของวันนั้นก่อน</div>`;
   /* 5 หลักตรงกับหลายใบ — ห้ามเดา ให้คนกรอกเติมอีกสักหลัก */
   if(o.amb.length)h+=`<div class="psub down" style="margin-top:4px">⚠️ <b>${o.amb.length}</b> เลขตรงกับหลายใบ ${
     o.amb.slice(0,3).map(x=>"<b>"+anaEsc(x.t)+"</b> → "+x.list.slice(0,3).map(anaEsc).join(" / ")).join(" · ")
@@ -17390,7 +17408,7 @@ function spOutDayHtml(sid,ymd){
       one.by?" · ตรวจโดย "+anaEsc(one.by):""}${one.at?" "+fmtDateTime(one.at):""}</div>
     <div class="cards" style="margin-top:10px">
       <div class="card" style="border-top:3px solid var(--blue)"><div class="k">📲 เซลล์คีย์</div>
-        <div class="v" style="font-size:20px">${spCsTxt(one.keyed.cs,one.keyed.pc)}</div><div class="s">ของวันนี้</div></div>
+        <div class="v" style="font-size:20px">${spCsTxt(one.keyed.cs,one.keyed.pc)}</div><div class="s">${anaEsc(fmtDayMon(ymd))}</div></div>
       <div class="card"><div class="k">🚚 คลังจัดออก</div>
         <div class="v" style="font-size:20px">${spCsTxt(one.out.cs,one.out.pc)}</div><div class="s">ขาย + แถม</div></div>
       <div class="card" style="border-top:3px solid var(--bad)"><div class="k" style="color:var(--bad)">🔻 ขาด</div>
@@ -17677,7 +17695,7 @@ function spWhqHtml(sid){
   if(!G.rows.length)return head+`<div class="insight" style="margin-top:10px">
     วันที่ <b>${anaEsc(fmtDate(ymd))}</b> ยังไม่มีเลขออเดอร์ให้ตรวจ —
     ${G.miss?("มีเลขที่ระบบยังหาไม่เจอ "+G.miss+" เลข · "):""}ให้เซลล์กรอกเลขออเดอร์ที่แท็บ
-    <b>📲 เซลล์คีย์</b> ของวันนี้ก่อน</div></div>`;
+    <b>📲 เซลล์คีย์</b> ของวันนั้นก่อน</div></div>`;
   const bulk=can?`<div class="cst-bulk stick">
       <label class="sp-wh-all"><input type="checkbox" ${nSel&&nSel===G.rows.length?"checked":""}
         onchange="spWhqAll(this.checked)"> เลือกทั้งหมด (${G.rows.length} ใบ)</label>
@@ -17729,7 +17747,7 @@ function spWhqHtml(sid){
         มากกว่าหรือน้อยกว่าก็ได้ ระบบคิดผลต่างให้เอง</div></td></tr>`;
   }).join("");
   return head+`<div class="cards" style="margin-top:10px">
-      <div class="card"><div class="k">🧾 ออเดอร์ของวันนี้</div>
+      <div class="card"><div class="k">🧾 ออเดอร์ของ ${anaEsc(fmtDayMon(ymd))}</div>
         <div class="v">${G.rows.length}</div><div class="s">ใบ</div></div>
       <div class="card" style="border-top:3px solid var(--good)"><div class="k" style="color:var(--good)">✅ ตรวจแล้วตรง</div>
         <div class="v up">${nOk}</div><div class="s">ใบ</div></div>
@@ -18779,10 +18797,12 @@ function spRepHomeHtml(sid){
     det=sel.jobs.map(c=>{
       const S=SP_ME_ST[c.st]||SP_ME_ST.none;
       const other=c.sid!==sid;
+      /* 📅 กล่องนี้เป็นของ "วันที่เลือกในปฏิทิน" ไม่ใช่วันนี้ — เขียนวันกำกับไว้เสมอ */
       let b=`<div class="sp-mebox s-${anaEsc(c.st)}${c.st==="bad"?" bad":""}">
-        <div class="sp-mehd">${S.ic} <b>${anaEsc(S.nm)}</b>${
+        <div class="sp-mehd">${S.ic} <b>${anaEsc(S.nm)}</b>
+          <span class="psub">· ${anaEsc(spDayFull(c.d||cur))}</span>${
           other?' <span class="psub">· ใบ '+anaEsc(spSlipTitle(c.sid)||c.sid)+"</span>":""}</div>
-        <div class="psub">${c.has?"เป้า <b>"+N(c.tc)+"</b> ลัง"+(c.tp?" + "+N(c.tp)+" ชิ้น":""):"ไม่มีเป้าของวันนี้"}
+        <div class="psub">${c.has?"เป้า <b>"+N(c.tc)+"</b> ลัง"+(c.tp?" + "+N(c.tp)+" ชิ้น":""):"ซุปยังไม่ได้ตั้งเป้าของวันนี้"}
           ${c.nNo?" · ใส่เลขไว้ <b>"+c.nNo+"</b> เลข":""}${
           (c.cs||c.pc)?" · ระบบหาได้ <b>"+spCsTxt(c.cs,c.pc)+"</b>":""}</div>`;
       /* สิ่งที่ "ยังไม่รู้" ต้องบอก ห้ามปล่อยให้ดูเหมือนครบ */
@@ -18847,6 +18867,54 @@ function spSavedTxt(rec,ymd){
     ((sd&&String(ymd)&&sd!==String(ymd))
       ?' <b class="sp-2d-d">(บันทึกย้อนหลัง — ไม่ใช่วันที่ของงาน)</b>':"");
 }
+/* ============================================================================
+ * 📅 "ตอนนี้กำลังใส่เลขของวันไหน" ต้องอ่านออกโดยไม่ต้องเงยหน้าไปหาที่อื่น
+ *
+ * เจ้าของสั่ง 28 พ.ย. 69 ก่อนให้เซลล์ทุกสายอัพรูปของวันที่ 27 ใหม่:
+ *   *"ปรับให้เซลล์มองเห็นง่าย ๆ ว่าเค้าอยู่หน้าของวันที่เท่าไหร่ … ข้อมูลโชว์วันที่ไม่ค่อยชัด
+ *     ในช่วงส่วนรายการที่เซลล์ต้องคีย์และอัพโหลดหน้าแคปหน้าจอ ช่วยแสดงให้ชัด
+ *     เซลล์จะได้อัพไม่ผิดวัน"*
+ *
+ * วันที่ของงาน **มีอยู่แล้ว** บนแถบ `spDayBandHtml` หัวหน้าใบ — แต่กว่าจะเลื่อนลงมาถึง
+ * การ์ดคีย์ มันอยู่เหนือปฏิทินทั้งอัน พ้นจอไปแล้ว และสองปุ่มที่กดจริง (📷 กับ 💾) ไม่มี
+ * วันที่เลยสักปุ่ม ที่แย่กว่านั้นคือกล่องเลขเขียนว่า **"ของวันนี้"** ทั้งที่กำลังเปิดวันย้อนหลัง
+ * อยู่ — ขัดกับหัวการ์ดตัวเองบนจอเดียวกัน
+ *
+ * กฎ: ในการ์ดคีย์ **ทุกจุดที่พูดถึงเลขออเดอร์ต้องมีวันที่กำกับ** — หัวการ์ด · แถบวันที่
+ *     ก่อนปุ่มอัพรูป · ตัวปุ่ม 📷 · ตัวปุ่ม 💾 · หัวกล่องเลข · ห้ามมีคำว่า "วันนี้" ลอย ๆ
+ *     และบอก **ชื่อวัน** ด้วย เพราะเซลล์จำว่า "รูปของเมื่อวาน" ไม่ได้จำว่าวันที่เท่าไหร่
+ * ==========================================================================*/
+const DOW_TH=["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
+function spDowTh(ymd){
+  const d=new Date(String(ymd)+"T00:00:00");
+  return isNaN(d.getTime())?"":(DOW_TH[d.getDay()]||"");
+}
+/* "ศุกร์ 27 พ.ย. 2569" — ชื่อวันมาก่อน เพราะนั่นคือสิ่งที่เซลล์จำได้ */
+function spDayFull(ymd){
+  const w=spDowTh(ymd);
+  return (w?w+" ":"")+fmtDate(ymd);
+}
+/* ห่างจากวันนี้กี่วัน → คำที่คนอ่านเข้าใจทันที (ใช้ ymdOf/todayISO ไม่ใช่ toISOString) */
+function spDayRel(ymd){
+  const t=todayISO(),d=String(ymd||"");
+  if(!d)return {t:"",c:""};
+  if(d===t)return {t:"วันนี้",c:"now"};
+  const a=new Date(d+"T00:00:00"),b=new Date(t+"T00:00:00");
+  if(isNaN(a.getTime())||isNaN(b.getTime()))return {t:"",c:""};
+  const n=Math.round((a-b)/86400000);
+  return n<0?{t:"ย้อนหลัง "+(-n)+" วัน",c:"back"}:{t:"ล่วงหน้า "+n+" วัน",c:"fwd"};
+}
+/* แถบวันที่ของการ์ดคีย์ — ตัวใหญ่ สีตามว่าใช่วันนี้หรือไม่ ไม่ใช่ตัวหนังสือเล็ก ๆ ปนบรรทัดอื่น */
+function spWorkDayBar(ymd){
+  const r=spDayRel(ymd);
+  return `<div class="sp-wd ${r.c}">
+    <div class="sp-wd-l">📅 กำลังใส่เลขออเดอร์ของวันที่</div>
+    <div class="sp-wd-v">${anaEsc(spDayFull(ymd))}${
+      r.t?` <span class="sp-wd-p">${anaEsc(r.t)}</span>`:""}</div>
+    ${r.c==="back"?`<div class="sp-wd-x">ตรวจให้แน่ใจว่ารูปที่จะอัพเป็นรูปของ ${
+      anaEsc(fmtDayMon(ymd))} จริง ๆ ไม่ใช่ของวันอื่น</div>`:""}
+  </div>`;
+}
 /* ---------- ตารางของ "สายฉัน" — เซลล์กรอกจำนวนที่คีย์จริง ----------
    📱 เป็น "การ์ดต่อสินค้า" ไม่ใช่ตาราง 7 ช่อง — ทีมขายกรอกจากมือถือ Android เป็นหลัก
    ช่องกรอกใช้ inputmode="decimal" เพื่อให้ขึ้นแป้นตัวเลขเอง และปุ่มบันทึกติดอยู่ท้ายจอ */
@@ -18878,16 +18946,20 @@ function spRepMineHtml(sid,ymd){
         <tr class="sub"><td class="c1">รวมทั้งหมด</td><td class="c2"></td>
           <td>${tc?N(tc):"-"}</td><td>${tp?N(tp):"-"}</td></tr></tbody></table></div>`
     :`<div class="insight" style="margin-top:10px">${tg
-        ?"วันนี้หัวหน้าเซลล์ยังไม่ได้ตั้งจำนวนให้สายคุณ":"ใบนี้ยังไม่มีสินค้า"}</div>`;
+        ?"หัวหน้าเซลล์ยังไม่ได้ตั้งจำนวนของ <b>"+anaEsc(fmtDayMon(ymd))+
+         "</b> ให้สายคุณ — ใส่เลขออเดอร์หรืออัพรูปไว้ก่อนได้เลย"
+        :"ใบนี้ยังไม่มีสินค้า"}</div>`;
   return `<div class="panel" style="margin-top:12px;border-top:3px solid var(--blue)">
-    <h3>🧾 กรอกเลขออเดอร์ · ${fmtDate(ymd)}${
-      ymd>todayISO()?' <span class="pill">ล่วงหน้า</span>':(ymd===todayISO()?"":' <span class="pill">ย้อนหลัง</span>')}</h3>
+    <h3>🧾 กรอกเลขออเดอร์ · ${anaEsc(spDayFull(ymd))}</h3>
+    ${spWorkDayBar(ymd)}
     <div class="psub">${can
       ? "คีย์ของในแอพตามรายการข้างล่างให้ครบ แล้ว<b>เอาเลขออเดอร์ 6 หลักสุดท้ายมาใส่ในช่องสีน้ำเงิน</b> ·"+
         " ไม่ต้องกรอกจำนวนแล้ว ระบบดึงจำนวนจากเลขออเดอร์ให้เอง · "+
-        "เพิ่มเลขระหว่างวันแล้วกดบันทึกซ้ำได้ "+(left<=3?"<b>(วันนี้เหลืออีก "+left+" ครั้ง)</b>"
-                                                      :"(วันนี้เหลืออีก "+left+" ครั้ง)")
-      : (rec?"<b>วันนี้บันทึกครบจำนวนครั้งที่ตั้งไว้แล้ว</b> — ถ้าต้องแก้อีก แจ้งผู้จัดการ"
+        /* ⚠️ โควต้าแก้ผูกกับ "วันของงาน" (คีย์ sid|ymd|line) ไม่ใช่วันตามปฏิทินของเครื่อง —
+           คำว่า "วันนี้" จึงผิดเมื่อเปิดวันย้อนหลัง และไปชนกับแถบวันที่บนการ์ดเดียวกัน */
+        "เพิ่มเลขระหว่างวันแล้วกดบันทึกซ้ำได้ "+(left<=3?"<b>(เหลืออีก "+left+" ครั้ง)</b>"
+                                                      :"(เหลืออีก "+left+" ครั้ง)")
+      : (rec?"<b>บันทึกครบจำนวนครั้งที่ตั้งไว้แล้ว</b> — ถ้าต้องแก้อีก แจ้งผู้จัดการ"
             :"ดูอย่างเดียว")}
       ${rec?spSavedTxt(rec,ymd):""}</div>
     ${rec?`<div class="cst-fb" style="margin-top:10px">
@@ -18895,8 +18967,9 @@ function spRepMineHtml(sid,ymd){
     ${spRepNoHtml(ln,rec,can,sid,ymd)}
     ${spMyOrdHtml(ln,rec,ymd)}
     ${can?`<div class="sp-save"><button class="upload-btn"
-      onclick="spRepLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกเลขออเดอร์</button></div>`:""}
-    <h4 style="margin:18px 0 0">🎯 รายการที่ต้องคีย์ · ${fmtDayMon(ymd)}</h4>
+      onclick="spRepLineSave('${anaEsc(sid)}','${ymd}','${anaEsc(ln)}')">💾 บันทึกเลขออเดอร์ของ ${
+      anaEsc(fmtDayMon(ymd))}</button></div>`:""}
+    <h4 style="margin:18px 0 0">🎯 รายการที่ต้องคีย์ · ${anaEsc(fmtDayMon(ymd))}</h4>
     ${tgtBox}
   </div>`;
 }
@@ -18952,8 +19025,12 @@ function spOcrHtml(ln){
         <span class="psub">${S.want
           ?"📌 จองบันทึกไว้แล้ว — จะบันทึกให้เองทันทีที่อ่านครบ ไม่ต้องกดอีก"
           :"รออีกสักครู่ · เลขที่อ่านได้ถูกเก็บไว้ในเครื่องแล้วทุกเลข ไม่หายแน่นอน"}</span></div>`
+    /* 🔁 อัพรูปชุดเดิมซ้ำเป็นเรื่องปกติ (เจ้าของให้เซลล์อัพของวันที่ 27 ใหม่ทุกสาย 28 พ.ย. 69)
+       "ใส่ให้ 0 เลข" เฉย ๆ อ่านเหมือนระบบไม่ทำงาน จึงต้องพูดออกมาว่ามีครบอยู่แล้ว */
     : `<div class="sp-ocrst ok">✅ อ่านครบ <b>${S.n}</b> รูป · ใส่เลขให้ <b>${S.add}</b> เลข${
-        S.dup?` · ซ้ำกับที่มีอยู่แล้ว ${S.dup} เลข (ไม่ใส่ซ้ำ)`:""}</div>`;
+        S.dup?` · ซ้ำกับที่มีอยู่แล้ว ${S.dup} เลข (ไม่ใส่ซ้ำ)`:""}${
+        (!S.add&&S.dup)?`<div class="psub" style="margin-top:3px;font-weight:600">
+          เลขในรูปชุดนี้มีอยู่ในช่องครบแล้วทุกเลข — อัพซ้ำไม่ทำให้ยอดเกิน</div>`:""}</div>`;
   if(S.err)h+=`<div class="psub down">${anaEsc(S.err)}</div>`;
   /* หน้าถูกวาดใหม่ระหว่างอ่าน — บอกให้รู้ว่าเลขอยู่ครบ ไม่ใช่ให้ไปอัพซ้ำ */
   if(S.off&&!S.busy)h+=`<div class="psub">🛟 หน้าจอถูกวาดใหม่ระหว่างอ่าน ${S.off} รูป —
@@ -19122,8 +19199,10 @@ function spRepNoHtml(ln,rec,can,sid,ymd){
   spNoDraftGet(ln,sid,ymd).forEach(push);
   if(SP.ocr&&SP.ocr.ln===ln)spOcrGot(ln).forEach(push);
   const nNew=no.length-nSaved;
+  /* ⚠️ ห้ามเขียนว่า "วันนี้" — การ์ดนี้เปิดวันย้อนหลังได้ และเคยขัดกับหัวการ์ดตัวเองมาแล้ว */
+  const dTxt=ymd?fmtDayMon(ymd):"";
   return `<div class="sp-rno">
-    <div class="sp-rn">🧾 เลขคำสั่งซื้อของวันนี้</div>
+    <div class="sp-rn">🧾 เลขคำสั่งซื้อของ ${anaEsc(dTxt||"วันที่เลือก")}</div>
     ${spAutoNoHtml(sid,ymd,ln,can)}
     ${(nNew&&can)?`<div class="sp-nodr">🛟 มีเลขที่ยังไม่ได้บันทึก <b>${nNew}</b> เลข
       เก็บไว้ในเครื่องให้แล้ว ไม่ต้องอัพรูปซ้ำ — <b>ตรวจแล้วกดบันทึก</b> ได้เลย</div>`:""}
@@ -19131,10 +19210,11 @@ function spRepNoHtml(ln,rec,can,sid,ymd){
       <input type="file" id="spOcrIn_${anaEsc(ln)}" accept="image/*" multiple class="hidden"
         onchange="spOcrGo('${anaEsc(ln)}',this.files);this.value='';">
       <button type="button" class="btn-go sp-ocrbtn" onclick="spOcrPick('${anaEsc(ln)}')">
-        📷 อัพรูปแคปหน้าจอ — อ่านเลขให้อัตโนมัติ</button>
+        📷 อัพรูปแคปหน้าจอของ ${anaEsc(dTxt)} — อ่านเลขให้อัตโนมัติ</button>
       <div class="psub">แคปหน้า <b>คำสั่งซื้อของฉัน</b> ในแอพหลังคีย์เสร็จ แล้วเลือกรูปได้เลย
         ทีละหลายรูป (สูงสุด ${SP_OCR_MAX} รูป) · เลขที่อ่านได้จะไปอยู่ในช่องด้านล่าง
-        <b>ให้ตรวจก่อนแล้วค่อยกดบันทึก</b></div>
+        <b>ให้ตรวจก่อนแล้วค่อยกดบันทึก</b>
+        · <b>อัพรูปเดิมซ้ำได้</b> ระบบตัดเลขที่มีอยู่แล้วออกให้เอง ไม่นับซ้ำ</div>
       <div id="spOcrBox_${anaEsc(ln)}">${spOcrHtml(ln)}</div>
       <div class="sp-ocror">— หรือพิมพ์เลขเอง —</div></div>`:""}
     <div class="sp-man psub">ใส่ <b>6 หลักสุดท้าย</b> ของเลขในแอพก็พอ — เลข <b>1034<u>715426</u></b> ใส่แค่ <b>715426</b>
