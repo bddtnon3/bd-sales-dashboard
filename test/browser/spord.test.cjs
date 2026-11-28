@@ -5512,6 +5512,165 @@ t('🛟 ...และปุ่มตรวจไม่ใช่กรอบปร
  t('🔒 ทั้งหมดอ่านอย่างเดียว — CSTOCK ไม่ขยับ และไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
    wd.frozen===true&&wd.posts===0,'frozen='+wd.frozen+' posts='+wd.posts);
 
+ /* ==========================================================================
+  * §31 📊 เทียบย้อนหลังรายวัน — "ตรงกัน หรือดริฟเท่าไหร่" (โซน 🤖 ของเจ้าของ ไม่มีปุ่ม)
+  *
+  * เจ้าของ 29 พ.ย. 69: *"โอเคงั้นคุณได้ pattern แล้วใช่ไหม ลองเติมย้อนหลังให้หน่อย ในส่วนของ
+  *   ระบบวิเคราะห์ให้ที่ manager เห็นฝั่งเดียว ทำออกมาหน่อย ไม่ต้องมีปุ่มอะไรนะ คุณทำระบบ
+  *   ให้พร้อมโชว์ข้อมูลหลังจากอัพไฟล์ไปเลย ว่าจำนวนมันตรงกัน หรือดริฟเท่าไหร่ อย่างไร"*
+  *
+  * ของจริงที่สร้างไว้ในเทส (ลังละ 12 ชิ้น ทุกรหัส):
+  *   วันที่ 1  เซลล์คีย์ 2 ลัง · คลังจัด 2 ลัง              → 🟢 ตรงกัน 100%
+  *   วันที่ 2  เซลล์คีย์ 3 ลัง · คลังจัด 2 ลัง (1 ใบยังไม่มี GIN) → 🔴 ขาด 1 ลัง 66.7%
+  *   วันที่ 3  เซลล์คีย์ 2 ลัง · แอดมินตรวจแล้วคลังจัดจริง 3 ลัง  → 🟠 เกิน 1 ลัง 150%
+  *   วันที่ 4  ซุปตั้งเป้า 2 ลัง · ไม่มีใบในไฟล์เลย         → ⏳ รอไฟล์ (ห้ามเป็น 0)
+  *   วันอื่นจนถึงวันนี้ ไม่มีใครลงอะไรไว้                    → "ไม่มีงานในใบนี้" บรรทัดเดียว
+  * ⚠️ รหัสเดียวกันขาดวันที่ 2 แล้วเกินวันที่ 3 ⇒ ยอด **ทั้งใบ** หักกันเองเป็น "ตรง"
+  *    ขณะที่รายวันยังเห็นดริฟทั้งสองทาง — ตารางต้องพูดออกมา ไม่ใช่ปล่อยให้อ่านขัดกันเอง
+  * ========================================================================== */
+ const DRPRE = `
+   __as('manager','','ผู้จัดการ');
+   window.__d0=(function(){
+     const t=todayISO(),dd=+t.slice(8,10);
+     if(dd>=14)return t.slice(0,7)+'-10';
+     const y=+t.slice(0,4),m=+t.slice(5,7);
+     return ((m>1)?(y+'-'+('0'+(m-1)).slice(-2)):((y-1)+'-12'))+'-10';
+   })();
+   window.__ym=window.__d0.slice(0,7);
+   window.__D=function(n){return window.__ym+'-'+('0'+(10+n)).slice(-2);};
+   window.__sid='B'+window.__d0.replace(/-/g,'')+'-01';
+   MASTER={items:{FO01:{nm:'ซิตร้า เพิร์ล FO'},FO02:{nm:'ลักส์ โรส FO'}},
+           det:{FO01:{ps:12},FO02:{ps:12}}};
+   CSTOCK.slips[window.__sid]={id:window.__sid,d:window.__d0,g:'D',own:'Supervisor',
+     by:'admin1',byName:'แอดมิน 1',at:0};
+   CSTOCK.lots={L1:{id:'L1',sl:window.__sid,d:window.__d0,code:'FO01',
+                    nm:'ซิตร้า เพิร์ล FO',cs:10,pc:0,ln:'CT11',clr:[]},
+                L2:{id:'L2',sl:window.__sid,d:window.__d0,code:'FO02',
+                    nm:'ลักส์ โรส FO',cs:10,pc:0,ln:'CT11',clr:[]}};
+   CSTOCK.key={};CSTOCK.rep={};CSTOCK.gin={};
+   /* ซุปตั้งเป้าไว้ 4 วัน รวมวันที่ 4 ที่ยังไม่มีไฟล์ — เป้ามี แต่ยอดยังตอบไม่ได้ */
+   [2,3,2,2].forEach(function(n,i){
+     CSTOCK.key[window.__sid+'|'+window.__D(i)+'|CT11']={it:{FO01:{sc:n,sp:0}},by:'sup',at:1};});
+   /* ผลตรวจของวันที่ 3: ช่อง Allocated บอกว่าคลังจัดจริง 3 ลัง (มากกว่าที่เซลล์คีย์) */
+   CSTOCK.gin[window.__sid+'|'+window.__D(2)]={sid:window.__sid,d:window.__D(2),g:['503'],
+     at:2,by:'admin1',byName:'แอดมิน 1',
+     rows:{'CT11|FO01':{nm:'ซิตร้า เพิร์ล FO',pk:12,xc:3,xs:0,xp:0,yc:0,ys:0,yp:0}}};
+   window.__mk=function(){
+     const O={},T={};
+     const put=function(no,day,gin,code){
+       O[no]={l:'209611',d:+window.__D(day).slice(8,10),s:'SH'+no,
+         g:gin||undefined,tm:'09:30',w:1,p:0,c:1,n:1};
+       T[no]={};T[no][code]=[1,0,12];};
+     put('5010000001',0,'501','FO01');put('5010000002',0,'501','FO01');
+     put('5020000001',1,'502','FO01');put('5020000002',1,'502','FO01');
+     put('5020000003',1,'','FO01');          /* คลังยังไม่จัด — ห้ามตัดออกจากยอดเซลล์คีย์ */
+     put('5030000001',2,'503','FO01');put('5030000002',2,'503','FO01');
+     return {ord:O,det:T,meta:null,none:0};
+   };
+   OT.cache={};OT.cache[window.__ym]=window.__mk();
+   OT.cache[spGpPrevYm(window.__ym)]={ord:{},det:{},meta:null,none:0};
+   OT.months=Object.keys(OT.cache);spRfBust();
+   STOREDAILY={data:{},ord:{}};
+   SP.sid=window.__sid;SP.view='slip';SP.sec='adm';SP.day=window.__D(0);
+   SP.ym=window.__ym;SP.cm=window.__ym;SP.gp={txt:'',open:false};SP.zone='auto';
+   renderSpord();`;
+
+ const dr=await ev(a=>{
+   eval(a.setup);setup();eval(a.pre);
+   const sum=o=>Object.keys(o||{}).reduce((s,c)=>s+(+o[c]||0),0);
+   const before=JSON.stringify(CSTOCK);const p0=window.__posts.length;
+   const D=spDrift(window.__sid),B=spBal(window.__sid);
+   const box=[...document.querySelectorAll('#spBody .sp-auto')]
+     .filter(x=>x.textContent.indexOf('เทียบย้อนหลังรายวัน')>=0)[0];
+   const tx=box?box.textContent.replace(/\s+/g,' '):'';
+   const rows=box?[...box.querySelectorAll('tbody tr')]:[];
+   const cells=i=>rows[i]?[...rows[i].querySelectorAll('td')]
+     .map(td=>td.textContent.replace(/\s+/g,' ').trim()):[];
+   /* สีของช่อง % — เกิน 100% ต้องเป็นสีส้ม ไม่ใช่เขียว
+      ⚠️ ต้องอ่าน **ก่อน** renderSpord() ข้างล่าง ไม่งั้น node หลุดจาก DOM แล้ว
+         getComputedStyle คืนค่าว่าง (บทเรียนเดิมของ spOcrTa) */
+   const pctCol=i=>{const td=rows[i]?rows[i].querySelectorAll('td')[5]:null;
+     const b=td?td.querySelector('b'):null;return b?getComputedStyle(b).color:'';};
+   const hex2rgb=h=>{const s=String(h||'').trim().replace('#','');
+     return s.length===6?('rgb('+parseInt(s.slice(0,2),16)+', '+parseInt(s.slice(2,4),16)+
+       ', '+parseInt(s.slice(4,6),16)+')'):'';};
+   const warn=hex2rgb(getComputedStyle(document.documentElement)
+     .getPropertyValue('--warn'));
+   const PCT2=pctCol(2),C0=cells(0),C1=cells(1),C2=cells(2),C3=cells(3);
+   const r=D.rows;
+   /* แอดมิน (role manager แต่ไม่ใช่เจ้าของ) และเซลล์ ต้องไม่เห็นบล็อกนี้เลย */
+   const asAdmin=(function(){__as('manager','admin1','แอดมิน 1');
+     const h=spDriftHtml(window.__sid);__as('manager','','ผู้จัดการ');return h;})();
+   const asRep=(function(){__as('sales','209611','CT11 · ชลศิต');
+     const h=spDriftHtml(window.__sid);__as('manager','','ผู้จัดการ');return h;})();
+   renderSpord();
+   return {
+     n:r.length,dom:rows.length,
+     days:D.days,idle:D.idle,ok:D.ok,short:D.short,over:D.over,nofile:D.nofile,
+     st:r.map(x=>x.d.slice(8)+':'+x.st).join(' '),
+     k:r.map(x=>x.k).join(' '),g:r.map(x=>x.g).join(' '),t:r.map(x=>x.t).join(' '),
+     sh:sum(r[1]&&r[1].sh),ov:sum(r[2]&&r[2].ov),
+     sumK:D.keyed,sumG:D.gin,balK:B.keyed,balG:B.gin,balSt:B.st,
+     c0:C0,c1:C1,c2:C2,c3:C3,
+     pct2:PCT2,warn:warn,
+     has:!!box,btn:box?box.querySelectorAll('button,input,textarea').length:-1,
+     frac:/\d+[.,]\d+\s*ลัง/.test(tx),tx:tx.slice(0,260),
+     note:/ไม่ใช่ผลบวกของช่องดริฟรายวัน/.test(tx),
+     idleTxt:/ไม่มีงานในใบนี้/.test(tx),
+     admin:asAdmin,rep:asRep,
+     frozen:JSON.stringify(CSTOCK)===before,posts:window.__posts.length-p0};
+ },{setup:PRE,pre:DRPRE});
+ t('📊 ตารางเทียบรายวันขึ้นเองในโซน 🤖 ของเจ้าของ — ไม่มีปุ่ม ไม่มีช่องให้กรอก',
+   dr.has&&dr.btn===0,'has='+dr.has+' ปุ่ม/ช่อง='+dr.btn);
+ t('📅 ขึ้นเฉพาะวันที่มีงาน 4 วัน · วันที่ไม่มีงานยุบเป็นบรรทัดเดียว ไม่ใช่แถวเปล่าเป็นสิบ',
+   dr.n===4&&dr.dom===5&&dr.days===4&&dr.idle>0&&dr.idleTxt,
+   'แถววัน='+dr.n+' · แถวในตาราง='+dr.dom+' (รวมแถวรวม) · วันมีงาน='+dr.days+
+   ' · ไม่มีงาน='+dr.idle);
+ t('🟢🔴🟠 สามสถานะออกมาครบ — ตรงกัน / ขาด / เกิน',
+   dr.ok===1&&dr.short===1&&dr.over===1&&/ok short over nofile/.test(
+     dr.st.replace(/\d+:/g,'').trim()),dr.st);
+ t('🔑 ขาดกับเกินแยกถัง ไม่หักลบกัน — วันหนึ่งขาด 1 ลัง อีกวันเกิน 1 ลัง',
+   dr.sh===12&&dr.ov===12&&/ขาด 1 ลัง/.test(dr.c1.join(' '))&&
+   /เกิน 1 ลัง/.test(dr.c2.join(' ')),'ขาด='+dr.sh+'ชิ้น เกิน='+dr.ov+'ชิ้น');
+ t('🧮 ยอดรวมของตารางเท่ากับแถบสรุปเป๊ะ ๆ — สองตัวนับบนจอเดียวกันห้ามขัดกัน',
+   dr.sumK===dr.balK&&dr.sumG===dr.balG&&dr.sumK===84&&dr.sumG===84,
+   'ตาราง '+dr.sumK+'/'+dr.sumG+' · แถบสรุป '+dr.balK+'/'+dr.balG);
+ t('⚠️ ...และบอกด้วยว่าแถวรวมไม่ใช่ผลบวกของดริฟรายวัน (ทั้งใบหักกันเองได้)',
+   dr.note&&dr.balSt==='ok',
+   'บอก='+dr.note+' · สถานะทั้งใบ='+dr.balSt);
+ t('⏳ วันที่ยังไม่มีไฟล์ = "รอไฟล์" ไม่ใช่ 0 — และเป้าของซุปวันนั้นยังขึ้นให้เห็น',
+   /รอไฟล์/.test(dr.c3.join(' '))&&/2 ลัง/.test(dr.c3[1]||'')&&
+   !/^0 ลัง/.test(dr.c3[2]||''),dr.c3.join(' | '));
+ t('🚚 บอกที่มาของยอดคลังจัด — วันที่ตรวจแล้วใช้ผลตรวจ วันที่ยังไม่ตรวจเป็น (ประเมิน)',
+   /จากผลตรวจ/.test(dr.c2[3]||'')&&/ประเมิน/.test(dr.c1[3]||''),
+   'ตรวจแล้ว="'+(dr.c2[3]||'')+'" ยังไม่ตรวจ="'+(dr.c1[3]||'')+'"');
+ t('🎨 เกิน 100% ขึ้นสีส้ม ไม่ใช่สีเขียว — เกินคืองานที่ต้องหักออก',
+   !!dr.pct2&&dr.pct2===dr.warn,'สีที่ได้ '+dr.pct2+' · --warn '+dr.warn);
+ t('📦 ไม่มีเศษลังหลุดออกจอสักที่เดียว',!dr.frac,dr.tx);
+ t('🔒 เจ้าของเห็นคนเดียว — แอดมิน 1 และเซลล์ไม่เห็นบล็อกนี้เลย',
+   dr.admin===''&&dr.rep==='','แอดมิน="'+String(dr.admin).slice(0,40)+
+   '" เซลล์="'+String(dr.rep).slice(0,40)+'"');
+ t('🔒 อ่านอย่างเดียว — CSTOCK ไม่ขยับ และไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
+   dr.frozen===true&&dr.posts===0,'frozen='+dr.frozen+' posts='+dr.posts);
+ const dr390=await (async()=>{
+   await pg.setViewportSize({width:390,height:844});
+   const o=await ev(()=>{
+     const box=[...document.querySelectorAll('#spBody .sp-auto')]
+       .filter(x=>x.textContent.indexOf('เทียบย้อนหลังรายวัน')>=0)[0];
+     const wr=box?box.querySelector('.tblwrap'):null;
+     const tds=box?[...box.querySelectorAll('tbody tr td')]:[];
+     return {has:!!box,sx:wr?(wr.scrollWidth-wr.clientWidth):-1,
+       win:window.innerWidth,doc:document.documentElement.scrollWidth,
+       disp:tds.length?getComputedStyle(tds[1]).display:'',
+       lab:tds.slice(1).every(td=>td.getAttribute('data-l')||td.classList.contains('l'))};
+   });
+   await pg.setViewportSize({width:1280,height:950});
+   return o;
+ })();
+ t('📱 บนมือถือพับเป็นการ์ดวันละใบ — ไม่ต้องเลื่อนข้าง และทุกช่องมีป้ายกำกับ',
+   dr390.has&&dr390.sx===0&&dr390.doc<=dr390.win+1&&dr390.disp==='block'&&dr390.lab,
+   'เลื่อนข้าง '+dr390.sx+'px · doc '+dr390.doc+'/'+dr390.win+' · disp='+dr390.disp);
+
  let bad=0;A.forEach(([c,n,x])=>{if(!c)bad++;console.log((c?'  ✓ ':'  ✗ FAIL: ')+n.replace(/<[^>]*>/g,'')+(x&&!c?' → '+x:''));});
  const re=errs.filter(e=>!/localStorage/.test(e));
  if(re.length){console.log('PAGE ERRORS:');re.forEach(e=>console.log('   '+e));bad+=re.length;}

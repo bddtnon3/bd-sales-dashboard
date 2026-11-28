@@ -638,6 +638,8 @@ tr.sp-backl>td{background:#fff;font-size:13px}
  
 .sp-kt th{background:#f7f9fc;font-weight:700}
 .sp-kt td.l,.sp-kt th.l{text-align:left}
+ 
+.sp-kt tr.sp-dsum>td{background:#f7f9fc;border-top:2px solid var(--line)}
 .sp-kt input{width:62px;padding:5px 6px;border:1.5px solid var(--line);border-radius:7px;
   font-size:13px;text-align:right}
  
@@ -17602,11 +17604,13 @@ function spBackScan(sid,all){
     gLock:0,gOth:0,gOthList:[],gNone:0,gNoneList:[],gDays:0,gOn:0,gOff:0,
     wide:0,wideList:[],
     pcs:{},gpcs:{},unkPs:[],nGin:0,byLn:{},srcChk:0,srcGin:0,
+     
+    skip:[],
     d0:days[0]||"",d1:days[days.length-1]||"",codes:Object.keys(codes).length};
   days.forEach(d=>{
     months[d.slice(0,7)]=1;
     const r=spBackDay(sid,d,codes,lines,MD);
-    if(r.noFile){S.nofile++;return;}
+    if(r.noFile){S.nofile++;S.skip.push({d:d,why:"nofile",chk:!!r.chk,noDet:!!r.noDet});return;}
     if(r.noDet)S.noDet++;
     S.pre+=r.pre;S.noTm+=r.noTm;S.mix+=r.mix;S.wide+=r.wide;
     S.gOth+=r.gOth;S.gNone+=r.gNone;
@@ -17618,7 +17622,8 @@ function spBackScan(sid,all){
     r.gNoneList.forEach(x=>{if(S.gNoneList.length<BACK_NOTE)S.gNoneList.push(x);});
     r.wideList.forEach(x=>{if(S.wideList.length<BACK_NOTE)S.wideList.push(x);});
     Object.keys(r.ginMix).forEach(g=>{S.ginMix[g]=1;});
-    if(!r.nOrd&&!r.cx&&!r.pre&&!r.noTm&&!r.mix&&!r.gOth&&!r.gNone&&!r.wide)return;
+    if(!r.nOrd&&!r.cx&&!r.pre&&!r.noTm&&!r.mix&&!r.gOth&&!r.gNone&&!r.wide){
+      S.skip.push({d:d,why:"none",chk:!!r.chk,noDet:!!r.noDet});return;}
     S.nOrd+=r.nOrd;S.nNew+=r.nNew;S.cx+=r.cx;S.unsure+=r.unsure;
     S.gin+=r.run.n;S.shops+=r.shops;S.nGin+=r.nGin;
     if(r.src==="chk")S.srcChk++;else S.srcGin++;
@@ -17832,6 +17837,8 @@ function spBal(sid){
     mix:S.mix,mixList:S.mixList,
     wide:S.wide,wideList:S.wideList,
     made:S.made,madeHm:S.madeHm,
+     
+    dayRows:S.rows,skip:S.skip,
     d0:S.d0,d1:S.d1,byLn:[],months:S.months,mine:S.mine,
     sh:{},ov:{},tk:{},ot:{}};           
   spSlipCodes(sid).forEach(c=>{
@@ -18530,6 +18537,153 @@ function spCutHtml(sid){
       : "✅ ทุกวันของใบนี้ล็อกด้วยเลข GIN ที่ยืนยันแล้ว"}</div></div>`;
 }
  
+function spDrift(sid){
+  const B=spBal(sid),ym=B.ym;
+  const CODES=spSlipCodes(sid);
+  const map={},ord=[];
+  const put=d=>{
+    if(!map[d]){map[d]={d:d,tgt:{},tgUnk:[],keyed:{},gin:{},sh:{},ov:{},
+      k:0,g:0,t:0,nOrd:0,nGin:0,noFile:false,noDet:false,chk:false,lock:0,
+      src:"",st:"wait",pct:null};ord.push(d);}
+    return map[d];
+  };
+   
+  (B.dayRows||[]).forEach(r=>{
+    const x=put(r.d);
+    x.keyed=r.pcs||{};x.gin=r.gpcs||{};
+    x.nOrd=+r.nOrd||0;x.nGin=+r.nGin||0;
+    x.noDet=!!r.noDet;x.chk=!!r.chk;x.lock=+r.gLock||0;x.src=r.src||"";
+  });
+   
+  (B.skip||[]).forEach(s=>{
+    const x=put(s.d);
+    x.noFile=(s.why==="nofile");x.noDet=x.noDet||!!s.noDet;x.chk=x.chk||!!s.chk;
+  });
+   
+  const WK={};spDays(sid).forEach(d=>{WK[d]=1;});
+  const S={rows:[],days:0,ok:0,short:0,over:0,wait:0,unk:0,nofile:0,idle:0,
+    tgt:0,keyed:0,gin:0,tgMap:{},keyMap:{},ginMap:{},tgUnk:[],worst:null,
+    gOn:B.gOn||0,gOff:B.gOff||0,d0:B.d0,d1:B.d1,ym:ym,
+    bal:{keyed:B.keyed,gin:B.gin,sh:B.sh,ov:B.ov,st:B.st,pct:B.pct},
+    nOrd:B.nOrd,hasTgt:spHasTgt(sid)};
+  ord.sort().forEach(d=>{
+    const x=map[d];
+     
+    const K=spKeyByLine(sid,d);
+    Object.keys(K).forEach(ln=>{
+      const P=spItPcs((K[ln]||{}).it,ym);
+      Object.keys(P.pcs).forEach(c=>{x.tgt[c]=(x.tgt[c]||0)+P.pcs[c];});
+      P.unk.forEach(c=>{if(x.tgUnk.indexOf(c)<0)x.tgUnk.push(c);});
+    });
+     
+    CODES.forEach(c=>{
+      const k=Math.round(+x.keyed[c.code]||0),g=Math.round(+x.gin[c.code]||0);
+      const dd=g-k;
+      if(dd<0)x.sh[c.code]=-dd;else if(dd>0)x.ov[c.code]=dd;
+    });
+     
+    Object.keys(x.keyed).forEach(c=>{const v=Math.round(+x.keyed[c]||0);
+      x.k+=v;S.keyMap[c]=(S.keyMap[c]||0)+v;});
+    Object.keys(x.gin).forEach(c=>{const v=Math.round(+x.gin[c]||0);
+      x.g+=v;S.ginMap[c]=(S.ginMap[c]||0)+v;});
+    Object.keys(x.tgt).forEach(c=>{const v=Math.round(+x.tgt[c]||0);
+      x.t+=v;S.tgMap[c]=(S.tgMap[c]||0)+v;});
+    const nSh=Object.keys(x.sh).length,nOv=Object.keys(x.ov).length;
+    x.shPc=Object.keys(x.sh).reduce((a,c)=>a+x.sh[c],0);
+    x.ovPc=Object.keys(x.ov).reduce((a,c)=>a+x.ov[c],0);
+     
+    x.st=x.noFile?"nofile":(x.noDet?"unk":(nSh?"short":(nOv?"over":(x.k?"ok":"wait"))));
+    x.pct=(x.st==="nofile"||x.st==="unk"||!x.k)?null:Math.round(x.g/x.k*1000)/10;
+     
+    S.tgt+=x.t;S.keyed+=x.k;S.gin+=x.g;
+    x.tgUnk.forEach(c=>{if(S.tgUnk.indexOf(c)<0)S.tgUnk.push(c);});
+    x.work=!!(WK[d]||x.nOrd||x.k||x.g||x.chk||x.t);
+    if(!x.work){S.idle++;return;}
+    S.days++;S[x.st==="nofile"?"nofile":x.st]++;
+    const gap=x.shPc+x.ovPc;
+    if(gap&&(!S.worst||gap>S.worst.gap))
+      S.worst={d:d,gap:gap,sh:x.shPc,ov:x.ovPc,shM:x.sh,ovM:x.ov};
+    S.rows.push(x);
+  });
+  return S;
+}
+function spDriftHtml(sid){
+  if(!bdOwner())return "";                  
+  let D;try{D=spDrift(sid);}catch(e){return "";}
+  if(!D.days)return "";
+  const T=m=>spSumTxt(m,D.ym);
+   
+  const pc=v=>v===null?'<span class="psub">—</span>'
+    :('<b style="color:'+(v>100.05?"var(--warn)":(v>=99.95?"var(--good)":"var(--bad)"))+
+      '">'+v.toFixed(1)+"%</b>");
+  const gapCell=x=>{
+    if(x.st==="nofile")return '<span class="psub">รอไฟล์</span>';
+    if(x.st==="unk")return '<span class="psub">ยังเทียบไม่ได้</span>';
+    if(!x.k&&!x.g)return '<span class="psub">—</span>';
+    const b=[];
+    if(x.shPc>0)b.push('<b class="down">🔴 ขาด '+T(x.sh)+"</b>");
+    if(x.ovPc>0)b.push('<b style="color:var(--warn)">🟠 เกิน '+T(x.ov)+"</b>");
+    if(!b.length)return '<b class="sp-ok">🟢 ตรงกัน</b>';
+     
+    return b.join('<span style="display:block"></span>')+
+      ((x.shPc>0&&x.ovPc>0)?'<span class="psub" style="display:block">คนละสินค้ากัน</span>':"");
+  };
+  const h=[];
+  h.push(`<div class="sp-auto" style="margin-top:8px">
+    <div class="sp-autot">📊 เทียบย้อนหลังรายวัน — เซลล์คีย์ เทียบ คลังจัด</div>
+    <div class="psub">${D.d0?anaEsc(fmtDate(D.d0))+" → "+anaEsc(fmtDate(D.d1)):""} ·
+      วันที่มีงาน <b>${D.days}</b> วัน · 🟢 ตรงกัน <b>${D.ok}</b> ·
+      🔴 ขาด <b>${D.short}</b> · 🟠 เกิน <b>${D.over}</b> ·
+      ⏳ รอไฟล์ <b>${D.nofile+D.unk}</b> วัน${
+      D.wait?" · ยังไม่มีใบของรอบนี้ <b>"+D.wait+"</b> วัน":""}${
+      D.idle?' · <span class="psub">อีก '+D.idle+" วันไม่มีงานในใบนี้</span>":""}</div>`);
+  if(D.worst)h.push(`<div class="psub" style="margin-top:4px">ดริฟมากที่สุด
+    <b>${anaEsc(fmtDate(D.worst.d))}</b> — ${D.worst.sh>0?"ขาด "+T(D.worst.shM):""}${
+    (D.worst.sh>0&&D.worst.ov>0)?" · ":""}${
+    D.worst.ov>0?"เกิน "+T(D.worst.ovM):""}</div>`);
+  h.push(`<div class="tblwrap" style="margin-top:8px"><table class="sp-kt sp-fold"><thead><tr>
+    <th class="l">วันที่</th>${D.hasTgt?"<th>🎯 ซุปตั้งเป้า</th>":""}
+    <th>📲 เซลล์คีย์</th><th>🚚 คลังจัด</th><th class="l">ดริฟ</th><th>% ตรง</th>
+    </tr></thead><tbody>`);
+  D.rows.forEach(x=>{
+    const sub=[];
+    if(x.nOrd)sub.push(x.nOrd+" ใบ");
+    if(x.nOrd)sub.push("คลังจัด "+x.nGin);
+    if(x.chk)sub.push("ตรวจแล้ว");else if(x.k)sub.push("ยังไม่ตรวจ");
+    h.push(`<tr><td class="l" data-l="วันที่"><b>${anaEsc(spDowTh(x.d))} ${
+      anaEsc(fmtDate(x.d))}</b>${sub.length
+      ?'<span class="psub" style="display:block">'+anaEsc(sub.join(" · "))+"</span>":""}</td>${
+      D.hasTgt?`<td data-l="ซุปตั้งเป้า">${x.t?T(x.tgt):'<span class="psub">—</span>'}${
+        x.tgUnk.length?'<span class="psub down" style="display:block">ไม่รู้ขนาดลัง '+
+          x.tgUnk.length+" รหัส</span>":""}</td>`:""}
+      <td data-l="เซลล์คีย์">${x.st==="nofile"?'<span class="psub">รอไฟล์</span>':T(x.keyed)}</td>
+      <td data-l="คลังจัด">${x.st==="nofile"?'<span class="psub">—</span>':T(x.gin)}${
+        x.k?'<span class="psub" style="display:block">'+
+          (x.src==="chk"?"จากผลตรวจ":"จากเลข GIN (ประเมิน)")+"</span>":""}</td>
+      <td class="l" data-l="ดริฟ">${gapCell(x)}</td>
+      <td data-l="% ตรง">${pc(x.pct)}</td></tr>`);
+  });
+  const sumGap=(Object.keys(D.bal.sh).length||Object.keys(D.bal.ov).length)
+    ?[(Object.keys(D.bal.sh).length?'<b class="down">🔴 ขาด '+T(D.bal.sh)+"</b>":""),
+      (Object.keys(D.bal.ov).length?'<b style="color:var(--warn)">🟠 เกิน '+T(D.bal.ov)+"</b>":"")]
+      .filter(Boolean).join('<span style="display:block"></span>')
+    :'<b class="sp-ok">🟢 ตรงกัน</b>';
+   
+  h.push(`<tr class="sp-dsum"><td class="l" data-l="รวม"><b>รวมทั้งใบ</b>
+    <span class="psub" style="display:block">${D.nOrd} ใบออเดอร์</span></td>${
+    D.hasTgt?`<td data-l="ซุปตั้งเป้ารวม"><b>${T(D.tgMap)}</b></td>`:""}
+    <td data-l="เซลล์คีย์รวม"><b>${T(D.keyMap)}</b></td>
+    <td data-l="คลังจัดรวม"><b>${T(D.ginMap)}</b></td>
+    <td class="l" data-l="ดริฟรวม">${sumGap}</td>
+    <td data-l="% ตรงรวม">${pc(D.bal.pct)}</td></tr></tbody></table></div>`);
+  h.push(`<div class="psub" style="margin-top:6px">${D.gOff
+    ? "⚠️ วันที่ยังไม่ได้ใส่เลข GIN ยอดคลังจัดยังเป็น <b>(ประเมิน)</b> — ใส่เลขของวันนั้นแล้วตัวเลขจะล็อกทันที"
+    : "✅ ทุกวันของใบนี้ล็อกด้วยเลข GIN ที่ยืนยันแล้ว"}</div>
+    <div class="psub">แถวรวมเทียบ<b>ต่อรหัสสินค้าทั้งใบ</b> จึงไม่ใช่ผลบวกของช่องดริฟรายวัน —
+      รหัสเดียวกันขาดวันนี้แล้วเกินวันหลัง หักกันเองได้</div></div>`);
+  return h.join("");
+}
+ 
 function spGinPasteFill(sid,ymd){
   const ym0=String(spDay(sid)||"").slice(0,7);
   const R=spGinPasteRead((SP.gp||{}).txt,ym0);
@@ -18850,6 +19004,7 @@ function spAdmHtml(sid){
           onclick="spGinGo('${anaEsc(sid)}','${ymd}')">🔎 ตรวจและบันทึก</button></div>
       ${spAutoGinHtml(sid,ymd)}
       ${spGinPasteHtml(sid)}
+      ${spDriftHtml(sid)}
       ${spCutHtml(sid)}
       ${haveFile?`<div class="psub" style="margin-top:6px">เลข GIN ที่มีในไฟล์: ${
         ALLOC.gins.slice(0,40).map(x=>`<code>${anaEsc(x)}</code>`).join(" ")}${
